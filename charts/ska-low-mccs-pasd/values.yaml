@@ -80,16 +80,16 @@ low_mccs-pasd:
   image:
     registry: artefact.skao.int
     image: ska-low-mccs-pasd
-    tag: 0.1.0 #VERSION: Used to update tags on release - DO NOT REMOVE COMMENT
+    tag: 0.1.0  # VERSION: Used to update tags on release - DO NOT REMOVE COMMENT
     pullPolicy: IfNotPresent
 
 
 # Default ska-low-mccs-pasd device server instances
 deviceServers:
-    pasd_device:
-        # pasd instances have to be 0-padded to three digits
-        instances: ["pasd-001", "pasd-002"]
-        file: "data/pasd.yaml"
+  pasd_device:
+    # pasd instances have to be 0-padded to three digits
+    instances: ["pasd-bus-001"]
+    file: "data/pasd.yaml"
 
 nodeSelector: {}
 

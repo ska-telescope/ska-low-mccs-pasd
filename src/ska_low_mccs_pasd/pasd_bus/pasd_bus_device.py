@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import threading
-from typing import Any, List, Optional, Tuple
+from typing import Any, Optional
 
 import tango
 from ska_control_model import (
@@ -37,11 +37,33 @@ NUMBER_OF_ANTENNAS_PER_STATION = 256
 NUMBER_OF_SMARTBOXES_PER_STATION = 24
 NUMBER_OF_FNDH_PORTS = 28
 
-DevVarLongStringArrayType = Tuple[List[ResultCode], List[Optional[str]]]
+DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 
 
-class MccsPasdBus(SKABaseDevice):
+class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
     """An implementation of a PaSD bus Tango device for MCCS."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """
+        Initialise this device object.
+
+        :param args: positional args to the init
+        :param kwargs: keyword args to the init
+        """
+        # We aren't supposed to define initialisation methods for Tango
+        # devices; we are only supposed to define an `init_device` method. But
+        # we insist on doing so here, just so that we can define some
+        # attributes, thereby stopping the linters from complaining about
+        # "attribute-defined-outside-init" etc. We still need to make sure that
+        # `init_device` re-initialises any values defined in here.
+        super().__init__(*args, **kwargs)
+
+        self._max_workers: int = 1
+        self._power_state_lock: threading.RLock = threading.RLock()
+        self._build_state: str = release.get_release_info()
+        self._version_id: int = release.version
+        self._health_state: HealthState = HealthState.UNKNOWN
+        self._health_model: PasdBusHealthModel = None
 
     # ---------------
     # Initialisation
@@ -114,7 +136,7 @@ class MccsPasdBus(SKABaseDevice):
                 ),
             )
 
-    class InitCommand(DeviceInitCommand):
+    class InitCommand(DeviceInitCommand):  # pylint: disable=too-few-public-methods
         """
         A class for :py:class:`~.MccsPasdBus`'s Init command.
 
@@ -124,17 +146,19 @@ class MccsPasdBus(SKABaseDevice):
 
         def do(  # type: ignore[override]
             self: MccsPasdBus.InitCommand,
+            *args: Any,
+            **kwargs: Any,
         ) -> tuple[ResultCode, str]:
             """
             Initialise the attributes and properties of the MccsPasdBus.
+
+            :param args: positional args to the component manager method
+            :param kwargs: keyword args to the component manager method
 
             :return: A tuple containing a return code and a string
                 message indicating status. The message is for
                 information purpose only.
             """
-            self._build_state = release.get_release_info()
-            self._version_id = release.version
-
             return (ResultCode.OK, "Init command completed OK")
 
     # ----------
@@ -623,7 +647,7 @@ class MccsPasdBus(SKABaseDevice):
         return ([result_code], [unique_id])
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def GetFndhInfo(self: MccsPasdBus, argin: int) -> Tuple[List[Any], List[Any]]:
+    def GetFndhInfo(self: MccsPasdBus, argin: int) -> tuple[list[Any], list[Any]]:
         """
         Return information about the FNDH.
 
@@ -669,7 +693,7 @@ class MccsPasdBus(SKABaseDevice):
         return ([result_code], [unique_id])
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def GetSmartboxInfo(self: MccsPasdBus, argin: int) -> Tuple[List[Any], List[Any]]:
+    def GetSmartboxInfo(self: MccsPasdBus, argin: int) -> tuple[list[Any], list[Any]]:
         """
         Return information about a smartbox.
 
@@ -743,7 +767,7 @@ class MccsPasdBus(SKABaseDevice):
         return ([result_code], [unique_id])
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def GetAntennaInfo(self: MccsPasdBus, argin: int) -> Tuple[List[Any], List[Any]]:
+    def GetAntennaInfo(self: MccsPasdBus, argin: int) -> tuple[list[Any], list[Any]]:
         """
         Return information about relationship of an antenna to other PaSD components.
 

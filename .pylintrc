@@ -18,4 +18,4 @@ ignored-classes = socket
 # W0212 protected-access
 # W0613 unused-argument
 # W0612 unused variable
-disable = W0212, W613, W612
+disable = W0212, W0613, W0612

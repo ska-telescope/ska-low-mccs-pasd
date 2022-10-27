@@ -22,8 +22,8 @@ from ska_low_mccs_common.testing.tango_harness import DeviceToLoadType, TangoHar
 from ska_low_mccs_pasd import MccsPasdBus
 
 
-@pytest.fixture()
-def device_under_test(tango_harness: TangoHarness) -> MccsDeviceProxy:
+@pytest.fixture(name="device_under_test")
+def device_under_test_fixture(tango_harness: TangoHarness) -> MccsDeviceProxy:
     """
     Fixture that returns the device under test.
 
@@ -37,8 +37,8 @@ def device_under_test(tango_harness: TangoHarness) -> MccsDeviceProxy:
 class TestMccsPasdBus:
     """Tests of the MCCS pasd bus device."""
 
-    @pytest.fixture()
-    def mock_component_manager(
+    @pytest.fixture(name="mock_component_manager")
+    def mock_component_manager_fixture(
         self: TestMccsPasdBus, mocker: pytest_mock.mocker
     ) -> unittest.mock.Mock:  # type: ignore[valid-type]
         """
@@ -52,8 +52,8 @@ class TestMccsPasdBus:
         """
         return mocker.Mock()  # type: ignore[attr-defined]
 
-    @pytest.fixture()
-    def patched_device_class(
+    @pytest.fixture(name="patched_device_class")
+    def patched_device_class_fixture(
         self: TestMccsPasdBus, mock_component_manager: unittest.mock.Mock
     ) -> type[MccsPasdBus]:
         """
@@ -85,8 +85,8 @@ class TestMccsPasdBus:
 
         return PatchedMccsPasdBus
 
-    @pytest.fixture()
-    def device_to_load(
+    @pytest.fixture(name="device_to_load")
+    def device_to_load_fixture(
         self: TestMccsPasdBus, patched_device_class: MccsPasdBus
     ) -> DeviceToLoadType:
         """
@@ -224,7 +224,7 @@ class TestMccsPasdBus:
             ),
         ],
     )
-    def test_readonly_attribute(
+    def test_readonly_attribute(  # pylint: disable=too-many-arguments
         self: TestMccsPasdBus,
         mocker: pytest_mock.mocker,  # type: ignore[valid-type]
         device_under_test: MccsDeviceProxy,
@@ -351,7 +351,7 @@ class TestMccsPasdBus:
             ),
         ],
     )
-    def test_command(
+    def test_command(  # pylint: disable=too-many-arguments
         self: TestMccsPasdBus,
         mocker: pytest_mock.mocker,  # type: ignore[valid-type]
         device_under_test: MccsDeviceProxy,
