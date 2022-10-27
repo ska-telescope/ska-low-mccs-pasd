@@ -69,7 +69,7 @@ def pasd_config_path_fixture() -> str:
     :return: the path to a YAML file that specifies the PaSD
         configuration.
     """
-    return "src/ska_low_mccs/pasd_bus/pasd_configuration.yaml"
+    return "src/ska_low_mccs_pasd/pasd_bus/pasd_configuration.yaml"
 
 
 @pytest.fixture(name="station_id")

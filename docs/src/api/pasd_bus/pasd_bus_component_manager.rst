@@ -3,5 +3,5 @@
 PaSD Bus Component Manager
 ==========================
 
-.. automodule:: ska_low_mccs.pasd_bus.pasd_bus_component_manager
+.. automodule:: ska_low_mccs_pasd.pasd_bus.pasd_bus_component_manager
    :members:
