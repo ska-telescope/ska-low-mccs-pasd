@@ -1,9 +1,9 @@
 {
     "servers": {
         "MccsPasdBus": {
-            "pasd_bus_001": {
+            "pasdbus_001": {
                 "MccsPasdBus": {
-                    "low-mccs/pasd/001": {
+                    "low-mccs/pasdbus/001": {
                         "properties": {
                             "LoggingLevelDefault": [
                                 "3"

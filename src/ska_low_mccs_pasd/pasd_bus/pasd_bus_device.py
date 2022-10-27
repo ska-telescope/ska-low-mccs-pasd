@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import threading
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import tango
 from ska_control_model import (
@@ -21,6 +21,7 @@ from ska_control_model import (
     SimulationMode,
 )
 from ska_low_mccs_common import release
+from ska_low_mccs_common.component import MccsComponentManager
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
 from tango.server import attribute, command
@@ -61,9 +62,10 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         self._max_workers: int = 1
         self._power_state_lock: threading.RLock = threading.RLock()
         self._build_state: str = release.get_release_info()
-        self._version_id: int = release.version
+        self._version_id: str = release.version
         self._health_state: HealthState = HealthState.UNKNOWN
-        self._health_model: PasdBusHealthModel = None
+        self._health_model: PasdBusHealthModel
+        self._component_manager: PasdBusComponentManager
 
     # ---------------
     # Initialisation
@@ -86,7 +88,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         self._health_model = PasdBusHealthModel(self.component_state_changed_callback)
         self.set_change_event("healthState", True, False)
 
-    def create_component_manager(
+    def create_component_manager(  # type: ignore[override]
         self: MccsPasdBus,
     ) -> PasdBusComponentManager:
         """
@@ -94,13 +96,14 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: a component manager for this device.
         """
-        return PasdBusComponentManager(
+        self._component_manager = PasdBusComponentManager(
             SimulationMode.TRUE,
             self.logger,
             self._max_workers,
-            self._component_communication_state_changed,
-            self._component_state_changed,
+            self._communication_state_changed_callback,
+            self._component_state_changed_callback,
         )
+        return self._component_manager
 
     def init_command_objects(self: MccsPasdBus) -> None:
         """Initialise the command handlers for commands supported by this device."""
@@ -164,7 +167,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
     # ----------
     # Callbacks
     # ----------
-    def _component_communication_state_changed(
+    def _communication_state_changed_callback(
         self: MccsPasdBus,
         communication_state: CommunicationStatus,
     ) -> None:
@@ -192,7 +195,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             communication_state == CommunicationStatus.ESTABLISHED
         )
 
-    def component_state_changed_callback(
+    def _component_state_changed_callback(
         self: MccsPasdBus, state_change: dict[str, Any]
     ) -> None:
         """
@@ -207,13 +210,15 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             PowerState.OFF: "component_off",
             PowerState.STANDBY: "component_standby",
             PowerState.ON: "component_on",
-            PowerState.UNKNOWN: "component_unknown",
+            PowerState.UNKNOWN: "component_unkncomponent_own",
         }
 
         with self._power_state_lock:
             if "power_state" in state_change.keys():
                 power_state = state_change.get("power_state")
-                self.component_manager.power_state = power_state
+                cast(
+                    MccsComponentManager, self._component_manager
+                ).power_state = power_state
                 if power_state:
                     self.op_state_model.perform_action(action_map[power_state])
 
@@ -224,7 +229,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
                 self._health_model.component_fault(True)
             else:
                 self.op_state_model.perform_action(
-                    action_map[self.component_manager.power_state]
+                    action_map[self._component_manager.power_state]
                 )
                 self._health_model.component_fault(False)
 
@@ -245,7 +250,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: the output voltages on the two 48V DC power supplies,
              in volts.
         """
-        return self.component_manager.fndh_psu48v_voltages
+        return self._component_manager.fndh_psu48v_voltages
 
     @attribute(dtype=float, label="fndhPsu5vVoltage")
     def fndhPsu5vVoltage(self: MccsPasdBus) -> float:
@@ -254,7 +259,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: the output voltage on the 5V power supply, in volts.
         """
-        return self.component_manager.fndh_psu5v_voltage
+        return self._component_manager.fndh_psu5v_voltage
 
     @attribute(dtype=float, label="fndhPsu48vCurrent")
     def fndhPsu48vCurrent(self: MccsPasdBus) -> float:
@@ -263,7 +268,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: the total current on the 48V DC bus, in amperes.
         """
-        return self.component_manager.fndh_psu48v_current
+        return self._component_manager.fndh_psu48v_current
 
     @attribute(dtype=float, label="fndhPsu48vTemperature")
     def fndhPsu48vTemperature(self: MccsPasdBus) -> float:
@@ -272,7 +277,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: the common temperature for both 48V power supplies, in celcius.
         """
-        return self.component_manager.fndh_psu48v_temperature
+        return self._component_manager.fndh_psu48v_temperature
 
     @attribute(dtype=float, label="fndhPsu5vTemperature")
     def fndhPsu5vTemperature(self: MccsPasdBus) -> float:
@@ -281,7 +286,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: the temperature of the 5V power supply, in celcius.
         """
-        return self.component_manager.fndh_psu5v_temperature
+        return self._component_manager.fndh_psu5v_temperature
 
     @attribute(dtype=float, label="fndhPcbTemperature")
     def fndhPcbTemperature(self: MccsPasdBus) -> float:
@@ -290,7 +295,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: the temperature of the FNDH's PCB, in celcius.
         """
-        return self.component_manager.fndh_pcb_temperature
+        return self._component_manager.fndh_pcb_temperature
 
     @attribute(dtype=float, label="fndhOutsideTemperature")
     def fndhOutsideTemperature(self: MccsPasdBus) -> float:
@@ -299,7 +304,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: the temperature outside the FNDH, in celcius.
         """
-        return self.component_manager.fndh_pcb_temperature
+        return self._component_manager.fndh_pcb_temperature
 
     @attribute(dtype=str, label="fndhStatus")
     def fndhStatus(self: MccsPasdBus) -> str:
@@ -308,7 +313,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: the status of the FNDH
         """
-        return self.component_manager.fndh_status
+        return self._component_manager.fndh_status
 
     @attribute(dtype=bool, label="fndhServiceLedOn")
     def fndhServiceLedOn(self: MccsPasdBus) -> bool:
@@ -317,7 +322,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: whether the FNDH's blue service indicator LED is on.
         """
-        return self.component_manager.fndh_service_led_on
+        return self._component_manager.fndh_service_led_on
 
     @fndhServiceLedOn.write  # type: ignore[no-redef]
     def fndhServiceLedOn(self: MccsPasdBus, led_on: bool) -> None:
@@ -326,7 +331,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :param led_on: whether the LED should be on.
         """
-        self.component_manager.set_fndh_service_led_on(led_on)
+        self._component_manager.set_fndh_service_led_on(led_on)
 
     @attribute(
         dtype=("DevBoolean",),
@@ -339,7 +344,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: the actual power state of each FNDH port.
         """
-        return self.component_manager.fndh_ports_power_sensed
+        return self._component_manager.fndh_ports_power_sensed
 
     @attribute(
         dtype=("DevBoolean",),
@@ -353,7 +358,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: whether there is a smartbox connected to each FNDH
             port.
         """
-        return self.component_manager.fndh_ports_connected
+        return self._component_manager.fndh_ports_connected
 
     @attribute(
         dtype=("DevBoolean",),
@@ -368,7 +373,8 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             forced.
         """
         return [
-            forcing is not None for forcing in self.component_manager.fndh_port_forcings
+            forcing is not None
+            for forcing in self._component_manager.fndh_port_forcings
         ]
 
     @attribute(
@@ -383,7 +389,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: whether each FNDH port is desired to be powered when
             controlled by MCCS
         """
-        return self.component_manager.fndh_ports_desired_power_online
+        return self._component_manager.fndh_ports_desired_power_online
 
     @attribute(
         dtype=("DevBoolean",),
@@ -397,7 +403,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: whether each FNDH port is desired to be powered when
             MCCS control has been lost
         """
-        return self.component_manager.fndh_ports_desired_power_offline
+        return self._component_manager.fndh_ports_desired_power_offline
 
     @attribute(
         dtype=("float",),
@@ -410,7 +416,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: each smartbox's power input voltage, in volts.
         """
-        return self.component_manager.smartbox_input_voltages
+        return self._component_manager.smartbox_input_voltages
 
     @attribute(
         dtype=("float",),
@@ -423,7 +429,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: each smartbox's power supply output voltage, in volts.
         """
-        return self.component_manager.smartbox_power_supply_output_voltages
+        return self._component_manager.smartbox_power_supply_output_voltages
 
     @attribute(
         dtype=("DevString",),
@@ -436,7 +442,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: each smartbox's status.
         """
-        return self.component_manager.smartbox_statuses
+        return self._component_manager.smartbox_statuses
 
     @attribute(
         dtype=("float",),
@@ -449,7 +455,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: each smartbox's power supply temperature.
         """
-        return self.component_manager.smartbox_power_supply_temperatures
+        return self._component_manager.smartbox_power_supply_temperatures
 
     @attribute(
         dtype=("float",),
@@ -462,7 +468,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: each smartbox's outside temperature.
         """
-        return self.component_manager.smartbox_outside_temperatures
+        return self._component_manager.smartbox_outside_temperatures
 
     @attribute(
         dtype=("float",),
@@ -475,7 +481,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: each smartbox's PCB temperature.
         """
-        return self.component_manager.smartbox_pcb_temperatures
+        return self._component_manager.smartbox_pcb_temperatures
 
     @attribute(
         dtype=("DevBoolean",),
@@ -489,7 +495,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: a list of booleans indicating whether each smartbox's
             blue service LED is on.
         """
-        return self.component_manager.smartbox_service_leds_on
+        return self._component_manager.smartbox_service_leds_on
 
     @attribute(
         dtype=("int",),
@@ -502,7 +508,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: each smartbox's FNDH port.
         """
-        return self.component_manager.smartbox_fndh_ports
+        return self._component_manager.smartbox_fndh_ports
 
     @attribute(
         dtype=("DevBoolean",),
@@ -516,7 +522,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: whether each smartbox should be on when the PaSD is
             under MCCS control.
         """
-        return self.component_manager.smartbox_desired_power_online
+        return self._component_manager.smartbox_desired_power_online
 
     @attribute(
         dtype=("DevBoolean",),
@@ -530,7 +536,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: whether each smartbox should be on when MCCS control of
             the PaSD is lost.
         """
-        return self.component_manager.smartbox_desired_power_offline
+        return self._component_manager.smartbox_desired_power_offline
 
     @attribute(
         dtype=("DevBoolean",),
@@ -544,7 +550,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: a list of booleans indicating whether each antenna is
             online
         """
-        return self.component_manager.antennas_online
+        return self._component_manager.antennas_online
 
     @attribute(
         dtype=("DevBoolean",),
@@ -559,7 +565,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             forces
         """
         return [
-            forcing is not None for forcing in self.component_manager.antenna_forcings
+            forcing is not None for forcing in self._component_manager.antenna_forcings
         ]
 
     @attribute(
@@ -574,7 +580,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: a list of booleans indicating whether each antenna has
             had its breaker tripped
         """
-        return self.component_manager.antennas_tripped
+        return self._component_manager.antennas_tripped
 
     @attribute(
         dtype=("DevBoolean",),
@@ -588,7 +594,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: a list of booleans indicating whether each antenna is
             currently powered on
         """
-        return self.component_manager.antennas_power_sensed
+        return self._component_manager.antennas_power_sensed
 
     @attribute(
         dtype=("DevBoolean",),
@@ -602,7 +608,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: a list of booleans indicating whether each antenna is
             desired to be on when it is online.
         """
-        return self.component_manager.antennas_desired_on_online
+        return self._component_manager.antennas_desired_on_online
 
     @attribute(
         dtype=("DevBoolean",),
@@ -616,7 +622,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: a list of booleans indicating whether each antenna is
             desired to be on when it is offline.
         """
-        return self.component_manager.antennas_desired_on_offline
+        return self._component_manager.antennas_desired_on_offline
 
     @attribute(
         dtype=("float",),
@@ -629,7 +635,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         :return: the current at each antenna's power port, in amps
         """
-        return self.component_manager.antenna_currents
+        return self._component_manager.antenna_currents
 
     # ----------
     # Commands

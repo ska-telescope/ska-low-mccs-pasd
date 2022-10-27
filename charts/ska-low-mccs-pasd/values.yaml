@@ -75,7 +75,7 @@ resources:
 
 
 # Default docker image - used by all of MCCS
-low_mccs-pasd:
+low_mccs_pasd:
   enabled: true
   image:
     registry: artefact.skao.int

@@ -304,7 +304,7 @@ def patched_pasd_bus_device_class_fixture(
     class PatchedMccsPasdBus(MccsPasdBus):
         """A pasd bus device patched with a mock component manager."""
 
-        def __init__(self):
+        def __init__(self) -> None:
             """Initialise."""
             self._communication_status: Optional[CommunicationStatus] = None
             super().__init__()
@@ -317,7 +317,6 @@ def patched_pasd_bus_device_class_fixture(
 
             :return: a mock component manager
             """
-            self._communication_status: Optional[CommunicationStatus] = None
             mock_component_manager._communication_status_changed_callback = (
                 self._communication_status_changed_callback
             )

@@ -4,11 +4,11 @@ xauthority: "~/.Xauthority"
 enabled: true
 
 system: SW-infrastructure
-subsystem: low-mccs_pasd
+subsystem: low-mccs-pasd
 telescope: SKA-low
 
 labels:
-  app: ska-low-mccs_pasd
+  app: ska-low-mccs-pasd
 annotations:
   app.gitlab.com/app: CI_PROJECT_PATH_SLUG
   app.gitlab.com/env: CI_ENVIRONMENT_SLUG

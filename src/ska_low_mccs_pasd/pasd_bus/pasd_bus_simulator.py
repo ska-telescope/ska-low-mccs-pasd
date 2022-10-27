@@ -42,6 +42,7 @@ from datetime import datetime
 from typing import Callable, Optional
 
 import yaml
+from ska_control_model import TaskStatus
 from ska_low_mccs_common.component import ObjectComponent
 from typing_extensions import Final, TypedDict
 
@@ -970,7 +971,9 @@ class PasdBusSimulator(
 
         return True
 
-    def reset(self: ObjectComponent, task_callback: Optional[Callable] = None) -> None:
+    def reset(
+        self: ObjectComponent, task_callback: Optional[Callable] = None
+    ) -> tuple[TaskStatus, str]:
         """
         Reset the component (from fault state).
 
