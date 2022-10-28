@@ -78,7 +78,7 @@ class TestMccsPasdBus:
                 :return: a mock component manager
                 """
                 mock_component_manager._component_state_changed_callback = (
-                    self.component_state_changed_callback
+                    self._component_state_changed_callback
                 )
 
                 return mock_component_manager

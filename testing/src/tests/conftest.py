@@ -44,13 +44,12 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     print(tango.utils.info())
 
 
-with open("testing/testbeds.yaml", "r", encoding="ascii") as stream:
+with open("testing/testbeds.yaml", "r", encoding="utf8") as stream:
     _testbeds: dict[str, set[str]] = yaml.safe_load(stream)
 
 
-# TODO: pytest is partially typehinted but does not yet export Config
 def pytest_configure(
-    config: _pytest.config.Config,  # type: ignore[name-defined]
+    config: _pytest.config.Config,
 ) -> None:
     """
     Register custom markers to avoid pytest warnings.
@@ -62,9 +61,8 @@ def pytest_configure(
         config.addinivalue_line("markers", f"needs_{tag}")
 
 
-# TODO: pytest is partially typehinted but does not yet export Parser
 def pytest_addoption(
-    parser: _pytest.config.argparsing.Parser,  # type: ignore[name-defined]
+    parser: _pytest.config.argparsing.Parser,
 ) -> None:
     """
     Implement the add the `--testbed` option.
@@ -83,10 +81,9 @@ def pytest_addoption(
     )
 
 
-# TODO: pytest is partially typehinted but does not yet export Config
 def pytest_collection_modifyitems(
     config: _pytest.config.Config,
-    items: list[pytest.Item],  # type: ignore[name-defined]
+    items: list[pytest.Item],
 ) -> None:
     """
     Modify the list of tests to be run, after pytest has collected them.

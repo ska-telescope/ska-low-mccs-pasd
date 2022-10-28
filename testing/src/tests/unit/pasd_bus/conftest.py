@@ -271,7 +271,7 @@ def mock_component_manager_fixture(
 
     :return: a mock component manager
     """
-    mock = mocker.Mock()  # type: ignore[attr-defined]
+    mock = unittest.mock.Mock()
     mock.is_communicating = False
 
     def _start_communicating(mock: unittest.mock.Mock) -> None:
