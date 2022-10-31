@@ -210,7 +210,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             PowerState.OFF: "component_off",
             PowerState.STANDBY: "component_standby",
             PowerState.ON: "component_on",
-            PowerState.UNKNOWN: "component_unkncomponent_own",
+            PowerState.UNKNOWN: "component_unknown",
         }
 
         with self._power_state_lock:
