@@ -85,7 +85,7 @@ low_mccs_pasd:
 deviceServers:
   pasd-device:
     # pasd instances have to be 0-padded to three digits
-    instances: ["pasd-bus-001"]
+    instances: ["pasdbus-001"]
     file: "data/pasd.yaml"
 
 nodeSelector: {}
