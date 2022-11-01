@@ -72,7 +72,7 @@ MccsPasdBus = "ska_low_mccs_pasd.pasd_bus.pasd_bus_device:main"
 
 [tool.pytest.ini_options]
 testpaths = "testing/src/"
-addopts = "--json-report --json-report-file=build/reports/report.json --cov-report html:build/htmlcov --cov-report xml:build/reports/code-coverage.xml --cov-report term:skip-covered --cov=ska_low_mccs --junitxml=build/reports/unit-tests.xml --verbose"
+addopts = "--json-report --json-report-file=build/reports/report.json --cov-report html:build/htmlcov --cov-report xml:build/reports/code-coverage.xml --cov-report term:skip-covered --cov=ska_low_mccs_pasd --junitxml=build/reports/unit-tests.xml --verbose"
 console_output_style = "progress"
 junit_family = "legacy"
 

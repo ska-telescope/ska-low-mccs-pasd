@@ -48,7 +48,7 @@ class PasdBusSimulatorComponentManager(ObjectComponentManager):
             rather than letting the component manager create one.
         """
         pasd_bus_simulator = _simulator or PasdBusSimulator(
-            "src/ska_low_mccs/pasd_bus/pasd_configuration.yaml",
+            "src/ska_low_mccs_pasd_bus/pasd_configuration.yaml",
             1,
             logger,
         )

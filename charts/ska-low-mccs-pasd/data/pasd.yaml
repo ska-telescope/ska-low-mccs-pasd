@@ -3,7 +3,7 @@ function: ska-low-mccs-pasd
 domain: ska-low-mccs-pasd
 instances: ["pasdbus-001"]
 entrypoints:
-  - name: "pasd_bas.MccsPasdBus"
+  - name: "pasd_bus.MccsPasdBus"
     path: "/app/src/ska_low_mccs_pasd/pasd_bus/pasd_bus_device.py"
 server: 
   name: "MccsPasdBus"
