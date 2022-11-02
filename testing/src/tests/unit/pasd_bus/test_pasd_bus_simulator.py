@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 # -*- coding: utf-8 -*-
 #
 # This file is part of the SKA Low MCCS project
@@ -20,8 +21,8 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
 )
 
 
-@pytest.fixture()
-def fndh_config(pasd_config: dict[str, Any]) -> list[bool]:
+@pytest.fixture(name="fndh_config")
+def fndh_config_fixture(pasd_config: dict[str, Any]) -> list[bool]:
     """
     Return FNDH configuration data, specifying which ports are connected.
 
@@ -36,8 +37,8 @@ def fndh_config(pasd_config: dict[str, Any]) -> list[bool]:
     return list(is_port_connected)
 
 
-@pytest.fixture()
-def fndh_simulator(fndh_config: list[bool]) -> FndhSimulator:
+@pytest.fixture(name="fndh_simulator")
+def fndh_simulator_fixture(fndh_config: list[bool]) -> FndhSimulator:
     """
     Return an FNDH simulator instance.
 
@@ -51,8 +52,8 @@ def fndh_simulator(fndh_config: list[bool]) -> FndhSimulator:
     return simulator
 
 
-@pytest.fixture()
-def connected_fndh_port(fndh_simulator: FndhSimulator) -> int:
+@pytest.fixture(name="connected_fndh_port")
+def connected_fndh_port_fixture(fndh_simulator: FndhSimulator) -> int:
     """
     Return an FNDH simulator port that has a smartbox connected to it.
 
@@ -64,8 +65,8 @@ def connected_fndh_port(fndh_simulator: FndhSimulator) -> int:
     return fndh_simulator.are_ports_connected.index(True) + 1
 
 
-@pytest.fixture()
-def unconnected_fndh_port(fndh_simulator: FndhSimulator) -> int:
+@pytest.fixture(name="unconnected_fndh_port")
+def unconnected_fndh_port_fixture(fndh_simulator: FndhSimulator) -> int:
     """
     Return an FNDH simulator port that doesn't have a smartbox connected to it.
 
@@ -273,8 +274,8 @@ class TestFndhSimulator:
 class TestSmartboxSimulator:
     """Tests of the SmartboxSimulator."""
 
-    @pytest.fixture()
-    def smartbox_under_test(self: TestSmartboxSimulator) -> int:
+    @pytest.fixture(name="smartbox_under_test")
+    def smartbox_under_test_fixture(self: TestSmartboxSimulator) -> int:
         """
         Return the id of the smartbox to be used in testing.
 
@@ -282,8 +283,8 @@ class TestSmartboxSimulator:
         """
         return 1
 
-    @pytest.fixture()
-    def smartbox_config(
+    @pytest.fixture(name="smartbox_config")
+    def smartbox_config_fixture(
         self: TestSmartboxSimulator,
         pasd_config: dict[str, Any],
         smartbox_under_test: int,
@@ -304,8 +305,8 @@ class TestSmartboxSimulator:
                 is_port_connected[antenna_config["smartbox_port"] - 1] = True
         return list(is_port_connected)
 
-    @pytest.fixture()
-    def smartbox_simulator(
+    @pytest.fixture(name="smartbox_simulator")
+    def smartbox_simulator_fixture(
         self: TestSmartboxSimulator, smartbox_config: list[bool]
     ) -> SmartboxSimulator:
         """
@@ -320,8 +321,8 @@ class TestSmartboxSimulator:
         simulator.configure(smartbox_config)
         return simulator
 
-    @pytest.fixture()
-    def connected_smartbox_port(
+    @pytest.fixture(name="connected_smartbox_port")
+    def connected_smartbox_port_fixture(
         self: TestSmartboxSimulator, smartbox_simulator: SmartboxSimulator
     ) -> int:
         """
@@ -334,8 +335,8 @@ class TestSmartboxSimulator:
         """
         return smartbox_simulator.are_ports_connected.index(True) + 1
 
-    @pytest.fixture()
-    def unconnected_smartbox_port(
+    @pytest.fixture(name="unconnected_smartbox_port")
+    def unconnected_smartbox_port_fixture(
         self: TestSmartboxSimulator, smartbox_simulator: SmartboxSimulator
     ) -> int:
         """
@@ -595,7 +596,7 @@ class TestSmartboxSimulator:
         _ = datetime.fromisoformat(smartbox_info["read_time"])
 
 
-class TestPasdBusSimulator:
+class TestPasdBusSimulator:  # pylint: disable=too-many-public-methods
     """
     Tests of commands common to the PaSDBus simulator and its component manager.
 

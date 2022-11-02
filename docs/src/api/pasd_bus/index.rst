@@ -2,7 +2,7 @@
 PaSD bus subpackage
 ===================
 
-.. automodule:: ska_low_mccs.pasd_bus
+.. automodule:: ska_low_mccs_pasd.pasd_bus
 
 
 .. toctree::

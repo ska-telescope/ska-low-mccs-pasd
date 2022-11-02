@@ -9,11 +9,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, cast
 
 from ska_control_model import CommunicationStatus, SimulationMode, TaskStatus
 from ska_low_mccs_common.component import (
     DriverSimulatorSwitchingComponentManager,
+    MccsComponentManagerProtocol,
     ObjectComponentManager,
     check_communicating,
 )
@@ -47,7 +48,7 @@ class PasdBusSimulatorComponentManager(ObjectComponentManager):
             rather than letting the component manager create one.
         """
         pasd_bus_simulator = _simulator or PasdBusSimulator(
-            "src/ska_low_mccs/pasd_bus/pasd_configuration.yaml",
+            "src/ska_low_mccs_pasd_bus/pasd_configuration.yaml",
             1,
             logger,
         )
@@ -194,7 +195,11 @@ class PasdBusComponentManager(DriverSimulatorSwitchingComponentManager):
                 component_state_changed_callback,
             )
         )
-        super().__init__(None, pasd_bus_simulator, initial_simulation_mode)
+        super().__init__(
+            None,
+            cast(MccsComponentManagerProtocol, pasd_bus_simulator),
+            initial_simulation_mode,
+        )
 
     def reload_database(
         self: PasdBusComponentManager, task_callback: Optional[Callable] = None

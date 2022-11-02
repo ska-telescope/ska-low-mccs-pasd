@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import threading
-from typing import Any, List, Optional, Tuple
+from typing import Any, Optional, cast
 
 import tango
 from ska_control_model import (
@@ -21,7 +21,8 @@ from ska_control_model import (
     SimulationMode,
 )
 from ska_low_mccs_common import release
-from ska_tango_base.base import SKABaseDevice
+from ska_low_mccs_common.component import MccsComponentManager
+from ska_tango_base.base import BaseComponentManager, SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
 from tango.server import attribute, command
 
@@ -37,11 +38,34 @@ NUMBER_OF_ANTENNAS_PER_STATION = 256
 NUMBER_OF_SMARTBOXES_PER_STATION = 24
 NUMBER_OF_FNDH_PORTS = 28
 
-DevVarLongStringArrayType = Tuple[List[ResultCode], List[Optional[str]]]
+DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 
 
-class MccsPasdBus(SKABaseDevice):
+class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
     """An implementation of a PaSD bus Tango device for MCCS."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """
+        Initialise this device object.
+
+        :param args: positional args to the init
+        :param kwargs: keyword args to the init
+        """
+        # We aren't supposed to define initialisation methods for Tango
+        # devices; we are only supposed to define an `init_device` method. But
+        # we insist on doing so here, just so that we can define some
+        # attributes, thereby stopping the linters from complaining about
+        # "attribute-defined-outside-init" etc. We still need to make sure that
+        # `init_device` re-initialises any values defined in here.
+        super().__init__(*args, **kwargs)
+
+        self._max_workers: int = 1
+        self._power_state_lock: threading.RLock = threading.RLock()
+        self._build_state: str = release.get_release_info()
+        self._version_id: str = release.version
+        self._health_state: HealthState = HealthState.UNKNOWN
+        self._health_model: PasdBusHealthModel
+        self.component_manager: PasdBusComponentManager  # type: ignore[assignment]
 
     # ---------------
     # Initialisation
@@ -61,10 +85,10 @@ class MccsPasdBus(SKABaseDevice):
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
-        self._health_model = PasdBusHealthModel(self.component_state_changed_callback)
+        self._health_model = PasdBusHealthModel(self._component_state_changed_callback)
         self.set_change_event("healthState", True, False)
 
-    def create_component_manager(
+    def create_component_manager(  # type: ignore[override]
         self: MccsPasdBus,
     ) -> PasdBusComponentManager:
         """
@@ -76,9 +100,10 @@ class MccsPasdBus(SKABaseDevice):
             SimulationMode.TRUE,
             self.logger,
             self._max_workers,
-            self._component_communication_state_changed,
-            self._component_state_changed,
+            self._communication_state_changed_callback,
+            self._component_state_changed_callback,
         )
+        # return self.component_manager
 
     def init_command_objects(self: MccsPasdBus) -> None:
         """Initialise the command handlers for commands supported by this device."""
@@ -107,14 +132,14 @@ class MccsPasdBus(SKABaseDevice):
                 SubmittedSlowCommand(
                     command_name,
                     self._command_tracker,
-                    self.component_manager,
+                    cast(BaseComponentManager, self.component_manager),
                     method_name,
                     callback=None,
                     logger=self.logger,
                 ),
             )
 
-    class InitCommand(DeviceInitCommand):
+    class InitCommand(DeviceInitCommand):  # pylint: disable=too-few-public-methods
         """
         A class for :py:class:`~.MccsPasdBus`'s Init command.
 
@@ -124,23 +149,25 @@ class MccsPasdBus(SKABaseDevice):
 
         def do(  # type: ignore[override]
             self: MccsPasdBus.InitCommand,
+            *args: Any,
+            **kwargs: Any,
         ) -> tuple[ResultCode, str]:
             """
             Initialise the attributes and properties of the MccsPasdBus.
+
+            :param args: positional args to the component manager method
+            :param kwargs: keyword args to the component manager method
 
             :return: A tuple containing a return code and a string
                 message indicating status. The message is for
                 information purpose only.
             """
-            self._build_state = release.get_release_info()
-            self._version_id = release.version
-
             return (ResultCode.OK, "Init command completed OK")
 
     # ----------
     # Callbacks
     # ----------
-    def _component_communication_state_changed(
+    def _communication_state_changed_callback(
         self: MccsPasdBus,
         communication_state: CommunicationStatus,
     ) -> None:
@@ -168,7 +195,7 @@ class MccsPasdBus(SKABaseDevice):
             communication_state == CommunicationStatus.ESTABLISHED
         )
 
-    def component_state_changed_callback(
+    def _component_state_changed_callback(
         self: MccsPasdBus, state_change: dict[str, Any]
     ) -> None:
         """
@@ -189,7 +216,9 @@ class MccsPasdBus(SKABaseDevice):
         with self._power_state_lock:
             if "power_state" in state_change.keys():
                 power_state = state_change.get("power_state")
-                self.component_manager.power_state = power_state
+                cast(
+                    MccsComponentManager, self.component_manager
+                ).power_state = power_state
                 if power_state:
                     self.op_state_model.perform_action(action_map[power_state])
 
@@ -623,7 +652,7 @@ class MccsPasdBus(SKABaseDevice):
         return ([result_code], [unique_id])
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def GetFndhInfo(self: MccsPasdBus, argin: int) -> Tuple[List[Any], List[Any]]:
+    def GetFndhInfo(self: MccsPasdBus, argin: int) -> tuple[list[Any], list[Any]]:
         """
         Return information about the FNDH.
 
@@ -669,7 +698,7 @@ class MccsPasdBus(SKABaseDevice):
         return ([result_code], [unique_id])
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def GetSmartboxInfo(self: MccsPasdBus, argin: int) -> Tuple[List[Any], List[Any]]:
+    def GetSmartboxInfo(self: MccsPasdBus, argin: int) -> tuple[list[Any], list[Any]]:
         """
         Return information about a smartbox.
 
@@ -743,7 +772,7 @@ class MccsPasdBus(SKABaseDevice):
         return ([result_code], [unique_id])
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def GetAntennaInfo(self: MccsPasdBus, argin: int) -> Tuple[List[Any], List[Any]]:
+    def GetAntennaInfo(self: MccsPasdBus, argin: int) -> tuple[list[Any], list[Any]]:
         """
         Return information about relationship of an antenna to other PaSD components.
 

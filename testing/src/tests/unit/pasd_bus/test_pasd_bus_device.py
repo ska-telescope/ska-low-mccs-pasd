@@ -22,8 +22,8 @@ from ska_low_mccs_common.testing.tango_harness import DeviceToLoadType, TangoHar
 from ska_low_mccs_pasd import MccsPasdBus
 
 
-@pytest.fixture()
-def device_under_test(tango_harness: TangoHarness) -> MccsDeviceProxy:
+@pytest.fixture(name="device_under_test")
+def device_under_test_fixture(tango_harness: TangoHarness) -> MccsDeviceProxy:
     """
     Fixture that returns the device under test.
 
@@ -37,10 +37,10 @@ def device_under_test(tango_harness: TangoHarness) -> MccsDeviceProxy:
 class TestMccsPasdBus:
     """Tests of the MCCS pasd bus device."""
 
-    @pytest.fixture()
-    def mock_component_manager(
-        self: TestMccsPasdBus, mocker: pytest_mock.mocker
-    ) -> unittest.mock.Mock:  # type: ignore[valid-type]
+    @pytest.fixture(name="mock_component_manager")
+    def mock_component_manager_fixture(
+        self: TestMccsPasdBus, mocker: pytest_mock.mocker  # type: ignore[valid-type]
+    ) -> unittest.mock.Mock:
         """
         Return a mock to be used as a component manager for the PaSD bus device.
 
@@ -52,8 +52,8 @@ class TestMccsPasdBus:
         """
         return mocker.Mock()  # type: ignore[attr-defined]
 
-    @pytest.fixture()
-    def patched_device_class(
+    @pytest.fixture(name="patched_device_class")
+    def patched_device_class_fixture(
         self: TestMccsPasdBus, mock_component_manager: unittest.mock.Mock
     ) -> type[MccsPasdBus]:
         """
@@ -78,15 +78,15 @@ class TestMccsPasdBus:
                 :return: a mock component manager
                 """
                 mock_component_manager._component_state_changed_callback = (
-                    self.component_state_changed_callback
+                    self._component_state_changed_callback
                 )
 
                 return mock_component_manager
 
         return PatchedMccsPasdBus
 
-    @pytest.fixture()
-    def device_to_load(
+    @pytest.fixture(name="device_to_load")
+    def device_to_load_fixture(
         self: TestMccsPasdBus, patched_device_class: MccsPasdBus
     ) -> DeviceToLoadType:
         """
@@ -98,7 +98,7 @@ class TestMccsPasdBus:
         :return: specification of the device to be loaded
         """
         return {
-            "path": "charts/ska-low-mccs/data/configuration.json",
+            "path": "charts/ska-low-mccs-pasd/data/configuration.json",
             "package": "ska_low_mccs",
             "device": "pasdbus_001",
             "proxy": MccsDeviceProxy,
@@ -224,7 +224,7 @@ class TestMccsPasdBus:
             ),
         ],
     )
-    def test_readonly_attribute(
+    def test_readonly_attribute(  # pylint: disable=too-many-arguments
         self: TestMccsPasdBus,
         mocker: pytest_mock.mocker,  # type: ignore[valid-type]
         device_under_test: MccsDeviceProxy,
@@ -250,9 +250,9 @@ class TestMccsPasdBus:
         :param example_value: any value of the correct type for the
             device attribute.
         """
-        property_mock = mocker.PropertyMock(
+        property_mock = mocker.PropertyMock(  # type: ignore[attr-defined]
             return_value=example_value
-        )  # type: ignore[attr-defined]
+        )
         setattr(
             type(mock_component_manager),
             component_manager_property,
@@ -351,7 +351,7 @@ class TestMccsPasdBus:
             ),
         ],
     )
-    def test_command(
+    def test_command(  # pylint: disable=too-many-arguments
         self: TestMccsPasdBus,
         mocker: pytest_mock.mocker,  # type: ignore[valid-type]
         device_under_test: MccsDeviceProxy,
@@ -379,9 +379,9 @@ class TestMccsPasdBus:
         :param component_manager_method_return: return value of the
             component manager method
         """
-        method_mock = mocker.Mock(
+        method_mock = mocker.Mock(  # type: ignore[attr-defined]
             return_value=component_manager_method_return
-        )  # type: ignore[attr-defined]
+        )
         setattr(mock_component_manager, component_manager_method, method_mock)
         method_mock.assert_not_called()
 

@@ -4,11 +4,11 @@ xauthority: "~/.Xauthority"
 enabled: true
 
 system: SW-infrastructure
-subsystem: low-mccs_pasd
+subsystem: low-mccs-pasd
 telescope: SKA-low
 
 labels:
-  app: ska-low-mccs_pasd
+  app: ska-low-mccs-pasd
 annotations:
   app.gitlab.com/app: CI_PROJECT_PATH_SLUG
   app.gitlab.com/env: CI_ENVIRONMENT_SLUG
@@ -16,7 +16,6 @@ annotations:
 global:
   sub-system:
     ska-tango-base:
-      enabled: false
       enabled: false
     taranta:
       enabled: false
@@ -51,11 +50,8 @@ ska-taranta:
     replicas: 1
     resources:
       requests:
-        cpu: 600m # 600m = 0.6 CPU
-        memory: 512Mi # 512Mi = 0.5 GB mem
-      limits:
-        cpu: 1000m # 1000m = 1 CPU
-        memory: 1024Mi # 1024Mi = 1 GB mem
+        cpu: 600m  # 600m = 0.6 CPU
+        memory: 512Mi  # 512Mi = 0.5 GB mem
 
 
 ska-taranta-dashboard:

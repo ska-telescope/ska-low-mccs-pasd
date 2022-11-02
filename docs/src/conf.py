@@ -45,18 +45,12 @@ sys.path.insert(0, os.path.abspath("../../src"))
 # -- Path set up --------------------------------------------------------------
 # pylint: disable=invalid-name
 autodoc_mock_imports = [
-    "astropy",
     "numpy",
-    "pyfabil",
-    "pyaavs",
     "scipy",
     "ska_tango_base",
     "tango",
     "ska_control_model",
     "ska_low_mccs_common",
-    "h5py",
-    "matplotlib",
-    "pydaq",
 ]
 
 
@@ -102,8 +96,6 @@ nitpick_ignore = [
     # to # factor out of the public interface.
     ("py:class", "HealthState"),
     ("py:class", "ResultCode"),
-    ("py:class", "pydaq.daq_receiver_interface.DaqReceiver"),
-    ("py:class", "pydaq.daq_receiver_interface.DaqModes"),
 ]
 
 # If your documentation needs a minimal Sphinx version, state it here.

@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 # -*- coding: utf-8 -*-
 #
 # This file is part of the SKA Low MCCS project
@@ -38,9 +39,10 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Callable, Optional
 
 import yaml
+from ska_control_model import TaskStatus
 from ska_low_mccs_common.component import ObjectComponent
 from typing_extensions import Final, TypedDict
 
@@ -866,7 +868,9 @@ class SmartboxSimulator(PasdHardwareSimulator):
         }
 
 
-class PasdBusSimulator(ObjectComponent):
+class PasdBusSimulator(
+    ObjectComponent
+):  # pylint: disable=too-many-public-methods, too-many-instance-attributes
     """
     A stub class that provides similar functionality to a PaSD bus.
 
@@ -908,7 +912,7 @@ class PasdBusSimulator(ObjectComponent):
         ]
 
         self._smartbox_fndh_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
-        self._antenna_smartbox_ports: list[Tuple[int, int]] = [
+        self._antenna_smartbox_ports: list[tuple[int, int]] = [
             (0, 0)
         ] * self.NUMBER_OF_ANTENNAS
 
@@ -967,9 +971,14 @@ class PasdBusSimulator(ObjectComponent):
 
         return True
 
-    def reset(self: ObjectComponent) -> None:
+    def reset(
+        self: ObjectComponent, task_callback: Optional[Callable] = None
+    ) -> tuple[TaskStatus, str]:
         """
         Reset the component (from fault state).
+
+        :param task_callback: callback to be called when the status of
+            the command changes
 
         :raises NotImplementedError: because this method has not been
             implemented.

@@ -1,4 +1,4 @@
-{{ $mccs_chart := index .Values "ska-low-mccs" "mccs" }}
+{{ $pasd_chart := index .Values "ska-low-mccs-pasd" "pasd" }}
 
 {{ if .Values.global.minikube }}
 kind: PersistentVolume
@@ -68,8 +68,8 @@ spec:
       mountPath: /data
   containers:
   - name: functional-{{ .Chart.Name}}-{{ .Release.Name }}
-    image: "{{ $mccs_chart.image.registry }}/{{ $mccs_chart.image.image }}:{{ $mccs_chart.image.tag }}"
-    imagePullPolicy: {{ $mccs_chart.image.pullPolicy }}
+    image: "{{ $pasd_chart.image.registry }}/{{ $pasd_chart.image.image }}:{{ $pasd_chart.image.tag }}"
+    imagePullPolicy: {{ $pasd_chart.image.pullPolicy }}
     command:
       - /bin/bash
       - "-ce"

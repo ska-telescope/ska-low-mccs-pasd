@@ -69,7 +69,7 @@ def pasd_config_path_fixture() -> str:
     :return: the path to a YAML file that specifies the PaSD
         configuration.
     """
-    return "src/ska_low_mccs/pasd_bus/pasd_configuration.yaml"
+    return "src/ska_low_mccs_pasd/pasd_bus/pasd_configuration.yaml"
 
 
 @pytest.fixture(name="station_id")
@@ -94,14 +94,9 @@ def pasd_config_fixture(pasd_config_path: str, station_id: int) -> dict:
         in testing.
 
     :return: the PaSD config that the PaSD bus object under test uses.
-
-    :raises yaml.YAMLError: if the config file could not be parsed.
     """
-    with open(pasd_config_path, "r") as stream:
-        try:
-            config = yaml.safe_load(stream)
-        except yaml.YAMLError:
-            raise
+    with open(pasd_config_path, "r", encoding="utf8") as stream:
+        config = yaml.safe_load(stream)
     return config["stations"][station_id - 1]
 
 
@@ -276,7 +271,7 @@ def mock_component_manager_fixture(
 
     :return: a mock component manager
     """
-    mock = mocker.Mock()  # type: ignore[attr-defined]
+    mock = unittest.mock.Mock()
     mock.is_communicating = False
 
     def _start_communicating(mock: unittest.mock.Mock) -> None:
@@ -309,6 +304,11 @@ def patched_pasd_bus_device_class_fixture(
     class PatchedMccsPasdBus(MccsPasdBus):
         """A pasd bus device patched with a mock component manager."""
 
+        def __init__(self) -> None:
+            """Initialise."""
+            self._communication_status: Optional[CommunicationStatus] = None
+            super().__init__()
+
         def create_component_manager(
             self: PatchedMccsPasdBus,
         ) -> unittest.mock.Mock:
@@ -317,9 +317,6 @@ def patched_pasd_bus_device_class_fixture(
 
             :return: a mock component manager
             """
-            self._communication_status: Optional[CommunicationStatus] = None
-            #             self._component_power_state: Optional[PowerState] = None
-
             mock_component_manager._communication_status_changed_callback = (
                 self._communication_status_changed_callback
             )
