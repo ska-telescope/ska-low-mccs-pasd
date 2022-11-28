@@ -1,0 +1,29 @@
+{
+    "name": "ska-low-mccs-pasd devcontainer",
+    "dockerFile": "Dockerfile",
+    "context": "..",
+    // Set *default* container specific settings.json values on container create.
+    "settings": {
+        "terminal.integrated.profiles.linux": {
+            "bash": {
+              "path": "/bin/bash"
+            }
+        },
+        "terminal.integration.defaultProfile.linux": "bash",
+        "python.pythonPath": "/usr/bin/python3",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.linting.pylintPath": "/usr/local/bin/pylint"
+    },
+    // Add the IDs of extensions you want installed when the container is created.
+    "extensions": ["ms-python.python"],
+    // Use 'forwardPorts' to make a list of ports inside the container available locally.
+    // "forwardPorts": [],
+    // Use 'postCreateCommand' to run commands after the container is created.
+    "postCreateCommand": "sudo poetry config virtualenvs.create false && sudo poetry install",
+    // Uncomment to connect as a non-root user. See https://aka.ms/vscode-remote/containers/non-root.
+    "remoteUser": "tango"
+    // "remoteEnv": {
+    //     "PATH": "/home/tango/.local/bin:${containerEnv:PATH}",
+    // },
+}
