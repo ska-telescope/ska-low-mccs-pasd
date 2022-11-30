@@ -14,4 +14,4 @@ rst-directives = uml
 per-file-ignores =
     # N802 = PEP8 lowercase function name -- conflicts with Tango conventions
     src/ska_low_mccs_pasd/pasd_bus/pasd_bus_device.py: N802
-    testing/src/tests/unit/pasd_bus/test_pasd_bus_device.py: N802
+    tests/unit/pasd_bus/test_pasd_bus_device.py: N802

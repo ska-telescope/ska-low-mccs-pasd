@@ -56,7 +56,6 @@ PrivateRules.mak
 Chart.lock
 tls.crt
 tls.key
-testing/results/*
 **/charts/*.tgz
 
 # sphinx
