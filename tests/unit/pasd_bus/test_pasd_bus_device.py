@@ -98,7 +98,7 @@ class TestMccsPasdBus:
         :return: specification of the device to be loaded
         """
         return {
-            "path": "charts/ska-low-mccs-pasd/data/configuration.json",
+            "path": "tests/data/configuration.json",
             "package": "ska_low_mccs",
             "device": "pasdbus_001",
             "proxy": MccsDeviceProxy,
