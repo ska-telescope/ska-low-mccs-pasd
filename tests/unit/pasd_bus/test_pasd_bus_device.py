@@ -14,10 +14,11 @@ from typing import Any
 
 import pytest
 import pytest_mock
+import tango
 from ska_control_model import HealthState, ResultCode
 from ska_low_mccs_common import MccsDeviceProxy
-from ska_low_mccs_common.testing.mock.mock_callable import MockChangeEventCallback
 from ska_low_mccs_common.testing.tango_harness import DeviceToLoadType, TangoHarness
+from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd import MccsPasdBus
 
@@ -109,7 +110,7 @@ class TestMccsPasdBus:
         self: TestMccsPasdBus,
         device_under_test: MccsDeviceProxy,
         mock_component_manager: unittest.mock.Mock,
-        device_health_state_changed_callback: MockChangeEventCallback,
+        change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
         """
         Test for healthState.
@@ -119,23 +120,22 @@ class TestMccsPasdBus:
             :py:class:`tango.test_context.DeviceTestContext`.
         :param mock_component_manager: a mock component manager that has
             been patched into the device under test
-        :param device_health_state_changed_callback: a callback that we
-            can use to subscribe to health state changes on the device
+        :param change_event_callbacks: group of Tango change event
+            callback with asynchrony support
         """
-        device_under_test.add_change_event_callback(
+        device_under_test.subscribe_event(
             "healthState",
-            device_health_state_changed_callback,
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["healthState"],
         )
 
-        device_health_state_changed_callback.assert_next_change_event(
-            HealthState.UNKNOWN
-        )
+        change_event_callbacks.assert_change_event("healthState", HealthState.UNKNOWN)
         assert device_under_test.healthState == HealthState.UNKNOWN
 
         mock_component_manager._component_state_changed_callback(
             {"health_state": HealthState.OK}
         )
-        device_health_state_changed_callback.assert_next_change_event(HealthState.OK)
+        change_event_callbacks.assert_change_event("healthState", HealthState.OK)
         assert device_under_test.healthState == HealthState.OK
 
     @pytest.mark.parametrize(
