@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 import unittest.mock
-from typing import Callable, Optional
+from typing import Optional
 
 import pytest
 import pytest_mock
@@ -23,8 +23,7 @@ from ska_control_model import (
     ResultCode,
     SimulationMode,
 )
-from ska_low_mccs_common.testing.mock import MockCallable
-from ska_low_mccs_common.testing.mock.mock_callable import MockCallableDeque
+from ska_tango_testing.mock import MockCallableGroup
 
 from ska_low_mccs_pasd import MccsPasdBus
 from ska_low_mccs_pasd.pasd_bus import (
@@ -42,23 +41,6 @@ def max_workers_fixture() -> int:
     :return: number of worker threads
     """
     return 1
-
-
-@pytest.fixture(name="component_state_changed_callback")
-def component_state_changed_callback_fixture(
-    mock_callback_deque_factory: Callable[[], unittest.mock.Mock],
-) -> unittest.mock.Mock:
-    """
-    Return a mock callback for a change in the pasd bus state.
-
-    :param mock_callback_deque_factory: fixture that provides a mock callback
-        deque factory (i.e. an object that returns mock callback deques when
-        called).
-
-    :return: a mock callback deque to be called when the component manager
-        detects that the pasd bus state has changed
-    """
-    return mock_callback_deque_factory()
 
 
 @pytest.fixture(name="pasd_config_path")
@@ -190,8 +172,7 @@ def pasd_bus_simulator_component_manager_fixture(
     mock_pasd_bus_simulator: unittest.mock.Mock,
     logger: logging.Logger,
     max_workers: int,
-    communication_state_changed_callback: MockCallable,
-    component_state_changed_callback: MockCallableDeque,
+    mock_callbacks: MockCallableGroup,
 ) -> PasdBusSimulatorComponentManager:
     """
     Return a PaSD bus simulator component manager.
@@ -202,19 +183,16 @@ def pasd_bus_simulator_component_manager_fixture(
         by the PaSD bus simulator component manager
     :param logger: the logger to be used by this object.
     :param max_workers: number of worker threads
-    :param communication_state_changed_callback: callback to be
-        called when the status of the communications channel between
-        the component manager and its component changes
-    :param component_state_changed_callback: callback to be called when the
-        component state changes
+    :param mock_callbacks: a group of mock callables for the component
+        manager under test to use as callbacks
 
     :return: a PaSD bus simulator component manager.
     """
     return PasdBusSimulatorComponentManager(
         logger,
         max_workers,
-        communication_state_changed_callback,
-        component_state_changed_callback,
+        mock_callbacks["communication_state"],
+        mock_callbacks["component_state"],
         _simulator=mock_pasd_bus_simulator,
     )
 
@@ -224,8 +202,7 @@ def pasd_bus_component_manager_fixture(
     pasd_bus_simulator_component_manager: PasdBusSimulatorComponentManager,
     logger: logging.Logger,
     max_workers: int,
-    communication_state_changed_callback: MockCallable,
-    component_state_changed_callback: MockCallableDeque,
+    mock_callbacks: MockCallableGroup,
 ) -> PasdBusComponentManager:
     """
     Return a PaSD bus component manager.
@@ -235,11 +212,8 @@ def pasd_bus_component_manager_fixture(
         component manager
     :param logger: the logger to be used by this object.
     :param max_workers: number of worker threads
-    :param communication_state_changed_callback: callback to be
-        called when the status of the communications channel between
-        the component manager and its component changes
-    :param component_state_changed_callback: callback to be called when the
-        component state changes
+    :param mock_callbacks: a group of mock callables for the component
+        manager under test to use as callbacks
 
     :return: a PaSD bus component manager
     """
@@ -247,8 +221,8 @@ def pasd_bus_component_manager_fixture(
         SimulationMode.TRUE,
         logger,
         max_workers,
-        communication_state_changed_callback,
-        component_state_changed_callback,
+        mock_callbacks["communication_state"],
+        mock_callbacks["component_state"],
         _simulator_component_manager=pasd_bus_simulator_component_manager,
     )
 
