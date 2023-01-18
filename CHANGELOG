@@ -4,6 +4,11 @@
 
 ## 0.1.0
 
+* MCCS-1209 - Use ska_tango_testing.mock
+* MCCS-1196 - enable k8s-test
+* MCCS-1111 - Update license with copyright
+* MCCS-1156 - Fix linting & static type checking in ska-low-mccs-pasd
+
 Initial release
 
 * MCCS-1151 - initial creation
