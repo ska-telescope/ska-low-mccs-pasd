@@ -6,7 +6,6 @@
 
 PROJECT = ska-low-mccs-pasd
 
-PYTHON_SWITCHES_FOR_ISORT = --skip-glob=*/__init__.py
 PYTHON_SWITCHES_FOR_BLACK = --line-length 88
 PYTHON_TEST_FILE = tests
 PYTHON_VARS_AFTER_PYTEST = --forked
@@ -29,10 +28,6 @@ include .make/helm.mk
 # include your own private variables for custom deployment configuration
 -include PrivateRules.mak
 
-# Add this for typehints & static type checking
-python-post-format:
-	$(PYTHON_RUNNER) docformatter -r -i --wrap-summaries 88 --wrap-descriptions 72 --pre-summary-newline $(PYTHON_LINT_TARGET)
-
 python-post-lint:
 	$(PYTHON_RUNNER) mypy --config-file mypy.ini src/ tests/
 
@@ -47,7 +42,7 @@ K8S_CHART_PARAMS = \
 	--set low_mccs_pasd.image.tag=$(VERSION)-dev.c$(CI_COMMIT_SHORT_SHA)
 endif
 
-K8S_TEST_RUNNER_PYTEST_OPTIONS = -v --testbed local --junitxml=build/reports/functional-tests.xml
+K8S_TEST_RUNNER_PYTEST_OPTIONS = -v --true-context --junitxml=build/reports/functional-tests.xml
 K8S_TEST_RUNNER_PYTEST_TARGET = tests/functional
 K8S_TEST_RUNNER_PIP_INSTALL_ARGS = -r tests/functional/requirements.txt
 
@@ -99,4 +94,4 @@ k8s-do-test:
 	helm  -n $(KUBE_NAMESPACE) uninstall $(K8S_TEST_RUNNER_CHART_RELEASE) ; \
     exit $$EXIT_CODE
 
-.PHONY: python-post-format python-post-lint docs-pre-build
+.PHONY: python-post-lint docs-pre-build

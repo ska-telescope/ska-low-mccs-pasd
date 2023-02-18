@@ -15,7 +15,6 @@ import unittest.mock
 from typing import Optional
 
 import pytest
-import pytest_mock
 import yaml
 from ska_control_model import (
     CommunicationStatus,
@@ -104,7 +103,6 @@ def pasd_bus_simulator_fixture(
 
 @pytest.fixture(name="mock_pasd_bus_simulator")
 def mock_pasd_bus_simulator_fixture(
-    mocker: pytest_mock.MockerFixture,
     pasd_bus_simulator: PasdBusSimulator,
 ) -> unittest.mock.Mock:
     """
@@ -114,13 +112,12 @@ def mock_pasd_bus_simulator_fixture(
     like a real one, but we can access it as a mock too, for example
     assert calls.
 
-    :param mocker: fixture that wraps unittest.Mock
     :param pasd_bus_simulator: a real PaSD bus simulator to wrap in a
         mock.
 
     :return: a mock PaSD bus simulator
     """
-    mock_simulator = mocker.Mock(wraps=pasd_bus_simulator)
+    mock_simulator = unittest.mock.Mock(wraps=pasd_bus_simulator)
 
     # "wraps" doesn't handle properties -- we have to add them manually
     for property_name in [
@@ -159,7 +156,7 @@ def mock_pasd_bus_simulator_fixture(
         setattr(
             type(mock_simulator),
             property_name,
-            mocker.PropertyMock(
+            unittest.mock.PropertyMock(
                 return_value=getattr(pasd_bus_simulator, property_name)
             ),
         )
@@ -228,10 +225,7 @@ def pasd_bus_component_manager_fixture(
 
 
 @pytest.fixture(name="mock_component_manager")
-def mock_component_manager_fixture(
-    mocker: pytest_mock.mocker,  # type: ignore[valid-type]
-    unique_id: str,
-) -> unittest.mock.Mock:
+def mock_component_manager_fixture(unique_id: str) -> unittest.mock.Mock:
     """
     Return a mock component manager.
 
@@ -240,7 +234,6 @@ def mock_component_manager_fixture(
     makes calls to callbacks signaling that communication is established
     and the component is off.
 
-    :param mocker: pytest wrapper for unittest.mock
     :param unique_id: a unique id used to check Tango layer functionality
 
     :return: a mock component manager

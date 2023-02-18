@@ -1,12 +1,12 @@
-FROM artefact.skao.int/ska-tango-images-pytango-builder:9.3.32 AS buildenv
-FROM artefact.skao.int/ska-tango-images-pytango-runtime:9.3.19 AS runtime
-
-# create ipython profile to so that itango doesn't fail if ipython hasn't run yet
-#RUN ipython profile create
+FROM artefact.skao.int/ska-tango-images-pytango-builder:9.3.35 AS buildenv
+FROM artefact.skao.int/ska-tango-images-pytango-runtime:9.3.22 AS runtime
 
 USER root
 
-RUN python3 -m pip install poetry
+# Temporary, just while we're depending on unreleased ska-low-mccs-common main branch.
+# Please don't let me merge this!
+RUN apt-get update && apt-get install -y git
+
 RUN poetry config virtualenvs.create false
 
 COPY pyproject.toml poetry.lock* ./

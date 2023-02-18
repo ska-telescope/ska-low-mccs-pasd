@@ -39,12 +39,11 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Callable, Final, Optional, TypedDict
 
 import yaml
 from ska_control_model import TaskStatus
 from ska_low_mccs_common.component import ObjectComponent
-from typing_extensions import Final, TypedDict
 
 _AntennaConfigType = TypedDict(
     "_AntennaConfigType",
