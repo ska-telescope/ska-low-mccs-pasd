@@ -26,10 +26,8 @@ from ska_tango_base.base import BaseComponentManager, SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
 from tango.server import attribute, command
 
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_component_manager import (
-    PasdBusComponentManager,
-)
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_health_model import PasdBusHealthModel
+from .pasd_bus_component_manager import PasdBusComponentManager
+from .pasd_bus_health_model import PasdBusHealthModel
 
 __all__ = ["MccsPasdBus", "main"]
 

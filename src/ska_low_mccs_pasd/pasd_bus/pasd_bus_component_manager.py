@@ -19,7 +19,7 @@ from ska_low_mccs_common.component import (
     check_communicating,
 )
 
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import PasdBusSimulator
+from .pasd_bus_simulator import PasdBusSimulator
 
 
 class PasdBusSimulatorComponentManager(ObjectComponentManager):
