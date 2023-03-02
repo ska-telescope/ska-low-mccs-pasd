@@ -30,7 +30,7 @@ class PasdBusSimulatorComponentManager(ObjectComponentManager):
         logger: logging.Logger,
         max_workers: int,
         communication_state_changed_callback: Callable[[CommunicationStatus], None],
-        component_state_changed_callback: Callable[[dict[str, Any]], None],
+        component_state_changed_callback: Callable[..., None],
         _simulator: Optional[PasdBusSimulator] = None,
         # TODO callbacks for changes to antenna power, smartbox power, etc
     ) -> None:
@@ -165,7 +165,7 @@ class PasdBusComponentManager(DriverSimulatorSwitchingComponentManager):
         logger: logging.Logger,
         max_workers: int,
         communication_state_changed_callback: Callable[[CommunicationStatus], None],
-        component_state_changed_callback: Callable[[dict[str, Any]], None],
+        component_state_changed_callback: Callable[..., None],
         _simulator_component_manager: Optional[PasdBusSimulatorComponentManager] = None,
     ) -> None:
         """

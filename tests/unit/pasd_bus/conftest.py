@@ -169,7 +169,7 @@ def pasd_bus_simulator_component_manager_fixture(
     mock_pasd_bus_simulator: unittest.mock.Mock,
     logger: logging.Logger,
     max_workers: int,
-    mock_callbacks: MockCallableGroup,
+    callbacks: MockCallableGroup,
 ) -> PasdBusSimulatorComponentManager:
     """
     Return a PaSD bus simulator component manager.
@@ -180,7 +180,7 @@ def pasd_bus_simulator_component_manager_fixture(
         by the PaSD bus simulator component manager
     :param logger: the logger to be used by this object.
     :param max_workers: number of worker threads
-    :param mock_callbacks: a group of mock callables for the component
+    :param callbacks: a group of mock callables for the component
         manager under test to use as callbacks
 
     :return: a PaSD bus simulator component manager.
@@ -188,8 +188,8 @@ def pasd_bus_simulator_component_manager_fixture(
     return PasdBusSimulatorComponentManager(
         logger,
         max_workers,
-        mock_callbacks["communication_state"],
-        mock_callbacks["component_state"],
+        callbacks["communication_state"],
+        callbacks["component_state"],
         _simulator=mock_pasd_bus_simulator,
     )
 
@@ -199,7 +199,7 @@ def pasd_bus_component_manager_fixture(
     pasd_bus_simulator_component_manager: PasdBusSimulatorComponentManager,
     logger: logging.Logger,
     max_workers: int,
-    mock_callbacks: MockCallableGroup,
+    callbacks: MockCallableGroup,
 ) -> PasdBusComponentManager:
     """
     Return a PaSD bus component manager.
@@ -209,7 +209,7 @@ def pasd_bus_component_manager_fixture(
         component manager
     :param logger: the logger to be used by this object.
     :param max_workers: number of worker threads
-    :param mock_callbacks: a group of mock callables for the component
+    :param callbacks: a group of mock callables for the component
         manager under test to use as callbacks
 
     :return: a PaSD bus component manager
@@ -218,8 +218,8 @@ def pasd_bus_component_manager_fixture(
         SimulationMode.TRUE,
         logger,
         max_workers,
-        mock_callbacks["communication_state"],
-        mock_callbacks["component_state"],
+        callbacks["communication_state"],
+        callbacks["component_state"],
         _simulator_component_manager=pasd_bus_simulator_component_manager,
     )
 

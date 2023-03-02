@@ -194,7 +194,11 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         )
 
     def _component_state_changed_callback(
-        self: MccsPasdBus, state_change: dict[str, Any]
+        self: MccsPasdBus,
+        power: Optional[PowerState] = None,
+        fault: Optional[bool] = None,
+        health: Optional[HealthState] = None,
+        **kwargs: Any,
     ) -> None:
         """
         Handle change in the state of the component.
@@ -211,28 +215,23 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             PowerState.UNKNOWN: "component_unknown",
         }
 
-        with self._power_state_lock:
-            if "power_state" in state_change.keys():
-                power_state = state_change.get("power_state")
+        if power is not None:
+            with self._power_state_lock:
                 cast(
                     MccsComponentManager, self.component_manager
-                ).power_state = power_state
-                if power_state:
-                    self.op_state_model.perform_action(action_map[power_state])
+                ).power_state = power
+                self.op_state_model.perform_action(action_map[power])
 
-        if "fault" in state_change.keys():
-            is_fault = state_change.get("fault")
-            if is_fault:
+        if fault is not None:
+            if fault:
                 self.op_state_model.perform_action("component_fault")
-                self._health_model.component_fault(True)
             else:
                 self.op_state_model.perform_action(
                     action_map[self.component_manager.power_state]
                 )
-                self._health_model.component_fault(False)
+            self._health_model.component_fault(fault)
 
-        if "health_state" in state_change.keys():
-            health = state_change["health_state"]
+        if health is not None:
             if self._health_state != health:
                 self._health_state = health
                 self.push_change_event("healthState", health)
