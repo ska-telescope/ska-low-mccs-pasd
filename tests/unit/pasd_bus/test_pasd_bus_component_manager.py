@@ -9,15 +9,11 @@
 from __future__ import annotations
 
 import unittest.mock
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import pytest
-from _pytest.fixtures import SubRequest
 
-from ska_low_mccs_pasd.pasd_bus import (
-    PasdBusComponentManager,
-    PasdBusSimulatorComponentManager,
-)
+from ska_low_mccs_pasd.pasd_bus import PasdBusComponentManager
 
 
 class TestPasdBusComponentManager:
@@ -28,48 +24,6 @@ class TestPasdBusComponentManager:
     PaSD bus simulator, many commands are common. Here we test those
     common commands.
     """
-
-    @pytest.fixture(
-        params=[
-            "pasd_bus_simulator_component_manager",
-            "pasd_bus_component_manager",
-        ]
-    )
-    def pasd_bus_component_manager(
-        self: TestPasdBusComponentManager,
-        pasd_bus_simulator_component_manager: PasdBusSimulatorComponentManager,
-        pasd_bus_component_manager: PasdBusComponentManager,
-        request: SubRequest,
-    ) -> Union[PasdBusSimulatorComponentManager, PasdBusComponentManager]:
-        """
-        Return the PaSD bus component class object under test.
-
-        This is parametrised to return
-
-        * a PaSD bus simulator component manager,
-
-        * a PaSD bus component manager,
-
-        So any test that relies on this fixture will be run twice.
-
-        :param pasd_bus_simulator_component_manager: the PaSD bus
-            simulator component manager to return
-        :param pasd_bus_component_manager: the PaSD bus component
-            manager to return
-        :param request: A pytest object giving access to the requesting test
-            context.
-
-        :raises ValueError: if parametrized with an unrecognised option
-
-        :return: the PaSD bus component object under test
-        """
-        if request.param == "pasd_bus_simulator_component_manager":
-            pasd_bus_simulator_component_manager.start_communicating()
-            return pasd_bus_simulator_component_manager
-        if request.param == "pasd_bus_component_manager":
-            pasd_bus_component_manager.start_communicating()
-            return pasd_bus_component_manager
-        raise ValueError("PaSD bus fixture parametrized with unrecognised option")
 
     @pytest.mark.parametrize(
         "property_name",
@@ -110,9 +64,7 @@ class TestPasdBusComponentManager:
     def test_read_only_property(
         self: TestPasdBusComponentManager,
         mock_pasd_bus_simulator: unittest.mock.Mock,
-        pasd_bus_component_manager: Union[
-            PasdBusSimulatorComponentManager, PasdBusComponentManager
-        ],
+        pasd_bus_component_manager: PasdBusComponentManager,
         property_name: str,
     ) -> None:
         """
@@ -135,11 +87,10 @@ class TestPasdBusComponentManager:
         ("command_name", "args", "kwargs"),
         [
             ("reload_database", [], {}),
-            ("get_fndh_info", [1], {}),
+            ("get_fndh_info", [], {}),
             ("is_fndh_port_power_sensed", [1], {}),
             ("set_fndh_service_led_on", [True], {}),
             ("get_fndh_port_forcing", [1], {}),
-            ("simulate_fndh_port_forcing", [1, True], {}),
             ("get_smartbox_info", [1], {}),
             ("turn_smartbox_on", [1], {}),
             ("turn_smartbox_off", [1], {}),
@@ -148,8 +99,6 @@ class TestPasdBusComponentManager:
             ("get_smartbox_ports_power_sensed", [1], {}),
             ("get_antenna_info", [1], {}),
             ("get_antenna_forcing", [1], {}),
-            ("simulate_antenna_forcing", [1, True], {}),
-            ("simulate_antenna_breaker_trip", [1], {}),
             ("reset_antenna_breaker", [1], {}),
             ("turn_antenna_on", [1], {}),
             ("turn_antenna_off", [1], {}),
@@ -160,9 +109,7 @@ class TestPasdBusComponentManager:
     def test_command(
         self: TestPasdBusComponentManager,
         mock_pasd_bus_simulator: unittest.mock.Mock,
-        pasd_bus_component_manager: Union[
-            PasdBusSimulatorComponentManager, PasdBusComponentManager
-        ],
+        pasd_bus_component_manager: PasdBusComponentManager,
         command_name: str,
         args: Optional[list[Any]],
         kwargs: Optional[dict[str, Any]],

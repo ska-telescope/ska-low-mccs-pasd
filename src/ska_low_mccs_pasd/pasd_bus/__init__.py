@@ -11,15 +11,14 @@
 __all__ = [
     "PasdBusComponentManager",
     "PasdBusHealthModel",
+    "PasdBusJsonApi",
+    "PasdBusJsonApiClient",
     "PasdBusSimulator",
-    "PasdBusSimulatorComponentManager",
     "MccsPasdBus",
 ]
 
-from .pasd_bus_component_manager import (
-    PasdBusComponentManager,
-    PasdBusSimulatorComponentManager,
-)
+from .pasd_bus_component_manager import PasdBusComponentManager
 from .pasd_bus_device import MccsPasdBus
 from .pasd_bus_health_model import PasdBusHealthModel
+from .pasd_bus_json_api import PasdBusJsonApi, PasdBusJsonApiClient
 from .pasd_bus_simulator import PasdBusSimulator

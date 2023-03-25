@@ -9,24 +9,21 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, cast
+from typing import Any, Callable, Optional
 
-from ska_control_model import CommunicationStatus, SimulationMode, TaskStatus
-from ska_low_mccs_common.component import (
-    DriverSimulatorSwitchingComponentManager,
-    MccsComponentManagerProtocol,
-    ObjectComponentManager,
-    check_communicating,
-)
+from ska_control_model import CommunicationStatus, TaskStatus
+from ska_low_mccs_common.component import check_communicating
+from ska_tango_base.executor import TaskExecutorComponentManager
 
+from .pasd_bus_json_api import PasdBusJsonApi, PasdBusJsonApiClient
 from .pasd_bus_simulator import PasdBusSimulator
 
 
-class PasdBusSimulatorComponentManager(ObjectComponentManager):
-    """A base component manager for a PaSD bus simulator."""
+class PasdBusComponentManager(TaskExecutorComponentManager):
+    """A component manager for a PaSD bus."""
 
     def __init__(
-        self: PasdBusSimulatorComponentManager,
+        self: PasdBusComponentManager,
         logger: logging.Logger,
         max_workers: int,
         communication_state_changed_callback: Callable[[CommunicationStatus], None],
@@ -52,17 +49,90 @@ class PasdBusSimulatorComponentManager(ObjectComponentManager):
             1,
             logger,
         )
+        pasd_bus_api = PasdBusJsonApi(pasd_bus_simulator)
+        self._pasd_bus_api_client = PasdBusJsonApiClient(pasd_bus_api)
         super().__init__(
-            pasd_bus_simulator,
             logger,
-            max_workers,
             communication_state_changed_callback,
             component_state_changed_callback,
-            None,
+            max_workers=max_workers,
         )
 
+    def start_communicating(self: PasdBusComponentManager) -> None:
+        """
+        Start communicating with the component.
+
+        (This is a temporary implementation that never fails to establish
+        communication immediately, since the simulator is an object in
+        memory.)
+        """
+        if self.communication_state == CommunicationStatus.ESTABLISHED:
+            return
+        if self.communication_state == CommunicationStatus.DISABLED:
+            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+            self._update_communication_state(CommunicationStatus.ESTABLISHED)
+
+    def stop_communicating(self: PasdBusComponentManager) -> None:
+        """Break off communicating with the component."""
+        if self.communication_state == CommunicationStatus.DISABLED:
+            return
+        self._update_communication_state(CommunicationStatus.DISABLED)
+        self._update_component_state(power=None, fault=None)
+
+    def off(
+        self: PasdBusComponentManager, task_callback: Optional[Callable] = None
+    ) -> tuple[TaskStatus, str]:
+        """
+        Turn off the PaSD bus simulator.
+
+        :param task_callback: callback to be called when the status of
+            the command changes
+
+        :raises NotImplementedError: because this is not yet implemented.
+        """
+        raise NotImplementedError("The PaSD cannot yet be turned off.")
+
+    def standby(
+        self: PasdBusComponentManager, task_callback: Optional[Callable] = None
+    ) -> tuple[TaskStatus, str]:
+        """
+        Put the PaSD bus simulator into low-power standby mode.
+
+        :param task_callback: callback to be called when the status of
+            the command changes
+
+        :raises NotImplementedError: because this is not yet implemented.
+        """
+        raise NotImplementedError("The PaSD cannot yet be put into standby.")
+
+    def on(
+        self: PasdBusComponentManager, task_callback: Optional[Callable] = None
+    ) -> tuple[TaskStatus, str]:
+        """
+        Turn on the PaSD bus simulator.
+
+        :param task_callback: callback to be called when the status of
+            the command changes
+
+        :raises NotImplementedError: because this is not yet implemented.
+        """
+        raise NotImplementedError("The PaSD cannot yet be turned on.")
+
+    def reset(
+        self: PasdBusComponentManager, task_callback: Optional[Callable] = None
+    ) -> tuple[TaskStatus, str]:
+        """
+        Reset the PaSD bus simulator.
+
+        :param task_callback: callback to be called when the status of
+            the command changes
+
+        :raises NotImplementedError: because this is not yet implemented.
+        """
+        raise NotImplementedError("The PaSD cannot yet be reset")
+
     def __getattr__(
-        self: PasdBusSimulatorComponentManager,
+        self: PasdBusComponentManager,
         name: str,
         default_value: Any = None,
     ) -> Any:
@@ -141,7 +211,7 @@ class PasdBusSimulatorComponentManager(ObjectComponentManager):
 
     @check_communicating
     def _get_from_component(
-        self: PasdBusSimulatorComponentManager,
+        self: PasdBusComponentManager,
         name: str,
     ) -> Any:
         """
@@ -152,325 +222,4 @@ class PasdBusSimulatorComponentManager(ObjectComponentManager):
         :return: the attribute value
         """
         # This one-liner is only a method so that we can decorate it.
-        return getattr(self._component, name)
-
-
-class PasdBusComponentManager(DriverSimulatorSwitchingComponentManager):
-    """A component manager that switches between PaSD bus simulator and driver."""
-
-    # pylint: disable=too-many-arguments
-    def __init__(
-        self: PasdBusComponentManager,
-        initial_simulation_mode: SimulationMode,
-        logger: logging.Logger,
-        max_workers: int,
-        communication_state_changed_callback: Callable[[CommunicationStatus], None],
-        component_state_changed_callback: Callable[[dict[str, Any]], None],
-        _simulator_component_manager: Optional[PasdBusSimulatorComponentManager] = None,
-    ) -> None:
-        """
-        Initialise a new instance.
-
-        :param initial_simulation_mode: the simulation mode that the
-            component should start in
-        :param logger: a logger for this object to use
-        :param max_workers: no of worker threads
-        :param initial_simulation_mode: the simulation mode that the
-            component should start in
-        :param communication_state_changed_callback: callback to be
-            called when the status of the communications channel between
-            the component manager and its component changes
-        :param component_state_changed_callback: callback to be called when the
-            component state changes
-        :param _simulator_component_manager: for testing only, we can
-            provide a pre-created component manager for the simulator,
-            rather than letting this component manager create one.
-        """
-        pasd_bus_simulator = (
-            _simulator_component_manager
-            or PasdBusSimulatorComponentManager(
-                logger,
-                max_workers,
-                communication_state_changed_callback,
-                component_state_changed_callback,
-            )
-        )
-        super().__init__(
-            None,
-            cast(MccsComponentManagerProtocol, pasd_bus_simulator),
-            initial_simulation_mode,
-        )
-
-    def reload_database(
-        self: PasdBusComponentManager, task_callback: Optional[Callable] = None
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the reload_database slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._reload_database, args=[], task_callback=task_callback
-        )
-        return task_status, unique_id
-
-    def get_fndh_info(
-        self: PasdBusComponentManager,
-        fndh: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the get_fndh_info slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param fndh: the fndh to get info from
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._get_fndh_info, args=[fndh], task_callback=task_callback
-        )
-        return task_status, unique_id
-
-    def turn_fndh_service_led_on(
-        self: PasdBusComponentManager,
-        fndh: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the turn_fndh_service_led_on slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param fndh: the fndh service led to turn on
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._turn_fndh_service_led_on, args=[fndh], task_callback=task_callback
-        )
-        return task_status, unique_id
-
-    def turn_fndh_service_led_off(
-        self: PasdBusComponentManager,
-        fndh: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the turn_fndh_service_led_off slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param fndh: the fndh service led to turn off
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._turn_fndh_service_led_off, args=[fndh], task_callback=task_callback
-        )
-        return task_status, unique_id
-
-    def get_smartbox_info(
-        self: PasdBusComponentManager,
-        smartbox: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the get_smartbox_info slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param smartbox: the smartbox to get info from
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._get_smartbox_info, args=[smartbox], task_callback=task_callback
-        )
-        return task_status, unique_id
-
-    def turn_smartbox_on(
-        self: PasdBusComponentManager,
-        smartbox: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the turn_smartbox_off slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param smartbox: the smartbox to turn on
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._turn_smartbox_on, args=[smartbox], task_callback=task_callback
-        )
-        return task_status, unique_id
-
-    def turn_smartbox_off(
-        self: PasdBusComponentManager,
-        smartbox: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the turn_smartbox_off slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param smartbox: the smartbox to turn off
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._turn_smartbox__off, args=[smartbox], task_callback=task_callback
-        )
-        return task_status, unique_id
-
-    def turn_smartbox_service_led_on(
-        self: PasdBusComponentManager,
-        smartbox: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the turn_smartbox_service_led_on slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param smartbox: the smartbox service led to turn on
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._turn_smartbox_service_led_on,
-            args=[smartbox],
-            task_callback=task_callback,
-        )
-        return task_status, unique_id
-
-    def turn_smartbox_service_led_off(
-        self: PasdBusComponentManager,
-        smartbox: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the turn_smartbox_service_led_off slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param smartbox: the smartbox service led to turn off
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._turn_smartbox_service_led_off,
-            args=[smartbox],
-            task_callback=task_callback,
-        )
-        return task_status, unique_id
-
-    def get_antenna_info(
-        self: PasdBusComponentManager,
-        antenna: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the get_antenna_info slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param antenna: the antenna to get info from
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._get_antenna_info, args=[antenna], task_callback=task_callback
-        )
-        return task_status, unique_id
-
-    def reset_antenna_breaker(
-        self: PasdBusComponentManager,
-        antenna: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the reset_antenna_breaker slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param antenna: the antenna breaker to reset
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._reset_antenna_breaker, args=[antenna], task_callback=task_callback
-        )
-        return task_status, unique_id
-
-    def turn_antenna_on(
-        self: PasdBusComponentManager,
-        antenna: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the turn_antenna_on slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param antenna: the antenna to turn on
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._turn_antenna_on, args=[antenna], task_callback=task_callback
-        )
-        return task_status, unique_id
-
-    def turn_antenna_off(
-        self: PasdBusComponentManager,
-        antenna: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Submit the turn_antenna_off slow task.
-
-        This method returns immediately after it is submitted for execution.
-
-        :param antenna: the antenna to turn off
-        :param task_callback: Update task state, defaults to None
-
-        :return: A tuple containing a task status and a unique id string to
-            identify the command
-        """
-        task_status, unique_id = self.submit_task(
-            self._turn_antenna_off, args=[antenna], task_callback=task_callback
-        )
-        return task_status, unique_id
+        return getattr(self._pasd_bus_api_client, name)

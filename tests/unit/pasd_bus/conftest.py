@@ -16,19 +16,13 @@ from typing import Optional
 
 import pytest
 import yaml
-from ska_control_model import (
-    CommunicationStatus,
-    PowerState,
-    ResultCode,
-    SimulationMode,
-)
+from ska_control_model import CommunicationStatus, PowerState, ResultCode
 from ska_tango_testing.mock import MockCallableGroup
 
 from ska_low_mccs_pasd import MccsPasdBus
 from ska_low_mccs_pasd.pasd_bus import (
     PasdBusComponentManager,
     PasdBusSimulator,
-    PasdBusSimulatorComponentManager,
 )
 
 
@@ -164,13 +158,13 @@ def mock_pasd_bus_simulator_fixture(
     return mock_simulator
 
 
-@pytest.fixture(name="pasd_bus_simulator_component_manager")
-def pasd_bus_simulator_component_manager_fixture(
+@pytest.fixture(name="pasd_bus_component_manager")
+def pasd_bus_component_manager_fixture(
     mock_pasd_bus_simulator: unittest.mock.Mock,
     logger: logging.Logger,
     max_workers: int,
     mock_callbacks: MockCallableGroup,
-) -> PasdBusSimulatorComponentManager:
+) -> PasdBusComponentManager:
     """
     Return a PaSD bus simulator component manager.
 
@@ -185,43 +179,15 @@ def pasd_bus_simulator_component_manager_fixture(
 
     :return: a PaSD bus simulator component manager.
     """
-    return PasdBusSimulatorComponentManager(
+    component_manager = PasdBusComponentManager(
         logger,
         max_workers,
         mock_callbacks["communication_state"],
         mock_callbacks["component_state"],
         _simulator=mock_pasd_bus_simulator,
     )
-
-
-@pytest.fixture(name="pasd_bus_component_manager")
-def pasd_bus_component_manager_fixture(
-    pasd_bus_simulator_component_manager: PasdBusSimulatorComponentManager,
-    logger: logging.Logger,
-    max_workers: int,
-    mock_callbacks: MockCallableGroup,
-) -> PasdBusComponentManager:
-    """
-    Return a PaSD bus component manager.
-
-    :param pasd_bus_simulator_component_manager: a pre-initialised
-        PaSD bus simulator component manager to be used by the PaSD bus
-        component manager
-    :param logger: the logger to be used by this object.
-    :param max_workers: number of worker threads
-    :param mock_callbacks: a group of mock callables for the component
-        manager under test to use as callbacks
-
-    :return: a PaSD bus component manager
-    """
-    return PasdBusComponentManager(
-        SimulationMode.TRUE,
-        logger,
-        max_workers,
-        mock_callbacks["communication_state"],
-        mock_callbacks["component_state"],
-        _simulator_component_manager=pasd_bus_simulator_component_manager,
-    )
+    component_manager.start_communicating()
+    return component_manager
 
 
 @pytest.fixture(name="mock_component_manager")

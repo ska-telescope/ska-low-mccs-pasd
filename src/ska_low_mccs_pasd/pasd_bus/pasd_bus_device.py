@@ -95,13 +95,11 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: a component manager for this device.
         """
         return PasdBusComponentManager(
-            SimulationMode.TRUE,
             self.logger,
             self._max_workers,
             self._communication_state_changed_callback,
             self._component_state_changed_callback,
         )
-        # return self.component_manager
 
     def init_command_objects(self: MccsPasdBus) -> None:
         """Initialise the command handlers for commands supported by this device."""
@@ -240,6 +238,37 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
     # ----------
     # Attributes
     # ----------
+    @attribute(dtype=SimulationMode, memorized=True, hw_memorized=True)
+    def simulationMode(self: MccsPasdBus) -> int:
+        """
+        Report the simulation mode of the device.
+
+        :return: Return the current simulation mode
+        """
+        return SimulationMode.FALSE
+
+    @simulationMode.write  # type: ignore[no-redef]
+    def simulationMode(  # pylint: disable=arguments-differ
+        self: MccsPasdBus, value: SimulationMode
+    ) -> None:
+        """
+        Set the simulation mode.
+
+        Writing this attribute is deliberately unimplemented.
+        To run this device against a simulator,
+        stand up a PaSD bus simulator,
+        then configure this device
+        with the simulator's IP address and port.
+
+        :param value: The simulation mode, as a SimulationMode value
+        """
+        self.logger.warning(
+            "MccsPasdBus's simulationMode attribute is unimplemented. "
+            "To run this device against a simulator, "
+            "stand up an external PaSD bus simulator, "
+            "then configure this device with the simulator's IP address and port."
+        )
+
     @attribute(dtype=("float",), max_dim_x=2, label="fndhPsu48vVoltages")
     def fndhPsu48vVoltages(self: MccsPasdBus) -> list[float]:
         """

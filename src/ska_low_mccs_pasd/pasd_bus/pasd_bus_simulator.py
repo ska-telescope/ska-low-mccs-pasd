@@ -25,10 +25,8 @@ only communicate on the PaSD bus by proxying through MccsPasdBus.
 
 To that end, MccsPasdBus needs a PasdBusComponentManager that talks to
 the PaSD bus using MODBUS-over-TCP. This class is not yet written; but
-meanwhile, the PasdBusSimulatorComponentManager takes its place,
-pretends to provide access to the PaSD bus, but instead of talking
-MODBUS-over-TCP to a real PaSD bus, it talks pure-python to a stub
-PaSD bus simulator instance.
+meanwhile, a PasdBusJsonApi class its place, providing access to the
+PaSD bus simulator, but talking JSON instead of MODBUS-over-TCP.
 
 The Pasd bus simulator class is provided below. To help manage
 complexity, it is composed of a separate FNDH simulator and a number of
@@ -39,11 +37,9 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Callable, Final, Optional, TypedDict
+from typing import Final, Optional, TypedDict
 
 import yaml
-from ska_control_model import TaskStatus
-from ska_low_mccs_common.component import ObjectComponent
 
 _AntennaConfigType = TypedDict(
     "_AntennaConfigType",
@@ -605,7 +601,7 @@ class FndhSimulator(PasdHardwareSimulator):
     DEFAULT_STATUS = "OK"
     DEFAULT_LED_PATTERN = "OK"
     DEFAULT_UPTIME = 2000
-    DEFAULT_PSU48V_VOLTAGES = (47.9, 48.1)
+    DEFAULT_PSU48V_VOLTAGES = [47.9, 48.1]
     DEFAULT_PSU5V_VOLTAGE = 5.1
     DEFAULT_PSU48V_CURRENT = 20.1
     DEFAULT_PSU48V_TEMPERATURE = 41.2
@@ -619,7 +615,7 @@ class FndhSimulator(PasdHardwareSimulator):
         super().__init__(self.NUMBER_OF_PORTS)
 
     @property
-    def psu48v_voltages(self: FndhSimulator) -> tuple[float, float]:
+    def psu48v_voltages(self: FndhSimulator) -> list[float]:
         """
         Return the output voltages on the two 48V DC power supplies, in volts.
 
@@ -867,9 +863,8 @@ class SmartboxSimulator(PasdHardwareSimulator):
         }
 
 
-class PasdBusSimulator(
-    ObjectComponent
-):  # pylint: disable=too-many-public-methods, too-many-instance-attributes
+# pylint: disable-next=too-many-public-methods, too-many-instance-attributes
+class PasdBusSimulator:
     """
     A stub class that provides similar functionality to a PaSD bus.
 
@@ -970,25 +965,9 @@ class PasdBusSimulator(
 
         return True
 
-    def reset(
-        self: ObjectComponent, task_callback: Optional[Callable] = None
-    ) -> tuple[TaskStatus, str]:
-        """
-        Reset the component (from fault state).
-
-        :param task_callback: callback to be called when the status of
-            the command changes
-
-        :raises NotImplementedError: because this method has not been
-            implemented.
-        """
-        raise NotImplementedError("PaSD bus simulator reset not implemented.")
-
-    def get_fndh_info(self: PasdBusSimulator, fndh: int) -> FndhInfoType:
+    def get_fndh_info(self: PasdBusSimulator) -> FndhInfoType:
         """
         Return information about an FNDH controller.
-
-        :param fndh: the fndh to get info from
 
         :return: a dictionary containing information about the FNDH
             controller.
@@ -996,7 +975,7 @@ class PasdBusSimulator(
         return self._fndh_simulator.get_info()
 
     @property
-    def fndh_psu48v_voltages(self: PasdBusSimulator) -> tuple[float, float]:
+    def fndh_psu48v_voltages(self: PasdBusSimulator) -> list[float]:
         """
         Return the output voltages on the two 48V DC power supplies, in volts.
 
