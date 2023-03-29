@@ -25,8 +25,8 @@ only communicate on the PaSD bus by proxying through MccsPasdBus.
 
 To that end, MccsPasdBus needs a PasdBusComponentManager that talks to
 the PaSD bus using MODBUS-over-TCP. This class is not yet written; but
-meanwhile, a PasdBusJsonApi class its place, providing access to the
-PaSD bus simulator, but talking JSON instead of MODBUS-over-TCP.
+meanwhile, a PasdBusJsonApi class takes its place, providing access to
+the PaSD bus simulator, but talking JSON instead of MODBUS.
 
 The Pasd bus simulator class is provided below. To help manage
 complexity, it is composed of a separate FNDH simulator and a number of
@@ -35,6 +35,7 @@ PasdBusSimulator class should be considered public.
 """
 from __future__ import annotations
 
+import importlib
 import logging
 from datetime import datetime
 from typing import Final, Optional, TypedDict
@@ -103,6 +104,9 @@ FndhInfoType = TypedDict(
         "read_time": str,
     },
 )
+
+
+logger = logging.getLogger()
 
 
 class _PasdPortSimulator:
@@ -880,25 +884,24 @@ class PasdBusSimulator:
     * turn antennas off and on;
     """
 
+    CONFIG_PATH = "pasd_configuration.yaml"
+
     NUMBER_OF_SMARTBOXES = 24
     NUMBER_OF_ANTENNAS = 256
 
     def __init__(
         self: PasdBusSimulator,
-        config_path: str,
         station_id: int,
-        logger: logging.Logger,
+        logging_level: int = logging.INFO,
     ) -> None:
         """
         Initialise a new instance.
 
-        :param config_path: path to a YAML file that specifies PaSD configuration.
         :param station_id: id of the station to which this PaSD belongs.
-        :param logger: a logger for this component to use
+        :param logging_level: the level to log at.
         """
-        self._config_path = config_path
         self._station_id = station_id
-        self._logger = logger
+        logger.setLevel(logging_level)
 
         self._fndh_simulator = FndhSimulator()
         self._smartbox_simulators = [
@@ -914,8 +917,10 @@ class PasdBusSimulator:
         self.reload_database()
 
         # ANTENNAS
-        self._antennas_desired_on_if_online = [False] * len(self._antenna_configs)
-        self._antennas_desired_on_if_offline = [False] * len(self._antenna_configs)
+        self._antennas_desired_power_online = [False] * len(self._antenna_configs)
+        self._antennas_desired_power_offline = [False] * len(self._antenna_configs)
+
+        logger.info(f"Initialised PaSD bus simulator for station {station_id}.")
 
     def reload_database(self: PasdBusSimulator) -> bool:
         """
@@ -925,14 +930,20 @@ class PasdBusSimulator:
 
         :raises yaml.YAMLError: if the config file cannot be parsed.
         """
-        with open(self._config_path, "r", encoding="utf") as stream:
-            try:
-                config = yaml.safe_load(stream)
-            except yaml.YAMLError as exception:
-                self._logger.error(
-                    f"PaSD Bus simulator could not load configuration: {exception}."
-                )
-                raise
+        config_data = importlib.resources.read_text(
+            "ska_low_mccs_pasd.pasd_bus",
+            self.CONFIG_PATH,
+        )
+
+        assert config_data is not None  # for the type-checker
+
+        try:
+            config = yaml.safe_load(config_data)
+        except yaml.YAMLError as exception:
+            logger.error(
+                f"PaSD Bus simulator could not load configuration: {exception}."
+            )
+            raise
 
         my_config = config["stations"][self._station_id - 1]
 
@@ -1059,13 +1070,18 @@ class PasdBusSimulator:
     def set_fndh_service_led_on(
         self: PasdBusSimulator,
         led_on: bool,
-    ) -> None:
+    ) -> Optional[bool]:
         """
         Turn on/off the FNDH's blue service indicator LED.
 
         :param led_on: whether the LED should be on.
+
+        :return: whether successful, or None if there was nothing to do.
         """
+        if self._fndh_simulator.service_led_on == led_on:
+            return None
         self._fndh_simulator.service_led_on = led_on
+        return True
 
     @property
     def fndh_ports_power_sensed(self: PasdBusSimulator) -> list[bool]:

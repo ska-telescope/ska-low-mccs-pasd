@@ -1232,30 +1232,30 @@ class TestPasdBusSimulator:  # pylint: disable=too-many-public-methods
         """
         expected_antennas_tripped = [False] * len(pasd_config["antennas"])
         expected_antennas_on = [False] * len(pasd_config["antennas"])
-        expected_antennas_desired_on = [False] * len(pasd_config["antennas"])
+        expected_antennas_desired_power = [False] * len(pasd_config["antennas"])
         assert pasd_bus_simulator_api.antennas_tripped == expected_antennas_tripped
         assert pasd_bus_simulator_api.antennas_power_sensed == expected_antennas_on
         assert (
             pasd_bus_simulator_api.antennas_desired_power_online
-            == expected_antennas_desired_on
+            == expected_antennas_desired_power
         )
         assert (
             pasd_bus_simulator_api.antennas_desired_power_offline
-            == expected_antennas_desired_on
+            == expected_antennas_desired_power
         )
 
         pasd_bus_simulator_api.turn_antenna_on(antenna_id)
         expected_antennas_on[antenna_id - 1] = True
-        expected_antennas_desired_on[antenna_id - 1] = True
+        expected_antennas_desired_power[antenna_id - 1] = True
         assert pasd_bus_simulator_api.antennas_tripped == expected_antennas_tripped
         assert pasd_bus_simulator_api.antennas_power_sensed == expected_antennas_on
         assert (
             pasd_bus_simulator_api.antennas_desired_power_online
-            == expected_antennas_desired_on
+            == expected_antennas_desired_power
         )
         assert (
             pasd_bus_simulator_api.antennas_desired_power_offline
-            == expected_antennas_desired_on
+            == expected_antennas_desired_power
         )
 
         assert pasd_bus_simulator_api.reset_antenna_breaker(antenna_id) is None
@@ -1267,11 +1267,11 @@ class TestPasdBusSimulator:  # pylint: disable=too-many-public-methods
         assert pasd_bus_simulator_api.antennas_power_sensed == expected_antennas_on
         assert (
             pasd_bus_simulator_api.antennas_desired_power_online
-            == expected_antennas_desired_on
+            == expected_antennas_desired_power
         )
         assert (
             pasd_bus_simulator_api.antennas_desired_power_offline
-            == expected_antennas_desired_on
+            == expected_antennas_desired_power
         )
 
         assert pasd_bus_simulator_api.reset_antenna_breaker(antenna_id)
@@ -1281,11 +1281,11 @@ class TestPasdBusSimulator:  # pylint: disable=too-many-public-methods
         assert pasd_bus_simulator_api.antennas_power_sensed == expected_antennas_on
         assert (
             pasd_bus_simulator_api.antennas_desired_power_online
-            == expected_antennas_desired_on
+            == expected_antennas_desired_power
         )
         assert (
             pasd_bus_simulator_api.antennas_desired_power_offline
-            == expected_antennas_desired_on
+            == expected_antennas_desired_power
         )
 
         assert pasd_bus_simulator_api.reset_antenna_breaker(antenna_id) is None

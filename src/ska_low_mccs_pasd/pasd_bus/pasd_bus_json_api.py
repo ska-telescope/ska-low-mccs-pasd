@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Final, Optional
+from typing import Any, Callable, Final, Optional
 
 import jsonschema
 
@@ -27,7 +27,7 @@ class PasdBusJsonApi:
 
     SCHEMA: Final = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "https://skao.int/MccsSubrack_SetSubrackFanMode.json",
+        "$id": "https://skao.int/Pasd.json",
         "title": "PaSD bus simulator JSON API",
         "description": "Temporary JSON API for PaSD bus simulator",
         "type": "object",
@@ -59,20 +59,20 @@ class PasdBusJsonApi:
         ],
     }
 
-    def __init__(self, simulator: PasdBusSimulator):
+    def __init__(self, simulator: PasdBusSimulator, encoding: str = "utf-8"):
         """
         Initialise a new instance.
 
         :param simulator: the PaSD bus simulator that this API acts upon.
+        :param encoding: encoding to use for conversion between string
+            and bytes.
         """
         self._simulator = simulator
+        self._encoding = encoding
 
     def _handle_read_attribute(self, name: str) -> dict:
         try:
-            print(f"IN _handle_read_attribute({name}), {self._simulator=}")
-            print(dir(self._simulator))
             value = getattr(self._simulator, name)
-            print(f"{value=}")
         except AttributeError:
             response = {
                 "status": "error",
@@ -118,14 +118,7 @@ class PasdBusJsonApi:
             "message": f"No match for request '{json_request}'",
         }
 
-    def __call__(self, json_request: str) -> str:
-        """
-        Call this API object with a new JSON request.
-
-        :param json_request: the JSON-encoded request.
-
-        :return: a JSON-encoded response
-        """
+    def _handle(self, json_request: str) -> str:
         try:
             request = json.loads(json_request)
         except json.JSONDecodeError as error:
@@ -156,32 +149,55 @@ class PasdBusJsonApi:
                 response = self._handle_no_match(json_request)
         return json.dumps(response)
 
+    def __call__(self, json_request_bytes: bytes) -> bytes:
+        """
+        Call this API object with a new JSON request, encoded as bytes.
+
+        :param json_request_bytes: the JSON-encoded request string,
+            encoded as bytes.
+
+        :return: a JSON-encoded response string, encoded as bytes.
+        """
+        json_request_str = json_request_bytes.decode(self._encoding)
+        json_response_str = self._handle(json_request_str)
+        return json_response_str.encode(self._encoding)
+
 
 # pylint: disable=too-many-public-methods
 class PasdBusJsonApiClient:
     """A client class for a PaSD bus simulator with a JSON API."""
 
-    def __init__(self: PasdBusJsonApiClient, api: PasdBusJsonApi) -> None:
+    def __init__(
+        self: PasdBusJsonApiClient,
+        transport: Callable[[bytes], bytes],
+        encoding: str = "utf-8",
+    ) -> None:
         """
         Initialise a new instance.
 
-        :param api: the API that this client acts upon.
+        :param transport: the transport layer client; a callable that
+            accepts request bytes and returns response bytes.
+        :param encoding: encoding to use for conversion between string
+            and bytes.
         """
-        self._api = api
+        self._transport = transport
+        self._encoding = encoding
+
+    def _do_request(self, request: dict) -> dict:
+        request_str = json.dumps(request)
+        request_bytes = request_str.encode(self._encoding)
+        response_bytes = self._transport(request_bytes)
+        response_str = response_bytes.decode(self._encoding)
+        response = json.loads(response_str)
+        return response
 
     def _read(self, name: str) -> Any:
-        request = {"read": name}
-        request_str = json.dumps(request)
-        response_str = self._api(request_str)
-        response = json.loads(response_str)
+        response = self._do_request({"read": name})
         assert response["attribute"] == name
         return response["value"]
 
     def _execute(self, name: str, *args: Any) -> Any:
-        request = {"execute": name, "arguments": args}
-        request_str = json.dumps(request)
-        response_str = self._api(request_str)
-        response = json.loads(response_str)
+        response = self._do_request({"execute": name, "arguments": args})
         assert response["command"] == name
         return response["result"]
 
@@ -289,13 +305,15 @@ class PasdBusJsonApiClient:
     def set_fndh_service_led_on(
         self: PasdBusJsonApiClient,
         led_on: bool,
-    ) -> None:
+    ) -> Optional[bool]:
         """
         Turn on/off the FNDH's blue service indicator LED.
 
         :param led_on: whether the LED should be on.
+
+        :returns: whether successful, or None if there was nothing to do.
         """
-        self._execute("set_fndh_service_led_on", led_on)
+        return self._execute("set_fndh_service_led_on", led_on)
 
     @property
     def fndh_ports_power_sensed(self: PasdBusJsonApiClient) -> list[bool]:

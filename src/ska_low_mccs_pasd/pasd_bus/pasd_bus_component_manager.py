@@ -11,29 +11,40 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Optional
 
-from ska_control_model import CommunicationStatus, TaskStatus
+from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_mccs_common.component import check_communicating
+from ska_ser_devices.client_server import (
+    ApplicationClient,
+    SentinelBytesMarshaller,
+    TcpClient,
+)
 from ska_tango_base.executor import TaskExecutorComponentManager
 
-from .pasd_bus_json_api import PasdBusJsonApi, PasdBusJsonApiClient
-from .pasd_bus_simulator import PasdBusSimulator
+from .pasd_bus_json_api import PasdBusJsonApiClient
+from .pasd_bus_simulator import AntennaInfoType, FndhInfoType, SmartboxInfoType
 
 
 class PasdBusComponentManager(TaskExecutorComponentManager):
     """A component manager for a PaSD bus."""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self: PasdBusComponentManager,
+        host: str,
+        port: int,
+        timeout: float,
         logger: logging.Logger,
         max_workers: int,
         communication_state_changed_callback: Callable[[CommunicationStatus], None],
-        component_state_changed_callback: Callable[[dict[str, Any]], None],
-        _simulator: Optional[PasdBusSimulator] = None,
+        component_state_changed_callback: Callable[..., None],
         # TODO callbacks for changes to antenna power, smartbox power, etc
     ) -> None:
         """
         Initialise a new instance.
 
+        :param host: IP address of PaSD bus
+        :param port: port of the PaSD bus
+        :param timeout: maximum time to wait for a response to a server
+            request (in seconds).
         :param logger: a logger for this object to use
         :param max_workers: no of worker threads
         :param communication_state_changed_callback: callback to be
@@ -41,39 +52,54 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             the component manager and its component changes
         :param component_state_changed_callback: callback to be called when the
             component state changes
-        :param _simulator: for testing only, we can provide a simulator
-            rather than letting the component manager create one.
         """
-        pasd_bus_simulator = _simulator or PasdBusSimulator(
-            "src/ska_low_mccs_pasd/pasd_bus/pasd_configuration.yaml",
-            1,
-            logger,
+        tcp_client = TcpClient(host, port, timeout)
+        marshaller = SentinelBytesMarshaller(b"\n")
+        application_client = ApplicationClient(
+            tcp_client, marshaller.marshall, marshaller.unmarshall
         )
-        pasd_bus_api = PasdBusJsonApi(pasd_bus_simulator)
-        self._pasd_bus_api_client = PasdBusJsonApiClient(pasd_bus_api)
+        self._pasd_bus_api_client = PasdBusJsonApiClient(application_client)
+
         super().__init__(
             logger,
             communication_state_changed_callback,
             component_state_changed_callback,
             max_workers=max_workers,
+            power=None,
+            fault=None,
+            fndh_status=None,
         )
 
     def start_communicating(self: PasdBusComponentManager) -> None:
         """
         Start communicating with the component.
 
-        (This is a temporary implementation that never fails to establish
-        communication immediately, since the simulator is an object in
-        memory.)
+        (This is a temporary implementation that checks for
+        communication with the PaSD by querying a single attribute.
+        In future this will be updated to lauch a polling loop.)
         """
+        # TODO: This is a temporary implementation that only makes a
+        # single request.
         if self.communication_state == CommunicationStatus.ESTABLISHED:
             return
         if self.communication_state == CommunicationStatus.DISABLED:
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
             self._update_communication_state(CommunicationStatus.ESTABLISHED)
 
+            if self.fndh_status == "OK":
+                self._update_component_state(
+                    power=PowerState.ON,
+                    fault=False,
+                    fndh_status="OK",
+                )
+
     def stop_communicating(self: PasdBusComponentManager) -> None:
-        """Break off communicating with the component."""
+        """
+        Break off communicating with the component.
+
+        (This is a temporary implementation that doesn't do anything.
+        In future it will stop the polling loop.)
+        """
         if self.communication_state == CommunicationStatus.DISABLED:
             return
         self._update_communication_state(CommunicationStatus.DISABLED)
@@ -131,6 +157,137 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         """
         raise NotImplementedError("The PaSD cannot yet be reset")
 
+    @check_communicating
+    def reload_database(self: PasdBusComponentManager) -> bool:
+        """
+        Tell the PaSD to reload its configuration data.
+
+        :return: whether successful.
+        """
+        return self._pasd_bus_api_client.reload_database()
+
+    @check_communicating
+    def get_fndh_info(self: PasdBusComponentManager) -> FndhInfoType:
+        """
+        Return information about an FNDH controller.
+
+        :return: a dictionary containing information about the FNDH
+            controller.
+        """
+        return self._pasd_bus_api_client.get_fndh_info()
+
+    @check_communicating
+    def set_fndh_service_led_on(
+        self: PasdBusComponentManager,
+        led_on: bool,
+    ) -> Optional[bool]:
+        """
+        Turn on/off the FNDH's blue service indicator LED.
+
+        :param led_on: whether the LED should be on.
+
+        :returns: whether successful, or None if there was nothing to do
+        """
+        return self._pasd_bus_api_client.set_fndh_service_led_on(led_on)
+
+    @check_communicating
+    def get_smartbox_info(
+        self: PasdBusComponentManager, smartbox_number: int
+    ) -> SmartboxInfoType:
+        """
+        Return information about a smartbox.
+
+        :param smartbox_number: the number of the smartbox for which to
+            return information
+
+        :return: a dictionary containing information about the smartbox.
+        """
+        return self._pasd_bus_api_client.get_smartbox_info(smartbox_number)
+
+    @check_communicating
+    def get_antenna_info(
+        self: PasdBusComponentManager, antenna_number: int
+    ) -> AntennaInfoType:
+        """
+        Return information about a antenna.
+
+        :param antenna_number: the number of the antenna for which to
+            return information
+
+        :return: a dictionary containing information about the antenna.
+        """
+        return self._pasd_bus_api_client.get_antenna_info(antenna_number)
+
+    @check_communicating
+    def turn_smartbox_on(
+        self: PasdBusComponentManager,
+        smartbox_id: int,
+    ) -> Optional[bool]:
+        """
+        Turn on a smartbox.
+
+        :param smartbox_id: the id of the smartbox to turn on.
+
+        :return: whether successful, or None if there was nothing to do.
+        """
+        return self._pasd_bus_api_client.turn_smartbox_on(smartbox_id)
+
+    @check_communicating
+    def turn_smartbox_off(
+        self: PasdBusComponentManager,
+        smartbox_id: int,
+    ) -> Optional[bool]:
+        """
+        Turn off a smartbox.
+
+        :param smartbox_id: the id of the smartbox to turn off.
+
+        :return: whether successful, or None if there was nothing to do.
+        """
+        return self._pasd_bus_api_client.turn_smartbox_off(smartbox_id)
+
+    @check_communicating
+    def turn_antenna_on(
+        self: PasdBusComponentManager,
+        antenna_id: int,
+    ) -> Optional[bool]:
+        """
+        Turn on an antenna.
+
+        :param antenna_id: the id of the antenna to turn on.
+
+        :return: whether successful, or None if there was nothing to do.
+        """
+        return self._pasd_bus_api_client.turn_antenna_on(antenna_id)
+
+    @check_communicating
+    def turn_antenna_off(
+        self: PasdBusComponentManager,
+        antenna_id: int,
+    ) -> Optional[bool]:
+        """
+        Turn off an antenna.
+
+        :param antenna_id: the id of the antenna to turn off.
+
+        :return: whether successful, or None if there was nothing to do.
+        """
+        return self._pasd_bus_api_client.turn_antenna_off(antenna_id)
+
+    @check_communicating
+    def reset_antenna_breaker(
+        self: PasdBusComponentManager,
+        antenna_id: int,
+    ) -> Optional[bool]:
+        """
+        Reset an antenna's port breaker.
+
+        :param antenna_id: the id of the antenna to turn off.
+
+        :return: whether successful, or None if there was nothing to do.
+        """
+        return self._pasd_bus_api_client.reset_antenna_breaker(antenna_id)
+
     def __getattr__(
         self: PasdBusComponentManager,
         name: str,
@@ -153,9 +310,6 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         :return: the requested attribute
         """
         if name in [
-            "reload_database",
-            "reset",
-            "get_fndh_info",
             "fndh_psu48v_voltages",
             "fndh_psu5v_voltage",
             "fndh_psu48v_current",
@@ -165,18 +319,13 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             "fndh_outside_temperature",
             "fndh_status",
             "fndh_service_led_on",
-            "set_fndh_service_led_on",
             "fndh_ports_power_sensed",
             "is_fndh_port_power_sensed",
             "fndh_ports_connected",
             "fndh_port_forcings",
             "get_fndh_port_forcing",
-            "simulate_fndh_port_forcing",
             "fndh_ports_desired_power_online",
             "fndh_ports_desired_power_offline",
-            "get_smartbox_info",
-            "turn_smartbox_on",
-            "turn_smartbox_off",
             "is_smartbox_port_power_sensed",
             "smartbox_input_voltages",
             "smartbox_power_supply_output_voltages",
@@ -194,12 +343,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             "antennas_online",
             "antenna_forcings",
             "get_antenna_forcing",
-            "simulate_antenna_forcing",
-            "simulate_antenna_breaker_trip",
-            "reset_antenna_breaker",
             "antennas_tripped",
-            "turn_antenna_on",
-            "turn_antenna_off",
             "antennas_power_sensed",
             "antennas_desired_power_online",
             "antennas_desired_power_offline",
