@@ -81,13 +81,12 @@ low_mccs_pasd:
     pullPolicy: IfNotPresent
 
 
-# Default ska-low-mccs-pasd device server instances
+facility: aavs2  # e.g. psi-low, aavs2, ...
+simulators:
+  pasds:
+    1:
+      host: pasd-simulator-1  # mandatory
+      port: 8502  # optional, defaults to 502
 deviceServers:
-  pasd-device:
-    # pasd instances have to be 0-padded to three digits
-    instances: ["pasdbus-001"]
-    file: "data/pasd.yaml"
-
-nodeSelector: {}
-
-affinity: {}
+  pasds:
+    logging_level_default: 5
