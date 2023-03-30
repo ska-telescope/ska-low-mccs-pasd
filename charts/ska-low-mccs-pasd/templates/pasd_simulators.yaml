@@ -1,0 +1,47 @@
+{{- range $key, $value := ((.Values.simulators).pasds)}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pasd-simulator-{{$key}}
+  namespace: {{$.Release.Namespace}}
+  labels:
+    component: pasd-simulator-{{$key}}
+spec:
+  ports:
+  - name: tcp
+    port: {{$value.port | default 502}}
+  type: ClusterIP
+  selector:
+    component: pasd-simulator-{{$key}}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{$value.host}}
+  namespace: {{$.Release.Namespace}}
+  labels:
+    component: pasd-simulator-{{$key}}
+spec:
+  selector:
+    matchLabels:
+      component: pasd-simulator-{{$key}}
+  serviceName: pasd-simulator-{{$key}}
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: pasd-simulator-{{$key}}
+    spec:
+      containers:
+      - name: simulator-{{$key}}
+        image: {{$.Values.low_mccs_pasd.image.registry}}/{{$.Values.low_mccs_pasd.image.image}}:{{$.Values.low_mccs_pasd.image.tag}}
+        imagePullPolicy: IfNotPresent
+        command:
+          - "PasdBusSimulatorServer"
+        env:
+          - name: PYTHONUNBUFFERED
+            value: "1"
+          - name: SIMULATOR_PORT
+            value: {{$value.port | default "502" | quote}}
+{{- end}}
