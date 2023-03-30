@@ -24,6 +24,7 @@ from .pasd_bus_json_api import PasdBusJsonApiClient
 from .pasd_bus_simulator import AntennaInfoType, FndhInfoType, SmartboxInfoType
 
 
+# pylint: disable-next=too-many-public-methods
 class PasdBusComponentManager(TaskExecutorComponentManager):
     """A component manager for a PaSD bus."""
 
@@ -177,7 +178,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         return self._pasd_bus_api_client.get_fndh_info()
 
     @check_communicating
-    def set_fndh_service_led_on(
+    def set_fndh_service_led(
         self: PasdBusComponentManager,
         led_on: bool,
     ) -> Optional[bool]:
@@ -188,7 +189,39 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
 
         :returns: whether successful, or None if there was nothing to do
         """
-        return self._pasd_bus_api_client.set_fndh_service_led_on(led_on)
+        return self._pasd_bus_api_client.set_fndh_service_led(led_on)
+
+    @check_communicating
+    def is_fndh_port_power_sensed(
+        self: PasdBusComponentManager,
+        port_number: int,
+    ) -> bool:
+        """
+        Return whether power is sensed on a specified FNDH port.
+
+        :param port_number: number of the FNDH port for which to check
+            if power is sensed.
+
+        :return: whether power is sensed on the port
+        """
+        return self._pasd_bus_api_client.is_fndh_port_power_sensed(port_number)
+
+    @check_communicating
+    def get_fndh_port_forcing(
+        self: PasdBusComponentManager, port_number: int
+    ) -> Optional[bool]:
+        """
+        Return the forcing status of a specified FNDH port.
+
+        :param port_number: number of the FNDH port for which the
+            forcing status is sought
+
+        :return: the forcing status of a specified FNDH port. True means
+            the port has been locally forced on. False means the port
+            has been locally forced off. None means the port has not
+            been locally forced.
+        """
+        return self._pasd_bus_api_client.get_fndh_port_forcing(port_number)
 
     @check_communicating
     def get_smartbox_info(
@@ -203,6 +236,55 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         :return: a dictionary containing information about the smartbox.
         """
         return self._pasd_bus_api_client.get_smartbox_info(smartbox_number)
+
+    @check_communicating
+    def is_smartbox_port_power_sensed(
+        self: PasdBusComponentManager,
+        smartbox_id: int,
+        smartbox_port_number: int,
+    ) -> bool:
+        """
+        Return whether power is sensed at a given smartbox port.
+
+        :param smartbox_id: id of the smartbox to check
+        :param smartbox_port_number: number of the port to check
+
+        :return: whether power is sensed that the specified port.
+        """
+        return self._pasd_bus_api_client.is_smartbox_port_power_sensed(
+            smartbox_id, smartbox_port_number
+        )
+
+    @check_communicating
+    def get_smartbox_ports_power_sensed(
+        self: PasdBusComponentManager, smartbox_id: int
+    ) -> list[bool]:
+        """
+        Return whether power is sensed at each port of a smartbox.
+
+        :param smartbox_id: id of the smartbox for which we want to know
+            if power is sensed.
+
+        :return: whether each smartbox should be on when MCCS control of
+            the PaSD is lost.
+        """
+        return self._pasd_bus_api_client.get_smartbox_ports_power_sensed(smartbox_id)
+
+    @check_communicating
+    def set_smartbox_service_led(
+        self: PasdBusComponentManager,
+        smartbox_id: int,
+        led_on: bool,
+    ) -> Optional[bool]:
+        """
+        Turn on the blue service indicator LED for a smartbox.
+
+        :param smartbox_id: the smartbox to have its LED switched
+        :param led_on: whether the LED should be on.
+
+        :return: whether successful, or None if there was nothing to do
+        """
+        return self._pasd_bus_api_client.set_smartbox_service_led(smartbox_id, led_on)
 
     @check_communicating
     def get_antenna_info(
@@ -288,6 +370,33 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         """
         return self._pasd_bus_api_client.reset_antenna_breaker(antenna_id)
 
+    @check_communicating
+    def get_antenna_forcing(
+        self: PasdBusComponentManager, antenna_id: int
+    ) -> Optional[bool]:
+        """
+        Return the forcing status of a specified antenna.
+
+        :param antenna_id: the id of the antenna for which the forcing
+            status is required.
+
+        :return: the forcing status of the antenna. True means the
+            antenna is forced on. False means it is forced off. None
+            means it is not forced.
+        """
+        return self._pasd_bus_api_client.get_antenna_forcing(antenna_id)
+
+    @check_communicating
+    def update_status(
+        self: PasdBusComponentManager,
+    ) -> None:
+        """
+        Update the status of devices accessible through this bus.
+
+        At present this does nothing except update a timestamp.
+        """
+        self._pasd_bus_api_client.update_status()
+
     def __getattr__(
         self: PasdBusComponentManager,
         name: str,
@@ -320,13 +429,10 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             "fndh_status",
             "fndh_service_led_on",
             "fndh_ports_power_sensed",
-            "is_fndh_port_power_sensed",
             "fndh_ports_connected",
             "fndh_port_forcings",
-            "get_fndh_port_forcing",
             "fndh_ports_desired_power_online",
             "fndh_ports_desired_power_offline",
-            "is_smartbox_port_power_sensed",
             "smartbox_input_voltages",
             "smartbox_power_supply_output_voltages",
             "smartbox_statuses",
@@ -334,21 +440,16 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             "smartbox_outside_temperatures",
             "smartbox_pcb_temperatures",
             "smartbox_service_leds_on",
-            "set_smartbox_service_led_on",
             "smartbox_fndh_ports",
             "smartboxes_desired_power_online",
             "smartboxes_desired_power_offline",
-            "get_smartbox_ports_power_sensed",
-            "get_antenna_info",
             "antennas_online",
             "antenna_forcings",
-            "get_antenna_forcing",
             "antennas_tripped",
             "antennas_power_sensed",
             "antennas_desired_power_online",
             "antennas_desired_power_offline",
             "antenna_currents",
-            "update_status",
         ]:
             return self._get_from_component(name)
         return default_value

@@ -1,4 +1,3 @@
-# pylint: disable=too-many-lines
 # -*- coding: utf-8 -*-
 #
 # This file is part of the SKA Low MCCS project
@@ -749,7 +748,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             :return: whether successful, or None if there was nothing to
                 do.
             """
-            return self._component_manager.set_fndh_service_led_on(self._is_on)
+            return self._component_manager.set_fndh_service_led(self._is_on)
 
     @command(dtype_out="DevVarLongStringArray")
     def TurnFndhServiceLedOn(self: MccsPasdBus) -> DevVarLongStringArrayType:
@@ -854,7 +853,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             self: MccsPasdBus._TurnSmartboxServiceLedOnOffCommand,
             smartbox_id: int,
         ) -> Optional[bool]:
-            return self._component_manager.set_smartbox_service_led_on(
+            return self._component_manager.set_smartbox_service_led(
                 smartbox_id, self._is_on
             )
 

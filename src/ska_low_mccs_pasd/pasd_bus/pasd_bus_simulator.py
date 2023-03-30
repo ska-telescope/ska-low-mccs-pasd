@@ -1067,7 +1067,7 @@ class PasdBusSimulator:
         """
         return self._fndh_simulator.service_led_on
 
-    def set_fndh_service_led_on(
+    def set_fndh_service_led(
         self: PasdBusSimulator,
         led_on: bool,
     ) -> Optional[bool]:
@@ -1312,7 +1312,7 @@ class PasdBusSimulator:
         """
         return [smartbox.service_led_on for smartbox in self._smartbox_simulators]
 
-    def set_smartbox_service_led_on(
+    def set_smartbox_service_led(
         self: PasdBusSimulator,
         smartbox_id: int,
         led_on: bool,

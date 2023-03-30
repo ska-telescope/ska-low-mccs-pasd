@@ -302,7 +302,7 @@ class PasdBusJsonApiClient:
         """
         return self._read("fndh_service_led_on")
 
-    def set_fndh_service_led_on(
+    def set_fndh_service_led(
         self: PasdBusJsonApiClient,
         led_on: bool,
     ) -> Optional[bool]:
@@ -313,7 +313,7 @@ class PasdBusJsonApiClient:
 
         :returns: whether successful, or None if there was nothing to do.
         """
-        return self._execute("set_fndh_service_led_on", led_on)
+        return self._execute("set_fndh_service_led", led_on)
 
     @property
     def fndh_ports_power_sensed(self: PasdBusJsonApiClient) -> list[bool]:
@@ -529,7 +529,7 @@ class PasdBusJsonApiClient:
         """
         return self._read("smartbox_service_leds_on")
 
-    def set_smartbox_service_led_on(
+    def set_smartbox_service_led(
         self: PasdBusJsonApiClient,
         smartbox_id: int,
         led_on: bool,
@@ -542,7 +542,7 @@ class PasdBusJsonApiClient:
 
         :return: whether successful, or None if there was nothing to do
         """
-        return self._execute("set_smartbox_service_led_on", smartbox_id, led_on)
+        return self._execute("set_smartbox_service_led", smartbox_id, led_on)
 
     @property
     def smartbox_fndh_ports(self: PasdBusJsonApiClient) -> list[int]:

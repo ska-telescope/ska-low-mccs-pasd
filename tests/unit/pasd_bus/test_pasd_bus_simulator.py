@@ -729,7 +729,7 @@ class TestPasdBusSimulator:  # pylint: disable=too-many-public-methods
         """
         assert not pasd_bus_simulator_api.fndh_service_led_on
 
-        pasd_bus_simulator_api.set_fndh_service_led_on(True)
+        pasd_bus_simulator_api.set_fndh_service_led(True)
         assert pasd_bus_simulator_api.fndh_service_led_on
 
     def test_fndh_ports_connected(
@@ -971,11 +971,11 @@ class TestPasdBusSimulator:  # pylint: disable=too-many-public-methods
         expected_leds_on = [False] * len(pasd_config["smartboxes"])
         assert pasd_bus_simulator_api.smartbox_service_leds_on == expected_leds_on
 
-        pasd_bus_simulator_api.set_smartbox_service_led_on(smartbox_id, True)
+        pasd_bus_simulator_api.set_smartbox_service_led(smartbox_id, True)
         expected_leds_on[smartbox_id - 1] = True
         assert pasd_bus_simulator_api.smartbox_service_leds_on == expected_leds_on
 
-        pasd_bus_simulator_api.set_smartbox_service_led_on(smartbox_id, False)
+        pasd_bus_simulator_api.set_smartbox_service_led(smartbox_id, False)
         expected_leds_on[smartbox_id - 1] = False
         assert pasd_bus_simulator_api.smartbox_service_leds_on == expected_leds_on
 
