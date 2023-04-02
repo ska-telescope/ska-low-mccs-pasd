@@ -10,25 +10,23 @@
 
 from __future__ import annotations
 
+import functools
+import importlib
 import logging
+import threading
 import unittest.mock
-from typing import Optional
+from contextlib import contextmanager
+from typing import Any, Callable, ContextManager, Generator, Iterator
 
 import pytest
 import yaml
-from ska_control_model import (
-    CommunicationStatus,
-    PowerState,
-    ResultCode,
-    SimulationMode,
-)
+from ska_ser_devices.client_server import TcpServer
 from ska_tango_testing.mock import MockCallableGroup
 
-from ska_low_mccs_pasd import MccsPasdBus
 from ska_low_mccs_pasd.pasd_bus import (
     PasdBusComponentManager,
     PasdBusSimulator,
-    PasdBusSimulatorComponentManager,
+    PasdBusSimulatorJsonServer,
 )
 
 
@@ -40,17 +38,6 @@ def max_workers_fixture() -> int:
     :return: number of worker threads
     """
     return 1
-
-
-@pytest.fixture(name="pasd_config_path")
-def pasd_config_path_fixture() -> str:
-    """
-    Return the path to a YAML file that specifies the PaSD configuration.
-
-    :return: the path to a YAML file that specifies the PaSD
-        configuration.
-    """
-    return "src/ska_low_mccs_pasd/pasd_bus/pasd_configuration.yaml"
 
 
 @pytest.fixture(name="station_id")
@@ -65,40 +52,37 @@ def station_id_fixture() -> int:
 
 
 @pytest.fixture(name="pasd_config")
-def pasd_config_fixture(pasd_config_path: str, station_id: int) -> dict:
+def pasd_config_fixture(station_id: int) -> dict:
     """
     Return the PaSD config that the pasd bus device uses.
 
-    :param pasd_config_path: path to a YAML file that specifies the PaSD
-        configuration
     :param station_id: id of the staion whose configuration will be used
         in testing.
 
     :return: the PaSD config that the PaSD bus object under test uses.
     """
-    with open(pasd_config_path, "r", encoding="utf8") as stream:
-        config = yaml.safe_load(stream)
+    config_data = importlib.resources.read_text(
+        "ska_low_mccs_pasd.pasd_bus",
+        PasdBusSimulator.CONFIG_PATH,
+    )
+
+    assert config_data is not None  # for the type-checker
+
+    config = yaml.safe_load(config_data)
     return config["stations"][station_id - 1]
 
 
 @pytest.fixture(name="pasd_bus_simulator")
-def pasd_bus_simulator_fixture(
-    pasd_config_path: str,
-    station_id: int,
-    logger: logging.Logger,
-) -> PasdBusSimulator:
+def pasd_bus_simulator_fixture(station_id: int) -> PasdBusSimulator:
     """
     Fixture that returns a PaSD bus simulator.
 
-    :param pasd_config_path: path to a YAML file that specifies the PaSD
-        configuration.
     :param station_id: the id of the station whose PaSD bus we are
         simulating.
-    :param logger: a logger for the PaSD bus simulator to use.
 
     :return: a PaSD bus simulator
     """
-    return PasdBusSimulator(pasd_config_path, station_id, logger)
+    return PasdBusSimulator(station_id, logging.DEBUG)
 
 
 @pytest.fixture(name="mock_pasd_bus_simulator")
@@ -157,27 +141,108 @@ def mock_pasd_bus_simulator_fixture(
             type(mock_simulator),
             property_name,
             unittest.mock.PropertyMock(
-                return_value=getattr(pasd_bus_simulator, property_name)
+                side_effect=functools.partial(
+                    getattr, pasd_bus_simulator, property_name
+                )
             ),
         )
 
     return mock_simulator
 
 
-@pytest.fixture(name="pasd_bus_simulator_component_manager")
-def pasd_bus_simulator_component_manager_fixture(
-    mock_pasd_bus_simulator: unittest.mock.Mock,
+@pytest.fixture(name="pasd_bus_simulator_server_launcher")
+def pasd_bus_simulator_server_launcher_fixture(
+    mock_pasd_bus_simulator: PasdBusSimulator,
+) -> Callable[[], ContextManager[TcpServer]]:
+    """
+    Return a context manager factory for a PaSD bus simulator server.
+
+    That is, a callable that, when called,
+    returns a context manager that spins up a simulator server,
+    yields it for use in testing,
+    and then shuts its down afterwards.
+
+    :param mock_pasd_bus_simulator:
+        the simulator backend that the TCP server will front,
+        wrapped with a mock that that we can assert calls.
+
+    :return: a PaSD bus simulator server context manager factory
+    """
+
+    @contextmanager
+    def launch_pasd_bus_simulator_server() -> Iterator[TcpServer]:
+        simulator_server = PasdBusSimulatorJsonServer(mock_pasd_bus_simulator)
+        server = TcpServer(
+            "localhost",
+            0,  # let the kernel give us a port
+            simulator_server,
+        )
+
+        with server:
+            server_thread = threading.Thread(
+                name="PaSD bus simulator thread",
+                target=server.serve_forever,
+            )
+            server_thread.daemon = True  # don't hang on exit
+            server_thread.start()
+            yield server
+            server.shutdown()
+
+    return launch_pasd_bus_simulator_server
+
+
+@pytest.fixture(name="pasd_bus_simulator_server")
+def pasd_bus_simulator_server_fixture(
+    pasd_bus_simulator_server_launcher: Callable[[], ContextManager[TcpServer]],
+) -> Generator[TcpServer, None, None]:
+    """
+    Return a running PaSD bus simulator server for use in testing.
+
+    :param pasd_bus_simulator_server_launcher: a callable that, when called,
+        returns a context manager that spins up a simulator server,
+        yields it for use in testing,
+        and then shuts its down afterwards.
+
+    :yields: a PaSD bus simulator server
+    """
+    with pasd_bus_simulator_server_launcher() as server:
+        yield server
+
+
+@pytest.fixture(name="pasd_bus_info")
+def pasd_bus_info_fixture(
+    pasd_bus_simulator_server: TcpServer,
+) -> dict[str, Any]:
+    """
+    Return the host and port of the PaSD bus.
+
+    :param pasd_bus_simulator_server:
+        a TCP server front end to a PaSD bus simulator.
+
+    :return: the host and port of the AWG.
+    """
+    host, port = pasd_bus_simulator_server.server_address
+    return {
+        "host": host,
+        "port": port,
+        "timeout": 3.0,
+    }
+
+
+@pytest.fixture(name="pasd_bus_component_manager")
+def pasd_bus_component_manager_fixture(
+    pasd_bus_info: dict[str, Any],
     logger: logging.Logger,
     max_workers: int,
     mock_callbacks: MockCallableGroup,
-) -> PasdBusSimulatorComponentManager:
+) -> PasdBusComponentManager:
     """
     Return a PaSD bus simulator component manager.
 
     (This is a pytest fixture.)
 
-    :param mock_pasd_bus_simulator: a mock PaSD bus simulator to be used
-        by the PaSD bus simulator component manager
+    :param pasd_bus_info: information about the PaSD bus, such as its
+        IP address (host and port) and an appropriate timeout to use.
     :param logger: the logger to be used by this object.
     :param max_workers: number of worker threads
     :param mock_callbacks: a group of mock callables for the component
@@ -185,111 +250,14 @@ def pasd_bus_simulator_component_manager_fixture(
 
     :return: a PaSD bus simulator component manager.
     """
-    return PasdBusSimulatorComponentManager(
+    component_manager = PasdBusComponentManager(
+        pasd_bus_info["host"],
+        pasd_bus_info["port"],
+        pasd_bus_info["timeout"],
         logger,
         max_workers,
         mock_callbacks["communication_state"],
         mock_callbacks["component_state"],
-        _simulator=mock_pasd_bus_simulator,
     )
-
-
-@pytest.fixture(name="pasd_bus_component_manager")
-def pasd_bus_component_manager_fixture(
-    pasd_bus_simulator_component_manager: PasdBusSimulatorComponentManager,
-    logger: logging.Logger,
-    max_workers: int,
-    mock_callbacks: MockCallableGroup,
-) -> PasdBusComponentManager:
-    """
-    Return a PaSD bus component manager.
-
-    :param pasd_bus_simulator_component_manager: a pre-initialised
-        PaSD bus simulator component manager to be used by the PaSD bus
-        component manager
-    :param logger: the logger to be used by this object.
-    :param max_workers: number of worker threads
-    :param mock_callbacks: a group of mock callables for the component
-        manager under test to use as callbacks
-
-    :return: a PaSD bus component manager
-    """
-    return PasdBusComponentManager(
-        SimulationMode.TRUE,
-        logger,
-        max_workers,
-        mock_callbacks["communication_state"],
-        mock_callbacks["component_state"],
-        _simulator_component_manager=pasd_bus_simulator_component_manager,
-    )
-
-
-@pytest.fixture(name="mock_component_manager")
-def mock_component_manager_fixture(unique_id: str) -> unittest.mock.Mock:
-    """
-    Return a mock component manager.
-
-    The mock component manager is a simple mock except for one bit of
-    extra functionality: when we call start_communicating() on it, it
-    makes calls to callbacks signaling that communication is established
-    and the component is off.
-
-    :param unique_id: a unique id used to check Tango layer functionality
-
-    :return: a mock component manager
-    """
-    mock = unittest.mock.Mock()
-    mock.is_communicating = False
-
-    def _start_communicating(mock: unittest.mock.Mock) -> None:
-        mock.is_communicating = True
-        mock._communication_status_changed_callback(CommunicationStatus.NOT_ESTABLISHED)
-        mock._communication_status_changed_callback(CommunicationStatus.ESTABLISHED)
-        mock._component_state_changed_callback({"power_state": PowerState.OFF})
-
-    mock.start_communicating.side_effect = lambda: _start_communicating(mock)
-
-    mock.return_value = unique_id, ResultCode.QUEUED
-
-    return mock
-
-
-@pytest.fixture(name="patched_pasd_bus_device_class")
-def patched_pasd_bus_device_class_fixture(
-    mock_component_manager: unittest.mock.Mock,
-) -> type[MccsPasdBus]:
-    """
-    Return a pasd bus device that is patched with a mock component manager.
-
-    :param mock_component_manager: the mock component manager with
-        which to patch the device
-
-    :return: a pasd bus device that is patched with a mock component
-        manager.
-    """
-
-    class PatchedMccsPasdBus(MccsPasdBus):
-        """A pasd bus device patched with a mock component manager."""
-
-        def __init__(self) -> None:
-            """Initialise."""
-            self._communication_status: Optional[CommunicationStatus] = None
-            super().__init__()
-
-        def create_component_manager(
-            self: PatchedMccsPasdBus,
-        ) -> unittest.mock.Mock:
-            """
-            Return a mock component manager instead of the usual one.
-
-            :return: a mock component manager
-            """
-            mock_component_manager._communication_status_changed_callback = (
-                self._communication_status_changed_callback
-            )
-            mock_component_manager._component_state_changed_callback = (
-                self._component_state_changed_callback
-            )
-            return mock_component_manager
-
-    return PatchedMccsPasdBus
+    component_manager.start_communicating()
+    return component_manager
