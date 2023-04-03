@@ -137,7 +137,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
                 ),
             )
 
-    class InitCommand(DeviceInitCommand):  # pylint: disable=too-few-public-methods
+    class InitCommand(DeviceInitCommand):
         """
         A class for :py:class:`~.MccsPasdBus`'s Init command.
 

@@ -10,19 +10,20 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Callable, Optional, cast
+from typing import Callable, Optional
 
 import tango
-from ska_control_model import CommunicationStatus, PowerState, TaskStatus
+from ska_control_model import CommunicationStatus, HealthState, TaskStatus
 from ska_low_mccs_common import MccsDeviceProxy
-from ska_low_mccs_common.component import MccsComponentManager
+from ska_low_mccs_common.component import check_communicating
 from ska_tango_base.commands import ResultCode
+from ska_tango_base.executor import TaskExecutorComponentManager
 
 __all__ = ["SmartBoxComponentManager"]
 
 
 # pylint: disable-next=abstract-method
-class SmartBoxComponentManager(MccsComponentManager):
+class SmartBoxComponentManager(TaskExecutorComponentManager):
     """
     A component manager for an smartbox.
 
@@ -30,12 +31,15 @@ class SmartBoxComponentManager(MccsComponentManager):
     or the real hardware.
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self: SmartBoxComponentManager,
         logger: logging.Logger,
         communication_state_changed_callback: Callable[[CommunicationStatus], None],
         component_state_changed_callback: Callable[..., None],
-        pasd_fqdn: str = None,
+        pasd_fqdn: Optional[str] = None,
+        fndh_port: Optional[int] = None,
+        pasd_fqdn2: Optional[str] = None,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
     ) -> None:
         """
@@ -48,23 +52,96 @@ class SmartBoxComponentManager(MccsComponentManager):
         :param component_state_changed_callback: callback to be
             called when the component state changes
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
+        :param fndh_port: the port of the fndh this smartbox is attached.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
+        :param pasd_fqdn2: the fqdn of the pasdbus to connect to.
 
         purposes only. defaults to None
         """
         max_workers = 1  # TODO: is this acceptable?
         super().__init__(
             logger,
-            max_workers,
             communication_state_changed_callback,
             component_state_changed_callback,
+            max_workers=max_workers,
+            power=None,
+            fault=None,
+            pasdbus_status=None,
         )
         self._component_state_changed_callback = component_state_changed_callback
         self._pasd_fqdn = pasd_fqdn
-
+        self.smartbox_number = 1  # TODO: this should a property set during device setup
         self._pasd_bus_proxy: Optional[MccsDeviceProxy] = _pasd_bus_proxy
+        self.fndh_port = fndh_port
         self.logger = logger
+        self.logger.info(f"The fqdn of pasd is {pasd_fqdn2}")
 
+    def start_communicating(self: SmartBoxComponentManager) -> None:
+        """
+        Establish communication with the pasdBus via a proxy.
+
+        This checks:
+            - A proxy can be formed with the MccsPasdBus
+            - We can add a health change event callback to that proxy
+            - The pasdBus is healthy
+        """
+        self.logger.info("dskih")
+        super().start_communicating()
+        if self._pasd_bus_proxy is None:
+            try:
+                self.logger.info(f"attempting to form proxy with {self._pasd_fqdn}")
+
+                self._pasd_bus_proxy = MccsDeviceProxy(
+                    "low-mccs-pasd/pasdbus/001", self.logger, connect=True
+                )
+                self._pasd_bus_proxy.add_change_event_callback(
+                    "healthState", self._pasd_health_state_changed
+                )
+
+            except Exception as e:  # pylint: disable=broad-except
+                self._update_component_state(fault=True)
+                self.logger.error("Caught exception in start_communicating: %s", e)
+                self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+
+        # TODO: check the pasdbus status
+        if self._pasd_bus_proxy.healthState == HealthState.OK:  # type: ignore
+            self.logger.info(
+                "SmartBox has successfully communicated with the MccsPasdBus"
+            )
+        if self.communication_state == CommunicationStatus.DISABLED:
+            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+            self._update_communication_state(CommunicationStatus.ESTABLISHED)
+
+            # TODO: request the state from the pasdbus.
+            # something like below?
+            # self._pasd_bus_proxy.GetSmartboxInfo(self.smartbox_number)
+            # state = self._pasd_bus_proxy.smartboxStatuses[self.smartbox_number]
+            # self._update_component_state(power = state)
+
+    def _pasd_health_state_changed(
+        self: SmartBoxComponentManager,
+        event_name: str,
+        event_value: HealthState,
+        event_quality: tango.AttrQuality,
+    ) -> None:
+        """
+        Pasdbus health state callback.
+
+        :param event_name: The event_name
+        :param event_value: The event_value
+        :param event_quality: The event_quality
+        """
+        self._update_component_state(pasdbus_status=event_value)
+
+    def stop_communicating(self: SmartBoxComponentManager) -> None:
+        """Break off communication with the pasdBus."""
+        if self.communication_state == CommunicationStatus.DISABLED:
+            return
+
+        self._update_communication_state(CommunicationStatus.DISABLED)
+        self._update_component_state(power=None, fault=None)
+
+    @check_communicating
     def on(
         self: SmartBoxComponentManager, task_callback: Optional[Callable] = None
     ) -> tuple[TaskStatus, str]:
@@ -78,8 +155,9 @@ class SmartBoxComponentManager(MccsComponentManager):
         # TODO: create the proxy to the pasd_bus:
         # here we create the connection to the simulated pasd_bus or we use
         # a mccs deviceproxy to one.
-        return self._pasd_bus_proxy.TurnSmartboxOn()
+        return self._pasd_bus_proxy.TurnSmartboxOn()  # type: ignore
 
+    @check_communicating
     def off(
         self: SmartBoxComponentManager, task_callback: Optional[Callable] = None
     ) -> tuple[TaskStatus, str]:
@@ -93,87 +171,9 @@ class SmartBoxComponentManager(MccsComponentManager):
         # TODO: create the proxy to the pasd_bus:
         # here we create the connection to the simulated pasd_bus or we use
         # a mccs deviceproxy to one.
-        return self._pasd_bus_proxy.TurnSmartboxOff()
+        return self._pasd_bus_proxy.TurnSmartboxOff()  # type: ignore
 
-    def start_communicating(self: SmartBoxComponentManager) -> None:
-        """Establish communication with the pasdBus via a proxy."""
-        exceptions_caught = []
-        # Do things that might need to be done.
-        if self._pasd_bus_proxy is None:
-            try:
-                self.logger.info(f"attempting to form proxy with {self._pasd_fqdn}")
-
-                self._pasd_bus_proxy = MccsDeviceProxy(
-                    "low-mccs-pasd/pasdbus/001", self.logger, connect=True
-                )
-            except Exception as e:  # pylint: disable=broad-except
-                self.component_state_changed_callback({"fault": True})
-                self.logger.error("Caught exception in start_communicating: %s", e)
-                exceptions_caught.append(e)
-
-            try:
-                # register a callback to any attributes of interest to MccsSmartBox.
-                # TODO: Do we want a polling architecture of a event driven architecture?
-                # Assumes the pasdBus will fire change events when these attributes
-                # change.
-                # The MccsSmartBox will resend these change events to any interested parties.
-                change_event_callbacks = {
-                    "antennasTripped": self._antenna_tripped_callback,
-                    # "smartbox_statuses": smartbox_statuses_callback,
-                    # "smartboxServiceLedsOn": smartbox_service_led_callback,
-                    # "smartboxDesiredPowerOnline":
-                    # smartbox_desired_power_online_callback,
-                    # "smartboxDesiredPowerOffline":
-                    # smartbox_desired_power_offline_callback,
-                    # "antennasOnline": antenna_online_callback,
-                    # "antennasForced": antenna_forced_callback,
-                    # TODO............
-                }
-
-                for attribute in change_event_callbacks.items():
-                    cast(
-                        MccsDeviceProxy, self._pasd_bus_proxy
-                    ).add_change_event_callback(*attribute)
-
-            except Exception as e:  # pylint: disable=broad-except
-                self.logger.error(
-                    "Caught exception in adding change event callback to proxy: %s", e
-                )
-                exceptions_caught.append(e)
-
-            if len(exceptions_caught) != 0:
-                self.logger.error(
-                    "Start_communication failed with errors: %s", str(exceptions_caught)
-                )
-                return
-
-        self.logger.info("start communicating completed")
-        self.update_communication_state(CommunicationStatus.ESTABLISHED)
-
-    def _antenna_tripped_callback(
-        self: SmartBoxComponentManager,
-        event_name: str,
-        event_value: PowerState,
-        event_quality: tango.AttrQuality,
-    ):
-        """
-        Callback.
-
-        :param event_name: event name.
-        """
-        # TODO: Is callback the correct mechanism here?
-        self._component_state_changed_callback(antennas_tripped=event_value)
-
-    @property
-    def antennas_tripped(self: SmartBoxComponentManager) -> list[bool]:
-        """
-        Return whether each antenna has had its breaker tripped.
-
-        :return: a list of booleans indicating whether each antenna has
-            had its breaker tripped.
-        """
-        return self._pasd_bus_proxy.antennasTripped
-
+    @check_communicating
     def turn_off_port(
         self: SmartBoxComponentManager,
         antenna_number: int,
@@ -206,14 +206,9 @@ class SmartBoxComponentManager(MccsComponentManager):
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
 
-            ([result_code], [unique_id]) = self._pasd_bus_proxy.TurnAntennaOff(
+            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnAntennaOff(
                 antenna_number
             )
-
-            # Do we want to block progress till we get a response?
-            # TODO: requires more thought:
-            # should we implement this?
-            # how we should implement this
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
@@ -222,8 +217,9 @@ class SmartBoxComponentManager(MccsComponentManager):
 
             return ResultCode.FAILED, "0"
 
-        return result_code, unique_id
+        return result_code, return_message
 
+    @check_communicating
     def turn_on_port(
         self: SmartBoxComponentManager,
         antenna_number: int,
@@ -251,7 +247,7 @@ class SmartBoxComponentManager(MccsComponentManager):
         antenna_number: str,
         task_callback: Callable,
         task_abort_event: Optional[threading.Event] = None,
-    ):
+    ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
@@ -262,11 +258,6 @@ class SmartBoxComponentManager(MccsComponentManager):
                 antenna_number
             )
 
-            # Do we want to block progress till we get a response?
-            # TODO: requires more thought:
-            # should we implement this?
-            # how we should implement this
-
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
             if task_callback:
@@ -276,6 +267,7 @@ class SmartBoxComponentManager(MccsComponentManager):
 
         return result_code, unique_id
 
+    @check_communicating
     def get_antenna_info(
         self: SmartBoxComponentManager,
         antenna_number: int,
@@ -312,11 +304,6 @@ class SmartBoxComponentManager(MccsComponentManager):
                 antenna_number
             )
 
-            # Do we want to block progress till we get a response?
-            # TODO: requires more thought:
-            # should we implement this?
-            # how we should implement this
-
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
             if task_callback:
@@ -325,3 +312,13 @@ class SmartBoxComponentManager(MccsComponentManager):
             return ResultCode.FAILED, "0"
 
         return result_code, unique_id
+
+    @property
+    def antennas_tripped(self: SmartBoxComponentManager) -> list[bool]:
+        """
+        Return whether each antenna has had its breaker tripped.
+
+        :return: a list of booleans indicating whether each antenna has
+            had its breaker tripped.
+        """
+        return self._pasd_bus_proxy.antennasTripped  # type: ignore
