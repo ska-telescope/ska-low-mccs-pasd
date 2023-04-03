@@ -6,8 +6,19 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module contains pytest-specific test harness for PaSD functional tests."""
+import logging
 import os
-from typing import Generator, Union, cast
+import threading
+from contextlib import contextmanager
+from typing import (
+    Callable,
+    ContextManager,
+    Generator,
+    Iterator,
+    Optional,
+    Union,
+    cast,
+)
 
 import _pytest
 import pytest
@@ -17,6 +28,7 @@ from ska_tango_testing.context import (
     ThreadedTestTangoContextManager,
     TrueTangoContextManager,
 )
+from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 
 # TODO: https://github.com/pytest-dev/pytest-forked/issues/67
@@ -69,17 +81,119 @@ def true_context_fixture(request: pytest.FixtureRequest) -> bool:
     return False
 
 
+@pytest.fixture(name="pasd_address_context_manager_factory", scope="module")
+def pasd_address_context_manager_factory_fixture() -> Callable[
+    [], ContextManager[tuple[str, int]]
+]:
+    """
+    Return a PaSD address context manager factory.
+
+    That is, return a callable that, when called, provides a context
+    manager that, when entered, returns a PaSD host and port, while
+    at the same time ensuring the validity of that host and port.
+
+    This fixture obtains the PaSD address in one of two ways:
+
+    Firstly it checks for a `PASD_ADDRESS` environment variable, of
+    the form "localhost:8502". If found, it is expected that a PaSD is
+    already available at this host and port, so there is nothing more
+    for this fixture to do. The callable that it returns will itself
+    return an empty context manager that, when entered, simply yields
+    the specified host and port.
+
+    Otherwise, the callable that this factory returns will be a context
+    manager for a PaSD simulator server instance. When entered, that
+    context manager will launch the PaSD simulator server, and then
+    yield the host and port on which it is running.
+
+    :return: a callable that returns a context manager that, when
+        entered, yields the host and port of a PaSD server.
+    """
+    address_var = "PASD_ADDRESS"
+    if address_var in os.environ:
+        [host, port_str] = os.environ[address_var].split(":")
+
+        @contextmanager
+        def _yield_address() -> Generator[tuple[str, int], None, None]:
+            yield host, int(port_str)
+
+        return _yield_address
+    else:
+
+        @contextmanager
+        def launch_simulator_server() -> Iterator[tuple[str, int]]:
+            # Imports are deferred until now,
+            # so that we do not try to import from ska_low_mccs_pasd
+            # until we know that we need to.
+            # This allows us to run our functional tests
+            # against a real cluster
+            # from within a test runner pod
+            # that does not have ska_low_mccs_pasd installed.
+            from ska_ser_devices.client_server import TcpServer
+
+            from ska_low_mccs_pasd.pasd_bus import (
+                PasdBusSimulator,
+                PasdBusSimulatorJsonServer,
+            )
+
+            simulator = PasdBusSimulator(1, logging.DEBUG)
+            simulator_server = PasdBusSimulatorJsonServer(simulator)
+            server = TcpServer(
+                "127.0.0.1", 0, simulator_server  # let the kernel give us a port
+            )
+            with server:
+                server_thread = threading.Thread(
+                    name="Signal generator simulator thread",
+                    target=server.serve_forever,
+                )
+                server_thread.daemon = True  # don't hang on exit
+                server_thread.start()
+                yield server.server_address
+                server.shutdown()
+                server_thread.join()
+
+        return launch_simulator_server
+
+
+@pytest.fixture(name="pasd_bus_name", scope="module")
+def pasd_bus_name_fixture() -> str:
+    """
+    Return the name of the PaSD bus device under test.
+
+    :return: the name of the PaSD bus device under test.
+    """
+    return "low-mccs/pasdbus/001"
+
+
+@pytest.fixture(name="pasd_timeout", scope="module")
+def pasd_timeout_fixture() -> Optional[float]:
+    """
+    Return the timeout to use when communicating with the PaSD.
+
+    :return: the timeout to use when communicating with the PaSD.
+    """
+    return 5.0
+
+
 @pytest.fixture(name="tango_harness", scope="module")
 def tango_harness_fixture(
-    pasd_bus_name: str,
     true_context: bool,
+    pasd_bus_name: str,
+    pasd_address_context_manager_factory: Callable[[], ContextManager[tuple[str, int]]],
+    pasd_timeout: Optional[float],
 ) -> Generator[TangoContextProtocol, None, None]:
     """
     Yield a Tango context containing the device/s under test.
 
-    :param pasd_bus_name: name of the PaSD bus Tango device.
     :param true_context: whether to test against an existing Tango
         deployment
+    :param pasd_bus_name: name of the PaSD bus Tango device.
+    :param pasd_address_context_manager_factory: a callable that returns
+        a context manager that, when entered, yields the host and port
+        of a PaSD bus.
+    :param pasd_timeout: timeout to use when communicating with the
+        PaSD, in seconds. If None, communications will block
+        indefinitely.
 
     :yields: a Tango context containing the devices under test
     """
@@ -91,11 +205,30 @@ def tango_harness_fixture(
         with tango_context_manager as context:
             yield context
     else:
-        tango_context_manager = ThreadedTestTangoContextManager()
-        cast(ThreadedTestTangoContextManager, tango_context_manager).add_device(
-            pasd_bus_name,
-            "ska_low_mccs_pasd.MccsPasdBus",
-            LoggingLevelDefault=int(LoggingLevel.DEBUG),
-        )
-        with tango_context_manager as context:
-            yield context
+        with pasd_address_context_manager_factory() as (pasd_host, pasd_port):
+            tango_context_manager = ThreadedTestTangoContextManager()
+            cast(ThreadedTestTangoContextManager, tango_context_manager).add_device(
+                pasd_bus_name,
+                "ska_low_mccs_pasd.MccsPasdBus",
+                Host=pasd_host,
+                Port=pasd_port,
+                Timeout=pasd_timeout,
+                LoggingLevelDefault=int(LoggingLevel.DEBUG),
+            )
+            with tango_context_manager as context:
+                yield context
+
+
+@pytest.fixture(name="change_event_callbacks", scope="module")
+def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
+    """
+    Return a dictionary of callables to be used as Tango change event callbacks.
+
+    :return: a dictionary of callables to be used as tango change event
+        callbacks.
+    """
+    return MockTangoEventCallbackGroup(
+        "pasd_bus_health",
+        "pasd_bus_state",
+        timeout=10.0,
+    )
