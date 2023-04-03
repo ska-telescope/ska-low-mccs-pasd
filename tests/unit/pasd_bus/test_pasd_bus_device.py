@@ -94,6 +94,9 @@ def patched_pasd_bus_device_class_fixture(
             mock_component_manager._component_state_changed_callback = (
                 self._component_state_changed_callback
             )
+            mock_component_manager._communication_state_changed = (
+                self._communication_state_changed
+            )
 
             return mock_component_manager
 

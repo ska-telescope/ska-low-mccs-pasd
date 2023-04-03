@@ -15,7 +15,7 @@ for, amongst other things, monitoring and control of LFAA.
 __all__ = [
     # devices
     "MccsPasdBus",
-    "MccsSmartBox"
+    "MccsSmartBox",
     # device subpackages
     "pasd_bus",
     "smart_box",

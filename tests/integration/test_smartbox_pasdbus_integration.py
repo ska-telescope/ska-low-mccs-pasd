@@ -1,13 +1,20 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of the SKA Low MCCS project
+#
+#
+# Distributed under the terms of the BSD 3-clause new license.
+# See LICENSE for more info.
+"""This module contains the integration tests for MccsPasdBus with MccsSmartBox."""
+
 from __future__ import annotations
 
 import gc
-import time
-import unittest.mock
-from typing import Any, Generator
+from typing import Generator
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState, LoggingLevel
+from ska_control_model import AdminMode, LoggingLevel
 from ska_tango_testing.context import (
     TangoContextProtocol,
     ThreadedTestTangoContextManager,
@@ -48,9 +55,7 @@ def tango_harness_fixture(
     Return a Tango harness against which to run tests of the deployment.
 
     :param smartbox_name: the name of the smartbox_bus Tango device
-    :param patched_smartbox_device_class: a subclass of MccsSmartBox that
-        has been patched with extra commands that mock system under
-        control behaviours.
+    :param pasd_bus_name: the fqdn of the pasdbus
 
     :yields: a tango context.
     """
@@ -102,8 +107,10 @@ def pasd_bus_device_fixture(
 
 
 class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
-    @pytest.mark.xfail()
-    def test_subrack_tile_integration(
+    """Test pasdbus and smartbox integration."""
+
+    @pytest.mark.xfail
+    def test_smartbox_pasd_integration(
         self: TestSmartBoxPasdBusIntegration,
         smartbox_device: tango.DeviceProxy,
         pasd_bus_device: tango.DeviceProxy,
@@ -111,6 +118,15 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
     ) -> None:
         """
         Test the integration of smartbox with the pasdBus.
+
+        :param smartbox_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param pasd_bus_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param change_event_callbacks: group of Tango change event
+            callback with asynchrony support
 
         TODO: this is a incomplete test.
         # This may be checking for incorrect state transitions.
@@ -153,10 +169,10 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
         # has a subrack attached in the configuration files.
         smartbox_device.adminMode = AdminMode.ONLINE
 
-        # This should not happen?
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.UNKNOWN
         )
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
 
 
 @pytest.fixture(name="change_event_callbacks")

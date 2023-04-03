@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of the SKA Low MCCS project
+#
+#
+# Distributed under the terms of the BSD 3-clause new license.
+# See LICENSE for more info.
+"""This module contains the tests for MccsSmartBox."""
+
 from __future__ import annotations
 
 import unittest.mock
@@ -5,11 +14,12 @@ from typing import Any, Generator
 
 import pytest
 import tango
-from ska_control_model import LoggingLevel, ResultCode
+from ska_control_model import AdminMode, LoggingLevel, ResultCode
 from ska_tango_testing.context import (
     TangoContextProtocol,
     ThreadedTestTangoContextManager,
 )
+from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd import MccsSmartBox
 
@@ -88,6 +98,8 @@ def tango_harness_fixture(
     context_manager.add_device(
         smartbox_name,
         patched_smartbox_device_class,
+        FndhPort=5,
+        PasdFQDNs="low-mccs-pasd/pasdbus/001",
         LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
     with context_manager as context:
@@ -127,6 +139,12 @@ def smartbox_device_fixture(
         (
             "PowerOffPort",
             "turn_off_port",
+            4,
+            [True, True],
+        ),
+        (
+            "GetAntennaInfo",
+            "get_antenna_info",
             4,
             [True, True],
         ),
@@ -170,3 +188,47 @@ def test_command(  # pylint: disable=too-many-arguments
 
     assert command_return[0] == ResultCode.QUEUED
     assert command_return[1][0].split("_")[-1] == device_command
+
+
+@pytest.mark.xfail
+def test_communication(
+    smartbox_device: tango.DeviceProxy,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> None:
+    """
+    Test the Tango device's communication with the smartbox_device.
+
+    :param smartbox_device: a proxy to the smartbox_device device under test.
+    :param change_event_callbacks: dictionary of mock change event
+        callbacks with asynchrony support
+    """
+    assert smartbox_device.adminMode == AdminMode.OFFLINE
+
+    smartbox_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+
+    smartbox_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+
+    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
+    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+
+
+@pytest.fixture(name="change_event_callbacks")
+def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
+    """
+    Return a dictionary of change event callbacks with asynchrony support.
+
+    :return: a collections.defaultdict that returns change event
+        callbacks by name.
+    """
+    return MockTangoEventCallbackGroup(
+        "adminMode",
+        "healthState",
+        "longRunningCommandResult",
+        "longRunningCommandStatus",
+        "state",
+    )
