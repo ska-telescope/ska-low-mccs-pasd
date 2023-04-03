@@ -13,7 +13,7 @@ import threading
 from typing import Callable, Optional
 
 import tango
-from ska_control_model import CommunicationStatus, HealthState, TaskStatus
+from ska_control_model import CommunicationStatus, HealthState, TaskStatus, PowerState
 from ska_low_mccs_common import MccsDeviceProxy
 from ska_low_mccs_common.component import check_communicating
 from ska_tango_base.commands import ResultCode
@@ -85,8 +85,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             - We can add a health change event callback to that proxy
             - The pasdBus is healthy
         """
-        self.logger.info("dskih")
-        super().start_communicating()
         if self._pasd_bus_proxy is None:
             try:
                 self.logger.info(f"attempting to form proxy with {self._pasd_fqdn}")
@@ -112,11 +110,11 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
             self._update_communication_state(CommunicationStatus.ESTABLISHED)
 
-            # TODO: request the state from the pasdbus.
-            # something like below?
-            # self._pasd_bus_proxy.GetSmartboxInfo(self.smartbox_number)
-            # state = self._pasd_bus_proxy.smartboxStatuses[self.smartbox_number]
-            # self._update_component_state(power = state)
+            # Check the port on the fndh which this smartbox is attached to.
+            if self._pasd_bus_proxy.fndhPortsPowerSensed[self.fndh_port]:
+                self._update_component_state(power = PowerState.ON)
+            else:
+                self._update_component_state(power = PowerState.OFF)
 
     def _pasd_health_state_changed(
         self: SmartBoxComponentManager,
@@ -152,10 +150,36 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         :return: a result code and a unique_id or message.
         """
-        # TODO: create the proxy to the pasd_bus:
-        # here we create the connection to the simulated pasd_bus or we use
-        # a mccs deviceproxy to one.
-        return self._pasd_bus_proxy.TurnSmartboxOn()  # type: ignore
+        return self.submit_task(
+            self._on,
+            args=[],
+            task_callback=task_callback,
+        )
+
+    def _on(
+        self: SmartBoxComponentManager,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    )-> tuple[ResultCode, str]:
+
+        if task_callback:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+        try:
+            if self._pasd_bus_proxy is None:
+                raise NotImplementedError("pasd_bus_proxy is None")
+
+            ([status],[result]) = self._pasd_bus_proxy.TurnSmartboxOn(self.fndh_port)
+            if status == ResultCode.OK:
+                self._update_component_state(power = PowerState.ON)
+
+        except Exception as ex:  # pylint: disable=broad-except
+            self.logger.error(f"error {ex}")
+            if task_callback:
+                task_callback(status=TaskStatus.FAILED, result=f"Exception: {ex}")
+
+            return ResultCode.FAILED, "0"
+
+        return ([status],[result])
 
     @check_communicating
     def off(
@@ -168,10 +192,36 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         :return: a result code and a unique_id or message.
         """
-        # TODO: create the proxy to the pasd_bus:
-        # here we create the connection to the simulated pasd_bus or we use
-        # a mccs deviceproxy to one.
-        return self._pasd_bus_proxy.TurnSmartboxOff()  # type: ignore
+        return self.submit_task(
+            self._off,
+            args=[],
+            task_callback=task_callback,
+        )
+
+    def _off(
+        self: SmartBoxComponentManager,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    )-> tuple[ResultCode, str]:
+        if task_callback:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+        try:
+            if self._pasd_bus_proxy is None:
+                raise NotImplementedError("pasd_bus_proxy is None")
+
+            ([status],[result]) = self._pasd_bus_proxy.TurnSmartboxOff(self.fndh_port)
+            
+            if status == ResultCode.OK:
+                self._update_component_state(power = PowerState.OFF)
+
+        except Exception as ex:  # pylint: disable=broad-except
+            self.logger.error(f"error {ex}")
+            if task_callback:
+                task_callback(status=TaskStatus.FAILED, result=f"Exception: {ex}")
+
+            return ResultCode.FAILED, "0"
+
+        return ([status],[result])
 
     @check_communicating
     def turn_off_port(

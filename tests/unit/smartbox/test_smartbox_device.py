@@ -190,45 +190,5 @@ def test_command(  # pylint: disable=too-many-arguments
     assert command_return[1][0].split("_")[-1] == device_command
 
 
-@pytest.mark.xfail
-def test_communication(
-    smartbox_device: tango.DeviceProxy,
-    change_event_callbacks: MockTangoEventCallbackGroup,
-) -> None:
-    """
-    Test the Tango device's communication with the smartbox_device.
-
-    :param smartbox_device: a proxy to the smartbox_device device under test.
-    :param change_event_callbacks: dictionary of mock change event
-        callbacks with asynchrony support
-    """
-    assert smartbox_device.adminMode == AdminMode.OFFLINE
-
-    smartbox_device.subscribe_event(
-        "state",
-        tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["state"],
-    )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
-
-    smartbox_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
-
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
 
 
-@pytest.fixture(name="change_event_callbacks")
-def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
-    """
-    Return a dictionary of change event callbacks with asynchrony support.
-
-    :return: a collections.defaultdict that returns change event
-        callbacks by name.
-    """
-    return MockTangoEventCallbackGroup(
-        "adminMode",
-        "healthState",
-        "longRunningCommandResult",
-        "longRunningCommandStatus",
-        "state",
-    )

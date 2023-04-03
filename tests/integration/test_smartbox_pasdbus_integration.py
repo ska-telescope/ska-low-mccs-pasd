@@ -50,6 +50,7 @@ def smartbox_name_fixture() -> str:
 def tango_harness_fixture(
     smartbox_name: str,
     pasd_bus_name: str,
+    pasd_bus_info: dict,
 ) -> Generator[TangoContextProtocol, None, None]:
     """
     Return a Tango harness against which to run tests of the deployment.
@@ -63,11 +64,16 @@ def tango_harness_fixture(
     context_manager.add_device(
         smartbox_name,
         MccsSmartBox,
+        FndhPort = 0,
+        PasdFQDNs = "low-mccs-pasd/pasdbus/001",
         LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
     context_manager.add_device(
         pasd_bus_name,
         MccsPasdBus,
+        Host=pasd_bus_info["host"],
+        Port=pasd_bus_info["port"],
+        Timeout=pasd_bus_info["timeout"],
         LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
     with context_manager as context:
@@ -108,8 +114,6 @@ def pasd_bus_device_fixture(
 
 class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
     """Test pasdbus and smartbox integration."""
-
-    @pytest.mark.xfail
     def test_smartbox_pasd_integration(
         self: TestSmartBoxPasdBusIntegration,
         smartbox_device: tango.DeviceProxy,
@@ -127,10 +131,6 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
             :py:class:`tango.test_context.DeviceTestContext`.
         :param change_event_callbacks: group of Tango change event
             callback with asynchrony support
-
-        TODO: this is a incomplete test.
-        # This may be checking for incorrect state transitions.
-        # This is technical debt!!
         """
         # adminMode offline and in DISABLE state
         # ----------------------------------------------------------------
@@ -165,15 +165,21 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
         change_event_callbacks["pasd_bus_state"].assert_not_called()
 
         # The smartbox should enter UNKNOWN, then it should check with the
-        # The station whether the port on the fndh that this subrack is attached to
-        # has a subrack attached in the configuration files.
+        # The fndh that the port this subrack is attached to
+        # has power, this is simulated as off.
         smartbox_device.adminMode = AdminMode.ONLINE
 
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.UNKNOWN
         )
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
+
+        #test turning on and off
+        smartbox_device.On()
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
 
+        smartbox_device.Off()
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
 
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
@@ -188,3 +194,4 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "pasd_bus_state",
         timeout=2.0,
     )
+

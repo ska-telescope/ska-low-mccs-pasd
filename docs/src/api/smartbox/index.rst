@@ -7,6 +7,6 @@ SmartBox subpackage
 
 .. toctree::
 
-  SmartBox device<smart_box_device>
-  SmartBox component manager<smart_box_component_manager>
-  SmartBox health model<smart_box_health_model>
+  SmartBox device<smartbox_device>
+  SmartBox component manager<smartbox_component_manager>
+  SmartBox health model<smartbox_health_model>

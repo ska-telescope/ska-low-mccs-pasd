@@ -63,7 +63,8 @@ class MccsSmartBox(SKABaseDevice):
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: SmartBoxHealthModel
         self._hardware_attributes: dict[str, Any] = {}
-
+        self._port_count = self.PORT_COUNT
+        
     def init_device(self: MccsSmartBox) -> None:
         """
         Initialise the device.
