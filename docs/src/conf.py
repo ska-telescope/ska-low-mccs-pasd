@@ -88,6 +88,7 @@ nitpick_ignore = [
     # public interface.
     ("py:class", "numpy.complex"),
     ("py:exc", "yaml.YAMLError"),
+    ("py:class", "ska_low_mccs_common.health.HealthChangedCallbackProtocol")
 ]
 
 # If your documentation needs a minimal Sphinx version, state it here.
