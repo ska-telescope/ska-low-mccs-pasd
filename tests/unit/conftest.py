@@ -39,5 +39,6 @@ def mock_callbacks_fixture() -> MockCallableGroup:
     return MockCallableGroup(
         "communication_state",
         "component_state",
+        "pasd_device_state",
         "task",
     )

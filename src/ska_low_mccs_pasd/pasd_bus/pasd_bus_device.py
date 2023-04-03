@@ -9,10 +9,10 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import logging
-import threading
-from typing import Any, Callable, Optional
+from typing import Any, Final, Optional, cast
 
 import tango
 from ska_control_model import (
@@ -24,7 +24,11 @@ from ska_control_model import (
 )
 from ska_low_mccs_common import release
 from ska_tango_base.base import SKABaseDevice
-from ska_tango_base.commands import DeviceInitCommand, FastCommand
+from ska_tango_base.commands import (
+    DeviceInitCommand,
+    FastCommand,
+    JsonValidator,
+)
 from tango.server import attribute, command
 
 from .pasd_bus_component_manager import PasdBusComponentManager
@@ -33,40 +37,86 @@ from .pasd_bus_health_model import PasdBusHealthModel
 __all__ = ["MccsPasdBus", "main"]
 
 
-NUMBER_OF_ANTENNAS_PER_STATION = 256
-NUMBER_OF_SMARTBOXES_PER_STATION = 24
 NUMBER_OF_FNDH_PORTS = 28
+NUMBER_OF_SMARTBOX_PORTS = 12
 
 DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 
 
-class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
+class MccsPasdBus(SKABaseDevice):
     """An implementation of a PaSD bus Tango device for MCCS."""
 
+    # pylint: disable=attribute-defined-outside-init
+    # Because Tango devices define attributes in init_device.
+
+    _ATTRIBUTE_MAP: dict[int, dict[str, str]] = {
+        0: {
+            "modbus_register_map_revision": "fndhModbusRegisterMapRevisionNumber",
+            "pcb_revision": "fndhPcbRevisionNumber",
+            "cpu_id": "fndhCpuId",
+            "chip_id": "fndhChipId",
+            "firmware_version": "fndhFirmwareVersion",
+            "uptime": "fndhUptime",
+            "status": "fndhStatus",
+            "led_pattern": "fndhLedPattern",
+            "psu48v_voltages": "fndhPsu48vVoltages",
+            "psu5v_voltage": "fndhPsu5vVoltage",
+            "psu48v_current": "fndhPsu48vCurrent",
+            "psu48v_temperature": "fndhPsu48vTemperature",
+            "psu5v_temperature": "fndhPsu5vTemperature",
+            "pcb_temperature": "fndhPcbTemperature",
+            "outside_temperature": "fndhOutsideTemperature",
+            "ports_connected": "fndhPortsConnected",
+            "port_breakers_tripped": "fndhPortBreakersTripped",
+            "port_forcings": "fndhPortForcings",
+            "ports_desired_power_when_online": "fndhPortsDesiredPowerOnline",
+            "ports_desired_power_when_offline": "fndhPortsDesiredPowerOffline",
+            "ports_power_sensed": "fndhPortsPowerSensed",
+        },
+        **{
+            smartbox_number: {
+                "modbus_register_map_revision": (
+                    f"smartbox{smartbox_number}ModbusRegisterMapRevisionNumber"
+                ),
+                "pcb_revision": f"smartbox{smartbox_number}PcbRevisionNumber",
+                "cpu_id": f"smartbox{smartbox_number}CpuId",
+                "chip_id": f"smartbox{smartbox_number}ChipId",
+                "firmware_version": f"smartbox{smartbox_number}FirmwareVersion",
+                "uptime": f"smartbox{smartbox_number}Uptime",
+                "status": f"smartbox{smartbox_number}Status",
+                "led_pattern": f"smartbox{smartbox_number}LedPattern",
+                "input_voltage": f"smartbox{smartbox_number}InputVoltage",
+                "power_supply_output_voltage": (
+                    f"smartbox{smartbox_number}PowerSupplyOutputVoltage"
+                ),
+                "power_supply_temperature": (
+                    f"smartbox{smartbox_number}PowerSupplyTemperature"
+                ),
+                "outside_temperature": f"smartbox{smartbox_number}OutsideTemperature",
+                "pcb_temperature": f"smartbox{smartbox_number}PcbTemperature",
+                "ports_connected": f"smartbox{smartbox_number}PortsConnected",
+                "port_forcings": f"smartbox{smartbox_number}PortForcings",
+                "port_breakers_tripped": (
+                    f"smartbox{smartbox_number}PortBreakersTripped"
+                ),
+                "ports_desired_power_when_online": (
+                    f"smartbox{smartbox_number}PortsDesiredPowerOnline"
+                ),
+                "ports_desired_power_when_offline": (
+                    f"smartbox{smartbox_number}PortsDesiredPowerOffline"
+                ),
+                "ports_power_sensed": f"smartbox{smartbox_number}PortsPowerSensed",
+                "ports_current_draw": f"smartbox{smartbox_number}PortsCurrentDraw",
+            }
+            for smartbox_number in range(1, 25)
+        },
+    }
     # ----------
     # Properties
     # ----------
     Host = tango.server.device_property(dtype=str)
     Port = tango.server.device_property(dtype=int)
     Timeout = tango.server.device_property(dtype=float)
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """
-        Initialise this device object.
-
-        :param args: positional args to the init
-        :param kwargs: keyword args to the init
-        """
-        # We aren't supposed to define initialisation methods for Tango
-        # devices; we are only supposed to define an `init_device` method. But
-        # we insist on doing so here, just so that we can define some
-        # attributes, thereby stopping the linters from complaining about
-        # "attribute-defined-outside-init" etc. We still need to make sure that
-        # `init_device` re-initialises any values defined in here.
-        super().__init__(*args, **kwargs)
-
-        self._health_state: HealthState = HealthState.UNKNOWN
-        self._health_model: PasdBusHealthModel
 
     # ---------------
     # Initialisation
@@ -77,12 +127,15 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         This is overridden here to change the Tango serialisation model.
         """
+        super().init_device()
+
         self._build_state: str = release.get_release_info()
         self._version_id: str = release.version
 
-        self._max_workers = 1
-        self._power_state_lock = threading.RLock()
-        super().init_device()
+        self._pasd_state: dict[str, Any] = {}
+        self._setup_fndh_attributes()
+        for smartbox_number in range(1, 25):
+            self._setup_smartbox_attributes(smartbox_number)
 
         message = (
             "Initialised MccsPasdBus device with properties:\n"
@@ -92,10 +145,90 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         )
         self.logger.info(message)
 
+    def _setup_fndh_attributes(self: MccsPasdBus) -> None:
+        for (slug, data_type, length) in [
+            ("ModbusRegisterMapRevisionNumber", int, None),
+            ("PcbRevisionNumber", int, None),
+            ("CpuId", int, None),
+            ("ChipId", int, None),
+            ("FirmwareVersion", str, None),
+            ("Uptime", int, None),
+            ("Status", str, None),
+            ("LedPattern", str, None),
+            ("Psu48vVoltages", (float,), 2),
+            ("Psu5vVoltage", float, None),
+            ("Psu48vCurrent", float, None),
+            ("Psu48vTemperature", float, None),
+            ("Psu5vTemperature", float, None),
+            ("PcbTemperature", float, None),
+            ("OutsideTemperature", float, None),
+            ("PortsConnected", (bool,), NUMBER_OF_FNDH_PORTS),
+            ("PortBreakersTripped", (bool,), NUMBER_OF_FNDH_PORTS),
+            ("PortForcings", (str,), NUMBER_OF_FNDH_PORTS),
+            ("PortsDesiredPowerOnline", (bool,), NUMBER_OF_FNDH_PORTS),
+            ("PortsDesiredPowerOffline", (bool,), NUMBER_OF_FNDH_PORTS),
+            ("PortsPowerSensed", (bool,), NUMBER_OF_FNDH_PORTS),
+        ]:
+            self._setup_pasd_attribute(
+                f"fndh{slug}",
+                cast(type | tuple[type], data_type),
+                max_dim_x=length,
+            )
+
+    def _setup_smartbox_attributes(self: MccsPasdBus, smartbox_number: int) -> None:
+        for (slug, data_type, length) in [
+            ("ModbusRegisterMapRevisionNumber", int, None),
+            ("PcbRevisionNumber", int, None),
+            ("CpuId", int, None),
+            ("ChipId", int, None),
+            ("FirmwareVersion", str, None),
+            ("Uptime", int, None),
+            ("Status", str, None),
+            ("LedPattern", str, None),
+            ("InputVoltage", float, None),
+            ("PowerSupplyOutputVoltage", float, None),
+            ("PowerSupplyTemperature", float, None),
+            ("OutsideTemperature", float, None),
+            ("PcbTemperature", float, None),
+            ("PortsConnected", (bool,), NUMBER_OF_SMARTBOX_PORTS),
+            ("PortForcings", (str,), NUMBER_OF_SMARTBOX_PORTS),
+            ("PortBreakersTripped", (bool,), NUMBER_OF_SMARTBOX_PORTS),
+            ("PortsDesiredPowerOnline", (bool,), NUMBER_OF_SMARTBOX_PORTS),
+            ("PortsDesiredPowerOffline", (bool,), NUMBER_OF_SMARTBOX_PORTS),
+            ("PortsPowerSensed", (bool,), NUMBER_OF_SMARTBOX_PORTS),
+            ("PortsCurrentDraw", (float,), NUMBER_OF_SMARTBOX_PORTS),
+        ]:
+            self._setup_pasd_attribute(
+                f"smartbox{smartbox_number}{slug}",
+                cast(type | tuple[type], data_type),
+                max_dim_x=length,
+            )
+
+    def _setup_pasd_attribute(
+        self: MccsPasdBus,
+        attribute_name: str,
+        data_type: type | tuple[type],
+        max_dim_x: Optional[int] = None,
+    ) -> None:
+        self._pasd_state[attribute_name] = None
+        attr = tango.server.attribute(
+            name=attribute_name,
+            dtype=data_type,
+            access=tango.AttrWriteType.READ,
+            label=attribute_name,
+            max_dim_x=max_dim_x,
+            fread="_read_pasd_attribute",
+        ).to_attr()
+        self.add_attribute(attr, self._read_pasd_attribute, None, None)
+        self.set_change_event(attribute_name, True, False)
+
+    def _read_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
+        pasd_attribute.set_value(self._pasd_state[pasd_attribute.get_name()])
+
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
-        self._health_model = PasdBusHealthModel(self._health_changed_callback)
+        self._health_model = PasdBusHealthModel(self._health_changed)
         self.set_change_event("healthState", True, False)
 
     def create_component_manager(  # type: ignore[override]
@@ -111,55 +244,28 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             self.Port,
             self.Timeout,
             self.logger,
-            self._max_workers,
-            self._communication_state_changed_callback,
-            self._component_state_changed_callback,
+            1,
+            self._communication_state_changed,
+            self._component_state_changed,
+            self._pasd_device_state_changed,
         )
 
     def init_command_objects(self: MccsPasdBus) -> None:
         """Initialise the command handlers for commands supported by this device."""
         super().init_command_objects()
 
-        for (command_name, method_name) in [
-            ("ReloadDatabase", "reload_database"),
-            ("GetFndhInfo", "get_fndh_info"),
-            ("GetSmartboxInfo", "get_smartbox_info"),
-            ("TurnSmartboxOn", "turn_smartbox_on"),
-            ("TurnSmartboxOff", "turn_smartbox_off"),
-            ("GetAntennaInfo", "get_antenna_info"),
-            ("ResetAntennaBreaker", "reset_antenna_breaker"),
-            ("TurnAntennaOn", "turn_antenna_on"),
-            ("TurnAntennaOff", "turn_antenna_off"),
+        for (command_name, command_class) in [
+            ("TurnFndhPortOn", MccsPasdBus._TurnFndhPortOnCommand),
+            ("TurnFndhPortOff", MccsPasdBus._TurnFndhPortOffCommand),
+            ("SetFndhLedPattern", MccsPasdBus._SetFndhLedPatternCommand),
+            ("ResetFndhPortBreaker", MccsPasdBus._ResetFndhPortBreakerCommand),
+            ("TurnSmartboxPortOn", MccsPasdBus._TurnSmartboxPortOnCommand),
+            ("TurnSmartboxPortOff", MccsPasdBus._TurnSmartboxPortOffCommand),
+            ("SetSmartboxLedPattern", MccsPasdBus._SetSmartboxLedPatternCommand),
+            ("ResetSmartboxPortBreaker", MccsPasdBus._ResetSmartboxPortBreakerCommand),
         ]:
             self.register_command_object(
-                command_name,
-                MccsPasdBus._SubmittedFastCommand(
-                    getattr(self.component_manager, method_name),
-                    logger=self.logger,
-                ),
-            )
-
-        for (command_name, command_class, is_on) in [
-            ("TurnFndhServiceLedOn", MccsPasdBus._TurnFndhServiceLedOnOffCommand, True),
-            (
-                "TurnFndhServiceLedOff",
-                MccsPasdBus._TurnFndhServiceLedOnOffCommand,
-                False,
-            ),
-            (
-                "TurnSmartboxServiceLedOn",
-                MccsPasdBus._TurnSmartboxServiceLedOnOffCommand,
-                True,
-            ),
-            (
-                "TurnSmartboxServiceLedOff",
-                MccsPasdBus._TurnSmartboxServiceLedOnOffCommand,
-                False,
-            ),
-        ]:
-            self.register_command_object(
-                command_name,
-                command_class(self.component_manager, is_on, logger=self.logger),
+                command_name, command_class(self.component_manager, self.logger)
             )
 
     class InitCommand(DeviceInitCommand):
@@ -190,7 +296,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
     # ----------
     # Callbacks
     # ----------
-    def _communication_state_changed_callback(
+    def _communication_state_changed(
         self: MccsPasdBus,
         communication_state: CommunicationStatus,
     ) -> None:
@@ -216,11 +322,10 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         self._health_model.update_state(communicating=True)
 
-    def _component_state_changed_callback(
+    def _component_state_changed(
         self: MccsPasdBus,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,
-        fndh_status: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -229,18 +334,74 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         This is a callback hook, called by the component manager when
         the state of the component changes.
 
+        Note this the "component" is the PaSD bus itself,
+        and the PaSD bus has no monitoring points.
+        All we can do is infer that it is powered on and not in fault,
+        from the fact that we receive responses to our requests.
+
+        The responses themselves deliver information about
+        the state of the devices attached the bus.
+        This payload is handled by a different callback.
+
         :param fault: whether the component is in fault.
         :param power: the power state of the component
-        :param fndh_status: the status of the FNDH
         :param kwargs: additional keyword arguments defining component
             state.
         """
         super()._component_state_changed(fault=fault, power=power)
-        self._health_model.update_state(
-            fault=fault, power=power, fndh_status=fndh_status
-        )
+        self._health_model.update_state(fault=fault, power=power)
 
-    def _health_changed_callback(self, health: HealthState) -> None:
+    def _pasd_device_state_changed(
+        self: MccsPasdBus,
+        pasd_device_number: int,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Handle change in the state of a PaSD device.
+
+        This is a callback hook, called by the component manager when
+        the state of a PaSD device changes.
+
+        :param pasd_device_number: the number of the PaSD device to
+            which this state update applies.
+            0 refers to the FNDH, otherwise the device number is the
+            smartbox number.
+        :param kwargs: keyword arguments defining PaSD device state.
+        """
+        try:
+            attribute_map = self._ATTRIBUTE_MAP[pasd_device_number]
+        except KeyError:
+            self.logger.error(
+                f"Received update for unknown PaSD device number {pasd_device_number}."
+            )
+
+        for pasd_attribute_name, pasd_attribute_value in kwargs.items():
+            try:
+                tango_attribute_name = attribute_map[pasd_attribute_name]
+            except KeyError:
+                self.logger.error(
+                    f"Received update for unknown PaSD attribute {pasd_attribute_name} "
+                    f"(for PaSD device {pasd_device_number})."
+                )
+
+            if self._pasd_state[tango_attribute_name] != pasd_attribute_value:
+                self._pasd_state[tango_attribute_name] = pasd_attribute_value
+                self.push_change_event(tango_attribute_name, pasd_attribute_value)
+
+    def _health_changed(
+        self: MccsPasdBus,
+        health: HealthState,
+    ) -> None:
+        """
+        Handle change in this device's health state.
+
+        This is a callback hook, called whenever the HealthModel's
+        evaluated health state changes. It is responsible for updating
+        the tango side of things i.e. making sure the attribute is up to
+        date, and events are pushed.
+
+        :param health: the new health value
+        """
         if self._health_state != health:
             self._health_state = health
             self.push_change_event("healthState", health)
@@ -279,705 +440,431 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             "then configure this device with the simulator's IP address and port."
         )
 
-    @attribute(dtype=("float",), max_dim_x=2, label="fndhPsu48vVoltages")
-    def fndhPsu48vVoltages(self: MccsPasdBus) -> list[float]:
-        """
-        Return the output voltages on the two 48V DC power supplies, in voltes.
-
-        :return: the output voltages on the two 48V DC power supplies,
-             in volts.
-        """
-        return self.component_manager.fndh_psu48v_voltages
-
-    @attribute(dtype=float, label="fndhPsu5vVoltage")
-    def fndhPsu5vVoltage(self: MccsPasdBus) -> float:
-        """
-        Return the output voltage on the 5V power supply, in volts.
-
-        :return: the output voltage on the 5V power supply, in volts.
-        """
-        return self.component_manager.fndh_psu5v_voltage
-
-    @attribute(dtype=float, label="fndhPsu48vCurrent")
-    def fndhPsu48vCurrent(self: MccsPasdBus) -> float:
-        """
-        Return the total current on the 48V DC bus, in amperes.
-
-        :return: the total current on the 48V DC bus, in amperes.
-        """
-        return self.component_manager.fndh_psu48v_current
-
-    @attribute(dtype=float, label="fndhPsu48vTemperature")
-    def fndhPsu48vTemperature(self: MccsPasdBus) -> float:
-        """
-        Return the common temperature for both 48V power supplies, in celcius.
-
-        :return: the common temperature for both 48V power supplies, in celcius.
-        """
-        return self.component_manager.fndh_psu48v_temperature
-
-    @attribute(dtype=float, label="fndhPsu5vTemperature")
-    def fndhPsu5vTemperature(self: MccsPasdBus) -> float:
-        """
-        Return the temperature of the 5V power supply, in celcius.
-
-        :return: the temperature of the 5V power supply, in celcius.
-        """
-        return self.component_manager.fndh_psu5v_temperature
-
-    @attribute(dtype=float, label="fndhPcbTemperature")
-    def fndhPcbTemperature(self: MccsPasdBus) -> float:
-        """
-        Return the temperature of the FNDH's PCB, in celcius.
-
-        :return: the temperature of the FNDH's PCB, in celcius.
-        """
-        return self.component_manager.fndh_pcb_temperature
-
-    @attribute(dtype=float, label="fndhOutsideTemperature")
-    def fndhOutsideTemperature(self: MccsPasdBus) -> float:
-        """
-        Return the temperature outside the FNDH, in celcius.
-
-        :return: the temperature outside the FNDH, in celcius.
-        """
-        return self.component_manager.fndh_pcb_temperature
-
-    @attribute(dtype=str, label="fndhStatus")
-    def fndhStatus(self: MccsPasdBus) -> str:
-        """
-        Return the status of the FNDH.
-
-        :return: the status of the FNDH
-        """
-        return self.component_manager.fndh_status
-
-    @attribute(dtype=bool, label="fndhServiceLedOn")
-    def fndhServiceLedOn(self: MccsPasdBus) -> bool:
-        """
-        Whether the FNDH's blue service indicator LED is on.
-
-        :return: whether the FNDH's blue service indicator LED is on.
-        """
-        return self.component_manager.fndh_service_led_on
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_FNDH_PORTS,
-        label="fndhPortsPowerSensed",
-    )
-    def fndhPortsPowerSensed(self: MccsPasdBus) -> list[bool]:
-        """
-        Return the actual power state of each FNDH port.
-
-        :return: the actual power state of each FNDH port.
-        """
-        return self.component_manager.fndh_ports_power_sensed
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_FNDH_PORTS,
-        label="fndhPortsConnected",
-    )
-    def fndhPortsConnected(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether there is a smartbox connected to each FNDH port.
-
-        :return: whether there is a smartbox connected to each FNDH
-            port.
-        """
-        return self.component_manager.fndh_ports_connected
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_FNDH_PORTS,
-        label="fndhPortsForced",
-    )
-    def fndhPortsForced(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether each FNDH port has had its power locally forced.
-
-        :return: whether each FNDH port has had its power locally
-            forced.
-        """
-        return [
-            forcing is not None for forcing in self.component_manager.fndh_port_forcings
-        ]
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_FNDH_PORTS,
-        label="fndhPortsDesiredPowerOnline",
-    )
-    def fndhPortsDesiredPowerOnline(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether each FNDH port is desired to be powered when controlled by MCCS.
-
-        :return: whether each FNDH port is desired to be powered when
-            controlled by MCCS
-        """
-        return self.component_manager.fndh_ports_desired_power_online
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_FNDH_PORTS,
-        label="fndhPortsDesiredPowerOffline",
-    )
-    def fndhPortsDesiredPowerOffline(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether each FNDH port should be powered when MCCS control has been lost.
-
-        :return: whether each FNDH port is desired to be powered when
-            MCCS control has been lost
-        """
-        return self.component_manager.fndh_ports_desired_power_offline
-
-    @attribute(
-        dtype=("float",),
-        max_dim_x=NUMBER_OF_SMARTBOXES_PER_STATION,
-        label="smartboxInputVoltages",
-    )
-    def smartboxInputVoltages(self: MccsPasdBus) -> list[float]:
-        """
-        Return each smartbox's power input voltage, in volts.
-
-        :return: each smartbox's power input voltage, in volts.
-        """
-        return self.component_manager.smartbox_input_voltages
-
-    @attribute(
-        dtype=("float",),
-        max_dim_x=NUMBER_OF_SMARTBOXES_PER_STATION,
-        label="smartboxPowerSupplyOutputVoltages",
-    )
-    def smartboxPowerSupplyOutputVoltages(self: MccsPasdBus) -> list[float]:
-        """
-        Return each smartbox's power supply output voltage, in volts.
-
-        :return: each smartbox's power supply output voltage, in volts.
-        """
-        return self.component_manager.smartbox_power_supply_output_voltages
-
-    @attribute(
-        dtype=("DevString",),
-        max_dim_x=NUMBER_OF_SMARTBOXES_PER_STATION,
-        label="smartboxStatuses",
-    )
-    def smartboxStatuses(self: MccsPasdBus) -> list[str]:
-        """
-        Return each smartbox's status.
-
-        :return: each smartbox's status.
-        """
-        return self.component_manager.smartbox_statuses
-
-    @attribute(
-        dtype=("float",),
-        max_dim_x=NUMBER_OF_SMARTBOXES_PER_STATION,
-        label="smartboxPowerSupplyTemperatures",
-    )
-    def smartboxPowerSupplyTemperatures(self: MccsPasdBus) -> list[float]:
-        """
-        Return each smartbox's power supply temperature.
-
-        :return: each smartbox's power supply temperature.
-        """
-        return self.component_manager.smartbox_power_supply_temperatures
-
-    @attribute(
-        dtype=("float",),
-        max_dim_x=NUMBER_OF_SMARTBOXES_PER_STATION,
-        label="smartboxOutsideTemperatures",
-    )
-    def smartboxOutsideTemperatures(self: MccsPasdBus) -> list[float]:
-        """
-        Return each smartbox's outside temperature.
-
-        :return: each smartbox's outside temperature.
-        """
-        return self.component_manager.smartbox_outside_temperatures
-
-    @attribute(
-        dtype=("float",),
-        max_dim_x=NUMBER_OF_SMARTBOXES_PER_STATION,
-        label="smartboxPcbTemperatures",
-    )
-    def smartboxPcbTemperatures(self: MccsPasdBus) -> list[float]:
-        """
-        Return each smartbox's PCB temperature.
-
-        :return: each smartbox's PCB temperature.
-        """
-        return self.component_manager.smartbox_pcb_temperatures
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_SMARTBOXES_PER_STATION,
-        label="smartboxServiceLedsOn",
-    )
-    def smartboxServiceLedsOn(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether each smartbox's blue service LED is on.
-
-        :return: a list of booleans indicating whether each smartbox's
-            blue service LED is on.
-        """
-        return self.component_manager.smartbox_service_leds_on
-
-    @attribute(
-        dtype=("int",),
-        max_dim_x=NUMBER_OF_SMARTBOXES_PER_STATION,
-        label="smartboxFndhPorts",
-    )
-    def smartboxFndhPorts(self: MccsPasdBus) -> list[int]:
-        """
-        Return each smartbox's FNDH port.
-
-        :return: each smartbox's FNDH port.
-        """
-        return self.component_manager.smartbox_fndh_ports
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_SMARTBOXES_PER_STATION,
-        label="smartboxesDesiredPowerOnline",
-    )
-    def smartboxesDesiredPowerOnline(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether each smartbox should be on when the PaSD is under MCCS control.
-
-        :return: whether each smartbox should be on when the PaSD is
-            under MCCS control.
-        """
-        return self.component_manager.smartboxes_desired_power_online
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_SMARTBOXES_PER_STATION,
-        label="smartboxesDesiredPowerOffline",
-    )
-    def smartboxesDesiredPowerOffline(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether each smartbox should be on when MCCS control of the PaSD is lost.
-
-        :return: whether each smartbox should be on when MCCS control of
-            the PaSD is lost.
-        """
-        return self.component_manager.smartboxes_desired_power_offline
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_ANTENNAS_PER_STATION,
-        label="antennasOnline",
-    )
-    def antennasOnline(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether each antenna is online.
-
-        :return: a list of booleans indicating whether each antenna is
-            online
-        """
-        return self.component_manager.antennas_online
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_ANTENNAS_PER_STATION,
-        label="antennasForced",
-    )
-    def antennasForced(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether each antenna is forced.
-
-        :return: a list of booleans indicating whether each antenna is
-            forces
-        """
-        return [
-            forcing is not None for forcing in self.component_manager.antenna_forcings
-        ]
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_ANTENNAS_PER_STATION,
-        label="antennasTripped",
-    )
-    def antennasTripped(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether each antenna has had its breaker tripped.
-
-        :return: a list of booleans indicating whether each antenna has
-            had its breaker tripped
-        """
-        return self.component_manager.antennas_tripped
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_ANTENNAS_PER_STATION,
-        label="antennaPowerStates",
-    )
-    def antennasPowerSensed(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether each antenna is currently powered on.
-
-        :return: a list of booleans indicating whether each antenna is
-            currently powered on
-        """
-        return self.component_manager.antennas_power_sensed
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_ANTENNAS_PER_STATION,
-        label="antennasDesiredPowerOnline",
-    )
-    def antennasDesiredPowerOnline(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether each antenna is desired to be on when it is online.
-
-        :return: a list of booleans indicating whether each antenna is
-            desired to be on when it is online.
-        """
-        return self.component_manager.antennas_desired_power_online
-
-    @attribute(
-        dtype=("DevBoolean",),
-        max_dim_x=NUMBER_OF_ANTENNAS_PER_STATION,
-        label="antennasDesiredPowerOffline",
-    )
-    def antennasDesiredPowerOffline(self: MccsPasdBus) -> list[bool]:
-        """
-        Return whether each antenna is desired to be on when it is offline.
-
-        :return: a list of booleans indicating whether each antenna is
-            desired to be on when it is offline.
-        """
-        return self.component_manager.antennas_desired_power_offline
-
-    @attribute(
-        dtype=("float",),
-        max_dim_x=NUMBER_OF_ANTENNAS_PER_STATION,
-        label="antennaCurrents",
-    )
-    def antennaCurrents(self: MccsPasdBus) -> list[float]:
-        """
-        Return the current at each antenna's power port, in amps.
-
-        :return: the current at each antenna's power port, in amps
-        """
-        return self.component_manager.antenna_currents
-
     # ----------
     # Commands
     # ----------
-    class _SubmittedFastCommand(FastCommand):
-        """
-        Boilerplate for a FastCommand.
-
-        This is a temporary class,
-        just until we can turn these commands into proper SlowCommands.
-        """
+    class _TurnFndhPortOnCommand(FastCommand):
+        SCHEMA: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "MccsPasdBus_TurnFndhPortOn.json",
+            )
+        )
 
         def __init__(
-            self: MccsPasdBus._SubmittedFastCommand,
-            component_manager_method: Callable,
-            logger: logging.Logger,
-        ) -> None:
-            """
-            Initialise a new instance.
-
-            :param component_manager_method: the method to invoke.
-            :param logger: a logger for this command to use.
-            """
-            self._component_manager_method = component_manager_method
-            super().__init__(logger)
-
-        def do(
-            self: MccsPasdBus._SubmittedFastCommand, *args: Any, **kwargs: Any
-        ) -> Any:
-            """
-            Execute the user-specified code for this command.
-
-            :param args: positional arguments to this do-method.
-            :param kwargs: keyword arguments to this do-method.
-
-            :return: result of executing the command.
-            """
-            return self._component_manager_method(*args, **kwargs)
-
-    @command(dtype_out="DevVarLongStringArray")
-    def ReloadDatabase(self: MccsPasdBus) -> DevVarLongStringArrayType:
-        """
-        Reload PaSD configuration from the configuration database.
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("ReloadDatabase")
-        success = handler()
-        if success:
-            return ([ResultCode.OK], ["ReloadDatabase succeeded"])
-        return ([ResultCode.FAILED], ["ReloadDatabase failed"])
-
-    @command(dtype_out="str")
-    def GetFndhInfo(self: MccsPasdBus) -> str:
-        """
-        Return information about the FNDH.
-
-        :return: A dictionary of information about the FNDH.
-        """
-        handler = self.get_command_object("GetFndhInfo")
-        fndh_info = handler()
-        return json.dumps(fndh_info)
-
-    class _TurnFndhServiceLedOnOffCommand(FastCommand):
-        def __init__(
-            self: MccsPasdBus._TurnFndhServiceLedOnOffCommand,
+            self: MccsPasdBus._TurnFndhPortOnCommand,
             component_manager: PasdBusComponentManager,
-            is_on: bool,
             logger: logging.Logger,
         ):
             self._component_manager = component_manager
-            self._is_on = is_on
-            super().__init__(logger)
+
+            validator = JsonValidator("TurnFndhPortOn", self.SCHEMA, logger)
+            super().__init__(logger, validator)
 
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnFndhServiceLedOnOffCommand,
+            self: MccsPasdBus._TurnFndhPortOnCommand,
+            port_number: int,
+            stay_on_when_offline: bool,
         ) -> Optional[bool]:
             """
-            Turn the FNDH service led on/off.
+            Turn on an FNDH port.
+
+            :param port_number: number of the port to turn on.
+            :param stay_on_when_offline: whether the port should remain
+                on if communication with the MCCS is lost.
 
             :return: whether successful, or None if there was nothing to
                 do.
             """
-            return self._component_manager.set_fndh_service_led(self._is_on)
+            return self._component_manager.turn_fndh_port_on(
+                port_number, stay_on_when_offline
+            )
 
-    @command(dtype_out="DevVarLongStringArray")
-    def TurnFndhServiceLedOn(self: MccsPasdBus) -> DevVarLongStringArrayType:
+    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
+    def TurnFndhPortOn(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
         """
-        Turn on the FNDH's blue service LED.
+        Turn on an FNDH port.
+
+        :param argin: the FNDH port to turn on
 
         :return: A tuple containing a result code and a
             unique id to identify the command in the queue.
         """
-        handler = self.get_command_object("TurnFndhServiceLedOn")
-        success = handler()
-        if success:
-            return ([ResultCode.OK], ["TurnFndhServiceLedOn succeeded"])
-        if success is None:
-            return ([ResultCode.OK], ["TurnFndhServiceLedOn succeeded: nothing to do"])
-        return ([ResultCode.FAILED], ["TurnFndhServiceLedOn failed"])
-
-    @command(dtype_out="DevVarLongStringArray")
-    def TurnFndhServiceLedOff(self: MccsPasdBus) -> DevVarLongStringArrayType:
-        """
-        Turn off the FNDH's blue service LED.
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("TurnFndhServiceLedOff")
-        success = handler()
-        if success:
-            return ([ResultCode.OK], ["TurnFndhServiceLedOff succeeded"])
-        if success is None:
-            return ([ResultCode.OK], ["TurnFndhServiceLedOff succeeded: nothing to do"])
-        return ([ResultCode.FAILED], ["TurnFndhServiceLedOff failed"])
-
-    @command(dtype_in="DevULong", dtype_out=str)
-    def GetSmartboxInfo(self: MccsPasdBus, argin: int) -> str:
-        """
-        Return information about a smartbox.
-
-        :param argin: smartbox to get info from
-
-        :return: A dictionary of information about the smartbox.
-        """
-        handler = self.get_command_object("GetSmartboxInfo")
-        smartbox_info = handler(argin)
-        return json.dumps(smartbox_info)
-
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def TurnSmartboxOn(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
-        """
-        Turn on a smartbox.
-
-        :param argin: smartbox to turn on
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("TurnSmartboxOn")
+        handler = self.get_command_object("TurnFndhPortOn")
         success = handler(argin)
         if success:
-            return ([ResultCode.OK], [f"TurnSmartboxOn {argin} succeeded"])
+            return ([ResultCode.OK], ["TurnFndhPortOn succeeded"])
         if success is None:
-            return (
-                [ResultCode.OK],
-                [f"TurnSmartboxOn {argin} succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], [f"TurnSmartboxOn {argin} failed"])
+            return ([ResultCode.OK], ["TurnFndhPortOn succeeded: nothing to do"])
+        return ([ResultCode.FAILED], ["TurnFndhPortOn failed"])
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def TurnSmartboxOff(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
-        """
-        Turn off a smartbox.
-
-        :param argin: smartbox to turn off
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("TurnSmartboxOff")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], [f"TurnSmartboxOff {argin} succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                [f"TurnSmartboxOff {argin} succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], [f"TurnSmartboxOff {argin} failed"])
-
-    class _TurnSmartboxServiceLedOnOffCommand(FastCommand):
+    class _TurnFndhPortOffCommand(FastCommand):
         def __init__(
-            self: MccsPasdBus._TurnSmartboxServiceLedOnOffCommand,
+            self: MccsPasdBus._TurnFndhPortOffCommand,
             component_manager: PasdBusComponentManager,
-            is_on: bool,
             logger: logging.Logger,
         ):
             self._component_manager = component_manager
-            self._is_on = is_on
             super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._TurnFndhPortOffCommand,
+            port_number: int,
+        ) -> Optional[bool]:
+            """
+            Turn off an FNDH port.
+
+            :param port_number: number of the port to turn off.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.turn_fndh_port_off(port_number)
+
+    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
+    def TurnFndhPortOff(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
+        """
+        Turn off an FNDH port.
+
+        :param argin: the FNDH port to turn off
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("TurnFndhPortOff")
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], [f"TurnFndhPortOff {argin} succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                [f"TurnFndhPortOff {argin} succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], [f"TurnFndhPortOff {argin} failed"])
+
+    class _SetFndhLedPatternCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._SetFndhLedPatternCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._SetFndhLedPatternCommand,
+            pattern: str,
+        ) -> Optional[bool]:
+            """
+            Set the FNDH LED pattern.
+
+            :param pattern: name of the new LED pattern
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.set_fndh_led_pattern(pattern)
+
+    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
+    def SetFndhLedPattern(self: MccsPasdBus, pattern: str) -> DevVarLongStringArrayType:
+        """
+        Set the FNDH's LED pattern.
+
+        :param pattern: name of the new LED pattern.
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("SetFndhLedPattern")
+        success = handler(pattern)
+        if success:
+            return ([ResultCode.OK], ["SetFndhLedPattern succeeded"])
+        if success is None:
+            return ([ResultCode.OK], ["SetFndhLedPattern succeeded: nothing to do"])
+        return ([ResultCode.FAILED], ["SetFndhLedPattern failed"])
+
+    class _ResetFndhPortBreakerCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetFndhPortBreakerCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetFndhPortBreakerCommand,
+            port_number: int,
+        ) -> Optional[bool]:
+            """
+            Reset an FNDH port breaker.
+
+            :param port_number: the number of the port whose breaker is
+                to be reset.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.reset_fndh_port_breaker(port_number)
+
+    @command(dtype_in=int, dtype_out="DevVarLongStringArray")
+    def ResetFndhPortBreaker(
+        self: MccsPasdBus, port_number: int
+    ) -> DevVarLongStringArrayType:
+        """
+        Reset an FNDH port's breaker.
+
+        :param port_number: number of the port whose breaker is to be
+            reset.
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetFndhPortBreaker")
+        success = handler(port_number)
+        if success:
+            return ([ResultCode.OK], ["ResetFndhPortBreaker succeeded"])
+        if success is None:
+            return ([ResultCode.OK], ["ResetFndhPortBreaker succeeded: nothing to do"])
+        return ([ResultCode.FAILED], ["ResetFndhPortBreaker failed"])
+
+    class _TurnSmartboxPortOnCommand(FastCommand):
+        SCHEMA: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "MccsPasdBus_TurnSmartboxPortOn.json",
+            )
+        )
+
+        def __init__(
+            self: MccsPasdBus._TurnSmartboxPortOnCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+
+            validator = JsonValidator("TurnSmartboxPortOn", self.SCHEMA, logger)
+            super().__init__(logger, validator)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._TurnSmartboxPortOnCommand,
+            smartbox_number: int,
+            port_number: int,
+            stay_on_when_offline: bool,
+        ) -> Optional[bool]:
+            """
+            Turn on a smartbox port.
+
+            :param smartbox_number: number of the smartbox to be
+                addressed
+            :param port_number: name of the port to be turned on.
+            :param stay_on_when_offline: whether the port should remain
+                on if communication with the MCCS is lost.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.turn_smartbox_port_on(
+                smartbox_number, port_number, stay_on_when_offline
+            )
+
+    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
+    def TurnSmartboxPortOn(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
+        """
+        Turn on a smartbox port.
+
+        :param argin: arguments encodes as a JSON string
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("TurnSmartboxPortOn")
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], ["TurnSmartboxPortOn succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["TurnSmartboxPortOn succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["TurnSmartboxPortOn failed"])
+
+    class _TurnSmartboxPortOffCommand(FastCommand):
+        SCHEMA: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "MccsPasdBus_TurnSmartboxPortOff.json",
+            )
+        )
+
+        def __init__(
+            self: MccsPasdBus._TurnSmartboxPortOffCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+
+            validator = JsonValidator("TurnSmartboxPortOff", self.SCHEMA, logger)
+            super().__init__(logger, validator)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._TurnSmartboxPortOffCommand,
+            smartbox_number: int,
+            port_number: int,
+        ) -> Optional[bool]:
+            """
+            Turn off a smartbox port.
+
+            :param smartbox_number: number of the smartbox to be
+                addressed
+            :param port_number: name of the port to be turned off.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.turn_smartbox_port_off(
+                smartbox_number, port_number
+            )
+
+    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
+    def TurnSmartboxPortOff(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
+        """
+        Turn off a smartbox port.
+
+        :param argin: arguments in JSON format
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("TurnSmartboxPortOff")
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], ["TurnSmartboxPortOff succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["TurnSmartboxPortOff succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["TurnSmartboxPortOff failed"])
+
+    class _SetSmartboxLedPatternCommand(FastCommand):
+        SCHEMA: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "MccsPasdBus_SetSmartboxLedPattern.json",
+            )
+        )
+
+        def __init__(
+            self: MccsPasdBus._SetSmartboxLedPatternCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+
+            validator = JsonValidator("SetSmartboxLedPattern", self.SCHEMA, logger)
+            super().__init__(logger, validator)
 
         # pylint: disable=arguments-differ
         def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnSmartboxServiceLedOnOffCommand,
-            smartbox_id: int,
+            self: MccsPasdBus._SetSmartboxLedPatternCommand,
+            smartbox_number: int,
+            pattern: str,
         ) -> Optional[bool]:
-            return self._component_manager.set_smartbox_service_led(
-                smartbox_id, self._is_on
+            return self._component_manager.set_smartbox_led_pattern(
+                smartbox_number, pattern
             )
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def TurnSmartboxServiceLedOn(
-        self: MccsPasdBus, argin: int
+    @command(dtype_in="str", dtype_out="DevVarLongStringArray")
+    def SetSmartboxLedPattern(
+        self: MccsPasdBus, argin: str
     ) -> DevVarLongStringArrayType:
         """
-        Turn on a smartbox's blue service LED.
+        Set a smartbox's LED pattern.
 
-        :param argin: smartbox service led to turn on
+        :param argin: JSON encoded dictionary of arguments.
 
         :return: A tuple containing a result code and a
             unique id to identify the command in the queue.
         """
-        handler = self.get_command_object("TurnSmartboxServiceLedOn")
+        handler = self.get_command_object("SetSmartboxLedPattern")
         success = handler(argin)
         if success:
-            return ([ResultCode.OK], [f"TurnSmartboxServiceLedOn {argin} succeeded"])
+            return ([ResultCode.OK], ["SetSmartboxLedPattern succeeded"])
         if success is None:
             return (
                 [ResultCode.OK],
-                [f"TurnSmartboxServiceLedOn {argin} succeeded: nothing to do"],
+                ["SetSmartboxLedPattern succeeded: nothing to do"],
             )
-        return ([ResultCode.FAILED], [f"TurnSmartboxServiceLedOn {argin} failed"])
+        return ([ResultCode.FAILED], ["SetSmartboxLedPattern failed"])
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def TurnSmartboxServiceLedOff(
-        self: MccsPasdBus, argin: int
+    class _ResetSmartboxPortBreakerCommand(FastCommand):
+        SCHEMA: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "MccsPasdBus_ResetSmartboxPortBreaker.json",
+            )
+        )
+
+        def __init__(
+            self: MccsPasdBus._ResetSmartboxPortBreakerCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+
+            validator = JsonValidator("ResetSmartboxPortBreaker", self.SCHEMA, logger)
+            super().__init__(logger, validator)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetSmartboxPortBreakerCommand,
+            smartbox_number: int,
+            port_number: int,
+        ) -> Optional[bool]:
+            """
+            Reset an FNDH port breaker.
+
+            :param smartbox_number: number of the smartbox to be
+                addressed.
+            :param port_number: the number of the port whose breaker is
+                to be reset.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.reset_smartbox_port_breaker(
+                smartbox_number, port_number
+            )
+
+    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
+    def ResetSmartboxPortBreaker(
+        self: MccsPasdBus, argin: str
     ) -> DevVarLongStringArrayType:
         """
-        Turn off a smartbox's blue service LED.
+        Reset a smartbox's port's breaker.
 
-        :param argin: smartbox service led to turn off
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("TurnSmartboxServiceLedOff")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], [f"TurnSmartboxServiceLedOff {argin} succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                [f"TurnSmartboxServiceLedOff {argin} succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], [f"TurnSmartboxServiceLedOff {argin} failed"])
-
-    @command(dtype_in="DevULong", dtype_out=str)
-    def GetAntennaInfo(self: MccsPasdBus, argin: int) -> str:
-        """
-        Return information about relationship of an antenna to other PaSD components.
-
-        :param argin: antenna to get info from
-
-        :return: A dictionary of information about the antenna.
-        """
-        handler = self.get_command_object("GetAntennaInfo")
-        antenna_info = handler(argin)
-        return json.dumps(antenna_info)
-
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def ResetAntennaBreaker(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
-        """
-        Reset a tripped antenna breaker.
-
-        :param argin: antenna breaker to reset
+        :param argin: arguments to the command in JSON format.
 
         :return: A tuple containing a result code and a
             unique id to identify the command in the queue.
         """
-        handler = self.get_command_object("ResetAntennaBreaker")
+        handler = self.get_command_object("ResetSmartboxPortBreaker")
         success = handler(argin)
         if success:
-            return ([ResultCode.OK], [f"ResetAntennaBreaker {argin} succeeded"])
+            return ([ResultCode.OK], ["ResetSmartboxPortBreaker succeeded"])
         if success is None:
             return (
                 [ResultCode.OK],
-                [f"ResetAntennaBreaker {argin} succeeded: nothing to do"],
+                ["ResetSmartboxPortBreaker succeeded: nothing to do"],
             )
-        return ([ResultCode.FAILED], [f"ResetAntennaBreaker {argin} failed"])
-
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def TurnAntennaOn(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
-        """
-        Turn on an antenna.
-
-        :param argin: antenna to turn on
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("TurnAntennaOn")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], [f"TurnAntennaOn {argin} succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                [f"TurnAntennaOn {argin} succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], [f"TurnAntennaOn {argin} failed"])
-
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def TurnAntennaOff(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
-        """
-        Turn off an antenna.
-
-        :param argin: antenna to turn off
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("TurnAntennaOff")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], [f"TurnAntennaOff {argin} succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                [f"TurnAntennaOff {argin} succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], [f"TurnAntennaOff {argin} failed"])
+        return ([ResultCode.FAILED], ["ResetSmartboxPortBreaker failed"])
 
 
 # ----------

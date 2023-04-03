@@ -137,7 +137,9 @@ def pasd_address_context_manager_factory_fixture() -> Callable[
             )
 
             simulator = PasdBusSimulator(1, logging.DEBUG)
-            simulator_server = PasdBusSimulatorJsonServer(simulator)
+            simulator_server = PasdBusSimulatorJsonServer(
+                simulator.get_fndh(), simulator.get_smartboxes()
+            )
             server = TcpServer(
                 "127.0.0.1", 0, simulator_server  # let the kernel give us a port
             )

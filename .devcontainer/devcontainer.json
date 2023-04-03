@@ -18,11 +18,14 @@
                 "python.linting.pylintEnabled": true,
                 "python.linting.pylintPath": "/usr/local/bin/pylint",
                 "coverage-gutters.manualCoverageFilePaths": [
-                    "/workspaces/ska-low-mccs/build/reports/code-coverage.xml"
+                    "/workspaces/ska-low-mccs-pasd/build/reports/code-coverage.xml"
                 ],
                 "coverage-gutters.showLineCoverage": true
             },
-            "extensions": ["ms-python.python"]
+            "extensions": [
+                "ms-python.python",
+                "ryanluker.vscode-coverage-gutters"
+            ]
         }
     },
     "postCreateCommand": "sudo poetry config virtualenvs.create false && sudo poetry install",
