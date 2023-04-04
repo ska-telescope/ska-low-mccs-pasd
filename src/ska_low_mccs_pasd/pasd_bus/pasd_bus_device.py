@@ -206,7 +206,11 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         This is a callback hook, called by the component manager when
         the state of the component changes.
 
-        :param state_change: the state change parameter.
+        :param power: An optional parameter with the new power state of the device.
+        :param fault: An optional flag if the device is entering or exiting
+            a fault state.
+        :param health: An optional parameter with the new health state of the device.
+        :param kwargs: Any other state changes.
         """
         action_map = {
             PowerState.OFF: "component_off",
@@ -217,9 +221,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         if power is not None:
             with self._power_state_lock:
-                cast(
-                    MccsComponentManager, self.component_manager
-                ).power_state = power
+                cast(MccsComponentManager, self.component_manager).power_state = power
                 self.op_state_model.perform_action(action_map[power])
 
         if fault is not None:

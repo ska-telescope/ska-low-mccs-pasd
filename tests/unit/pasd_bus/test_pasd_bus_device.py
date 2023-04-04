@@ -166,9 +166,7 @@ def test_healthState(
     change_event_callbacks.assert_change_event("healthState", HealthState.UNKNOWN)
     assert pasd_bus_device.healthState == HealthState.UNKNOWN
 
-    mock_component_manager._component_state_changed_callback(
-        health=HealthState.OK
-    )
+    mock_component_manager._component_state_changed_callback(health=HealthState.OK)
     change_event_callbacks.assert_change_event("healthState", HealthState.OK)
     assert pasd_bus_device.healthState == HealthState.OK
 
