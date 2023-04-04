@@ -9,8 +9,10 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import threading
-from typing import Any, Optional, cast
+from typing import Any, Callable, Optional
 
 import tango
 from ska_control_model import (
@@ -21,9 +23,8 @@ from ska_control_model import (
     SimulationMode,
 )
 from ska_low_mccs_common import release
-from ska_low_mccs_common.component import MccsComponentManager
-from ska_tango_base.base import BaseComponentManager, SKABaseDevice
-from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
+from ska_tango_base.base import SKABaseDevice
+from ska_tango_base.commands import DeviceInitCommand, FastCommand
 from tango.server import attribute, command
 
 from .pasd_bus_component_manager import PasdBusComponentManager
@@ -42,6 +43,13 @@ DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
     """An implementation of a PaSD bus Tango device for MCCS."""
 
+    # ----------
+    # Properties
+    # ----------
+    Host = tango.server.device_property(dtype=str)
+    Port = tango.server.device_property(dtype=int)
+    Timeout = tango.server.device_property(dtype=float)
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
         Initialise this device object.
@@ -57,13 +65,8 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         # `init_device` re-initialises any values defined in here.
         super().__init__(*args, **kwargs)
 
-        self._max_workers: int = 1
-        self._power_state_lock: threading.RLock = threading.RLock()
-        self._build_state: str = release.get_release_info()
-        self._version_id: str = release.version
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: PasdBusHealthModel
-        self.component_manager: PasdBusComponentManager  # type: ignore[assignment]
 
     # ---------------
     # Initialisation
@@ -74,16 +77,25 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         This is overridden here to change the Tango serialisation model.
         """
-        util = tango.Util.instance()
-        util.set_serial_model(tango.SerialModel.NO_SYNC)
+        self._build_state: str = release.get_release_info()
+        self._version_id: str = release.version
+
         self._max_workers = 1
         self._power_state_lock = threading.RLock()
         super().init_device()
 
+        message = (
+            "Initialised MccsPasdBus device with properties:\n"
+            f"\tHost: {self.Host}\n"
+            f"\tPort: {self.Port}\n"
+            f"\tTimeout: {self.Timeout}\n"
+        )
+        self.logger.info(message)
+
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
-        self._health_model = PasdBusHealthModel(self._component_state_changed_callback)
+        self._health_model = PasdBusHealthModel(self._health_changed_callback)
         self.set_change_event("healthState", True, False)
 
     def create_component_manager(  # type: ignore[override]
@@ -95,13 +107,14 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: a component manager for this device.
         """
         return PasdBusComponentManager(
-            SimulationMode.TRUE,
+            self.Host,
+            self.Port,
+            self.Timeout,
             self.logger,
             self._max_workers,
             self._communication_state_changed_callback,
             self._component_state_changed_callback,
         )
-        # return self.component_manager
 
     def init_command_objects(self: MccsPasdBus) -> None:
         """Initialise the command handlers for commands supported by this device."""
@@ -110,16 +123,9 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         for (command_name, method_name) in [
             ("ReloadDatabase", "reload_database"),
             ("GetFndhInfo", "get_fndh_info"),
-            ("TurnFndhServiceLedOn", "turn_fndh_service_led_on"),
-            ("TurnFndhServiceLedOff", "turn_fndh_service_led_off"),
             ("GetSmartboxInfo", "get_smartbox_info"),
             ("TurnSmartboxOn", "turn_smartbox_on"),
             ("TurnSmartboxOff", "turn_smartbox_off"),
-            ("TurnSmartboxServiceLedOn", "turn_smartbox_service_led_on"),
-            (
-                "TurnSmartboxServiceLedOff",
-                "turn_smartbox_service_led_off",
-            ),
             ("GetAntennaInfo", "get_antenna_info"),
             ("ResetAntennaBreaker", "reset_antenna_breaker"),
             ("TurnAntennaOn", "turn_antenna_on"),
@@ -127,17 +133,36 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         ]:
             self.register_command_object(
                 command_name,
-                SubmittedSlowCommand(
-                    command_name,
-                    self._command_tracker,
-                    cast(BaseComponentManager, self.component_manager),
-                    method_name,
-                    callback=None,
+                MccsPasdBus._SubmittedFastCommand(
+                    getattr(self.component_manager, method_name),
                     logger=self.logger,
                 ),
             )
 
-    class InitCommand(DeviceInitCommand):  # pylint: disable=too-few-public-methods
+        for (command_name, command_class, is_on) in [
+            ("TurnFndhServiceLedOn", MccsPasdBus._TurnFndhServiceLedOnOffCommand, True),
+            (
+                "TurnFndhServiceLedOff",
+                MccsPasdBus._TurnFndhServiceLedOnOffCommand,
+                False,
+            ),
+            (
+                "TurnSmartboxServiceLedOn",
+                MccsPasdBus._TurnSmartboxServiceLedOnOffCommand,
+                True,
+            ),
+            (
+                "TurnSmartboxServiceLedOff",
+                MccsPasdBus._TurnSmartboxServiceLedOnOffCommand,
+                False,
+            ),
+        ]:
+            self.register_command_object(
+                command_name,
+                command_class(self.component_manager, is_on, logger=self.logger),
+            )
+
+    class InitCommand(DeviceInitCommand):
         """
         A class for :py:class:`~.MccsPasdBus`'s Init command.
 
@@ -189,15 +214,13 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         if action is not None:
             self.op_state_model.perform_action(action)
 
-        self._health_model.is_communicating(
-            communication_state == CommunicationStatus.ESTABLISHED
-        )
+        self._health_model.update_state(communicating=True)
 
     def _component_state_changed_callback(
         self: MccsPasdBus,
-        power: Optional[PowerState] = None,
         fault: Optional[bool] = None,
-        health: Optional[HealthState] = None,
+        power: Optional[PowerState] = None,
+        fndh_status: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -206,41 +229,56 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         This is a callback hook, called by the component manager when
         the state of the component changes.
 
-        :param power: An optional parameter with the new power state of the device.
-        :param fault: An optional flag if the device is entering or exiting
-            a fault state.
-        :param health: An optional parameter with the new health state of the device.
-        :param kwargs: Any other state changes.
+        :param fault: whether the component is in fault.
+        :param power: the power state of the component
+        :param fndh_status: the status of the FNDH
+        :param kwargs: additional keyword arguments defining component
+            state.
         """
-        action_map = {
-            PowerState.OFF: "component_off",
-            PowerState.STANDBY: "component_standby",
-            PowerState.ON: "component_on",
-            PowerState.UNKNOWN: "component_unknown",
-        }
+        super()._component_state_changed(fault=fault, power=power)
+        self._health_model.update_state(
+            fault=fault, power=power, fndh_status=fndh_status
+        )
 
-        if power is not None:
-            with self._power_state_lock:
-                cast(MccsComponentManager, self.component_manager).power_state = power
-                self.op_state_model.perform_action(action_map[power])
-
-        if fault is not None:
-            if fault:
-                self.op_state_model.perform_action("component_fault")
-            else:
-                self.op_state_model.perform_action(
-                    action_map[self.component_manager.power_state]
-                )
-            self._health_model.component_fault(fault)
-
-        if health is not None:
-            if self._health_state != health:
-                self._health_state = health
-                self.push_change_event("healthState", health)
+    def _health_changed_callback(self, health: HealthState) -> None:
+        if self._health_state != health:
+            self._health_state = health
+            self.push_change_event("healthState", health)
 
     # ----------
     # Attributes
     # ----------
+    @attribute(dtype=SimulationMode, memorized=True, hw_memorized=True)
+    def simulationMode(self: MccsPasdBus) -> int:
+        """
+        Report the simulation mode of the device.
+
+        :return: Return the current simulation mode
+        """
+        return SimulationMode.FALSE
+
+    @simulationMode.write  # type: ignore[no-redef]
+    def simulationMode(  # pylint: disable=arguments-differ
+        self: MccsPasdBus, value: SimulationMode
+    ) -> None:
+        """
+        Set the simulation mode.
+
+        Writing this attribute is deliberately unimplemented.
+        To run this device against a simulator,
+        stand up a PaSD bus simulator,
+        then configure this device
+        with the simulator's IP address and port.
+
+        :param value: The simulation mode, as a SimulationMode value
+        """
+        self.logger.warning(
+            "MccsPasdBus's simulationMode attribute is unimplemented. "
+            "To run this device against a simulator, "
+            "stand up an external PaSD bus simulator, "
+            "then configure this device with the simulator's IP address and port."
+        )
+
     @attribute(dtype=("float",), max_dim_x=2, label="fndhPsu48vVoltages")
     def fndhPsu48vVoltages(self: MccsPasdBus) -> list[float]:
         """
@@ -322,15 +360,6 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: whether the FNDH's blue service indicator LED is on.
         """
         return self.component_manager.fndh_service_led_on
-
-    @fndhServiceLedOn.write  # type: ignore[no-redef]
-    def fndhServiceLedOn(self: MccsPasdBus, led_on: bool) -> None:
-        """
-        Turn on/off the FNDH's blue service indicator LED.
-
-        :param led_on: whether the LED should be on.
-        """
-        self.component_manager.set_fndh_service_led_on(led_on)
 
     @attribute(
         dtype=("DevBoolean",),
@@ -513,28 +542,28 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         max_dim_x=NUMBER_OF_SMARTBOXES_PER_STATION,
         label="smartboxesDesiredPowerOnline",
     )
-    def smartboxDesiredPowerOnline(self: MccsPasdBus) -> list[bool]:
+    def smartboxesDesiredPowerOnline(self: MccsPasdBus) -> list[bool]:
         """
         Return whether each smartbox should be on when the PaSD is under MCCS control.
 
         :return: whether each smartbox should be on when the PaSD is
             under MCCS control.
         """
-        return self.component_manager.smartbox_desired_power_online
+        return self.component_manager.smartboxes_desired_power_online
 
     @attribute(
         dtype=("DevBoolean",),
         max_dim_x=NUMBER_OF_SMARTBOXES_PER_STATION,
         label="smartboxesDesiredPowerOffline",
     )
-    def smartboxDesiredPowerOffline(self: MccsPasdBus) -> list[bool]:
+    def smartboxesDesiredPowerOffline(self: MccsPasdBus) -> list[bool]:
         """
         Return whether each smartbox should be on when MCCS control of the PaSD is lost.
 
         :return: whether each smartbox should be on when MCCS control of
             the PaSD is lost.
         """
-        return self.component_manager.smartbox_desired_power_offline
+        return self.component_manager.smartboxes_desired_power_offline
 
     @attribute(
         dtype=("DevBoolean",),
@@ -606,7 +635,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: a list of booleans indicating whether each antenna is
             desired to be on when it is online.
         """
-        return self.component_manager.antennas_desired_on_online
+        return self.component_manager.antennas_desired_power_online
 
     @attribute(
         dtype=("DevBoolean",),
@@ -620,7 +649,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
         :return: a list of booleans indicating whether each antenna is
             desired to be on when it is offline.
         """
-        return self.component_manager.antennas_desired_on_offline
+        return self.component_manager.antennas_desired_power_offline
 
     @attribute(
         dtype=("float",),
@@ -638,6 +667,41 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
     # ----------
     # Commands
     # ----------
+    class _SubmittedFastCommand(FastCommand):
+        """
+        Boilerplate for a FastCommand.
+
+        This is a temporary class,
+        just until we can turn these commands into proper SlowCommands.
+        """
+
+        def __init__(
+            self: MccsPasdBus._SubmittedFastCommand,
+            component_manager_method: Callable,
+            logger: logging.Logger,
+        ) -> None:
+            """
+            Initialise a new instance.
+
+            :param component_manager_method: the method to invoke.
+            :param logger: a logger for this command to use.
+            """
+            self._component_manager_method = component_manager_method
+            super().__init__(logger)
+
+        def do(
+            self: MccsPasdBus._SubmittedFastCommand, *args: Any, **kwargs: Any
+        ) -> Any:
+            """
+            Execute the user-specified code for this command.
+
+            :param args: positional arguments to this do-method.
+            :param kwargs: keyword arguments to this do-method.
+
+            :return: result of executing the command.
+            """
+            return self._component_manager_method(*args, **kwargs)
+
     @command(dtype_out="DevVarLongStringArray")
     def ReloadDatabase(self: MccsPasdBus) -> DevVarLongStringArrayType:
         """
@@ -647,68 +711,89 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             unique id to identify the command in the queue.
         """
         handler = self.get_command_object("ReloadDatabase")
-        result_code, unique_id = handler()
-        return ([result_code], [unique_id])
+        success = handler()
+        if success:
+            return ([ResultCode.OK], ["ReloadDatabase succeeded"])
+        return ([ResultCode.FAILED], ["ReloadDatabase failed"])
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def GetFndhInfo(self: MccsPasdBus, argin: int) -> tuple[list[Any], list[Any]]:
+    @command(dtype_out="str")
+    def GetFndhInfo(self: MccsPasdBus) -> str:
         """
         Return information about the FNDH.
 
-        :param argin: fndh to get info from
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A dictionary of information about the FNDH.
         """
         handler = self.get_command_object("GetFndhInfo")
-        result_code, unique_id = handler(argin)
-        return ([result_code], [unique_id])
+        fndh_info = handler()
+        return json.dumps(fndh_info)
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def TurnFndhServiceLedOn(
-        self: MccsPasdBus, argin: int
-    ) -> DevVarLongStringArrayType:
+    class _TurnFndhServiceLedOnOffCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._TurnFndhServiceLedOnOffCommand,
+            component_manager: PasdBusComponentManager,
+            is_on: bool,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            self._is_on = is_on
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._TurnFndhServiceLedOnOffCommand,
+        ) -> Optional[bool]:
+            """
+            Turn the FNDH service led on/off.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.set_fndh_service_led(self._is_on)
+
+    @command(dtype_out="DevVarLongStringArray")
+    def TurnFndhServiceLedOn(self: MccsPasdBus) -> DevVarLongStringArrayType:
         """
-        Turn on an FNDH's blue service LED.
-
-        :param argin: fndh service led to turn on
+        Turn on the FNDH's blue service LED.
 
         :return: A tuple containing a result code and a
             unique id to identify the command in the queue.
         """
         handler = self.get_command_object("TurnFndhServiceLedOn")
-        result_code, unique_id = handler(argin)
-        return ([result_code], [unique_id])
+        success = handler()
+        if success:
+            return ([ResultCode.OK], ["TurnFndhServiceLedOn succeeded"])
+        if success is None:
+            return ([ResultCode.OK], ["TurnFndhServiceLedOn succeeded: nothing to do"])
+        return ([ResultCode.FAILED], ["TurnFndhServiceLedOn failed"])
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def TurnFndhServiceLedOff(
-        self: MccsPasdBus, argin: int
-    ) -> DevVarLongStringArrayType:
+    @command(dtype_out="DevVarLongStringArray")
+    def TurnFndhServiceLedOff(self: MccsPasdBus) -> DevVarLongStringArrayType:
         """
-        Turn off an FNDH's blue service LED.
-
-        :param argin: fndh service led to turn off
+        Turn off the FNDH's blue service LED.
 
         :return: A tuple containing a result code and a
             unique id to identify the command in the queue.
         """
         handler = self.get_command_object("TurnFndhServiceLedOff")
-        result_code, unique_id = handler(argin)
-        return ([result_code], [unique_id])
+        success = handler()
+        if success:
+            return ([ResultCode.OK], ["TurnFndhServiceLedOff succeeded"])
+        if success is None:
+            return ([ResultCode.OK], ["TurnFndhServiceLedOff succeeded: nothing to do"])
+        return ([ResultCode.FAILED], ["TurnFndhServiceLedOff failed"])
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def GetSmartboxInfo(self: MccsPasdBus, argin: int) -> tuple[list[Any], list[Any]]:
+    @command(dtype_in="DevULong", dtype_out=str)
+    def GetSmartboxInfo(self: MccsPasdBus, argin: int) -> str:
         """
         Return information about a smartbox.
 
         :param argin: smartbox to get info from
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A dictionary of information about the smartbox.
         """
         handler = self.get_command_object("GetSmartboxInfo")
-        result_code, unique_id = handler(argin)
-        return ([result_code], [unique_id])
+        smartbox_info = handler(argin)
+        return json.dumps(smartbox_info)
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
     def TurnSmartboxOn(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
@@ -721,8 +806,15 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             unique id to identify the command in the queue.
         """
         handler = self.get_command_object("TurnSmartboxOn")
-        result_code, unique_id = handler(argin)
-        return ([result_code], [unique_id])
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], [f"TurnSmartboxOn {argin} succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                [f"TurnSmartboxOn {argin} succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], [f"TurnSmartboxOn {argin} failed"])
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
     def TurnSmartboxOff(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
@@ -735,8 +827,35 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             unique id to identify the command in the queue.
         """
         handler = self.get_command_object("TurnSmartboxOff")
-        result_code, unique_id = handler(argin)
-        return ([result_code], [unique_id])
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], [f"TurnSmartboxOff {argin} succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                [f"TurnSmartboxOff {argin} succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], [f"TurnSmartboxOff {argin} failed"])
+
+    class _TurnSmartboxServiceLedOnOffCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._TurnSmartboxServiceLedOnOffCommand,
+            component_manager: PasdBusComponentManager,
+            is_on: bool,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            self._is_on = is_on
+            super().__init__(logger)
+
+        # pylint: disable=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._TurnSmartboxServiceLedOnOffCommand,
+            smartbox_id: int,
+        ) -> Optional[bool]:
+            return self._component_manager.set_smartbox_service_led(
+                smartbox_id, self._is_on
+            )
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
     def TurnSmartboxServiceLedOn(
@@ -751,8 +870,15 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             unique id to identify the command in the queue.
         """
         handler = self.get_command_object("TurnSmartboxServiceLedOn")
-        result_code, unique_id = handler(argin)
-        return ([result_code], [unique_id])
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], [f"TurnSmartboxServiceLedOn {argin} succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                [f"TurnSmartboxServiceLedOn {argin} succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], [f"TurnSmartboxServiceLedOn {argin} failed"])
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
     def TurnSmartboxServiceLedOff(
@@ -767,22 +893,28 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             unique id to identify the command in the queue.
         """
         handler = self.get_command_object("TurnSmartboxServiceLedOff")
-        result_code, unique_id = handler(argin)
-        return ([result_code], [unique_id])
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], [f"TurnSmartboxServiceLedOff {argin} succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                [f"TurnSmartboxServiceLedOff {argin} succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], [f"TurnSmartboxServiceLedOff {argin} failed"])
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def GetAntennaInfo(self: MccsPasdBus, argin: int) -> tuple[list[Any], list[Any]]:
+    @command(dtype_in="DevULong", dtype_out=str)
+    def GetAntennaInfo(self: MccsPasdBus, argin: int) -> str:
         """
         Return information about relationship of an antenna to other PaSD components.
 
         :param argin: antenna to get info from
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A dictionary of information about the antenna.
         """
         handler = self.get_command_object("GetAntennaInfo")
-        result_code, unique_id = handler(argin)
-        return ([result_code], [unique_id])
+        antenna_info = handler(argin)
+        return json.dumps(antenna_info)
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
     def ResetAntennaBreaker(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
@@ -795,8 +927,15 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             unique id to identify the command in the queue.
         """
         handler = self.get_command_object("ResetAntennaBreaker")
-        result_code, unique_id = handler(argin)
-        return ([result_code], [unique_id])
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], [f"ResetAntennaBreaker {argin} succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                [f"ResetAntennaBreaker {argin} succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], [f"ResetAntennaBreaker {argin} failed"])
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
     def TurnAntennaOn(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
@@ -809,8 +948,15 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             unique id to identify the command in the queue.
         """
         handler = self.get_command_object("TurnAntennaOn")
-        result_code, unique_id = handler(argin)
-        return ([result_code], [unique_id])
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], [f"TurnAntennaOn {argin} succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                [f"TurnAntennaOn {argin} succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], [f"TurnAntennaOn {argin} failed"])
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
     def TurnAntennaOff(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
@@ -823,8 +969,15 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             unique id to identify the command in the queue.
         """
         handler = self.get_command_object("TurnAntennaOff")
-        result_code, unique_id = handler(argin)
-        return ([result_code], [unique_id])
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], [f"TurnAntennaOff {argin} succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                [f"TurnAntennaOff {argin} succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], [f"TurnAntennaOff {argin} failed"])
 
 
 # ----------

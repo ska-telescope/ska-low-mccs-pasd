@@ -1,0 +1,53 @@
+{{- $defaults := dict "enabled" true "port" 502 "logging_level_default" 3}}
+{{- $pasds := .Values.deviceServers.pasds}}
+name: "pasd-bus-{{.Release.Name}}"
+function: ska-low-mccs-pasd-bus
+domain: ska-low-mccs-pasd
+instances:
+{{- range $key, $this_pasd := $pasds.instances}}
+{{- if (pluck "enabled" $this_pasd $pasds $defaults | first)}}
+  - {{printf "pasdbus-%03d" (int $key)}}
+{{- end}}
+{{- end}}
+command: MccsPasdBus
+server: 
+  name: "MccsPasdBus"
+  instances:
+{{- range $key, $this_pasd := $pasds.instances}}
+    - name: {{printf "pasdbus-%03d" (int $key)}}
+      classes:
+      - name: "MccsPasdBus"
+        devices:
+        - name: {{printf "low-mccs/pasdbus/%03d" (int $key)}}
+          properties:
+          - name: "Host"
+            values: 
+            - {{$this_pasd.host | quote}}
+          - name: "Port"
+            values: 
+            - {{pluck "port" $this_pasd $pasds $defaults | first | toString | quote}}
+          - name: "Timeout"
+            values: 
+            - {{pluck "timeout" $this_pasd $pasds $defaults | first | toString | quote}}
+          - name: "LoggingLevelDefault"
+            values: 
+            - {{pluck "logging_level_default" $this_pasd $pasds $defaults | first | toString | quote}}
+
+{{- end}}
+depends_on:
+  - device: sys/database/2
+image:
+{{- with .Values.low_mccs_pasd.image}}
+  registry: {{.registry | quote}}
+  image: {{.image | quote}}
+  tag: {{.tag | quote}}
+  pullPolicy: {{.pullPolicy | quote}}
+{{- end}}
+livenessProbe:
+{{ toYaml .Values.livenessProbe | indent 2 }}
+readinessProbe:
+{{ toYaml .Values.readinessProbe | indent 2 }}
+{{- if (hasKey $pasds "reachable_from") }}
+nodeSelector:
+  kubernetes.io/hostname: {{ $pasds.reachable_from }}
+{{- end}}

@@ -9,15 +9,11 @@
 from __future__ import annotations
 
 import unittest.mock
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import pytest
-from _pytest.fixtures import SubRequest
 
-from ska_low_mccs_pasd.pasd_bus import (
-    PasdBusComponentManager,
-    PasdBusSimulatorComponentManager,
-)
+from ska_low_mccs_pasd.pasd_bus import PasdBusComponentManager
 
 
 class TestPasdBusComponentManager:
@@ -29,50 +25,8 @@ class TestPasdBusComponentManager:
     common commands.
     """
 
-    @pytest.fixture(
-        params=[
-            "pasd_bus_simulator_component_manager",
-            "pasd_bus_component_manager",
-        ]
-    )
-    def pasd_bus_component_manager(
-        self: TestPasdBusComponentManager,
-        pasd_bus_simulator_component_manager: PasdBusSimulatorComponentManager,
-        pasd_bus_component_manager: PasdBusComponentManager,
-        request: SubRequest,
-    ) -> Union[PasdBusSimulatorComponentManager, PasdBusComponentManager]:
-        """
-        Return the PaSD bus component class object under test.
-
-        This is parametrised to return
-
-        * a PaSD bus simulator component manager,
-
-        * a PaSD bus component manager,
-
-        So any test that relies on this fixture will be run twice.
-
-        :param pasd_bus_simulator_component_manager: the PaSD bus
-            simulator component manager to return
-        :param pasd_bus_component_manager: the PaSD bus component
-            manager to return
-        :param request: A pytest object giving access to the requesting test
-            context.
-
-        :raises ValueError: if parametrized with an unrecognised option
-
-        :return: the PaSD bus component object under test
-        """
-        if request.param == "pasd_bus_simulator_component_manager":
-            pasd_bus_simulator_component_manager.start_communicating()
-            return pasd_bus_simulator_component_manager
-        if request.param == "pasd_bus_component_manager":
-            pasd_bus_component_manager.start_communicating()
-            return pasd_bus_component_manager
-        raise ValueError("PaSD bus fixture parametrized with unrecognised option")
-
     @pytest.mark.parametrize(
-        "property_name",
+        "attribute_name",
         [
             "fndh_psu48v_voltages",
             "fndh_psu5v_voltage",
@@ -110,48 +64,55 @@ class TestPasdBusComponentManager:
     def test_read_only_property(
         self: TestPasdBusComponentManager,
         mock_pasd_bus_simulator: unittest.mock.Mock,
-        pasd_bus_component_manager: Union[
-            PasdBusSimulatorComponentManager, PasdBusComponentManager
-        ],
-        property_name: str,
+        pasd_bus_component_manager: PasdBusComponentManager,
+        attribute_name: str,
     ) -> None:
         """
         Test property reads on the component manager.
 
-        Here we test only that the reads pass through to the simulator.
+        We tell the component manager to read a value from the PaSD bus,
+        and we also read the value directly from the simulator.
+        Then we assert that these values are the same.
 
-        :param mock_pasd_bus_simulator: a mock PaSD bus simulator that
-            is acted upon by this component manager
+        :param mock_pasd_bus_simulator: the PaSD bus simulator
+            that is acted upon by the component manager under test,
+            wrapped by a mock so that we can assert calls
         :param pasd_bus_component_manager: the PaSD bus component
             manager under test
-        :param property_name: name of the property to be read
+        :param attribute_name: name of the attribute to be read
         """
-        _ = getattr(pasd_bus_component_manager, property_name)
-
+        # Reset this because start_communicating() calls fndh_status ATM.
         # Yes, mocking properties in python really is this messy
-        type(mock_pasd_bus_simulator).__dict__[property_name].assert_called_once_with()
+        type(mock_pasd_bus_simulator).__dict__[attribute_name].reset_mock()
+
+        value_as_read = getattr(pasd_bus_component_manager, attribute_name)
+
+        type(mock_pasd_bus_simulator).__dict__[attribute_name].assert_called_once_with()
+
+        simulator_value = getattr(mock_pasd_bus_simulator, attribute_name)
+        assert value_as_read == simulator_value
+
+        # TODO: It's a little surprising that this test passes as-is,
+        # even though some of these attributes are float-valued.
+        # We should break out the float-valued ones into another test,
+        # and use pytest.approx() for equality checking.
 
     @pytest.mark.parametrize(
         ("command_name", "args", "kwargs"),
         [
             ("reload_database", [], {}),
-            ("get_fndh_info", [1], {}),
+            ("get_fndh_info", [], {}),
             ("is_fndh_port_power_sensed", [1], {}),
-            ("set_fndh_service_led_on", [True], {}),
+            ("set_fndh_service_led", [True], {}),
             ("get_fndh_port_forcing", [1], {}),
-            ("simulate_fndh_port_forcing", [1, True], {}),
             ("get_smartbox_info", [1], {}),
-            ("turn_smartbox_on", [1], {}),
             ("turn_smartbox_off", [1], {}),
             ("is_smartbox_port_power_sensed", [1, 2], {}),
-            ("set_smartbox_service_led_on", [1, True], {}),
+            ("set_smartbox_service_led", [1, True], {}),
             ("get_smartbox_ports_power_sensed", [1], {}),
             ("get_antenna_info", [1], {}),
             ("get_antenna_forcing", [1], {}),
-            ("simulate_antenna_forcing", [1, True], {}),
-            ("simulate_antenna_breaker_trip", [1], {}),
             ("reset_antenna_breaker", [1], {}),
-            ("turn_antenna_on", [1], {}),
             ("turn_antenna_off", [1], {}),
             ("update_status", [], {}),
         ],
@@ -160,9 +121,7 @@ class TestPasdBusComponentManager:
     def test_command(
         self: TestPasdBusComponentManager,
         mock_pasd_bus_simulator: unittest.mock.Mock,
-        pasd_bus_component_manager: Union[
-            PasdBusSimulatorComponentManager, PasdBusComponentManager
-        ],
+        pasd_bus_component_manager: PasdBusComponentManager,
         command_name: str,
         args: Optional[list[Any]],
         kwargs: Optional[dict[str, Any]],
@@ -173,8 +132,9 @@ class TestPasdBusComponentManager:
         Here we test only that the command invokations are passed
         through to the simulator.
 
-        :param mock_pasd_bus_simulator: a mock PaSD bus simulator that
-            is acted upon by this component manager
+        :param mock_pasd_bus_simulator: the PaSD bus simulator
+            that is acted upon by the component manager under test,
+            wrapped with a mock so that we can assert calls
         :param pasd_bus_component_manager: the PaSD bus component
             manager under test
         :param command_name: name of the command to be invoked on the
@@ -183,10 +143,63 @@ class TestPasdBusComponentManager:
         :param kwargs: keyword args to the command under test
         """
         _ = getattr(pasd_bus_component_manager, command_name)(*args, **kwargs)
-        if (
-            _ is None
-        ):  # if method is not defined in component manager class then command is
-            # called by simulator class
-            getattr(mock_pasd_bus_simulator, command_name).assert_called_once_with(
-                *args, **kwargs
-            )
+
+        getattr(mock_pasd_bus_simulator, command_name).assert_called_once_with(
+            *args, **kwargs
+        )
+
+    def test_turn_smartbox_on_off(
+        self: TestPasdBusComponentManager,
+        mock_pasd_bus_simulator: unittest.mock.Mock,
+        pasd_bus_component_manager: PasdBusComponentManager,
+    ) -> None:
+        """
+        Test a smartbox on and off.
+
+        :param mock_pasd_bus_simulator: the PaSD bus simulator
+            that is acted upon by the component manager under test,
+            wrapped with a mock so that we can assert calls
+        :param pasd_bus_component_manager: the PaSD bus component
+            manager under test
+        """
+        assert pasd_bus_component_manager.turn_smartbox_on(1)
+        mock_pasd_bus_simulator.turn_smartbox_on.assert_called_once_with(1, True)
+        mock_pasd_bus_simulator.turn_smartbox_on.reset_mock()
+
+        assert None is pasd_bus_component_manager.turn_smartbox_on(1)
+        mock_pasd_bus_simulator.assert_not_called()
+
+        assert pasd_bus_component_manager.turn_smartbox_off(1)
+        mock_pasd_bus_simulator.turn_smartbox_off.assert_called_once_with(1)
+        mock_pasd_bus_simulator.turn_smartbox_off.reset_mock()
+
+        assert None is pasd_bus_component_manager.turn_smartbox_off(1)
+        mock_pasd_bus_simulator.assert_not_called()
+
+    def test_turn_antenna_on_off(
+        self: TestPasdBusComponentManager,
+        mock_pasd_bus_simulator: unittest.mock.Mock,
+        pasd_bus_component_manager: PasdBusComponentManager,
+    ) -> None:
+        """
+        Test turning on a smartbox.
+
+        :param mock_pasd_bus_simulator: the PaSD bus simulator
+            that is acted upon by the component manager under test,
+            wrapped with a mock so that we can assert calls
+        :param pasd_bus_component_manager: the PaSD bus component
+            manager under test
+        """
+        assert pasd_bus_component_manager.turn_antenna_on(1)
+        mock_pasd_bus_simulator.turn_antenna_on.assert_called_once_with(1, True)
+        mock_pasd_bus_simulator.turn_antenna_on.reset_mock()
+
+        assert None is pasd_bus_component_manager.turn_antenna_on(1)
+        mock_pasd_bus_simulator.assert_not_called()
+
+        assert pasd_bus_component_manager.turn_antenna_off(1)
+        mock_pasd_bus_simulator.turn_antenna_off.assert_called_once_with(1)
+        mock_pasd_bus_simulator.turn_antenna_off.reset_mock()
+
+        assert None is pasd_bus_component_manager.turn_antenna_off(1)
+        mock_pasd_bus_simulator.assert_not_called()
