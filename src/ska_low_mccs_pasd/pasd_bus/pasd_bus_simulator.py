@@ -918,7 +918,7 @@ class PasdBusSimulator:
             SmartboxSimulator() for _ in range(self.NUMBER_OF_SMARTBOXES)
         ]
         logger.info(
-            f"""Initialised {self.NUMBER_OF_SMARTBOXES} Smartbox 
+            f"""Initialised {self.NUMBER_OF_SMARTBOXES} Smartbox
             simulators for station {station_id}."""
         )
 
@@ -1481,7 +1481,7 @@ class PasdBusSimulator:
         :return: whether successful, or None if there was nothing to do
         """
         logger.info(
-            f"""Setting antenna {antenna_id}, station {self._station_id} 
+            f"""Setting antenna {antenna_id}, station {self._station_id}
             forcing to {ForcingDict[forcing]}."""
         )
         (smartbox_id, smartbox_port) = self._antenna_smartbox_ports[antenna_id - 1]
