@@ -25,8 +25,8 @@ def pytest_itemcollected(item: pytest.Item) -> None:
         item.add_marker("forked")
 
 
-@pytest.fixture(name="callbacks")
-def callbacks_fixture() -> MockCallableGroup:
+@pytest.fixture(name="mock_callbacks")
+def mock_callbacks_fixture() -> MockCallableGroup:
     """
     Return a group of callables with asynchrony support.
 
