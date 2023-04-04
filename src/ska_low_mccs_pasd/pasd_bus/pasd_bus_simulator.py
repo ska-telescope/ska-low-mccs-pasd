@@ -1482,7 +1482,9 @@ class PasdBusSimulator:
         :return: whether successful, or None if there was nothing to do
         """
         logger.info(
-            f"Setting antenna {antenna_id}, station {self._station_id} forcing to {ForcingDict[forcing]}.")
+            f"""Setting antenna {antenna_id}, station {self._station_id} 
+            forcing to {ForcingDict[forcing]}."""
+        )
         (smartbox_id, smartbox_port) = self._antenna_smartbox_ports[antenna_id - 1]
         return self._smartbox_simulators[smartbox_id - 1].simulate_port_forcing(
             smartbox_port, forcing
