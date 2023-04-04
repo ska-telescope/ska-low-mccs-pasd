@@ -106,6 +106,14 @@ FndhInfoType = TypedDict(
 )
 
 
+ForcingDict = {
+    True: "on",
+    False: "off",
+    None: "not forced"
+}
+
+
+logging.basicConfig()
 logger = logging.getLogger()
 
 
@@ -616,6 +624,7 @@ class FndhSimulator(PasdHardwareSimulator):
     def __init__(self: FndhSimulator) -> None:
         """Initialise a new instance."""
         self._update_time = datetime.now().isoformat()
+
         super().__init__(self.NUMBER_OF_PORTS)
 
     @property
@@ -903,10 +912,17 @@ class PasdBusSimulator:
         self._station_id = station_id
         logger.setLevel(logging_level)
 
+        logger.info(
+            f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}.")
+
         self._fndh_simulator = FndhSimulator()
+        logger.info(f"Initialised FNDH simulator for station {station_id}.")
         self._smartbox_simulators = [
             SmartboxSimulator() for _ in range(self.NUMBER_OF_SMARTBOXES)
         ]
+        logger.info(
+            f"Initialised {self.NUMBER_OF_SMARTBOXES} Smartbox simulators for station {station_id}."
+        )
 
         self._smartbox_fndh_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
         self._antenna_smartbox_ports: list[tuple[int, int]] = [
@@ -915,6 +931,8 @@ class PasdBusSimulator:
 
         self._antenna_configs: list[_AntennaConfigType] = []
         self.reload_database()
+        logger.info(
+            f"PaSD configuration data loaded into simulator for station {station_id}.")
 
         # ANTENNAS
         self._antennas_desired_power_online = [False] * len(self._antenna_configs)
@@ -1081,6 +1099,7 @@ class PasdBusSimulator:
         if self._fndh_simulator.service_led_on == led_on:
             return None
         self._fndh_simulator.service_led_on = led_on
+        logger.info(f"FNDH LED turned on for station {self._station_id}.")
         return True
 
     @property
@@ -1204,6 +1223,7 @@ class PasdBusSimulator:
 
         :return: Whether successful, or None if there was nothing to do
         """
+        logger.info(f"Smartbox {smartbox_id} in 'on' state.")
         fndh_port = self._smartbox_fndh_ports[smartbox_id - 1]
         return self._fndh_simulator.turn_port_on(fndh_port, desired_on_if_offline)
 
@@ -1216,6 +1236,7 @@ class PasdBusSimulator:
 
         :return: Whether successful, or None if there was nothing to do
         """
+        logger.info(f"Smartbox {smartbox_id} in 'off' state.")
         fndh_port = self._smartbox_fndh_ports[smartbox_id - 1]
         return self._fndh_simulator.turn_port_off(fndh_port)
 
@@ -1325,6 +1346,7 @@ class PasdBusSimulator:
 
         :return: whether successful, or None if there was nothing to do
         """
+        logger.info(f"Smartbox {smartbox_id} LED in 'on' state.")
         if self._smartbox_simulators[smartbox_id - 1].service_led_on == led_on:
             return None
 
@@ -1459,6 +1481,8 @@ class PasdBusSimulator:
 
         :return: whether successful, or None if there was nothing to do
         """
+        logger.info(
+            f"Setting antenna {antenna_id}, station {self._station_id} forcing to {ForcingDict[forcing]}.")
         (smartbox_id, smartbox_port) = self._antenna_smartbox_ports[antenna_id - 1]
         return self._smartbox_simulators[smartbox_id - 1].simulate_port_forcing(
             smartbox_port, forcing
@@ -1475,6 +1499,8 @@ class PasdBusSimulator:
 
         :return: whether successful, or None if there was nothing to do
         """
+        logger.info(
+            f"Antenna {antenna_id}, station {self._station_id} breaker tripped.")
         (smartbox_id, smartbox_port) = self._antenna_smartbox_ports[antenna_id - 1]
         return self._smartbox_simulators[smartbox_id - 1].simulate_port_breaker_trip(
             smartbox_port
@@ -1491,6 +1517,7 @@ class PasdBusSimulator:
 
         :return: Whether successful, or None if there was nothing to do
         """
+        logger.info(f"Antenna {antenna_id}, station {self._station_id} breaker reset.")
         (smartbox_id, smartbox_port) = self._antenna_smartbox_ports[antenna_id - 1]
         return self._smartbox_simulators[smartbox_id - 1].reset_port_breaker(
             smartbox_port
@@ -1532,6 +1559,7 @@ class PasdBusSimulator:
         if self.turn_smartbox_on(smartbox_id, desired_on_if_offline) is False:
             return False
 
+        logger.info(f"Antenna {antenna_id}, station {self._station_id} turned on.")
         return self._smartbox_simulators[smartbox_id - 1].turn_port_on(
             smartbox_port, desired_on_if_offline
         )
@@ -1551,6 +1579,7 @@ class PasdBusSimulator:
             self._smartbox_simulators[smartbox_id - 1].ports_desired_power_online
         ):
             _ = self.turn_smartbox_off(smartbox_id)
+        logger.info(f"Antenna {antenna_id}, station {self._station_id} turned off.")
         return result
 
     @property
