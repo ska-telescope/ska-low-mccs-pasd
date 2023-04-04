@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
-"""This module implements component management for smartboxs."""
+"""This module implements the component management for smartbox."""
 from __future__ import annotations
 
 import logging
@@ -44,7 +44,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         component_state_changed_callback: Callable[..., None],
         pasd_fqdn: Optional[str] = None,
         fndh_port: Optional[int] = None,
-        pasd_fqdn2: Optional[str] = None,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
     ) -> None:
         """
@@ -59,7 +58,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
         :param fndh_port: the port of the fndh this smartbox is attached.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
-        :param pasd_fqdn2: the fqdn of the pasdbus to connect to.
 
         purposes only. defaults to None
         """
@@ -79,7 +77,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self._pasd_bus_proxy: Optional[MccsDeviceProxy] = _pasd_bus_proxy
         self.fndh_port = fndh_port
         self.logger = logger
-        self.logger.info(f"The fqdn of pasd is {pasd_fqdn2}")
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """
@@ -346,7 +343,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
     def _get_antenna_info(
         self: SmartBoxComponentManager,
-        antenna_number: str,
+        antenna_id: str,
         task_callback: Callable,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
@@ -357,7 +354,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 raise NotImplementedError("pasd_bus_proxy is None")
 
             ([result_code], [unique_id]) = self._pasd_bus_proxy.GetAntennaInfo(
-                antenna_number
+                antenna_id
             )
 
         except Exception as ex:  # pylint: disable=broad-except
@@ -368,13 +365,3 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             return ResultCode.FAILED, "0"
 
         return result_code, unique_id
-
-    @property
-    def antennas_tripped(self: SmartBoxComponentManager) -> list[bool]:
-        """
-        Return whether each antenna has had its breaker tripped.
-
-        :return: a list of booleans indicating whether each antenna has
-            had its breaker tripped.
-        """
-        return self._pasd_bus_proxy.antennasTripped  # type: ignore

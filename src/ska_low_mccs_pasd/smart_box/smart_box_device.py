@@ -62,7 +62,6 @@ class MccsSmartBox(SKABaseDevice):
         self._port_power_states = [PowerState.UNKNOWN] * self.PORT_COUNT
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: SmartBoxHealthModel
-        self._hardware_attributes: dict[str, Any] = {}
         self._port_count = self.PORT_COUNT
 
     def init_device(self: MccsSmartBox) -> None:
@@ -108,7 +107,6 @@ class MccsSmartBox(SKABaseDevice):
 
             :return: a resultcode, message tuple
             """
-            # self._device.set_change_event("antennasTripped", True, False)
             self._completed()
             return (ResultCode.OK, "Init command completed OK")
 
@@ -125,9 +123,8 @@ class MccsSmartBox(SKABaseDevice):
             self.logger,
             self._communication_state_changed,
             self._component_state_changed_callback,
-            "low-mccs-pasd/pasdbus/001",  # TODO: get fqdn from property
-            self.FndhPort,
             self.PasdFQDNs,
+            self.FndhPort,
         )
 
     def init_command_objects(self: MccsSmartBox) -> None:
@@ -159,7 +156,10 @@ class MccsSmartBox(SKABaseDevice):
         self: MccsSmartBox, argin: int
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
         """
-        Power up a Antenna's LNA.
+        Power up a port.
+
+        This may or may not have a Antenna attached.
+        The station has this port:antenna mapping from configuration files.
 
         :param argin: the logical id of the Antenna (LNA) to power up
 
@@ -177,7 +177,10 @@ class MccsSmartBox(SKABaseDevice):
         self: MccsSmartBox, argin: int
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
         """
-        Power down a Antenna's LNA.
+        Power down a port.
+
+        This may or may not have a Antenna attached.
+        The station has this port:antenna mapping from configuration files.
 
         :param argin: the logical id of the TPM to power down
 
@@ -220,17 +223,19 @@ class MccsSmartBox(SKABaseDevice):
     #     return ([result_code], [message])
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def GetAntennaInfo(self: MccsSmartBox, argin: int) -> tuple[list[Any], list[Any]]:
+    def GetAntennaInfo(
+        self: MccsSmartBox, antenna_id: int
+    ) -> tuple[list[Any], list[Any]]:
         """
         Return information about relationship of an antenna to other PaSD components.
 
-        :param argin: antenna to get info from
+        :param antenna_id: antenna id to query.
 
         :return: A tuple containing a result code and a
             unique id to identify the command in the queue.
         """
         handler = self.get_command_object("GetAntennaInfo")
-        result_code, unique_id = handler(argin)
+        result_code, unique_id = handler(antenna_id)
         return ([result_code], [unique_id])
 
     # ----------
