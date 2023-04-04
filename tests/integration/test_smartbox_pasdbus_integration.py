@@ -57,6 +57,7 @@ def tango_harness_fixture(
 
     :param smartbox_name: the name of the smartbox_bus Tango device
     :param pasd_bus_name: the fqdn of the pasdbus
+    :param pasd_bus_info: the information for pasd setup
 
     :yields: a tango context.
     """
@@ -64,8 +65,8 @@ def tango_harness_fixture(
     context_manager.add_device(
         smartbox_name,
         MccsSmartBox,
-        FndhPort = 0,
-        PasdFQDNs = "low-mccs-pasd/pasdbus/001",
+        FndhPort=0,
+        PasdFQDNs=pasd_bus_name,
         LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
     context_manager.add_device(
@@ -114,6 +115,7 @@ def pasd_bus_device_fixture(
 
 class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
     """Test pasdbus and smartbox integration."""
+
     def test_smartbox_pasd_integration(
         self: TestSmartBoxPasdBusIntegration,
         smartbox_device: tango.DeviceProxy,
@@ -174,12 +176,13 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
         )
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
 
-        #test turning on and off
+        # test turning on and off
         smartbox_device.On()
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
 
         smartbox_device.Off()
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
+
 
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
@@ -194,4 +197,3 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "pasd_bus_state",
         timeout=2.0,
     )
-

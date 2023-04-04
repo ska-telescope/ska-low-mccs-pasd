@@ -14,12 +14,11 @@ from typing import Any, Generator
 
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel, ResultCode
+from ska_control_model import LoggingLevel, ResultCode
 from ska_tango_testing.context import (
     TangoContextProtocol,
     ThreadedTestTangoContextManager,
 )
-from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd import MccsSmartBox
 
@@ -188,7 +187,3 @@ def test_command(  # pylint: disable=too-many-arguments
 
     assert command_return[0] == ResultCode.QUEUED
     assert command_return[1][0].split("_")[-1] == device_command
-
-
-
-

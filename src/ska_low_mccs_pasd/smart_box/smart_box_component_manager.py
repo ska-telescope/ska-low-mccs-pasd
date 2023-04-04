@@ -13,7 +13,12 @@ import threading
 from typing import Callable, Optional
 
 import tango
-from ska_control_model import CommunicationStatus, HealthState, TaskStatus, PowerState
+from ska_control_model import (
+    CommunicationStatus,
+    HealthState,
+    PowerState,
+    TaskStatus,
+)
 from ska_low_mccs_common import MccsDeviceProxy
 from ska_low_mccs_common.component import check_communicating
 from ska_tango_base.commands import ResultCode
@@ -111,10 +116,11 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self._update_communication_state(CommunicationStatus.ESTABLISHED)
 
             # Check the port on the fndh which this smartbox is attached to.
-            if self._pasd_bus_proxy.fndhPortsPowerSensed[self.fndh_port]:
-                self._update_component_state(power = PowerState.ON)
+            port = self.fndh_port
+            if self._pasd_bus_proxy.fndhPortsPowerSensed[port]:  # type: ignore
+                self._update_component_state(power=PowerState.ON)
             else:
-                self._update_component_state(power = PowerState.OFF)
+                self._update_component_state(power=PowerState.OFF)
 
     def _pasd_health_state_changed(
         self: SmartBoxComponentManager,
@@ -160,7 +166,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self: SmartBoxComponentManager,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
-    )-> tuple[ResultCode, str]:
+    ) -> tuple[ResultCode, str]:
 
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
@@ -168,9 +174,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
 
-            ([status],[result]) = self._pasd_bus_proxy.TurnSmartboxOn(self.fndh_port)
+            ([status], [result]) = self._pasd_bus_proxy.TurnSmartboxOn(self.fndh_port)
             if status == ResultCode.OK:
-                self._update_component_state(power = PowerState.ON)
+                self._update_component_state(power=PowerState.ON)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
@@ -179,7 +185,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
             return ResultCode.FAILED, "0"
 
-        return ([status],[result])
+        return (status, result)
 
     @check_communicating
     def off(
@@ -202,17 +208,17 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self: SmartBoxComponentManager,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
-    )-> tuple[ResultCode, str]:
+    ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
 
-            ([status],[result]) = self._pasd_bus_proxy.TurnSmartboxOff(self.fndh_port)
-            
+            ([status], [result]) = self._pasd_bus_proxy.TurnSmartboxOff(self.fndh_port)
+
             if status == ResultCode.OK:
-                self._update_component_state(power = PowerState.OFF)
+                self._update_component_state(power=PowerState.OFF)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
@@ -221,7 +227,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
             return ResultCode.FAILED, "0"
 
-        return ([status],[result])
+        return (status, result)
 
     @check_communicating
     def turn_off_port(

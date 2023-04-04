@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import functools
-import importlib
 import logging
 import threading
 import unittest.mock
@@ -19,15 +18,13 @@ from contextlib import contextmanager
 from typing import Any, Callable, ContextManager, Generator, Iterator
 
 import pytest
-import yaml
 from ska_ser_devices.client_server import TcpServer
-from ska_tango_testing.mock import MockCallableGroup
 
 from ska_low_mccs_pasd.pasd_bus import (
-    PasdBusComponentManager,
     PasdBusSimulator,
     PasdBusSimulatorJsonServer,
 )
+
 
 @pytest.fixture(name="station_id")
 def station_id_fixture() -> int:
@@ -38,7 +35,8 @@ def station_id_fixture() -> int:
         testing.
     """
     return 1
-    
+
+
 @pytest.fixture(name="pasd_bus_simulator")
 def pasd_bus_simulator_fixture(station_id: int) -> PasdBusSimulator:
     """
