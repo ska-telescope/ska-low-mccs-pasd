@@ -245,7 +245,7 @@ def pasd_bus_component_manager_fixture(
         IP address (host and port) and an appropriate timeout to use.
     :param logger: the logger to be used by this object.
     :param max_workers: number of worker threads
-    :param callbacks: a group of mock callables for the component
+    :param mock_callbacks: a group of mock callables for the component
         manager under test to use as callbacks
 
     :return: a PaSD bus simulator component manager.
