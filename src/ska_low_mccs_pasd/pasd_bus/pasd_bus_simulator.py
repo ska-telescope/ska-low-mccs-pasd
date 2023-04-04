@@ -106,11 +106,7 @@ FndhInfoType = TypedDict(
 )
 
 
-ForcingDict = {
-    True: "on",
-    False: "off",
-    None: "not forced"
-}
+ForcingDict = {True: "on", False: "off", None: "not forced"}
 
 
 logging.basicConfig()
@@ -913,7 +909,8 @@ class PasdBusSimulator:
         logger.setLevel(logging_level)
 
         logger.info(
-            f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}.")
+            f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}."
+        )
 
         self._fndh_simulator = FndhSimulator()
         logger.info(f"Initialised FNDH simulator for station {station_id}.")
@@ -921,7 +918,8 @@ class PasdBusSimulator:
             SmartboxSimulator() for _ in range(self.NUMBER_OF_SMARTBOXES)
         ]
         logger.info(
-            f"Initialised {self.NUMBER_OF_SMARTBOXES} Smartbox simulators for station {station_id}."
+            f"""Initialised {self.NUMBER_OF_SMARTBOXES} Smartbox 
+            simulators for station {station_id}."""
         )
 
         self._smartbox_fndh_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
@@ -932,7 +930,8 @@ class PasdBusSimulator:
         self._antenna_configs: list[_AntennaConfigType] = []
         self.reload_database()
         logger.info(
-            f"PaSD configuration data loaded into simulator for station {station_id}.")
+            f"PaSD configuration data loaded into simulator for station {station_id}."
+        )
 
         # ANTENNAS
         self._antennas_desired_power_online = [False] * len(self._antenna_configs)
@@ -1502,7 +1501,8 @@ class PasdBusSimulator:
         :return: whether successful, or None if there was nothing to do
         """
         logger.info(
-            f"Antenna {antenna_id}, station {self._station_id} breaker tripped.")
+            f"Antenna {antenna_id}, station {self._station_id} breaker tripped."
+        )
         (smartbox_id, smartbox_port) = self._antenna_smartbox_ports[antenna_id - 1]
         return self._smartbox_simulators[smartbox_id - 1].simulate_port_breaker_trip(
             smartbox_port
