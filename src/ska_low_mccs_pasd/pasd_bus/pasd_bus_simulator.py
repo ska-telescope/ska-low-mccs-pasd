@@ -918,8 +918,8 @@ class PasdBusSimulator:
             SmartboxSimulator() for _ in range(self.NUMBER_OF_SMARTBOXES)
         ]
         logger.info(
-            f"""Initialised {self.NUMBER_OF_SMARTBOXES} Smartbox
-            simulators for station {station_id}."""
+            f"Initialised {self.NUMBER_OF_SMARTBOXES} Smartbox"
+            f" simulators for station {station_id}."
         )
 
         self._smartbox_fndh_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
@@ -1481,8 +1481,8 @@ class PasdBusSimulator:
         :return: whether successful, or None if there was nothing to do
         """
         logger.info(
-            f"""Setting antenna {antenna_id}, station {self._station_id}
-            forcing to {ForcingDict[forcing]}."""
+            f"Setting antenna {antenna_id}, station {self._station_id}"
+            f" forcing to {ForcingDict[forcing]}."
         )
         (smartbox_id, smartbox_port) = self._antenna_smartbox_ports[antenna_id - 1]
         return self._smartbox_simulators[smartbox_id - 1].simulate_port_forcing(
