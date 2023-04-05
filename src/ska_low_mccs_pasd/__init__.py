@@ -17,6 +17,9 @@ __all__ = [
     "MccsPasdBus",
     # device subpackages
     "pasd_bus",
+    "fndh",
+    "MccsFNDH",
 ]
 
+from .fndh import MccsFNDH
 from .pasd_bus import MccsPasdBus
