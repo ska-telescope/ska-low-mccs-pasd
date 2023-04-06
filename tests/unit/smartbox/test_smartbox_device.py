@@ -141,12 +141,6 @@ def smartbox_device_fixture(
             4,
             [True, True],
         ),
-        (
-            "GetAntennaInfo",
-            "get_antenna_info",
-            4,
-            [True, True],
-        ),
     ],
 )
 def test_command(  # pylint: disable=too-many-arguments
