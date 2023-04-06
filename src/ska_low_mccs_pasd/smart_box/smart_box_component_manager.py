@@ -87,6 +87,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             - We can add a health change event callback to that proxy
             - The pasdBus is healthy
         """
+        # Form proxy if not done yet.
         if self._pasd_bus_proxy is None:
             try:
                 self.logger.info(f"attempting to form proxy with {self._pasd_fqdn}")
@@ -94,23 +95,25 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 self._pasd_bus_proxy = MccsDeviceProxy(
                     "low-mccs-pasd/pasdbus/001", self.logger, connect=True
                 )
-                self._pasd_bus_proxy.add_change_event_callback(
-                    "healthState", self._pasd_health_state_changed
-                )
 
             except Exception as e:  # pylint: disable=broad-except
                 self._update_component_state(fault=True)
                 self.logger.error("Caught exception in start_communicating: %s", e)
                 self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+                return
 
-        # TODO: check the pasdbus status
-        if self._pasd_bus_proxy.healthState == HealthState.OK:  # type: ignore
-            self.logger.info(
-                "SmartBox has successfully communicated with the MccsPasdBus"
-            )
-        if self.communication_state == CommunicationStatus.DISABLED:
+        # If we are not established attempt for establish communication.
+        if self.communication_state != CommunicationStatus.ESTABLISHED:
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
-            self._update_communication_state(CommunicationStatus.ESTABLISHED)
+            try:
+                # first check the proxy is reachable
+                self._pasd_bus_proxy.ping()
+                # TODO: then check the pasd_bus is communicating.
+                # here we just assume it is.
+                self._update_communication_state(CommunicationStatus.ESTABLISHED)
+
+            except Exception as e:  # pylint: disable=broad-except
+                self.logger.error("Unable to form communications: %s", e)
 
             # Check the port on the fndh which this smartbox is attached to.
             port = self.fndh_port
@@ -118,6 +121,17 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 self._update_component_state(power=PowerState.ON)
             else:
                 self._update_component_state(power=PowerState.OFF)
+
+        # subscribe to any change events.
+        attributes_to_subscribe = ["healthState"]
+        for item in attributes_to_subscribe:
+            if (
+                item.lower()
+                not in self._pasd_bus_proxy._change_event_subscription_ids.keys()
+            ):
+                self._pasd_bus_proxy.add_change_event_callback(
+                    "healthState", self._pasd_health_state_changed
+                )
 
     def _pasd_health_state_changed(
         self: SmartBoxComponentManager,
@@ -164,25 +178,34 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
-
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
 
-            ([status], [result]) = self._pasd_bus_proxy.TurnSmartboxOn(self.fndh_port)
-            if status == ResultCode.OK:
+            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnSmartboxOn(
+                self.fndh_port
+            )
+            if result_code == ResultCode.OK:
                 self._update_component_state(power=PowerState.ON)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
             if task_callback:
-                task_callback(status=TaskStatus.FAILED, result=f"Exception: {ex}")
+                task_callback(
+                    status=TaskStatus.FAILED,
+                    result=f"Power on smartbox '{self.fndh_port} failed'",
+                )
 
             return ResultCode.FAILED, "0"
 
-        return (status, result)
+        if task_callback:
+            task_callback(
+                status=TaskStatus.COMPLETED,
+                result=f"Power on smartbox '{self.fndh_port}  success'",
+            )
+        return result_code, return_message
 
     @check_communicating
     def off(
@@ -212,19 +235,28 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
 
-            ([status], [result]) = self._pasd_bus_proxy.TurnSmartboxOff(self.fndh_port)
-
-            if status == ResultCode.OK:
+            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnSmartboxOff(
+                self.fndh_port
+            )
+            if result_code == ResultCode.OK:
                 self._update_component_state(power=PowerState.OFF)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
             if task_callback:
-                task_callback(status=TaskStatus.FAILED, result=f"Exception: {ex}")
+                task_callback(
+                    status=TaskStatus.FAILED,
+                    result=f"Power off smartbox '{self.fndh_port} failed'",
+                )
 
             return ResultCode.FAILED, "0"
 
-        return (status, result)
+        if task_callback:
+            task_callback(
+                status=TaskStatus.COMPLETED,
+                result=f"Power off smartbox '{self.fndh_port}  success'",
+            )
+        return result_code, return_message
 
     @check_communicating
     def turn_off_port(
@@ -249,7 +281,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
     def _turn_off_port(
         self: SmartBoxComponentManager,
-        antenna_number: str,
+        port_number: str,
         task_callback: Callable,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
@@ -260,16 +292,24 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 raise NotImplementedError("pasd_bus_proxy is None")
 
             ([result_code], [return_message]) = self._pasd_bus_proxy.TurnAntennaOff(
-                antenna_number
+                port_number
             )
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
             if task_callback:
-                task_callback(status=TaskStatus.FAILED, result=f"Exception: {ex}")
+                task_callback(
+                    status=TaskStatus.FAILED,
+                    result=f"Power off port '{port_number} failed'",
+                )
 
             return ResultCode.FAILED, "0"
 
+        if task_callback:
+            task_callback(
+                status=TaskStatus.COMPLETED,
+                result=f"Power off port '{port_number} success'",
+            )
         return result_code, return_message
 
     @check_communicating
@@ -297,7 +337,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
     def _turn_on_port(
         self: SmartBoxComponentManager,
-        antenna_number: str,
+        port_number: str,
         task_callback: Callable,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
@@ -307,61 +347,23 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
 
-            ([result_code], [unique_id]) = self._pasd_bus_proxy.TurnAntennaOn(
-                antenna_number
+            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnAntennaOn(
+                port_number
             )
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
             if task_callback:
-                task_callback(status=TaskStatus.FAILED, result=f"Exception: {ex}")
+                task_callback(
+                    status=TaskStatus.FAILED,
+                    result=f"Power on port '{port_number} failed'",
+                )
 
             return ResultCode.FAILED, "0"
 
-        return result_code, unique_id
-
-    @check_communicating
-    def get_antenna_info(
-        self: SmartBoxComponentManager,
-        antenna_number: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Turn a Antenna off.
-
-        :param antenna_number: (one-based) number of the TPM to turn off.
-        :param task_callback: callback to be called when the status of
-            the command changes
-
-        :return: the task status and a human-readable status message
-        """
-        return self.submit_task(
-            self._get_antenna_info,
-            args=[antenna_number],
-            task_callback=task_callback,
-        )
-
-    def _get_antenna_info(
-        self: SmartBoxComponentManager,
-        antenna_id: str,
-        task_callback: Callable,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, str]:
         if task_callback:
-            task_callback(status=TaskStatus.IN_PROGRESS)
-        try:
-            if self._pasd_bus_proxy is None:
-                raise NotImplementedError("pasd_bus_proxy is None")
-
-            ([result_code], [unique_id]) = self._pasd_bus_proxy.GetAntennaInfo(
-                antenna_id
+            task_callback(
+                status=TaskStatus.COMPLETED,
+                result=f"Power on port '{port_number} success'",
             )
-
-        except Exception as ex:  # pylint: disable=broad-except
-            self.logger.error(f"error {ex}")
-            if task_callback:
-                task_callback(status=TaskStatus.FAILED, result=f"Exception: {ex}")
-
-            return ResultCode.FAILED, "0"
-
-        return result_code, unique_id
+        return result_code, return_message
