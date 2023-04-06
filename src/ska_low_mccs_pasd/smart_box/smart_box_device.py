@@ -134,7 +134,6 @@ class MccsSmartBox(SKABaseDevice):
         for (command_name, method_name) in [
             ("PowerOnPort", "turn_on_port"),
             ("PowerOffPort", "turn_off_port"),
-            ("GetAntennaInfo", "get_antenna_info"),
         ]:
             self.register_command_object(
                 command_name,
@@ -222,22 +221,6 @@ class MccsSmartBox(SKABaseDevice):
     #     result_code, message = handler()
     #     return ([result_code], [message])
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def GetAntennaInfo(
-        self: MccsSmartBox, antenna_id: int
-    ) -> tuple[list[Any], list[Any]]:
-        """
-        Return information about relationship of an antenna to other PaSD components.
-
-        :param antenna_id: antenna id to query.
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("GetAntennaInfo")
-        result_code, unique_id = handler(antenna_id)
-        return ([result_code], [unique_id])
-
     # ----------
     # Attributes
     # ----------
@@ -248,9 +231,9 @@ class MccsSmartBox(SKABaseDevice):
         self: MccsSmartBox,
     ) -> List[PowerState]:
         """
-        Handle a Tango attribute read of the power state of TPM 4.
+        Return power states of the ports.
 
-        :return: the power state of TPM 4.
+        :return: the power state of all 24 smartbox ports.
         """
         return self._port_power_states
 
