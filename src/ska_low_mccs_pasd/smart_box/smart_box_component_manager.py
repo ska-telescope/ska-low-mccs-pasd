@@ -42,8 +42,10 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         logger: logging.Logger,
         communication_state_changed_callback: Callable[[CommunicationStatus], None],
         component_state_changed_callback: Callable[..., None],
+        attribute_change_callback: Callable[..., None],
         pasd_fqdn: Optional[str] = None,
         fndh_port: Optional[int] = None,
+        smartbox_number: Optional[int] = None,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
     ) -> None:
         """
@@ -61,7 +63,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         purposes only. defaults to None
         """
-        max_workers = 1  # TODO: is this acceptable?
+        max_workers = 1
         super().__init__(
             logger,
             communication_state_changed_callback,
@@ -72,11 +74,36 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             pasdbus_status=None,
         )
         self._component_state_changed_callback = component_state_changed_callback
+        self._attribute_change_callback = attribute_change_callback
         self._pasd_fqdn = pasd_fqdn
-        self.smartbox_number = 1  # TODO: this should a property set during device setup
+        self.smartbox_number = smartbox_number
         self._pasd_bus_proxy: Optional[MccsDeviceProxy] = _pasd_bus_proxy
         self.fndh_port = fndh_port
         self.logger = logger
+
+        # subscribe to attributes relevant to this smartbox:
+        self.attribute_map = {
+            f"smartbox{self.smartbox_number}modbusregistermaprevisionnumber": "ModbusRegisterMapRevisionNumber",
+            f"smartbox{self.smartbox_number}pcbrevisionnumber": "PcbRevisionNumber", 
+            f"smartbox{self.smartbox_number}cpuid": "CpuId",
+            f"smartbox{self.smartbox_number}chipid": "ChipId",
+            f"smartbox{self.smartbox_number}firmwareversion": "FirmwareVersion",
+            f"smartbox{self.smartbox_number}uptime": "Uptime",
+            f"smartbox{self.smartbox_number}status": "Status",
+            f"smartbox{self.smartbox_number}ledpattern": "LedPattern",
+            f"smartbox{self.smartbox_number}inputvoltage": "InputVoltage",
+            f"smartbox{self.smartbox_number}powersupplyoutputvoltage": "PowerSupplyOutputVoltage",
+            f"smartbox{self.smartbox_number}powersupplytemperature": "PowerSupplyTemperature",
+            f"smartbox{self.smartbox_number}outsidetemperature": "OutsideTemperature",
+            f"smartbox{self.smartbox_number}pcbtemperature":"PcbTemperature",
+            f"smartbox{self.smartbox_number}portsconnected": "PortsConnected",
+            f"smartbox{self.smartbox_number}portforcings":"PortForcings",
+            f"smartbox{self.smartbox_number}portbreakerstripped": "PortBreakersTripped",
+            f"smartbox{self.smartbox_number}portsdesiredpoweronline": "PortBreakersTripped",
+            f"smartbox{self.smartbox_number}portsdesiredpoweroffline": "PortsDesiredPowerOffline",
+            f"smartbox{self.smartbox_number}portspowersensed": "PortsPowerSensed",
+            f"smartbox{self.smartbox_number}portscurrentdraw": "PortsCurrentDraw",
+        }
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """
@@ -87,7 +114,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             - We can add a health change event callback to that proxy
             - The pasdBus is healthy
         """
-        # Form proxy if not done yet.
+        # ------------------------------------
+        # FORM PROXY / SUBSCRIBE TO ATTRIBUTES
+        # ------------------------------------
         if self._pasd_bus_proxy is None:
             try:
                 self.logger.info(f"attempting to form proxy with {self._pasd_fqdn}")
@@ -95,43 +124,88 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 self._pasd_bus_proxy = MccsDeviceProxy(
                     "low-mccs-pasd/pasdbus/001", self.logger, connect=True
                 )
-
             except Exception as e:  # pylint: disable=broad-except
                 self._update_component_state(fault=True)
                 self.logger.error("Caught exception in start_communicating: %s", e)
                 self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
                 return
 
-        # If we are not established attempt for establish communication.
-        if self.communication_state != CommunicationStatus.ESTABLISHED:
+        try:
+            # subscribe to all attributes of interest if not already.
+            for attribute in self.attribute_map:
+                if (
+                    attribute.lower()
+                    not in self._pasd_bus_proxy._change_event_subscription_ids.keys()
+                ):
+                    self._pasd_bus_proxy.add_change_event_callback(
+                        attribute, self._handle_change_event
+                    )
+
+            self._pasd_bus_proxy.add_change_event_callback(
+                "healthstate", self._pasd_health_state_changed
+            )
+
+            self._pasd_bus_proxy.add_change_event_callback(
+                "fndhPortsPowerSensed", self._power_state_change
+            )
+        except Exception as e:  # pylint: disable=broad-except
+            self._update_component_state(fault=True)
+            self.logger.error("Caught exception in attribute subscriptios: %s", e)
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
-            try:
-                # first check the proxy is reachable
+            return
+
+        # ------------
+        # UPDATE STATE
+        # ------------
+        try:
+            # If we are not established attempt for establish communication.
+            if self.communication_state != CommunicationStatus.ESTABLISHED:
+                self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
                 self._pasd_bus_proxy.ping()
-                # TODO: then check the pasd_bus is communicating.
+
+                # TODO: check the pasd_bus is communicating modbus
                 # here we just assume it is.
                 self._update_communication_state(CommunicationStatus.ESTABLISHED)
 
-            except Exception as e:  # pylint: disable=broad-except
-                self.logger.error("Unable to form communications: %s", e)
-
-            # Check the port on the fndh which this smartbox is attached to.
-            port = self.fndh_port
-            if self._pasd_bus_proxy.fndhPortsPowerSensed[port]:  # type: ignore
-                self._update_component_state(power=PowerState.ON)
+                port = self.fndh_port
+                if self._pasd_bus_proxy.fndhPortsPowerSensed[port]:  # type: ignore
+                    self._update_component_state(power=PowerState.ON)
+                else:
+                    self._update_component_state(power=PowerState.OFF)
             else:
-                self._update_component_state(power=PowerState.OFF)
+                self.logger.info("communication with the pasd bus is already established, nothing to be done")
+            
+        except Exception as e: # pylint: disable=broad-except
+                self._update_component_state(fault=True)
+                self.logger.error("Caught exception in start_communicating: %s", e)
+                self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+                return
 
-        # subscribe to any change events.
-        attributes_to_subscribe = ["healthState"]
-        for item in attributes_to_subscribe:
-            if (
-                item.lower()
-                not in self._pasd_bus_proxy._change_event_subscription_ids.keys()
-            ):
-                self._pasd_bus_proxy.add_change_event_callback(
-                    "healthState", self._pasd_health_state_changed
-                )
+        self.logger.info("communication established")  
+    
+    def _handle_change_event(
+        self: SmartBoxComponentManager,
+        attr_name: str,
+        attr_value: HealthState,
+        attr_quality: tango.AttrQuality,
+    ) -> None:
+        """
+        Callback for attribute change events.
+
+        :param attr_name: The name of the attribute that is firing a change event.
+        :param attr_value: The value of the attribute that is changing.
+        :param attr_quality: The quality of the attribute. 
+        """
+        # This callback is called with uppercase and lowercase attribute names
+        # we convert all to lowercase.
+        attr_name = attr_name.lower()
+        try:
+            assert attr_name in self.attribute_map
+        except AssertionError:
+            self.logger.debug(f"attribute {attr_name} not found in attribute map")
+            return
+        
+        self._attribute_change_callback(self.attribute_map[attr_name], attr_value)
 
     def _pasd_health_state_changed(
         self: SmartBoxComponentManager,
@@ -146,7 +220,27 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param event_value: The event_value
         :param event_quality: The event_quality
         """
+        try:
+            assert event_name == "healthstate"
+        except AssertionError as msg:
+            self.logger.debug(msg)
+            return
         self._update_component_state(pasdbus_status=event_value)
+
+    def _power_state_change(
+        self: SmartBoxComponentManager,
+        event_name: str,
+        event_value: HealthState,
+        event_quality: tango.AttrQuality,
+    ) -> None:
+        """
+        Pasdbus health state callback.
+
+        :param event_name: The event_name
+        :param event_value: The event_value
+        :param event_quality: The event_quality
+        """
+        self._update_component_state(power = event_value)
 
     def stop_communicating(self: SmartBoxComponentManager) -> None:
         """Break off communication with the pasdBus."""
@@ -183,8 +277,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         try:
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
-
-            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnSmartboxOn(
+            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnFndhPortOn(
                 self.fndh_port
             )
             if result_code == ResultCode.OK:
@@ -235,7 +328,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
 
-            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnSmartboxOff(
+            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnFndhPortOff(
                 self.fndh_port
             )
             if result_code == ResultCode.OK:
@@ -291,7 +384,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
 
-            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnAntennaOff(
+            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnSmartboxPortOff(
                 port_number
             )
 
@@ -347,7 +440,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
 
-            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnAntennaOn(
+            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnSmartboxPortOn(
                 port_number
             )
 

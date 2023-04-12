@@ -10,10 +10,14 @@
 from __future__ import annotations
 
 import gc
+import string
 from typing import Generator
-
+import json
+import time
+import numpy as np
 import pytest
 import tango
+from tango.server import command
 from ska_control_model import AdminMode, LoggingLevel
 from ska_tango_testing.context import (
     TangoContextProtocol,
@@ -22,6 +26,8 @@ from ska_tango_testing.context import (
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd import MccsPasdBus, MccsSmartBox
+
+from ska_low_mccs_pasd.pasd_bus import SmartboxSimulator
 
 gc.disable()  # TODO: why is this needed?
 
@@ -45,12 +51,54 @@ def smartbox_name_fixture() -> str:
     """
     return "low-mccs-smartbox/smartbox/00001"
 
+@pytest.fixture(name="patched_pasd_device_class")
+def patched_pasd_device_class_fixture() -> type[MccsSmartBox]:
+    """
+    Return a SmartBox bus device that is patched with a mock component manager.
+
+    :param mock_component_manager: the mock component manager with
+        which to patch the device
+
+    :return: a SmartBox bus device that is patched with a mock component
+        manager.
+    """
+
+
+    class PatchedMccsPasdBus(MccsPasdBus):
+        """
+        This Patched MccsPasdBus is a temporary class.
+        
+        The purpose is to mock push_change_events on the pasdBus device.
+        This is done by reimplementing the InitCommand.
+        """
+        
+        @command(dtype_in="DevString")
+        def Mocked_push_change_event(self: PatchedMccsPasdBus, argin: int) -> str:
+            """
+            Turn on the FNDH's blue service LED.
+
+            :return: A tuple containing a result code and a
+                unique id to identify the command in the queue.
+            """
+           
+            arg = json.loads(argin)
+
+            for key, value in arg.items():
+                print(f"key::{key}")
+                print(f"value::{value}")
+                print(f"value::{type(value)}")
+                self.push_change_event(key.lower(), np.array([value]))
+
+            
+    return PatchedMccsPasdBus
 
 @pytest.fixture(name="tango_harness")
 def tango_harness_fixture(
     smartbox_name: str,
     pasd_bus_name: str,
     pasd_bus_info: dict,
+    patched_pasd_device_class,
+    smartbox_number:int,
 ) -> Generator[TangoContextProtocol, None, None]:
     """
     Return a Tango harness against which to run tests of the deployment.
@@ -67,11 +115,12 @@ def tango_harness_fixture(
         MccsSmartBox,
         FndhPort=0,
         PasdFQDNs=pasd_bus_name,
+        SmartBoxNumber = smartbox_number,
         LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
     context_manager.add_device(
         pasd_bus_name,
-        MccsPasdBus,
+        patched_pasd_device_class,
         Host=pasd_bus_info["host"],
         Port=pasd_bus_info["port"],
         Timeout=pasd_bus_info["timeout"],
@@ -115,7 +164,7 @@ def pasd_bus_device_fixture(
 
 class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
     """Test pasdbus and smartbox integration."""
-
+    
     def test_smartbox_pasd_integration(
         self: TestSmartBoxPasdBusIntegration,
         smartbox_device: tango.DeviceProxy,
@@ -125,6 +174,12 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
         """
         Test the integration of smartbox with the pasdBus.
 
+        This tests basic communications:
+        - Does the state transition as expected when adminMode put online
+            with the MccsPasdBus
+        - Can MccsSmartBox handle a changing attribute event pushed from the
+            MccsPasdBus.
+        
         :param smartbox_device: fixture that provides a
             :py:class:`tango.DeviceProxy` to the device under test, in a
             :py:class:`tango.test_context.DeviceTestContext`.
@@ -176,12 +231,32 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
         )
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
 
-        # test turning on and off
-        smartbox_device.On()
-        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
+        #A dumb check that the smartbox had updated its values from teh smartbox simulator.
+        assert smartbox_device.ModbusRegisterMapRevisionNumber == SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
+        assert smartbox_device.PcbRevisionNumber == SmartboxSimulator.PCB_REVISION
+        assert smartbox_device.CpuId == SmartboxSimulator.CPU_ID
+        assert smartbox_device.ChipId == SmartboxSimulator.CHIP_ID
+        assert smartbox_device.FirmwareVersion == SmartboxSimulator.DEFAULT_FIRMWARE_VERSION
+        assert smartbox_device.Uptime == SmartboxSimulator.DEFAULT_UPTIME
+        assert smartbox_device.InputVoltage == SmartboxSimulator.DEFAULT_INPUT_VOLTAGE
+        assert smartbox_device.PowerSupplyOutputVoltage == SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
+        assert smartbox_device.PowerSupplyTemperature == SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
+        assert smartbox_device.OutsideTemperature == SmartboxSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+        assert smartbox_device.PcbTemperature == SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
 
-        smartbox_device.Off()
-        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
+        # TODO: Add the polling mechanism is added to the MccsPasdBus,
+        # We will be able to mock a change in attributes at the Simulator level.
+        # The MccsPasdBus will then poll this and fire a event we can catch.
+        
+        # Below is a bit of a hack just to test the functionality:
+        # The patched MccsPasdBus has a mock_push_change_event
+        # allowing us to manually fire change events.
+        initial_input_voltage = smartbox_device.InputVoltage
+        mock_input_voltage = '{"smartbox1InputVoltage": 4}'
+        pasd_bus_device.Mocked_push_change_event(mock_input_voltage)
+        time.sleep(0.1)
+        assert smartbox_device.InputVoltage != initial_input_voltage
+        assert smartbox_device.InputVoltage == 4
 
 
 @pytest.fixture(name="change_event_callbacks")

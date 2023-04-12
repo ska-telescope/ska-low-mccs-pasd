@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import threading
-from typing import Any, List, Optional
+from typing import Any, List, Optional, cast
 
 import tango
 from ska_control_model import (
@@ -26,7 +26,7 @@ from tango.server import attribute, command, device_property
 from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
 
-__all__ = ["MccsSmartBox", "main"]  # TODO: Should we include main in __all__?
+__all__ = ["MccsSmartBox", "main"]
 
 
 class MccsSmartBox(SKABaseDevice):
@@ -37,6 +37,8 @@ class MccsSmartBox(SKABaseDevice):
     # -----------------
     FndhPort = device_property(dtype=int, default_value=0)
     PasdFQDNs = device_property(dtype=(str,), default_value=[])
+    #TODO: do we want both fndhPort and SmartBoxNumber?
+    SmartBoxNumber = device_property(dtype=int, default_value=1)
 
     PORT_COUNT = 12
 
@@ -59,10 +61,8 @@ class MccsSmartBox(SKABaseDevice):
         super().__init__(*args, **kwargs)
 
         # Initialise with unknown.
-        self._port_power_states = [PowerState.UNKNOWN] * self.PORT_COUNT
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: SmartBoxHealthModel
-        self._port_count = self.PORT_COUNT
 
     def init_device(self: MccsSmartBox) -> None:
         """
@@ -75,11 +75,16 @@ class MccsSmartBox(SKABaseDevice):
         self._max_workers = 10
         self._power_state_lock = threading.RLock()
         super().init_device()
+        
+        # setup all attributes.
+        self._smartbox_state: dict[str, Any] = {}
+        self._setup_smartbox_attributes()
 
         message = (
             "Initialised MccsSmartBox device with properties:\n"
             f"\tFndhPort: {self.FndhPort}\n"
             f"\tPasdFQDNs: {self.PasdFQDNs}\n"
+            f"\tSmartBoxNumber: {self.SmartBoxNumber}\n"
         )
         self.logger.info(message)
 
@@ -88,7 +93,7 @@ class MccsSmartBox(SKABaseDevice):
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._health_model = SmartBoxHealthModel(self._health_changed_callback)
         self.set_change_event("healthState", True, False)
-
+        self.set_archive_event("healthState", True, False)
     # ----------
     # Properties
     # ----------
@@ -123,8 +128,10 @@ class MccsSmartBox(SKABaseDevice):
             self.logger,
             self._communication_state_changed,
             self._component_state_changed_callback,
+            self._attribute_changed_callback,
             self.PasdFQDNs,
             self.FndhPort,
+            self.SmartBoxNumber,
         )
 
     def init_command_objects(self: MccsSmartBox) -> None:
@@ -191,51 +198,59 @@ class MccsSmartBox(SKABaseDevice):
         result_code, message = handler(argin)
         return ([result_code], [message])
 
-    # @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    # def PowerUpAntennas(
-    #     self: MccsSmartBox,
-    # ) -> tuple[list[ResultCode], list[Optional[str]]]:
-    #     """
-    #     Power up all Antenna LNA's.
-
-    #     :return: A tuple containing a return code and a string message
-    #         indicating status. The message is for information purposes
-    #         only.
-    #     """
-    #     handler = self.get_command_object("PowerUpAntennas")
-    #     result_code, message = handler()
-    #     return ([result_code], [message])
-
-    # @command(dtype_out="DevVarLongStringArray")
-    # def PowerDownAntennas(
-    #     self: MccsSmartBox,
-    # ) -> tuple[list[ResultCode], list[Optional[str]]]:
-    #     """
-    #     Power down all Antanna LNA's.
-
-    #     :return: A tuple containing a return code and a string message
-    #         indicating status. The message is for information purposes
-    #         only.
-    #     """
-    #     handler = self.get_command_object("PowerDownAntennas")
-    #     result_code, message = handler()
-    #     return ([result_code], [message])
-
     # ----------
     # Attributes
     # ----------
+    def _setup_smartbox_attributes(self: MccsSmartBox) -> None:
+        for (slug, data_type, length) in [
+            ("ModbusRegisterMapRevisionNumber", int, None),
+            ("PcbRevisionNumber", int, None),
+            ("CpuId", int, None),
+            ("ChipId", int, None),
+            ("FirmwareVersion", str, None),
+            ("Uptime", int, None),
+            ("Status", str, None),
+            ("LedPattern", str, None),
+            ("InputVoltage", float, None),
+            ("PowerSupplyOutputVoltage", float, None),
+            ("PowerSupplyTemperature", float, None),
+            ("OutsideTemperature", float, None),
+            ("PcbTemperature", float, None),
+            ("PortsConnected", (bool,), self.PORT_COUNT),
+            ("PortForcings", (str,), self.PORT_COUNT),
+            ("PortBreakersTripped", (bool,), self.PORT_COUNT),
+            ("PortsDesiredPowerOnline", (bool,), self.PORT_COUNT),
+            ("PortsDesiredPowerOffline", (bool,), self.PORT_COUNT),
+            ("PortsPowerSensed", (bool,), self.PORT_COUNT),
+            ("PortsCurrentDraw", (float,), self.PORT_COUNT),
+        ]:
+            self._setup_smartbox_attribute(
+                f"{slug}",
+                cast(type | tuple[type], data_type),
+                max_dim_x=length,
+            )
 
-    # TODO: Copy over all SmartBox related attributes from the pasdBus
-    @attribute(dtype=PowerState, label="a list of power states")
-    def portPowerStates(
+    def _setup_smartbox_attribute(
         self: MccsSmartBox,
-    ) -> List[PowerState]:
-        """
-        Return power states of the ports.
+        attribute_name: str,
+        data_type: type | tuple[type],
+        max_dim_x: Optional[int] = None,
+    ) -> None:
+        self._smartbox_state[attribute_name] = None
+        attr = tango.server.attribute(
+            name=attribute_name,
+            dtype=data_type,
+            access=tango.AttrWriteType.READ,
+            label=attribute_name,
+            max_dim_x=max_dim_x,
+            fread="_read_smartbox_attribute",
+        ).to_attr()
+        self.add_attribute(attr, self._read_smartbox_attribute, None, None)
+        self.set_change_event(attribute_name, True, False)
+        self.set_archive_event(attribute_name, True, False)
 
-        :return: the power state of all 24 smartbox ports.
-        """
-        return self._port_power_states
+    def _read_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
+        smartbox_attribute.set_value(self._smartbox_state[smartbox_attribute.get_name()])
 
     # ----------
     # Callbacks
@@ -248,19 +263,13 @@ class MccsSmartBox(SKABaseDevice):
             "with the component is %s.",
             communication_state.name,
         )
+
         if communication_state != CommunicationStatus.ESTABLISHED:
-            self._update_port_power_states([PowerState.UNKNOWN] * self._port_count)
+            self._component_state_changed_callback(power = PowerState.UNKNOWN)
 
         super()._communication_state_changed(communication_state)
 
         self._health_model.update_state(communicating=True)
-
-    def _update_port_power_states(
-        self: MccsSmartBox, port_power_states: list[PowerState]
-    ) -> None:
-        if self._port_power_states != port_power_states:
-            self._port_power_states = port_power_states
-            self.push_change_event("portPowerState", port_power_states)
 
     def _component_state_changed_callback(
         self: MccsSmartBox,
@@ -300,8 +309,28 @@ class MccsSmartBox(SKABaseDevice):
         if self._health_state != health:
             self._health_state = health
             self.push_change_event("healthState", health)
+            self.push_archive_event("healthState", health)
 
+    def _attribute_changed_callback(
+        self: MccsSmartBox,
+        attr_name: str,
+        attr_value: HealthState
+    ) -> None:
+        """
+        Handle changes to subscribed attributes. 
 
+        This is a callback hook we pass to the component manager, 
+        It is called when a subscribed attribute changes. 
+        It is responsible for:
+        - updating this device attribute
+        - pushing a change event to any listeners.
+
+        :param attr_name: the name of the attribute that needs updating
+        :param attr_value: the value to update with.
+        """
+        self._smartbox_state[attr_name] = attr_value
+        self.push_change_event(attr_name, attr_value)
+        self.push_archive_event(attr_name, attr_value)
 # ----------
 # Run server
 # ----------

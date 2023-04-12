@@ -70,6 +70,15 @@ def fndh_port_fixture() -> int:
     """
     return 5
 
+@pytest.fixture(name="smartbox_number")
+def smartbox_number_fixture() -> int:
+    """
+    Return the id of the station whose configuration will be used in testing.
+
+    :return: the id of the station whose configuration will be used in
+        testing.
+    """
+    return 1
 
 @pytest.fixture(name="smartbox_component_manager")
 def smartbox_component_manager_fixture(
@@ -78,6 +87,7 @@ def smartbox_component_manager_fixture(
     mock_callbacks: MockCallableGroup,
     mocked_pasd_proxy: unittest.mock.Mock,
     fndh_port: int,
+    smartbox_number: int,
 ) -> SmartBoxComponentManager:
     """
     Return an SmartBox component manager.
@@ -96,8 +106,10 @@ def smartbox_component_manager_fixture(
         logger,
         mock_callbacks["communication_state"],
         mock_callbacks["component_state"],
+        mock_callbacks["attribute_update"],
         pasd_bus_fndh,
         fndh_port,
+        smartbox_number,
         mocked_pasd_proxy,
     )
     mocked_pasd_proxy._change_event_subscription_ids = {}
@@ -151,12 +163,31 @@ class TestSmartBoxComponentManager:
         )
         mock_callbacks["communication_state"].assert_not_called()
 
-        # check that we can for start communication again.
+        # ------------------------------
+        # CHECK START STOP COMMUNICATION
+        # ------------------------------
         smartbox_component_manager._pasd_bus_proxy = mocked_pasd_proxy
         smartbox_component_manager.start_communicating()
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
+        mock_callbacks["communication_state"].assert_not_called()
+
+        smartbox_component_manager.stop_communicating()
+        mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
+        mock_callbacks["communication_state"].assert_not_called()
+
+        # -------------------------
+        # MOCK FAILURE IN SUBSCRIBE
+        # -------------------------
+        mock_error = unittest.mock.Mock(
+            side_effect= Exception("attribute mocked to fail")
+        )
+        smartbox_component_manager._pasd_bus_proxy.add_change_event_callback = (  # type: ignore[assignment]
+            unittest.mock.MagicMock(side_effect=mock_error)
+        )
+        smartbox_component_manager.start_communicating()
+        mock_callbacks["communication_state"].assert_call(CommunicationStatus.NOT_ESTABLISHED)
         mock_callbacks["communication_state"].assert_not_called()
 
     @pytest.mark.parametrize(
@@ -172,7 +203,7 @@ class TestSmartBoxComponentManager:
             (
                 "on",
                 None,
-                "TurnSmartboxOn",
+                "TurnFndhPortOn",
                 ([ResultCode.OK], [True]),
                 (TaskStatus.QUEUED, "Task queued"),
                 (
@@ -183,7 +214,7 @@ class TestSmartBoxComponentManager:
             (
                 "off",
                 None,
-                "TurnSmartboxOff",
+                "TurnFndhPortOff",
                 ([ResultCode.OK], [True]),
                 (TaskStatus.QUEUED, "Task queued"),
                 (
@@ -194,7 +225,7 @@ class TestSmartBoxComponentManager:
             (
                 "on",
                 None,
-                "TurnSmartboxOn",
+                "TurnFndhPortOn",
                 ([ResultCode.OK], [True], "failure response"),
                 (TaskStatus.QUEUED, "Task queued"),
                 (
@@ -205,7 +236,7 @@ class TestSmartBoxComponentManager:
             (
                 "off",
                 None,
-                "TurnSmartboxOff",
+                "TurnFndhPortOff",
                 ([ResultCode.OK], [True], "failure response"),
                 (TaskStatus.QUEUED, "Task queued"),
                 (
@@ -269,7 +300,7 @@ class TestSmartBoxComponentManager:
             (
                 "turn_on_port",
                 3,
-                "TurnAntennaOn",
+                "TurnSmartboxPortOn",
                 ([True], [True]),
                 (TaskStatus.QUEUED, "Task queued"),
                 f"Power on port '{3} success'",
@@ -277,7 +308,7 @@ class TestSmartBoxComponentManager:
             (
                 "turn_off_port",
                 3,
-                "TurnAntennaOff",
+                "TurnSmartboxPortOff",
                 ([True], [True]),
                 (TaskStatus.QUEUED, "Task queued"),
                 f"Power off port '{3} success'",

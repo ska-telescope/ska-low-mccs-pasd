@@ -87,25 +87,6 @@ def pasd_bus_simulator_fixture(station_id: int) -> PasdBusSimulator:
     return PasdBusSimulator(station_id, logging.DEBUG)
 
 
-@pytest.fixture(name="mock_pasd_bus_simulator")
-def mock_pasd_bus_simulator_fixture(
-    pasd_bus_simulator: PasdBusSimulator,
-) -> unittest.mock.Mock:
-    """
-    Return a mock PaSD bus simulator.
-
-    The returned mock wraps a real simulator instance, so it will behave
-    like a real one, but we can access it as a mock too, for example
-    assert calls.
-
-    :param pasd_bus_simulator: a real PaSD bus simulator to wrap in a
-        mock.
-
-    :return: a mock PaSD bus simulator
-    """
-    return unittest.mock.Mock(wraps=pasd_bus_simulator)
-
-
 @pytest.fixture(name="fndh_simulator")
 def fndh_simulator_fixture(
     pasd_bus_simulator: PasdBusSimulator,
@@ -298,7 +279,6 @@ def mock_smartbox_simulator(
 
 @pytest.fixture(name="pasd_bus_simulator_server_launcher")
 def pasd_bus_simulator_server_launcher_fixture(
-    mock_pasd_bus_simulator: PasdBusSimulator,
     mock_fndh_simulator: FndhSimulator,
     mock_smartbox_simulators: Sequence[SmartboxSimulator],
 ) -> Callable[[], ContextManager[TcpServer]]:
@@ -309,10 +289,7 @@ def pasd_bus_simulator_server_launcher_fixture(
     returns a context manager that spins up a simulator server,
     yields it for use in testing,
     and then shuts its down afterwards.
-
-    :param mock_pasd_bus_simulator:
-        the PaSD simulator backend that the TCP server will front,
-        wrapped with a mock that that we can assert calls.
+    
     :param mock_fndh_simulator:
         the FNDH simulator backend that the TCP server will front,
         wrapped with a mock so that we can assert calls.
