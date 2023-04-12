@@ -11,20 +11,6 @@ import pytest
 from ska_tango_testing.mock import MockCallableGroup
 
 
-def pytest_itemcollected(item: pytest.Item) -> None:
-    """
-    Modify a test after it has been collected by pytest.
-
-    This pytest hook implementation adds the "forked" custom mark to all
-    tests that use the ``tango_harness`` fixture, causing them to be
-    sandboxed in their own process.
-
-    :param item: the collected test for which this hook is called
-    """
-    if "tango_harness" in item.listnames():
-        item.add_marker("forked")
-
-
 @pytest.fixture(name="mock_callbacks")
 def mock_callbacks_fixture() -> MockCallableGroup:
     """

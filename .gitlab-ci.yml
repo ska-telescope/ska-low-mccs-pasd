@@ -10,6 +10,7 @@ stages:
   - lint
   - build
   - test
+  - test-temp
   - publish
   - pages
   - scan
@@ -42,3 +43,59 @@ include:
   # k8s
   - project: 'ska-telescope/templates-repository'
     file: 'gitlab-ci/includes/k8s.gitlab-ci.yml'
+
+# TODO: For now this manual step deploys to the STFC cloud just like the
+# automatic step does.
+# In future, we'll set it to deploy to an environment with PaSD hardware
+# to test against.
+temp-k8s-test:
+  stage: test-temp
+  when: manual
+  tags:
+    - k8srunner
+  variables:
+    TANGO_HOST: "tango-databaseds.$KUBE_NAMESPACE:10000"
+    KUBE_NAMESPACE: 'ci-$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA'
+  before_script:
+    - make k8s-install-chart
+    - make k8s-wait
+  script:
+    - make k8s-test
+  artifacts:
+    name: "$CI_PROJECT_NAME-$CI_JOB_ID"
+    paths:
+      - "build/"
+    reports:
+      junit: build/report.xml
+    when: always
+
+temp-xray-publish:
+  stage: test-temp
+  needs:
+    - temp-k8s-test
+  tags:
+    - k8srunner
+  image: $SKA_K8S_TOOLS_BUILD_DEPLOY
+  variables:
+    REALHW_OR_SIMULATED: simulated
+  script:
+    - make xray-publish
+  allow_failure: true
+
+temp-stop-k8s:
+  stage: test-temp
+  needs:
+    - temp-k8s-test
+  tags:
+    - k8srunner
+  environment:
+    name: test-temp/$CI_COMMIT_REF_SLUG
+    action: stop
+  image: $SKA_K8S_TOOLS_BUILD_DEPLOY
+  variables:
+    KUBE_NAMESPACE: 'ci-$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA'
+  script:
+    - make k8s-uninstall-chart
+    - kubectl -n $KUBE_NAMESPACE delete pods,svc,daemonsets,deployments,replicasets,statefulsets,cronjobs,jobs,ingresses,configmaps --all
+    - make k8s-delete-namespace
+  allow_failure: true
