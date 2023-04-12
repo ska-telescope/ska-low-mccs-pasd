@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import os
 from socket import gethostname
+from typing import Sequence
 
 from ska_ser_devices.client_server import (
     ApplicationServer,
@@ -19,21 +20,33 @@ from ska_ser_devices.client_server import (
 )
 
 from .pasd_bus_json_api import PasdBusJsonApi
-from .pasd_bus_simulator import PasdBusSimulator
+from .pasd_bus_simulator import (
+    FndhSimulator,
+    PasdBusSimulator,
+    SmartboxSimulator,
+)
 
 
 # pylint: disable-next=too-few-public-methods
 class PasdBusSimulatorJsonServer(ApplicationServer):
     """An application-layer server that provides JSON access to a PasdBusSimulator."""
 
-    def __init__(self: PasdBusSimulatorJsonServer, simulator: PasdBusSimulator) -> None:
+    def __init__(
+        self: PasdBusSimulatorJsonServer,
+        fndh_simulator: FndhSimulator,
+        smartbox_simulators: Sequence[SmartboxSimulator],
+    ) -> None:
         """
         Initialise a new instance.
 
-        :param simulator: the simulator backend to which this server
-            provides access.
+        :param fndh_simulator: the FNDH simulator backend to which this
+            server provides access.
+        :param smartbox_simulators: the smartbox simulator backends to
+            which this server provides access.
         """
-        simulator_api = PasdBusJsonApi(simulator)
+        simulators: list[FndhSimulator | SmartboxSimulator] = [fndh_simulator]
+        simulators.extend(smartbox_simulators)
+        simulator_api = PasdBusJsonApi(simulators)
         marshaller = SentinelBytesMarshaller(b"\n")
         super().__init__(marshaller.unmarshall, marshaller.marshall, simulator_api)
 
@@ -45,7 +58,9 @@ def main() -> None:
     port = int(os.getenv("SIMULATOR_PORT", "502"))
 
     simulator = PasdBusSimulator(int(station_id), logging.DEBUG)
-    simulator_server = PasdBusSimulatorJsonServer(simulator)
+    simulator_server = PasdBusSimulatorJsonServer(
+        simulator.get_fndh(), simulator.get_smartboxes()
+    )
     server = TcpServer(host, port, simulator_server)
     with server:
         server.serve_forever()
