@@ -43,7 +43,7 @@ NUMBER_OF_SMARTBOX_PORTS = 12
 DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 
 
-class MccsPasdBus(SKABaseDevice):
+class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     """An implementation of a PaSD bus Tango device for MCCS."""
 
     # pylint: disable=attribute-defined-outside-init
@@ -221,6 +221,7 @@ class MccsPasdBus(SKABaseDevice):
         ).to_attr()
         self.add_attribute(attr, self._read_pasd_attribute, None, None)
         self.set_change_event(attribute_name, True, False)
+        self.set_archive_event(attribute_name, True, False)
 
     def _read_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
         pasd_attribute.set_value(self._pasd_state[pasd_attribute.get_name()])
@@ -231,7 +232,7 @@ class MccsPasdBus(SKABaseDevice):
         self._health_model = PasdBusHealthModel(self._health_changed)
         self.set_change_event("healthState", True, False)
 
-    def create_component_manager(  # type: ignore[override]
+    def create_component_manager(
         self: MccsPasdBus,
     ) -> PasdBusComponentManager:
         """
@@ -387,6 +388,7 @@ class MccsPasdBus(SKABaseDevice):
             if self._pasd_state[tango_attribute_name] != pasd_attribute_value:
                 self._pasd_state[tango_attribute_name] = pasd_attribute_value
                 self.push_change_event(tango_attribute_name, pasd_attribute_value)
+                self.push_archive_event(tango_attribute_name, pasd_attribute_value)
 
     def _health_changed(
         self: MccsPasdBus,
@@ -405,6 +407,7 @@ class MccsPasdBus(SKABaseDevice):
         if self._health_state != health:
             self._health_state = health
             self.push_change_event("healthState", health)
+            self.push_archive_event("healthState", health)
 
     # ----------
     # Attributes

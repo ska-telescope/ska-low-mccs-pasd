@@ -96,13 +96,13 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         if self.communication_state == CommunicationStatus.DISABLED:
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
             # TODO: These are temporary calls, just until we have a poller.
-            self._get_fndh_static_info()
-            self._get_fndh_status()
-            self._get_fndh_ports_status()
+            self._poll_fndh_static_info()
+            self._poll_fndh_status()
+            self._poll_fndh_ports_status()
             for smartbox_number in range(1, 25):
-                self._get_smartbox_static_info(smartbox_number)
-                self._get_smartbox_status(smartbox_number)
-                self._get_smartbox_ports_status(smartbox_number)
+                self._poll_smartbox_static_info(smartbox_number)
+                self._poll_smartbox_status(smartbox_number)
+                self._poll_smartbox_ports_status(smartbox_number)
 
     def stop_communicating(self: PasdBusComponentManager) -> None:
         """
@@ -168,9 +168,9 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         """
         raise NotImplementedError("The PaSD cannot yet be reset")
 
-    def _get_fndh_static_info(self: PasdBusComponentManager) -> None:
+    def _poll_fndh_static_info(self: PasdBusComponentManager) -> None:
         """Call back with updated static information about a PaSD device."""
-        self._read_from_pasd(
+        self._poll_pasd_attributes(
             0,
             "modbus_register_map_revision",
             "pcb_revision",
@@ -179,9 +179,9 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             "firmware_version",
         )
 
-    def _get_fndh_status(self: PasdBusComponentManager) -> None:
+    def _poll_fndh_status(self: PasdBusComponentManager) -> None:
         """Call back with updated information about the status of the FNDH."""
-        self._read_from_pasd(
+        self._poll_pasd_attributes(
             0,
             "uptime",
             "status",
@@ -195,9 +195,9 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             "outside_temperature",
         )
 
-    def _get_fndh_ports_status(self: PasdBusComponentManager) -> None:
+    def _poll_fndh_ports_status(self: PasdBusComponentManager) -> None:
         """Call back with updated information about status of the FNDH ports."""
-        self._read_from_pasd(
+        self._poll_pasd_attributes(
             0,
             "ports_connected",
             "port_forcings",
@@ -207,7 +207,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             "ports_power_sensed",
         )
 
-    def _get_smartbox_static_info(
+    def _poll_smartbox_static_info(
         self: PasdBusComponentManager,
         smartbox_number: int,
     ) -> None:
@@ -216,7 +216,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
 
         :param smartbox_number: number of the smartbox for which information is sought.
         """
-        self._read_from_pasd(
+        self._poll_pasd_attributes(
             smartbox_number,
             "modbus_register_map_revision",
             "pcb_revision",
@@ -225,7 +225,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             "firmware_version",
         )
 
-    def _get_smartbox_status(
+    def _poll_smartbox_status(
         self: PasdBusComponentManager,
         smartbox_number: int,
     ) -> None:
@@ -234,7 +234,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
 
         :param smartbox_number: number of the smartbox for which information is sought.
         """
-        self._read_from_pasd(
+        self._poll_pasd_attributes(
             smartbox_number,
             "uptime",
             "status",
@@ -246,7 +246,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             "pcb_temperature",
         )
 
-    def _get_smartbox_ports_status(
+    def _poll_smartbox_ports_status(
         self: PasdBusComponentManager,
         smartbox_number: int,
     ) -> None:
@@ -255,7 +255,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
 
         :param smartbox_number: number of the smartbox for which information is sought.
         """
-        self._read_from_pasd(
+        self._poll_pasd_attributes(
             smartbox_number,
             "ports_connected",
             "port_forcings",
@@ -266,7 +266,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             "ports_current_draw",
         )
 
-    def _read_from_pasd(
+    def _poll_pasd_attributes(
         self: PasdBusComponentManager,
         pasd_device_number: int,
         *attribute_names: str,
@@ -302,7 +302,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         result = self._pasd_bus_api_client.execute_command(
             0, "reset_port_breaker", port_number
         )
-        self._get_fndh_ports_status()  # XXX: Until we poll
+        self._poll_fndh_ports_status()  # XXX: Until we poll
         return result
 
     @check_communicating
@@ -323,7 +323,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         result = self._pasd_bus_api_client.execute_command(
             0, "turn_port_on", port_number, stay_on_when_offline
         )
-        self._get_fndh_ports_status()  # XXX: Until we poll
+        self._poll_fndh_ports_status()  # XXX: Until we poll
         return result
 
     @check_communicating
@@ -341,7 +341,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         result = self._pasd_bus_api_client.execute_command(
             0, "turn_port_off", port_number
         )
-        self._get_fndh_ports_status()  # XXX: Until we poll
+        self._poll_fndh_ports_status()  # XXX: Until we poll
         return result
 
     @check_communicating
@@ -360,7 +360,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         result = self._pasd_bus_api_client.execute_command(
             0, "set_led_pattern", led_pattern
         )
-        self._get_fndh_status()  # XXX: Until we poll
+        self._poll_fndh_status()  # XXX: Until we poll
         return result
 
     @check_communicating
@@ -380,7 +380,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         result = self._pasd_bus_api_client.execute_command(
             smartbox_id, "reset_port_breaker", port_number
         )
-        self._get_smartbox_ports_status(smartbox_id)  # XXX: Until we poll
+        self._poll_smartbox_ports_status(smartbox_id)  # XXX: Until we poll
         return result
 
     @check_communicating
@@ -403,7 +403,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         result = self._pasd_bus_api_client.execute_command(
             smartbox_id, "turn_port_on", port_number, stay_on_when_offline
         )
-        self._get_smartbox_ports_status(smartbox_id)  # XXX: Until we poll
+        self._poll_smartbox_ports_status(smartbox_id)  # XXX: Until we poll
         return result
 
     @check_communicating
@@ -423,7 +423,7 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         result = self._pasd_bus_api_client.execute_command(
             smartbox_id, "turn_port_off", port_number
         )
-        self._get_smartbox_ports_status(smartbox_id)  # XXX: Until we poll
+        self._poll_smartbox_ports_status(smartbox_id)  # XXX: Until we poll
         return result
 
     @check_communicating
@@ -444,5 +444,5 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         result = self._pasd_bus_api_client.execute_command(
             smartbox_id, "set_led_pattern", led_pattern
         )
-        self._get_smartbox_status(smartbox_id)  # XXX: Until we poll
+        self._poll_smartbox_status(smartbox_id)  # XXX: Until we poll
         return result

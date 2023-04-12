@@ -187,7 +187,6 @@ class PasdBusJsonApi:
             }
             return json.dumps(response)
 
-        print(f"{request=}")
         try:
             jsonschema.validate(request, self.REQUEST_SCHEMA)
         except jsonschema.ValidationError as error:
@@ -271,7 +270,6 @@ class PasdBusJsonApiClient:
         response = self._do_request(
             {"device_id": device_id, "execute": name, "arguments": args}
         )
-        print(f"{response=}")
         assert response["data"]["source"] == device_id
         assert response["data"]["type"] == "command_result"
         return response["data"]["attributes"][name]
