@@ -260,8 +260,8 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     )
 
 
-@pytest.fixture(scope="module")
-def pasd_bus_device(
+@pytest.fixture(name="pasd_bus_device", scope="module")
+def pasd_bus_device_fixture(
     tango_harness: TangoContextProtocol,
     pasd_bus_name: str,
     change_event_callbacks: MockTangoEventCallbackGroup,
