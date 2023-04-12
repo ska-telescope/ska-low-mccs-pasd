@@ -1,0 +1,26 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://skao.int/MccsPasdBus_TurnSmartboxPortOn.json",
+    "title": "MccsPasdBus TurnSmartboxPortOn schema",
+    "description": "Schema for MccsPasdBus's TurnSmartboxPortOn command",
+    "type": "object",
+    "properties": {
+        "smartbox_number": {
+            "description": "Number of the smartbox being addressed",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 24
+        },
+        "port_number": {
+            "description": "Number of the port to turn on",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+        },
+        "stay_on_when_offline": {
+            "description": "Whether to stay on when M&C is offline",
+            "type": "boolean"
+        }
+    },
+    "required": ["smartbox_number", "port_number", "stay_on_when_offline"]
+}
