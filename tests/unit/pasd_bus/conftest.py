@@ -289,7 +289,7 @@ def pasd_bus_simulator_server_launcher_fixture(
     returns a context manager that spins up a simulator server,
     yields it for use in testing,
     and then shuts its down afterwards.
-    
+
     :param mock_fndh_simulator:
         the FNDH simulator backend that the TCP server will front,
         wrapped with a mock so that we can assert calls.

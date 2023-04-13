@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import threading
-from typing import Any, List, Optional, cast
+from typing import Any, Optional, cast
 
 import tango
 from ska_control_model import (
@@ -21,7 +21,7 @@ from ska_control_model import (
 )
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
-from tango.server import attribute, command, device_property
+from tango.server import command, device_property
 
 from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
@@ -37,14 +37,49 @@ class MccsSmartBox(SKABaseDevice):
     # -----------------
     FndhPort = device_property(dtype=int, default_value=0)
     PasdFQDNs = device_property(dtype=(str,), default_value=[])
-    #TODO: do we want both fndhPort and SmartBoxNumber?
+    # TODO: do we want both fndhPort and SmartBoxNumber?
     SmartBoxNumber = device_property(dtype=int, default_value=1)
 
     PORT_COUNT = 12
 
+    # These attributes should be coupled in some way to the MccsPasdBus attributes.
+    # The reason is that this device is just a messenger posting change
+    # events received from the MccsPasdBus to any listeners.
+    # It will be confusing if the attributes
+    # listed in MccsSmartBox are different from the attribute listed in MccsPasdBus.
+    # Another reason if that the MccsPasdBus is bound to change
+    # add/remove attributes in the future.
+    # and we dont want MccsSmartBox and MccsPasdBus getting out of sync.
+
+    # TODO: Should these be dynamically created by asking the
+    # MccsPasdBus what attributes are avaliable?
+    ATTRIBUTES = [
+        ("ModbusRegisterMapRevisionNumber", int, None),
+        ("PcbRevisionNumber", int, None),
+        ("CpuId", int, None),
+        ("ChipId", int, None),
+        ("FirmwareVersion", str, None),
+        ("Uptime", int, None),
+        ("Status", str, None),
+        ("LedPattern", str, None),
+        ("InputVoltage", float, None),
+        ("PowerSupplyOutputVoltage", float, None),
+        ("PowerSupplyTemperature", float, None),
+        ("OutsideTemperature", float, None),
+        ("PcbTemperature", float, None),
+        ("PortsConnected", (bool,), PORT_COUNT),
+        ("PortForcings", (str,), PORT_COUNT),
+        ("PortBreakersTripped", (bool,), PORT_COUNT),
+        ("PortsDesiredPowerOnline", (bool,), PORT_COUNT),
+        ("PortsDesiredPowerOffline", (bool,), PORT_COUNT),
+        ("PortsPowerSensed", (bool,), PORT_COUNT),
+        ("PortsCurrentDraw", (float,), PORT_COUNT),
+    ]
+
     # ---------------
     # Initialisation
     # ---------------
+
     def __init__(self: MccsSmartBox, *args: Any, **kwargs: Any) -> None:
         """
         Initialise this device object.
@@ -75,7 +110,7 @@ class MccsSmartBox(SKABaseDevice):
         self._max_workers = 10
         self._power_state_lock = threading.RLock()
         super().init_device()
-        
+
         # setup all attributes.
         self._smartbox_state: dict[str, Any] = {}
         self._setup_smartbox_attributes()
@@ -94,6 +129,7 @@ class MccsSmartBox(SKABaseDevice):
         self._health_model = SmartBoxHealthModel(self._health_changed_callback)
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
+
     # ----------
     # Properties
     # ----------
@@ -202,28 +238,7 @@ class MccsSmartBox(SKABaseDevice):
     # Attributes
     # ----------
     def _setup_smartbox_attributes(self: MccsSmartBox) -> None:
-        for (slug, data_type, length) in [
-            ("ModbusRegisterMapRevisionNumber", int, None),
-            ("PcbRevisionNumber", int, None),
-            ("CpuId", int, None),
-            ("ChipId", int, None),
-            ("FirmwareVersion", str, None),
-            ("Uptime", int, None),
-            ("Status", str, None),
-            ("LedPattern", str, None),
-            ("InputVoltage", float, None),
-            ("PowerSupplyOutputVoltage", float, None),
-            ("PowerSupplyTemperature", float, None),
-            ("OutsideTemperature", float, None),
-            ("PcbTemperature", float, None),
-            ("PortsConnected", (bool,), self.PORT_COUNT),
-            ("PortForcings", (str,), self.PORT_COUNT),
-            ("PortBreakersTripped", (bool,), self.PORT_COUNT),
-            ("PortsDesiredPowerOnline", (bool,), self.PORT_COUNT),
-            ("PortsDesiredPowerOffline", (bool,), self.PORT_COUNT),
-            ("PortsPowerSensed", (bool,), self.PORT_COUNT),
-            ("PortsCurrentDraw", (float,), self.PORT_COUNT),
-        ]:
+        for (slug, data_type, length) in self.ATTRIBUTES:
             self._setup_smartbox_attribute(
                 f"{slug}",
                 cast(type | tuple[type], data_type),
@@ -250,7 +265,9 @@ class MccsSmartBox(SKABaseDevice):
         self.set_archive_event(attribute_name, True, False)
 
     def _read_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
-        smartbox_attribute.set_value(self._smartbox_state[smartbox_attribute.get_name()])
+        smartbox_attribute.set_value(
+            self._smartbox_state[smartbox_attribute.get_name()]
+        )
 
     # ----------
     # Callbacks
@@ -265,7 +282,7 @@ class MccsSmartBox(SKABaseDevice):
         )
 
         if communication_state != CommunicationStatus.ESTABLISHED:
-            self._component_state_changed_callback(power = PowerState.UNKNOWN)
+            self._component_state_changed_callback(power=PowerState.UNKNOWN)
 
         super()._communication_state_changed(communication_state)
 
@@ -312,15 +329,13 @@ class MccsSmartBox(SKABaseDevice):
             self.push_archive_event("healthState", health)
 
     def _attribute_changed_callback(
-        self: MccsSmartBox,
-        attr_name: str,
-        attr_value: HealthState
+        self: MccsSmartBox, attr_name: str, attr_value: HealthState
     ) -> None:
         """
-        Handle changes to subscribed attributes. 
+        Handle changes to subscribed attributes.
 
-        This is a callback hook we pass to the component manager, 
-        It is called when a subscribed attribute changes. 
+        This is a callback hook we pass to the component manager,
+        It is called when a subscribed attribute changes.
         It is responsible for:
         - updating this device attribute
         - pushing a change event to any listeners.
@@ -328,9 +343,26 @@ class MccsSmartBox(SKABaseDevice):
         :param attr_name: the name of the attribute that needs updating
         :param attr_value: the value to update with.
         """
-        self._smartbox_state[attr_name] = attr_value
-        self.push_change_event(attr_name, attr_value)
-        self.push_archive_event(attr_name, attr_value)
+        # We are asserting that the attribute change event pushed by the
+        # MccsPasd corresponds to a attribute on this device.
+
+        # TODO: Should we contruct the attribute here if it does not already exists?
+        try:
+            assert (
+                len([attr for (attr, _, _) in self.ATTRIBUTES if attr == attr_name]) > 0
+            )
+
+            self._smartbox_state[attr_name] = attr_value
+            self.push_change_event(attr_name, attr_value)
+            self.push_archive_event(attr_name, attr_value)
+
+        except AssertionError:
+            self.logger.debug(
+                f"""The attribute {attr_name} pushed from MccsPasdBus
+                device does not exist in MccsSmartBox"""
+            )
+
+
 # ----------
 # Run server
 # ----------

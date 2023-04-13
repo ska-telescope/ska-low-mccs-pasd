@@ -18,6 +18,7 @@ from ska_control_model import CommunicationStatus, ResultCode, TaskStatus
 from ska_tango_testing.mock import MockCallableGroup
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
+from ska_low_mccs_pasd.pasd_bus import MccsPasdBus
 from ska_low_mccs_pasd.smart_box import SmartBoxComponentManager
 
 
@@ -39,14 +40,20 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
 
 
 @pytest.fixture(name="mocked_pasd_proxy")
-def mocked_pasd_proxy_fixture() -> unittest.mock.Mock:
+def mocked_pasd_proxy_fixture(smartbox_number: int) -> unittest.mock.Mock:
     """
     Return a dictionary of change event callbacks with asynchrony support.
 
+    :param smartbox_number: the smartbox number used
+        to get the subscription list.
     :return: a collections.defaultdict that returns change event
         callbacks by name.
     """
-    return unittest.mock.Mock()
+    mock = unittest.mock.Mock()
+    mock.GetPasdDeviceSubscriptions = unittest.mock.Mock(
+        return_value=MccsPasdBus._ATTRIBUTE_MAP[int(smartbox_number)].values()
+    )
+    return mock
 
 
 @pytest.fixture(name="task_callback")
@@ -70,6 +77,7 @@ def fndh_port_fixture() -> int:
     """
     return 5
 
+
 @pytest.fixture(name="smartbox_number")
 def smartbox_number_fixture() -> int:
     """
@@ -80,8 +88,9 @@ def smartbox_number_fixture() -> int:
     """
     return 1
 
+
 @pytest.fixture(name="smartbox_component_manager")
-def smartbox_component_manager_fixture(
+def smartbox_component_manager_fixture(  # pylint: disable=too-many-arguments
     logger: logging.Logger,
     pasd_bus_fndh: str,
     mock_callbacks: MockCallableGroup,
@@ -99,6 +108,7 @@ def smartbox_component_manager_fixture(
     :param mock_callbacks: mock callables.
     :param mocked_pasd_proxy: a unittest.mock
     :param fndh_port: the fndh port.
+    :param smartbox_number: the number assigned to this smartbox.
 
     :return: an APIU component manager in the specified simulation mode.
     """
@@ -114,6 +124,7 @@ def smartbox_component_manager_fixture(
     )
     mocked_pasd_proxy._change_event_subscription_ids = {}
     mocked_pasd_proxy.fndhPortsPowerSensed = [False] * 24
+
     component_manager.start_communicating()
 
     return component_manager
@@ -181,13 +192,15 @@ class TestSmartBoxComponentManager:
         # MOCK FAILURE IN SUBSCRIBE
         # -------------------------
         mock_error = unittest.mock.Mock(
-            side_effect= Exception("attribute mocked to fail")
+            side_effect=Exception("attribute mocked to fail")
         )
-        smartbox_component_manager._pasd_bus_proxy.add_change_event_callback = (  # type: ignore[assignment]
-            unittest.mock.MagicMock(side_effect=mock_error)
+        smartbox_component_manager._pasd_bus_proxy.add_change_event_callback = (
+            unittest.mock.MagicMock(side_effect=mock_error)  # type: ignore[assignment]
         )
         smartbox_component_manager.start_communicating()
-        mock_callbacks["communication_state"].assert_call(CommunicationStatus.NOT_ESTABLISHED)
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
         mock_callbacks["communication_state"].assert_not_called()
 
     @pytest.mark.parametrize(

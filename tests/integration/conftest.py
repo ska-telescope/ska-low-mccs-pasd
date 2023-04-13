@@ -15,15 +15,15 @@ import logging
 import threading
 import unittest.mock
 from contextlib import contextmanager
-from typing import Any, Callable, ContextManager, Generator, Iterator
+from typing import Any, Callable, ContextManager, Generator, Iterator, Sequence
 
 import pytest
 from ska_ser_devices.client_server import TcpServer
 
 from ska_low_mccs_pasd.pasd_bus import (
+    FndhSimulator,
     PasdBusSimulator,
     PasdBusSimulatorJsonServer,
-    FndhSimulator,
     SmartboxSimulator,
 )
 
@@ -116,6 +116,7 @@ def mock_pasd_bus_simulator_fixture(
 
     return mock_simulator
 
+
 @pytest.fixture(name="fndh_simulator")
 def fndh_simulator_fixture(
     pasd_bus_simulator: PasdBusSimulator,
@@ -129,6 +130,7 @@ def fndh_simulator_fixture(
     :return: an FNDH simulator
     """
     return pasd_bus_simulator.get_fndh()
+
 
 @pytest.fixture(name="mock_fndh_simulator")
 def mock_fndh_simulator_fixture(
@@ -181,6 +183,7 @@ def mock_fndh_simulator_fixture(
 
     return mock_simulator
 
+
 @pytest.fixture(name="smartbox_simulators")
 def smartbox_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
@@ -194,6 +197,7 @@ def smartbox_simulators_fixture(
     :return: a sequence of smartbox simulators
     """
     return pasd_bus_simulator.get_smartboxes()
+
 
 @pytest.fixture(name="mock_smartbox_simulators")
 def mock_smartbox_simulators_fixture(
@@ -254,6 +258,7 @@ def mock_smartbox_simulators_fixture(
 
     return mock_simulators
 
+
 @pytest.fixture(name="pasd_bus_simulator_server_launcher")
 def pasd_bus_simulator_server_launcher_fixture(
     mock_fndh_simulator: FndhSimulator,
@@ -266,7 +271,7 @@ def pasd_bus_simulator_server_launcher_fixture(
     returns a context manager that spins up a simulator server,
     yields it for use in testing,
     and then shuts its down afterwards.
-    
+
     :param mock_fndh_simulator:
         the FNDH simulator backend that the TCP server will front,
         wrapped with a mock so that we can assert calls.
@@ -300,6 +305,7 @@ def pasd_bus_simulator_server_launcher_fixture(
 
     return launch_pasd_bus_simulator_server
 
+
 @pytest.fixture(name="smartbox_number")
 def smartbox_number_fixture() -> int:
     """
@@ -309,7 +315,8 @@ def smartbox_number_fixture() -> int:
         testing.
     """
     return 1
-    
+
+
 @pytest.fixture(name="pasd_bus_simulator_server")
 def pasd_bus_simulator_server_fixture(
     pasd_bus_simulator_server_launcher: Callable[[], ContextManager[TcpServer]],
