@@ -9,35 +9,29 @@
 from __future__ import annotations
 
 import logging
-import time
 import unittest.mock
 from typing import Any
 
 import pytest
 from ska_control_model import CommunicationStatus, ResultCode, TaskStatus
 from ska_tango_testing.mock import MockCallableGroup
-from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import MccsPasdBus
 from ska_low_mccs_pasd.smart_box import SmartBoxComponentManager
 
-
-@pytest.fixture(name="change_event_callbacks")
-def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
+@pytest.fixture(name="callbacks")
+def callbacks_fixture() -> MockCallableGroup:
     """
-    Return a dictionary of change event callbacks with asynchrony support.
+    Return a dictionary of callables to be used as callbacks.
 
-    :return: a collections.defaultdict that returns change event
-        callbacks by name.
+    :return: a dictionary of callables to be used as callbacks.
     """
-    return MockTangoEventCallbackGroup(
-        "adminMode",
-        "healthState",
-        "longRunningCommandResult",
-        "longRunningCommandStatus",
-        "state",
+    return MockCallableGroup(
+        "communication_status",
+        "component_state",
+        "task_callback",
+        timeout=2.0,
     )
-
 
 @pytest.fixture(name="mocked_pasd_proxy")
 def mocked_pasd_proxy_fixture(smartbox_number: int) -> unittest.mock.Mock:
@@ -54,18 +48,6 @@ def mocked_pasd_proxy_fixture(smartbox_number: int) -> unittest.mock.Mock:
         return_value=MccsPasdBus._ATTRIBUTE_MAP[int(smartbox_number)].values()
     )
     return mock
-
-
-@pytest.fixture(name="task_callback")
-def task_callback_fixture() -> MockTangoEventCallbackGroup:
-    """
-    Return a dictionary of change event callbacks with asynchrony support.
-
-    :return: a collections.defaultdict that returns change event
-        callbacks by name.
-    """
-    return unittest.mock.Mock()
-
 
 @pytest.fixture(name="fndh_port")
 def fndh_port_fixture() -> int:
@@ -269,7 +251,7 @@ class TestSmartBoxComponentManager:
         pasd_proxy_response: Any,
         expected_manager_result: Any,
         command_tracked_response: Any,
-        task_callback: unittest.mock.Mock,
+        callbacks: MockCallableGroup,
     ) -> None:
         """
         Test the SmartBox object commands.
@@ -283,7 +265,7 @@ class TestSmartBoxComponentManager:
         :param pasd_proxy_response: mocked response
         :param expected_manager_result: expected response from the call
         :param command_tracked_response: The result of the command.
-        :param task_callback: the task_callback.
+        :param callbacks: the callbacks.
         """
         # set up the proxy responce
         mock_response = unittest.mock.MagicMock(return_value=pasd_proxy_response)
@@ -291,12 +273,17 @@ class TestSmartBoxComponentManager:
 
         assert (
             getattr(smartbox_component_manager, component_manager_command)(
-                task_callback
+                callbacks["task_callback"]
             )
             == expected_manager_result
         )
-        time.sleep(0.01)
-        task_callback.assert_called_with(
+        callbacks["task_callback"].assert_call(
+            status=TaskStatus.QUEUED
+        )
+        callbacks["task_callback"].assert_call(
+            status=TaskStatus.IN_PROGRESS
+        )
+        callbacks["task_callback"].assert_call(
             status=command_tracked_response[0], result=command_tracked_response[1]
         )
 
@@ -338,7 +325,7 @@ class TestSmartBoxComponentManager:
         pasd_proxy_response: Any,
         expected_manager_result: Any,
         command_tracked_response: Any,
-        task_callback: unittest.mock.Mock,
+        callbacks: MockCallableGroup,
     ) -> None:
         """
         Test the SmartBox object commands.
@@ -352,7 +339,7 @@ class TestSmartBoxComponentManager:
         :param pasd_proxy_response: mocked response
         :param expected_manager_result: expected response from the call
         :param command_tracked_response: The result of the command.
-        :param task_callback: the task_callback.
+        :param callbacks: the callbacks.
         """
         # set up the proxy responce
         if component_manager_command_argument is None:
@@ -363,18 +350,24 @@ class TestSmartBoxComponentManager:
             )
 
         else:
-            mock_response = unittest.mock.MagicMock(return_value=pasd_proxy_response)
+            mock_response = unittest.mock.Mock(return_value=pasd_proxy_response)
             setattr(mocked_pasd_proxy, pasd_proxy_command, mock_response)
-            mocked_pasd_proxy.TurnSmartboxOff = unittest.mock.MagicMock(
+            mocked_pasd_proxy.TurnSmartboxOff = unittest.mock.Mock(
                 return_value=pasd_proxy_response
             )
             assert (
                 getattr(smartbox_component_manager, component_manager_command)(
-                    component_manager_command_argument, task_callback
+                    component_manager_command_argument, callbacks["task_callback"]
                 )
                 == expected_manager_result
             )
-            task_callback.assert_called_with(
+            callbacks["task_callback"].assert_call(
+                status=TaskStatus.QUEUED
+            )
+            callbacks["task_callback"].assert_call(
+                status=TaskStatus.IN_PROGRESS
+            )
+            callbacks["task_callback"].assert_call(
                 status=TaskStatus.COMPLETED, result=command_tracked_response
             )
 
@@ -416,7 +409,7 @@ class TestSmartBoxComponentManager:
         pasd_proxy_response: Any,
         expected_manager_result: Any,
         command_tracked_response: Any,
-        task_callback: unittest.mock.Mock,
+        callbacks: MockCallableGroup,
     ) -> None:
         """
         Test how the SmartBox object handles the incorrect return type.
@@ -434,7 +427,7 @@ class TestSmartBoxComponentManager:
         :param pasd_proxy_response: mocked response
         :param expected_manager_result: expected response from the call
         :param command_tracked_response: The result of the command.
-        :param task_callback: the task_callback.
+        :param callbacks: the callbacks.
         """
         # setup the response from the mocked pasd proxy
         mock_response = unittest.mock.MagicMock(return_value=pasd_proxy_response)
@@ -443,13 +436,18 @@ class TestSmartBoxComponentManager:
         # check component manager can issue a command and it returns as expected
         assert (
             getattr(smartbox_component_manager, component_manager_command)(
-                component_manager_command_argument, task_callback
+                component_manager_command_argument, callbacks["task_callback"]
             )
             == expected_manager_result
         )
 
-        # check that the task execution is as expected
-        time.sleep(0.01)
-        task_callback.assert_called_with(
+        # sleep to allow task execution.
+        callbacks["task_callback"].assert_call(
+            status=TaskStatus.QUEUED
+        )
+        callbacks["task_callback"].assert_call(
+            status=TaskStatus.IN_PROGRESS
+        )
+        callbacks["task_callback"].assert_call(
             status=TaskStatus.FAILED, result=command_tracked_response
         )
