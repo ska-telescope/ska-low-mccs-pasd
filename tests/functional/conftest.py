@@ -22,12 +22,14 @@ from typing import (
 
 import _pytest
 import pytest
+import tango
 from ska_control_model import LoggingLevel
 from ska_tango_testing.context import (
     TangoContextProtocol,
     ThreadedTestTangoContextManager,
     TrueTangoContextManager,
 )
+from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 
@@ -137,7 +139,9 @@ def pasd_address_context_manager_factory_fixture() -> Callable[
             )
 
             simulator = PasdBusSimulator(1, logging.DEBUG)
-            simulator_server = PasdBusSimulatorJsonServer(simulator)
+            simulator_server = PasdBusSimulatorJsonServer(
+                simulator.get_fndh(), simulator.get_smartboxes()
+            )
             server = TcpServer(
                 "127.0.0.1", 0, simulator_server  # let the kernel give us a port
             )
@@ -228,7 +232,82 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         callbacks.
     """
     return MockTangoEventCallbackGroup(
-        "pasd_bus_health",
-        "pasd_bus_state",
+        "state",
+        "healthState",
+        "healthState",
+        "fndhUptime",
+        "fndhStatus",
+        "fndhLedPattern",
+        "fndhPsu48vVoltages",
+        "fndhPsu48vCurrent",
+        "fndhPsu48vTemperature",
+        "fndhPsu5vVoltage",
+        "fndhPsu5vTemperature",
+        "fndhPcbTemperature",
+        "fndhOutsideTemperature",
+        "fndhPortsPowerSensed",
+        "smartbox1Uptime",
+        "smartbox1Status",
+        "smartbox1LedPattern",
+        "smartbox1InputVoltage",
+        "smartbox1PowerSupplyOutputVoltage",
+        "smartbox1PowerSupplyTemperature",
+        "smartbox1PcbTemperature",
+        "smartbox1OutsideTemperature",
+        "smartbox1PortsPowerSensed",
         timeout=10.0,
+        assert_no_error=False,
     )
+
+
+@pytest.fixture(name="pasd_bus_device", scope="module")
+def pasd_bus_device_fixture(
+    tango_harness: TangoContextProtocol,
+    pasd_bus_name: str,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> tango.DeviceProxy:
+    """
+    Return a DeviceProxy to an instance of MccsPasdBus.
+
+    :param tango_harness: a test harness for Tango devices.
+    :param pasd_bus_name: the name of the PaSD bus device under test.
+    :param change_event_callbacks: dictionary of Tango change event
+        callbacks with asynchrony support.
+
+    :return: A proxy to an instance of MccsPasdBus.
+    """
+    proxy = tango_harness.get_device(pasd_bus_name)
+
+    for attribute_name in [
+        "state",
+        "healthState",
+        "fndhUptime",
+        "fndhStatus",
+        "fndhLedPattern",
+        "fndhPsu48vVoltages",
+        "fndhPsu48vCurrent",
+        "fndhPsu48vTemperature",
+        "fndhPsu5vVoltage",
+        "fndhPsu5vTemperature",
+        "fndhPcbTemperature",
+        "fndhOutsideTemperature",
+        "fndhPortsPowerSensed",
+        "smartbox1Uptime",
+        "smartbox1Status",
+        "smartbox1LedPattern",
+        "smartbox1InputVoltage",
+        "smartbox1PowerSupplyOutputVoltage",
+        "smartbox1PowerSupplyTemperature",
+        "smartbox1PcbTemperature",
+        "smartbox1OutsideTemperature",
+        "smartbox1PortsPowerSensed",
+    ]:
+        print(f"Subscribing proxy to {attribute_name}...")
+        proxy.subscribe_event(
+            attribute_name,
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[attribute_name],
+        )
+        change_event_callbacks.assert_change_event(attribute_name, Anything)
+
+    return proxy
