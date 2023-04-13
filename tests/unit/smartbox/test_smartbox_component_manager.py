@@ -19,6 +19,7 @@ from ska_tango_testing.mock import MockCallableGroup
 from ska_low_mccs_pasd.pasd_bus import MccsPasdBus
 from ska_low_mccs_pasd.smart_box import SmartBoxComponentManager
 
+
 @pytest.fixture(name="callbacks")
 def callbacks_fixture() -> MockCallableGroup:
     """
@@ -32,6 +33,7 @@ def callbacks_fixture() -> MockCallableGroup:
         "task_callback",
         timeout=2.0,
     )
+
 
 @pytest.fixture(name="mocked_pasd_proxy")
 def mocked_pasd_proxy_fixture(smartbox_number: int) -> unittest.mock.Mock:
@@ -48,6 +50,7 @@ def mocked_pasd_proxy_fixture(smartbox_number: int) -> unittest.mock.Mock:
         return_value=MccsPasdBus._ATTRIBUTE_MAP[int(smartbox_number)].values()
     )
     return mock
+
 
 @pytest.fixture(name="fndh_port")
 def fndh_port_fixture() -> int:
@@ -277,12 +280,8 @@ class TestSmartBoxComponentManager:
             )
             == expected_manager_result
         )
-        callbacks["task_callback"].assert_call(
-            status=TaskStatus.QUEUED
-        )
-        callbacks["task_callback"].assert_call(
-            status=TaskStatus.IN_PROGRESS
-        )
+        callbacks["task_callback"].assert_call(status=TaskStatus.QUEUED)
+        callbacks["task_callback"].assert_call(status=TaskStatus.IN_PROGRESS)
         callbacks["task_callback"].assert_call(
             status=command_tracked_response[0], result=command_tracked_response[1]
         )
@@ -361,12 +360,8 @@ class TestSmartBoxComponentManager:
                 )
                 == expected_manager_result
             )
-            callbacks["task_callback"].assert_call(
-                status=TaskStatus.QUEUED
-            )
-            callbacks["task_callback"].assert_call(
-                status=TaskStatus.IN_PROGRESS
-            )
+            callbacks["task_callback"].assert_call(status=TaskStatus.QUEUED)
+            callbacks["task_callback"].assert_call(status=TaskStatus.IN_PROGRESS)
             callbacks["task_callback"].assert_call(
                 status=TaskStatus.COMPLETED, result=command_tracked_response
             )
@@ -441,13 +436,8 @@ class TestSmartBoxComponentManager:
             == expected_manager_result
         )
 
-        # sleep to allow task execution.
-        callbacks["task_callback"].assert_call(
-            status=TaskStatus.QUEUED
-        )
-        callbacks["task_callback"].assert_call(
-            status=TaskStatus.IN_PROGRESS
-        )
+        callbacks["task_callback"].assert_call(status=TaskStatus.QUEUED)
+        callbacks["task_callback"].assert_call(status=TaskStatus.IN_PROGRESS)
         callbacks["task_callback"].assert_call(
             status=TaskStatus.FAILED, result=command_tracked_response
         )

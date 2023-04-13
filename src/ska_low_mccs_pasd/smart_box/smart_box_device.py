@@ -43,11 +43,12 @@ class MccsSmartBox(SKABaseDevice):
     PORT_COUNT = 12
 
     # These attributes should be coupled in some way to the MccsPasdBus attributes.
-    # The reason is that this device is just a messenger posting change
-    # events received from the MccsPasdBus to any listeners.
-    # It will be confusing if the attributes
-    # listed in MccsSmartBox are different from the attribute listed in MccsPasdBus.
-    # Another reason if that the MccsPasdBus is bound to change
+    # The reason is that this device is just a messenger carrying messages to/from the
+    # MccsPasdBus device.
+    # It will be confusing if the attributes listed in MccsSmartBox are different
+    # from the attributes listed in MccsPasdBus.
+
+    # Another reason for coupling is that the MccsPasdBus is bound to change
     # add/remove attributes in the future.
     # and we dont want MccsSmartBox and MccsPasdBus getting out of sync.
 
@@ -177,6 +178,7 @@ class MccsSmartBox(SKABaseDevice):
         for (command_name, method_name) in [
             ("PowerOnPort", "turn_on_port"),
             ("PowerOffPort", "turn_off_port"),
+            ("GetAttributes", "get_pasd_attributes"),
         ]:
             self.register_command_object(
                 command_name,
@@ -343,10 +345,8 @@ class MccsSmartBox(SKABaseDevice):
         :param attr_name: the name of the attribute that needs updating
         :param attr_value: the value to update with.
         """
-        # We are asserting that the attribute change event pushed by the
-        # MccsPasd corresponds to a attribute on this device.
-
-        # TODO: Should we contruct the attribute here if it does not already exists?
+        # TODO: Should we construct the MccsSmartbox attributes dynamically here
+        # if it does not already exists?
         try:
             assert (
                 len([attr for (attr, _, _) in self.ATTRIBUTES if attr == attr_name]) > 0

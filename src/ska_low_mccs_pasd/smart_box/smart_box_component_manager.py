@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import re
 import threading
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import tango
 from ska_control_model import (
@@ -46,8 +46,8 @@ class SmartBoxComponentManager(
         communication_state_changed_callback: Callable[[CommunicationStatus], None],
         component_state_changed_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
-        pasd_fqdn: Optional[str] = None,
-        fndh_port: Optional[int] = None,
+        pasd_fqdn: str,
+        fndh_port: int,
         smartbox_number: Optional[int] = None,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
     ) -> None:
@@ -147,6 +147,7 @@ class SmartBoxComponentManager(
                 return
 
         try:
+            # Ask the MccsPasdBus what attributes we should subscribe.
             self._subscribe_to_attributes()
         except Exception as e:  # pylint: disable=broad-except
             self._update_component_state(fault=True)
@@ -169,9 +170,9 @@ class SmartBoxComponentManager(
 
                 port = self.fndh_port
                 if self._pasd_bus_proxy.fndhPortsPowerSensed[port]:  # type: ignore
-                    self._update_component_state(power=PowerState.ON)
+                    self._component_state_changed_callback(power=PowerState.ON)
                 else:
-                    self._update_component_state(power=PowerState.OFF)
+                    self._component_state_changed_callback(power=PowerState.OFF)
             else:
                 self.logger.info(
                     "communication with the pasd bus is already established"
@@ -202,8 +203,7 @@ class SmartBoxComponentManager(
         # with lowercase for push_change_events.
 
         # Without making a decision whether to change the MccsDeviceProxy,
-        # I have implemented a mapping to map all calls to this function to
-        # the tango attribute name.
+        # A mapping to the tango attribute is created.
         contains_capital = re.search("[A-Z]", attr_name)
         # just to check if we are really looking at a pasd smartbox device between 1-25
         is_a_smartbox = re.search("^smartbox[1-2][1-5]|[1-9]", attr_name)
@@ -239,33 +239,44 @@ class SmartBoxComponentManager(
         :param event_quality: The event_quality
         """
         try:
-            assert event_name == "healthstate"
-        except AssertionError as msg:
-            self.logger.debug(msg)
+            assert event_name.lower() == "healthstate"
+        except AssertionError:
+            self.logger.debug(
+                f"""callback called with unexpected
+            attribute expected healthstate got {event_name}"""
+            )
             return
-        self._update_component_state(pasdbus_status=event_value)
+        self._component_state_changed_callback(pasdbus_status=event_value)
 
     def _power_state_change(
         self: SmartBoxComponentManager,
         event_name: str,
-        event_value: Any,
+        port_power_states: list[bool],
         event_quality: tango.AttrQuality,
     ) -> None:
         """
         Pasdbus health state callback.
 
         :param event_name: The event_name
-        :param event_value: The event_value
+        :param port_power_states: The port_power_states
         :param event_quality: The event_quality
         """
+        try:
+            assert event_name.lower() == "fndhportspowersensed"
+        except AssertionError:
+            self.logger.debug(
+                f"""callback called with unexpected
+            attribute expected fndhportspowersensed got {event_name}"""
+            )
+            return
+
         # TODO: for the moment we are getting the power states of
-        # all the ports on the FNDH. This should be changed so we are just
-        # called with the power state specific to this smartbox
-        this_smartbox_has_power = event_value[self.fndh_port]
+        # all the ports on the FNDH. Consider changing this.
+        this_smartbox_has_power = port_power_states[self.fndh_port]
         if this_smartbox_has_power:
-            self._update_component_state(power=PowerState.UNKNOWN)  # TODO: surely on
+            self._component_state_changed_callback(power=PowerState.ON)
         else:
-            self._update_component_state(power=PowerState.UNKNOWN)  # TODO: surely off
+            self._component_state_changed_callback(power=PowerState.OFF)
 
     def stop_communicating(self: SmartBoxComponentManager) -> None:
         """Break off communication with the pasdBus."""
@@ -383,7 +394,9 @@ class SmartBoxComponentManager(
         task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
-        Turn a Antenna off.
+        Turn a Port off.
+
+        This may or may not have a Antenna attached.
 
         :param antenna_number: (one-based) number of the TPM to turn off.
         :param task_callback: callback to be called when the status of
@@ -438,7 +451,9 @@ class SmartBoxComponentManager(
         task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
-        Turn a Antenna on.
+        Turn a port on.
+
+        This may or may not have a Antenna attached.
 
         :param antenna_number: (one-based) number of the TPM to turn on.
         :param task_callback: callback to be called when the status of

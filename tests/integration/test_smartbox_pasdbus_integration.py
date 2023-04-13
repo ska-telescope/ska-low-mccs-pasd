@@ -220,11 +220,12 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
         # has power, this is simulated as off.
         smartbox_device.adminMode = AdminMode.ONLINE
 
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.UNKNOWN
         )
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
-
+        change_event_callbacks["smartbox_state"].assert_not_called()
         # Check that the smartbox has updated its values from the smartbox simulator.
         assert (
             smartbox_device.ModbusRegisterMapRevisionNumber
