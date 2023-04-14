@@ -85,7 +85,7 @@ def true_context_fixture(request: pytest.FixtureRequest) -> bool:
 
 @pytest.fixture(name="pasd_address_context_manager_factory", scope="module")
 def pasd_address_context_manager_factory_fixture() -> Callable[
-    [], ContextManager[tuple[str, int]]
+    [], ContextManager[tuple[str | bytes | bytearray, int]]
 ]:
     """
     Return a PaSD address context manager factory.
@@ -123,7 +123,7 @@ def pasd_address_context_manager_factory_fixture() -> Callable[
     else:
 
         @contextmanager
-        def launch_simulator_server() -> Iterator[tuple[str, int]]:
+        def launch_simulator_server() -> Iterator[tuple[str | bytes | bytearray, int]]:
             # Imports are deferred until now,
             # so that we do not try to import from ska_low_mccs_pasd
             # until we know that we need to.
@@ -238,6 +238,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "fndhUptime",
         "fndhStatus",
         "fndhLedPattern",
+        "fndhPortsConnected",
         "fndhPsu48vVoltages",
         "fndhPsu48vCurrent",
         "fndhPsu48vTemperature",
@@ -254,6 +255,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "smartbox1PowerSupplyTemperature",
         "smartbox1PcbTemperature",
         "smartbox1OutsideTemperature",
+        "smartbox1PortsConnected",
         "smartbox1PortsPowerSensed",
         timeout=10.0,
         assert_no_error=False,
@@ -291,6 +293,7 @@ def pasd_bus_device_fixture(
         "fndhPsu5vTemperature",
         "fndhPcbTemperature",
         "fndhOutsideTemperature",
+        "fndhPortsConnected",
         "fndhPortsPowerSensed",
         "smartbox1Uptime",
         "smartbox1Status",
@@ -300,6 +303,7 @@ def pasd_bus_device_fixture(
         "smartbox1PowerSupplyTemperature",
         "smartbox1PcbTemperature",
         "smartbox1OutsideTemperature",
+        "smartbox1PortsConnected",
         "smartbox1PortsPowerSensed",
     ]:
         print(f"Subscribing proxy to {attribute_name}...")
