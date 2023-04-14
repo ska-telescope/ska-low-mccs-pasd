@@ -138,7 +138,7 @@ class SmartBoxComponentManager(
                 self.logger.info(f"attempting to form proxy with {self._pasd_fqdn}")
 
                 self._pasd_bus_proxy = MccsDeviceProxy(
-                    "low-mccs-pasd/pasdbus/001", self.logger, connect=True
+                    self._pasd_fqdn, self.logger, connect=True
                 )
             except Exception as e:  # pylint: disable=broad-except
                 self._update_component_state(fault=True)
@@ -199,29 +199,21 @@ class SmartBoxComponentManager(
         :param attr_value: The value of the attribute that is changing.
         :param attr_quality: The quality of the attribute.
         """
-        # This is called with a uppercase during initial subscription and
-        # with lowercase for push_change_events.
+        # TODO: This is called with a uppercase during initial subscription and
+        # with lowercase for push_change_events. Update the MccsDeviceProxy to fix
+        # this.
 
-        # Without making a decision whether to change the MccsDeviceProxy,
-        # A mapping to the tango attribute is created.
-        contains_capital = re.search("[A-Z]", attr_name)
-        # just to check if we are really looking at a pasd smartbox device between 1-25
+        # Check if we are really receiving from a pasd smartbox device between 1-25
         is_a_smartbox = re.search("^smartbox[1-2][1-5]|[1-9]", attr_name)
 
-        if contains_capital and is_a_smartbox:
-            attribute = attr_name[is_a_smartbox.end() :]
-            self.attr_case_map[attribute.lower()] = attribute
-            self._attribute_change_callback(attribute, attr_value)
-            return
-
         if is_a_smartbox:
-            attribute = attr_name[is_a_smartbox.end() :]
-            self._attribute_change_callback(self.attr_case_map[attribute], attr_value)
+            attribute = attr_name[is_a_smartbox.end() :].lower()
+            self._attribute_change_callback(attribute, attr_value)
             return
 
         self.logger.info(
             f"""Attribute subscription {attr_name} does not seem to begin
-             with 'smartbox' so it is assumed it is a incorrect subscription"""
+             with 'smartbox' string so it is assumed it is a incorrect subscription"""
         )
         return
 
@@ -312,7 +304,7 @@ class SmartBoxComponentManager(
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
             if self._pasd_bus_proxy is None:
-                raise NotImplementedError("pasd_bus_proxy is None")
+                raise ValueError("pasd_bus_proxy is None")
             ([result_code], [return_message]) = self._pasd_bus_proxy.TurnFndhPortOn(
                 self.fndh_port
             )

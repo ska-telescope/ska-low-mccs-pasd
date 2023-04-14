@@ -9,7 +9,6 @@
 
 from __future__ import annotations
 
-import threading
 from typing import Any, Optional, cast
 
 import tango
@@ -36,24 +35,19 @@ class MccsSmartBox(SKABaseDevice):
     # Device Properties
     # -----------------
     FndhPort = device_property(dtype=int, default_value=0)
-    PasdFQDNs = device_property(dtype=(str,), default_value=[])
+    PasdFQDNs = device_property(dtype=(str), default_value="")
     # TODO: do we want both fndhPort and SmartBoxNumber?
     SmartBoxNumber = device_property(dtype=int, default_value=1)
 
     PORT_COUNT = 12
 
-    # These attributes should be coupled in some way to the MccsPasdBus attributes.
-    # The reason is that this device is just a messenger carrying messages to/from the
-    # MccsPasdBus device.
-    # It will be confusing if the attributes listed in MccsSmartBox are different
-    # from the attributes listed in MccsPasdBus.
-
-    # Another reason for coupling is that the MccsPasdBus is bound to change
-    # add/remove attributes in the future.
-    # and we dont want MccsSmartBox and MccsPasdBus getting out of sync.
-
-    # TODO: Should these be dynamically created by asking the
-    # MccsPasdBus what attributes are avaliable?
+    # TODO: create a single YAML file with the smartbox attributes.
+    # MccsPasdBus and MccsSmartBox need to agree on a language, Since when
+    # MccsPasdBus pushes a attribute MccsSmartBox needs to subscribe to this
+    # event and update its own attributes. We do not want the attributes on
+    # MccsSmartBox to become out of sync with the MccsPasdBus. Therefore, a
+    # proposed solution is for both to get the attributes from a single source
+    # of truth. A 'YAML' file for instance.
     ATTRIBUTES = [
         ("ModbusRegisterMapRevisionNumber", int, None),
         ("PcbRevisionNumber", int, None),
@@ -106,10 +100,6 @@ class MccsSmartBox(SKABaseDevice):
 
         This is overridden here to change the Tango serialisation model.
         """
-        util = tango.Util.instance()
-        util.set_serial_model(tango.SerialModel.NO_SYNC)
-        self._max_workers = 10
-        self._power_state_lock = threading.RLock()
         super().init_device()
 
         # setup all attributes.
@@ -197,7 +187,7 @@ class MccsSmartBox(SKABaseDevice):
     # ----------
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
     def PowerOnPort(
-        self: MccsSmartBox, argin: int
+        self: MccsSmartBox, port_number: int
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
         """
         Power up a port.
@@ -205,7 +195,7 @@ class MccsSmartBox(SKABaseDevice):
         This may or may not have a Antenna attached.
         The station has this port:antenna mapping from configuration files.
 
-        :param argin: the logical id of the Antenna (LNA) to power up
+        :param port_number: the logical id of the smartbox port to power up
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
@@ -213,12 +203,12 @@ class MccsSmartBox(SKABaseDevice):
         """
         handler = self.get_command_object("PowerOnPort")
 
-        result_code, message = handler(argin)
+        result_code, message = handler(port_number)
         return ([result_code], [message])
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
     def PowerOffPort(
-        self: MccsSmartBox, argin: int
+        self: MccsSmartBox, port_number: int
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
         """
         Power down a port.
@@ -226,14 +216,14 @@ class MccsSmartBox(SKABaseDevice):
         This may or may not have a Antenna attached.
         The station has this port:antenna mapping from configuration files.
 
-        :param argin: the logical id of the TPM to power down
+        :param port_number: the logical id of the smartbox port to power down
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
             only.
         """
         handler = self.get_command_object("PowerOffPort")
-        result_code, message = handler(argin)
+        result_code, message = handler(port_number)
         return ([result_code], [message])
 
     # ----------
@@ -253,7 +243,7 @@ class MccsSmartBox(SKABaseDevice):
         data_type: type | tuple[type],
         max_dim_x: Optional[int] = None,
     ) -> None:
-        self._smartbox_state[attribute_name] = None
+        self._smartbox_state[attribute_name.lower()] = None
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,
@@ -267,8 +257,10 @@ class MccsSmartBox(SKABaseDevice):
         self.set_archive_event(attribute_name, True, False)
 
     def _read_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
+        print(f"_read_smartbox_attribute: {smartbox_attribute.get_name().lower()}")
+        print(f"_read_smartbox_attribute: {self._smartbox_state}")
         smartbox_attribute.set_value(
-            self._smartbox_state[smartbox_attribute.get_name()]
+            self._smartbox_state[smartbox_attribute.get_name().lower()]
         )
 
     # ----------
@@ -345,11 +337,16 @@ class MccsSmartBox(SKABaseDevice):
         :param attr_name: the name of the attribute that needs updating
         :param attr_value: the value to update with.
         """
-        # TODO: Should we construct the MccsSmartbox attributes dynamically here
-        # if it does not already exists?
         try:
             assert (
-                len([attr for (attr, _, _) in self.ATTRIBUTES if attr == attr_name]) > 0
+                len(
+                    [
+                        attr
+                        for (attr, _, _) in self.ATTRIBUTES
+                        if attr == attr_name or attr.lower() == attr_name
+                    ]
+                )
+                > 0
             )
 
             self._smartbox_state[attr_name] = attr_value

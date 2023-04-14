@@ -60,12 +60,7 @@ def patched_pasd_device_class_fixture() -> type[MccsSmartBox]:
     """
 
     class PatchedMccsPasdBus(MccsPasdBus):
-        """
-        This Patched MccsPasdBus is a temporary class.
-
-        The purpose is to mock push_change_events on the pasdBus device.
-        This is done by reimplementing the InitCommand.
-        """
+        """This patched device allows us to push_change_events."""
 
         @command(dtype_in="DevString")
         def mocked_push_change_event(self: PatchedMccsPasdBus, argin: str) -> None:
@@ -77,7 +72,6 @@ def patched_pasd_device_class_fixture() -> type[MccsSmartBox]:
             arg = json.loads(argin)
 
             for key, value in arg.items():
-                print(f"attribute being pushed is      : {key}")
                 self.push_change_event(key, np.array([value]))
 
     return PatchedMccsPasdBus
@@ -218,6 +212,24 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
         # The smartbox should enter UNKNOWN, then it should check with the
         # The fndh that the port this subrack is attached to
         # has power, this is simulated as off.
+
+        # Check that we get a DevFailed for accessing non initialied attributes.
+        for i in [
+            "ModbusRegisterMapRevisionNumber",
+            "PcbRevisionNumber",
+            "CpuId",
+            "ChipId",
+            "FirmwareVersion",
+            "Uptime",
+            "InputVoltage",
+            "PowerSupplyOutputVoltage",
+            "PowerSupplyTemperature",
+            "OutsideTemperature",
+            "PcbTemperature",
+        ]:
+            with pytest.raises(tango.DevFailed):
+                getattr(smartbox_device, i)
+
         smartbox_device.adminMode = AdminMode.ONLINE
 
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
