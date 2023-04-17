@@ -277,7 +277,7 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
 
         # TODO: This is a bit of a hack. We want a setter method on the simulator.
         # rather than changing the class attribute.
-        smartbox_simulator.DEFAULT_INPUT_VOLTAGE = 10
+        smartbox_simulator.input_voltage = 10
         change_event_callbacks.assert_change_event("SmartboxInputVoltage", 10.0)
 
         assert smartbox_device.InputVoltage != initial_input_voltage

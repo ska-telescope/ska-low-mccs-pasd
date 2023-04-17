@@ -637,6 +637,8 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self._port_breaker_tripped = [False] * self.NUMBER_OF_PORTS
         self._update_time = datetime.now().isoformat()
 
+        self._input_voltage = self.DEFAULT_INPUT_VOLTAGE
+
     @property
     def ports_current_draw(
         self: SmartboxSimulator,
@@ -658,8 +660,16 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
         :return: the input voltage.
         """
-        # TODO: We're currently returning canned results.
-        return self.DEFAULT_INPUT_VOLTAGE
+        return self._input_voltage
+
+    @input_voltage.setter
+    def input_voltage(self: SmartboxSimulator, value: float) -> None:
+        """
+        Return the input voltage, in volts.
+
+        :param value: the value to simulate.
+        """
+        self._input_voltage = value
 
     @property
     def power_supply_output_voltage(self: SmartboxSimulator) -> float:

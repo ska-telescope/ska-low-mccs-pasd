@@ -405,7 +405,7 @@ class SmartBoxComponentManager(
     def _turn_off_port(
         self: SmartBoxComponentManager,
         port_number: str,
-        task_callback: Callable,
+        task_callback: Optional[Callable],
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
         if task_callback:
@@ -464,7 +464,7 @@ class SmartBoxComponentManager(
     def _turn_on_port(
         self: SmartBoxComponentManager,
         port_number: str,
-        task_callback: Callable,
+        task_callback: Optional[Callable],
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
         if task_callback:
