@@ -272,4 +272,4 @@ class PasdBusJsonApiClient:
         )
         assert response["data"]["source"] == device_id
         assert response["data"]["type"] == "command_result"
-        return response["data"]["attributes"][name]
+        return response["data"]["attributes"]

@@ -9,12 +9,12 @@
 
 from __future__ import annotations
 
-import importlib
+import importlib.resources
 import json
 import logging
 from typing import Any, Final, Optional, cast
 
-import tango
+import tango.server
 from ska_control_model import (
     CommunicationStatus,
     HealthState,
@@ -245,7 +245,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self.Port,
             self.Timeout,
             self.logger,
-            1,
             self._communication_state_changed,
             self._component_state_changed,
             self._pasd_device_state_changed,
@@ -380,6 +379,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self.logger.error(
                 f"Received update for unknown PaSD device number {pasd_device_number}."
             )
+            return
 
         for pasd_attribute_name, pasd_attribute_value in kwargs.items():
             try:
@@ -389,6 +389,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     f"Received update for unknown PaSD attribute {pasd_attribute_name} "
                     f"(for PaSD device {pasd_device_number})."
                 )
+                return
 
             if self._pasd_state[tango_attribute_name] != pasd_attribute_value:
                 self._pasd_state[tango_attribute_name] = pasd_attribute_value

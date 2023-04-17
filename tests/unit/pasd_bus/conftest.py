@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 import functools
-import importlib
+import importlib.resources
 import logging
 import threading
 import unittest.mock
@@ -30,16 +30,6 @@ from ska_low_mccs_pasd.pasd_bus import (
     PasdBusSimulatorJsonServer,
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
-
-
-@pytest.fixture(name="max_workers")
-def max_workers_fixture() -> int:
-    """
-    Return the number of worker threads.
-
-    :return: number of worker threads
-    """
-    return 1
 
 
 @pytest.fixture(name="station_id")
@@ -366,7 +356,6 @@ def pasd_bus_info_fixture(
 def pasd_bus_component_manager_fixture(
     pasd_bus_info: dict[str, Any],
     logger: logging.Logger,
-    max_workers: int,
     mock_callbacks: MockCallableGroup,
 ) -> PasdBusComponentManager:
     """
@@ -377,7 +366,6 @@ def pasd_bus_component_manager_fixture(
     :param pasd_bus_info: information about the PaSD bus, such as its
         IP address (host and port) and an appropriate timeout to use.
     :param logger: the logger to be used by this object.
-    :param max_workers: number of worker threads
     :param mock_callbacks: a group of mock callables for the component
         manager under test to use as callbacks
 
@@ -388,7 +376,6 @@ def pasd_bus_component_manager_fixture(
         pasd_bus_info["port"],
         pasd_bus_info["timeout"],
         logger,
-        max_workers,
         mock_callbacks["communication_state"],
         mock_callbacks["component_state"],
         mock_callbacks["pasd_device_state"],
