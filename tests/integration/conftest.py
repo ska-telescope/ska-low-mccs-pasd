@@ -134,6 +134,33 @@ def smartbox_simulators_fixture(
     return pasd_bus_simulator.get_smartboxes()
 
 
+@pytest.fixture(name="smartbox_simulator")
+def smartbox_simulator_fixture(
+    smartbox_simulators: list[unittest.mock.Mock],
+    smartbox_id: int,
+) -> unittest.mock.Mock:
+    """
+    Return a smartbox simulator for testing.
+
+    :param smartbox_simulators:
+        the smartbox simulator backends that the TCP server will front.
+    :param smartbox_id: id of the smartbox being addressed.
+
+    :return: a smartbox simulator, wrapped in a mock.
+    """
+    return smartbox_simulators[smartbox_id - 1]
+
+
+@pytest.fixture(name="smartbox_id")
+def smartbox_id_fixture() -> int:
+    """
+    Return the id of the smartbox to be used in testing.
+
+    :return: the id of the smartbox to be used in testing.
+    """
+    return 1
+
+
 @pytest.fixture(name="mock_smartbox_simulators")
 def mock_smartbox_simulators_fixture(
     smartbox_simulators: Sequence[SmartboxSimulator],

@@ -10,20 +10,16 @@
 from __future__ import annotations
 
 import gc
-import json
-import time
 from typing import Generator
 
-import numpy as np
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel
+from ska_control_model import AdminMode, HealthState, LoggingLevel
 from ska_tango_testing.context import (
     TangoContextProtocol,
     ThreadedTestTangoContextManager,
 )
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
-from tango.server import command
 
 from ska_low_mccs_pasd import MccsPasdBus, MccsSmartBox
 from ska_low_mccs_pasd.pasd_bus import SmartboxSimulator
@@ -51,38 +47,11 @@ def smartbox_name_fixture() -> str:
     return "low-mccs-smartbox/smartbox/00001"
 
 
-@pytest.fixture(name="patched_pasd_device_class")
-def patched_pasd_device_class_fixture() -> type[MccsSmartBox]:
-    """
-    Return a pasd bus device that is patched with a mock push change event.
-
-    :return: a pasd bus device that is patched with a mock push change event
-    """
-
-    class PatchedMccsPasdBus(MccsPasdBus):
-        """This patched device allows us to push_change_events."""
-
-        @command(dtype_in="DevString")
-        def mocked_push_change_event(self: PatchedMccsPasdBus, argin: str) -> None:
-            """
-            Turn on the FNDH's blue service LED.
-
-            :param argin: a json encoded dictionary.
-            """
-            arg = json.loads(argin)
-
-            for key, value in arg.items():
-                self.push_change_event(key, np.array([value]))
-
-    return PatchedMccsPasdBus
-
-
 @pytest.fixture(name="tango_harness")
 def tango_harness_fixture(
     smartbox_name: str,
     pasd_bus_name: str,
     pasd_bus_info: dict,
-    patched_pasd_device_class: MccsSmartBox,
     smartbox_number: int,
 ) -> Generator[TangoContextProtocol, None, None]:
     """
@@ -91,8 +60,6 @@ def tango_harness_fixture(
     :param smartbox_name: the name of the smartbox_bus Tango device
     :param pasd_bus_name: the fqdn of the pasdbus
     :param pasd_bus_info: the information for pasd setup
-    :param patched_pasd_device_class: a pasdbus with a mocked command to
-        push change events.
     :param smartbox_number: the number assigned to the smartbox of interest.
 
     :yields: a tango context.
@@ -108,11 +75,11 @@ def tango_harness_fixture(
     )
     context_manager.add_device(
         pasd_bus_name,
-        patched_pasd_device_class,
+        MccsPasdBus,
         Host=pasd_bus_info["host"],
         Port=pasd_bus_info["port"],
         Timeout=pasd_bus_info["timeout"],
-        LoggingLevelDefault=int(LoggingLevel.DEBUG),
+        LoggingLevelDefault=int(LoggingLevel.OFF),
     )
     with context_manager as context:
         yield context
@@ -157,6 +124,7 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
         self: TestSmartBoxPasdBusIntegration,
         smartbox_device: tango.DeviceProxy,
         pasd_bus_device: tango.DeviceProxy,
+        smartbox_simulator: SmartboxSimulator,
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
         """
@@ -174,6 +142,7 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
         :param pasd_bus_device: fixture that provides a
             :py:class:`tango.DeviceProxy` to the device under test, in a
             :py:class:`tango.test_context.DeviceTestContext`.
+        :param smartbox_simulator: the smartbox simulator under test.
         :param change_event_callbacks: group of Tango change event
             callback with asynchrony support
         """
@@ -195,12 +164,32 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["pasd_bus_state"],
         )
-        change_event_callbacks["pasd_bus_state"].assert_change_event(
-            tango.DevState.DISABLE
+        change_event_callbacks.assert_change_event(
+            "pasd_bus_state", tango.DevState.DISABLE
         )
+        pasd_bus_device.subscribe_event(
+            "healthState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["healthState"],
+        )
+
+        change_event_callbacks.assert_change_event("healthState", HealthState.UNKNOWN)
+        assert pasd_bus_device.healthState == HealthState.UNKNOWN
         change_event_callbacks["pasd_bus_state"].assert_not_called()
         # ----------------------------------------------------------------
-        # Check that the devices enters the correct state after turning adminMode on
+        # This is a bit of a cheat.
+        # It's an implementation-dependent detail that
+        # this is one of the last attributes to be read from the simulator.
+        # We subscribe events on this attribute because we know that
+        # once we have an updated value for this attribute,
+        # we have an updated value for all of them.
+        pasd_bus_device.subscribe_event(
+            "smartbox24PortsCurrentDraw",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartbox24PortsCurrentDraw"],
+        )
+        change_event_callbacks.assert_change_event("smartbox24PortsCurrentDraw", None)
+
         pasd_bus_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.UNKNOWN
@@ -208,7 +197,10 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
         # TODO: Do we want to enter On state here?
         change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["pasd_bus_state"].assert_not_called()
+        change_event_callbacks.assert_change_event("healthState", HealthState.OK)
+        assert pasd_bus_device.healthState == HealthState.OK
 
+        change_event_callbacks.assert_against_call("smartbox24PortsCurrentDraw")
         # The smartbox should enter UNKNOWN, then it should check with the
         # The fndh that the port this subrack is attached to
         # has power, this is simulated as off.
@@ -268,19 +260,28 @@ class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
             smartbox_device.PcbTemperature == SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
         )
 
-        # TODO: Add the polling mechanism to the MccsPasdBus,
-        # We will then be able to mock a change in attributes at the Simulator level.
-        # The MccsPasdBus will then poll this and fire a event we can catch.
-
-        # Below is a bit of a hack just to test the functionality:
-        # The patched MccsPasdBus has a mock_push_change_event
-        # allowing us to manually fire change events.
+        # We are just testing one attribute here to check the functionality
+        # TODO: probably worth testing every attribute.
         initial_input_voltage = smartbox_device.InputVoltage
-        mock_input_voltage = '{"smartbox1InputVoltage": 4}'
-        pasd_bus_device.mocked_push_change_event(mock_input_voltage)
-        time.sleep(0.1)
+        smartbox_device.subscribe_event(
+            "InputVoltage",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["SmartboxInputVoltage"],
+        )
+        change_event_callbacks.assert_change_event(
+            "SmartboxInputVoltage", initial_input_voltage
+        )
+
+        # When we mock a change in an attribute at the simulator level.
+        # This is received and pushed onward by the MccsSmartbox device.
+
+        # TODO: This is a bit of a hack. We want a setter method on the simulator.
+        # rather than changing the class attribute.
+        smartbox_simulator.DEFAULT_INPUT_VOLTAGE = 10
+        change_event_callbacks.assert_change_event("SmartboxInputVoltage", 10.0)
+
         assert smartbox_device.InputVoltage != initial_input_voltage
-        assert smartbox_device.InputVoltage == 4
+        assert smartbox_device.InputVoltage == 10
 
 
 @pytest.fixture(name="change_event_callbacks")
@@ -294,5 +295,10 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     return MockTangoEventCallbackGroup(
         "smartbox_state",
         "pasd_bus_state",
-        timeout=2.0,
+        "healthState",
+        "smartbox24PortsCurrentDraw",
+        "smartbox24PortsConnected",
+        "SmartboxInputVoltage",
+        timeout=15.0,
+        assert_no_error=False,
     )
