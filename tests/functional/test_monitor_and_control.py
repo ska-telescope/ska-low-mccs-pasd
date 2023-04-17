@@ -245,17 +245,25 @@ def check_health_becomes_okay(
 @given("a connected FNDH port", target_fixture="connected_fndh_port")
 def find_connected_fndh_port(
     pasd_bus_device: tango.DeviceProxy,
+    change_event_callbacks: MockTangoEventCallbackGroup,
 ) -> int:
     """
     Find and return a connected FNDH port.
 
     :param pasd_bus_device: a proxy to the PaSD bus device.
+    :param change_event_callbacks: dictionary of Tango change event
+        callbacks with asynchrony support.
 
     :return: the port number of the FNDH port that was checked.
         This will be a port that has a smartbox connected, so that the
         port can be turned on and power will be sensed.
     """
-    fndh_connected_ports = list(pasd_bus_device.fndhPortsConnected)
+    try:
+        fndh_connected_ports = list(pasd_bus_device.fndhPortsConnected)
+    except tango.DevFailed:
+        change_event_callbacks["fndhPortsConnected"].assert_change_event(Anything)
+        fndh_connected_ports = list(pasd_bus_device.fndhPortsConnected)
+
     connected_fndh_port = fndh_connected_ports.index(True) + 1
     return connected_fndh_port
 
@@ -264,6 +272,7 @@ def find_connected_fndh_port(
 def check_fndh_port_is_off(
     pasd_bus_device: tango.DeviceProxy,
     connected_fndh_port: int,
+    change_event_callbacks: MockTangoEventCallbackGroup,
 ) -> None:
     """
     Check that the FNDH port is off.
@@ -272,8 +281,15 @@ def check_fndh_port_is_off(
     :param connected_fndh_port: an FNDH port with a smartbox connected,
         so that it is possible to turn the port on and sense power
         delivery.
+    :param change_event_callbacks: dictionary of Tango change event
+        callbacks with asynchrony support.
     """
-    fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
+    change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(Anything)
+    try:
+        fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
+    except tango.DevFailed:
+        change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(Anything)
+        fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
     assert not fndh_ports_power_sensed[connected_fndh_port - 1]
 
 
@@ -361,11 +377,14 @@ def check_fndh_port_changes_power_state(
         callbacks with asynchrony support.
     :param state_name: name of the expected power state: "on" or "off".
     """
+    state_map = {"on": True, "off": False}
+
     change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(Anything)
     powered = pasd_bus_device.fndhPortsPowerSensed
 
-    state_map = {"on": True, "off": False}
-
+    if powered[connected_fndh_port - 1] != state_map[state_name]:
+        change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(Anything)
+        powered = pasd_bus_device.fndhPortsPowerSensed
     assert powered[connected_fndh_port - 1] == state_map[state_name]
 
 
@@ -373,27 +392,40 @@ def check_fndh_port_changes_power_state(
 def find_connected_smartbox_port(
     pasd_bus_device: tango.DeviceProxy,
     smartbox_id: int,
+    change_event_callbacks: MockTangoEventCallbackGroup,
 ) -> int:
     """
     Find and return a connected smartbox port.
 
     :param pasd_bus_device: a proxy to the PaSD bus device.
     :param smartbox_id: number of the smartbox under test.
+    :param change_event_callbacks: dictionary of Tango change event
+        callbacks with asynchrony support.
 
     :return: the port number of the smartbox port that was checked.
         This will be a port that has an antenna connected, so that the
         port can be turned on and power will be sensed.
     """
-    smartbox_connected_ports = list(
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsConnected")
-    )
+    try:
+        smartbox_connected_ports = list(
+            getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsConnected")
+        )
+    except tango.DevFailed:
+        change_event_callbacks[
+            f"smartbox{smartbox_id}PortsConnected"
+        ].assert_change_event(Anything)
+        smartbox_connected_ports = list(
+            getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsConnected")
+        )
+
     connected_smartbox_port = smartbox_connected_ports.index(True) + 1
     return connected_smartbox_port
 
 
 @given("the smartbox port is off")
-def smartbox_port_is_off(
+def check_smartbox_port_is_off(
     pasd_bus_device: tango.DeviceProxy,
+    change_event_callbacks: MockTangoEventCallbackGroup,
     connected_smartbox_port: int,
     smartbox_id: int,
 ) -> None:
@@ -401,11 +433,17 @@ def smartbox_port_is_off(
     Check that the smartbox port is off.
 
     :param pasd_bus_device: a proxy to the PaSD bus device.
+    :param change_event_callbacks: dictionary of Tango change event
+        callbacks with asynchrony support.
     :param connected_smartbox_port: an smartbox port with an antenna
         connected, so that it is possible to turn the port on and sense
         power delivery.
     :param smartbox_id: number of the smartbox under test.
     """
+    change_event_callbacks[
+        f"smartbox{smartbox_id}PortsPowerSensed"
+    ].assert_change_event(Anything)
+
     smartbox_ports_power_sensed = getattr(
         pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"
     )
@@ -516,11 +554,17 @@ def check_smartbox_port_changes_power_state(
         callbacks with asynchrony support.
     :param state_name: name of the expected power state: "on" or "off".
     """
+    state_map = {"on": True, "off": False}
+
     change_event_callbacks[
         f"smartbox{smartbox_id}PortsPowerSensed"
     ].assert_change_event(Anything)
     powered = getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed")
 
-    state_map = {"on": True, "off": False}
+    if powered[connected_smartbox_port - 1] != state_map[state_name]:
+        change_event_callbacks[
+            f"smartbox{smartbox_id}PortsPowerSensed"
+        ].assert_change_event(Anything)
+        powered = getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed")
 
     assert powered[connected_smartbox_port - 1] == state_map[state_name]
