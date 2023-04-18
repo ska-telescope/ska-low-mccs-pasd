@@ -90,7 +90,11 @@ nitpick_ignore = [
     ("py:exc", "yaml.YAMLError"),
     ("py:class", "ska_low_mccs_common.health.HealthChangedCallbackProtocol"),
     ("py:class", "ska_low_mccs_common.MccsDeviceProxy"),
-    ("py:class", "ska_control_model"),
+    ("py:class", "ska_control_model.ResultCode"),
+    ("py:class", "ska_control_model.CommunicationStatus"),
+    ("py:class", "ska_control_model.TaskStatus"),
+    ("py:class", "ska_control_model.SimulationMode"),
+    ("py:class", "ska_control_model.HealthState"),
 ]
 
 # If your documentation needs a minimal Sphinx version, state it here.
