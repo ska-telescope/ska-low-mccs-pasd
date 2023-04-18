@@ -168,7 +168,6 @@ class MccsSmartBox(SKABaseDevice):
         for (command_name, method_name) in [
             ("PowerOnPort", "turn_on_port"),
             ("PowerOffPort", "turn_off_port"),
-            ("GetAttributes", "get_pasd_attributes"),
         ]:
             self.register_command_object(
                 command_name,
@@ -257,8 +256,6 @@ class MccsSmartBox(SKABaseDevice):
         self.set_archive_event(attribute_name, True, False)
 
     def _read_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
-        print(f"_read_smartbox_attribute: {smartbox_attribute.get_name().lower()}")
-        print(f"_read_smartbox_attribute: {self._smartbox_state}")
         smartbox_attribute.set_value(
             self._smartbox_state[smartbox_attribute.get_name().lower()]
         )

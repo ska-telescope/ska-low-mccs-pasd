@@ -127,8 +127,8 @@ class SmartBoxComponentManager(
 
         This checks:
             - A proxy can be formed with the MccsPasdBus
-            - We can add a health change event callback to that proxy
-            - The pasdBus is healthy
+            - We can subscribe to attributes of interest.
+            - The power state of the Smartbox
         """
         # ------------------------------------
         # FORM PROXY / SUBSCRIBE TO ATTRIBUTES
@@ -283,7 +283,7 @@ class SmartBoxComponentManager(
         self: SmartBoxComponentManager, task_callback: Optional[Callable] = None
     ) -> tuple[TaskStatus, str]:
         """
-        Tell the upstream power supply proxy to turn the tpm on.
+        Turn the Smartbox on.
 
         :param task_callback: Update task state, defaults to None
 
@@ -333,7 +333,7 @@ class SmartBoxComponentManager(
         self: SmartBoxComponentManager, task_callback: Optional[Callable] = None
     ) -> tuple[TaskStatus, str]:
         """
-        Tell the upstream power supply proxy to turn the tpm on.
+        Turn the Smartbox off.
 
         :param task_callback: Update task state, defaults to None
 
