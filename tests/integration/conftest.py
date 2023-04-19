@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import functools
-import importlib.resources
 import logging
 import threading
 import unittest.mock
@@ -19,17 +18,14 @@ from contextlib import contextmanager
 from typing import Any, Callable, ContextManager, Generator, Iterator, Sequence
 
 import pytest
-import yaml
 from ska_ser_devices.client_server import TcpServer
-from ska_tango_testing.mock import MockCallableGroup
 
 from ska_low_mccs_pasd.pasd_bus import (
     FndhSimulator,
-    PasdBusComponentManager,
     PasdBusSimulator,
     PasdBusSimulatorJsonServer,
+    SmartboxSimulator,
 )
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
 
 
 @pytest.fixture(name="station_id")
@@ -41,27 +37,6 @@ def station_id_fixture() -> int:
         testing.
     """
     return 1
-
-
-@pytest.fixture(name="pasd_config")
-def pasd_config_fixture(station_id: int) -> dict:
-    """
-    Return the PaSD config that the pasd bus device uses.
-
-    :param station_id: id of the staion whose configuration will be used
-        in testing.
-
-    :return: the PaSD config that the PaSD bus object under test uses.
-    """
-    config_data = importlib.resources.read_text(
-        "ska_low_mccs_pasd.pasd_bus",
-        PasdBusSimulator.CONFIG_PATH,
-    )
-
-    assert config_data is not None  # for the type-checker
-
-    config = yaml.safe_load(config_data)
-    return config["stations"][station_id - 1]
 
 
 @pytest.fixture(name="pasd_bus_simulator")
@@ -159,6 +134,33 @@ def smartbox_simulators_fixture(
     return pasd_bus_simulator.get_smartboxes()
 
 
+@pytest.fixture(name="smartbox_simulator")
+def smartbox_simulator_fixture(
+    smartbox_simulators: list[unittest.mock.Mock],
+    smartbox_id: int,
+) -> unittest.mock.Mock:
+    """
+    Return a smartbox simulator for testing.
+
+    :param smartbox_simulators:
+        the smartbox simulator backends that the TCP server will front.
+    :param smartbox_id: id of the smartbox being addressed.
+
+    :return: a smartbox simulator, wrapped in a mock.
+    """
+    return smartbox_simulators[smartbox_id - 1]
+
+
+@pytest.fixture(name="smartbox_id")
+def smartbox_id_fixture() -> int:
+    """
+    Return the id of the smartbox to be used in testing.
+
+    :return: the id of the smartbox to be used in testing.
+    """
+    return 1
+
+
 @pytest.fixture(name="mock_smartbox_simulators")
 def mock_smartbox_simulators_fixture(
     smartbox_simulators: Sequence[SmartboxSimulator],
@@ -219,54 +221,6 @@ def mock_smartbox_simulators_fixture(
     return mock_simulators
 
 
-@pytest.fixture(name="smartbox_id")
-def smartbox_id_fixture() -> int:
-    """
-    Return the id of the smartbox to be used in testing.
-
-    :return: the id of the smartbox to be used in testing.
-    """
-    return 1
-
-
-@pytest.fixture(name="smartbox_simulator")
-def smartbox_simulator_fixture(
-    smartbox_simulators: list[unittest.mock.Mock],
-    smartbox_id: int,
-) -> unittest.mock.Mock:
-    """
-    Return a smartbox simulator for testing.
-
-    :param smartbox_simulators:
-        the smartbox simulator backends that the TCP server will front.
-    :param smartbox_id: id of the smartbox being addressed.
-
-    :return: a smartbox simulator, wrapped in a mock.
-    """
-    return smartbox_simulators[smartbox_id - 1]
-
-
-@pytest.fixture(name="mock_smartbox_simulator")
-def mock_smartbox_simulator(
-    mock_smartbox_simulators: list[unittest.mock.Mock],
-    smartbox_id: int,
-) -> unittest.mock.Mock:
-    """
-    Return a mock smartbox simulator.
-
-    That is, a smartbox simulator, wrapped in a mock so that we can
-    assert on calls to it.
-
-    :param mock_smartbox_simulators:
-        the smartbox simulator backends that the TCP server will front,
-        each wrapped with a mock so that we can assert calls.
-    :param smartbox_id: id of the smartbox being addressed.
-
-    :return: a smartbox simulator, wrapped in a mock.
-    """
-    return mock_smartbox_simulators[smartbox_id - 1]
-
-
 @pytest.fixture(name="pasd_bus_simulator_server_launcher")
 def pasd_bus_simulator_server_launcher_fixture(
     mock_fndh_simulator: FndhSimulator,
@@ -314,6 +268,17 @@ def pasd_bus_simulator_server_launcher_fixture(
     return launch_pasd_bus_simulator_server
 
 
+@pytest.fixture(name="smartbox_number")
+def smartbox_number_fixture() -> int:
+    """
+    Return the id of the station whose configuration will be used in testing.
+
+    :return: the id of the station whose configuration will be used in
+        testing.
+    """
+    return 1
+
+
 @pytest.fixture(name="pasd_bus_simulator_server")
 def pasd_bus_simulator_server_fixture(
     pasd_bus_simulator_server_launcher: Callable[[], ContextManager[TcpServer]],
@@ -350,34 +315,3 @@ def pasd_bus_info_fixture(
         "port": port,
         "timeout": 3.0,
     }
-
-
-@pytest.fixture(name="pasd_bus_component_manager")
-def pasd_bus_component_manager_fixture(
-    pasd_bus_info: dict[str, Any],
-    logger: logging.Logger,
-    mock_callbacks: MockCallableGroup,
-) -> PasdBusComponentManager:
-    """
-    Return a PaSD bus simulator component manager.
-
-    (This is a pytest fixture.)
-
-    :param pasd_bus_info: information about the PaSD bus, such as its
-        IP address (host and port) and an appropriate timeout to use.
-    :param logger: the logger to be used by this object.
-    :param mock_callbacks: a group of mock callables for the component
-        manager under test to use as callbacks
-
-    :return: a PaSD bus simulator component manager.
-    """
-    component_manager = PasdBusComponentManager(
-        pasd_bus_info["host"],
-        pasd_bus_info["port"],
-        pasd_bus_info["timeout"],
-        logger,
-        mock_callbacks["communication_state"],
-        mock_callbacks["component_state"],
-        mock_callbacks["pasd_device_state"],
-    )
-    return component_manager
