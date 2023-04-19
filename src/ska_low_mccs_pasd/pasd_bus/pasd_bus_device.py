@@ -268,6 +268,11 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 command_name, command_class(self.component_manager, self.logger)
             )
 
+        self.register_command_object(
+            "GetPasdDeviceSubscriptions",
+            MccsPasdBus._GetPasdDeviceSubscriptions(self, self.logger),
+        )
+
     class InitCommand(DeviceInitCommand):
         """
         A class for :py:class:`~.MccsPasdBus`'s Init command.
@@ -846,6 +851,51 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             return self._component_manager.reset_smartbox_port_breaker(
                 smartbox_number, port_number
             )
+
+    class _GetPasdDeviceSubscriptions(FastCommand):
+        """Class for handling the GetRegisterList() command."""
+
+        def __init__(
+            self: MccsPasdBus._GetPasdDeviceSubscriptions,
+            device: MccsPasdBus,
+            logger: Optional[logging.Logger] = None,
+        ) -> None:
+            """
+            Initialise a new _GetPasdDeviceSubscriptions instance.
+
+            :param device: the device to which this command belongs.
+            :param logger: a logger for this command to use.
+            """
+            self._device = device
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._GetPasdDeviceSubscriptions,
+            pasd_device_number: int,
+        ) -> list[str]:
+            """
+            Implement :py:meth:`.MccsTile.GetRegisterList` command functionality.
+
+            :param pasd_device_number: the pasd_device_number
+                we want to get subscriptions for.
+
+            :return: a list of the subscriptions for this device.
+            """
+            return list(self._device._ATTRIBUTE_MAP[pasd_device_number].values())
+
+    @command(dtype_in="DevShort", dtype_out="DevVarStringArray")
+    def GetPasdDeviceSubscriptions(self: MccsPasdBus, device_number: int) -> list[str]:
+        """
+        Get subscriptions for a particular pasd device.
+
+        :param device_number: the pasd_device_number
+            we want to get subscriptions for.
+
+        :return: The subscriptions for a particular device.
+        """
+        handler = self.get_command_object("GetPasdDeviceSubscriptions")
+        return handler(device_number)
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
     def ResetSmartboxPortBreaker(
