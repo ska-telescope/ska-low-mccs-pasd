@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import threading
 from typing import Callable, Optional
-
+import re
 import tango
 from ska_control_model import (
     CommunicationStatus,
@@ -41,6 +41,8 @@ class FndhComponentManager(TaskExecutorComponentManager):
         logger: logging.Logger,
         communication_state_changed_callback: Callable[[CommunicationStatus], None],
         component_state_changed_callback: Callable[..., None],
+        attribute_change_callback: Callable[..., None],
+        update_port_power_states: Callable[..., None],
         pasd_fqdn: Optional[str] = None,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
     ) -> None:
@@ -69,10 +71,42 @@ class FndhComponentManager(TaskExecutorComponentManager):
             pasdbus_status=None,
         )
         self._component_state_changed_callback = component_state_changed_callback
+        self._attribute_change_callback = attribute_change_callback
+        self._update_port_power_states = update_port_power_states
         self._pasd_fqdn = pasd_fqdn
         self.fndh_number = 1  # TODO: this should a property set during device setup
         self._pasd_bus_proxy: Optional[MccsDeviceProxy] = _pasd_bus_proxy
         self.logger = logger
+        self._pasd_device_number =0
+
+    def _subscribe_to_attributes(self: FndhComponentManager) -> None:
+        """Subscribe to attributes on the MccsPasdBus."""
+        assert self._pasd_bus_proxy is not None
+
+        # ask what attributes to subscribe to and subscribe to them.
+        subscriptions = self._pasd_bus_proxy.GetPasdDeviceSubscriptions(
+            self._pasd_device_number
+        )
+        for attribute in subscriptions:
+            self._pasd_bus_proxy.add_change_event_callback(
+                attribute, self._handle_change_event
+            )
+
+        if (
+            "healthstate"
+            not in self._pasd_bus_proxy._change_event_subscription_ids.keys()
+        ):
+            self._pasd_bus_proxy.add_change_event_callback(
+                "healthstate", self._pasd_health_state_changed
+            )
+
+        if (
+            "fndhPortsPowerSensed"
+            not in self._pasd_bus_proxy._change_event_subscription_ids.keys()
+        ):
+            self._pasd_bus_proxy.add_change_event_callback(
+                "fndhPortsPowerSensed", self._port_power_state_change
+            )
 
     def start_communicating(self: FndhComponentManager) -> None:
         """
@@ -80,10 +114,9 @@ class FndhComponentManager(TaskExecutorComponentManager):
 
         This checks:
             - A proxy can be formed with the MccsPasdBus
-            - We can ping the device proxy.
-            - subscribe to change events on proxy
-
-        TODO: this can probably be refactored.
+            - We can subscribe to the attribes suggested by the
+                pasd bus
+            - Update the initial state of the FNDH.
         """
         # Form proxy if not done yet.
         if self._pasd_bus_proxy is None:
@@ -91,43 +124,74 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 self.logger.info(f"attempting to form proxy with {self._pasd_fqdn}")
 
                 self._pasd_bus_proxy = MccsDeviceProxy(
-                    "low-mccs-pasd/pasdbus/001", self.logger, connect=True
+                    self._pasd_fqdn, self.logger, connect=True
                 )
             except Exception as e:  # pylint: disable=broad-except
-                self._update_component_state(fault=True)
+                self._update_component_state(fault = True)
                 self.logger.error("Caught exception in start_communicating: %s", e)
                 self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
                 return
 
-        # If we are not established attempt for establish communication.
-        if self.communication_state != CommunicationStatus.ESTABLISHED:
-
+        try:
+            # Ask the MccsPasdBus what attributes we should subscribe.
+            self._subscribe_to_attributes()
+        except Exception as e:  # pylint: disable=broad-except
+            self._update_component_state(fault = True)
+            self.logger.error("Caught exception in attribute subscriptios: %s", e)
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
-            try:
+            return
+
+        try:
+            # If we are not established attempt for establish communication.
+            if self.communication_state != CommunicationStatus.ESTABLISHED:
+                self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
                 # first check the proxy is reachable
                 self._pasd_bus_proxy.ping()
                 # TODO: then check the pasd_bus is communicating.
                 # here we just assume it is.
                 self._update_communication_state(CommunicationStatus.ESTABLISHED)
+                # Check the ports on the fndh for power.
+                if any(self._pasd_bus_proxy.fndhPortsPowerSensed):  # type: ignore
+                    self._update_component_state(power=PowerState.ON)
+                else:
+                    self._update_component_state(power=PowerState.OFF)
 
-            except Exception as e:  # pylint: disable=broad-except
-                self.logger.error("Unable to form communications: %s", e)
-            # Check the ports on the fndh for power.
-            if any(self._pasd_bus_proxy.fndhPortsPowerSensed):  # type: ignore
-                self._update_component_state(power=PowerState.ON)
-            else:
-                self._update_component_state(power=PowerState.OFF)
+        except Exception as e:  # pylint: disable=broad-except
+            self._update_component_state(fault=True)
+            self.logger.error("Caught exception in start_communicating: %s", e)
+            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+            return
 
-        # subscribe to any change events.
-        attributes_to_subscribe = ["healthState"]
-        for item in attributes_to_subscribe:
-            if (
-                item.lower()
-                not in self._pasd_bus_proxy._change_event_subscription_ids.keys()
-            ):
-                self._pasd_bus_proxy.add_change_event_callback(
-                    "healthState", self._pasd_health_state_changed
-                )
+    def _handle_change_event(
+        self: FndhComponentManager,
+        attr_name: str,
+        attr_value: HealthState,
+        attr_quality: tango.AttrQuality,
+    ) -> None:
+        """
+        Handle changes to subscribed attributes.
+
+        :param attr_name: The name of the attribute that is firing a change event.
+        :param attr_value: The value of the attribute that is changing.
+        :param attr_quality: The quality of the attribute.
+        """
+        # TODO: This is called with a uppercase during initial subscription and
+        # with lowercase for push_change_events. Update the MccsDeviceProxy to fix
+        # this.
+
+        # Check if we are really receiving from a pasd fndh device.
+        is_a_fndh = re.search("^fndh", attr_name)
+
+        if is_a_fndh:
+            attribute = attr_name[is_a_fndh.end() :].lower()
+            self._attribute_change_callback(attribute, attr_value)
+            return
+
+        self.logger.info(
+            f"""Attribute subscription {attr_name} does not seem to begin
+             with 'fndh' string so it is assumed it is a incorrect subscription"""
+        )
+        return
 
     def _pasd_health_state_changed(
         self: FndhComponentManager,
@@ -142,7 +206,38 @@ class FndhComponentManager(TaskExecutorComponentManager):
         :param event_value: The event_value
         :param event_quality: The event_quality
         """
-        self._update_component_state(pasdbus_status=event_value)
+        self._update_component_state(pasdbus_status = event_value)
+
+    def _port_power_state_change(
+        self: FndhComponentManager,
+        event_name: str,
+        port_power_states: list[bool],
+        event_quality: tango.AttrQuality,
+    ) -> None:
+        """
+        Pasdbus health state callback.
+
+        :param event_name: The event_name
+        :param port_power_states: The port_power_states
+        :param event_quality: The event_quality
+        """ 
+        try:
+            assert event_name.lower() == "fndhportspowersensed"
+        except AssertionError:
+            self.logger.debug(
+                f"""callback called with unexpected
+            attribute expected fndhportspowersensed got {event_name}"""
+            )
+            return
+
+        def get_power_state(powerstate):
+            if powerstate:
+                return PowerState.ON
+            return PowerState.OFF
+
+        power_states = map(get_power_state, port_power_states)
+
+        self._update_port_power_states(list(power_states))
 
     def stop_communicating(self: FndhComponentManager) -> None:
         """Break off communication with the pasdBus."""
@@ -157,7 +252,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         self: FndhComponentManager, task_callback: Optional[Callable] = None
     ) -> tuple[TaskStatus, str]:
         """
-        Tell the upstream power supply proxy to turn the tpm on.
+        Turn on the FNDH.
 
         :param task_callback: Update task state, defaults to None
 
@@ -182,7 +277,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         self: FndhComponentManager, task_callback: Optional[Callable] = None
     ) -> tuple[TaskStatus, str]:
         """
-        Tell the upstream power supply proxy to turn the tpm on.
+        Turn off the FNDH.
 
         :param task_callback: Update task state, defaults to None
 
@@ -209,9 +304,12 @@ class FndhComponentManager(TaskExecutorComponentManager):
         task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
-        Turn a Antenna off.
+        Turn a port off.
 
-        :param port_number: (one-based) number of the TPM to turn off.
+        This port may or may not have a smartbox attached. The station 
+        has the information about what smartbox is attached to what port.
+
+        :param port_number: port we want to power off.
         :param task_callback: callback to be called when the status of
             the command changes
 
@@ -263,9 +361,12 @@ class FndhComponentManager(TaskExecutorComponentManager):
         task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
-        Turn a Antenna on.
+        Turn a port on.
 
-        :param port_number: (one-based) number of the TPM to turn on.
+        This port may or may not have a smartbox attached. The station 
+        has the information about what smartbox is attached to what port.
+
+        :param port_number: port we want to power on.
         :param task_callback: callback to be called when the status of
             the command changes
 
@@ -289,7 +390,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
             if self._pasd_bus_proxy is None:
-                raise NotImplementedError("pasd_bus_proxy is None")
+                raise ValueError("pasd_bus_proxy is None")
 
             ([result_code], [unique_id]) = self._pasd_bus_proxy.TurnSmartboxOn(
                 port_number
@@ -312,33 +413,15 @@ class FndhComponentManager(TaskExecutorComponentManager):
             )
         return result_code, unique_id
 
+
     @check_communicating
-    def get_smartbox_info(
-        self: FndhComponentManager,
-        port_id: int,
-    ) -> tuple[TaskStatus, str]:
+    def is_port_on(self: FndhComponentManager, port_number: int) -> list[bool]:
         """
         Turn a Smartbox off.
 
-        :param port_id: (one-based) number of the TPM to turn off.
+        :param port_number: The logical id of the port.
 
-        :return: the task status and a human-readable status message
+        :return: The power state of the requested port.
         """
-        return self._pasd_bus_proxy.GetSmartboxInfo(port_id)  # type: ignore
-
-    def is_port_on(self: FndhComponentManager) -> list[bool]:
-        """
-        Turn a Smartbox off.
-
-        :return: the task status and a human-readable status message
-        """
-        return self._pasd_bus_proxy.fndhPortsPowerSensed  # type: ignore
-
-    @property
-    def smartbox_statuses(self: FndhComponentManager) -> list[str]:
-        """
-        Return the status of each smartbox.
-
-        :return: a list of string statuses.
-        """
-        return self._pasd_bus_proxy.smartboxStatuses  # type: ignore
+        assert self._pasd_bus_proxy is not None
+        return self._pasd_bus_proxy.fndhPortsPowerSensed[port_number]  # type: ignore

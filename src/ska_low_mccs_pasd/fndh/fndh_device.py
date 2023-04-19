@@ -8,10 +8,12 @@
 """This module implements the MCCS FNDH device."""
 
 from __future__ import annotations
+import json
+from jsonschema import ValidationError, validate
 
 import logging
 import threading
-from typing import Any, List, Optional
+from typing import Any, List, Optional, cast
 
 import tango
 from ska_control_model import (
@@ -26,10 +28,11 @@ from ska_tango_base.commands import (
     FastCommand,
     SubmittedSlowCommand,
 )
-from tango.server import attribute, command, device_property
+from tango.server import command, device_property, attribute
 
 from .fndh_component_manager import FndhComponentManager
 from .fndh_health_model import FndhHealthModel
+
 
 __all__ = ["MccsFNDH", "main"]
 
@@ -40,9 +43,40 @@ class MccsFNDH(SKABaseDevice):
     # -----------------
     # Device Properties
     # -----------------
-    PasdFQDNs = device_property(dtype=(str,), default_value=[])
+    PasdFQDNs = device_property(dtype=(str), default_value=[])
 
     PORT_COUNT = 28
+
+    # TODO: create a single YAML file with the smartbox attributes.
+    # MccsPasdBus and MccsSmartBox need to agree on a language, Since when
+    # MccsPasdBus pushes a attribute MccsSmartBox needs to subscribe to this
+    # event and update its own attributes. We do not want the attributes on
+    # MccsSmartBox to become out of sync with the MccsPasdBus. Therefore, a
+    # proposed solution is for both to get the attributes from a single source
+    # of truth. A 'YAML' file for instance.
+    ATTRIBUTES =[
+        ("ModbusRegisterMapRevisionNumber", int, None),
+        ("PcbRevisionNumber", int, None),
+        ("CpuId", int, None),
+        ("ChipId", int, None),
+        ("FirmwareVersion", str, None),
+        ("Uptime", int, None),
+        ("PasdStatus", str, None),
+        ("LedPattern", str, None),
+        ("Psu48vVoltages", (float,), 2),
+        ("Psu5vVoltage", float, None), #Is this an attribute of FNDH?
+        ("Psu48vCurrent", float, None),
+        ("Psu48vTemperature", float, None),
+        ("Psu5vTemperature", float, None), #Is this an attribute of FNDH?
+        ("PcbTemperature", float, None),
+        ("OutsideTemperature", float, None),
+        ("PortsConnected", (bool,), PORT_COUNT),
+        ("PortBreakersTripped", (bool,), PORT_COUNT),
+        ("PortForcings", (str,), PORT_COUNT),
+        ("PortsDesiredPowerOnline", (bool,), PORT_COUNT),
+        ("PortsDesiredPowerOffline", (bool,), PORT_COUNT),
+        ("PortsPowerSensed", (bool,), PORT_COUNT),
+    ]
 
     # ---------------
     # Initialisation
@@ -67,6 +101,9 @@ class MccsFNDH(SKABaseDevice):
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: FndhHealthModel
         self._port_count = self.PORT_COUNT
+        self._overCurrentThreshold: float
+        self._overVoltageThreshold: float
+        self._humidityThreshold: float
 
     def init_device(self: MccsFNDH) -> None:
         """
@@ -74,11 +111,18 @@ class MccsFNDH(SKABaseDevice):
 
         This is overridden here to change the Tango serialisation model.
         """
-        util = tango.Util.instance()
-        util.set_serial_model(tango.SerialModel.NO_SYNC)
-        self._max_workers = 10
-        self._power_state_lock = threading.RLock()
         super().init_device()
+
+        # Setup attributes shared with the MccsPasdBus.
+        self._fndh_attributes: dict[str, Any] = {}
+        self._setup_fndh_attributes()
+        
+        # Attributes for specific ports on the FNDH.
+        # These attributes are a breakdown of the portPowerSensed
+        # attribute. The reason is to allow smartbox's to subscribe to 
+        for port in range(1, self.PORT_COUNT + 1):
+            attr_name = f"Port{port}PowerState"
+            self._setup_fndh_attribute(attr_name, PowerState, 1)
 
         message = (
             "Initialised MccsFNDH device with properties:\n"
@@ -91,6 +135,8 @@ class MccsFNDH(SKABaseDevice):
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._health_model = FndhHealthModel(self._health_changed_callback)
         self.set_change_event("healthState", True, False)
+        self.set_archive_event("healthState", True, False)
+
 
     # ----------
     # Properties
@@ -110,7 +156,11 @@ class MccsFNDH(SKABaseDevice):
 
             :return: a resultcode, message tuple
             """
-            self._completed()
+            self._device._isAlive = True
+            self._device._overCurrentThreshold = 0.0
+            self._device._overVoltageThreshold = 0.0
+            self._device._humidityThreshold = 0.0
+            #self._completed()
             return (ResultCode.OK, "Init command completed OK")
 
     # --------------
@@ -126,6 +176,8 @@ class MccsFNDH(SKABaseDevice):
             self.logger,
             self._communication_state_changed,
             self._component_state_changed_callback,
+            self._attribute_changed_callback,
+            self._update_port_power_states,
             self.PasdFQDNs,
         )
 
@@ -136,10 +188,7 @@ class MccsFNDH(SKABaseDevice):
         for (command_name, method_name) in [
             ("PowerOnPort", "power_on_port"),
             ("PowerOffPort", "power_off_port"),
-            ("PowerUp", "power_up"),
-            ("PowerDown", "power_down"),
             ("Configure", "configure"),
-            ("GetSmartBoxInfo", "get_smartbox_info"),
         ]:
             self.register_command_object(
                 command_name,
@@ -160,6 +209,39 @@ class MccsFNDH(SKABaseDevice):
     # ----------
     # Commands
     # ----------
+    @command(dtype_in="DevString")
+    def Configure(self: MccsFNDH, argin: str) -> None:
+        """
+        Configure the apiu device attributes.
+
+        :param argin: the configuration for the device in stringified json format
+        """
+        config = json.loads(argin)
+
+        apiu_config_schema = {
+            "type": "object",
+            "properties": {
+                "overCurrentThreshold": {"type": "number"},
+                "overVoltageThreshold": {"type": "number"},
+                "humidityThreshold": {"type": "number"},
+            },
+        }
+
+        try:
+            validate(instance=config, schema=apiu_config_schema)
+            self._overCurrentThreshold = config.get(
+                "overCurrentThreshold", self._overCurrentThreshold
+            )
+            self._overVoltageThreshold = config.get(
+                "overVoltageThreshold", self._overVoltageThreshold
+            )
+            self._humidityThreshold = config.get(
+                "humidityThreshold", self._humidityThreshold
+            )
+        except ValidationError as error:
+            self.logger.error(
+                "Failed to configure the device due to invalid schema: %s", str(error)
+            )
 
     class IsPortOnCommand(FastCommand):
         """A class for the MccsAPIU's IsPortOnCommand() command."""
@@ -248,79 +330,94 @@ class MccsFNDH(SKABaseDevice):
         result_code, message = handler(argin)
         return ([result_code], [message])
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def GetSmartBoxInfo(self: MccsFNDH, antenna_id: int) -> tuple[list[Any], list[Any]]:
-        """
-        Return information about relationship of an antenna to other PaSD components.
+    # -----------
+    # ATTRIBUTES
+    # -----------
+    def _setup_fndh_attributes(self: MccsFNDH) -> None:
+        for (slug, data_type, length) in self.ATTRIBUTES:
+            self._setup_fndh_attribute(
+                f"{slug}",
+                cast(type | tuple[type], data_type),
+                max_dim_x=length,
+            )
 
-        :param antenna_id: antenna id to query.
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("GetSmartBoxInfo")
-        result_code, unique_id = handler(antenna_id)
-        return ([result_code], [unique_id])
-
-    # @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    # def PowerUpAntennas(
-    #     self: MccsFNDH,
-    # ) -> tuple[list[ResultCode], list[Optional[str]]]:
-    #     """
-    #     Power up all Antenna LNA's.
-
-    #     :return: A tuple containing a return code and a string message
-    #         indicating status. The message is for information purposes
-    #         only.
-    #     """
-    #     handler = self.get_command_object("PowerUpAntennas")
-    #     result_code, message = handler()
-    #     return ([result_code], [message])
-
-    # @command(dtype_out="DevVarLongStringArray")
-    # def PowerDownAntennas(
-    #     self: MccsFNDH,
-    # ) -> tuple[list[ResultCode], list[Optional[str]]]:
-    #     """
-    #     Power down all Antanna LNA's.
-
-    #     :return: A tuple containing a return code and a string message
-    #         indicating status. The message is for information purposes
-    #         only.
-    #     """
-    #     handler = self.get_command_object("PowerDownAntennas")
-    #     result_code, message = handler()
-    #     return ([result_code], [message])
-
-    # ----------
-    # Attributes
-    # ----------
-
-    # TODO: Copy over all FNDH related attributes from the pasdBus
-    @attribute(dtype=("DevBoolean",), max_dim_x=28, label="a list of power states")
-    def portPowerStates(
+    def _setup_fndh_attribute(
         self: MccsFNDH,
-    ) -> List[bool]:
-        """
-        Handle a Tango attribute read of the power state of TPM 4.
+        attribute_name: str,
+        data_type: type | tuple[type],
+        max_dim_x: Optional[int] = None,
+    ) -> None:
+        self._fndh_attributes[attribute_name.lower()] = None
+        attr = tango.server.attribute(
+            name=attribute_name,
+            dtype=data_type,
+            access=tango.AttrWriteType.READ,
+            label=attribute_name,
+            max_dim_x=max_dim_x,
+            fread="_read_fndh_attribute",
+        ).to_attr()
+        self.add_attribute(attr, self._read_fndh_attribute, None, None)
+        self.set_change_event(attribute_name, True, False)
+        self.set_archive_event(attribute_name, True, False)
 
-        :return: the power state of TPM 4.
-        """
-        return self.component_manager.is_port_on()
+    def _read_fndh_attribute(self: MccsFNDH, fndh_attribute: tango.Attribute) -> None:  
+        fndh_attribute.set_value(
+            self._fndh_attributes[fndh_attribute.get_name().lower()]
+        )
 
-    @attribute(
-        dtype=("DevString",),
-        max_dim_x=256,
-        label="smartboxStatuses",
-    )
-    def smartboxStatuses(self: MccsFNDH) -> list[str]:
+    @attribute(dtype="DevDouble", label="Over current threshold", unit="Amp")
+    def overCurrentThreshold(self: MccsFNDH) -> float:
         """
-        Return each smartbox's status.
+        Return the overCurrentThreshold attribute.
 
-        :return: each smartbox's status.
+        :return: the value of the overCurrentThreshold attribute
         """
-        return self.component_manager.smartbox_statuses()
+        return self._overCurrentThreshold
 
+    @overCurrentThreshold.write  # type: ignore[no-redef]
+    def overCurrentThreshold(self: MccsFNDH, value: float) -> None:
+        """
+        Set the overCurrentThreshold attribute.
+
+        :param value: new value for the overCurrentThreshold attribute
+        """
+        self._overCurrentThreshold = value
+
+    @attribute(dtype="DevDouble", label="Over Voltage threshold", unit="Volt")
+    def overVoltageThreshold(self: MccsFNDH) -> float:
+        """
+        Return the overVoltageThreshold attribute.
+
+        :return: the value of the overVoltageThreshold attribute
+        """
+        return self._overVoltageThreshold
+
+    @overVoltageThreshold.write  # type: ignore[no-redef]
+    def overVoltageThreshold(self: MccsFNDH, value: float) -> None:
+        """
+        Set the overVoltageThreshold attribute.
+
+        :param value: new value for the overVoltageThreshold attribute
+        """
+        self._overVoltageThreshold = value
+
+    @attribute(dtype="DevDouble", label="Humidity threshold", unit="percent")
+    def humidityThreshold(self: MccsFNDH) -> float:
+        """
+        Return the humidity threshold.
+
+        :return: the value of the humidityThreshold attribute
+        """
+        return self._humidityThreshold
+
+    @humidityThreshold.write  # type: ignore[no-redef]
+    def humidityThreshold(self: MccsFNDH, value: float) -> None:
+        """
+        Set the humidityThreshold attribute.
+
+        :param value: new value for the humidityThreshold attribute
+        """
+        self._humidityThreshold = value
     # ----------
     # Callbacks
     # ----------
@@ -340,11 +437,14 @@ class MccsFNDH(SKABaseDevice):
         self._health_model.update_state(communicating=True)
 
     def _update_port_power_states(
-        self: MccsFNDH, port_power_states: list[PowerState]
+        self: MccsFNDH, power_states: list[PowerState]
     ) -> None:
-        if self._port_power_states != port_power_states:
-            self._port_power_states = port_power_states
-            self.push_change_event("portPowerState", port_power_states)
+        assert self.PORT_COUNT == len(power_states)
+        for port in range(self.PORT_COUNT):
+            attr_name = f"Port{port + 1}PowerState"
+            if self._fndh_attributes[attr_name.lower()] != power_states[port]:
+                self._fndh_attributes[attr_name.lower()] = power_states[port]
+                self.push_change_event(attr_name, self._fndh_attributes[attr_name.lower()])
 
     def _component_state_changed_callback(
         self: MccsFNDH,
@@ -384,7 +484,51 @@ class MccsFNDH(SKABaseDevice):
         if self._health_state != health:
             self._health_state = health
             self.push_change_event("healthState", health)
+            self.push_archive_event("healthState", health)
 
+
+    def _attribute_changed_callback(
+        self: MccsFNDH, attr_name: str, attr_value: HealthState
+    ) -> None:
+        """
+        Handle changes to subscribed attributes.
+
+        This is a callback hook we pass to the component manager,
+        It is called when a subscribed attribute changes.
+        It is responsible for:
+        - updating this device attribute
+        - pushing a change event to any listeners.
+
+        :param attr_name: the name of the attribute that needs updating
+        :param attr_value: the value to update with.
+        """
+        # Status is a bad name, it conflicts with tango status()
+        if attr_name.lower() == "status":
+            attr_name = "pasdstatus"
+
+        try:
+            assert (
+                len(
+                    [
+                        attr
+                        for (attr, _, _) in self.ATTRIBUTES
+                        if attr == attr_name or attr.lower() == attr_name
+                    ]
+                )
+                > 0
+            )
+            # TODO: These attributes may factor into the FNDH health.
+            # we should notify the health model of any relevant changes.
+
+            self._fndh_attributes[attr_name] = attr_value
+            self.push_change_event(attr_name, attr_value)
+            self.push_archive_event(attr_name, attr_value)
+
+        except AssertionError:
+            self.logger.debug(
+                f"""The attribute {attr_name} pushed from MccsPasdBus
+                device does not exist in MccsSmartBox"""
+            )
 
 # ----------
 # Run server
