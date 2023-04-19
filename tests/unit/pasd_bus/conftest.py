@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 import functools
-import importlib
+import importlib.resources
 import logging
 import threading
 import unittest.mock
@@ -30,16 +30,6 @@ from ska_low_mccs_pasd.pasd_bus import (
     PasdBusSimulatorJsonServer,
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
-
-
-@pytest.fixture(name="max_workers")
-def max_workers_fixture() -> int:
-    """
-    Return the number of worker threads.
-
-    :return: number of worker threads
-    """
-    return 1
 
 
 @pytest.fixture(name="station_id")
@@ -85,25 +75,6 @@ def pasd_bus_simulator_fixture(station_id: int) -> PasdBusSimulator:
     :return: a PaSD bus simulator
     """
     return PasdBusSimulator(station_id, logging.DEBUG)
-
-
-@pytest.fixture(name="mock_pasd_bus_simulator")
-def mock_pasd_bus_simulator_fixture(
-    pasd_bus_simulator: PasdBusSimulator,
-) -> unittest.mock.Mock:
-    """
-    Return a mock PaSD bus simulator.
-
-    The returned mock wraps a real simulator instance, so it will behave
-    like a real one, but we can access it as a mock too, for example
-    assert calls.
-
-    :param pasd_bus_simulator: a real PaSD bus simulator to wrap in a
-        mock.
-
-    :return: a mock PaSD bus simulator
-    """
-    return unittest.mock.Mock(wraps=pasd_bus_simulator)
 
 
 @pytest.fixture(name="fndh_simulator")
@@ -298,7 +269,6 @@ def mock_smartbox_simulator(
 
 @pytest.fixture(name="pasd_bus_simulator_server_launcher")
 def pasd_bus_simulator_server_launcher_fixture(
-    mock_pasd_bus_simulator: PasdBusSimulator,
     mock_fndh_simulator: FndhSimulator,
     mock_smartbox_simulators: Sequence[SmartboxSimulator],
 ) -> Callable[[], ContextManager[TcpServer]]:
@@ -310,9 +280,6 @@ def pasd_bus_simulator_server_launcher_fixture(
     yields it for use in testing,
     and then shuts its down afterwards.
 
-    :param mock_pasd_bus_simulator:
-        the PaSD simulator backend that the TCP server will front,
-        wrapped with a mock that that we can assert calls.
     :param mock_fndh_simulator:
         the FNDH simulator backend that the TCP server will front,
         wrapped with a mock so that we can assert calls.
@@ -389,7 +356,6 @@ def pasd_bus_info_fixture(
 def pasd_bus_component_manager_fixture(
     pasd_bus_info: dict[str, Any],
     logger: logging.Logger,
-    max_workers: int,
     mock_callbacks: MockCallableGroup,
 ) -> PasdBusComponentManager:
     """
@@ -400,7 +366,6 @@ def pasd_bus_component_manager_fixture(
     :param pasd_bus_info: information about the PaSD bus, such as its
         IP address (host and port) and an appropriate timeout to use.
     :param logger: the logger to be used by this object.
-    :param max_workers: number of worker threads
     :param mock_callbacks: a group of mock callables for the component
         manager under test to use as callbacks
 
@@ -411,7 +376,6 @@ def pasd_bus_component_manager_fixture(
         pasd_bus_info["port"],
         pasd_bus_info["timeout"],
         logger,
-        max_workers,
         mock_callbacks["communication_state"],
         mock_callbacks["component_state"],
         mock_callbacks["pasd_device_state"],

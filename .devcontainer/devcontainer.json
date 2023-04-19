@@ -23,6 +23,7 @@
                 "coverage-gutters.showLineCoverage": true
             },
             "extensions": [
+                "ms-python.pylint",
                 "ms-python.python",
                 "ryanluker.vscode-coverage-gutters"
             ]

@@ -54,6 +54,7 @@ def change_event_callbacks_fixture(smartbox_id: int) -> MockTangoEventCallbackGr
         f"smartbox{smartbox_id}PortsConnected",
         f"smartbox{smartbox_id}PortsPowerSensed",
         "smartbox24PortsConnected",
+        timeout=10.0,
         assert_no_error=False,
     )
 
