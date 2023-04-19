@@ -8,22 +8,43 @@
 """This module contains the tests for MccsFNDH."""
 
 from __future__ import annotations
-
+import gc
 import unittest.mock
 from typing import Any, Generator
-
+import time
 import numpy.testing
+import json
 import pytest
 import tango
-from ska_control_model import LoggingLevel, ResultCode
+from ska_control_model import LoggingLevel, ResultCode, AdminMode
 from ska_tango_testing.context import (
     TangoContextProtocol,
     ThreadedTestTangoContextManager,
 )
-
+from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 from ska_low_mccs_pasd import MccsFNDH
+# TODO: Weird hang-at-garbage-collection bug
+gc.disable()
 
+@pytest.fixture(name="change_event_callbacks")
+def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
+    """
+    Return a dictionary of change event callbacks with asynchrony support.
 
+    :param smartbox_id: id of the smartbox being addressed.
+
+    :return: a collections.defaultdict that returns change event
+        callbacks by name.
+    """
+    return MockTangoEventCallbackGroup(
+        "adminMode",
+        "healthState",
+        "longRunningCommandResult",
+        "longRunningCommandStatus",
+        "state",
+        timeout=2.0,
+        assert_no_error=False,
+    )
 @pytest.fixture(name="mock_component_manager")
 def mock_component_manager_fixture() -> unittest.mock.Mock:
     """
@@ -51,6 +72,9 @@ def patched_fndh_device_class_fixture(
 
     class PatchedMccsFNDH(MccsFNDH):
         """A fndh bus device patched with a mock component manager."""
+
+        def __init__(self: PatchedMccsFNDH, *args: Any, **kwargs: Any):
+            super().__init__(*args, **kwargs)
 
         def create_component_manager(
             self: PatchedMccsFNDH,
@@ -139,12 +163,6 @@ def fndh_device_fixture(
         (
             "PowerOffPort",
             "power_off_port",
-            4,
-            [True, True],
-        ),
-        (
-            "GetSmartBoxInfo",
-            "get_smartbox_info",
             4,
             [True, True],
         ),
@@ -248,53 +266,130 @@ def test_fast_command(  # pylint: disable=too-many-arguments
 
     assert command_return == device_response
 
-
 @pytest.mark.parametrize(
-    (
-        "device_attribute",
-        "component_manager_attribute",
-        "component_manager_method_return",
-    ),
+    "config_in, expected_config",
     [
-        (
-            "portPowerStates",
-            "is_port_on",
-            [True] * 28,
+        pytest.param(
+            {
+                "overCurrentThreshold": 12.3,
+                "overVoltageThreshold": 45.6,
+                "humidityThreshold": 78.9,
+            },
+            {
+                "overCurrentThreshold": 12.3,
+                "overVoltageThreshold": 45.6,
+                "humidityThreshold": 78.9,
+            },
+            id="valid config is entered correctly",
         ),
-        (
-            "smartboxStatuses",
-            "smartbox_statuses",
-            ["OK"] * 28,
+        pytest.param(
+            {"overCurrentThreshold": 12.3, "humidityThreshold": 78.9},
+            {
+                "overCurrentThreshold": 12.3,
+                "overVoltageThreshold": 0.0,
+                "humidityThreshold": 78.9,
+            },
+            id="missing config data is valid",
+        ),
+        pytest.param(
+            {
+                "overCurrentThreshold_wrong_name": 12.3,
+                "overVoltageThreshold": 45.6,
+                "humidityThreshold": 78.9,
+            },
+            {
+                "overCurrentThreshold": 0.0,
+                "overVoltageThreshold": 45.6,
+                "humidityThreshold": 78.9,
+            },
+            id="invalid named configs are skipped",
+        ),
+        pytest.param(
+            {
+                "overCurrentThreshold_wrong_name": "some string",
+                "overVoltageThreshold": True,
+                "humidityThreshold": [78.9, 12.3],
+            },
+            {
+                "overCurrentThreshold": 0.0,
+                "overVoltageThreshold": 0.0,
+                "humidityThreshold": 0.0,
+            },
+            id="invalid types dont apply",
+        ),
+        pytest.param(
+            {},
+            {
+                "overCurrentThreshold": 0.0,
+                "overVoltageThreshold": 0.0,
+                "humidityThreshold": 0.0,
+            },
+            id="empty dict is no op",
         ),
     ],
 )
-def test_attribute(
+def test_Configure(
     fndh_device: tango.DeviceProxy,
-    mock_component_manager: unittest.mock.Mock,
-    device_attribute: str,
-    component_manager_attribute: str,
-    component_manager_method_return: Any,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+    config_in: dict,
+    expected_config: dict,
 ) -> None:
     """
-    Test that device attribute writes result in component manager property writes.
+    Test for Configure.
 
     :param fndh_device: fixture that provides a
         :py:class:`tango.DeviceProxy` to the device under test, in a
         :py:class:`tango.test_context.DeviceTestContext`.
-    :param mock_component_manager: the mock component manager being
-        used by the patched fndh bus device.
-    :param device_attribute: name of the device attribute under test.
-    :param component_manager_attribute: name of the component manager
-        attribute that is expected to be called when the device
-        command is called.
-    :param component_manager_method_return: return value of the
-        component manager method
+    :param device_admin_mode_changed_callback: a callback that
+        we can use to subscribe to admin mode changes on the device
+    :param config_in: configuration of the device
+    :param expected_config: the expected output configuration
     """
-    method_mock = unittest.mock.Mock(return_value=component_manager_method_return)
-    setattr(mock_component_manager, component_manager_attribute, method_mock)
-    method_mock.assert_not_called()
+    
+    fndh_device.subscribe_event(
+        "adminMode",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["adminMode"],
+    )
+    change_event_callbacks.assert_change_event("adminMode", AdminMode.OFFLINE)
+    assert fndh_device.adminMode == AdminMode.OFFLINE
 
-    command_return = getattr(fndh_device, device_attribute)
+    fndh_device.adminMode = AdminMode.ONLINE
+    change_event_callbacks.assert_change_event("adminMode", AdminMode.ONLINE)
+    assert fndh_device.adminMode == AdminMode.ONLINE
 
-    method_mock.assert_called()
-    numpy.testing.assert_equal(command_return, component_manager_method_return)
+    fndh_device.Configure(json.dumps(config_in))
+
+    assert (
+        fndh_device.overCurrentThreshold
+        == expected_config["overCurrentThreshold"]
+    )
+    assert (
+        fndh_device.overVoltageThreshold
+        == expected_config["overVoltageThreshold"]
+    )
+    assert (
+        fndh_device.humidityThreshold == expected_config["humidityThreshold"]
+    )
+
+
+def test_threshold_attributes(
+    fndh_device: tango.DeviceProxy,
+) -> None:
+    """
+    Test for Configure.
+
+    :param fndh_device: fixture that provides a
+        :py:class:`tango.DeviceProxy` to the device under test, in a
+        :py:class:`tango.test_context.DeviceTestContext`.
+    :param device_admin_mode_changed_callback: a callback that
+        we can use to subscribe to admin mode changes on the device
+    :param config_in: configuration of the device
+    :param expected_config: the expected output configuration
+    """
+    fndh_device.overCurrentThreshold = 22.0
+    assert fndh_device.overCurrentThreshold == 22.0
+    fndh_device.overVoltageThreshold = 6.0
+    assert fndh_device.overVoltageThreshold == 6.0
+    fndh_device.humidityThreshold = 60.0
+    assert fndh_device.humidityThreshold == 60.0

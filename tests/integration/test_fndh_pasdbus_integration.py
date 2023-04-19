@@ -12,13 +12,15 @@ from __future__ import annotations
 import gc
 from typing import Generator
 
+import time
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel
+from ska_control_model import AdminMode, LoggingLevel, HealthState
 from ska_tango_testing.context import (
     TangoContextProtocol,
     ThreadedTestTangoContextManager,
 )
+from ska_low_mccs_pasd.pasd_bus import FndhSimulator
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd import MccsFNDH, MccsPasdBus
@@ -171,6 +173,221 @@ class TestfndhPasdBusIntegration:  # pylint: disable=too-few-public-methods
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.OFF)
 
 
+    def test_communication(  # pylint: disable=too-many-statements
+        self: TestfndhPasdBusIntegration,
+        fndh_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        fndh_simulator: FndhSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test the Tango device's communication with the PaSD bus.
+
+        :param pasd_bus_device: a proxy to the PaSD bus device under test.
+        :param fndh_simulator: the FNDH simulator under test
+        :param smartbox_simulator: the smartbox simulator under test.
+        :param smartbox_id: id of the smartbox being addressed.
+        :param change_event_callbacks: dictionary of mock change event
+            callbacks with asynchrony support
+        """
+        assert fndh_device.adminMode == AdminMode.OFFLINE
+        assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+
+        pasd_bus_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasd_bus_state"],
+        )
+        change_event_callbacks.assert_change_event("pasd_bus_state", tango.DevState.DISABLE)
+
+        fndh_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndh_state"],
+        )
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
+
+        pasd_bus_device.subscribe_event(
+            "healthState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasdBushealthState"],
+        )
+
+        change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.UNKNOWN)
+        assert pasd_bus_device.healthState == HealthState.UNKNOWN
+
+        # This is a bit of a cheat.
+        # It's an implementation-dependent detail that
+        # this is one of the last attributes to be read from the simulator.
+        # We subscribe events on this attribute because we know that
+        # once we have an updated value for this attribute,
+        # we have an updated value for all of them.
+        pasd_bus_device.subscribe_event(
+            "smartbox24PortsCurrentDraw",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartbox24PortsCurrentDraw"],
+        )
+        change_event_callbacks.assert_change_event("smartbox24PortsCurrentDraw", None)
+
+        pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+
+        change_event_callbacks.assert_change_event("pasd_bus_state", tango.DevState.UNKNOWN)
+        change_event_callbacks.assert_change_event("pasd_bus_state", tango.DevState.ON)
+        change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
+        assert pasd_bus_device.healthState == HealthState.OK
+
+        change_event_callbacks.assert_against_call("smartbox24PortsCurrentDraw")
+
+        fndh_device.adminMode = AdminMode.ONLINE
+
+
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.OFF)
+        change_event_callbacks["fndh_state"].assert_not_called()
+
+        assert (
+            fndh_device.ModbusRegisterMapRevisionNumber
+            == FndhSimulator.MODBUS_REGISTER_MAP_REVISION
+        )
+        assert fndh_device.PcbRevisionNumber == FndhSimulator.PCB_REVISION
+        assert fndh_device.CpuId == FndhSimulator.CPU_ID
+        assert fndh_device.ChipId == FndhSimulator.CHIP_ID
+        assert fndh_device.FirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
+        assert fndh_device.Uptime == FndhSimulator.DEFAULT_UPTIME
+        assert fndh_device.pasdStatus == FndhSimulator.DEFAULT_STATUS
+        assert fndh_device.LedPattern == FndhSimulator.DEFAULT_LED_PATTERN
+        assert (
+            list(fndh_device.Psu48vVoltages)
+            == FndhSimulator.DEFAULT_PSU48V_VOLTAGES
+        )
+        assert fndh_device.Psu5vVoltage == FndhSimulator.DEFAULT_PSU5V_VOLTAGE
+        assert fndh_device.Psu48vCurrent == FndhSimulator.DEFAULT_PSU48V_CURRENT
+        assert (
+            fndh_device.Psu48vTemperature
+            == FndhSimulator.DEFAULT_PSU48V_TEMPERATURE
+        )
+        assert (
+            fndh_device.Psu5vTemperature == FndhSimulator.DEFAULT_PSU5V_TEMPERATURE
+        )
+        assert fndh_device.PcbTemperature == FndhSimulator.DEFAULT_PCB_TEMPERATURE
+        assert (
+            fndh_device.OutsideTemperature
+            == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+        )
+        assert list(fndh_device.PortsConnected) == fndh_simulator.ports_connected
+        assert (
+            list(fndh_device.PortBreakersTripped)
+            == fndh_simulator.port_breakers_tripped
+        )
+        assert list(fndh_device.PortForcings) == fndh_simulator.port_forcings
+        assert (
+            list(fndh_device.PortsDesiredPowerOnline)
+            == fndh_simulator.ports_desired_power_when_online
+        )
+        assert (
+            list(fndh_device.PortsDesiredPowerOffline)
+            == fndh_simulator.ports_desired_power_when_offline
+        )
+        assert (
+            list(fndh_device.PortsPowerSensed) == fndh_simulator.ports_power_sensed
+        )
+        for port in range(1, 29):
+            assert (
+                getattr(fndh_device, f"Port{port}PowerState") == fndh_simulator.ports_power_sensed[port -1]
+            )
+
+
+    # def test_full_startup(  # pylint: disable=too-many-statements
+    #     self: TestfndhPasdBusIntegration,
+    #     fndh_device: tango.DeviceProxy,
+    #     pasd_bus_device: tango.DeviceProxy,
+    #     smartboxes: list[tango.DeviceProxy],
+    #     fndh_simulator: FndhSimulator,
+    #     change_event_callbacks: MockTangoEventCallbackGroup,
+    # ) -> None:
+    #     """
+    #     This test is mimicking the full startup sequence of the FNDH.
+    #     As per the https://github.com/andreww5au/PaSD-client/blob/main/pasd/station.py
+    #     """
+    #     # -------------------------------------
+    #     # First start the polling of attributes
+    #     # -------------------------------------
+    #     assert fndh_device.adminMode == AdminMode.OFFLINE
+    #     assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+
+    #     pasd_bus_device.subscribe_event(
+    #         "state",
+    #         tango.EventType.CHANGE_EVENT,
+    #         change_event_callbacks["pasd_bus_state"],
+    #     )
+    #     change_event_callbacks.assert_change_event("pasd_bus_state", tango.DevState.DISABLE)
+
+    #     fndh_device.subscribe_event(
+    #         "state",
+    #         tango.EventType.CHANGE_EVENT,
+    #         change_event_callbacks["fndh_state"],
+    #     )
+    #     change_event_callbacks["fndh_state"].assert_change_event(
+    #         tango.DevState.DISABLE
+    #     )
+
+    #     pasd_bus_device.subscribe_event(
+    #         "healthState",
+    #         tango.EventType.CHANGE_EVENT,
+    #         change_event_callbacks["pasdBushealthState"],
+    #     )
+
+    #     change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.UNKNOWN)
+    #     assert pasd_bus_device.healthState == HealthState.UNKNOWN
+
+    #     # This is a bit of a cheat.
+    #     # It's an implementation-dependent detail that
+    #     # this is one of the last attributes to be read from the simulator.
+    #     # We subscribe events on this attribute because we know that
+    #     # once we have an updated value for this attribute,
+    #     # we have an updated value for all of them.
+    #     pasd_bus_device.subscribe_event(
+    #         "smartbox24PortsCurrentDraw",
+    #         tango.EventType.CHANGE_EVENT,
+    #         change_event_callbacks["smartbox24PortsCurrentDraw"],
+    #     )
+    #     change_event_callbacks.assert_change_event("smartbox24PortsCurrentDraw", None)
+
+    #     # --------------------------------------------------
+    #     # Turn on each port of the FNDH and record the time.
+    #     # --------------------------------------------------
+    #     port_on_times = {}
+    #     for portnum in range(1, 29):
+    #         time.sleep(5)
+    #         fndh_device.TurnonPort(portnum)
+    #         port_on_times[portnum] = int(time.time())
+
+    #     # --------------------------------------------------
+    #     # Monitor the time when the Smartboxes sense power.
+    #     # --------------------------------------------------
+    #     smartbox_on_times = {}
+    #     for smartboxnum in range(smartboxes):
+    #         uptime = smartboxes[smartboxnum].Uptime()
+    #         smartbox_on_times[smartboxnum] = time.time() - uptime
+
+    #     # ------------------------------------------------------
+    #     # Create a mapping to know what port each smartbox is on
+    #     # ------------------------------------------------------
+    #     smartbox_number_to_port_map = {}
+    #     for portnum in range(1, 29):
+    #         ontime = port_on_times[portnum]
+
+    #         diffs = [(smartbox_num, (smartbox_on_times[smartbox_num] - ontime)) for smartbox_num in smartbox_on_times.keys() if smartbox_on_times[smartbox_num] > ontime]
+    #         diffs.sort(key=lambda x: x[1]) 
+    #         if diffs and (diffs[0][1] < 5) and (diffs[0][0] in smartboxes):
+    #             smartbox_number_to_port_map[smartboxes[diffs[0][0]].smartboxNumber] = portnum
+
+
+
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     """
@@ -182,5 +399,8 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     return MockTangoEventCallbackGroup(
         "fndh_state",
         "pasd_bus_state",
-        timeout=2.0,
+        "pasdBushealthState",
+        "smartbox24PortsCurrentDraw",
+        timeout=15.0,
+        assert_no_error=False,
     )

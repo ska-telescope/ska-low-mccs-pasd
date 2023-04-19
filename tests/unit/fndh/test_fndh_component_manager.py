@@ -19,7 +19,21 @@ from ska_tango_testing.mock import MockCallableGroup
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.fndh import FndhComponentManager
+from ska_low_mccs_pasd.pasd_bus import MccsPasdBus
 
+@pytest.fixture(name="callbacks")
+def callbacks_fixture() -> MockCallableGroup:
+    """
+    Return a dictionary of callables to be used as callbacks.
+
+    :return: a dictionary of callables to be used as callbacks.
+    """
+    return MockCallableGroup(
+        "attribute_update",
+        "port_power_state",
+        "task_callback",
+        timeout=2.0,
+    )
 
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
@@ -37,16 +51,29 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "state",
     )
 
+@pytest.fixture(name="smartbox_number")
+def smartbox_number_fixture() -> int:
+    """
+    Return the id of the station whose configuration will be used in testing.
+
+    :return: the id of the station whose configuration will be used in
+        testing.
+    """
+    return 1
 
 @pytest.fixture(name="mocked_pasd_proxy")
-def mocked_pasd_proxy_fixture() -> unittest.mock.Mock:
+def mocked_pasd_proxy_fixture(smartbox_number: int) -> unittest.mock.Mock:
     """
     Return a dictionary of change event callbacks with asynchrony support.
 
     :return: a collections.defaultdict that returns change event
         callbacks by name.
     """
-    return unittest.mock.Mock()
+    mock = unittest.mock.Mock()
+    mock.GetPasdDeviceSubscriptions = unittest.mock.Mock(
+        return_value=MccsPasdBus._ATTRIBUTE_MAP[int(smartbox_number)].values()
+    )
+    return mock
 
 
 @pytest.fixture(name="task_callback")
@@ -83,6 +110,8 @@ def fndh_component_manager_fixture(
         logger,
         mock_callbacks["communication_state"],
         mock_callbacks["component_state"],
+        mock_callbacks["attribute_update"],
+        mock_callbacks["port_power_state"],
         pasd_bus_fndh,
         mocked_pasd_proxy,
     )
@@ -155,25 +184,11 @@ class TestFndhComponentManager:
         ),
         [
             (
-                "smartbox_statuses",
-                "smartboxStatuses",
-                None,
-                [False] * 24,
-                [False] * 24,
-            ),
-            (
                 "is_port_on",
                 "fndhPortsPowerSensed",
-                None,
+                4,
                 False,
                 False,
-            ),
-            (
-                "get_smartbox_info",
-                "GetSmartboxInfo",
-                3,
-                {"status": "OK"},
-                {"status": "OK"},
             ),
         ],
     )
@@ -208,10 +223,8 @@ class TestFndhComponentManager:
             )
         else:
             mock_response = unittest.mock.MagicMock(return_value=pasd_proxy_response)
+            mock_response.__getitem__.return_value = pasd_proxy_response
             setattr(mocked_pasd_proxy, pasd_proxy_command, mock_response)
-            mocked_pasd_proxy.TurnSmartboxOff = unittest.mock.MagicMock(
-                return_value=pasd_proxy_response
-            )
             assert (
                 getattr(fndh_component_manager, component_manager_command)(
                     component_manager_command_argument
@@ -257,7 +270,7 @@ class TestFndhComponentManager:
         pasd_proxy_response: Any,
         expected_manager_result: Any,
         command_tracked_response: Any,
-        task_callback: unittest.mock.Mock,
+        callbacks: MockCallableGroup,
     ) -> None:
         """
         Test the FNDH object commands.
@@ -282,20 +295,23 @@ class TestFndhComponentManager:
             )
 
         else:
-            mock_response = unittest.mock.MagicMock(return_value=pasd_proxy_response)
+            mock_response = unittest.mock.Mock(return_value=pasd_proxy_response)
             setattr(mocked_pasd_proxy, pasd_proxy_command, mock_response)
-            mocked_pasd_proxy.TurnSmartboxOff = unittest.mock.MagicMock(
+            mocked_pasd_proxy.TurnSmartboxOff = unittest.mock.Mock(
                 return_value=pasd_proxy_response
             )
             assert (
                 getattr(fndh_component_manager, component_manager_command)(
-                    component_manager_command_argument, task_callback
+                    component_manager_command_argument, callbacks["task_callback"]
                 )
                 == expected_manager_result
             )
-            task_callback.assert_called_with(
+            callbacks["task_callback"].assert_call(status=TaskStatus.QUEUED)
+            callbacks["task_callback"].assert_call(status=TaskStatus.IN_PROGRESS)
+            callbacks["task_callback"].assert_call(
                 status=TaskStatus.COMPLETED, result=command_tracked_response
             )
+
 
     @pytest.mark.parametrize(
         (
@@ -309,19 +325,19 @@ class TestFndhComponentManager:
         [
             (
                 "power_on_port",
-                3,
+                0,
                 "TurnSmartboxOn",
                 (True, True, "wrong_response"),
                 (TaskStatus.QUEUED, "Task queued"),
-                f"Power on port '{3} failed'",
+                f"Power on port '{0} failed'",
             ),
             (
                 "power_off_port",
-                3,
+                0,
                 "TurnSmartboxOff",
                 (True, True, "wrong_response"),
                 (TaskStatus.QUEUED, "Task queued"),
-                f"Power off port '{3} failed'",
+                f"Power off port '{0} failed'",
             ),
         ],
     )
@@ -335,7 +351,7 @@ class TestFndhComponentManager:
         pasd_proxy_response: Any,
         expected_manager_result: Any,
         command_tracked_response: Any,
-        task_callback: unittest.mock.Mock,
+        callbacks: MockCallableGroup,
     ) -> None:
         """
         Test how the FNDH object handles the incorrect return type.
@@ -353,7 +369,7 @@ class TestFndhComponentManager:
         :param pasd_proxy_response: mocked response
         :param expected_manager_result: expected response from the call
         :param command_tracked_response: The result of the command.
-        :param task_callback: the task_callback.
+        :param callbacks: the callbacks.
         """
         # setup the response from the mocked pasd proxy
         mock_response = unittest.mock.MagicMock(return_value=pasd_proxy_response)
@@ -362,13 +378,15 @@ class TestFndhComponentManager:
         # check component manager can issue a command and it returns as expected
         assert (
             getattr(fndh_component_manager, component_manager_command)(
-                component_manager_command_argument, task_callback
+                component_manager_command_argument, callbacks["task_callback"]
             )
             == expected_manager_result
         )
 
         # check that the task execution is as expected
-        time.sleep(0.01)
-        task_callback.assert_called_with(
+        callbacks["task_callback"].assert_call(status=TaskStatus.QUEUED)
+        callbacks["task_callback"].assert_call(status=TaskStatus.IN_PROGRESS)
+        callbacks["task_callback"].assert_call(
             status=TaskStatus.FAILED, result=command_tracked_response
         )
+

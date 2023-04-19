@@ -26,5 +26,7 @@ def mock_callbacks_fixture() -> MockCallableGroup:
         "communication_state",
         "component_state",
         "pasd_device_state",
+        "attribute_update",
+        "port_power_state",
         "task",
     )
