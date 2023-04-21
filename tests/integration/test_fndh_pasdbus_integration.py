@@ -215,6 +215,7 @@ class TestfndhPasdBusIntegration:
                 == fndh_simulator.ports_power_sensed[port - 1]
             )
 
+
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     """
