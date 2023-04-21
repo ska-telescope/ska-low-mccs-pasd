@@ -224,7 +224,7 @@ def test_command(  # pylint: disable=too-many-arguments
             "IsPortOn",
             "is_port_on",
             4,
-            [False] * 28,
+            False,
             False,
         ),
     ],

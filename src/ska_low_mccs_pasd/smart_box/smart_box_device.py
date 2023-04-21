@@ -20,7 +20,7 @@ from ska_control_model import (
 )
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
-from tango.server import command, device_property
+from tango.server import attribute, command, device_property
 
 from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
@@ -34,9 +34,8 @@ class MccsSmartBox(SKABaseDevice):
     # -----------------
     # Device Properties
     # -----------------
-    FndhPort = device_property(dtype=int, default_value=0)
-    PasdFQDNs = device_property(dtype=(str), default_value="")
-    # TODO: do we want both fndhPort and SmartBoxNumber?
+    PasdFQDN = device_property(dtype=(str), default_value="")
+    FndhFQDN = device_property(dtype=(str), default_value="")
     SmartBoxNumber = device_property(dtype=int, default_value=1)
 
     PORT_COUNT = 12
@@ -108,8 +107,8 @@ class MccsSmartBox(SKABaseDevice):
 
         message = (
             "Initialised MccsSmartBox device with properties:\n"
-            f"\tFndhPort: {self.FndhPort}\n"
-            f"\tPasdFQDNs: {self.PasdFQDNs}\n"
+            f"\tPasdFQDN: {self.PasdFQDN}\n"
+            f"\tFndhFQDN: {self.FndhFQDN}\n"
             f"\tSmartBoxNumber: {self.SmartBoxNumber}\n"
         )
         self.logger.info(message)
@@ -156,8 +155,8 @@ class MccsSmartBox(SKABaseDevice):
             self._communication_state_changed,
             self._component_state_changed_callback,
             self._attribute_changed_callback,
-            self.PasdFQDNs,
-            self.FndhPort,
+            self.PasdFQDN,
+            self.FndhFQDN,
             self.SmartBoxNumber,
         )
 
@@ -228,6 +227,30 @@ class MccsSmartBox(SKABaseDevice):
     # ----------
     # Attributes
     # ----------
+    @attribute(dtype=int)
+    def fndhPort(self: MccsSmartBox) -> None:
+        """
+        Port this smartbox is attached.
+
+        Ports range from 1-28. 0 if not set yet.
+
+        :returns: The port number.
+        """
+        return self.component_manager._fndh_port
+
+    @fndhPort.write  # type: ignore[no-redef]
+    def fndhPort(self: MccsSmartBox, port: int) -> None:
+        """
+        Update the PDoC port this smartbox is attached to.
+
+        This should be done by the station after it has undergone
+        the full_startup sequence and has worked out what fndh port
+        we are attached to.
+
+        :param port: the port number between 1-28
+        """
+        self.component_manager.update_fndh_port(port)
+
     def _setup_smartbox_attributes(self: MccsSmartBox) -> None:
         for (slug, data_type, length) in self.ATTRIBUTES:
             self._setup_smartbox_attribute(

@@ -47,9 +47,10 @@ class SmartBoxComponentManager(
         component_state_changed_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
         pasd_fqdn: str,
-        fndh_port: int,
+        fndh_fqdn: str,
         smartbox_number: Optional[int] = None,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
+        _fndh_bus_proxy: Optional[MccsDeviceProxy] = None,
     ) -> None:
         """
         Initialise a new instance.
@@ -63,9 +64,10 @@ class SmartBoxComponentManager(
         :param attribute_change_callback: callback to be called when a attribute
             of interest changes.
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
-        :param fndh_port: the port of the fndh this smartbox is attached.
+        :param fndh_fqdn: the fqdn of the fndh to connect to.
         :param smartbox_number: the number assigned to this smartbox by station.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
+        :param _fndh_bus_proxy: a optional injected device proxy for testing
 
         purposes only. defaults to None
         """
@@ -82,9 +84,11 @@ class SmartBoxComponentManager(
         self._component_state_changed_callback = component_state_changed_callback
         self._attribute_change_callback = attribute_change_callback
         self._pasd_fqdn = pasd_fqdn
+        self._fndh_fqdn = fndh_fqdn
         self.smartbox_number = smartbox_number
         self._pasd_bus_proxy: Optional[MccsDeviceProxy] = _pasd_bus_proxy
-        self.fndh_port = fndh_port
+        self._fndh_proxy: Optional[MccsDeviceProxy] = _fndh_bus_proxy
+        self._fndh_port = 0
         self.logger = logger
 
         # This is used in the proxy callback
@@ -113,13 +117,21 @@ class SmartBoxComponentManager(
                 "healthstate", self._pasd_health_state_changed
             )
 
-        if (
-            "fndhPortsPowerSensed"
-            not in self._pasd_bus_proxy._change_event_subscription_ids.keys()
-        ):
-            self._pasd_bus_proxy.add_change_event_callback(
-                "fndhPortsPowerSensed", self._power_state_change
+    def _evaluate_power_state(self: SmartBoxComponentManager) -> None:
+        """Evaluate the power state."""
+        # If we do not know what port we are attached to we cannot know our
+        # power state
+        assert self._fndh_proxy
+        if self._fndh_port:
+            if getattr(self._fndh_proxy, f"Port{self._fndh_port}PowerState"):
+                self._component_state_changed_callback(power=PowerState.ON)
+            else:
+                self._component_state_changed_callback(power=PowerState.OFF)
+        else:
+            self.logger.info(
+                "Smartbox has unknown FNDH port therefore PowerState UNKNOWN."
             )
+            self._component_state_changed_callback(power=PowerState.UNKNOWN)
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """
@@ -133,12 +145,17 @@ class SmartBoxComponentManager(
         # ------------------------------------
         # FORM PROXY / SUBSCRIBE TO ATTRIBUTES
         # ------------------------------------
-        if self._pasd_bus_proxy is None:
+        if None in [self._pasd_bus_proxy, self._fndh_proxy]:
             try:
-                self.logger.info(f"attempting to form proxy with {self._pasd_fqdn}")
+                self.logger.info(
+                    f"attempting to form proxy with {self._pasd_fqdn} {self._fndh_fqdn}"
+                )
 
                 self._pasd_bus_proxy = MccsDeviceProxy(
                     self._pasd_fqdn, self.logger, connect=True
+                )
+                self._fndh_proxy = MccsDeviceProxy(
+                    self._fndh_fqdn, self.logger, connect=True
                 )
             except Exception as e:  # pylint: disable=broad-except
                 self._update_component_state(fault=True)
@@ -158,21 +175,17 @@ class SmartBoxComponentManager(
         # ------------
         # UPDATE STATE
         # ------------
+        assert self._pasd_bus_proxy
+        assert self._fndh_proxy
         try:
             # If we are not established attempt for establish communication.
             if self.communication_state != CommunicationStatus.ESTABLISHED:
                 self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
                 self._pasd_bus_proxy.ping()
-
-                # TODO: check the pasd_bus is communicating modbus
-                # here we just assume it is.
+                self._fndh_proxy.ping()
                 self._update_communication_state(CommunicationStatus.ESTABLISHED)
+                self._evaluate_power_state()
 
-                port = self.fndh_port
-                if self._pasd_bus_proxy.fndhPortsPowerSensed[port]:  # type: ignore
-                    self._component_state_changed_callback(power=PowerState.ON)
-                else:
-                    self._component_state_changed_callback(power=PowerState.OFF)
             else:
                 self.logger.info(
                     "communication with the pasd bus is already established"
@@ -240,41 +253,58 @@ class SmartBoxComponentManager(
             return
         self._component_state_changed_callback(pasdbus_status=event_value)
 
+    def update_fndh_port(self: SmartBoxComponentManager, _fndh_port: int) -> None:
+        """
+        Update the fndh port.
+
+        This will be called when the port the smartbox is attached to has been
+        worked out
+
+        :param _fndh_port: the port this smartbox is attached to
+        """
+        assert self._fndh_proxy
+        # subscribe to that port.
+        # unsubscribe from any others (not yet possible).
+        # TODO: Add method to MccsDeviceProxy to unsubscribe from attribute.
+        self._fndh_port = _fndh_port
+        if (
+            f"port{_fndh_port}powerstate"
+            not in self._fndh_proxy._change_event_subscription_ids.keys()
+        ):
+            self._fndh_proxy.add_change_event_callback(
+                f"Port{_fndh_port}PowerState", self._power_state_change
+            )
+
     def _power_state_change(
         self: SmartBoxComponentManager,
         event_name: str,
-        port_power_states: list[bool],
+        port_on: bool,
         event_quality: tango.AttrQuality,
     ) -> None:
         """
         Pasdbus health state callback.
 
         :param event_name: The event_name
-        :param port_power_states: The port_power_states
+        :param port_on: True is port is on.
         :param event_quality: The event_quality
         """
-        try:
-            assert event_name.lower() == "fndhportspowersensed"
-        except AssertionError:
-            self.logger.debug(
-                f"""callback called with unexpected
-            attribute expected fndhportspowersensed got {event_name}"""
-            )
-            return
-
-        # TODO: for the moment we are getting the power states of
-        # all the ports on the FNDH. Consider changing this.
-        this_smartbox_has_power = port_power_states[self.fndh_port]
-        if this_smartbox_has_power:
-            self._component_state_changed_callback(power=PowerState.ON)
+        # TODO: MCCS-1485 - allow unsubscribe event, this will mean will will not need
+        # this if statement. Since when
+        if event_name.lower() == f"port{self._fndh_port}powerstate":
+            if port_on:
+                self._component_state_changed_callback(power=PowerState.ON)
+            else:
+                self._component_state_changed_callback(power=PowerState.OFF)
         else:
-            self._component_state_changed_callback(power=PowerState.OFF)
+            return
 
     def stop_communicating(self: SmartBoxComponentManager) -> None:
         """Break off communication with the pasdBus."""
         if self.communication_state == CommunicationStatus.DISABLED:
             return
 
+        # Disconnect from the proxy
+        self._fndh_port = 0
         self._update_communication_state(CommunicationStatus.DISABLED)
         self._update_component_state(power=None, fault=None)
 
@@ -303,20 +333,24 @@ class SmartBoxComponentManager(
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
-            if self._pasd_bus_proxy is None:
-                raise ValueError("pasd_bus_proxy is None")
-            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnFndhPortOn(
-                self.fndh_port
-            )
-            if result_code == ResultCode.OK:
-                self._update_component_state(power=PowerState.ON)
+            if self._fndh_port:
+                if self._pasd_bus_proxy is None:
+                    raise ValueError(f"Power on smartbox '{self._fndh_port} failed'")
+                ([result_code], [return_message]) = self._pasd_bus_proxy.TurnFndhPortOn(
+                    self._fndh_port
+                )
+            else:
+                self.logger.info(
+                    "Cannot turn off SmartBox, we do not yet know what port it is on"
+                )
+                raise ValueError("cannot turn on Unknown FNDH port.")
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
             if task_callback:
                 task_callback(
                     status=TaskStatus.FAILED,
-                    result=f"Power on smartbox '{self.fndh_port} failed'",
+                    result=f"{ex}",
                 )
 
             return ResultCode.FAILED, "0"
@@ -324,7 +358,7 @@ class SmartBoxComponentManager(
         if task_callback:
             task_callback(
                 status=TaskStatus.COMPLETED,
-                result=f"Power on smartbox '{self.fndh_port}  success'",
+                result=f"Power on smartbox '{self._fndh_port}  success'",
             )
         return result_code, return_message
 
@@ -353,21 +387,26 @@ class SmartBoxComponentManager(
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
-            if self._pasd_bus_proxy is None:
-                raise NotImplementedError("pasd_bus_proxy is None")
+            if self._fndh_port:
+                if self._pasd_bus_proxy is None:
+                    raise ValueError(f"Power off smartbox '{self._fndh_port} failed'")
 
-            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnFndhPortOff(
-                self.fndh_port
-            )
-            if result_code == ResultCode.OK:
-                self._update_component_state(power=PowerState.OFF)
+                (
+                    [result_code],
+                    [return_message],
+                ) = self._pasd_bus_proxy.TurnFndhPortOff(self._fndh_port)
+            else:
+                self.logger.info(
+                    "Cannot turn off SmartBox, we do not yet know what port it is on"
+                )
+                raise ValueError("cannot turn off Unknown FNDH port.")
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
             if task_callback:
                 task_callback(
                     status=TaskStatus.FAILED,
-                    result=f"Power off smartbox '{self.fndh_port} failed'",
+                    result=f"{ex}",
                 )
 
             return ResultCode.FAILED, "0"
@@ -375,7 +414,7 @@ class SmartBoxComponentManager(
         if task_callback:
             task_callback(
                 status=TaskStatus.COMPLETED,
-                result=f"Power off smartbox '{self.fndh_port}  success'",
+                result=f"Power off smartbox '{self._fndh_port}  success'",
             )
         return result_code, return_message
 

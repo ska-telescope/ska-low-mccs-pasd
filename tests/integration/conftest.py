@@ -427,18 +427,44 @@ def tango_harness_fixture(
         fndh_name,
         MccsFNDH,
         PasdFQDNs=pasd_bus_name,
-        LoggingLevelDefault=int(LoggingLevel.OFF),
+        LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
     # Add the 24 Smartboxes.
     for smartbox_no in range(24):
         context_manager.add_device(
             smartbox_names[smartbox_no],
             MccsSmartBox,
-            FndhPort=0,
-            PasdFQDNs=pasd_bus_name,
+            PasdFQDN=pasd_bus_name,
+            FndhFQDN=fndh_name,
             SmartBoxNumber=smartbox_no + 1,
             LoggingLevelDefault=int(LoggingLevel.OFF),
         )
 
     with context_manager as context:
         yield context
+
+
+@pytest.fixture(name="fndh_bus_fndh", scope="session")
+def fndh_bus_fndh_fixture() -> str:
+    """
+    Return the name of the fndh Tango device.
+
+    :return: the name of the fndh Tango device.
+    """
+    return "low-mccs-pasd/fndh/001"
+
+
+@pytest.fixture(name="fndh_device")
+def fndh_device_fixture(
+    tango_harness: TangoContextProtocol,
+    fndh_name: str,
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns the fndh Tango device under test.
+
+    :param tango_harness: a test harness for Tango devices.
+    :param fndh_name: name of the fndh_bus Tango device.
+
+    :yield: the fndh Tango device under test.
+    """
+    yield tango_harness.get_device(fndh_name)
