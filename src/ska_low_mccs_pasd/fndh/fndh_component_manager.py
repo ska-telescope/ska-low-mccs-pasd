@@ -8,6 +8,7 @@
 """This module implements the component management for fndh."""
 from __future__ import annotations
 
+import json
 import logging
 import re
 import threading
@@ -396,9 +397,11 @@ class FndhComponentManager(
         try:
             if self._pasd_bus_proxy is None:
                 raise ValueError("pasd_bus_proxy is None")
-
+            json_argument = json.dumps(
+                {"port_number": port_number, "stay_on_when_offline": True}
+            )
             ([result_code], [unique_id]) = self._pasd_bus_proxy.TurnFndhPortOn(
-                port_number
+                json_argument
             )
 
         except Exception as ex:  # pylint: disable=broad-except
@@ -418,8 +421,7 @@ class FndhComponentManager(
             )
         return result_code, unique_id
 
-    @check_communicating
-    def is_port_on(self: FndhComponentManager, port_number: int) -> list[bool]:
+    def is_port_on(self: FndhComponentManager, port_number: int) -> bool:
         """
         Turn a Smartbox off.
 
