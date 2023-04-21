@@ -8,3 +8,4 @@ API
 
   PaSD bus<pasd_bus/index>
   SmartBox<smartbox/index>
+  FNDH<fndh/index>

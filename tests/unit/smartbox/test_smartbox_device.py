@@ -75,7 +75,7 @@ def smartbox_name_fixture() -> str:
 
     :return: the name of the smartbox_bus Tango device.
     """
-    return "low-mccs-smartbox/smartbox/00001"
+    return "low-mccs-pasd/smartbox/00001"
 
 
 @pytest.fixture(name="tango_harness")

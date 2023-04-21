@@ -8,14 +8,13 @@
 """This module implements the MCCS FNDH device."""
 
 from __future__ import annotations
-import json
-from jsonschema import ValidationError, validate
 
+import json
 import logging
-import threading
-from typing import Any, List, Optional, cast
+from typing import Any, Optional, cast
 
 import tango
+from jsonschema import ValidationError, validate
 from ska_control_model import (
     CommunicationStatus,
     HealthState,
@@ -28,15 +27,15 @@ from ska_tango_base.commands import (
     FastCommand,
     SubmittedSlowCommand,
 )
-from tango.server import command, device_property, attribute
+from tango.server import attribute, command, device_property
 
 from .fndh_component_manager import FndhComponentManager
 from .fndh_health_model import FndhHealthModel
 
-
 __all__ = ["MccsFNDH", "main"]
 
 
+# pylint: disable=too-many-instance-attributes
 class MccsFNDH(SKABaseDevice):
     """An implementation of the FNDH device for MCCS."""
 
@@ -54,7 +53,7 @@ class MccsFNDH(SKABaseDevice):
     # MccsSmartBox to become out of sync with the MccsPasdBus. Therefore, a
     # proposed solution is for both to get the attributes from a single source
     # of truth. A 'YAML' file for instance.
-    ATTRIBUTES =[
+    ATTRIBUTES = [
         ("ModbusRegisterMapRevisionNumber", int, None),
         ("PcbRevisionNumber", int, None),
         ("CpuId", int, None),
@@ -64,10 +63,10 @@ class MccsFNDH(SKABaseDevice):
         ("PasdStatus", str, None),
         ("LedPattern", str, None),
         ("Psu48vVoltages", (float,), 2),
-        ("Psu5vVoltage", float, None), #Is this an attribute of FNDH?
+        ("Psu5vVoltage", float, None),  # Is this an attribute of FNDH?
         ("Psu48vCurrent", float, None),
         ("Psu48vTemperature", float, None),
-        ("Psu5vTemperature", float, None), #Is this an attribute of FNDH?
+        ("Psu5vTemperature", float, None),  # Is this an attribute of FNDH?
         ("PcbTemperature", float, None),
         ("OutsideTemperature", float, None),
         ("PortsConnected", (bool,), PORT_COUNT),
@@ -116,10 +115,11 @@ class MccsFNDH(SKABaseDevice):
         # Setup attributes shared with the MccsPasdBus.
         self._fndh_attributes: dict[str, Any] = {}
         self._setup_fndh_attributes()
-        
+
         # Attributes for specific ports on the FNDH.
         # These attributes are a breakdown of the portPowerSensed
-        # attribute. The reason is to allow smartbox's to subscribe to 
+        # attribute. The reason is to allow smartbox's to subscribe to
+        # their power state.
         for port in range(1, self.PORT_COUNT + 1):
             attr_name = f"Port{port}PowerState"
             self._setup_fndh_attribute(attr_name, PowerState, 1)
@@ -136,7 +136,6 @@ class MccsFNDH(SKABaseDevice):
         self._health_model = FndhHealthModel(self._health_changed_callback)
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
-
 
     # ----------
     # Properties
@@ -160,7 +159,7 @@ class MccsFNDH(SKABaseDevice):
             self._device._overCurrentThreshold = 0.0
             self._device._overVoltageThreshold = 0.0
             self._device._humidityThreshold = 0.0
-            #self._completed()
+            # self._completed()
             return (ResultCode.OK, "Init command completed OK")
 
     # --------------
@@ -274,7 +273,7 @@ class MccsFNDH(SKABaseDevice):
             :return: True if the antenna is on.
             """
             port_id = args[0]
-            result = self._component_manager.is_port_on()
+            result = self._component_manager.is_port_on(port_id)
             return result[port_id]
 
     @command(dtype_in="DevULong", dtype_out=bool)
@@ -360,7 +359,7 @@ class MccsFNDH(SKABaseDevice):
         self.set_change_event(attribute_name, True, False)
         self.set_archive_event(attribute_name, True, False)
 
-    def _read_fndh_attribute(self: MccsFNDH, fndh_attribute: tango.Attribute) -> None:  
+    def _read_fndh_attribute(self: MccsFNDH, fndh_attribute: tango.Attribute) -> None:
         fndh_attribute.set_value(
             self._fndh_attributes[fndh_attribute.get_name().lower()]
         )
@@ -418,6 +417,7 @@ class MccsFNDH(SKABaseDevice):
         :param value: new value for the humidityThreshold attribute
         """
         self._humidityThreshold = value
+
     # ----------
     # Callbacks
     # ----------
@@ -444,7 +444,9 @@ class MccsFNDH(SKABaseDevice):
             attr_name = f"Port{port + 1}PowerState"
             if self._fndh_attributes[attr_name.lower()] != power_states[port]:
                 self._fndh_attributes[attr_name.lower()] = power_states[port]
-                self.push_change_event(attr_name, self._fndh_attributes[attr_name.lower()])
+                self.push_change_event(
+                    attr_name, self._fndh_attributes[attr_name.lower()]
+                )
 
     def _component_state_changed_callback(
         self: MccsFNDH,
@@ -485,7 +487,6 @@ class MccsFNDH(SKABaseDevice):
             self._health_state = health
             self.push_change_event("healthState", health)
             self.push_archive_event("healthState", health)
-
 
     def _attribute_changed_callback(
         self: MccsFNDH, attr_name: str, attr_value: HealthState
@@ -529,6 +530,7 @@ class MccsFNDH(SKABaseDevice):
                 f"""The attribute {attr_name} pushed from MccsPasdBus
                 device does not exist in MccsSmartBox"""
             )
+
 
 # ----------
 # Run server

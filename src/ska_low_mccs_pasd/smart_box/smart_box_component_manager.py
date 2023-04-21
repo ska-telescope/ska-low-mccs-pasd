@@ -94,7 +94,7 @@ class SmartBoxComponentManager(
 
     def _subscribe_to_attributes(self: SmartBoxComponentManager) -> None:
         """Subscribe to attributes on the MccsPasdBus."""
-        assert self._pasd_bus_proxy is not None
+        assert self._pasd_bus_proxy
 
         # ask what attributes to subscribe to and subscribe to them.
         subscriptions = self._pasd_bus_proxy.GetPasdDeviceSubscriptions(

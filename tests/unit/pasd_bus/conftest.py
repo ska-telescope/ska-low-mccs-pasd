@@ -58,7 +58,7 @@ def pasd_config_fixture(station_id: int) -> dict:
         PasdBusSimulator.CONFIG_PATH,
     )
 
-    assert config_data is not None  # for the type-checker
+    assert config_data
 
     config = yaml.safe_load(config_data)
     return config["stations"][station_id - 1]
