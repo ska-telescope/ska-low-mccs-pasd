@@ -34,19 +34,19 @@ class TestSmartBoxPasdBusIntegration:
         """
         Test the integration of smartbox with the pasdBus and FNDH.
 
-        This test looks at the power state transitions.  
+        This test looks at the power state transitions.
         It tests that the devices are power change events:
-         - MccsPasd pushed the power state of all ports
-         - This is received by the MccsFndh 
-         - MccsFndh pushed the power state of each individual port 
-         - MccsSmartBox is subscribed to a single port and receives this
+        - MccsPasd pushed the power state of all ports
+        - This is received by the MccsFndh
+        - MccsFndh pushed the power state of each individual port
+        - MccsSmartBox is subscribed to a single port and receives this
 
-        This test also looks at powerstate retreival and recovery after a 
+        This test also looks at powerstate retreival and recovery after a
         loss in connection.
-         - Smartbox stops listening to a port.
-         - the port turn off
-         - when the smartbox starts listening again it gets a update on the 
-            powerstate.
+        - Smartbox stops listening to a port.
+        - the port turn off
+        - when the smartbox starts listening again it gets a update on the
+        powerstate.
 
         :param smartbox_devices: fixture that provides a
             :py:class:`tango.DeviceProxy` to the device under test, in a
