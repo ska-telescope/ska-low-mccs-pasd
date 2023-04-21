@@ -8,30 +8,31 @@
 """This module contains the tests for MccsFNDH."""
 
 from __future__ import annotations
+
 import gc
+import json
 import unittest.mock
 from typing import Any, Generator
-import time
-import numpy.testing
-import json
+
 import pytest
 import tango
-from ska_control_model import LoggingLevel, ResultCode, AdminMode
+from ska_control_model import AdminMode, LoggingLevel, ResultCode
 from ska_tango_testing.context import (
     TangoContextProtocol,
     ThreadedTestTangoContextManager,
 )
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
+
 from ska_low_mccs_pasd import MccsFNDH
+
 # TODO: Weird hang-at-garbage-collection bug
 gc.disable()
+
 
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     """
     Return a dictionary of change event callbacks with asynchrony support.
-
-    :param smartbox_id: id of the smartbox being addressed.
 
     :return: a collections.defaultdict that returns change event
         callbacks by name.
@@ -45,6 +46,8 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         timeout=2.0,
         assert_no_error=False,
     )
+
+
 @pytest.fixture(name="mock_component_manager")
 def mock_component_manager_fixture() -> unittest.mock.Mock:
     """
@@ -266,6 +269,7 @@ def test_fast_command(  # pylint: disable=too-many-arguments
 
     assert command_return == device_response
 
+
 @pytest.mark.parametrize(
     "config_in, expected_config",
     [
@@ -328,7 +332,7 @@ def test_fast_command(  # pylint: disable=too-many-arguments
         ),
     ],
 )
-def test_Configure(
+def test_configure(
     fndh_device: tango.DeviceProxy,
     change_event_callbacks: MockTangoEventCallbackGroup,
     config_in: dict,
@@ -340,12 +344,11 @@ def test_Configure(
     :param fndh_device: fixture that provides a
         :py:class:`tango.DeviceProxy` to the device under test, in a
         :py:class:`tango.test_context.DeviceTestContext`.
-    :param device_admin_mode_changed_callback: a callback that
-        we can use to subscribe to admin mode changes on the device
+    :param change_event_callbacks: a callback that
+        we can use to change events on device.
     :param config_in: configuration of the device
     :param expected_config: the expected output configuration
     """
-    
     fndh_device.subscribe_event(
         "adminMode",
         tango.EventType.CHANGE_EVENT,
@@ -360,17 +363,9 @@ def test_Configure(
 
     fndh_device.Configure(json.dumps(config_in))
 
-    assert (
-        fndh_device.overCurrentThreshold
-        == expected_config["overCurrentThreshold"]
-    )
-    assert (
-        fndh_device.overVoltageThreshold
-        == expected_config["overVoltageThreshold"]
-    )
-    assert (
-        fndh_device.humidityThreshold == expected_config["humidityThreshold"]
-    )
+    assert fndh_device.overCurrentThreshold == expected_config["overCurrentThreshold"]
+    assert fndh_device.overVoltageThreshold == expected_config["overVoltageThreshold"]
+    assert fndh_device.humidityThreshold == expected_config["humidityThreshold"]
 
 
 def test_threshold_attributes(
@@ -382,10 +377,6 @@ def test_threshold_attributes(
     :param fndh_device: fixture that provides a
         :py:class:`tango.DeviceProxy` to the device under test, in a
         :py:class:`tango.test_context.DeviceTestContext`.
-    :param device_admin_mode_changed_callback: a callback that
-        we can use to subscribe to admin mode changes on the device
-    :param config_in: configuration of the device
-    :param expected_config: the expected output configuration
     """
     fndh_device.overCurrentThreshold = 22.0
     assert fndh_device.overCurrentThreshold == 22.0

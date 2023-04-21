@@ -18,8 +18,15 @@ from contextlib import contextmanager
 from typing import Any, Callable, ContextManager, Generator, Iterator, Sequence
 
 import pytest
+import tango
+from ska_control_model import LoggingLevel
 from ska_ser_devices.client_server import TcpServer
+from ska_tango_testing.context import (
+    TangoContextProtocol,
+    ThreadedTestTangoContextManager,
+)
 
+from ska_low_mccs_pasd import MccsFNDH, MccsPasdBus, MccsSmartBox
 from ska_low_mccs_pasd.pasd_bus import (
     FndhSimulator,
     PasdBusSimulator,
@@ -315,3 +322,123 @@ def pasd_bus_info_fixture(
         "port": port,
         "timeout": 3.0,
     }
+
+
+@pytest.fixture(name="pasd_bus_device")
+def pasd_bus_device_fixture(
+    tango_harness: TangoContextProtocol,
+    pasd_bus_name: str,
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns the pasd_bus Tango device under test.
+
+    :param tango_harness: a test harness for Tango devices.
+    :param pasd_bus_name: name of the pasd_bus Tango device.
+
+    :yield: the pasd_bus Tango device under test.
+    """
+    yield tango_harness.get_device(pasd_bus_name)
+
+
+@pytest.fixture(name="smartbox_devices")
+def smartbox_devices_fixture(
+    tango_harness: TangoContextProtocol,
+    smartbox_names: str,
+) -> list[tango.DeviceProxy]:
+    """
+    Fixture that returns the pasd_bus Tango device under test.
+
+    :param tango_harness: a test harness for Tango devices.
+    :param smartbox_names: the name of the smartbox_bus Tango device
+
+    :return: the pasd_bus Tango device under test.
+    """
+    smartbox_proxies = []
+    for smartbox_no in range(2):
+        smartbox_proxies.append(tango_harness.get_device(smartbox_names[smartbox_no]))
+    return smartbox_proxies
+
+
+@pytest.fixture(name="smartbox_names", scope="session")
+def smartbox_names_fixture() -> list[str]:
+    """
+    Return the names of the smartbox Tango devices.
+
+    :return: the names of the smartbox Tango devices.
+    """
+    smartboxes = []
+    for i in range(1, 10):
+        smartboxes.append(f"low-mccs-pasd/smartbox/0000{i}")
+    for i in range(10, 25):
+        smartboxes.append(f"low-mccs-pasd/smartbox/000{i}")
+
+    return smartboxes
+
+
+@pytest.fixture(name="pasd_bus_name", scope="session")
+def pasd_bus_name_fixture() -> str:
+    """
+    Return the name of the pasd_bus Tango device.
+
+    :return: the name of the pasd_bus Tango device.
+    """
+    return "low-mccs-pasd/pasdbus/001"
+
+
+@pytest.fixture(name="fndh_name", scope="session")
+def fndh_name_fixture() -> str:
+    """
+    Return the name of the fndh Tango device.
+
+    :return: the name of the fndh Tango device.
+    """
+    return "low-mccs-pasd/fndh/001"
+
+
+@pytest.fixture(name="tango_harness")
+def tango_harness_fixture(
+    smartbox_names: list[str],
+    pasd_bus_name: str,
+    fndh_name: str,
+    pasd_bus_info: dict,
+) -> Generator[TangoContextProtocol, None, None]:
+    """
+    Return a Tango harness against which to run tests of the deployment.
+
+    :param smartbox_names: the name of the smartbox_bus Tango device
+    :param pasd_bus_name: the fqdn of the pasdbus
+    :param fndh_name: the fqdn of the fndh
+    :param pasd_bus_info: the information for pasd setup
+
+    :yields: a tango context.
+    """
+    context_manager = ThreadedTestTangoContextManager()
+    # Add the pasdbus.
+    context_manager.add_device(
+        pasd_bus_name,
+        MccsPasdBus,
+        Host=pasd_bus_info["host"],
+        Port=pasd_bus_info["port"],
+        Timeout=pasd_bus_info["timeout"],
+        LoggingLevelDefault=int(LoggingLevel.OFF),
+    )
+    # add the FNDH.
+    context_manager.add_device(
+        fndh_name,
+        MccsFNDH,
+        PasdFQDNs=pasd_bus_name,
+        LoggingLevelDefault=int(LoggingLevel.OFF),
+    )
+    # Add the 24 Smartboxes.
+    for smartbox_no in range(24):
+        context_manager.add_device(
+            smartbox_names[smartbox_no],
+            MccsSmartBox,
+            FndhPort=0,
+            PasdFQDNs=pasd_bus_name,
+            SmartBoxNumber=smartbox_no + 1,
+            LoggingLevelDefault=int(LoggingLevel.OFF),
+        )
+
+    with context_manager as context:
+        yield context

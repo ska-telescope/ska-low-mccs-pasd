@@ -9,17 +9,16 @@
 from __future__ import annotations
 
 import logging
-import time
 import unittest.mock
 from typing import Any
 
 import pytest
 from ska_control_model import CommunicationStatus, TaskStatus
 from ska_tango_testing.mock import MockCallableGroup
-from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.fndh import FndhComponentManager
 from ska_low_mccs_pasd.pasd_bus import MccsPasdBus
+
 
 @pytest.fixture(name="callbacks")
 def callbacks_fixture() -> MockCallableGroup:
@@ -35,21 +34,6 @@ def callbacks_fixture() -> MockCallableGroup:
         timeout=2.0,
     )
 
-@pytest.fixture(name="change_event_callbacks")
-def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
-    """
-    Return a dictionary of change event callbacks with asynchrony support.
-
-    :return: a collections.defaultdict that returns change event
-        callbacks by name.
-    """
-    return MockTangoEventCallbackGroup(
-        "adminMode",
-        "healthState",
-        "longRunningCommandResult",
-        "longRunningCommandStatus",
-        "state",
-    )
 
 @pytest.fixture(name="smartbox_number")
 def smartbox_number_fixture() -> int:
@@ -61,10 +45,13 @@ def smartbox_number_fixture() -> int:
     """
     return 1
 
+
 @pytest.fixture(name="mocked_pasd_proxy")
 def mocked_pasd_proxy_fixture(smartbox_number: int) -> unittest.mock.Mock:
     """
     Return a dictionary of change event callbacks with asynchrony support.
+
+    :param smartbox_number: The number of the smartbox of interest.
 
     :return: a collections.defaultdict that returns change event
         callbacks by name.
@@ -74,17 +61,6 @@ def mocked_pasd_proxy_fixture(smartbox_number: int) -> unittest.mock.Mock:
         return_value=MccsPasdBus._ATTRIBUTE_MAP[int(smartbox_number)].values()
     )
     return mock
-
-
-@pytest.fixture(name="task_callback")
-def task_callback_fixture() -> MockTangoEventCallbackGroup:
-    """
-    Return a dictionary of change event callbacks with asynchrony support.
-
-    :return: a collections.defaultdict that returns change event
-        callbacks by name.
-    """
-    return unittest.mock.Mock()
 
 
 @pytest.fixture(name="fndh_component_manager")
@@ -245,7 +221,7 @@ class TestFndhComponentManager:
             (
                 "power_on_port",
                 3,
-                "TurnSmartboxOn",
+                "TurnFndhPortOn",
                 ([True], [True]),
                 (TaskStatus.QUEUED, "Task queued"),
                 f"Power on port '{3} success'",
@@ -253,7 +229,7 @@ class TestFndhComponentManager:
             (
                 "power_off_port",
                 3,
-                "TurnSmartboxOff",
+                "TurnFndhPortOff",
                 ([True], [True]),
                 (TaskStatus.QUEUED, "Task queued"),
                 f"Power off port '{3} success'",
@@ -284,7 +260,7 @@ class TestFndhComponentManager:
         :param pasd_proxy_response: mocked response
         :param expected_manager_result: expected response from the call
         :param command_tracked_response: The result of the command.
-        :param task_callback: the task_callback.
+        :param callbacks: the callback.
         """
         # set up the proxy responce
         if component_manager_command_argument is None:
@@ -311,7 +287,6 @@ class TestFndhComponentManager:
             callbacks["task_callback"].assert_call(
                 status=TaskStatus.COMPLETED, result=command_tracked_response
             )
-
 
     @pytest.mark.parametrize(
         (
@@ -389,4 +364,3 @@ class TestFndhComponentManager:
         callbacks["task_callback"].assert_call(
             status=TaskStatus.FAILED, result=command_tracked_response
         )
-

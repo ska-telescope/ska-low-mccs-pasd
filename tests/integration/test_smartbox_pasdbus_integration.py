@@ -10,18 +10,13 @@
 from __future__ import annotations
 
 import gc
-from typing import Generator
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState, LoggingLevel
-from ska_tango_testing.context import (
-    TangoContextProtocol,
-    ThreadedTestTangoContextManager,
-)
+from ska_control_model import AdminMode, HealthState
+from ska_tango_testing.context import TangoContextProtocol
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-from ska_low_mccs_pasd import MccsPasdBus, MccsSmartBox
 from ska_low_mccs_pasd.pasd_bus import SmartboxSimulator
 
 gc.disable()  # TODO: why is this needed?
@@ -44,45 +39,7 @@ def smartbox_name_fixture() -> str:
 
     :return: the name of the smartbox_bus Tango device.
     """
-    return "low-mccs-smartbox/smartbox/00001"
-
-
-@pytest.fixture(name="tango_harness")
-def tango_harness_fixture(
-    smartbox_name: str,
-    pasd_bus_name: str,
-    pasd_bus_info: dict,
-    smartbox_number: int,
-) -> Generator[TangoContextProtocol, None, None]:
-    """
-    Return a Tango harness against which to run tests of the deployment.
-
-    :param smartbox_name: the name of the smartbox_bus Tango device
-    :param pasd_bus_name: the fqdn of the pasdbus
-    :param pasd_bus_info: the information for pasd setup
-    :param smartbox_number: the number assigned to the smartbox of interest.
-
-    :yields: a tango context.
-    """
-    context_manager = ThreadedTestTangoContextManager()
-    context_manager.add_device(
-        smartbox_name,
-        MccsSmartBox,
-        FndhPort=0,
-        PasdFQDNs=pasd_bus_name,
-        SmartBoxNumber=smartbox_number,
-        LoggingLevelDefault=int(LoggingLevel.DEBUG),
-    )
-    context_manager.add_device(
-        pasd_bus_name,
-        MccsPasdBus,
-        Host=pasd_bus_info["host"],
-        Port=pasd_bus_info["port"],
-        Timeout=pasd_bus_info["timeout"],
-        LoggingLevelDefault=int(LoggingLevel.OFF),
-    )
-    with context_manager as context:
-        yield context
+    return "low-mccs-pasd/smartbox/00001"
 
 
 @pytest.fixture(name="smartbox_device")
@@ -99,22 +56,6 @@ def smartbox_device_fixture(
     :yield: the smartbox_bus Tango device under test.
     """
     yield tango_harness.get_device(smartbox_name)
-
-
-@pytest.fixture(name="pasd_bus_device")
-def pasd_bus_device_fixture(
-    tango_harness: TangoContextProtocol,
-    pasd_bus_name: str,
-) -> tango.DeviceProxy:
-    """
-    Fixture that returns the pasd_bus Tango device under test.
-
-    :param tango_harness: a test harness for Tango devices.
-    :param pasd_bus_name: name of the pasd_bus Tango device.
-
-    :yield: the pasd_bus Tango device under test.
-    """
-    yield tango_harness.get_device(pasd_bus_name)
 
 
 class TestSmartBoxPasdBusIntegration:  # pylint: disable=too-few-public-methods
