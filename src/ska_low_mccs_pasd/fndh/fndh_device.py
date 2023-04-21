@@ -273,8 +273,7 @@ class MccsFNDH(SKABaseDevice):
             :return: True if the antenna is on.
             """
             port_id = args[0]
-            result = self._component_manager.is_port_on(port_id)
-            return result[port_id]
+            return bool(self._component_manager.is_port_on(port_id))
 
     @command(dtype_in="DevULong", dtype_out=bool)
     def IsPortOn(self: MccsFNDH, argin: int) -> bool:  # type: ignore[override]
