@@ -35,30 +35,30 @@ def callbacks_fixture() -> MockCallableGroup:
     )
 
 
-@pytest.fixture(name="smartbox_number")
-def smartbox_number_fixture() -> int:
+@pytest.fixture(name="pasd_device_number")
+def pasd_device_number_fixture() -> int:
     """
     Return the id of the station whose configuration will be used in testing.
 
     :return: the id of the station whose configuration will be used in
         testing.
     """
-    return 1
+    return 0
 
 
 @pytest.fixture(name="mocked_pasd_proxy")
-def mocked_pasd_proxy_fixture(smartbox_number: int) -> unittest.mock.Mock:
+def mocked_pasd_proxy_fixture(pasd_device_number: int) -> unittest.mock.Mock:
     """
     Return a dictionary of change event callbacks with asynchrony support.
 
-    :param smartbox_number: The number of the smartbox of interest.
+    :param pasd_device_number: The number of the smartbox of interest.
 
     :return: a collections.defaultdict that returns change event
         callbacks by name.
     """
     mock = unittest.mock.Mock()
     mock.GetPasdDeviceSubscriptions = unittest.mock.Mock(
-        return_value=MccsPasdBus._ATTRIBUTE_MAP[int(smartbox_number)].values()
+        return_value=MccsPasdBus._ATTRIBUTE_MAP[int(pasd_device_number)].values()
     )
     return mock
 

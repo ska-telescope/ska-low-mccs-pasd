@@ -12,7 +12,7 @@ import json
 import logging
 import re
 import threading
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import tango
 from ska_control_model import (
@@ -30,9 +30,7 @@ __all__ = ["FndhComponentManager"]
 
 
 # pylint: disable-next=abstract-method
-class FndhComponentManager(
-    TaskExecutorComponentManager
-):  # pylint: disable=too-many-instance-attributes
+class FndhComponentManager(TaskExecutorComponentManager):
     """
     A component manager for an fndh.
 
@@ -65,15 +63,13 @@ class FndhComponentManager(
             called when the power state changes.
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
-
-        purposes only. defaults to None
+            purposes only. defaults to None
         """
-        max_workers = 1  # TODO: is this acceptable?
         super().__init__(
             logger,
             communication_state_changed_callback,
             component_state_changed_callback,
-            max_workers=max_workers,
+            max_workers=1,
             power=None,
             fault=None,
             pasdbus_status=None,
@@ -82,51 +78,36 @@ class FndhComponentManager(
         self._attribute_change_callback = attribute_change_callback
         self._update_port_power_states = update_port_power_states
         self._pasd_fqdn = pasd_fqdn
-        self.fndh_number = 1  # TODO: this should a property set during device setup
         self._pasd_bus_proxy: Optional[MccsDeviceProxy] = _pasd_bus_proxy
         self.logger = logger
         self._pasd_device_number = 0
 
-    def _subscribe_to_attributes(self: FndhComponentManager) -> None:
-        """Subscribe to attributes on the MccsPasdBus."""
+    def _subscribe_to_attributes(
+        self: FndhComponentManager, subscriptions: dict[str, Callable]
+    ) -> None:
+        """
+        Subscribe to attributes.
+
+        :param subscriptions: a dictionary containing the name of the attribute
+            and its callback.
+        """
         assert self._pasd_bus_proxy
 
-        # ask what attributes to subscribe to and subscribe to them.
-        subscriptions = self._pasd_bus_proxy.GetPasdDeviceSubscriptions(
-            self._pasd_device_number
-        )
         for attribute in subscriptions:
             self._pasd_bus_proxy.add_change_event_callback(
-                attribute, self._handle_change_event
-            )
-
-        if (
-            "healthstate"
-            not in self._pasd_bus_proxy._change_event_subscription_ids.keys()
-        ):
-            self._pasd_bus_proxy.add_change_event_callback(
-                "healthstate", self._pasd_health_state_changed
-            )
-
-        if (
-            "fndhPortsPowerSensed"
-            not in self._pasd_bus_proxy._change_event_subscription_ids.keys()
-        ):
-            self._pasd_bus_proxy.add_change_event_callback(
-                "fndhPortsPowerSensed", self._port_power_state_change
+                attribute, subscriptions[attribute]
             )
 
     def start_communicating(self: FndhComponentManager) -> None:
         """
         Establish communication with the pasdBus via a proxy.
 
-        This checks:
-            - A proxy can be formed with the MccsPasdBus
-            - We can subscribe to the attribes suggested by the
-                pasd bus
-            - Update the initial state of the FNDH.
+        This is responsible for:
+            - Forming a proxy to MccsPasdBus.
+            - Subscribing to attributes of interest.
+            - Updating the initial state of the FNDH.
+            - Updating the communication state of the FNDH.
         """
-        # Form proxy if not done yet.
         if self._pasd_bus_proxy is None:
             try:
                 self.logger.info(f"attempting to form proxy with {self._pasd_fqdn}")
@@ -135,37 +116,40 @@ class FndhComponentManager(
                     self._pasd_fqdn, self.logger, connect=True
                 )
             except Exception as e:  # pylint: disable=broad-except
-                self._update_component_state(fault=True)
-                self.logger.error("Caught exception in start_communicating: %s", e)
+                self._component_state_changed_callback(fault=True)
+                self.logger.error("Caught exception in forming proxy: %s", e)
                 self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
                 return
 
         try:
-            # Ask the MccsPasdBus what attributes we should subscribe.
-            self._subscribe_to_attributes()
+            subscriptions = self._pasd_bus_proxy.GetPasdDeviceSubscriptions(
+                self._pasd_device_number
+            )
+            subscriptions = dict.fromkeys(subscriptions, self._handle_change_event)
+            subscriptions.update({"healthstate": self._pasd_health_state_changed})
+            self._subscribe_to_attributes(subscriptions)
+
         except Exception as e:  # pylint: disable=broad-except
-            self._update_component_state(fault=True)
-            self.logger.error("Caught exception in attribute subscriptios: %s", e)
+            self._component_state_changed_callback(fault=True)
+            self.logger.error("Caught exception in attribute subscriptions: %s", e)
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
             return
 
         try:
-            # If we are not established attempt for establish communication.
             if self.communication_state != CommunicationStatus.ESTABLISHED:
                 self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
-                # first check the proxy is reachable
                 self._pasd_bus_proxy.ping()
-                # TODO: then check the pasd_bus is communicating.
+                # TODO: Check the pasd_bus is communicating.
                 # here we just assume it is.
                 self._update_communication_state(CommunicationStatus.ESTABLISHED)
                 # Check the ports on the fndh for power.
                 if any(self._pasd_bus_proxy.fndhPortsPowerSensed):  # type: ignore
-                    self._update_component_state(power=PowerState.ON)
+                    self._component_state_changed_callback(power=PowerState.ON)
                 else:
-                    self._update_component_state(power=PowerState.OFF)
+                    self._component_state_changed_callback(power=PowerState.OFF)
 
         except Exception as e:  # pylint: disable=broad-except
-            self._update_component_state(fault=True)
+            self._component_state_changed_callback(fault=True)
             self.logger.error("Caught exception in start_communicating: %s", e)
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
             return
@@ -173,7 +157,7 @@ class FndhComponentManager(
     def _handle_change_event(
         self: FndhComponentManager,
         attr_name: str,
-        attr_value: HealthState,
+        attr_value: Any,
         attr_quality: tango.AttrQuality,
     ) -> None:
         """
@@ -192,6 +176,8 @@ class FndhComponentManager(
 
         if is_a_fndh:
             attribute = attr_name[is_a_fndh.end() :].lower()
+            if attribute.lower() == "portspowersensed":
+                self._port_power_state_change(attribute, attr_value, attr_quality)
             self._attribute_change_callback(attribute, attr_value)
             return
 
@@ -214,7 +200,10 @@ class FndhComponentManager(
         :param event_value: The event_value
         :param event_quality: The event_quality
         """
-        self._update_component_state(pasdbus_status=event_value)
+        self.logger.info(
+            f"The health state of the pasdBus has changed to {event_value}"
+        )
+        self._component_state_changed_callback(pasdbus_status=event_value)
 
     def _port_power_state_change(
         self: FndhComponentManager,
@@ -223,20 +212,12 @@ class FndhComponentManager(
         event_quality: tango.AttrQuality,
     ) -> None:
         """
-        Pasdbus health state callback.
+        Power state callback.
 
         :param event_name: The event_name
         :param port_power_states: The port_power_states
         :param event_quality: The event_quality
         """
-        try:
-            assert event_name.lower() == "fndhportspowersensed"
-        except AssertionError:
-            self.logger.debug(
-                f"""callback called with unexpected
-            attribute expected fndhportspowersensed got {event_name}"""
-            )
-            return
 
         def get_power_state(powerstate: bool) -> PowerState:
             if powerstate:
@@ -253,7 +234,7 @@ class FndhComponentManager(
             return
 
         self._update_communication_state(CommunicationStatus.DISABLED)
-        self._update_component_state(power=None, fault=None)
+        self._component_state_changed_callback(power=None, fault=None)
 
     @check_communicating
     def on(
@@ -337,9 +318,7 @@ class FndhComponentManager(
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
-            if self._pasd_bus_proxy is None:
-                raise NotImplementedError("pasd_bus_proxy is None")
-
+            assert self._pasd_bus_proxy
             ([result_code], [return_message]) = self._pasd_bus_proxy.TurnFndhPortOff(
                 port_number
             )
@@ -395,8 +374,7 @@ class FndhComponentManager(
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
-            if self._pasd_bus_proxy is None:
-                raise ValueError("pasd_bus_proxy is None")
+            assert self._pasd_bus_proxy
             json_argument = json.dumps(
                 {"port_number": port_number, "stay_on_when_offline": True}
             )
@@ -423,11 +401,11 @@ class FndhComponentManager(
 
     def is_port_on(self: FndhComponentManager, port_number: int) -> bool:
         """
-        Turn a Smartbox off.
+        Check the power for a port.
 
-        :param port_number: The logical id of the port.
+        :param port_number: The port of interest.
 
-        :return: The power state of the requested port.
+        :return: True if the port is on.
         """
         assert self._pasd_bus_proxy
         return self._pasd_bus_proxy.fndhPortsPowerSensed[port_number]  # type: ignore

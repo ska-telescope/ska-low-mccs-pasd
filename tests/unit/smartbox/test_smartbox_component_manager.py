@@ -76,7 +76,7 @@ def fndh_port_fixture() -> int:
     :return: the id of the station whose configuration will be used in
         testing.
     """
-    return 5
+    return 0
 
 
 @pytest.fixture(name="smartbox_number")
@@ -93,6 +93,7 @@ def smartbox_number_fixture() -> int:
 @pytest.fixture(name="smartbox_component_manager")
 def smartbox_component_manager_fixture(  # pylint: disable=too-many-arguments
     logger: logging.Logger,
+    fndh_port: int,
     pasd_bus_fndh: str,
     fndh_bus_fndh: str,
     mock_callbacks: MockCallableGroup,
@@ -106,6 +107,7 @@ def smartbox_component_manager_fixture(  # pylint: disable=too-many-arguments
     (This is a pytest fixture.)
 
     :param logger: a logger for this command to use.
+    :param fndh_port: the fndh port this smartbox is attached.
     :param pasd_bus_fndh: the pasd bus smartbox
     :param fndh_bus_fndh: the fndh smartbox
     :param mock_callbacks: mock callables.
@@ -120,6 +122,7 @@ def smartbox_component_manager_fixture(  # pylint: disable=too-many-arguments
         mock_callbacks["communication_state"],
         mock_callbacks["component_state"],
         mock_callbacks["attribute_update"],
+        fndh_port,
         pasd_bus_fndh,
         fndh_bus_fndh,
         smartbox_number,

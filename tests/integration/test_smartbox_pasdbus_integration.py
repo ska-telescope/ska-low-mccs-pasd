@@ -424,6 +424,6 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "smartbox24PortsConnected",
         "SmartboxInputVoltage",
         "fndhport2powerstate",
-        timeout=15.0,
+        timeout=10.0,
         assert_no_error=False,
     )

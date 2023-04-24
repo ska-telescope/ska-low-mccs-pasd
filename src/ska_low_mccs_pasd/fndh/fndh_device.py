@@ -35,7 +35,6 @@ from .fndh_health_model import FndhHealthModel
 __all__ = ["MccsFNDH", "main"]
 
 
-# pylint: disable=too-many-instance-attributes
 class MccsFNDH(SKABaseDevice):
     """An implementation of the FNDH device for MCCS."""
 
@@ -46,13 +45,10 @@ class MccsFNDH(SKABaseDevice):
 
     PORT_COUNT = 28
 
-    # TODO: create a single YAML file with the smartbox attributes.
-    # MccsPasdBus and MccsSmartBox need to agree on a language, Since when
-    # MccsPasdBus pushes a attribute MccsSmartBox needs to subscribe to this
-    # event and update its own attributes. We do not want the attributes on
-    # MccsSmartBox to become out of sync with the MccsPasdBus. Therefore, a
-    # proposed solution is for both to get the attributes from a single source
-    # of truth. A 'YAML' file for instance.
+    # TODO: create a single YAML file with the fndh attributes.
+    # We want attributes on Mccsfndh to match the MccsPasdBus.
+    # Therefore, the proposed solution is for both to read from
+    # a 'YAML' file.
     ATTRIBUTES = [
         ("ModbusRegisterMapRevisionNumber", int, None),
         ("PcbRevisionNumber", int, None),
@@ -99,7 +95,6 @@ class MccsFNDH(SKABaseDevice):
         self._port_power_states = [PowerState.UNKNOWN] * self.PORT_COUNT
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: FndhHealthModel
-        self._port_count = self.PORT_COUNT
         self._overCurrentThreshold: float
         self._overVoltageThreshold: float
         self._humidityThreshold: float
@@ -159,7 +154,6 @@ class MccsFNDH(SKABaseDevice):
             self._device._overCurrentThreshold = 0.0
             self._device._overVoltageThreshold = 0.0
             self._device._humidityThreshold = 0.0
-            # self._completed()
             return (ResultCode.OK, "Init command completed OK")
 
     # --------------
@@ -243,7 +237,7 @@ class MccsFNDH(SKABaseDevice):
             )
 
     class IsPortOnCommand(FastCommand):
-        """A class for the MccsAPIU's IsPortOnCommand() command."""
+        """A class for the MccsFndh IsPortOnCommand() command."""
 
         def __init__(
             self: MccsFNDH.IsPortOnCommand,
@@ -267,10 +261,10 @@ class MccsFNDH(SKABaseDevice):
             """
             Stateless hook for device IsPortOnCommand() command.
 
-            :param args: the logical antenna id of the antenna to power up
+            :param args: the port number (1-28)
             :param kwargs: keyword args to the component manager method
 
-            :return: True if the antenna is on.
+            :return: True if the port is on.
             """
             port_id = args[0]
             return bool(self._component_manager.is_port_on(port_id))
@@ -278,11 +272,11 @@ class MccsFNDH(SKABaseDevice):
     @command(dtype_in="DevULong", dtype_out=bool)
     def IsPortOn(self: MccsFNDH, argin: int) -> bool:  # type: ignore[override]
         """
-        Power up the antenna.
+        Check power state of a port.
 
-        :param argin: the logical antenna id of the antenna to power up
+        :param argin: the port number (1-28)
 
-        :return: whether the specified antenna is on or not
+        :return: True if port is on.
         """
         handler = self.get_command_object("IsPortOn")
         return handler(argin)
@@ -295,9 +289,8 @@ class MccsFNDH(SKABaseDevice):
         Power up a port.
 
         This may or may not have a Antenna attached.
-        The station has this port:antenna mapping from configuration files.
 
-        :param argin: the logical id of the Antenna (LNA) to power up
+        :param argin: the port to power up.
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
@@ -316,9 +309,8 @@ class MccsFNDH(SKABaseDevice):
         Power down a port.
 
         This may or may not have a Antenna attached.
-        The station has this port:antenna mapping from configuration files.
 
-        :param argin: the logical id of the TPM to power down
+        :param argin: the port to power down.
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
@@ -429,7 +421,7 @@ class MccsFNDH(SKABaseDevice):
             communication_state.name,
         )
         if communication_state != CommunicationStatus.ESTABLISHED:
-            self._update_port_power_states([PowerState.UNKNOWN] * self._port_count)
+            self._update_port_power_states([PowerState.UNKNOWN] * self.PORT_COUNT)
 
         super()._communication_state_changed(communication_state)
 
@@ -462,7 +454,7 @@ class MccsFNDH(SKABaseDevice):
 
         :param fault: whether the component is in fault.
         :param power: the power state of the component
-        :param pasdbus_status: the status of the FNDH
+        :param pasdbus_status: the status of the pasd_bus
         :param kwargs: additional keyword arguments defining component
             state.
         """

@@ -46,6 +46,7 @@ class SmartBoxComponentManager(
         communication_state_changed_callback: Callable[[CommunicationStatus], None],
         component_state_changed_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
+        fndh_port: int,
         pasd_fqdn: str,
         fndh_fqdn: str,
         smartbox_number: Optional[int] = None,
@@ -63,6 +64,7 @@ class SmartBoxComponentManager(
             called when the component state changes
         :param attribute_change_callback: callback to be called when a attribute
             of interest changes.
+        :param fndh_port: the fndh port this smartbox is attached.
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
         :param fndh_fqdn: the fqdn of the fndh to connect to.
         :param smartbox_number: the number assigned to this smartbox by station.
@@ -71,12 +73,11 @@ class SmartBoxComponentManager(
 
         purposes only. defaults to None
         """
-        max_workers = 1
         super().__init__(
             logger,
             communication_state_changed_callback,
             component_state_changed_callback,
-            max_workers=max_workers,
+            max_workers=1,
             power=None,
             fault=None,
             pasdbus_status=None,
@@ -88,13 +89,8 @@ class SmartBoxComponentManager(
         self.smartbox_number = smartbox_number
         self._pasd_bus_proxy: Optional[MccsDeviceProxy] = _pasd_bus_proxy
         self._fndh_proxy: Optional[MccsDeviceProxy] = _fndh_bus_proxy
-        self._fndh_port = 0
+        self._fndh_port = fndh_port
         self.logger = logger
-
-        # This is used in the proxy callback
-        # the reason being that it is called with a Capitals during event subscription
-        # and with lower case during a push event.
-        self.attr_case_map: dict[str, str] = {}
 
     def _subscribe_to_attributes(self: SmartBoxComponentManager) -> None:
         """Subscribe to attributes on the MccsPasdBus."""
@@ -212,9 +208,7 @@ class SmartBoxComponentManager(
         :param attr_value: The value of the attribute that is changing.
         :param attr_quality: The quality of the attribute.
         """
-        # TODO: This is called with a uppercase during initial subscription and
-        # with lowercase for push_change_events. Update the MccsDeviceProxy to fix
-        # this.
+        # TODO: MCCS-1481: Update the MccsDeviceProxy to push attribute case.
 
         # Check if we are really receiving from a pasd smartbox device between 1-25
         is_a_smartbox = re.search("^smartbox[1-2][1-5]|[1-9]", attr_name)
@@ -263,8 +257,7 @@ class SmartBoxComponentManager(
         :param _fndh_port: the port this smartbox is attached to
         """
         assert self._fndh_proxy
-        # subscribe to that port.
-        # unsubscribe from any others (not yet possible).
+
         # TODO: Add method to MccsDeviceProxy to unsubscribe from attribute.
         self._fndh_port = _fndh_port
         if (
@@ -303,7 +296,6 @@ class SmartBoxComponentManager(
         if self.communication_state == CommunicationStatus.DISABLED:
             return
 
-        # Disconnect from the proxy
         self._fndh_port = 0
         self._update_communication_state(CommunicationStatus.DISABLED)
         self._update_component_state(power=None, fault=None)
