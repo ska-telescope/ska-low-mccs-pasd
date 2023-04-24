@@ -112,8 +112,8 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
             self.Timeout,
             self.logger,
             self._max_workers,
-            self._communication_state_changed_callback,
-            self._component_state_changed_callback,
+            self._communication_state_callback,
+            self._component_state_callback,
         )
 
     def init_command_objects(self: MccsPasdBus) -> None:
@@ -190,7 +190,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
     # ----------
     # Callbacks
     # ----------
-    def _communication_state_changed_callback(
+    def _communication_state_callback(
         self: MccsPasdBus,
         communication_state: CommunicationStatus,
     ) -> None:
@@ -216,7 +216,7 @@ class MccsPasdBus(SKABaseDevice):  # pylint: disable=too-many-public-methods
 
         self._health_model.update_state(communicating=True)
 
-    def _component_state_changed_callback(
+    def _component_state_callback(
         self: MccsPasdBus,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,

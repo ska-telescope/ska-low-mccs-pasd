@@ -35,8 +35,8 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         timeout: float,
         logger: logging.Logger,
         max_workers: int,
-        communication_state_changed_callback: Callable[[CommunicationStatus], None],
-        component_state_changed_callback: Callable[..., None],
+        communication_state_callback: Callable[[CommunicationStatus], None],
+        component_state_callback: Callable[..., None],
         # TODO callbacks for changes to antenna power, smartbox power, etc
     ) -> None:
         """
@@ -48,10 +48,10 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             request (in seconds).
         :param logger: a logger for this object to use
         :param max_workers: no of worker threads
-        :param communication_state_changed_callback: callback to be
+        :param communication_state_callback: callback to be
             called when the status of the communications channel between
             the component manager and its component changes
-        :param component_state_changed_callback: callback to be called when the
+        :param component_state_callback: callback to be called when the
             component state changes
         """
         tcp_client = TcpClient(host, port, timeout)
@@ -63,8 +63,8 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
 
         super().__init__(
             logger,
-            communication_state_changed_callback,
-            component_state_changed_callback,
+            communication_state_callback,
+            component_state_callback,
             max_workers=max_workers,
             power=None,
             fault=None,
