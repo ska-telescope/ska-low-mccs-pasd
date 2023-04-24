@@ -117,7 +117,7 @@ class TestFndhComponentManager:
         :param mock_callbacks: mock callables.
         :param mocked_pasd_proxy: a unittest.mock
         """
-        # The fixture has already called start_communicating, 
+        # The fixture has already called start_communicating,
         # check that the communication state transitions as expected.
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.NOT_ESTABLISHED

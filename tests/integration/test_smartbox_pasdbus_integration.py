@@ -140,13 +140,11 @@ class TestSmartBoxPasdBusIntegration:
         # check the current value of port 2 and check FNDH and pasdbus agree.
         this_smartbox_port = 2
         is_fndh_port_on = fndh_device.IsPortOn(this_smartbox_port)
-        is_pasd_port_on = (
-            pasd_bus_device.fndhPortsPowerSensed[this_smartbox_port - 1]
-        )
+        is_pasd_port_on = pasd_bus_device.fndhPortsPowerSensed[this_smartbox_port - 1]
         assert is_fndh_port_on == is_pasd_port_on
 
         # Update the smartbox Fndhport and check it is called back
-        assert smartbox_device.fndhPort == 0 # 0 means uninitialised.
+        assert smartbox_device.fndhPort == 0  # 0 means uninitialised.
         smartbox_device.fndhPort = this_smartbox_port
 
         # check that the smartbox gets a callback with the correct power state.
@@ -182,14 +180,13 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["fndhport2powerstate"].assert_not_called()
         change_event_callbacks["smartbox_state"].assert_not_called()
 
-        print()
         fndh_device.PowerOnPort(2)
 
         # TODO: MCCS-1485: The following assert_not_called is a bit hacky.
-        # Ideally we would unsubscribe from change events when smartbox adminMode is 
-        # offline. However, since this is not possible yet a temporary hack has 
+        # Ideally we would unsubscribe from change events when smartbox adminMode is
+        # offline. However, since this is not possible yet a temporary hack has
         # been implemented in "smartbox.stop_communicating". The fndh_port is set
-        # to zero, and the port_power_changed callback filters to check that we only 
+        # to zero, and the port_power_changed callback filters to check that we only
         # handle event fired from the port of interest (fndh_port).
         change_event_callbacks["smartbox_state"].assert_not_called()
 
@@ -197,14 +194,14 @@ class TestSmartBoxPasdBusIntegration:
 
         # When the smartbox want to listen again it gets the most recent power state.
 
-        # TODO: MCCS-1485: We need to set fndh to 2 again because of the hack described above
-        # it was set to zero after stop_communicating. We already have a subscription to 
+        # TODO: MCCS-1485: We need to set fndh to 2 again because of the hack above
+        # it was set to zero after stop_communicating. We already have a subscription to
         # port 2 so this command will not cause a re-evaluation of health.
         smartbox_device.fndhPort = 2
         change_event_callbacks["smartbox_state"].assert_not_called()
 
-        # now we can tell the smartbox to go online and hopefully we get updated with the 
-        # power state of port 2. 
+        # Tell the smartbox to go online
+        # check power state of port is 2.
         smartbox_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.UNKNOWN
