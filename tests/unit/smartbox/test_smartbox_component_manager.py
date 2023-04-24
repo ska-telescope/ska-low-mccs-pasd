@@ -104,8 +104,6 @@ def smartbox_component_manager_fixture(  # pylint: disable=too-many-arguments
     """
     Return an SmartBox component manager.
 
-    (This is a pytest fixture.)
-
     :param logger: a logger for this command to use.
     :param fndh_port: the fndh port this smartbox is attached.
     :param pasd_bus_fndh: the pasd bus smartbox
@@ -115,7 +113,7 @@ def smartbox_component_manager_fixture(  # pylint: disable=too-many-arguments
     :param mocked_fndh_proxy: a unittest.mock
     :param smartbox_number: the number assigned to this smartbox.
 
-    :return: an APIU component manager in the specified simulation mode.
+    :return: an SmartBox component manager in the specified simulation mode.
     """
     component_manager = SmartBoxComponentManager(
         logger,
@@ -148,8 +146,6 @@ class TestSmartBoxComponentManager:
     ) -> None:
         """
         Test the start_communicating command.
-
-        WARNING: This can take a considerable amount of time for a timeout.
 
         :param smartbox_component_manager: A SmartBox component manager
             with communication established.
@@ -240,8 +236,6 @@ class TestSmartBoxComponentManager:
     ) -> None:
         """
         Test the start_communicating command.
-
-        WARNING: This can take a considerable amount of time for a timeout.
 
         :param smartbox_component_manager: A SmartBox component manager
             with communication established.
@@ -347,7 +341,7 @@ class TestSmartBoxComponentManager:
         :param command_tracked_response: The result of the command.
         :param callbacks: the callbacks.
         """
-        # set up the proxy responce
+        # set up the proxy response
         mock_response = unittest.mock.MagicMock(return_value=pasd_proxy_response)
         setattr(mocked_pasd_proxy, pasd_proxy_command, mock_response)
 
@@ -432,7 +426,7 @@ class TestSmartBoxComponentManager:
         # Simulate the Station telling the smartbox its port its fndh port is 2.
         smartbox_component_manager._fndh_port = 2
 
-        # set up the proxy responce
+        # set up the proxy response
         mock_response = unittest.mock.MagicMock(return_value=pasd_proxy_response)
         setattr(mocked_pasd_proxy, pasd_proxy_command, mock_response)
 
@@ -502,7 +496,7 @@ class TestSmartBoxComponentManager:
         :param command_tracked_response: The result of the command.
         :param callbacks: the callbacks.
         """
-        # set up the proxy responce
+        # set up the proxy response
         if component_manager_command_argument is None:
             setattr(mocked_pasd_proxy, pasd_proxy_command, pasd_proxy_response)
             assert (

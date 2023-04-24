@@ -164,7 +164,7 @@ class SmartBoxComponentManager(
             self._subscribe_to_attributes()
         except Exception as e:  # pylint: disable=broad-except
             self._update_component_state(fault=True)
-            self.logger.error("Caught exception in attribute subscriptios: %s", e)
+            self.logger.error("Caught exception in attribute subscriptions: %s", e)
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
             return
 

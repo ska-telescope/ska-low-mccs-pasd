@@ -28,12 +28,12 @@ def fndh_device_fixture(
     fndh_name: str,
 ) -> tango.DeviceProxy:
     """
-    Fixture that returns the fndh_bus Tango device under test.
+    Fixture that returns the fndh Tango device under test.
 
     :param tango_harness: a test harness for Tango devices.
-    :param fndh_name: name of the fndh_bus Tango device.
+    :param fndh_name: name of the fndh Tango device.
 
-    :yield: the fndh_bus Tango device under test.
+    :yield: the fndh Tango device under test.
     """
     yield tango_harness.get_device(fndh_name)
 
@@ -57,7 +57,7 @@ class TestfndhPasdBusIntegration:
             :py:class:`tango.DeviceProxy` to the device under test, in a
             :py:class:`tango.test_context.DeviceTestContext`.
         :param change_event_callbacks: group of Tango change event
-            callback with asynchrony support
+            callback with asynchronous support
         """
         # adminMode offline and in DISABLE state
         # ----------------------------------------------------------------
@@ -80,7 +80,9 @@ class TestfndhPasdBusIntegration:
         )
         change_event_callbacks["pasd_bus_state"].assert_not_called()
         # ----------------------------------------------------------------
+
         # Check that the devices enters the correct state after turning adminMode on
+        # ================================================================
         pasd_bus_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.UNKNOWN
@@ -95,6 +97,7 @@ class TestfndhPasdBusIntegration:
         fndh_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.OFF)
+        # ================================================================
 
     def test_communication(
         self: TestfndhPasdBusIntegration,
@@ -114,6 +117,8 @@ class TestfndhPasdBusIntegration:
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         """
+        # adminMode offline and in DISABLE state
+        # ----------------------------------------------------------------
         assert fndh_device.adminMode == AdminMode.OFFLINE
         assert pasd_bus_device.adminMode == AdminMode.OFFLINE
 
@@ -143,6 +148,7 @@ class TestfndhPasdBusIntegration:
             "pasdBushealthState", HealthState.UNKNOWN
         )
         assert pasd_bus_device.healthState == HealthState.UNKNOWN
+        # -----------------------------------------------------------------
 
         # This is a bit of a cheat.
         # It's an implementation-dependent detail that

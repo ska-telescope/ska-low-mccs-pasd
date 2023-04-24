@@ -110,15 +110,15 @@ class TestFndhComponentManager:
         """
         Test the start_communicating command.
 
-        WARNING: This can take a considerable amount of time for a timeout.
+        WARNING: This can take a long time because we wait for a timeout.
 
         :param fndh_component_manager: A FNDH component manager
             with communication established.
         :param mock_callbacks: mock callables.
         :param mocked_pasd_proxy: a unittest.mock
         """
-        # The fixture start communicating, check that the communication state
-        # transistions as expected.
+        # The fixture has already called start_communicating, 
+        # check that the communication state transitions as expected.
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.NOT_ESTABLISHED
         )
@@ -190,7 +190,7 @@ class TestFndhComponentManager:
         :param pasd_proxy_response: mocked response
         :param expected_manager_result: expected response from the call
         """
-        # set up the proxy responce
+        # set up the proxy response
         if component_manager_command_argument is None:
             setattr(mocked_pasd_proxy, pasd_proxy_command, pasd_proxy_response)
             assert (
@@ -262,7 +262,7 @@ class TestFndhComponentManager:
         :param command_tracked_response: The result of the command.
         :param callbacks: the callback.
         """
-        # set up the proxy responce
+        # set up the proxy response
         if component_manager_command_argument is None:
             setattr(mocked_pasd_proxy, pasd_proxy_command, pasd_proxy_response)
             assert (

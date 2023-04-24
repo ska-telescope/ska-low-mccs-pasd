@@ -180,7 +180,7 @@ def test_command(  # pylint: disable=too-many-arguments
     component_manager_method_return: Any,
 ) -> None:
     """
-    Test that device attribute writes result in component manager property writes.
+    Test tango command with mocked response from component manager.
 
     :param fndh_device: fixture that provides a
         :py:class:`tango.DeviceProxy` to the device under test, in a
@@ -239,7 +239,7 @@ def test_fast_command(  # pylint: disable=too-many-arguments
     device_response: Any,
 ) -> None:
     """
-    Test that device attribute writes result in component manager property writes.
+    Test tango fast command with mocked response from component manager.
 
     :param fndh_device: fixture that provides a
         :py:class:`tango.DeviceProxy` to the device under test, in a
