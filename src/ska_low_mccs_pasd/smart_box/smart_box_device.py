@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, cast
+from typing import Any, Final, Optional, cast
 
 import tango
 from ska_control_model import (
@@ -39,7 +39,7 @@ class MccsSmartBox(SKABaseDevice):
     FndhFQDN = device_property(dtype=(str), default_value="")
     SmartBoxNumber = device_property(dtype=int, default_value=1)
 
-    PORT_COUNT = 12
+    PORT_COUNT: Final = 12
 
     # TODO: MCCS-1480: create a yaml file containing
     # coupled MccsSmartBox MccsPasdBus attributes.

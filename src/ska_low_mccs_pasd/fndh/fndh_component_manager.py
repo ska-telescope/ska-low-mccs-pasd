@@ -15,12 +15,7 @@ import threading
 from typing import Any, Callable, Optional
 
 import tango
-from ska_control_model import (
-    CommunicationStatus,
-    HealthState,
-    PowerState,
-    TaskStatus,
-)
+from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_mccs_common import MccsDeviceProxy
 from ska_low_mccs_common.component import check_communicating
 from ska_tango_base.commands import ResultCode
@@ -34,7 +29,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
     """
     A component manager for an fndh.
 
-    This communicates via a proxy to a MccsPadsBus that talks to a simulator
+    This communicates via a proxy to a MccsPasdBus that talks to a simulator
     or the real hardware.
     """
 
@@ -122,10 +117,10 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 return
 
         try:
-            subscriptions = self._pasd_bus_proxy.GetPasdDeviceSubscriptions(
+            subscription_keys = self._pasd_bus_proxy.GetPasdDeviceSubscriptions(
                 self._pasd_device_number
             )
-            subscriptions = dict.fromkeys(subscriptions, self._handle_change_event)
+            subscriptions = dict.fromkeys(subscription_keys, self._handle_change_event)
             subscriptions.update({"healthstate": self._pasd_health_state_changed})
             self._subscribe_to_attributes(subscriptions)
 
@@ -189,21 +184,19 @@ class FndhComponentManager(TaskExecutorComponentManager):
 
     def _pasd_health_state_changed(
         self: FndhComponentManager,
-        event_name: str,
-        event_value: HealthState,
-        event_quality: tango.AttrQuality,
+        attr_name: str,
+        attr_value: Any,
+        attr_quality: tango.AttrQuality,
     ) -> None:
         """
         Pasdbus health state callback.
 
-        :param event_name: The event_name
-        :param event_value: The event_value
-        :param event_quality: The event_quality
+        :param attr_name: The name of the attribute that is firing a change event.
+        :param attr_value: The value of the attribute that is changing.
+        :param attr_quality: The quality of the attribute.
         """
-        self.logger.info(
-            f"The health state of the pasdBus has changed to {event_value}"
-        )
-        self._component_state_changed_callback(pasdbus_status=event_value)
+        self.logger.info(f"The health state of the pasdBus has changed to {attr_value}")
+        self._component_state_changed_callback(pasdbus_status=attr_value)
 
     def _port_power_state_change(
         self: FndhComponentManager,

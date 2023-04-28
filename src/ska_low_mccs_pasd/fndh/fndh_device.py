@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Optional, cast
+from typing import Any, Final, Optional, cast
 
 import tango
 from jsonschema import ValidationError, validate
@@ -35,7 +35,7 @@ from .fndh_health_model import FndhHealthModel
 __all__ = ["MccsFNDH", "main"]
 
 
-class MccsFNDH(SKABaseDevice):
+class MccsFNDH(SKABaseDevice[FndhComponentManager]):
     """An implementation of the FNDH device for MCCS."""
 
     # -----------------
@@ -43,7 +43,7 @@ class MccsFNDH(SKABaseDevice):
     # -----------------
     PasdFQDNs = device_property(dtype=(str), default_value=[])
 
-    PORT_COUNT = 28
+    PORT_COUNT: Final = 28
 
     # TODO: create a single YAML file with the fndh attributes.
     # We want attributes on Mccsfndh to match the MccsPasdBus.
@@ -205,13 +205,13 @@ class MccsFNDH(SKABaseDevice):
     @command(dtype_in="DevString")
     def Configure(self: MccsFNDH, argin: str) -> None:
         """
-        Configure the apiu device attributes.
+        Configure the Fndh device attributes.
 
         :param argin: the configuration for the device in stringified json format
         """
         config = json.loads(argin)
 
-        apiu_config_schema = {
+        fndh_config_schema = {
             "type": "object",
             "properties": {
                 "overCurrentThreshold": {"type": "number"},
@@ -221,7 +221,7 @@ class MccsFNDH(SKABaseDevice):
         }
 
         try:
-            validate(instance=config, schema=apiu_config_schema)
+            validate(instance=config, schema=fndh_config_schema)
             self._overCurrentThreshold = config.get(
                 "overCurrentThreshold", self._overCurrentThreshold
             )
@@ -269,7 +269,7 @@ class MccsFNDH(SKABaseDevice):
             port_id = args[0]
             return bool(self._component_manager.is_port_on(port_id))
 
-    @command(dtype_in="DevULong", dtype_out=bool)
+    @command(dtype_in="DevULong", dtype_out="DevBoolean")
     def IsPortOn(self: MccsFNDH, argin: int) -> bool:  # type: ignore[override]
         """
         Check power state of a port.

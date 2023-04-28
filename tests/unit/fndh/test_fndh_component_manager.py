@@ -80,7 +80,7 @@ def fndh_component_manager_fixture(
     :param mock_callbacks: mock callables.
     :param mocked_pasd_proxy: a unittest.mock
 
-    :return: an APIU component manager in the specified simulation mode.
+    :return: an FNDH component manager.
     """
     component_manager = FndhComponentManager(
         logger,
