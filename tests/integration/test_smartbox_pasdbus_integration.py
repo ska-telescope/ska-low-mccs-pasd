@@ -141,6 +141,13 @@ class TestSmartBoxPasdBusIntegration:
         this_smartbox_port = 2
         is_fndh_port_on = fndh_device.IsPortOn(this_smartbox_port)
         is_pasd_port_on = pasd_bus_device.fndhPortsPowerSensed[this_smartbox_port - 1]
+        if not is_pasd_port_on:
+            is_pasd_port_on = PowerState.OFF
+        elif is_pasd_port_on:
+            is_pasd_port_on = PowerState.ON
+        else:
+            is_pasd_port_on = PowerState.UNKNOWN
+
         assert is_fndh_port_on == is_pasd_port_on
 
         # Update the smartbox Fndhport and check it is called back
@@ -174,7 +181,7 @@ class TestSmartBoxPasdBusIntegration:
             change_event_callbacks["fndhport2powerstate"],
         )
         change_event_callbacks.assert_change_event(
-            "fndhport2powerstate", PowerState.UNKNOWN
+            "fndhport2powerstate", PowerState.OFF
         )
 
         change_event_callbacks["fndhport2powerstate"].assert_not_called()

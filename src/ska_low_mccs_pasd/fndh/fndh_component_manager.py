@@ -117,20 +117,6 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 return
 
         try:
-            subscription_keys = self._pasd_bus_proxy.GetPasdDeviceSubscriptions(
-                self._pasd_device_number
-            )
-            subscriptions = dict.fromkeys(subscription_keys, self._handle_change_event)
-            subscriptions.update({"healthstate": self._pasd_health_state_changed})
-            self._subscribe_to_attributes(subscriptions)
-
-        except Exception as e:  # pylint: disable=broad-except
-            self._component_state_changed_callback(fault=True)
-            self.logger.error("Caught exception in attribute subscriptions: %s", e)
-            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
-            return
-
-        try:
             if self.communication_state != CommunicationStatus.ESTABLISHED:
                 self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
                 self._pasd_bus_proxy.ping()
@@ -146,6 +132,20 @@ class FndhComponentManager(TaskExecutorComponentManager):
         except Exception as e:  # pylint: disable=broad-except
             self._component_state_changed_callback(fault=True)
             self.logger.error("Caught exception in start_communicating: %s", e)
+            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+            return
+
+        try:
+            subscription_keys = self._pasd_bus_proxy.GetPasdDeviceSubscriptions(
+                self._pasd_device_number
+            )
+            subscriptions = dict.fromkeys(subscription_keys, self._handle_change_event)
+            subscriptions.update({"healthstate": self._pasd_health_state_changed})
+            self._subscribe_to_attributes(subscriptions)
+
+        except Exception as e:  # pylint: disable=broad-except
+            self._component_state_changed_callback(fault=True)
+            self.logger.error("Caught exception in attribute subscriptions: %s", e)
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
             return
 
@@ -317,7 +317,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
             )
 
         except Exception as ex:  # pylint: disable=broad-except
-            self.logger.error(f"error {ex}")
+            self.logger.error(f"error {repr(ex)}")
             if task_callback:
                 task_callback(
                     status=TaskStatus.FAILED,
@@ -376,7 +376,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
             )
 
         except Exception as ex:  # pylint: disable=broad-except
-            self.logger.error(f"error {ex}")
+            self.logger.error(f"error {repr(ex)}")
             if task_callback:
                 task_callback(
                     status=TaskStatus.FAILED,

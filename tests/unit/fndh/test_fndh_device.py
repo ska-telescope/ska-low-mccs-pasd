@@ -16,7 +16,7 @@ from typing import Any, Generator
 
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel, ResultCode
+from ska_control_model import AdminMode, LoggingLevel, PowerState, ResultCode
 from ska_tango_testing.context import (
     TangoContextProtocol,
     ThreadedTestTangoContextManager,
@@ -126,7 +126,7 @@ def tango_harness_fixture(
         fndh_name,
         patched_fndh_device_class,
         FndhPort=5,
-        PasdFQDNs="low-mccs-pasd/pasdbus/001",
+        PasdFQDN="low-mccs-pasd/pasdbus/001",
         LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
     with context_manager as context:
@@ -211,63 +211,20 @@ def test_command(  # pylint: disable=too-many-arguments
     assert command_return[1][0].split("_")[-1] == device_command
 
 
-@pytest.mark.parametrize(
-    (
-        "device_command",
-        "component_manager_method",
-        "device_command_argin",
-        "component_manager_method_return",
-        "device_response",
-    ),
-    [
-        (
-            "IsPortOn",
-            "is_port_on",
-            4,
-            False,
-            False,
-        ),
-    ],
-)
-def test_fast_command(  # pylint: disable=too-many-arguments
+def test_is_port_on(
     fndh_device: tango.DeviceProxy,
-    mock_component_manager: unittest.mock.Mock,
-    device_command: str,
-    component_manager_method: str,
-    device_command_argin: Any,
-    component_manager_method_return: Any,
-    device_response: Any,
 ) -> None:
     """
-    Test tango fast command with mocked response from component manager.
+    Test the IsPortOn command.
+
+    This unit test is kept very light because all it does is
+    read a default value from a dictionary.
 
     :param fndh_device: fixture that provides a
         :py:class:`tango.DeviceProxy` to the device under test, in a
         :py:class:`tango.test_context.DeviceTestContext`.
-    :param mock_component_manager: the mock component manager being
-        used by the patched fndh bus device.
-    :param device_command: name of the device command under test.
-    :param component_manager_method: name of the component manager
-        method that is expected to be called when the device
-        command is called.
-    :param device_command_argin: argument to the device command
-    :param component_manager_method_return: return value of the
-        component manager method
-    :param device_response: response from the device.
     """
-    method_mock = unittest.mock.Mock(return_value=component_manager_method_return)
-    setattr(mock_component_manager, component_manager_method, method_mock)
-    method_mock.assert_not_called()
-
-    command = getattr(fndh_device, device_command)
-    if device_command_argin is None:
-        command_return = command()
-    else:
-        command_return = command(device_command_argin)
-
-    method_mock.assert_called()
-
-    assert command_return == device_response
+    assert fndh_device.IsPortOn(1) == PowerState.UNKNOWN
 
 
 @pytest.mark.parametrize(

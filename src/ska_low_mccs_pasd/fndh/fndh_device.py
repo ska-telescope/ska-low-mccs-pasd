@@ -41,7 +41,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
     # -----------------
     # Device Properties
     # -----------------
-    PasdFQDNs = device_property(dtype=(str), default_value=[])
+    PasdFQDN = device_property(dtype=(str), default_value=[])
 
     PORT_COUNT: Final = 28
 
@@ -117,11 +117,11 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         # their power state.
         for port in range(1, self.PORT_COUNT + 1):
             attr_name = f"Port{port}PowerState"
-            self._setup_fndh_attribute(attr_name, PowerState, 1)
+            self._setup_fndh_attribute(attr_name, PowerState, 1, PowerState.UNKNOWN)
 
         message = (
             "Initialised MccsFNDH device with properties:\n"
-            f"\tPasdFQDNs: {self.PasdFQDNs}\n"
+            f"\tPasdFQDN: {self.PasdFQDN}\n"
         )
         self.logger.info(message)
 
@@ -171,7 +171,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             self._component_state_changed_callback,
             self._attribute_changed_callback,
             self._update_port_power_states,
-            self.PasdFQDNs,
+            self.PasdFQDN,
         )
 
     def init_command_objects(self: MccsFNDH) -> None:
@@ -196,7 +196,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             )
         self.register_command_object(
             "IsPortOn",
-            self.IsPortOnCommand(self.component_manager, self.logger),
+            self.IsPortOnCommand(self, self.logger),
         )
 
     # ----------
@@ -241,16 +241,16 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
 
         def __init__(
             self: MccsFNDH.IsPortOnCommand,
-            component_manager: FndhComponentManager,
+            device: MccsFNDH,
             logger: Optional[logging.Logger] = None,
         ) -> None:
             """
             Initialise a new instance.
 
-            :param component_manager: the device to which this command belongs.
+            :param device: the device to which this command belongs.
             :param logger: a logger for this command to use.
             """
-            self._component_manager = component_manager
+            self._device = device
             super().__init__(logger)
 
         def do(
@@ -267,16 +267,17 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             :return: True if the port is on.
             """
             port_id = args[0]
-            return bool(self._component_manager.is_port_on(port_id))
+            attr_name = f"Port{port_id}PowerState"
+            return self._device._fndh_attributes[attr_name.lower()]
 
-    @command(dtype_in="DevULong", dtype_out="DevBoolean")
-    def IsPortOn(self: MccsFNDH, argin: int) -> bool:  # type: ignore[override]
+    @command(dtype_in="DevULong", dtype_out=int)
+    def IsPortOn(self: MccsFNDH, argin: int) -> int:  # type: ignore[override]
         """
         Check power state of a port.
 
         :param argin: the port number (1-28)
 
-        :return: True if port is on.
+        :return: The power state of the port.
         """
         handler = self.get_command_object("IsPortOn")
         return handler(argin)
@@ -336,8 +337,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         attribute_name: str,
         data_type: type | tuple[type],
         max_dim_x: Optional[int] = None,
+        default_value: Optional[Any] = None,
     ) -> None:
-        self._fndh_attributes[attribute_name.lower()] = None
+        self._fndh_attributes[attribute_name.lower()] = default_value
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,

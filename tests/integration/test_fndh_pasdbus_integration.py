@@ -10,10 +10,11 @@
 from __future__ import annotations
 
 import gc
+import time
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState
+from ska_control_model import AdminMode, HealthState, PowerState
 from ska_tango_testing.context import TangoContextProtocol
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -215,11 +216,109 @@ class TestfndhPasdBusIntegration:
             == fndh_simulator.ports_desired_power_when_offline
         )
         assert list(fndh_device.PortsPowerSensed) == fndh_simulator.ports_power_sensed
+
         for port in range(1, FndhSimulator.NUMBER_OF_PORTS + 1):
-            assert (
-                getattr(fndh_device, f"Port{port}PowerState")
-                == fndh_simulator.ports_power_sensed[port - 1]
-            )
+            is_port_on = fndh_simulator.ports_power_sensed[port - 1]
+            if not is_port_on:
+                assert getattr(fndh_device, f"Port{port}PowerState") == PowerState.OFF
+            elif is_port_on:
+                assert getattr(fndh_device, f"Port{port}PowerState") == PowerState.ON
+            else:
+                assert (
+                    getattr(fndh_device, f"Port{port}PowerState") == PowerState.UNKNOWN
+                )
+
+    def test_port_power(
+        self: TestfndhPasdBusIntegration,
+        fndh_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        fndh_simulator: FndhSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test the MccsFNDH port power state.
+
+        - MccsFNDH.IsPortOn starts in a UNKNOWN state.
+        - After MccsFNDH starts communication with the simulator it gets the
+            simulated power state.
+        - When we change the simulated power state, MccsFNDH is notified and updated.
+
+        :param fndh_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param pasd_bus_device: a proxy to the PaSD bus device under test.
+        :param fndh_simulator: the FNDH simulator under test
+        :param change_event_callbacks: dictionary of mock change event
+            callbacks with asynchrony support
+        """
+        assert fndh_device.adminMode == AdminMode.OFFLINE
+        assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+        assert fndh_device.IsPortOn(2) == PowerState.UNKNOWN
+
+        pasd_bus_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasd_bus_state"],
+        )
+        change_event_callbacks.assert_change_event(
+            "pasd_bus_state", tango.DevState.DISABLE
+        )
+
+        fndh_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndh_state"],
+        )
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
+
+        pasd_bus_device.subscribe_event(
+            "healthState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasdBushealthState"],
+        )
+
+        change_event_callbacks.assert_change_event(
+            "pasdBushealthState", HealthState.UNKNOWN
+        )
+        assert pasd_bus_device.healthState == HealthState.UNKNOWN
+
+        # This is a bit of a cheat.
+        # It's an implementation-dependent detail that
+        # this is one of the last attributes to be read from the simulator.
+        # We subscribe events on this attribute because we know that
+        # once we have an updated value for this attribute,
+        # we have an updated value for all of them.
+        pasd_bus_device.subscribe_event(
+            "smartbox24PortsCurrentDraw",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartbox24PortsCurrentDraw"],
+        )
+        change_event_callbacks.assert_change_event("smartbox24PortsCurrentDraw", None)
+
+        pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+
+        change_event_callbacks.assert_change_event(
+            "pasd_bus_state", tango.DevState.UNKNOWN
+        )
+        change_event_callbacks.assert_change_event("pasd_bus_state", tango.DevState.ON)
+        change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
+        assert pasd_bus_device.healthState == HealthState.OK
+
+        change_event_callbacks.assert_against_call("smartbox24PortsCurrentDraw")
+
+        fndh_device.adminMode = AdminMode.ONLINE
+
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.OFF)
+        change_event_callbacks["fndh_state"].assert_not_called()
+
+        assert fndh_device.IsPortOn(2) == PowerState.OFF
+        fndh_simulator.turn_port_on(2)
+
+        # sleep time to allow a poll of this attribute.
+        time.sleep(2)
+
+        assert fndh_device.IsPortOn(2) == PowerState.ON
 
 
 @pytest.fixture(name="change_event_callbacks")

@@ -426,7 +426,7 @@ def tango_harness_fixture(
     context_manager.add_device(
         fndh_name,
         MccsFNDH,
-        PasdFQDNs=pasd_bus_name,
+        PasdFQDN=pasd_bus_name,
         LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
     # Add the 24 Smartboxes.
