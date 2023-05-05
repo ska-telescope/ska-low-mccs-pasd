@@ -5,4 +5,4 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
-"""This module contains the integration tests for MCCS FNDH subpackage."""
+"""This subpackage contains unit tests of the MCCS FNDH subpackage."""

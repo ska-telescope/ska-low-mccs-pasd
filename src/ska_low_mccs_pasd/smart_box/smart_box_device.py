@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, cast
+from typing import Any, Final, Optional, cast
 
 import tango
 from ska_control_model import (
@@ -20,7 +20,7 @@ from ska_control_model import (
 )
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
-from tango.server import command, device_property
+from tango.server import attribute, command, device_property
 
 from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
@@ -35,19 +35,14 @@ class MccsSmartBox(SKABaseDevice):
     # Device Properties
     # -----------------
     FndhPort = device_property(dtype=int, default_value=0)
-    PasdFQDNs = device_property(dtype=(str), default_value="")
-    # TODO: do we want both fndhPort and SmartBoxNumber?
+    PasdFQDN = device_property(dtype=(str), default_value="")
+    FndhFQDN = device_property(dtype=(str), default_value="")
     SmartBoxNumber = device_property(dtype=int, default_value=1)
 
-    PORT_COUNT = 12
+    PORT_COUNT: Final = 12
 
-    # TODO: create a single YAML file with the smartbox attributes.
-    # MccsPasdBus and MccsSmartBox need to agree on a language, Since when
-    # MccsPasdBus pushes a attribute MccsSmartBox needs to subscribe to this
-    # event and update its own attributes. We do not want the attributes on
-    # MccsSmartBox to become out of sync with the MccsPasdBus. Therefore, a
-    # proposed solution is for both to get the attributes from a single source
-    # of truth. A 'YAML' file for instance.
+    # TODO: MCCS-1480: create a yaml file containing
+    # coupled MccsSmartBox MccsPasdBus attributes.
     ATTRIBUTES = [
         ("ModbusRegisterMapRevisionNumber", int, None),
         ("PcbRevisionNumber", int, None),
@@ -101,15 +96,13 @@ class MccsSmartBox(SKABaseDevice):
         This is overridden here to change the Tango serialisation model.
         """
         super().init_device()
-
-        # setup all attributes.
         self._smartbox_state: dict[str, Any] = {}
         self._setup_smartbox_attributes()
-
         message = (
             "Initialised MccsSmartBox device with properties:\n"
             f"\tFndhPort: {self.FndhPort}\n"
-            f"\tPasdFQDNs: {self.PasdFQDNs}\n"
+            f"\tPasdFQDN: {self.PasdFQDN}\n"
+            f"\tFndhFQDN: {self.FndhFQDN}\n"
             f"\tSmartBoxNumber: {self.SmartBoxNumber}\n"
         )
         self.logger.info(message)
@@ -156,8 +149,9 @@ class MccsSmartBox(SKABaseDevice):
             self._communication_state_changed,
             self._component_state_changed_callback,
             self._attribute_changed_callback,
-            self.PasdFQDNs,
             self.FndhPort,
+            self.PasdFQDN,
+            self.FndhFQDN,
             self.SmartBoxNumber,
         )
 
@@ -192,9 +186,8 @@ class MccsSmartBox(SKABaseDevice):
         Power up a port.
 
         This may or may not have a Antenna attached.
-        The station has this port:antenna mapping from configuration files.
 
-        :param port_number: the logical id of the smartbox port to power up
+        :param port_number: the smartbox port to power up
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
@@ -213,9 +206,8 @@ class MccsSmartBox(SKABaseDevice):
         Power down a port.
 
         This may or may not have a Antenna attached.
-        The station has this port:antenna mapping from configuration files.
 
-        :param port_number: the logical id of the smartbox port to power down
+        :param port_number: the smartbox port to power down
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
@@ -228,6 +220,29 @@ class MccsSmartBox(SKABaseDevice):
     # ----------
     # Attributes
     # ----------
+    @attribute(dtype=int)
+    def fndhPort(self: MccsSmartBox) -> None:
+        """
+        Port this smartbox is attached.
+
+        Ports range from 1-28. 0 if not set yet.
+
+        :returns: The port number.
+        """
+        return self.component_manager._fndh_port
+
+    @fndhPort.write  # type: ignore[no-redef]
+    def fndhPort(self: MccsSmartBox, port: int) -> None:
+        """
+        Update the PDoC port this smartbox is attached to.
+
+        This should be done by the station when it has information
+        about {smartbox : fndh port} mapping.
+
+        :param port: the port number between 1-28.
+        """
+        self.component_manager.update_fndh_port(port)
+
     def _setup_smartbox_attributes(self: MccsSmartBox) -> None:
         for (slug, data_type, length) in self.ATTRIBUTES:
             self._setup_smartbox_attribute(
@@ -294,7 +309,7 @@ class MccsSmartBox(SKABaseDevice):
 
         :param fault: whether the component is in fault.
         :param power: the power state of the component
-        :param pasdbus_status: the status of the FNDH
+        :param pasdbus_status: the status of the pasd_bus
         :param kwargs: additional keyword arguments defining component
             state.
         """

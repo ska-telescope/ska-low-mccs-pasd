@@ -53,6 +53,7 @@ ska-tango-testing = "^0.5.3"
 MccsPasdBus = "ska_low_mccs_pasd.pasd_bus.pasd_bus_device:main"
 PasdBusSimulatorServer = "ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator_server:main"
 MccsSmartBox = "ska_low_mccs_pasd.smart_box.smart_box_device:main"
+MccsFNDH = "ska_low_mccs_pasd.fndh.fndh_device:main"
 
 [tool.pytest.ini_options]
 testpaths = "tests/"

@@ -75,7 +75,7 @@ def smartbox_name_fixture() -> str:
 
     :return: the name of the smartbox_bus Tango device.
     """
-    return "low-mccs-smartbox/smartbox/00001"
+    return "low-mccs-pasd/smartbox/00001"
 
 
 @pytest.fixture(name="tango_harness")
@@ -98,7 +98,7 @@ def tango_harness_fixture(
         smartbox_name,
         patched_smartbox_device_class,
         FndhPort=5,
-        PasdFQDNs="low-mccs-pasd/pasdbus/001",
+        PasdFQDN="low-mccs-pasd/pasdbus/001",
         LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
     with context_manager as context:
