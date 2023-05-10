@@ -155,7 +155,7 @@ class TestSmartBoxPasdBusIntegration:
         smartbox_device.fndhPort = this_smartbox_port
 
         # check that the smartbox gets a callback with the correct power state.
-        if is_fndh_port_on:
+        if is_fndh_port_on is PowerState.ON:
             change_event_callbacks["smartbox_state"].assert_change_event(
                 tango.DevState.ON
             )
