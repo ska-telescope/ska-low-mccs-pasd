@@ -23,7 +23,7 @@ server:
           properties:
           - name: "PasdFQDN"
             values: 
-            - {{$this_smartbox.pasdFQDN | quote}}
+            - {{$this_fndh.pasdFQDN | quote}}
           - name: "LoggingLevelDefault"
             values: 
             - {{pluck "logging_level_default" $this_fndh $FNDHs $defaults | first | toString | quote}}
