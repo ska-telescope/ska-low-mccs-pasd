@@ -9,7 +9,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional
+from dataclasses import dataclass
+from typing import Any, Callable, Final, Iterator, Literal, Optional
 
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_mccs_common.component import check_communicating
@@ -18,14 +19,278 @@ from ska_ser_devices.client_server import (
     SentinelBytesMarshaller,
     TcpClient,
 )
-from ska_tango_base.executor import TaskExecutorComponentManager
+from ska_tango_base.poller import PollingComponentManager
 
 from .pasd_bus_json_api import PasdBusJsonApiClient
-from .pasd_bus_simulator import AntennaInfoType, FndhInfoType, SmartboxInfoType
 
 
-# pylint: disable-next=too-many-public-methods
-class PasdBusComponentManager(TaskExecutorComponentManager):
+@dataclass
+class PasdBusRequest:
+    """
+    Class representing an action to be performed by a poll.
+
+    it comprises a device ID number, a command name, and a list of
+    arguments to the command.
+
+    If the command name is None, then the arguments are interpreted as
+    a list of attribute values to read.
+    """
+
+    device_id: int
+    command: str | None
+    arguments: list[Any]
+
+
+@dataclass
+class PasdBusResponse:
+    """
+    Class representing the result of a a poll.
+
+    It comprises the device ID number, a command name, and a dictionary
+    of returned data.
+
+    If the command name is None, then the request was an attribute read
+    request, and the data are the attribute values. Otherwise, the data
+    is the result of executing the command
+    """
+
+    device_id: int
+    command: str | None
+    data: dict[str, Any]
+
+
+def read_request_iterator() -> Iterator[tuple[int, str]]:
+    """
+    Return an iterator that specifies what attributes should be read on the next poll.
+
+    It reads static info once for each device,
+    and then never reads it again.
+    (In order to re-read static info, a new iterator must be created.)
+    It then loops forever over each device,
+    reading status attributes and then port status attributes.
+
+    :yields: a tuple specifying a device number, and a group of
+        attributes to be read from that device.
+    """
+    for device_id in range(25):
+        yield (device_id, "INFO")
+    while True:
+        for device_id in range(25):
+            yield (device_id, "STATUS")
+            yield (device_id, "PORTS")
+
+
+class PasdBusRequestProvider:
+    """
+    A class that determines what should be done in the next poll.
+
+    It keeps track of the current intent of PaSD monitoring and control,
+    for example, whether a command has been requested to be executed;
+    and it decides what should be done in the next poll.
+    """
+
+    STATIC_INFO_ATTRIBUTES: Final = (
+        "modbus_register_map_revision",
+        "pcb_revision",
+        "cpu_id",
+        "chip_id",
+        "firmware_version",
+    )
+
+    FNDH_STATUS_ATTRIBUTES: Final = (
+        "uptime",
+        "status",
+        "led_pattern",
+        "psu48v_voltages",
+        "psu5v_voltage",
+        "psu48v_current",
+        "psu48v_temperature",
+        "psu5v_temperature",
+        "pcb_temperature",
+        "outside_temperature",
+    )
+
+    FNDH_PORTS_STATUS_ATTRIBUTES: Final = (
+        "ports_connected",
+        "port_forcings",
+        "port_breakers_tripped",
+        "ports_desired_power_when_online",
+        "ports_desired_power_when_offline",
+        "ports_power_sensed",
+    )
+
+    SMARTBOX_STATUS_ATTRIBUTES: Final = (
+        "uptime",
+        "status",
+        "led_pattern",
+        "input_voltage",
+        "power_supply_output_voltage",
+        "power_supply_temperature",
+        "outside_temperature",
+        "pcb_temperature",
+    )
+
+    SMARTBOX_PORTS_STATUS_ATTRIBUTES: Final = (
+        "ports_connected",
+        "port_forcings",
+        "port_breakers_tripped",
+        "ports_desired_power_when_online",
+        "ports_desired_power_when_offline",
+        "ports_power_sensed",
+        "ports_current_draw",
+    )
+
+    def __init__(self, logger: logging.Logger) -> None:
+        """
+        Initialise a new instance.
+
+        :param logger: a logger.
+        """
+        self._logger = logger
+
+        self._led_pattern_writes: dict[int, str] = {}
+        self._port_power_changes: dict[
+            tuple[int, int], tuple[Literal[True], bool] | Literal[False]
+        ] = {}
+        self._port_breaker_resets: dict[tuple[int, int], bool] = {}
+        self._read_request_iterator = read_request_iterator()
+
+    def desire_info(self) -> None:
+        """Register a desire to obtain static info about the PaSD devices."""
+        self._read_request_iterator = read_request_iterator()
+
+    def desire_port_on(
+        self, device_id: int, port_number: int, stay_on_when_offline: bool
+    ) -> None:
+        """
+        Register a request to turn a port on.
+
+        :param device_id: the device number.
+            This is 0 for the FNDH, otherwise a smartbox number.
+        :param port_number: the number of the port to be turned on.
+        :param stay_on_when_offline: whether the port should remain on
+            if MCCS loses its connection with the PaSD.
+        """
+        self._port_power_changes[(device_id, port_number)] = (
+            True,
+            stay_on_when_offline,
+        )
+
+    def desire_port_off(self, device_id: int, port_number: int) -> None:
+        """
+        Register a request to turn a port off.
+
+        :param device_id: the device number.
+            This is 0 for the FNDH, otherwise a smartbox number.
+        :param port_number: the number of the port to be turned off.
+        """
+        self._port_power_changes[(device_id, port_number)] = False
+
+    def desire_port_breaker_reset(self, device_id: int, port_number: int) -> None:
+        """
+        Register a request to reset a port breaker.
+
+        :param device_id: the device number.
+            This is 0 for the FNDH, otherwise a smartbox number.
+        :param port_number: the number of the port whose breaker is to
+            be reset.
+        """
+        self._port_breaker_resets[(device_id, port_number)] = True
+
+    def set_led_pattern(self, device_id: int, pattern: str) -> None:
+        """
+        Register a request to set a device's LED pattern.
+
+        :param device_id: the device number.
+            This is 0 for the FNDH, otherwise a smartbox number.
+        :param pattern: the name of the LED pattern.
+        """
+        self._led_pattern_writes[device_id] = pattern
+
+    def _get_led_pattern_request(self) -> PasdBusRequest | None:
+        if not self._led_pattern_writes:
+            return None
+
+        device_id, pattern = self._led_pattern_writes.popitem()
+        return PasdBusRequest(device_id, "set_led_pattern", [pattern])
+
+    def _get_port_breaker_reset_request(
+        self,
+    ) -> PasdBusRequest | None:
+        if not self._port_breaker_resets:
+            return None
+
+        (device_id, port_number), _ = self._port_breaker_resets.popitem()
+        return PasdBusRequest(device_id, "reset_port_breaker", [port_number])
+
+    def _get_port_power_request(self) -> PasdBusRequest | None:
+        if not self._port_power_changes:
+            return None
+
+        (device_id, port_number), change = self._port_power_changes.popitem()
+        match change:
+            case (True, stay_on_when_offline):
+                return PasdBusRequest(
+                    device_id, "turn_port_on", [port_number, stay_on_when_offline]
+                )
+            case False:
+                return PasdBusRequest(device_id, "turn_port_off", [port_number])
+            case _:
+                raise AssertionError("This should be unreachable.")
+
+    def _get_read_request(self) -> PasdBusRequest:
+        read_request = next(self._read_request_iterator)
+
+        match read_request:
+            case (device_id, "INFO"):
+                request = PasdBusRequest(
+                    device_id, None, list(self.STATIC_INFO_ATTRIBUTES)
+                )
+            case (0, "STATUS"):
+                request = PasdBusRequest(0, None, list(self.FNDH_STATUS_ATTRIBUTES))
+            case (0, "PORTS"):
+                request = PasdBusRequest(
+                    0, None, list(self.FNDH_PORTS_STATUS_ATTRIBUTES)
+                )
+            case (smartbox_id, "STATUS"):
+                request = PasdBusRequest(
+                    smartbox_id, None, list(self.SMARTBOX_STATUS_ATTRIBUTES)
+                )
+            case (smartbox_id, "PORTS"):
+                request = PasdBusRequest(
+                    smartbox_id,
+                    None,
+                    list(self.SMARTBOX_PORTS_STATUS_ATTRIBUTES),
+                )
+            case _:
+                message = f"Unrecognised poll request {repr(read_request)}"
+                self._logger.error(message)
+                raise AssertionError(message)
+
+        return request
+
+    def get_request(self) -> PasdBusRequest:
+        """
+        Return a description of what should be done on the next poll.
+
+        :return: a description of what should be done on the next poll.
+        """
+        request = self._get_led_pattern_request()
+        if request is not None:
+            return request
+
+        request = self._get_port_breaker_reset_request()
+        if request is not None:
+            return request
+
+        request = self._get_port_power_request()
+        if request is not None:
+            return request
+
+        return self._get_read_request()
+
+
+class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusResponse]):
     """A component manager for a PaSD bus."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -34,10 +299,9 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         port: int,
         timeout: float,
         logger: logging.Logger,
-        max_workers: int,
         communication_state_callback: Callable[[CommunicationStatus], None],
         component_state_callback: Callable[..., None],
-        # TODO callbacks for changes to antenna power, smartbox power, etc
+        pasd_device_state_callback: Callable[..., None],
     ) -> None:
         """
         Initialise a new instance.
@@ -47,12 +311,22 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         :param timeout: maximum time to wait for a response to a server
             request (in seconds).
         :param logger: a logger for this object to use
-        :param max_workers: no of worker threads
         :param communication_state_callback: callback to be
             called when the status of the communications channel between
             the component manager and its component changes
-        :param component_state_callback: callback to be called when the
-            component state changes
+        :param component_state_callback: callback to be called
+            when the component state changes. Note this in this case the
+            "component" is the PaSD bus itself. The PaSD bus has no
+            no monitoring points. All we can do is infer that it is
+            powered on and not in fault, from the fact that we receive
+            responses to our requests.
+        :param pasd_device_state_callback: callback to be called
+            when one of the PaSD devices (i.e. the FNDH or one of the
+            smartboxes) provides updated information about its state.
+            This callable takes a single positional argument, which is
+            the device number (0 for FNDH, otherwise the smartbox
+            number), and keyword arguments representing the state
+            changes.
         """
         tcp_client = TcpClient(host, port, timeout)
         marshaller = SentinelBytesMarshaller(b"\n")
@@ -60,51 +334,16 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
             tcp_client, marshaller.marshall, marshaller.unmarshall
         )
         self._pasd_bus_api_client = PasdBusJsonApiClient(application_client)
+        self._pasd_bus_device_state_callback = pasd_device_state_callback
+
+        self._poll_request_provider = PasdBusRequestProvider(logger)
 
         super().__init__(
             logger,
             communication_state_callback,
             component_state_callback,
-            max_workers=max_workers,
-            power=None,
-            fault=None,
             fndh_status=None,
         )
-
-    def start_communicating(self: PasdBusComponentManager) -> None:
-        """
-        Start communicating with the component.
-
-        (This is a temporary implementation that checks for
-        communication with the PaSD by querying a single attribute.
-        In future this will be updated to lauch a polling loop.)
-        """
-        # TODO: This is a temporary implementation that only makes a
-        # single request.
-        if self.communication_state == CommunicationStatus.ESTABLISHED:
-            return
-        if self.communication_state == CommunicationStatus.DISABLED:
-            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
-            self._update_communication_state(CommunicationStatus.ESTABLISHED)
-
-            if self.fndh_status == "OK":
-                self._update_component_state(
-                    power=PowerState.ON,
-                    fault=False,
-                    fndh_status="OK",
-                )
-
-    def stop_communicating(self: PasdBusComponentManager) -> None:
-        """
-        Break off communicating with the component.
-
-        (This is a temporary implementation that doesn't do anything.
-        In future it will stop the polling loop.)
-        """
-        if self.communication_state == CommunicationStatus.DISABLED:
-            return
-        self._update_communication_state(CommunicationStatus.DISABLED)
-        self._update_component_state(power=None, fault=None)
 
     def off(
         self: PasdBusComponentManager, task_callback: Optional[Callable] = None
@@ -158,313 +397,179 @@ class PasdBusComponentManager(TaskExecutorComponentManager):
         """
         raise NotImplementedError("The PaSD cannot yet be reset")
 
-    @check_communicating
-    def reload_database(self: PasdBusComponentManager) -> bool:
-        """
-        Tell the PaSD to reload its configuration data.
+    def polling_started(self: PasdBusComponentManager) -> None:
+        """Define actions to be taken when polling starts."""
+        self._poll_request_provider.desire_info()
 
-        :return: whether successful.
-        """
-        return self._pasd_bus_api_client.reload_database()
-
-    @check_communicating
-    def get_fndh_info(self: PasdBusComponentManager) -> FndhInfoType:
-        """
-        Return information about an FNDH controller.
-
-        :return: a dictionary containing information about the FNDH
-            controller.
-        """
-        return self._pasd_bus_api_client.get_fndh_info()
-
-    @check_communicating
-    def set_fndh_service_led(
+    def get_request(
         self: PasdBusComponentManager,
-        led_on: bool,
-    ) -> Optional[bool]:
+    ) -> PasdBusRequest:
         """
-        Turn on/off the FNDH's blue service indicator LED.
+        Return the action/s to be taken in the next poll.
 
-        :param led_on: whether the LED should be on.
-
-        :returns: whether successful, or None if there was nothing to do
+        :return: attributes to be read and commands to be executed in
+            the next poll.
         """
-        return self._pasd_bus_api_client.set_fndh_service_led(led_on)
+        return self._poll_request_provider.get_request()
+
+    def poll(
+        self: PasdBusComponentManager, poll_request: PasdBusRequest
+    ) -> PasdBusResponse:
+        """
+        Poll the PaSD hardware.
+
+        Connect to the hardware, execute a command or read some values.
+
+        :param poll_request: specification of the actions to be taken in
+            this poll.
+
+        :return: responses to queries in this poll
+        """
+        if poll_request.command is None:
+            response_data = self._pasd_bus_api_client.read_attributes(
+                poll_request.device_id, *poll_request.arguments
+            )
+        else:
+            response_data = self._pasd_bus_api_client.execute_command(
+                poll_request.device_id, poll_request.command, *poll_request.arguments
+            )
+        return PasdBusResponse(
+            poll_request.device_id, poll_request.command, response_data
+        )
+
+    def poll_succeeded(
+        self: PasdBusComponentManager, poll_response: PasdBusResponse
+    ) -> None:
+        """
+        Handle the receipt of new polling values.
+
+        This is a hook called by the poller when values have been read
+        during a poll.
+
+        :param poll_response: response to the pool, including any values
+            read.
+        """
+        self.logger.info("Handing results of successful poll.")
+        super().poll_succeeded(poll_response)
+
+        self._update_component_state(power=PowerState.ON, fault=False)
+
+        if poll_response.command is None:
+            self._pasd_bus_device_state_callback(
+                poll_response.device_id,
+                **(poll_response.data),
+            )
 
     @check_communicating
-    def is_fndh_port_power_sensed(
+    def reset_fndh_port_breaker(
         self: PasdBusComponentManager,
         port_number: int,
-    ) -> bool:
+    ) -> None:
         """
-        Return whether power is sensed on a specified FNDH port.
+        Reset an FNDH port breaker.
 
-        :param port_number: number of the FNDH port for which to check
-            if power is sensed.
-
-        :return: whether power is sensed on the port
+        :param port_number: the number of the port to reset.
         """
-        return self._pasd_bus_api_client.is_fndh_port_power_sensed(port_number)
+        self._poll_request_provider.desire_port_breaker_reset(0, port_number)
 
     @check_communicating
-    def get_fndh_port_forcing(
-        self: PasdBusComponentManager, port_number: int
-    ) -> Optional[bool]:
+    def turn_fndh_port_on(
+        self: PasdBusComponentManager,
+        port_number: int,
+        stay_on_when_offline: bool,
+    ) -> None:
         """
-        Return the forcing status of a specified FNDH port.
+        Turn on a specified FNDH port.
 
-        :param port_number: number of the FNDH port for which the
-            forcing status is sought
-
-        :return: the forcing status of a specified FNDH port. True means
-            the port has been locally forced on. False means the port
-            has been locally forced off. None means the port has not
-            been locally forced.
+        :param port_number: the number of the port.
+        :param stay_on_when_offline: whether the port should remain on
+            if monitoring and control goes offline.
         """
-        return self._pasd_bus_api_client.get_fndh_port_forcing(port_number)
+        self._poll_request_provider.desire_port_on(0, port_number, stay_on_when_offline)
 
     @check_communicating
-    def get_smartbox_info(
-        self: PasdBusComponentManager, smartbox_number: int
-    ) -> SmartboxInfoType:
+    def turn_fndh_port_off(
+        self: PasdBusComponentManager,
+        port_number: int,
+    ) -> None:
         """
-        Return information about a smartbox.
+        Turn off a specified FNDH port.
 
-        :param smartbox_number: the number of the smartbox for which to
-            return information
-
-        :return: a dictionary containing information about the smartbox.
+        :param port_number: the number of the port.
         """
-        return self._pasd_bus_api_client.get_smartbox_info(smartbox_number)
+        self._poll_request_provider.desire_port_off(0, port_number)
 
     @check_communicating
-    def is_smartbox_port_power_sensed(
+    def set_fndh_led_pattern(
+        self: PasdBusComponentManager,
+        led_pattern: str,
+    ) -> None:
+        """
+        Set the FNDH's LED pattern.
+
+        :param led_pattern: name of the LED pattern.
+            Options are "OFF" and "SERVICE".
+        """
+        self._poll_request_provider.set_led_pattern(0, led_pattern)
+
+    @check_communicating
+    def reset_smartbox_port_breaker(
         self: PasdBusComponentManager,
         smartbox_id: int,
-        smartbox_port_number: int,
-    ) -> bool:
+        port_number: int,
+    ) -> None:
         """
-        Return whether power is sensed at a given smartbox port.
+        Reset a smartbox port's breaker.
 
-        :param smartbox_id: id of the smartbox to check
-        :param smartbox_port_number: number of the port to check
-
-        :return: whether power is sensed that the specified port.
+        :param smartbox_id: id of the smartbox being addressed.
+        :param port_number: the number of the port to reset.
         """
-        return self._pasd_bus_api_client.is_smartbox_port_power_sensed(
-            smartbox_id, smartbox_port_number
+        self._poll_request_provider.desire_port_breaker_reset(smartbox_id, port_number)
+
+    @check_communicating
+    def turn_smartbox_port_on(
+        self: PasdBusComponentManager,
+        smartbox_id: int,
+        port_number: int,
+        stay_on_when_offline: bool,
+    ) -> None:
+        """
+        Turn on a specified smartbox port.
+
+        :param smartbox_id: id of the smartbox being addressed.
+        :param port_number: the number of the port.
+        :param stay_on_when_offline: whether the port should remain on
+            if monitoring and control goes offline.
+        """
+        self._poll_request_provider.desire_port_on(
+            smartbox_id, port_number, stay_on_when_offline
         )
 
     @check_communicating
-    def get_smartbox_ports_power_sensed(
-        self: PasdBusComponentManager, smartbox_id: int
-    ) -> list[bool]:
-        """
-        Return whether power is sensed at each port of a smartbox.
-
-        :param smartbox_id: id of the smartbox for which we want to know
-            if power is sensed.
-
-        :return: whether each smartbox should be on when MCCS control of
-            the PaSD is lost.
-        """
-        return self._pasd_bus_api_client.get_smartbox_ports_power_sensed(smartbox_id)
-
-    @check_communicating
-    def set_smartbox_service_led(
+    def turn_smartbox_port_off(
         self: PasdBusComponentManager,
         smartbox_id: int,
-        led_on: bool,
-    ) -> Optional[bool]:
-        """
-        Turn on the blue service indicator LED for a smartbox.
-
-        :param smartbox_id: the smartbox to have its LED switched
-        :param led_on: whether the LED should be on.
-
-        :return: whether successful, or None if there was nothing to do
-        """
-        return self._pasd_bus_api_client.set_smartbox_service_led(smartbox_id, led_on)
-
-    @check_communicating
-    def get_antenna_info(
-        self: PasdBusComponentManager, antenna_number: int
-    ) -> AntennaInfoType:
-        """
-        Return information about a antenna.
-
-        :param antenna_number: the number of the antenna for which to
-            return information
-
-        :return: a dictionary containing information about the antenna.
-        """
-        return self._pasd_bus_api_client.get_antenna_info(antenna_number)
-
-    @check_communicating
-    def turn_smartbox_on(
-        self: PasdBusComponentManager,
-        smartbox_id: int,
-    ) -> Optional[bool]:
-        """
-        Turn on a smartbox.
-
-        :param smartbox_id: the id of the smartbox to turn on.
-
-        :return: whether successful, or None if there was nothing to do.
-        """
-        return self._pasd_bus_api_client.turn_smartbox_on(smartbox_id)
-
-    @check_communicating
-    def turn_smartbox_off(
-        self: PasdBusComponentManager,
-        smartbox_id: int,
-    ) -> Optional[bool]:
-        """
-        Turn off a smartbox.
-
-        :param smartbox_id: the id of the smartbox to turn off.
-
-        :return: whether successful, or None if there was nothing to do.
-        """
-        return self._pasd_bus_api_client.turn_smartbox_off(smartbox_id)
-
-    @check_communicating
-    def turn_antenna_on(
-        self: PasdBusComponentManager,
-        antenna_id: int,
-    ) -> Optional[bool]:
-        """
-        Turn on an antenna.
-
-        :param antenna_id: the id of the antenna to turn on.
-
-        :return: whether successful, or None if there was nothing to do.
-        """
-        return self._pasd_bus_api_client.turn_antenna_on(antenna_id)
-
-    @check_communicating
-    def turn_antenna_off(
-        self: PasdBusComponentManager,
-        antenna_id: int,
-    ) -> Optional[bool]:
-        """
-        Turn off an antenna.
-
-        :param antenna_id: the id of the antenna to turn off.
-
-        :return: whether successful, or None if there was nothing to do.
-        """
-        return self._pasd_bus_api_client.turn_antenna_off(antenna_id)
-
-    @check_communicating
-    def reset_antenna_breaker(
-        self: PasdBusComponentManager,
-        antenna_id: int,
-    ) -> Optional[bool]:
-        """
-        Reset an antenna's port breaker.
-
-        :param antenna_id: the id of the antenna to turn off.
-
-        :return: whether successful, or None if there was nothing to do.
-        """
-        return self._pasd_bus_api_client.reset_antenna_breaker(antenna_id)
-
-    @check_communicating
-    def get_antenna_forcing(
-        self: PasdBusComponentManager, antenna_id: int
-    ) -> Optional[bool]:
-        """
-        Return the forcing status of a specified antenna.
-
-        :param antenna_id: the id of the antenna for which the forcing
-            status is required.
-
-        :return: the forcing status of the antenna. True means the
-            antenna is forced on. False means it is forced off. None
-            means it is not forced.
-        """
-        return self._pasd_bus_api_client.get_antenna_forcing(antenna_id)
-
-    @check_communicating
-    def update_status(
-        self: PasdBusComponentManager,
+        port_number: int,
     ) -> None:
         """
-        Update the status of devices accessible through this bus.
+        Turn off a specified smartbox port.
 
-        At present this does nothing except update a timestamp.
+        :param smartbox_id: id of the smartbox being addressed.
+        :param port_number: the number of the port.
         """
-        self._pasd_bus_api_client.update_status()
-
-    def __getattr__(
-        self: PasdBusComponentManager,
-        name: str,
-        default_value: Any = None,
-    ) -> Any:
-        """
-        Get value for an attribute not found in the usual way.
-
-        Implemented to check against a list of attributes to pass down
-        to the simulator. The intent is to avoid having to implement a
-        whole lot of methods that simply call the corresponding method
-        on the simulator. The only reason this is possible is because
-        the simulator has much the same interface as its component
-        manager.
-
-        :param name: name of the requested attribute
-        :param default_value: value to return if the attribute is not
-            found
-
-        :return: the requested attribute
-        """
-        if name in [
-            "fndh_psu48v_voltages",
-            "fndh_psu5v_voltage",
-            "fndh_psu48v_current",
-            "fndh_psu48v_temperature",
-            "fndh_psu5v_temperature",
-            "fndh_pcb_temperature",
-            "fndh_outside_temperature",
-            "fndh_status",
-            "fndh_service_led_on",
-            "fndh_ports_power_sensed",
-            "fndh_ports_connected",
-            "fndh_port_forcings",
-            "fndh_ports_desired_power_online",
-            "fndh_ports_desired_power_offline",
-            "smartbox_input_voltages",
-            "smartbox_power_supply_output_voltages",
-            "smartbox_statuses",
-            "smartbox_power_supply_temperatures",
-            "smartbox_outside_temperatures",
-            "smartbox_pcb_temperatures",
-            "smartbox_service_leds_on",
-            "smartbox_fndh_ports",
-            "smartboxes_desired_power_online",
-            "smartboxes_desired_power_offline",
-            "antennas_online",
-            "antenna_forcings",
-            "antennas_tripped",
-            "antennas_power_sensed",
-            "antennas_desired_power_online",
-            "antennas_desired_power_offline",
-            "antenna_currents",
-        ]:
-            return self._get_from_component(name)
-        return default_value
+        self._poll_request_provider.desire_port_off(smartbox_id, port_number)
 
     @check_communicating
-    def _get_from_component(
+    def set_smartbox_led_pattern(
         self: PasdBusComponentManager,
-        name: str,
-    ) -> Any:
+        smartbox_id: int,
+        led_pattern: str,
+    ) -> None:
         """
-        Get an attribute from the component (if we are communicating with it).
+        Set a smartbox's LED pattern.
 
-        :param name: name of the attribute to get.
-
-        :return: the attribute value
+        :param smartbox_id: the smartbox to have its LED pattern set
+        :param led_pattern: name of the LED pattern.
+            Options are "OFF" and "SERVICE".
         """
-        # This one-liner is only a method so that we can decorate it.
-        return getattr(self._pasd_bus_api_client, name)
+        self._poll_request_provider.set_led_pattern(smartbox_id, led_pattern)

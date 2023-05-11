@@ -44,7 +44,7 @@ flake8-builtins = "^1.5.3"
 flake8-docstrings = "^1.6.0"
 flake8-use-fstring = "^1.4"
 flake8-rst-docstrings = "^0.2.7"
-mypy = "^0.971"
+mypy = "^1.2.0"
 pep8-naming = "^0.13.1"
 types-PyYAML = "^6.0.11"
 isort = "^5.10.1"
@@ -53,6 +53,8 @@ ska-tango-testing = "^0.5.3"
 [tool.poetry.scripts]
 MccsPasdBus = "ska_low_mccs_pasd.pasd_bus.pasd_bus_device:main"
 PasdBusSimulatorServer = "ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator_server:main"
+MccsSmartBox = "ska_low_mccs_pasd.smart_box.smart_box_device:main"
+MccsFNDH = "ska_low_mccs_pasd.fndh.fndh_device:main"
 
 [tool.pytest.ini_options]
 testpaths = "tests/"
