@@ -94,7 +94,7 @@ def pasd_is_available() -> None:
 
 
 @given("a smartbox", target_fixture="smartbox_id")
-def smartbox_id() -> int:
+def smartbox_id_fixture() -> int:
     """
     Return the number of the smartbox under test.
 
