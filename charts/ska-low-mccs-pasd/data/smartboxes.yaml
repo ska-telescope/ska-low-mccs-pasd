@@ -1,4 +1,4 @@
-{{- $defaults := dict "enabled" true "fndhPort" 0 "logging_level_default" 3}}
+{{- $defaults := dict "enabled" true "logging_level_default" 3}}
 {{- $smartboxes := .Values.deviceServers.smartboxes}}
 
 
@@ -33,7 +33,7 @@ server:
             - {{$this_smartbox.smartBoxNumber | quote}}
           - name: "FndhPort"
             values: 
-            - {{pluck "fndhPort" $this_smartbox $smartboxes $defaults | first | toString | quote}}
+            - {{$this_smartbox.fndhPort | quote}}
           - name: "LoggingLevelDefault"
             values: 
             - {{pluck "logging_level_default" $this_smartbox $smartboxes $defaults | first | toString | quote}}
