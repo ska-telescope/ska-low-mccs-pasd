@@ -33,7 +33,7 @@ server:
             - {{$this_smartbox.smartBoxNumber | quote}}
           - name: "FndhPort"
             values: 
-            - {{$this_smartbox.fndhPort | quote}}
+            - {{$this_smartbox.fndhPort | toString | quote}}
           - name: "LoggingLevelDefault"
             values: 
             - {{pluck "logging_level_default" $this_smartbox $smartboxes $defaults | first | toString | quote}}
