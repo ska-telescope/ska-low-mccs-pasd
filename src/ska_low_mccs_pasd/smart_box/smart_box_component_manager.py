@@ -8,6 +8,7 @@
 """This module implements the component management for smartbox."""
 from __future__ import annotations
 
+import json
 import logging
 import re
 import threading
@@ -119,10 +120,8 @@ class SmartBoxComponentManager(
         # power state
         assert self._fndh_proxy
         if self._fndh_port:
-            if getattr(self._fndh_proxy, f"Port{self._fndh_port}PowerState"):
-                self._component_state_changed_callback(power=PowerState.ON)
-            else:
-                self._component_state_changed_callback(power=PowerState.OFF)
+            my_power = getattr(self._fndh_proxy, f"Port{self._fndh_port}PowerState")
+            self._component_state_changed_callback(power=my_power)
         else:
             self.logger.info(
                 "Smartbox has unknown FNDH port therefore PowerState UNKNOWN."
@@ -271,23 +270,20 @@ class SmartBoxComponentManager(
     def _power_state_change(
         self: SmartBoxComponentManager,
         event_name: str,
-        port_on: bool,
+        power_state: PowerState,
         event_quality: tango.AttrQuality,
     ) -> None:
         """
         Pasdbus health state callback.
 
         :param event_name: The event_name
-        :param port_on: True is port is on.
+        :param power_state: The powerstate of the port.
         :param event_quality: The event_quality
         """
         # TODO: MCCS-1485 - allow unsubscribe event, this will mean will will not need
         # this if statement. Since when
         if event_name.lower() == f"port{self._fndh_port}powerstate":
-            if port_on:
-                self._component_state_changed_callback(power=PowerState.ON)
-            else:
-                self._component_state_changed_callback(power=PowerState.OFF)
+            self._component_state_changed_callback(power=power_state)
         else:
             return
 
@@ -328,8 +324,11 @@ class SmartBoxComponentManager(
             if self._fndh_port:
                 if self._pasd_bus_proxy is None:
                     raise ValueError(f"Power on smartbox '{self._fndh_port} failed'")
+                json_argument = json.dumps(
+                    {"port_number": self._fndh_port, "stay_on_when_offline": True}
+                )
                 ([result_code], [return_message]) = self._pasd_bus_proxy.TurnFndhPortOn(
-                    self._fndh_port
+                    json_argument
                 )
             else:
                 self.logger.info(

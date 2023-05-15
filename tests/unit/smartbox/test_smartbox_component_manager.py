@@ -261,7 +261,7 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_not_called()
 
         # Now mock start_communicating with a known fndh_port:
-        mocked_fndh_proxy.Port2PowerState = False
+        mocked_fndh_proxy.Port2PowerState = PowerState.OFF
         smartbox_component_manager._fndh_port = 2
 
         smartbox_component_manager.start_communicating()

@@ -139,23 +139,23 @@ class TestSmartBoxPasdBusIntegration:
 
         # check the current value of port 2 and check FNDH and pasdbus agree.
         this_smartbox_port = 2
-        is_fndh_port_on = fndh_device.IsPortOn(this_smartbox_port)
+        fndh_port_power_state = fndh_device.IsPortOn(this_smartbox_port)
         is_pasd_port_on = pasd_bus_device.fndhPortsPowerSensed[this_smartbox_port - 1]
         if not is_pasd_port_on:
-            is_pasd_port_on = PowerState.OFF
+            pasd_reports_fndh_port_power_state = PowerState.OFF
         elif is_pasd_port_on:
-            is_pasd_port_on = PowerState.ON
+            pasd_reports_fndh_port_power_state = PowerState.ON
         else:
-            is_pasd_port_on = PowerState.UNKNOWN
+            pasd_reports_fndh_port_power_state = PowerState.UNKNOWN
 
-        assert is_fndh_port_on == is_pasd_port_on
+        assert fndh_port_power_state == pasd_reports_fndh_port_power_state
 
         # Update the smartbox Fndhport and check it is called back
         assert smartbox_device.fndhPort == 0  # 0 means uninitialised.
         smartbox_device.fndhPort = this_smartbox_port
 
         # check that the smartbox gets a callback with the correct power state.
-        if is_fndh_port_on:
+        if fndh_port_power_state is PowerState.ON:
             change_event_callbacks["smartbox_state"].assert_change_event(
                 tango.DevState.ON
             )
