@@ -1,6 +1,18 @@
 # Version History
 
 ## unrelease
+## 0.2.0
+
+* MCCS-1345 - Update ska-low-mccs-pasd to use ska-tango-testing
+* MCCS-1445 - Modify configuration file path, update pasdbus entry point
+* MCCS-1403 - Create standalone PaSD simulator
+* MCCS-1404 - Helm chart update for PaSD simulator
+* MCCS-1454 - Add log statements to the PASD simulator
+* MCCS-1470 - Rewrite PaSD simulator and driver to address one PaSD device at a time.
+* MCCS-1461 - Create Xray tickets and dummy implementation for PASD test set
+* MCCS-1475 - Reimplement PaSD bus component manager as a poller.
+* MCCS-768  - Implement Smartbox device
+* MCCS-764  - Implement FNDH device
 
 ## 0.1.0
 
