@@ -23,7 +23,7 @@ server:
           properties:
           - name: "PasdFQDN"
             values: 
-            - {{$this_fndh.pasdFQDN | quote}}
+            - {{$this_fndh.pasdFQDN | toString |  quote}}
           - name: "LoggingLevelDefault"
             values: 
             - {{pluck "logging_level_default" $this_fndh $FNDHs $defaults | first | toString | quote}}

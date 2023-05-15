@@ -24,13 +24,13 @@ server:
           properties:
           - name: "PasdFQDN"
             values: 
-            - {{$this_smartbox.pasdFQDN | quote}}
+            - {{$this_smartbox.pasdFQDN | toString | quote}}
           - name: "FndhFQDN"
             values: 
-            - {{$this_smartbox.fndhFQDN | quote}}
+            - {{$this_smartbox.fndhFQDN | toString | quote}}
           - name: "SmartBoxNumber"
             values: 
-            - {{$this_smartbox.smartBoxNumber | quote}}
+            - {{$this_smartbox.smartBoxNumber | toString | quote}}
           - name: "FndhPort"
             values: 
             - {{$this_smartbox.fndhPort | toString | quote}}
