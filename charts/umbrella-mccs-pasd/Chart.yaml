@@ -14,7 +14,7 @@ dependencies:
     version: 0.9.1
     repository: https://artefact.skao.int/repository/helm-internal
   - name: ska-low-mccs-pasd
-    version: 0.1.0  # VERSION: Used to update tags on release - DO NOT REMOVE COMMENT
+    version: 0.2.0
     repository: file://../ska-low-mccs-pasd
   - name: ska-tango-taranta-dashboard
     version: 1.3.0

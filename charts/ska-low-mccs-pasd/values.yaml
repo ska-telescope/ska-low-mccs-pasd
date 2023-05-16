@@ -77,7 +77,7 @@ low_mccs_pasd:
   image:
     registry: artefact.skao.int
     image: ska-low-mccs-pasd
-    tag: 0.2.0  # VERSION: Used to update tags on release - DO NOT REMOVE COMMENT
+    tag: 0.2.0
     pullPolicy: IfNotPresent
 
 
