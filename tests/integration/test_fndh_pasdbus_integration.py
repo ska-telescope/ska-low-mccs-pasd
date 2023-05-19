@@ -91,12 +91,11 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["pasd_bus_state"].assert_not_called()
 
-        # The fndh should enter UNKNOWN, then it should check with the
-        # The fndh that the port this subrack is attached to
-        # has power, this is simulated as off.
+        # The fndh should enter UNKNOWN, if communication can be established
+        # the FNDH has power.
         fndh_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.OFF)
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
         # ================================================================
 
     def test_communication(
@@ -177,7 +176,7 @@ class TestfndhPasdBusIntegration:
         fndh_device.adminMode = AdminMode.ONLINE
 
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.OFF)
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["fndh_state"].assert_not_called()
 
         assert (
@@ -308,7 +307,7 @@ class TestfndhPasdBusIntegration:
         fndh_device.adminMode = AdminMode.ONLINE
 
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.OFF)
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["fndh_state"].assert_not_called()
 
         fndh_device.subscribe_event(
@@ -320,12 +319,12 @@ class TestfndhPasdBusIntegration:
             PowerState.OFF
         )
 
-        assert fndh_device.IsPortOn(2) == PowerState.OFF
+        assert not fndh_device.IsPortOn(2)
         fndh_simulator.turn_port_on(2)
 
         change_event_callbacks["fndhPort2PowerState"].assert_change_event(PowerState.ON)
 
-        assert fndh_device.IsPortOn(2) == PowerState.ON
+        assert fndh_device.IsPortOn(2)
 
 
 @pytest.fixture(name="change_event_callbacks")

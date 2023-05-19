@@ -153,64 +153,6 @@ class TestFndhComponentManager:
     @pytest.mark.parametrize(
         (
             "component_manager_command",
-            "pasd_proxy_command",
-            "component_manager_command_argument",
-            "pasd_proxy_response",
-            "expected_manager_result",
-        ),
-        [
-            (
-                "is_port_on",
-                "fndhPortsPowerSensed",
-                4,
-                False,
-                False,
-            ),
-        ],
-    )
-    def test_attributes(  # pylint: disable=too-many-arguments
-        self: TestFndhComponentManager,
-        fndh_component_manager: FndhComponentManager,
-        mocked_pasd_proxy: unittest.mock.Mock,
-        component_manager_command: Any,
-        pasd_proxy_command: Any,
-        component_manager_command_argument: Any,
-        pasd_proxy_response: Any,
-        expected_manager_result: Any,
-    ) -> None:
-        """
-        Test the FNDH object attributes.
-
-        :param fndh_component_manager: A FNDH component manager
-            with communication established.
-        :param mocked_pasd_proxy: a unittest.mock
-        :param component_manager_command: command to issue to the component manager
-        :param pasd_proxy_command: component to mock on proxy
-        :param component_manager_command_argument: argument to call on component manager
-        :param pasd_proxy_response: mocked response
-        :param expected_manager_result: expected response from the call
-        """
-        # set up the proxy response
-        if component_manager_command_argument is None:
-            setattr(mocked_pasd_proxy, pasd_proxy_command, pasd_proxy_response)
-            assert (
-                getattr(fndh_component_manager, component_manager_command)
-                == expected_manager_result
-            )
-        else:
-            mock_response = unittest.mock.MagicMock(return_value=pasd_proxy_response)
-            mock_response.__getitem__.return_value = pasd_proxy_response
-            setattr(mocked_pasd_proxy, pasd_proxy_command, mock_response)
-            assert (
-                getattr(fndh_component_manager, component_manager_command)(
-                    component_manager_command_argument
-                )
-                == expected_manager_result
-            )
-
-    @pytest.mark.parametrize(
-        (
-            "component_manager_command",
             "component_manager_command_argument",
             "pasd_proxy_command",
             "pasd_proxy_response",

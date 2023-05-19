@@ -268,10 +268,12 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             """
             port_id = args[0]
             attr_name = f"Port{port_id}PowerState"
-            return self._device._fndh_attributes[attr_name.lower()]
+            if self._device._fndh_attributes[attr_name.lower()] == PowerState.ON:
+                return True
+            return False
 
     @command(dtype_in="DevULong", dtype_out=int)
-    def IsPortOn(self: MccsFNDH, argin: int) -> int:  # type: ignore[override]
+    def IsPortOn(self: MccsFNDH, argin: int) -> bool:  # type: ignore[override]
         """
         Check power state of a port.
 

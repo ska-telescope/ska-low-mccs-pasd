@@ -436,6 +436,7 @@ def tango_harness_fixture(
             MccsSmartBox,
             PasdFQDN=pasd_bus_name,
             FndhFQDN=fndh_name,
+            FndhPort=smartbox_no + 1,
             SmartBoxNumber=smartbox_no + 1,
             LoggingLevelDefault=int(LoggingLevel.OFF),
         )

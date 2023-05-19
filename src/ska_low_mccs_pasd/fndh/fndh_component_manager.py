@@ -119,15 +119,18 @@ class FndhComponentManager(TaskExecutorComponentManager):
         try:
             if self.communication_state != CommunicationStatus.ESTABLISHED:
                 self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
-                self._pasd_bus_proxy.ping()
-                # TODO: Check the pasd_bus is communicating.
-                # here we just assume it is.
                 self._update_communication_state(CommunicationStatus.ESTABLISHED)
-                # Check the ports on the fndh for power.
-                if any(self._pasd_bus_proxy.fndhPortsPowerSensed):  # type: ignore
+
+                # If the PaSD_BUS device can poll the device under control it is ON.
+                # If we can poll the hardware it means the communication box has
+                # power, therefore the FNDH has power.
+                if self._pasd_bus_proxy.state() == tango.DevState.ON:
                     self._component_state_changed_callback(power=PowerState.ON)
                 else:
-                    self._component_state_changed_callback(power=PowerState.OFF)
+                    # This will propagate faults from PaSD bus
+                    self._component_state_changed_callback(
+                        power=self._pasd_bus_proxy.state()
+                    )
 
         except Exception as e:  # pylint: disable=broad-except
             self._component_state_changed_callback(fault=True)
@@ -391,14 +394,3 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 result=f"Power on port '{port_number} success'",
             )
         return result_code, unique_id
-
-    def is_port_on(self: FndhComponentManager, port_number: int) -> bool:
-        """
-        Check the power for a port.
-
-        :param port_number: The port of interest.
-
-        :return: True if the port is on.
-        """
-        assert self._pasd_bus_proxy
-        return self._pasd_bus_proxy.fndhPortsPowerSensed[port_number]  # type: ignore

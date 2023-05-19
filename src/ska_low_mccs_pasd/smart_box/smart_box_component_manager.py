@@ -29,6 +29,63 @@ from ska_tango_base.executor import TaskExecutorComponentManager
 __all__ = ["SmartBoxComponentManager"]
 
 
+class Port:
+    """A instance of a Smartbox Port."""
+
+    def __init__(
+        self,
+        component_manager: TaskExecutorComponentManager,
+        port_id: int,
+        logger: logging.Logger,
+    ) -> None:
+        """
+        Initialise a new instance.
+
+        :param port_id: the port id
+        :param component_manager: the component_manager
+        :param logger: a logger for this object to use
+        """
+        self.logger = logger
+        self._port_id = port_id
+        self._component_manager = component_manager
+
+        self.desire_on = False
+        self._task_callback = None
+
+    def set_desire_on(self, task_callback: Optional[Callable]) -> None:
+        """
+        Desire the port to be turned on when the smartbox becomes online.
+
+        :param task_callback: the command_tracker callback
+            for this command.
+        """
+        self.logger.info("Port desired on. To be turned on when smartbox is on.")
+        self.desire_on = True
+        self._task_callback = task_callback  # type: ignore[assignment]
+
+    def turn_on(self, task_callback: Optional[Callable] = None) -> None:
+        """
+        Turn the port on.
+
+        :param task_callback: the command_tracker callback
+            for this command.
+        """
+        self.logger.info(f"Turning on Power to port {self._port_id}.......")
+        assert self._task_callback or task_callback, (
+            "We need task callback inorder to " "keep track of command status"
+        )
+        if task_callback is not None:
+            self._component_manager.turn_on_port(  # type: ignore[attr-defined]
+                self._port_id, task_callback
+            )
+        else:
+            self._component_manager.turn_on_port(  # type: ignore[attr-defined]
+                self._port_id, self._task_callback
+            )
+        self.desire_on = False
+        self._task_callback = None
+
+
 # pylint: disable-next=abstract-method
 class SmartBoxComponentManager(
     TaskExecutorComponentManager
@@ -47,6 +104,7 @@ class SmartBoxComponentManager(
         communication_state_changed_callback: Callable[[CommunicationStatus], None],
         component_state_changed_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
+        port_count: int,
         fndh_port: int,
         pasd_fqdn: str,
         fndh_fqdn: str,
@@ -65,6 +123,7 @@ class SmartBoxComponentManager(
             called when the component state changes
         :param attribute_change_callback: callback to be called when a attribute
             of interest changes.
+        :param port_count: the number of smartbox ports.
         :param fndh_port: the fndh port this smartbox is attached.
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
         :param fndh_fqdn: the fqdn of the fndh to connect to.
@@ -92,11 +151,14 @@ class SmartBoxComponentManager(
         self._fndh_proxy: Optional[MccsDeviceProxy] = _fndh_bus_proxy
         self._fndh_port = fndh_port
         self.logger = logger
+        self.ports = [Port(self, port, logger) for port in range(1, port_count + 1)]
+        self.power_state = PowerState.UNKNOWN
 
     def _subscribe_to_attributes(self: SmartBoxComponentManager) -> None:
         """Subscribe to attributes on the MccsPasdBus."""
         assert self._pasd_bus_proxy
-
+        assert self._fndh_proxy
+        assert self._fndh_port is not None
         # ask what attributes to subscribe to and subscribe to them.
         subscriptions = self._pasd_bus_proxy.GetPasdDeviceSubscriptions(
             self.smartbox_number
@@ -104,6 +166,13 @@ class SmartBoxComponentManager(
         for attribute in subscriptions:
             self._pasd_bus_proxy.add_change_event_callback(
                 attribute, self._handle_change_event
+            )
+        if (
+            f"port{self._fndh_port}powerstate"
+            not in self._fndh_proxy._change_event_subscription_ids.keys()
+        ):
+            self._fndh_proxy.add_change_event_callback(
+                f"Port{self._fndh_port}PowerState", self._power_state_change
             )
 
         if (
@@ -115,18 +184,21 @@ class SmartBoxComponentManager(
             )
 
     def _evaluate_power_state(self: SmartBoxComponentManager) -> None:
-        """Evaluate the power state."""
-        # If we do not know what port we are attached to we cannot know our
-        # power state
+        """
+        Evaluate the power state.
+
+        This turns on any ports that are desired on.
+        """
         assert self._fndh_proxy
-        if self._fndh_port:
-            my_power = getattr(self._fndh_proxy, f"Port{self._fndh_port}PowerState")
-            self._component_state_changed_callback(power=my_power)
-        else:
-            self.logger.info(
-                "Smartbox has unknown FNDH port therefore PowerState UNKNOWN."
-            )
-            self._component_state_changed_callback(power=PowerState.UNKNOWN)
+        assert self._fndh_port
+
+        my_power = getattr(self._fndh_proxy, f"Port{self._fndh_port}PowerState")
+        self.power_state = my_power
+        if my_power == PowerState.ON:
+            for port in self.ports:
+                if port.desire_on:
+                    port.turn_on()
+        self._component_state_changed_callback(power=my_power)
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """
@@ -142,6 +214,7 @@ class SmartBoxComponentManager(
         # ------------------------------------
         if None in [self._pasd_bus_proxy, self._fndh_proxy]:
             try:
+                self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
                 self.logger.info(
                     f"attempting to form proxy with {self._pasd_fqdn} {self._fndh_fqdn}"
                 )
@@ -155,10 +228,16 @@ class SmartBoxComponentManager(
             except Exception as e:  # pylint: disable=broad-except
                 self._update_component_state(fault=True)
                 self.logger.error("Caught exception in start_communicating: %s", e)
-                self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
                 return
 
         try:
+            assert self._pasd_bus_proxy
+            assert self._fndh_proxy
+            assert self._fndh_port is not None
+            if self.communication_state != CommunicationStatus.ESTABLISHED:
+                assert self._pasd_bus_proxy
+                assert self._fndh_proxy
+                self._update_communication_state(CommunicationStatus.ESTABLISHED)
             # Ask the MccsPasdBus what attributes we should subscribe.
             self._subscribe_to_attributes()
         except Exception as e:  # pylint: disable=broad-except
@@ -170,21 +249,8 @@ class SmartBoxComponentManager(
         # ------------
         # UPDATE STATE
         # ------------
-        assert self._pasd_bus_proxy
-        assert self._fndh_proxy
         try:
-            # If we are not established attempt for establish communication.
-            if self.communication_state != CommunicationStatus.ESTABLISHED:
-                self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
-                self._pasd_bus_proxy.ping()
-                self._fndh_proxy.ping()
-                self._update_communication_state(CommunicationStatus.ESTABLISHED)
-                self._evaluate_power_state()
-
-            else:
-                self.logger.info(
-                    "communication with the pasd bus is already established"
-                )
+            self._evaluate_power_state()
 
         except Exception as e:  # pylint: disable=broad-except
             self._update_component_state(fault=True)
@@ -246,27 +312,6 @@ class SmartBoxComponentManager(
             return
         self._component_state_changed_callback(pasdbus_status=event_value)
 
-    def update_fndh_port(self: SmartBoxComponentManager, _fndh_port: int) -> None:
-        """
-        Update the fndh port.
-
-        This will be called when the port the smartbox is attached to has been
-        worked out
-
-        :param _fndh_port: the port this smartbox is attached to
-        """
-        assert self._fndh_proxy
-
-        # TODO: Add method to MccsDeviceProxy to unsubscribe from attribute.
-        self._fndh_port = _fndh_port
-        if (
-            f"port{_fndh_port}powerstate"
-            not in self._fndh_proxy._change_event_subscription_ids.keys()
-        ):
-            self._fndh_proxy.add_change_event_callback(
-                f"Port{_fndh_port}PowerState", self._power_state_change
-            )
-
     def _power_state_change(
         self: SmartBoxComponentManager,
         event_name: str,
@@ -283,7 +328,7 @@ class SmartBoxComponentManager(
         # TODO: MCCS-1485 - allow unsubscribe event, this will mean will will not need
         # this if statement. Since when
         if event_name.lower() == f"port{self._fndh_port}powerstate":
-            self._component_state_changed_callback(power=power_state)
+            self._evaluate_power_state()
         else:
             return
 
@@ -291,8 +336,8 @@ class SmartBoxComponentManager(
         """Break off communication with the pasdBus."""
         if self.communication_state == CommunicationStatus.DISABLED:
             return
-
-        self._fndh_port = 0
+        self._fndh_proxy = None
+        self._pasd_bus_proxy = None
         self._update_communication_state(CommunicationStatus.DISABLED)
         self._update_component_state(power=None, fault=None)
 
@@ -443,11 +488,13 @@ class SmartBoxComponentManager(
         try:
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
-
+            json_argument = json.dumps(
+                {"smartbox_number": self._fndh_port, "port_number": port_number}
+            )
             (
                 [result_code],
                 [return_message],
-            ) = self._pasd_bus_proxy.TurnSmartboxPortOff(port_number)
+            ) = self._pasd_bus_proxy.TurnSmartboxPortOff(json_argument)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
@@ -493,7 +540,7 @@ class SmartBoxComponentManager(
 
     def _turn_on_port(
         self: SmartBoxComponentManager,
-        port_number: str,
+        port_number: int,
         task_callback: Optional[Callable],
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
@@ -502,10 +549,28 @@ class SmartBoxComponentManager(
         try:
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
-
-            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnSmartboxPortOn(
-                port_number
+            port = self.ports[port_number - 1]
+            # Turn smartbox on if not already.
+            if self.power_state != PowerState.ON:
+                assert port._port_id == port_number
+                port.set_desire_on(task_callback)  # type: ignore[assignment]
+                self.on()
+                return (
+                    ResultCode.STARTED,
+                    "The command will continue when the smartbox turns on.",
+                )
+            json_argument = json.dumps(
+                {
+                    "smartbox_number": self._fndh_port,
+                    "port_number": port_number,
+                    "stay_on_when_offline": True,
+                }
             )
+
+            (
+                [result_code],
+                [return_message],
+            ) = self._pasd_bus_proxy.TurnSmartboxPortOn(json_argument)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
@@ -518,6 +583,7 @@ class SmartBoxComponentManager(
             return ResultCode.FAILED, "0"
 
         if task_callback:
+            self.logger.info(f"Port {port_number} turned on!")
             task_callback(
                 status=TaskStatus.COMPLETED,
                 result=f"Power on port '{port_number} success'",
