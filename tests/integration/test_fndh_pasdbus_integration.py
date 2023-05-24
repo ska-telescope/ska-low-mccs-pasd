@@ -236,7 +236,7 @@ class TestfndhPasdBusIntegration:
         """
         Test the MccsFNDH port power state.
 
-        - MccsFNDH.IsPortOn starts in a UNKNOWN state.
+        - MccsFNDH.PortPowerState starts in a UNKNOWN state.
         - After MccsFNDH starts communication with the simulator it gets the
             simulated power state.
         - When we change the simulated power state, MccsFNDH is notified and updated.
@@ -251,7 +251,7 @@ class TestfndhPasdBusIntegration:
         """
         assert fndh_device.adminMode == AdminMode.OFFLINE
         assert pasd_bus_device.adminMode == AdminMode.OFFLINE
-        assert fndh_device.IsPortOn(2) == PowerState.UNKNOWN
+        assert fndh_device.PortPowerState(2) == PowerState.UNKNOWN
 
         pasd_bus_device.subscribe_event(
             "state",
@@ -319,12 +319,12 @@ class TestfndhPasdBusIntegration:
             PowerState.OFF
         )
 
-        assert not fndh_device.IsPortOn(2)
+        assert fndh_device.PortPowerState(2) == PowerState.OFF
         fndh_simulator.turn_port_on(2)
 
         change_event_callbacks["fndhPort2PowerState"].assert_change_event(PowerState.ON)
 
-        assert fndh_device.IsPortOn(2)
+        assert fndh_device.PortPowerState(2) == PowerState.ON
 
 
 @pytest.fixture(name="change_event_callbacks")

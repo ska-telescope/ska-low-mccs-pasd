@@ -13,6 +13,7 @@ import unittest.mock
 from typing import Any
 
 import pytest
+import tango
 from ska_control_model import (
     CommunicationStatus,
     PowerState,
@@ -54,6 +55,7 @@ def mocked_pasd_proxy_fixture(smartbox_number: int) -> unittest.mock.Mock:
     mock.GetPasdDeviceSubscriptions = unittest.mock.Mock(
         return_value=MccsPasdBus._ATTRIBUTE_MAP[int(smartbox_number)].values()
     )
+    mock.state = unittest.mock.Mock(return_value=tango.DevState.ON)
     return mock
 
 
@@ -65,7 +67,9 @@ def mocked_fndh_proxy_fixture() -> unittest.mock.Mock:
     :return: a collections.defaultdict that returns change event
         callbacks by name.
     """
-    return unittest.mock.Mock()
+    mock = unittest.mock.Mock()
+    mock.state = unittest.mock.Mock(return_value=tango.DevState.ON)
+    return mock
 
 
 @pytest.fixture(name="fndh_port")

@@ -208,6 +208,8 @@ class SmartBoxComponentManager(
             - A proxy can be formed with the MccsPasdBus
             - We can subscribe to attributes of interest.
             - The power state of the Smartbox
+
+        TODO: refactor!
         """
         # ------------------------------------
         # FORM PROXY / SUBSCRIBE TO ATTRIBUTES
@@ -218,7 +220,6 @@ class SmartBoxComponentManager(
                 self.logger.info(
                     f"attempting to form proxy with {self._pasd_fqdn} {self._fndh_fqdn}"
                 )
-
                 self._pasd_bus_proxy = MccsDeviceProxy(
                     self._pasd_fqdn, self.logger, connect=True
                 )
@@ -226,25 +227,21 @@ class SmartBoxComponentManager(
                     self._fndh_fqdn, self.logger, connect=True
                 )
             except Exception as e:  # pylint: disable=broad-except
-                self._update_component_state(fault=True)
+                self._update_component_state(power=PowerState.UNKNOWN)
                 self.logger.error("Caught exception in start_communicating: %s", e)
-                return
 
         try:
             assert self._pasd_bus_proxy
             assert self._fndh_proxy
             assert self._fndh_port is not None
             if self.communication_state != CommunicationStatus.ESTABLISHED:
-                assert self._pasd_bus_proxy
-                assert self._fndh_proxy
                 self._update_communication_state(CommunicationStatus.ESTABLISHED)
             # Ask the MccsPasdBus what attributes we should subscribe.
             self._subscribe_to_attributes()
         except Exception as e:  # pylint: disable=broad-except
-            self._update_component_state(fault=True)
+            self._update_component_state(power=PowerState.UNKNOWN)
             self.logger.error("Caught exception in attribute subscriptions: %s", e)
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
-            return
 
         # ------------
         # UPDATE STATE

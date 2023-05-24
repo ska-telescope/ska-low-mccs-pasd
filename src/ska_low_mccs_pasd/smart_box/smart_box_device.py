@@ -34,10 +34,10 @@ class MccsSmartBox(SKABaseDevice):
     # -----------------
     # Device Properties
     # -----------------
-    FndhPort = device_property(dtype=int, default_value=0)
-    PasdFQDN = device_property(dtype=(str), default_value="")
-    FndhFQDN = device_property(dtype=(str), default_value="")
-    SmartBoxNumber = device_property(dtype=int, default_value=1)
+    FndhPort = device_property(dtype=int, mandatory=True)
+    PasdFQDN = device_property(dtype=(str), mandatory=True)
+    FndhFQDN = device_property(dtype=(str), mandatory=True)
+    SmartBoxNumber = device_property(dtype=int, mandatory=True)
 
     PORT_COUNT: Final = 12
 

@@ -180,9 +180,18 @@ class TestSmartBoxPasdBusIntegration:
         turn_pasd_devices_online(
             smartbox_device, pasd_bus_device, fndh_device, change_event_callbacks
         )
-        fndh_port_power_state = fndh_device.IsPortOn(this_smartbox_port)
+        fndh_port_power_state = fndh_device.PortPowerState(this_smartbox_port)
         is_pasd_port_on = pasd_bus_device.fndhPortsPowerSensed[this_smartbox_port - 1]
-        assert fndh_port_power_state == is_pasd_port_on
+        if not is_pasd_port_on:
+            pasd_reports_fndh_port_power_state = PowerState.OFF
+        elif is_pasd_port_on:
+            pasd_reports_fndh_port_power_state = PowerState.ON
+        else:
+            pasd_reports_fndh_port_power_state = PowerState.UNKNOWN
+
+        assert fndh_port_power_state == pasd_reports_fndh_port_power_state
+
+        # assert fndh_port_power_state == is_pasd_port_on
 
         # --------------------------------------
         # Check a situation:
@@ -263,7 +272,7 @@ class TestSmartBoxPasdBusIntegration:
 
         # Check that both the PaSD and FNDH say
         # the smartbox under investigation Is OFF.
-        assert not fndh_device.IsPortOn(smartbox_number)
+        assert fndh_device.PortPowerState(smartbox_number) == PowerState.OFF
         pasd_claimed_port_states = getattr(
             pasd_bus_device, f"smartbox{smartbox_number}portspowersensed"
         )
@@ -285,7 +294,7 @@ class TestSmartBoxPasdBusIntegration:
         # Check the smartbox is turned on first
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["smartbox_state"].assert_not_called()
-        assert fndh_device.IsPortOn(smartbox_number)
+        assert fndh_device.PortPowerState(smartbox_number) == PowerState.ON
 
         # Check that the Port is turned on.
         assert smartbox_device.PortsPowerSensed[smartbox_port_desired_on - 1]
@@ -332,7 +341,7 @@ class TestSmartBoxPasdBusIntegration:
 
         # Check that both the PaSD and FNDH say
         # the smartbox under investigation Is OFF.
-        assert not fndh_device.IsPortOn(smartbox_number)
+        assert fndh_device.PortPowerState(smartbox_number) == PowerState.OFF
         pasd_claimed_port_states = getattr(
             pasd_bus_device, f"smartbox{smartbox_number}portspowersensed"
         )
@@ -357,7 +366,7 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["smartbox_state"].assert_not_called()
 
-        assert fndh_device.IsPortOn(smartbox_number)
+        assert fndh_device.PortPowerState(smartbox_number) == PowerState.ON
 
         # manual sleep to allow time for polling and callbacks.
         time.sleep(1)

@@ -215,7 +215,7 @@ def test_is_port_on(
     fndh_device: tango.DeviceProxy,
 ) -> None:
     """
-    Test the IsPortOn command.
+    Test the PortPowerState command.
 
     This unit test is kept very light because all it does is
     read a default value from a dictionary.
@@ -224,7 +224,7 @@ def test_is_port_on(
         :py:class:`tango.DeviceProxy` to the device under test, in a
         :py:class:`tango.test_context.DeviceTestContext`.
     """
-    assert fndh_device.IsPortOn(1) == PowerState.UNKNOWN
+    assert fndh_device.PortPowerState(1) == PowerState.UNKNOWN
 
 
 @pytest.mark.parametrize(
