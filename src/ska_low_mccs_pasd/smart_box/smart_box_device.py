@@ -278,6 +278,7 @@ class MccsSmartBox(SKABaseDevice):
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,
         pasdbus_status: Optional[str] = None,
+        fqdn: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         """
