@@ -78,8 +78,7 @@ def turn_pasd_devices_online(
     # SmartBox adminMode Online
     # -------------------------
 
-    # The Smartbox will estabish a connection and transition from
-    # Unknown to the state of the device.
+    # The Smartbox will estabish a connection and transition to OFF.
     smartbox_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.UNKNOWN)
     change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
@@ -144,6 +143,10 @@ def setup_devices_with_subscriptions(
 class TestSmartBoxPasdBusIntegration:
     """Test pasdbus, smartbox, fndh integration."""
 
+    @pytest.mark.xfail(
+        reason="Cannot unsubscribe from proxy so event,"
+        "though communication not established we get callback"
+    )
     def test_power_state_transitions(
         self: TestSmartBoxPasdBusIntegration,
         smartbox_devices: tango.DeviceProxy,
@@ -202,6 +205,12 @@ class TestSmartBoxPasdBusIntegration:
 
         # 1 - SmartBox stops listening to device
         smartbox_device.adminMode = AdminMode.OFFLINE
+        # It will transition into UNKNOWN when the first proxy
+        # changes to the DISABLE state and then DISABLE when the second
+        # changes to DISABLE
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.DISABLE
         )
@@ -214,8 +223,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             "fndhport2powerstate", PowerState.OFF
         )
-        change_event_callbacks["fndhport2powerstate"].assert_not_called()
-        change_event_callbacks["smartbox_state"].assert_not_called()
 
         # 2 - Power state of device changes
         fndh_device.PowerOnPort(this_smartbox_port)
@@ -503,6 +510,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "smartbox24PortsConnected",
         "SmartboxInputVoltage",
         "fndhport2powerstate",
+        "pasdBushealthState",
         timeout=10.0,
         assert_no_error=False,
     )

@@ -427,7 +427,7 @@ def tango_harness_fixture(
         fndh_name,
         MccsFNDH,
         PasdFQDN=pasd_bus_name,
-        LoggingLevelDefault=int(LoggingLevel.DEBUG),
+        LoggingLevelDefault=int(LoggingLevel.OFF),
     )
     # Add the 24 Smartboxes.
     for smartbox_no in range(24):

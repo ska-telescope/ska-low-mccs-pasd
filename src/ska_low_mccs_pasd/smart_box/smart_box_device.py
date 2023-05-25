@@ -267,18 +267,22 @@ class MccsSmartBox(SKABaseDevice):
 
         if communication_state != CommunicationStatus.ESTABLISHED:
             self._component_state_changed_callback(power=PowerState.UNKNOWN)
+        if communication_state == CommunicationStatus.ESTABLISHED:
+            self._component_state_changed_callback(
+                power=self.component_manager.power_state
+            )
 
-        self._component_state_changed_callback(power=self.component_manager.power_state)
         super()._communication_state_changed(communication_state)
 
         self._health_model.update_state(communicating=True)
 
-    def _component_state_changed_callback(
+    def _component_state_changed_callback(  # pylint: disable=too-many-arguments
         self: MccsSmartBox,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,
         pasdbus_status: Optional[str] = None,
         fqdn: Optional[str] = None,
+        power_state: Optional[PowerState] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -290,9 +294,15 @@ class MccsSmartBox(SKABaseDevice):
         :param fault: whether the component is in fault.
         :param power: the power state of the component
         :param pasdbus_status: the status of the pasd_bus
+        :param fqdn: the fqdn of the device passing calling.
+        :param power_state: the power_state change.
         :param kwargs: additional keyword arguments defining component
             state.
         """
+        if fqdn is not None:
+            # TODO: use this in the health model.
+            self.logger.info(f"Handle the {fqdn} in health.")
+            return
         super()._component_state_changed(fault=fault, power=power)
         self._health_model.update_state(
             fault=fault, power=power, pasdbus_status=pasdbus_status
