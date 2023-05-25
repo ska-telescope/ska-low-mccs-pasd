@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import gc
+import json
 import time
 
 import pytest
@@ -20,6 +21,89 @@ from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 from ska_low_mccs_pasd.pasd_bus import SmartboxSimulator
 
 gc.disable()  # TODO: why is this needed?
+
+
+def test_power_interplay(
+    smartbox_device: tango.DeviceProxy,
+    pasd_bus_device: tango.DeviceProxy,
+    fndh_device: tango.DeviceProxy,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+    smartbox_id: int,
+) -> None:
+    """
+    Test Power interplay between TANGO devices.
+
+    :param smartbox_device: fixture that provides a
+        :py:class:`tango.DeviceProxy` to the device under test, in a
+        :py:class:`tango.test_context.DeviceTestContext`.
+    :param pasd_bus_device: fixture that provides a
+        :py:class:`tango.DeviceProxy` to the device under test, in a
+        :py:class:`tango.test_context.DeviceTestContext`.
+    :param fndh_device: fixture that provides a
+        :py:class:`tango.DeviceProxy` to the device under test, in a
+        :py:class:`tango.test_context.DeviceTestContext`.
+    :param change_event_callbacks: group of Tango change event
+        callback with asynchrony support
+    :param smartbox_id: the smartbox number
+    """
+    # SETUP
+    assert pasd_bus_device.state() == tango.DevState.DISABLE
+    pasd_bus_device.adminMode = 0
+    time.sleep(4)
+    assert pasd_bus_device.state() == tango.DevState.ON
+
+    assert fndh_device.state() == tango.DevState.DISABLE
+    fndh_device.adminMode = 0
+    assert fndh_device.state() == tango.DevState.ON
+
+    assert smartbox_device.state() == tango.DevState.DISABLE
+    smartbox_device.adminMode = 0
+    time.sleep(2)
+    assert smartbox_device.state() == tango.DevState.OFF
+
+    # Subscribe
+    fndh_device.subscribe_event(
+        f"Port{smartbox_id+1}PowerState",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["FndhPortPowerState"],
+    )
+    change_event_callbacks.assert_change_event("FndhPortPowerState", PowerState.OFF)
+
+    smartbox_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["smartbox_state"],
+    )
+    change_event_callbacks.assert_change_event("smartbox_state", tango.DevState.OFF)
+    change_event_callbacks.assert_not_called()
+
+    fndh_device.PowerOnPort(smartbox_id + 1)
+    change_event_callbacks.assert_change_event("FndhPortPowerState", PowerState.ON)
+    change_event_callbacks.assert_change_event("smartbox_state", tango.DevState.ON)
+    assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id] is True
+
+    fndh_device.PowerOffPort(smartbox_id + 1)
+    change_event_callbacks.assert_change_event("FndhPortPowerState", PowerState.OFF)
+    change_event_callbacks.assert_change_event("smartbox_state", tango.DevState.OFF)
+    assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id] is False
+
+    json_argument = json.dumps(
+        {"port_number": smartbox_id + 1, "stay_on_when_offline": True}
+    )
+    pasd_bus_device.TurnFndhPortOn(json_argument)
+    change_event_callbacks.assert_change_event("FndhPortPowerState", PowerState.ON)
+    change_event_callbacks.assert_change_event("smartbox_state", tango.DevState.ON)
+    assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id] is True
+
+    pasd_bus_device.TurnFndhPortOff(smartbox_id + 1)
+    change_event_callbacks.assert_change_event("FndhPortPowerState", PowerState.OFF)
+    change_event_callbacks.assert_change_event("smartbox_state", tango.DevState.OFF)
+    assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id] is False
+
+    smartbox_device.On()
+    change_event_callbacks.assert_change_event("FndhPortPowerState", PowerState.ON)
+    change_event_callbacks.assert_change_event("smartbox_state", tango.DevState.ON)
+    assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id] is True
 
 
 def turn_pasd_devices_online(
@@ -511,6 +595,8 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "SmartboxInputVoltage",
         "fndhport2powerstate",
         "pasdBushealthState",
+        "PasdPortPowerSensed",
+        "FndhPortPowerState",
         timeout=10.0,
         assert_no_error=False,
     )

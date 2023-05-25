@@ -103,7 +103,7 @@ def fndh_name_fixture() -> str:
 
     :return: the name of the fndh Tango device.
     """
-    return "low-mccs-pasd/fndh/001"
+    return "low-mccs/fndh/001"
 
 
 @pytest.fixture(name="tango_harness")
@@ -126,7 +126,7 @@ def tango_harness_fixture(
         fndh_name,
         patched_fndh_device_class,
         FndhPort=5,
-        PasdFQDN="low-mccs-pasd/pasdbus/001",
+        PasdFQDN="low-mccs/pasdbus/001",
         LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
     with context_manager as context:

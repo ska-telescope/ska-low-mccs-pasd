@@ -66,7 +66,7 @@ def mocked_pasd_proxy_fixture(pasd_device_number: int) -> unittest.mock.Mock:
 @pytest.fixture(name="fndh_component_manager")
 def fndh_component_manager_fixture(
     logger: logging.Logger,
-    pasd_bus_fndh: str,
+    pasdbus_fqdn: str,
     mock_callbacks: MockCallableGroup,
     mocked_pasd_proxy: unittest.mock.Mock,
 ) -> FndhComponentManager:
@@ -76,7 +76,7 @@ def fndh_component_manager_fixture(
     (This is a pytest fixture.)
 
     :param logger: a logger for this command to use.
-    :param pasd_bus_fndh: the pasd bus fndh
+    :param pasdbus_fqdn: the pasd bus fndh
     :param mock_callbacks: mock callables.
     :param mocked_pasd_proxy: a unittest.mock
 
@@ -88,7 +88,7 @@ def fndh_component_manager_fixture(
         mock_callbacks["component_state"],
         mock_callbacks["attribute_update"],
         mock_callbacks["port_power_state"],
-        pasd_bus_fndh,
+        pasdbus_fqdn,
         mocked_pasd_proxy,
     )
     mocked_pasd_proxy._change_event_subscription_ids = {}

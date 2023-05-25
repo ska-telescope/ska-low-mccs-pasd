@@ -11,8 +11,8 @@ from __future__ import annotations
 import pytest
 
 
-@pytest.fixture(name="pasd_bus_fndh", scope="session")
-def pasd_bus_fndh_fixture() -> str:
+@pytest.fixture(name="pasdbus_fqdn", scope="session")
+def pasdbus_fqdn_fixture() -> str:
     """
     Return the name of the fndh Tango device.
 
