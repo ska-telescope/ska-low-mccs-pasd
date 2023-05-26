@@ -72,7 +72,7 @@ jupyterhub:
       name: registry.gitlab.com/ska-telescope/sdi/ska-cicd-deploy-low-itf/tango-notebook
       tag: 0.1.1
     extraEnv:
-      TANGO_HOST: "databaseds-tango-base-test.ska-low-mccs-spshw:10000"
+      TANGO_HOST: "databaseds-tango-base-test.ska-low-mccs-pasd:10000"
   proxy:
     service:
       type: ClusterIP
