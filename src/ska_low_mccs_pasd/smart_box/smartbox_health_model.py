@@ -9,10 +9,7 @@
 from __future__ import annotations
 
 from ska_control_model import HealthState
-from ska_low_mccs_common.health import (
-    BaseHealthModel,
-    HealthChangedCallbackProtocol,
-)
+from ska_low_mccs_common.health import BaseHealthModel, HealthChangedCallbackProtocol
 
 
 class SmartBoxHealthModel(BaseHealthModel):

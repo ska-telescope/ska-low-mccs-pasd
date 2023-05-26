@@ -10,15 +10,7 @@ import logging
 import os
 import threading
 from contextlib import contextmanager
-from typing import (
-    Callable,
-    ContextManager,
-    Generator,
-    Iterator,
-    Optional,
-    Union,
-    cast,
-)
+from typing import Callable, ContextManager, Generator, Iterator, Optional, Union, cast
 
 import _pytest
 import pytest

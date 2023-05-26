@@ -15,17 +15,9 @@ import threading
 from typing import Any, Callable, Optional
 
 import tango
-from ska_control_model import (
-    CommunicationStatus,
-    HealthState,
-    PowerState,
-    TaskStatus,
-)
+from ska_control_model import CommunicationStatus, HealthState, PowerState, TaskStatus
 from ska_low_mccs_common import MccsDeviceProxy
-from ska_low_mccs_common.component import (
-    DeviceComponentManager,
-    check_communicating,
-)
+from ska_low_mccs_common.component import DeviceComponentManager, check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
 
