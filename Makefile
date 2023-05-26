@@ -105,4 +105,6 @@ k8s-do-test:
 	helm  -n $(KUBE_NAMESPACE) uninstall $(K8S_TEST_RUNNER_CHART_RELEASE) ; \
     exit $$EXIT_CODE
 
+HELM_CHARTS_TO_PUBLISH = ska-low-mccs-pasd
+
 .PHONY: python-post-lint docs-pre-build
