@@ -99,7 +99,7 @@ def smartbox_component_manager_fixture(  # pylint: disable=too-many-arguments
     logger: logging.Logger,
     fndh_port: int,
     pasdbus_fqdn: str,
-    fndh_bus_fndh: str,
+    fndh_fqdn: str,
     mock_callbacks: MockCallableGroup,
     mocked_pasd_proxy: unittest.mock.Mock,
     mocked_fndh_proxy: unittest.mock.Mock,
@@ -111,7 +111,7 @@ def smartbox_component_manager_fixture(  # pylint: disable=too-many-arguments
     :param logger: a logger for this command to use.
     :param fndh_port: the fndh port this smartbox is attached.
     :param pasdbus_fqdn: the pasd bus smartbox
-    :param fndh_bus_fndh: the fndh smartbox
+    :param fndh_fqdn: the fndh smartbox
     :param mock_callbacks: mock callables.
     :param mocked_pasd_proxy: a unittest.mock
     :param mocked_fndh_proxy: a unittest.mock
@@ -127,7 +127,7 @@ def smartbox_component_manager_fixture(  # pylint: disable=too-many-arguments
         12,
         fndh_port,
         pasdbus_fqdn,
-        fndh_bus_fndh,
+        fndh_fqdn,
         smartbox_number,
         mocked_pasd_proxy,
         mocked_fndh_proxy,

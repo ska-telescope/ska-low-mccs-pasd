@@ -14,18 +14,18 @@ import pytest
 @pytest.fixture(name="pasdbus_fqdn", scope="session")
 def pasdbus_fqdn_fixture() -> str:
     """
+    Return the name of the PaSDBus Tango device.
+
+    :return: the name of the fndh Tango device.
+    """
+    return "low-mccs/pasdbus/001"
+
+
+@pytest.fixture(name="fndh_fqdn", scope="session")
+def fndh_fqdn_fixture() -> str:
+    """
     Return the name of the fndh Tango device.
 
     :return: the name of the fndh Tango device.
     """
-    return "low-mccs-pasd/pasd-bus/001"
-
-
-@pytest.fixture(name="fndh_bus_fndh", scope="session")
-def fndh_bus_fndh_fixture() -> str:
-    """
-    Return the name of the fndh Tango device.
-
-    :return: the name of the fndh Tango device.
-    """
-    return "low-mccs-pasd/fndh/001"
+    return "low-mccs/fndh/001"
