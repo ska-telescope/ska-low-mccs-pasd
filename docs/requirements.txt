@@ -1,7 +1,0 @@
-docutils<0.18
-pyyaml
-ska-ser-devices == 0.1.0
-sphinx == 5.1.1
-sphinx-autodoc-typehints == 1.19.1
-sphinx-rtd-theme
-sphinxcontrib-plantuml

@@ -33,7 +33,8 @@ python-post-lint:
 	$(PYTHON_RUNNER) mypy --config-file mypy.ini src/ tests/
 
 docs-pre-build:
-	python3 -m pip install -r docs/requirements.txt
+	poetry config virtualenvs.create false
+	poetry install --no-root --only docs
 
 
 # THIS IS SPECIFIC TO THIS REPO
