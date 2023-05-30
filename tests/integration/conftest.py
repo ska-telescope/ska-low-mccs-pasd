@@ -382,10 +382,8 @@ def smartbox_names_fixture() -> list[str]:
     :return: the names of the smartbox Tango devices.
     """
     smartboxes = []
-    for i in range(1, 10):
-        smartboxes.append(f"low-mccs/smartbox/0000{i}")
-    for i in range(10, 25):
-        smartboxes.append(f"low-mccs/smartbox/000{i}")
+    for i in range(1, 25):
+        smartboxes.append(f"low-mccs/smartbox/{i:05}")
 
     return smartboxes
 

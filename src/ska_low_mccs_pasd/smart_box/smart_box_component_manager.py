@@ -21,6 +21,7 @@ from ska_control_model import (
     PowerState,
     TaskStatus,
 )
+from ska_low_mccs_common.component import check_communicating
 from ska_low_mccs_common import MccsDeviceProxy
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.commands import ResultCode
@@ -453,7 +454,7 @@ class SmartBoxComponentManager(
         self._smartbox_proxy.stop_communicating()
         self._fndh_proxy.stop_communicating()
 
-    # @check_communicating
+    @check_communicating
     def on(
         self: SmartBoxComponentManager, task_callback: Optional[Callable] = None
     ) -> tuple[TaskStatus, str]:
@@ -511,7 +512,7 @@ class SmartBoxComponentManager(
             )
         return result_code, return_message
 
-    # @check_communicating
+    @check_communicating
     def off(
         self: SmartBoxComponentManager, task_callback: Optional[Callable] = None
     ) -> tuple[TaskStatus, str]:
@@ -567,7 +568,7 @@ class SmartBoxComponentManager(
             )
         return result_code, return_message
 
-    # @check_communicating
+    @check_communicating
     def turn_off_port(
         self: SmartBoxComponentManager,
         antenna_number: int,
@@ -626,7 +627,7 @@ class SmartBoxComponentManager(
             )
         return result_code, return_message
 
-    # @check_communicating
+    @check_communicating
     def turn_on_port(
         self: SmartBoxComponentManager,
         antenna_number: int,

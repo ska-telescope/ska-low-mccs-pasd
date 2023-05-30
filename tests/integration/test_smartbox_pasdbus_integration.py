@@ -48,16 +48,16 @@ def test_power_interplay(
     """
     # SETUP
     assert pasd_bus_device.state() == tango.DevState.DISABLE
-    pasd_bus_device.adminMode = 0
+    pasd_bus_device.adminMode = AdminMode.ONLINE
     time.sleep(4)
     assert pasd_bus_device.state() == tango.DevState.ON
 
     assert fndh_device.state() == tango.DevState.DISABLE
-    fndh_device.adminMode = 0
+    fndh_device.adminMode = AdminMode.ONLINE
     assert fndh_device.state() == tango.DevState.ON
 
     assert smartbox_device.state() == tango.DevState.DISABLE
-    smartbox_device.adminMode = 0
+    smartbox_device.adminMode = AdminMode.ONLINE
     time.sleep(2)
     assert smartbox_device.state() == tango.DevState.OFF
 
@@ -233,8 +233,8 @@ class TestSmartBoxPasdBusIntegration:
     """Test pasdbus, smartbox, fndh integration."""
 
     @pytest.mark.xfail(
-        reason="Cannot unsubscribe from proxy so event,"
-        "though communication not established we get callback"
+        reason="Cannot unsubscribe from proxy so event received,"
+        "even though communication is not established"
     )
     def test_power_state_transitions(
         self: TestSmartBoxPasdBusIntegration,
@@ -599,8 +599,6 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "smartbox24PortsConnected",
         "SmartboxInputVoltage",
         "fndhport2powerstate",
-        "pasdBushealthState",
-        "PasdPortPowerSensed",
         "FndhPortPowerState",
         timeout=10.0,
         assert_no_error=False,
