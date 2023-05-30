@@ -21,9 +21,11 @@ from ska_control_model import (
     PowerState,
     TaskStatus,
 )
-from ska_low_mccs_common.component import check_communicating
 from ska_low_mccs_common import MccsDeviceProxy
-from ska_low_mccs_common.component import DeviceComponentManager
+from ska_low_mccs_common.component import (
+    DeviceComponentManager,
+    check_communicating,
+)
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
 
