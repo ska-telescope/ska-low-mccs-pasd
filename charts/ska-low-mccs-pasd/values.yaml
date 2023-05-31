@@ -92,22 +92,22 @@ deviceServers:
     logging_level_default: 5
 
   # Example.
-  # smartboxes:
-  #   logging_level_default: 5 # optional, defaults to 3
-  #   instances:
-  #     1:
-  #       fndhPort: 0 # mandatory
-  #       pasdFQDN: "low-mccs/pasdbus/001" # mandatory
-  #       fndhFQDN: "low-mccs/fndh/001" # mandatory
-  #       smartBoxNumber: 1 # mandatory
-  #     2:
-  #       fndhPort: 0 # mandatory
-  #       fndhFQDN: "low-mccs/fndh/001" # mandatory
-  #       pasdFQDN: "low-mccs/pasdbus/001" # mandatory
-  #       smartBoxNumber: 2 # mandatory
+  smartboxes:
+    logging_level_default: 5 # optional, defaults to 3
+    instances:
+      1:
+        fndhPort: 1 # mandatory
+        pasdFQDN: "low-mccs/pasdbus/001" # mandatory
+        fndhFQDN: "low-mccs/fndh/001" # mandatory
+        smartBoxNumber: 1 # mandatory
+      2:
+        fndhPort: 2 # mandatory
+        fndhFQDN: "low-mccs/fndh/001" # mandatory
+        pasdFQDN: "low-mccs/pasdbus/001" # mandatory
+        smartBoxNumber: 2 # mandatory
 
-  # fndhs:
-  #   logging_level_default: 5 # optional, defaults to 3
-  #   instances:
-  #     1:
-  #       pasdFQDN: "low-mccs/pasdbus/001" # mandatory
+  fndhs:
+    logging_level_default: 5 # optional, defaults to 3
+    instances:
+      1:
+        pasdFQDN: "low-mccs/pasdbus/001" # mandatory

@@ -99,6 +99,8 @@ def tango_harness_fixture(
         patched_smartbox_device_class,
         FndhPort=5,
         PasdFQDN="low-mccs-pasd/pasdbus/001",
+        FndhFQDN="low-mccs-pasd/fndh/001",
+        SmartBoxNumber=5,
         LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
     with context_manager as context:
