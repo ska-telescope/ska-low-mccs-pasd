@@ -14,12 +14,7 @@ from typing import Any
 
 import pytest
 import tango
-from ska_control_model import (
-    CommunicationStatus,
-    PowerState,
-    ResultCode,
-    TaskStatus,
-)
+from ska_control_model import CommunicationStatus, PowerState, ResultCode, TaskStatus
 from ska_tango_testing.mock import MockCallableGroup
 
 from ska_low_mccs_pasd.pasd_bus import MccsPasdBus

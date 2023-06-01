@@ -20,11 +20,7 @@ from ska_ser_devices.client_server import (
 )
 
 from .pasd_bus_json_api import PasdBusJsonApi
-from .pasd_bus_simulator import (
-    FndhSimulator,
-    PasdBusSimulator,
-    SmartboxSimulator,
-)
+from .pasd_bus_simulator import FndhSimulator, PasdBusSimulator, SmartboxSimulator
 
 
 # pylint: disable-next=too-few-public-methods
