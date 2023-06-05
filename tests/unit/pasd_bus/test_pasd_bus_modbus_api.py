@@ -9,16 +9,18 @@
 from __future__ import annotations
 
 import unittest
-from typing import Sequence
+from typing import Any, Sequence
 
 import pytest
-
-from pymodbus.framer.ascii_framer import ModbusAsciiFramer
-from pymodbus.register_read_message import ReadHoldingRegistersRequest, \
-    ReadHoldingRegistersResponse
 from pymodbus.factory import ClientDecoder
+from pymodbus.framer.ascii_framer import ModbusAsciiFramer
+from pymodbus.register_read_message import (
+    ReadHoldingRegistersRequest,
+    ReadHoldingRegistersResponse,
+)
 
 from ska_low_mccs_pasd.pasd_bus import PasdBusModbusApi, PasdBusSimulator
+
 
 class TestPasdBusModbusApi:
     """Tests of the PaSD bus Modbus-based API."""
@@ -103,13 +105,11 @@ class TestPasdBusModbusApi:
         :param backend_fndh: a mock backend FNDH for the API to front.
         :param backend_smartboxes: sequence of mock backend smartboxes for
             the API to front.
-        :param encoding: the encoding to use when converting between string
-            and bytes
 
         :return: an API instance against which to test
         """
         return PasdBusModbusApi([backend_fndh] + list(backend_smartboxes))
-    
+
     def test_read_attribute(
         self: TestPasdBusModbusApi,
         api: PasdBusModbusApi,
@@ -119,8 +119,6 @@ class TestPasdBusModbusApi:
         Test handling of an attribute read request for an existing attribute.
 
         :param api: the API under test
-        :param encoding: the encoding to use when converting between string
-            and bytes
         :param backend_fndh: a mock backend FNDH for this command to execute
             against.
         """
@@ -129,18 +127,18 @@ class TestPasdBusModbusApi:
         request_bytes = framer.buildPacket(request)
         response_bytes = api(request_bytes)
         reply_handled = False
-        
-        def _handle_reply(
-            message: any
-        ) -> None:
+
+        def _handle_reply(message: Any) -> None:
             nonlocal reply_handled
             reply_handled = True
             assert isinstance(message, ReadHoldingRegistersResponse)
-            assert message.slave_id == 0
-            assert len(message.registers) == 1
-            assert message.registers[0] == pytest.approx(
-                 backend_fndh.outside_temperature)
-        
+            if isinstance(message, ReadHoldingRegistersResponse):
+                assert message.slave_id == 0
+                assert len(message.registers) == 1
+                assert message.registers[0] == pytest.approx(
+                    backend_fndh.outside_temperature
+                )
+
         decoder = ModbusAsciiFramer(ClientDecoder())
         decoder.processIncomingPacket(response_bytes, _handle_reply, slave=0)
         assert reply_handled

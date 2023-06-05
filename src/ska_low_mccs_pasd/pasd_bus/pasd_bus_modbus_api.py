@@ -10,11 +10,15 @@ from __future__ import annotations
 
 from typing import Any, Callable, Sequence
 
-from pymodbus.register_read_message import ReadHoldingRegistersRequest, \
-    ReadHoldingRegistersResponse
-from pymodbus.framer.ascii_framer import ModbusAsciiFramer
 from pymodbus.factory import ClientDecoder, ServerDecoder
+from pymodbus.framer.ascii_framer import ModbusAsciiFramer
+from pymodbus.register_read_message import (
+    ReadHoldingRegistersRequest,
+    ReadHoldingRegistersResponse,
+)
+
 from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
+
 
 # pylint: disable=too-few-public-methods
 class PasdBusModbusApi:
@@ -35,10 +39,14 @@ class PasdBusModbusApi:
         self._decoder = ModbusAsciiFramer(ServerDecoder(), client=None)
         self._slave_ids = list(range(len(simulators)))
 
-    def _handle_read_attributes(self, device_id: int, names: list[str]) \
-        -> list[Any]:
+    def _handle_read_attributes(self, device_id: int, names: list[str]) -> list[Any]:
         """
-        Return list of attribute values
+        Return list of attribute values.
+
+        :param device_id: The slave ID
+        :param names: List of string attribute names to read
+
+        :return: List of attribute values
         """
         values = []
         for name in names:
@@ -53,39 +61,35 @@ class PasdBusModbusApi:
 
     def _handle_command(self, device_id: int, name: str, args: tuple) -> dict:
         # TODO
-        pass
+        return {}
 
     def _handle_no_match(self, request: dict) -> bytes:
         # TODO
-        pass
+        return bytes()
 
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
         response = None
 
-        def handle_request(message: Any):
+        def handle_request(message: Any) -> None:
             nonlocal response
 
             match message:
                 case ReadHoldingRegistersRequest():
                     # TODO: Map register numbers from message.address and
                     # message.count to the corresponding attribute names
-                    attr_names=["outside_temperature"]
-                    values = self._handle_read_attributes(
-                        message.slave_id,
-                        attr_names)
+                    attr_names = ["outside_temperature"]
+                    values = self._handle_read_attributes(message.slave_id, attr_names)
                     response = ReadHoldingRegistersResponse(
-                        slave=message.slave_id,
-                        address=message.address,
-                        values=values)
+                        slave=message.slave_id, address=message.address, values=values
+                    )
                 case _:
-                    return self._handle_no_match(message)
+                    self._handle_no_match(message)
 
-        self._decoder.processIncomingPacket(modbus_request_str,
-                                            handle_request,
-                                            slave=self._slave_ids)
+        self._decoder.processIncomingPacket(
+            modbus_request_str, handle_request, slave=self._slave_ids
+        )
 
         return self._framer.buildPacket(response)
-
 
     def __call__(self, modbus_request_bytes: bytes) -> bytes:
         """
@@ -98,20 +102,18 @@ class PasdBusModbusApi:
         """
         return self._handle_modbus(modbus_request_bytes)
 
+
 class PasdBusModbusApiClient:
     """A client class for a PaSD bus simulator with a Modbus API."""
 
     def __init__(
-        self: PasdBusModbusApiClient,
-        transport: Callable[[bytes], bytes]
+        self: PasdBusModbusApiClient, transport: Callable[[bytes], bytes]
     ) -> None:
         """
         Initialise a new instance.
 
         :param transport: the transport layer client; a callable that
             accepts request bytes and returns response bytes.
-        :param encoding: encoding to use for conversion between string
-            and bytes.
         """
         self._transport = transport
         self._framer = ModbusAsciiFramer(None)
@@ -121,41 +123,41 @@ class PasdBusModbusApiClient:
         attribute_names = request["read"]
         slave_id = request["device_id"]
 
-        #TODO: Map requested attribute names to holding register numbers
+        # TODO: Map requested attribute names to holding register numbers
         starting_register = 23
-        message = ReadHoldingRegistersRequest(address=starting_register,
-                                            slave=slave_id,
-                                            count=1)
+        message = ReadHoldingRegistersRequest(
+            address=starting_register, slave=slave_id, count=1
+        )
         request_bytes = self._framer.buildPacket(message)
         response_bytes = self._transport(request_bytes)
-        response={}
-        def process_read_reply(reply):
+        response = {}
+
+        def process_read_reply(reply: Any) -> None:
             nonlocal response
             match reply:
                 case ReadHoldingRegistersResponse():
                     attributes_dict = {}
-                    for attr,register in zip(attribute_names, reply.registers):
+                    for attr, register in zip(attribute_names, reply.registers):
                         attributes_dict[attr] = register
                     response = {
-                    "source": slave_id,
-                    "data": {
-                        "type": "reads",
-                        "attributes": attributes_dict,
+                        "source": slave_id,
+                        "data": {
+                            "type": "reads",
+                            "attributes": attributes_dict,
+                        },
                     }
-                }
                 case _:
                     # TODO
                     pass
- 
-        self._decoder.processIncomingPacket(response_bytes,
-                                            process_read_reply,
-                                            slave=slave_id)
+
+        self._decoder.processIncomingPacket(
+            response_bytes, process_read_reply, slave=slave_id
+        )
         return response
 
     def _do_write_request(self, request: dict) -> dict:
         # TODO
         return {}
-
 
     def read_attributes(self, device_id: int, *names: str) -> dict[str, Any]:
         """
