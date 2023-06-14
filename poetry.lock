@@ -1144,6 +1144,27 @@ junit-xml-2 = "*"
 pylint = "*"
 
 [[package]]
+name = "pymodbus"
+version = "3.2.2"
+description = "A fully featured modbus protocol stack in python"
+category = "main"
+optional = false
+python-versions = ">=3.8.0"
+files = [
+    {file = "pymodbus-3.2.2-py3-none-any.whl", hash = "sha256:2445de0dbf1c776e42a9e1ac4a1ab7a2dc158d75286b3f0c23348b69920b21aa"},
+    {file = "pymodbus-3.2.2.tar.gz", hash = "sha256:6f46f55b41875e5ac41ba660f514f4bb7a732811e303f671b76f310906355089"},
+]
+
+[package.dependencies]
+setuptools = "<66.0.0"
+
+[package.extras]
+development = ["bandit (==1.7.4)", "codespell (==2.2.2)", "coverage (==7.1.0)", "flake8 (==6.0.0)", "flake8-comprehensions (==3.10.1)", "flake8-docstrings (==1.7.0)", "flake8-noqa (==1.3.0)", "mypy (==1.0.1)", "pre-commit (==3.1.1)", "pycodestyle (==2.10.0)", "pydocstyle (==6.3.0)", "pyflakes (==3.0.1)", "pylint (==2.15.10)", "pytest (==7.2.1)", "pytest-asyncio (==0.20.3)", "pytest-cov (==4.0.0)", "pytest-timeout (==2.1.0)", "pytest-xdist (==3.1.0)", "types-Pygments", "types-pyserial"]
+documentation = ["Sphinx (==5.3.0)", "recommonmark (==0.7.1)", "sphinx-rtd-theme (==1.1.1)"]
+repl = ["aiohttp (==3.8.3)", "click (>=8.0.0)", "prompt-toolkit (==3.0.36)", "pygments (==2.14.0)", "typer[all] (==0.7.0)"]
+serial = ["pyserial (>=3.5)"]
+
+[[package]]
 name = "pyrsistent"
 version = "0.19.3"
 description = "Persistent/Functional/Immutable data structures"
@@ -1449,14 +1470,14 @@ docutils = ">=0.11,<1.0"
 
 [[package]]
 name = "setuptools"
-version = "67.7.2"
+version = "65.7.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "setuptools-67.7.2-py3-none-any.whl", hash = "sha256:23aaf86b85ca52ceb801d32703f12d77517b2556af839621c641fca11287952b"},
-    {file = "setuptools-67.7.2.tar.gz", hash = "sha256:f104fa03692a2602fa0fec6c6a9e63b6c8a968de13e17c026957dd1f53d80990"},
+    {file = "setuptools-65.7.0-py3-none-any.whl", hash = "sha256:8ab4f1dbf2b4a65f7eec5ad0c620e84c34111a68d3349833494b9088212214dd"},
+    {file = "setuptools-65.7.0.tar.gz", hash = "sha256:4d3c92fac8f1118bb77a22181355e29c239cabfe2b9effdaa665c66b711136d7"},
 ]
 
 [package.extras]
@@ -2048,4 +2069,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "b7feb42eb8e8c1e6aa25e222a8a9bfe1d1def60b0dd0b520c3a43cfc088169e0"
+content-hash = "b70e7b020a42f0949c70b67be491936a056e7b6243e138ea842c34f208b24555"

@@ -50,6 +50,7 @@ autodoc_mock_imports = [
     "tango",
     "ska_control_model",
     "ska_low_mccs_common",
+    "pymodbus",
 ]
 
 
