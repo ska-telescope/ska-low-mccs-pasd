@@ -21,7 +21,7 @@ from ska_control_model import (
     TaskStatus,
 )
 from ska_low_mccs_common import MccsDeviceProxy
-from ska_low_mccs_common.component import check_communicating
+from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
 
@@ -35,7 +35,7 @@ class SmartBoxComponentManager(
     """
     A component manager for an smartbox.
 
-    This communicates via a proxy to a MccsPadsBus that talks to a simulator
+    This communicates via a proxy to a MccsPasdBus that talks to a simulator
     or the real hardware.
     """
 

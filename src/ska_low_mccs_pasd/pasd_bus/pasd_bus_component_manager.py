@@ -13,12 +13,12 @@ from dataclasses import dataclass
 from typing import Any, Callable, Final, Iterator, Literal, Optional
 
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
-from ska_low_mccs_common.component import check_communicating
 from ska_ser_devices.client_server import (
     ApplicationClient,
     SentinelBytesMarshaller,
     TcpClient,
 )
+from ska_tango_base.base import check_communicating
 from ska_tango_base.poller import PollingComponentManager
 
 from .pasd_bus_json_api import PasdBusJsonApiClient
