@@ -31,8 +31,8 @@ class PasdBusModbusApi:
         """
         Initialise a new instance.
 
-        :param simulators: sequence of smartbox simulators that this API
-            fronts.
+        :param simulators: sequence of simulators (fndh and smartbox)
+            that this API fronts.
         """
         self._simulators = simulators
         self._framer = ModbusAsciiFramer(None)
@@ -61,11 +61,11 @@ class PasdBusModbusApi:
 
     def _handle_command(self, device_id: int, name: str, args: tuple) -> dict:
         # TODO
-        return {}
+        raise NotImplementedError
 
     def _handle_no_match(self, request: dict) -> bytes:
         # TODO
-        return bytes()
+        raise NotImplementedError
 
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
         response = None
@@ -157,7 +157,7 @@ class PasdBusModbusApiClient:
 
     def _do_write_request(self, request: dict) -> dict:
         # TODO
-        return {}
+        raise NotImplementedError
 
     def read_attributes(self, device_id: int, *names: str) -> dict[str, Any]:
         """
