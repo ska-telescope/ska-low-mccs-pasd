@@ -359,6 +359,21 @@ def smartbox_devices_fixture(
     return smartbox_proxies
 
 
+@pytest.fixture(name="smartbox_device")
+def smartbox_device_fixture(
+    smartbox_devices: list[tango.DeviceProxy], smartbox_id: int
+) -> list[tango.DeviceProxy]:
+    """
+    Fixture that returns a smartbox Tango device.
+
+    :param smartbox_devices: a list of smartboxes.
+    :param smartbox_id: the smartbox of interest.
+
+    :return: the smartbox Tango device.
+    """
+    return smartbox_devices[smartbox_id]
+
+
 @pytest.fixture(name="smartbox_names", scope="session")
 def smartbox_names_fixture() -> list[str]:
     """
@@ -367,10 +382,8 @@ def smartbox_names_fixture() -> list[str]:
     :return: the names of the smartbox Tango devices.
     """
     smartboxes = []
-    for i in range(1, 10):
-        smartboxes.append(f"low-mccs-pasd/smartbox/0000{i}")
-    for i in range(10, 25):
-        smartboxes.append(f"low-mccs-pasd/smartbox/000{i}")
+    for i in range(1, 25):
+        smartboxes.append(f"low-mccs/smartbox/{i:05}")
 
     return smartboxes
 
@@ -382,7 +395,7 @@ def pasd_bus_name_fixture() -> str:
 
     :return: the name of the pasd_bus Tango device.
     """
-    return "low-mccs-pasd/pasdbus/001"
+    return "low-mccs/pasdbus/001"
 
 
 @pytest.fixture(name="fndh_name", scope="session")
@@ -392,7 +405,7 @@ def fndh_name_fixture() -> str:
 
     :return: the name of the fndh Tango device.
     """
-    return "low-mccs-pasd/fndh/001"
+    return "low-mccs/fndh/001"
 
 
 @pytest.fixture(name="tango_harness")
@@ -427,7 +440,7 @@ def tango_harness_fixture(
         fndh_name,
         MccsFNDH,
         PasdFQDN=pasd_bus_name,
-        LoggingLevelDefault=int(LoggingLevel.DEBUG),
+        LoggingLevelDefault=int(LoggingLevel.OFF),
     )
     # Add the 24 Smartboxes.
     for smartbox_no in range(24):
@@ -436,6 +449,7 @@ def tango_harness_fixture(
             MccsSmartBox,
             PasdFQDN=pasd_bus_name,
             FndhFQDN=fndh_name,
+            FndhPort=smartbox_no + 1,
             SmartBoxNumber=smartbox_no + 1,
             LoggingLevelDefault=int(LoggingLevel.OFF),
         )
@@ -444,14 +458,14 @@ def tango_harness_fixture(
         yield context
 
 
-@pytest.fixture(name="fndh_bus_fndh", scope="session")
-def fndh_bus_fndh_fixture() -> str:
+@pytest.fixture(name="fndh_fqdn", scope="session")
+def fndh_fqdn_fixture() -> str:
     """
     Return the name of the fndh Tango device.
 
     :return: the name of the fndh Tango device.
     """
-    return "low-mccs-pasd/fndh/001"
+    return "low-mccs/fndh/001"
 
 
 @pytest.fixture(name="fndh_device")

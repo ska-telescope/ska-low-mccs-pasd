@@ -1,25 +1,11 @@
 #
-# Project makefile for a SKA low MCCS PASD project. 
+# Project makefile for a SKA-Low MCCS PaSD project. 
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE.txt for more info.
 
 PROJECT = ska-low-mccs-pasd
 
-PYTHON_SWITCHES_FOR_BLACK = --line-length 88
-PYTHON_TEST_FILE = tests
-PYTHON_VARS_AFTER_PYTEST = --forked
-
-## Paths containing python to be formatted and linted
-PYTHON_LINT_TARGET = src/ tests/
-
-DOCS_SOURCEDIR=./docs/src
-DOCS_SPHINXOPTS= -n -W --keep-going
-
-# include makefile to pick up the standard Make targets, e.g., 'make build'
-include .make/oci.mk
-include .make/k8s.mk
-include .make/python.mk
 include .make/raw.mk
 include .make/base.mk
 include .make/docs.mk
@@ -29,12 +15,31 @@ include .make/xray.mk
 # include your own private variables for custom deployment configuration
 -include PrivateRules.mak
 
+
+#######################################
+# PYTHON
+#######################################
+include .make/python.mk
+
+PYTHON_LINE_LENGTH = 88
+PYTHON_VARS_AFTER_PYTEST = --forked
+PYTHON_LINT_TARGET = src/ tests/
+
 python-post-lint:
 	$(PYTHON_RUNNER) mypy --config-file mypy.ini src/ tests/
 
-docs-pre-build:
-	python3 -m pip install -r docs/requirements.txt
 
+#######################################
+# OCI
+#######################################
+include .make/oci.mk
+
+
+#######################################
+# K8S
+#######################################
+include .make/k8s.mk
+include .make/xray.mk
 
 # THIS IS SPECIFIC TO THIS REPO
 ifdef CI_REGISTRY_IMAGE
@@ -104,4 +109,26 @@ k8s-do-test:
 	helm  -n $(KUBE_NAMESPACE) uninstall $(K8S_TEST_RUNNER_CHART_RELEASE) ; \
     exit $$EXIT_CODE
 
-.PHONY: python-post-lint docs-pre-build
+
+#######################################
+# HELM
+#######################################
+include .make/helm.mk
+
+HELM_CHARTS_TO_PUBLISH = ska-low-mccs-pasd
+
+
+#######################################
+# DOCS
+#######################################
+include .make/docs.mk
+
+DOCS_SOURCEDIR=./docs/src
+DOCS_SPHINXOPTS= -n -W --keep-going
+
+docs-pre-build:
+	poetry config virtualenvs.create false
+	poetry install --no-root --only docs
+
+
+.PHONY: python-post-lint k8s-do-test docs-pre-build

@@ -103,7 +103,7 @@ def fndh_name_fixture() -> str:
 
     :return: the name of the fndh Tango device.
     """
-    return "low-mccs-pasd/fndh/001"
+    return "low-mccs/fndh/001"
 
 
 @pytest.fixture(name="tango_harness")
@@ -126,7 +126,7 @@ def tango_harness_fixture(
         fndh_name,
         patched_fndh_device_class,
         FndhPort=5,
-        PasdFQDN="low-mccs-pasd/pasdbus/001",
+        PasdFQDN="low-mccs/pasdbus/001",
         LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
     with context_manager as context:
@@ -215,7 +215,7 @@ def test_is_port_on(
     fndh_device: tango.DeviceProxy,
 ) -> None:
     """
-    Test the IsPortOn command.
+    Test the PortPowerState command.
 
     This unit test is kept very light because all it does is
     read a default value from a dictionary.
@@ -224,7 +224,7 @@ def test_is_port_on(
         :py:class:`tango.DeviceProxy` to the device under test, in a
         :py:class:`tango.test_context.DeviceTestContext`.
     """
-    assert fndh_device.IsPortOn(1) == PowerState.UNKNOWN
+    assert fndh_device.PortPowerState(1) == PowerState.UNKNOWN
 
 
 @pytest.mark.parametrize(

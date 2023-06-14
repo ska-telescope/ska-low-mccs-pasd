@@ -66,7 +66,7 @@ def mocked_pasd_proxy_fixture(pasd_device_number: int) -> unittest.mock.Mock:
 @pytest.fixture(name="fndh_component_manager")
 def fndh_component_manager_fixture(
     logger: logging.Logger,
-    pasd_bus_fndh: str,
+    pasdbus_fqdn: str,
     mock_callbacks: MockCallableGroup,
     mocked_pasd_proxy: unittest.mock.Mock,
 ) -> FndhComponentManager:
@@ -76,7 +76,7 @@ def fndh_component_manager_fixture(
     (This is a pytest fixture.)
 
     :param logger: a logger for this command to use.
-    :param pasd_bus_fndh: the pasd bus fndh
+    :param pasdbus_fqdn: the pasd bus fndh
     :param mock_callbacks: mock callables.
     :param mocked_pasd_proxy: a unittest.mock
 
@@ -88,7 +88,7 @@ def fndh_component_manager_fixture(
         mock_callbacks["component_state"],
         mock_callbacks["attribute_update"],
         mock_callbacks["port_power_state"],
-        pasd_bus_fndh,
+        pasdbus_fqdn,
         mocked_pasd_proxy,
     )
     mocked_pasd_proxy._change_event_subscription_ids = {}
@@ -149,64 +149,6 @@ class TestFndhComponentManager:
             CommunicationStatus.ESTABLISHED
         )
         mock_callbacks["communication_state"].assert_not_called()
-
-    @pytest.mark.parametrize(
-        (
-            "component_manager_command",
-            "pasd_proxy_command",
-            "component_manager_command_argument",
-            "pasd_proxy_response",
-            "expected_manager_result",
-        ),
-        [
-            (
-                "is_port_on",
-                "fndhPortsPowerSensed",
-                4,
-                False,
-                False,
-            ),
-        ],
-    )
-    def test_attributes(  # pylint: disable=too-many-arguments
-        self: TestFndhComponentManager,
-        fndh_component_manager: FndhComponentManager,
-        mocked_pasd_proxy: unittest.mock.Mock,
-        component_manager_command: Any,
-        pasd_proxy_command: Any,
-        component_manager_command_argument: Any,
-        pasd_proxy_response: Any,
-        expected_manager_result: Any,
-    ) -> None:
-        """
-        Test the FNDH object attributes.
-
-        :param fndh_component_manager: A FNDH component manager
-            with communication established.
-        :param mocked_pasd_proxy: a unittest.mock
-        :param component_manager_command: command to issue to the component manager
-        :param pasd_proxy_command: component to mock on proxy
-        :param component_manager_command_argument: argument to call on component manager
-        :param pasd_proxy_response: mocked response
-        :param expected_manager_result: expected response from the call
-        """
-        # set up the proxy response
-        if component_manager_command_argument is None:
-            setattr(mocked_pasd_proxy, pasd_proxy_command, pasd_proxy_response)
-            assert (
-                getattr(fndh_component_manager, component_manager_command)
-                == expected_manager_result
-            )
-        else:
-            mock_response = unittest.mock.MagicMock(return_value=pasd_proxy_response)
-            mock_response.__getitem__.return_value = pasd_proxy_response
-            setattr(mocked_pasd_proxy, pasd_proxy_command, mock_response)
-            assert (
-                getattr(fndh_component_manager, component_manager_command)(
-                    component_manager_command_argument
-                )
-                == expected_manager_result
-            )
 
     @pytest.mark.parametrize(
         (

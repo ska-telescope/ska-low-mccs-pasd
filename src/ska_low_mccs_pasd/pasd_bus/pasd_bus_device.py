@@ -24,11 +24,7 @@ from ska_control_model import (
 )
 from ska_low_mccs_common import release
 from ska_tango_base.base import SKABaseDevice
-from ska_tango_base.commands import (
-    DeviceInitCommand,
-    FastCommand,
-    JsonValidator,
-)
+from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidator
 from tango.server import attribute, command
 
 from .pasd_bus_component_manager import PasdBusComponentManager

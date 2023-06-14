@@ -1,0 +1,51 @@
+{{- $defaults := dict "enabled" true "logging_level_default" 3}}
+{{- $smartboxes := .Values.deviceServers.smartboxes}}
+
+
+name: "smartbox-{{.Release.Name}}"
+function: ska-low-mccs-pasd
+domain: ska-low-mccs-pasd
+instances:
+{{- range $key, $this_smartbox := $smartboxes.instances}}
+{{- if (pluck "enabled" $this_smartbox $smartboxes $defaults | first)}}
+  - {{printf "smartbox-%05d" (int $key)}}
+{{- end}}
+{{- end}}
+command: MccsSmartBox
+server: 
+  name: "MccsSmartBox"
+  instances:
+{{- range $key, $this_smartbox := $smartboxes.instances}}
+    - name: {{printf "smartbox-%05d" (int $key)}}
+      classes:
+      - name: "MccsSmartBox"
+        devices:
+        - name: {{printf "low-mccs/smartbox/%05d" (int $key)}}
+          properties:
+          - name: "PasdFQDN"
+            values: 
+            - {{$this_smartbox.pasdFQDN | toString | quote}}
+          - name: "FndhFQDN"
+            values: 
+            - {{$this_smartbox.fndhFQDN | toString | quote}}
+          - name: "SmartBoxNumber"
+            values: 
+            - {{$this_smartbox.smartBoxNumber | toString | quote}}
+          - name: "FndhPort"
+            values: 
+            - {{$this_smartbox.fndhPort | toString | quote}}
+          - name: "LoggingLevelDefault"
+            values: 
+            - {{pluck "logging_level_default" $this_smartbox $smartboxes $defaults | first | toString | quote}}
+{{- end}}
+depends_on:
+  - device: sys/database/2
+image:
+  registry: "{{.Values.low_mccs_pasd.image.registry}}"
+  image: "{{.Values.low_mccs_pasd.image.image}}"
+  tag: "{{.Values.low_mccs_pasd.image.tag}}"
+  pullPolicy: "{{.Values.low_mccs_pasd.image.pullPolicy}}"
+livenessProbe:
+{{ toYaml .Values.livenessProbe | indent 2 }}
+readinessProbe:
+{{ toYaml .Values.readinessProbe | indent 2 }}
