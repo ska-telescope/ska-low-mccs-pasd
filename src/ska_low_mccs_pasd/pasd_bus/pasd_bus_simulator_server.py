@@ -20,7 +20,11 @@ from ska_ser_devices.client_server import (
 )
 
 from .pasd_bus_json_api import PasdBusJsonApi
-from .pasd_bus_simulator import FndhSimulator, PasdBusSimulator, SmartboxSimulator
+from .pasd_bus_simulator import (
+    FndhSimulator,
+    PasdBusSimulator,
+    SmartboxSimulator,
+)
 
 
 # pylint: disable-next=too-few-public-methods
@@ -44,7 +48,9 @@ class PasdBusSimulatorJsonServer(ApplicationServer):
         simulators.extend(smartbox_simulators)
         simulator_api = PasdBusJsonApi(simulators)
         marshaller = SentinelBytesMarshaller(b"\n")
-        super().__init__(marshaller.unmarshall, marshaller.marshall, simulator_api)
+        super().__init__(
+            marshaller.unmarshall, marshaller.marshall, simulator_api
+        )
 
 
 def main() -> None:

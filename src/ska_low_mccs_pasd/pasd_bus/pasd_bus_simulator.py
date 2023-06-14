@@ -382,7 +382,9 @@ class PasdHardwareSimulator:
         return self._ports[port_number - 1].turn_off()
 
     @property
-    def ports_desired_power_when_online(self: PasdHardwareSimulator) -> list[bool]:
+    def ports_desired_power_when_online(
+        self: PasdHardwareSimulator,
+    ) -> list[bool]:
         """
         Return the desired power of each port when the device is online.
 
@@ -395,7 +397,9 @@ class PasdHardwareSimulator:
         return [port.desired_power_when_online for port in self._ports]
 
     @property
-    def ports_desired_power_when_offline(self: PasdHardwareSimulator) -> list[bool]:
+    def ports_desired_power_when_offline(
+        self: PasdHardwareSimulator,
+    ) -> list[bool]:
         """
         Return the desired power of each port when the device is offline.
 
@@ -825,7 +829,9 @@ class PasdBusSimulator:
         logger.info(
             f"PaSD configuration data loaded into simulator for station {station_id}."
         )
-        logger.info(f"Initialised PaSD bus simulator for station {station_id}.")
+        logger.info(
+            f"Initialised PaSD bus simulator for station {station_id}."
+        )
 
     def get_fndh(self: PasdBusSimulator) -> FndhSimulator:
         """
@@ -885,7 +891,11 @@ class PasdBusSimulator:
             smartbox_port = antenna_config["smartbox_port"]
             smartbox_ports_connected[smartbox_id - 1][smartbox_port - 1] = True
 
-        for (smartbox_index, ports_connected) in enumerate(smartbox_ports_connected):
-            self._smartbox_simulators[smartbox_index].configure(ports_connected)
+        for (smartbox_index, ports_connected) in enumerate(
+            smartbox_ports_connected
+        ):
+            self._smartbox_simulators[smartbox_index].configure(
+                ports_connected
+            )
 
         return True

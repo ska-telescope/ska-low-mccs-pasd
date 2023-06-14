@@ -137,7 +137,9 @@ def mock_fndh_simulator_fixture(
             type(mock_simulator),
             property_name,
             unittest.mock.PropertyMock(
-                side_effect=functools.partial(getattr, fndh_simulator, property_name)
+                side_effect=functools.partial(
+                    getattr, fndh_simulator, property_name
+                )
             ),
         )
 
@@ -316,7 +318,9 @@ def pasd_bus_simulator_server_launcher_fixture(
 
 @pytest.fixture(name="pasd_bus_simulator_server")
 def pasd_bus_simulator_server_fixture(
-    pasd_bus_simulator_server_launcher: Callable[[], ContextManager[TcpServer]],
+    pasd_bus_simulator_server_launcher: Callable[
+        [], ContextManager[TcpServer]
+    ],
 ) -> Generator[TcpServer, None, None]:
     """
     Return a running PaSD bus simulator server for use in testing.

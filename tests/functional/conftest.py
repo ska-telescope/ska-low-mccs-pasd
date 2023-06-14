@@ -10,7 +10,15 @@ import logging
 import os
 import threading
 from contextlib import contextmanager
-from typing import Callable, ContextManager, Generator, Iterator, Optional, Union, cast
+from typing import (
+    Callable,
+    ContextManager,
+    Generator,
+    Iterator,
+    Optional,
+    Union,
+    cast,
+)
 
 import _pytest
 import pytest
@@ -115,7 +123,9 @@ def pasd_address_context_manager_factory_fixture() -> Callable[
     else:
 
         @contextmanager
-        def launch_simulator_server() -> Iterator[tuple[str | bytes | bytearray, int]]:
+        def launch_simulator_server() -> Iterator[
+            tuple[str | bytes | bytearray, int]
+        ]:
             # Imports are deferred until now,
             # so that we do not try to import from ska_low_mccs_pasd
             # until we know that we need to.
@@ -135,7 +145,9 @@ def pasd_address_context_manager_factory_fixture() -> Callable[
                 simulator.get_fndh(), simulator.get_smartboxes()
             )
             server = TcpServer(
-                "127.0.0.1", 0, simulator_server  # let the kernel give us a port
+                "127.0.0.1",
+                0,
+                simulator_server,  # let the kernel give us a port
             )
             with server:
                 server_thread = threading.Thread(
@@ -175,7 +187,9 @@ def pasd_timeout_fixture() -> Optional[float]:
 def tango_harness_fixture(
     true_context: bool,
     pasd_bus_name: str,
-    pasd_address_context_manager_factory: Callable[[], ContextManager[tuple[str, int]]],
+    pasd_address_context_manager_factory: Callable[
+        [], ContextManager[tuple[str, int]]
+    ],
     pasd_timeout: Optional[float],
 ) -> Generator[TangoContextProtocol, None, None]:
     """
@@ -203,7 +217,9 @@ def tango_harness_fixture(
     else:
         with pasd_address_context_manager_factory() as (pasd_host, pasd_port):
             tango_context_manager = ThreadedTestTangoContextManager()
-            cast(ThreadedTestTangoContextManager, tango_context_manager).add_device(
+            cast(
+                ThreadedTestTangoContextManager, tango_context_manager
+            ).add_device(
                 pasd_bus_name,
                 "ska_low_mccs_pasd.MccsPasdBus",
                 Host=pasd_host,

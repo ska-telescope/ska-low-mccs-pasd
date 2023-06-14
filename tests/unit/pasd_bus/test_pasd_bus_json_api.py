@@ -106,7 +106,9 @@ class TestPasdBusJsonApi:
 
         :return: an API instance against which to test
         """
-        return PasdBusJsonApi([backend_fndh] + list(backend_smartboxes), encoding)
+        return PasdBusJsonApi(
+            [backend_fndh] + list(backend_smartboxes), encoding
+        )
 
     def test_nonjson(
         self: TestPasdBusJsonApi, api: PasdBusJsonApi, encoding: str
@@ -237,9 +239,9 @@ class TestPasdBusJsonApi:
         response = json.loads(response_str)
         assert response["source"] == 0
         assert response["data"]["type"] == "reads"
-        assert response["data"]["attributes"]["outside_temperature"] == pytest.approx(
-            backend_fndh.outside_temperature
-        )
+        assert response["data"]["attributes"][
+            "outside_temperature"
+        ] == pytest.approx(backend_fndh.outside_temperature)
 
     def test_execute_nonexistent_command(
         self: TestPasdBusJsonApi, api: PasdBusJsonApi, encoding: str
@@ -264,7 +266,11 @@ class TestPasdBusJsonApi:
         :param encoding: the encoding to use when converting between string
             and bytes
         """
-        request = {"device_id": 0, "execute": "nonexistent_command", "arguments": []}
+        request = {
+            "device_id": 0,
+            "execute": "nonexistent_command",
+            "arguments": [],
+        }
         request_str = json.dumps(request)
         request_bytes = request_str.encode(encoding)
         response_bytes = api(request_bytes)
@@ -300,7 +306,11 @@ class TestPasdBusJsonApi:
         :param encoding: the encoding to use when converting between string
             and bytes
         """
-        request = {"device_id": 0, "execute": "reset_port_breaker", "arguments": [2]}
+        request = {
+            "device_id": 0,
+            "execute": "reset_port_breaker",
+            "arguments": [2],
+        }
         request_str = json.dumps(request)
         request_bytes = request_str.encode(encoding)
         response_bytes = api(request_bytes)

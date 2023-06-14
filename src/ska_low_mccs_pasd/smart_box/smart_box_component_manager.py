@@ -15,7 +15,12 @@ import threading
 from typing import Any, Callable, Optional
 
 import tango
-from ska_control_model import CommunicationStatus, HealthState, PowerState, TaskStatus
+from ska_control_model import (
+    CommunicationStatus,
+    HealthState,
+    PowerState,
+    TaskStatus,
+)
 from ska_low_mccs_common import MccsDeviceProxy
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.base import check_communicating
@@ -55,7 +60,9 @@ class Port:
         :param task_callback: the command_tracker callback
             for this command.
         """
-        self.logger.info("Port desired on. To be turned on when smartbox is on.")
+        self.logger.info(
+            "Port desired on. To be turned on when smartbox is on."
+        )
         self.desire_on = True
         self._task_callback = task_callback  # type: ignore[assignment]
 
@@ -72,7 +79,9 @@ class Port:
         )
 
         command_tracker = next(
-            item for item in [task_callback, self._task_callback] if item is not None
+            item
+            for item in [task_callback, self._task_callback]
+            if item is not None
         )
         self._power_on_callback(  # type: ignore[attr-defined]
             self._port_id, command_tracker
@@ -132,7 +141,9 @@ class _SmartBoxProxy(DeviceComponentManager):
         # Ask what attributes to subscribe to and subscribe to them.
         subscriptions = self._proxy.GetPasdDeviceSubscriptions(self._fndh_port)
         for attribute in subscriptions:
-            self._proxy.add_change_event_callback(attribute, self._on_attribute_change)
+            self._proxy.add_change_event_callback(
+                attribute, self._on_attribute_change
+            )
 
     def _on_attribute_change(
         self: _SmartBoxProxy,
@@ -349,7 +360,7 @@ class SmartBoxComponentManager(
             logger,
             communication_state_callback,
             component_state_callback,
-            max_workers,
+            max_workers=max_workers,
             power=None,
             fault=None,
             pasdbus_status=None,
@@ -359,7 +370,8 @@ class SmartBoxComponentManager(
         self._fndh_fqdn = fndh_fqdn
         self.logger = logger
         self.ports = [
-            Port(self.turn_on_port, port, logger) for port in range(1, port_count + 1)
+            Port(self.turn_on_port, port, logger)
+            for port in range(1, port_count + 1)
         ]
         self._power_state = PowerState.UNKNOWN
         self._fndh_port = fndh_port
@@ -367,15 +379,22 @@ class SmartBoxComponentManager(
     def _pasdbus_state_changed(
         self: SmartBoxComponentManager, state_change: dict[str, Any]
     ) -> None:
-        self._component_state_changed_callback(**state_change, fqdn=self._pasd_fqdn)
+        if self._component_state_callback is not None:
+            self._component_state_callback(
+                **state_change, fqdn=self._pasd_fqdn
+            )
 
     def _fndh_state_changed(
         self: SmartBoxComponentManager, state_change: dict[str, Any]
     ) -> None:
-        self._component_state_changed_callback(**state_change, fqdn=self._fndh_fqdn)
+        if self._component_state_callback is not None:
+            self._component_state_callback(
+                **state_change, fqdn=self._fndh_fqdn
+            )
 
     def _smartbox_communication_state_changed(
-        self: SmartBoxComponentManager, communication_state: CommunicationStatus
+        self: SmartBoxComponentManager,
+        communication_state: CommunicationStatus,
     ) -> None:
         self._pasd_communication_state = communication_state
         if communication_state == CommunicationStatus.ESTABLISHED:
@@ -385,7 +404,8 @@ class SmartBoxComponentManager(
             self.update_device_communication_state()
 
     def _fndh_communication_state_changed(
-        self: SmartBoxComponentManager, communication_state: CommunicationStatus
+        self: SmartBoxComponentManager,
+        communication_state: CommunicationStatus,
     ) -> None:
         self._fndh_communication_state = communication_state
         if communication_state == CommunicationStatus.ESTABLISHED:
@@ -394,7 +414,9 @@ class SmartBoxComponentManager(
         if communication_state != self._communication_state:
             self.update_device_communication_state()
 
-    def update_device_communication_state(self: SmartBoxComponentManager) -> None:
+    def update_device_communication_state(
+        self: SmartBoxComponentManager,
+    ) -> None:
         """
         Update the communication state.
 
@@ -411,7 +433,9 @@ class SmartBoxComponentManager(
             ):
                 self._update_communication_state(communication_state)
                 return
-            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+            self._update_communication_state(
+                CommunicationStatus.NOT_ESTABLISHED
+            )
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """Establish communication."""
@@ -438,8 +462,8 @@ class SmartBoxComponentManager(
                 for port in self.ports:
                     if port.desire_on:
                         port.turn_on()
-
-            self._component_state_callback(power=self._power_state)
+            if self._component_state_callback is not None:
+                self._component_state_callback(power=self._power_state)
         else:
             return
 
@@ -453,7 +477,8 @@ class SmartBoxComponentManager(
 
     @check_communicating
     def on(
-        self: SmartBoxComponentManager, task_callback: Optional[Callable] = None
+        self: SmartBoxComponentManager,
+        task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
         Turn the Smartbox on.
@@ -478,9 +503,14 @@ class SmartBoxComponentManager(
         try:
             if self._fndh_port:
                 if self._smartbox_proxy is None:
-                    raise ValueError(f"Power on smartbox '{self._fndh_port} failed'")
+                    raise ValueError(
+                        f"Power on smartbox '{self._fndh_port} failed'"
+                    )
                 json_argument = json.dumps(
-                    {"port_number": self._fndh_port, "stay_on_when_offline": True}
+                    {
+                        "port_number": self._fndh_port,
+                        "stay_on_when_offline": True,
+                    }
                 )
                 (
                     result_code,
@@ -511,7 +541,8 @@ class SmartBoxComponentManager(
 
     @check_communicating
     def off(
-        self: SmartBoxComponentManager, task_callback: Optional[Callable] = None
+        self: SmartBoxComponentManager,
+        task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
         Turn the Smartbox off.
@@ -536,7 +567,9 @@ class SmartBoxComponentManager(
         try:
             if self._fndh_port:
                 if self._smartbox_proxy is None:
-                    raise ValueError(f"Power off smartbox '{self._fndh_port} failed'")
+                    raise ValueError(
+                        f"Power off smartbox '{self._fndh_port} failed'"
+                    )
 
                 (
                     result_code,
@@ -600,7 +633,10 @@ class SmartBoxComponentManager(
             if self._smartbox_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
             json_argument = json.dumps(
-                {"smartbox_number": self._fndh_port, "port_number": port_number}
+                {
+                    "smartbox_number": self._fndh_port,
+                    "port_number": port_number,
+                }
             )
             (
                 result_code,

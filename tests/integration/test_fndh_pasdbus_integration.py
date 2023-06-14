@@ -69,7 +69,9 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["fndh_state"],
         )
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
         pasd_bus_device.subscribe_event(
             "state",
             tango.EventType.CHANGE_EVENT,
@@ -88,14 +90,20 @@ class TestfndhPasdBusIntegration:
             tango.DevState.UNKNOWN
         )
         # TODO: Do we want to enter On state here?
-        change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.ON
+        )
         change_event_callbacks["pasd_bus_state"].assert_not_called()
 
         # The fndh should enter UNKNOWN, if communication can be established
         # the FNDH has power.
         fndh_device.adminMode = AdminMode.ONLINE
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.ON
+        )
         # ================================================================
 
     def test_communication(
@@ -135,7 +143,9 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["fndh_state"],
         )
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
 
         pasd_bus_device.subscribe_event(
             "healthState",
@@ -160,23 +170,35 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["smartbox24PortsCurrentDraw"],
         )
-        change_event_callbacks.assert_change_event("smartbox24PortsCurrentDraw", None)
+        change_event_callbacks.assert_change_event(
+            "smartbox24PortsCurrentDraw", None
+        )
 
         pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
         change_event_callbacks.assert_change_event(
             "pasd_bus_state", tango.DevState.UNKNOWN
         )
-        change_event_callbacks.assert_change_event("pasd_bus_state", tango.DevState.ON)
-        change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
+        change_event_callbacks.assert_change_event(
+            "pasd_bus_state", tango.DevState.ON
+        )
+        change_event_callbacks.assert_change_event(
+            "pasdBushealthState", HealthState.OK
+        )
         assert pasd_bus_device.healthState == HealthState.OK
 
-        change_event_callbacks.assert_against_call("smartbox24PortsCurrentDraw")
+        change_event_callbacks.assert_against_call(
+            "smartbox24PortsCurrentDraw"
+        )
 
         fndh_device.adminMode = AdminMode.ONLINE
 
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.ON
+        )
         change_event_callbacks["fndh_state"].assert_not_called()
 
         assert (
@@ -186,20 +208,39 @@ class TestfndhPasdBusIntegration:
         assert fndh_device.PcbRevisionNumber == FndhSimulator.PCB_REVISION
         assert fndh_device.CpuId == FndhSimulator.CPU_ID
         assert fndh_device.ChipId == FndhSimulator.CHIP_ID
-        assert fndh_device.FirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
+        assert (
+            fndh_device.FirmwareVersion
+            == FndhSimulator.DEFAULT_FIRMWARE_VERSION
+        )
         assert fndh_device.Uptime == FndhSimulator.DEFAULT_UPTIME
         assert fndh_device.pasdStatus == FndhSimulator.DEFAULT_STATUS
         assert fndh_device.LedPattern == FndhSimulator.DEFAULT_LED_PATTERN
-        assert list(fndh_device.Psu48vVoltages) == FndhSimulator.DEFAULT_PSU48V_VOLTAGES
-        assert fndh_device.Psu5vVoltage == FndhSimulator.DEFAULT_PSU5V_VOLTAGE
-        assert fndh_device.Psu48vCurrent == FndhSimulator.DEFAULT_PSU48V_CURRENT
-        assert fndh_device.Psu48vTemperature == FndhSimulator.DEFAULT_PSU48V_TEMPERATURE
-        assert fndh_device.Psu5vTemperature == FndhSimulator.DEFAULT_PSU5V_TEMPERATURE
-        assert fndh_device.PcbTemperature == FndhSimulator.DEFAULT_PCB_TEMPERATURE
         assert (
-            fndh_device.OutsideTemperature == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+            list(fndh_device.Psu48vVoltages)
+            == FndhSimulator.DEFAULT_PSU48V_VOLTAGES
         )
-        assert list(fndh_device.PortsConnected) == fndh_simulator.ports_connected
+        assert fndh_device.Psu5vVoltage == FndhSimulator.DEFAULT_PSU5V_VOLTAGE
+        assert (
+            fndh_device.Psu48vCurrent == FndhSimulator.DEFAULT_PSU48V_CURRENT
+        )
+        assert (
+            fndh_device.Psu48vTemperature
+            == FndhSimulator.DEFAULT_PSU48V_TEMPERATURE
+        )
+        assert (
+            fndh_device.Psu5vTemperature
+            == FndhSimulator.DEFAULT_PSU5V_TEMPERATURE
+        )
+        assert (
+            fndh_device.PcbTemperature == FndhSimulator.DEFAULT_PCB_TEMPERATURE
+        )
+        assert (
+            fndh_device.OutsideTemperature
+            == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+        )
+        assert (
+            list(fndh_device.PortsConnected) == fndh_simulator.ports_connected
+        )
         assert (
             list(fndh_device.PortBreakersTripped)
             == fndh_simulator.port_breakers_tripped
@@ -213,17 +254,27 @@ class TestfndhPasdBusIntegration:
             list(fndh_device.PortsDesiredPowerOffline)
             == fndh_simulator.ports_desired_power_when_offline
         )
-        assert list(fndh_device.PortsPowerSensed) == fndh_simulator.ports_power_sensed
+        assert (
+            list(fndh_device.PortsPowerSensed)
+            == fndh_simulator.ports_power_sensed
+        )
 
         for port in range(1, FndhSimulator.NUMBER_OF_PORTS + 1):
             is_port_on = fndh_simulator.ports_power_sensed[port - 1]
             if not is_port_on:
-                assert getattr(fndh_device, f"Port{port}PowerState") == PowerState.OFF
+                assert (
+                    getattr(fndh_device, f"Port{port}PowerState")
+                    == PowerState.OFF
+                )
             elif is_port_on:
-                assert getattr(fndh_device, f"Port{port}PowerState") == PowerState.ON
+                assert (
+                    getattr(fndh_device, f"Port{port}PowerState")
+                    == PowerState.ON
+                )
             else:
                 assert (
-                    getattr(fndh_device, f"Port{port}PowerState") == PowerState.UNKNOWN
+                    getattr(fndh_device, f"Port{port}PowerState")
+                    == PowerState.UNKNOWN
                 )
 
     def test_port_power(
@@ -267,7 +318,9 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["fndh_state"],
         )
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
 
         pasd_bus_device.subscribe_event(
             "healthState",
@@ -291,23 +344,35 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["smartbox24PortsCurrentDraw"],
         )
-        change_event_callbacks.assert_change_event("smartbox24PortsCurrentDraw", None)
+        change_event_callbacks.assert_change_event(
+            "smartbox24PortsCurrentDraw", None
+        )
 
         pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
         change_event_callbacks.assert_change_event(
             "pasd_bus_state", tango.DevState.UNKNOWN
         )
-        change_event_callbacks.assert_change_event("pasd_bus_state", tango.DevState.ON)
-        change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
+        change_event_callbacks.assert_change_event(
+            "pasd_bus_state", tango.DevState.ON
+        )
+        change_event_callbacks.assert_change_event(
+            "pasdBushealthState", HealthState.OK
+        )
         assert pasd_bus_device.healthState == HealthState.OK
 
-        change_event_callbacks.assert_against_call("smartbox24PortsCurrentDraw")
+        change_event_callbacks.assert_against_call(
+            "smartbox24PortsCurrentDraw"
+        )
 
         fndh_device.adminMode = AdminMode.ONLINE
 
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.ON
+        )
         change_event_callbacks["fndh_state"].assert_not_called()
 
         fndh_device.subscribe_event(
@@ -322,7 +387,9 @@ class TestfndhPasdBusIntegration:
         assert fndh_device.PortPowerState(2) == PowerState.OFF
         fndh_simulator.turn_port_on(2)
 
-        change_event_callbacks["fndhPort2PowerState"].assert_change_event(PowerState.ON)
+        change_event_callbacks["fndhPort2PowerState"].assert_change_event(
+            PowerState.ON
+        )
 
         assert fndh_device.PortPowerState(2) == PowerState.ON
 

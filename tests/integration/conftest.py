@@ -119,7 +119,9 @@ def mock_fndh_simulator_fixture(
             type(mock_simulator),
             property_name,
             unittest.mock.PropertyMock(
-                side_effect=functools.partial(getattr, fndh_simulator, property_name)
+                side_effect=functools.partial(
+                    getattr, fndh_simulator, property_name
+                )
             ),
         )
 
@@ -288,7 +290,9 @@ def smartbox_number_fixture() -> int:
 
 @pytest.fixture(name="pasd_bus_simulator_server")
 def pasd_bus_simulator_server_fixture(
-    pasd_bus_simulator_server_launcher: Callable[[], ContextManager[TcpServer]],
+    pasd_bus_simulator_server_launcher: Callable[
+        [], ContextManager[TcpServer]
+    ],
 ) -> Generator[TcpServer, None, None]:
     """
     Return a running PaSD bus simulator server for use in testing.
@@ -355,7 +359,9 @@ def smartbox_devices_fixture(
     """
     smartbox_proxies = []
     for smartbox_no in range(2):
-        smartbox_proxies.append(tango_harness.get_device(smartbox_names[smartbox_no]))
+        smartbox_proxies.append(
+            tango_harness.get_device(smartbox_names[smartbox_no])
+        )
     return smartbox_proxies
 
 

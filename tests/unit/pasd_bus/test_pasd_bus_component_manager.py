@@ -52,7 +52,9 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call(
             "communication_state", CommunicationStatus.ESTABLISHED
         )
-        mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
+        mock_callbacks.assert_call(
+            "component_state", power=PowerState.ON, fault=False
+        )
 
         # First we'll receive static info about the FNDH
         mock_callbacks.assert_call(
@@ -97,7 +99,9 @@ class TestPasdBusComponentManager:
 
         expected_fndh_ports_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
         for smartbox_config in pasd_config["smartboxes"]:
-            expected_fndh_ports_connected[smartbox_config["fndh_port"] - 1] = True
+            expected_fndh_ports_connected[
+                smartbox_config["fndh_port"] - 1
+            ] = True
 
         # Then FNDH port status info
         mock_callbacks.assert_call(
@@ -106,8 +110,10 @@ class TestPasdBusComponentManager:
             ports_connected=expected_fndh_ports_connected,
             port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
             port_breakers_tripped=[False] * FndhSimulator.NUMBER_OF_PORTS,
-            ports_desired_power_when_online=[False] * FndhSimulator.NUMBER_OF_PORTS,
-            ports_desired_power_when_offline=[False] * FndhSimulator.NUMBER_OF_PORTS,
+            ports_desired_power_when_online=[False]
+            * FndhSimulator.NUMBER_OF_PORTS,
+            ports_desired_power_when_offline=[False]
+            * FndhSimulator.NUMBER_OF_PORTS,
             ports_power_sensed=[False] * FndhSimulator.NUMBER_OF_PORTS,
         )
 
@@ -143,14 +149,17 @@ class TestPasdBusComponentManager:
                 smartbox_number,
                 ports_connected=expected_smartbox_ports_connected,
                 port_forcings=["NONE"] * SmartboxSimulator.NUMBER_OF_PORTS,
-                port_breakers_tripped=[False] * SmartboxSimulator.NUMBER_OF_PORTS,
+                port_breakers_tripped=[False]
+                * SmartboxSimulator.NUMBER_OF_PORTS,
                 ports_desired_power_when_online=[False]
                 * SmartboxSimulator.NUMBER_OF_PORTS,
                 ports_desired_power_when_offline=[False]
                 * SmartboxSimulator.NUMBER_OF_PORTS,
                 ports_power_sensed=[False] * SmartboxSimulator.NUMBER_OF_PORTS,
                 ports_current_draw=[
-                    SmartboxSimulator.DEFAULT_PORT_CURRENT_DRAW if connected else 0.0
+                    SmartboxSimulator.DEFAULT_PORT_CURRENT_DRAW
+                    if connected
+                    else 0.0
                     for connected in expected_smartbox_ports_connected
                 ],
             )
@@ -160,7 +169,9 @@ class TestPasdBusComponentManager:
 
         pasd_bus_component_manager.stop_communicating()
 
-        mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.DISABLED
+        )
         mock_callbacks["component_state"].assert_call(
             power=PowerState.UNKNOWN, fault=None
         )
@@ -187,7 +198,9 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call(
             "communication_state", CommunicationStatus.ESTABLISHED
         )
-        mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
+        mock_callbacks.assert_call(
+            "component_state", power=PowerState.ON, fault=False
+        )
 
         # Three calls per device (1 FNDH and 24 subracks).
         # These are fully unpacked in the above test.
@@ -269,7 +282,9 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call(
             "communication_state", CommunicationStatus.ESTABLISHED
         )
-        mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
+        mock_callbacks.assert_call(
+            "component_state", power=PowerState.ON, fault=False
+        )
 
         # Three calls per device (1 FNDH and 24 subracks).
         # These are fully unpacked in the above test.
@@ -280,7 +295,9 @@ class TestPasdBusComponentManager:
         ports_current_draw = smartbox_simulator.ports_current_draw
         ports_connected = smartbox_simulator.ports_connected
         expected_port_forcings = smartbox_simulator.port_forcings
-        expected_port_breakers_tripped = smartbox_simulator.port_breakers_tripped
+        expected_port_breakers_tripped = (
+            smartbox_simulator.port_breakers_tripped
+        )
         expected_ports_desired_power_when_online = (
             smartbox_simulator.ports_desired_power_when_online
         )
@@ -314,7 +331,9 @@ class TestPasdBusComponentManager:
         # TODO: Once we have a poller, we can simulate port forcing,
         # and breaker tripping and resetting here.
 
-        pasd_bus_component_manager.turn_smartbox_port_off(smartbox_id, connected_port)
+        pasd_bus_component_manager.turn_smartbox_port_off(
+            smartbox_id, connected_port
+        )
         expected_ports_desired_power_when_online[connected_port - 1] = False
         expected_ports_desired_power_when_offline[connected_port - 1] = False
         expected_ports_power_sensed[connected_port - 1] = False
@@ -352,7 +371,9 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call(
             "communication_state", CommunicationStatus.ESTABLISHED
         )
-        mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
+        mock_callbacks.assert_call(
+            "component_state", power=PowerState.ON, fault=False
+        )
 
         # Three calls per device (1 FNDH and 24 subracks).
         # These are fully unpacked in the above test.

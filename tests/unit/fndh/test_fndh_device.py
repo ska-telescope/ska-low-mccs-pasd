@@ -195,7 +195,9 @@ def test_command(  # pylint: disable=too-many-arguments
     :param component_manager_method_return: return value of the
         component manager method
     """
-    method_mock = unittest.mock.Mock(return_value=component_manager_method_return)
+    method_mock = unittest.mock.Mock(
+        return_value=component_manager_method_return
+    )
     setattr(mock_component_manager, component_manager_method, method_mock)
     method_mock.assert_not_called()
 
@@ -320,9 +322,17 @@ def test_configure(
 
     fndh_device.Configure(json.dumps(config_in))
 
-    assert fndh_device.overCurrentThreshold == expected_config["overCurrentThreshold"]
-    assert fndh_device.overVoltageThreshold == expected_config["overVoltageThreshold"]
-    assert fndh_device.humidityThreshold == expected_config["humidityThreshold"]
+    assert (
+        fndh_device.overCurrentThreshold
+        == expected_config["overCurrentThreshold"]
+    )
+    assert (
+        fndh_device.overVoltageThreshold
+        == expected_config["overVoltageThreshold"]
+    )
+    assert (
+        fndh_device.humidityThreshold == expected_config["humidityThreshold"]
+    )
 
 
 def test_threshold_attributes(

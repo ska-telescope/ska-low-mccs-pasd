@@ -169,7 +169,9 @@ def test_command(  # pylint: disable=too-many-arguments
     :param component_manager_method_return: return value of the
         component manager method
     """
-    method_mock = unittest.mock.Mock(return_value=component_manager_method_return)
+    method_mock = unittest.mock.Mock(
+        return_value=component_manager_method_return
+    )
     setattr(mock_component_manager, component_manager_method, method_mock)
     method_mock.assert_not_called()
 
