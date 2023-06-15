@@ -17,6 +17,7 @@ from pymodbus.register_read_message import (
     ReadHoldingRegistersResponse,
 )
 
+from .pasd_bus_register_map import PasdBusRegisterMap
 from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
 
 
@@ -122,30 +123,44 @@ class PasdBusModbusApiClient:
         self._decoder = ModbusAsciiFramer(ClientDecoder())
 
     def _do_read_request(self, request: dict) -> dict:
-        attribute_names = request["read"]
         slave_id = request["device_id"]
 
-        # TODO: Map requested attribute names to holding register numbers
-        starting_register = 23
+        # Get a dictionary mapping the requested attribute names to
+        # PasdAttributes
+        attributes = PasdBusRegisterMap.get_attributes(slave_id, request["read"])
+
+        # Retrieve the list of keys (attribute names) in Modbus address order
+        keys = list(attributes)
+
         message = ReadHoldingRegistersRequest(
-            address=starting_register, slave=slave_id, count=1
+            address=attributes[keys[0]].address,
+            slave=slave_id,
+            count=attributes[keys[-1]].address + attributes[keys[-1]].count,
         )
         request_bytes = self._framer.buildPacket(message)
         response_bytes = self._transport(request_bytes)
         response = {}
 
         def process_read_reply(reply: Any) -> None:
-            nonlocal response
+            nonlocal response, attributes, keys
             match reply:
                 case ReadHoldingRegistersResponse():
-                    attributes_dict = {}
-                    for attr, register in zip(attribute_names, reply.registers):
-                        attributes_dict[attr] = register
+                    results = {}
+                    register_index = 0
+                    for key in keys:
+                        # Convert the raw register value(s) into meaningful
+                        # data and add to the attributes dictionary to be returned
+                        results[key] = attributes[key].convert_value(
+                            reply.registers[
+                                register_index : register_index + attributes[key].count
+                            ]
+                        )
+                        register_index = register_index + attributes[key].count
                     response = {
                         "source": slave_id,
                         "data": {
                             "type": "reads",
-                            "attributes": attributes_dict,
+                            "attributes": results,
                         },
                     }
                 case _:
@@ -164,6 +179,8 @@ class PasdBusModbusApiClient:
     def read_attributes(self, device_id: int, *names: str) -> dict[str, Any]:
         """
         Read attribute values from the server.
+
+        Note these must be stored in contiguous Modbus registers in the h/w.
 
         :param device_id: id of the device to be read from.
         :param names: names of the attributes to be read.
