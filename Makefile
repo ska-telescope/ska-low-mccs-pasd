@@ -8,11 +8,7 @@ PROJECT = ska-low-mccs-pasd
 
 include .make/raw.mk
 include .make/base.mk
-include .make/docs.mk
-include .make/helm.mk
-include .make/xray.mk
 
-# include your own private variables for custom deployment configuration
 -include PrivateRules.mak
 
 
