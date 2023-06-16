@@ -15,6 +15,7 @@ import sphinx.builders.latex
 import sphinx.builders.texinfo
 import sphinx.builders.text
 import sphinx.ext.autodoc
+import sphinx.builders.linkcheck
 
 # This is an elaborate hack to insert write property into _all_
 # mock decorators. It is needed for getting @attribute to build
