@@ -12,6 +12,7 @@ from __future__ import annotations
 import importlib.resources
 import json
 import logging
+import sys
 from typing import Any, Final, Optional, cast
 
 import tango.server
@@ -22,13 +23,8 @@ from ska_control_model import (
     ResultCode,
     SimulationMode,
 )
-from ska_low_mccs_common import release
 from ska_tango_base.base import SKABaseDevice
-from ska_tango_base.commands import (
-    DeviceInitCommand,
-    FastCommand,
-    JsonValidator,
-)
+from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidator
 from tango.server import attribute, command
 
 from .pasd_bus_component_manager import PasdBusComponentManager
@@ -129,8 +125,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         super().init_device()
 
-        self._build_state: str = release.get_release_info()
-        self._version_id: str = release.version
+        self._build_state: str = sys.modules["ska_low_mccs_pasd"].__version_info__
+        self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
 
         self._pasd_state: dict[str, Any] = {}
         self._setup_fndh_attributes()
@@ -175,9 +171,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 max_dim_x=length,
             )
 
-    def _setup_smartbox_attributes(
-        self: MccsPasdBus, smartbox_number: int
-    ) -> None:
+    def _setup_smartbox_attributes(self: MccsPasdBus, smartbox_number: int) -> None:
         for (slug, data_type, length) in [
             ("ModbusRegisterMapRevisionNumber", int, None),
             ("PcbRevisionNumber", int, None),
@@ -230,9 +224,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()
-        self._health_state = (
-            HealthState.UNKNOWN
-        )  # InitCommand.do() does this too late.
+        self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._health_model = PasdBusHealthModel(self._health_changed)
         self.set_change_event("healthState", True, False)
 
@@ -404,12 +396,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
             if self._pasd_state[tango_attribute_name] != pasd_attribute_value:
                 self._pasd_state[tango_attribute_name] = pasd_attribute_value
-                self.push_change_event(
-                    tango_attribute_name, pasd_attribute_value
-                )
-                self.push_archive_event(
-                    tango_attribute_name, pasd_attribute_value
-                )
+                self.push_change_event(tango_attribute_name, pasd_attribute_value)
+                self.push_archive_event(tango_attribute_name, pasd_attribute_value)
 
     def _health_changed(
         self: MccsPasdBus,
@@ -506,9 +494,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             )
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def TurnFndhPortOn(
-        self: MccsPasdBus, argin: str
-    ) -> DevVarLongStringArrayType:
+    def TurnFndhPortOn(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
         """
         Turn on an FNDH port.
 
@@ -553,9 +539,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             return self._component_manager.turn_fndh_port_off(port_number)
 
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def TurnFndhPortOff(
-        self: MccsPasdBus, argin: int
-    ) -> DevVarLongStringArrayType:
+    def TurnFndhPortOff(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
         """
         Turn off an FNDH port.
 
@@ -600,9 +584,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             return self._component_manager.set_fndh_led_pattern(pattern)
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def SetFndhLedPattern(
-        self: MccsPasdBus, pattern: str
-    ) -> DevVarLongStringArrayType:
+    def SetFndhLedPattern(self: MccsPasdBus, pattern: str) -> DevVarLongStringArrayType:
         """
         Set the FNDH's LED pattern.
 
@@ -686,9 +668,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         ):
             self._component_manager = component_manager
 
-            validator = JsonValidator(
-                "TurnSmartboxPortOn", self.SCHEMA, logger
-            )
+            validator = JsonValidator("TurnSmartboxPortOn", self.SCHEMA, logger)
             super().__init__(logger, validator)
 
         # pylint: disable-next=arguments-differ
@@ -715,9 +695,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             )
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def TurnSmartboxPortOn(
-        self: MccsPasdBus, argin: str
-    ) -> DevVarLongStringArrayType:
+    def TurnSmartboxPortOn(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
         """
         Turn on a smartbox port.
 
@@ -752,9 +730,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         ):
             self._component_manager = component_manager
 
-            validator = JsonValidator(
-                "TurnSmartboxPortOff", self.SCHEMA, logger
-            )
+            validator = JsonValidator("TurnSmartboxPortOff", self.SCHEMA, logger)
             super().__init__(logger, validator)
 
         # pylint: disable-next=arguments-differ
@@ -778,9 +754,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             )
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def TurnSmartboxPortOff(
-        self: MccsPasdBus, argin: str
-    ) -> DevVarLongStringArrayType:
+    def TurnSmartboxPortOff(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
         """
         Turn off a smartbox port.
 
@@ -815,9 +789,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         ):
             self._component_manager = component_manager
 
-            validator = JsonValidator(
-                "SetSmartboxLedPattern", self.SCHEMA, logger
-            )
+            validator = JsonValidator("SetSmartboxLedPattern", self.SCHEMA, logger)
             super().__init__(logger, validator)
 
         # pylint: disable=arguments-differ
@@ -868,9 +840,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         ):
             self._component_manager = component_manager
 
-            validator = JsonValidator(
-                "ResetSmartboxPortBreaker", self.SCHEMA, logger
-            )
+            validator = JsonValidator("ResetSmartboxPortBreaker", self.SCHEMA, logger)
             super().__init__(logger, validator)
 
         # pylint: disable-next=arguments-differ
@@ -924,14 +894,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
             :return: a list of the subscriptions for this device.
             """
-            return list(
-                self._device._ATTRIBUTE_MAP[pasd_device_number].values()
-            )
+            return list(self._device._ATTRIBUTE_MAP[pasd_device_number].values())
 
     @command(dtype_in="DevShort", dtype_out="DevVarStringArray")
-    def GetPasdDeviceSubscriptions(
-        self: MccsPasdBus, device_number: int
-    ) -> list[str]:
+    def GetPasdDeviceSubscriptions(self: MccsPasdBus, device_number: int) -> list[str]:
         """
         Get subscriptions for a particular pasd device.
 

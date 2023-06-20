@@ -106,9 +106,7 @@ class TestPasdBusJsonApi:
 
         :return: an API instance against which to test
         """
-        return PasdBusJsonApi(
-            [backend_fndh] + list(backend_smartboxes), encoding
-        )
+        return PasdBusJsonApi([backend_fndh] + list(backend_smartboxes), encoding)
 
     def test_nonjson(
         self: TestPasdBusJsonApi, api: PasdBusJsonApi, encoding: str
@@ -239,9 +237,9 @@ class TestPasdBusJsonApi:
         response = json.loads(response_str)
         assert response["source"] == 0
         assert response["data"]["type"] == "reads"
-        assert response["data"]["attributes"][
-            "outside_temperature"
-        ] == pytest.approx(backend_fndh.outside_temperature)
+        assert response["data"]["attributes"]["outside_temperature"] == pytest.approx(
+            backend_fndh.outside_temperature
+        )
 
     def test_execute_nonexistent_command(
         self: TestPasdBusJsonApi, api: PasdBusJsonApi, encoding: str

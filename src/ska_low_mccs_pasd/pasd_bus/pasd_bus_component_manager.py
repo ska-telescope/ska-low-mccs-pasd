@@ -186,9 +186,7 @@ class PasdBusRequestProvider:
         """
         self._port_power_changes[(device_id, port_number)] = False
 
-    def desire_port_breaker_reset(
-        self, device_id: int, port_number: int
-    ) -> None:
+    def desire_port_breaker_reset(self, device_id: int, port_number: int) -> None:
         """
         Register a request to reset a port breaker.
 
@@ -238,9 +236,7 @@ class PasdBusRequestProvider:
                     [port_number, stay_on_when_offline],
                 )
             case False:
-                return PasdBusRequest(
-                    device_id, "turn_port_off", [port_number]
-                )
+                return PasdBusRequest(device_id, "turn_port_off", [port_number])
             case _:
                 raise AssertionError("This should be unreachable.")
 
@@ -253,9 +249,7 @@ class PasdBusRequestProvider:
                     device_id, None, list(self.STATIC_INFO_ATTRIBUTES)
                 )
             case (0, "STATUS"):
-                request = PasdBusRequest(
-                    0, None, list(self.FNDH_STATUS_ATTRIBUTES)
-                )
+                request = PasdBusRequest(0, None, list(self.FNDH_STATUS_ATTRIBUTES))
             case (0, "PORTS"):
                 request = PasdBusRequest(
                     0, None, list(self.FNDH_PORTS_STATUS_ATTRIBUTES)
@@ -298,9 +292,7 @@ class PasdBusRequestProvider:
         return self._get_read_request()
 
 
-class PasdBusComponentManager(
-    PollingComponentManager[PasdBusRequest, PasdBusResponse]
-):
+class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusResponse]):
     """A component manager for a PaSD bus."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -497,9 +489,7 @@ class PasdBusComponentManager(
         :param stay_on_when_offline: whether the port should remain on
             if monitoring and control goes offline.
         """
-        self._poll_request_provider.desire_port_on(
-            0, port_number, stay_on_when_offline
-        )
+        self._poll_request_provider.desire_port_on(0, port_number, stay_on_when_offline)
 
     @check_communicating
     def turn_fndh_port_off(
@@ -538,9 +528,7 @@ class PasdBusComponentManager(
         :param smartbox_id: id of the smartbox being addressed.
         :param port_number: the number of the port to reset.
         """
-        self._poll_request_provider.desire_port_breaker_reset(
-            smartbox_id, port_number
-        )
+        self._poll_request_provider.desire_port_breaker_reset(smartbox_id, port_number)
 
     @check_communicating
     def turn_smartbox_port_on(

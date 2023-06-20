@@ -82,45 +82,32 @@ class TestFndhSimulator:
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
-        assert fndh_simulator.simulate_port_forcing(
-            unconnected_fndh_port, True
-        )
+        assert fndh_simulator.simulate_port_forcing(unconnected_fndh_port, True)
         expected_forcings[unconnected_fndh_port - 1] = "ON"
         assert fndh_simulator.port_forcings == expected_forcings
         assert fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
-        assert (
-            fndh_simulator.simulate_port_forcing(unconnected_fndh_port, True)
-            is None
-        )
+        assert fndh_simulator.simulate_port_forcing(unconnected_fndh_port, True) is None
         assert fndh_simulator.port_forcings == expected_forcings
         assert fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
-        assert fndh_simulator.simulate_port_forcing(
-            unconnected_fndh_port, False
-        )
+        assert fndh_simulator.simulate_port_forcing(unconnected_fndh_port, False)
         expected_forcings[unconnected_fndh_port - 1] = "OFF"
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
         assert (
-            fndh_simulator.simulate_port_forcing(unconnected_fndh_port, False)
-            is None
+            fndh_simulator.simulate_port_forcing(unconnected_fndh_port, False) is None
         )
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
-        assert fndh_simulator.simulate_port_forcing(
-            unconnected_fndh_port, None
-        )
+        assert fndh_simulator.simulate_port_forcing(unconnected_fndh_port, None)
         expected_forcings[unconnected_fndh_port - 1] = "NONE"
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
-        assert (
-            fndh_simulator.simulate_port_forcing(unconnected_fndh_port, None)
-            is None
-        )
+        assert fndh_simulator.simulate_port_forcing(unconnected_fndh_port, None) is None
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
@@ -305,27 +292,15 @@ class TestSmartboxSimulator:
         :param unconnected_smartbox_port: a smartbox port that doesn't
             have an antenna connected to it
         """
-        assert not smartbox_simulator.ports_power_sensed[
-            unconnected_smartbox_port - 1
-        ]
-        assert smartbox_simulator.simulate_port_forcing(
-            unconnected_smartbox_port, True
-        )
-        assert smartbox_simulator.ports_power_sensed[
-            unconnected_smartbox_port - 1
-        ]
+        assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
+        assert smartbox_simulator.simulate_port_forcing(unconnected_smartbox_port, True)
+        assert smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
         assert smartbox_simulator.simulate_port_forcing(
             unconnected_smartbox_port, False
         )
-        assert not smartbox_simulator.ports_power_sensed[
-            unconnected_smartbox_port - 1
-        ]
-        assert smartbox_simulator.simulate_port_forcing(
-            unconnected_smartbox_port, None
-        )
-        assert not smartbox_simulator.ports_power_sensed[
-            unconnected_smartbox_port - 1
-        ]
+        assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
+        assert smartbox_simulator.simulate_port_forcing(unconnected_smartbox_port, None)
+        assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
 
     def test_forcing_connected_smartbox_port(
         self: TestSmartboxSimulator,
@@ -339,37 +314,17 @@ class TestSmartboxSimulator:
         :param connected_smartbox_port: a smartbox port that has an
             antenna connected to it
         """
-        assert not smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
-        assert smartbox_simulator.simulate_port_forcing(
-            connected_smartbox_port, True
-        )
-        assert smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
-        assert smartbox_simulator.simulate_port_forcing(
-            connected_smartbox_port, None
-        )
-        assert not smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
+        assert smartbox_simulator.simulate_port_forcing(connected_smartbox_port, True)
+        assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
+        assert smartbox_simulator.simulate_port_forcing(connected_smartbox_port, None)
+        assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
         smartbox_simulator.turn_port_on(connected_smartbox_port)
-        assert smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
-        assert smartbox_simulator.simulate_port_forcing(
-            connected_smartbox_port, False
-        )
-        assert not smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
-        assert smartbox_simulator.simulate_port_forcing(
-            connected_smartbox_port, None
-        )
-        assert smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
+        assert smartbox_simulator.simulate_port_forcing(connected_smartbox_port, False)
+        assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
+        assert smartbox_simulator.simulate_port_forcing(connected_smartbox_port, None)
+        assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
     def test_connected_smartbox_port_power_on_off(
         self: TestSmartboxSimulator,
@@ -385,90 +340,63 @@ class TestSmartboxSimulator:
         """
         expected_when_online = [False] * SmartboxSimulator.NUMBER_OF_PORTS
         assert (
-            smartbox_simulator.ports_desired_power_when_online
-            == expected_when_online
+            smartbox_simulator.ports_desired_power_when_online == expected_when_online
         )
         expected_when_offline = [False] * SmartboxSimulator.NUMBER_OF_PORTS
         assert (
-            smartbox_simulator.ports_desired_power_when_offline
-            == expected_when_offline
+            smartbox_simulator.ports_desired_power_when_offline == expected_when_offline
         )
         assert smartbox_simulator.ports_connected[connected_smartbox_port - 1]
-        assert not smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
         assert smartbox_simulator.turn_port_on(connected_smartbox_port)
         expected_when_online[connected_smartbox_port - 1] = True
         expected_when_offline[connected_smartbox_port - 1] = True
         assert (
-            smartbox_simulator.ports_desired_power_when_online
-            == expected_when_online
+            smartbox_simulator.ports_desired_power_when_online == expected_when_online
         )
         assert (
-            smartbox_simulator.ports_desired_power_when_offline
-            == expected_when_offline
+            smartbox_simulator.ports_desired_power_when_offline == expected_when_offline
         )
-        assert smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
+        assert smartbox_simulator.turn_port_on(connected_smartbox_port, True) is None
         assert (
-            smartbox_simulator.turn_port_on(connected_smartbox_port, True)
-            is None
+            smartbox_simulator.ports_desired_power_when_online == expected_when_online
         )
         assert (
-            smartbox_simulator.ports_desired_power_when_online
-            == expected_when_online
-        )
-        assert (
-            smartbox_simulator.ports_desired_power_when_offline
-            == expected_when_offline
+            smartbox_simulator.ports_desired_power_when_offline == expected_when_offline
         )
 
         assert smartbox_simulator.turn_port_on(connected_smartbox_port, False)
         expected_when_offline[connected_smartbox_port - 1] = False
         assert (
-            smartbox_simulator.ports_desired_power_when_online
-            == expected_when_online
+            smartbox_simulator.ports_desired_power_when_online == expected_when_online
         )
         assert (
-            smartbox_simulator.ports_desired_power_when_offline
-            == expected_when_offline
+            smartbox_simulator.ports_desired_power_when_offline == expected_when_offline
         )
-        assert smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
         assert smartbox_simulator.turn_port_off(connected_smartbox_port)
         expected_when_online[connected_smartbox_port - 1] = False
         expected_when_offline[connected_smartbox_port - 1] = False
         assert (
-            smartbox_simulator.ports_desired_power_when_online
-            == expected_when_online
+            smartbox_simulator.ports_desired_power_when_online == expected_when_online
         )
         assert (
-            smartbox_simulator.ports_desired_power_when_offline
-            == expected_when_offline
+            smartbox_simulator.ports_desired_power_when_offline == expected_when_offline
         )
-        assert not smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
+        assert smartbox_simulator.turn_port_off(connected_smartbox_port) is None
         assert (
-            smartbox_simulator.turn_port_off(connected_smartbox_port) is None
+            smartbox_simulator.ports_desired_power_when_online == expected_when_online
         )
         assert (
-            smartbox_simulator.ports_desired_power_when_online
-            == expected_when_online
+            smartbox_simulator.ports_desired_power_when_offline == expected_when_offline
         )
-        assert (
-            smartbox_simulator.ports_desired_power_when_offline
-            == expected_when_offline
-        )
-        assert not smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
     def test_unconnected_smartbox_port_power_on_off(
         self: TestSmartboxSimulator,
@@ -482,16 +410,10 @@ class TestSmartboxSimulator:
         :param unconnected_smartbox_port: a smartbox port that doesn't
             have an antenna connected to it
         """
-        assert not smartbox_simulator.ports_connected[
-            unconnected_smartbox_port - 1
-        ]
-        assert not smartbox_simulator.ports_power_sensed[
-            unconnected_smartbox_port - 1
-        ]
+        assert not smartbox_simulator.ports_connected[unconnected_smartbox_port - 1]
+        assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
         assert not smartbox_simulator.turn_port_on(unconnected_smartbox_port)
-        assert not smartbox_simulator.ports_power_sensed[
-            unconnected_smartbox_port - 1
-        ]
+        assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
 
     def test_port_breaker_trip(
         self: TestSmartboxSimulator,
@@ -508,49 +430,30 @@ class TestSmartboxSimulator:
         expected_tripped = [False] * SmartboxSimulator.NUMBER_OF_PORTS
         assert smartbox_simulator.port_breakers_tripped == expected_tripped
 
-        assert not smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
         assert smartbox_simulator.turn_port_on(connected_smartbox_port)
-        assert smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
-        assert smartbox_simulator.simulate_port_breaker_trip(
-            connected_smartbox_port
-        )
+        assert smartbox_simulator.simulate_port_breaker_trip(connected_smartbox_port)
         expected_tripped[connected_smartbox_port - 1] = True
         assert smartbox_simulator.port_breakers_tripped == expected_tripped
-        assert not smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
         assert (
-            smartbox_simulator.simulate_port_breaker_trip(
-                connected_smartbox_port
-            )
+            smartbox_simulator.simulate_port_breaker_trip(connected_smartbox_port)
             is None
         )
         assert smartbox_simulator.port_breakers_tripped == expected_tripped
-        assert not smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
         assert smartbox_simulator.reset_port_breaker(connected_smartbox_port)
         expected_tripped[connected_smartbox_port - 1] = False
         assert smartbox_simulator.port_breakers_tripped == expected_tripped
-        assert smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
-        assert (
-            smartbox_simulator.reset_port_breaker(connected_smartbox_port)
-            is None
-        )
+        assert smartbox_simulator.reset_port_breaker(connected_smartbox_port) is None
         assert smartbox_simulator.port_breakers_tripped == expected_tripped
-        assert smartbox_simulator.ports_power_sensed[
-            connected_smartbox_port - 1
-        ]
+        assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
     def test_ports_current_draw(
         self: TestSmartboxSimulator,
@@ -562,9 +465,7 @@ class TestSmartboxSimulator:
         :param smartbox_simulator: the smartbox simulator under test.
         """
         assert smartbox_simulator.ports_current_draw == [
-            SmartboxSimulator.DEFAULT_PORT_CURRENT_DRAW
-            if port_connected
-            else 0.0
+            SmartboxSimulator.DEFAULT_PORT_CURRENT_DRAW if port_connected else 0.0
             for port_connected in smartbox_simulator.ports_connected
         ]
 

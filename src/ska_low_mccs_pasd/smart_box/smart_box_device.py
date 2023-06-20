@@ -12,12 +12,7 @@ from __future__ import annotations
 from typing import Any, Final, Optional, cast
 
 import tango
-from ska_control_model import (
-    CommunicationStatus,
-    HealthState,
-    PowerState,
-    ResultCode,
-)
+from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
 from tango.server import command, device_property
@@ -109,9 +104,7 @@ class MccsSmartBox(SKABaseDevice):
 
     def _init_state_model(self: MccsSmartBox) -> None:
         super()._init_state_model()
-        self._health_state = (
-            HealthState.UNKNOWN
-        )  # InitCommand.do() does this too late.
+        self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._health_model = SmartBoxHealthModel(self._health_changed_callback)
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
@@ -252,9 +245,7 @@ class MccsSmartBox(SKABaseDevice):
         self.set_change_event(attribute_name, True, False)
         self.set_archive_event(attribute_name, True, False)
 
-    def _read_smartbox_attribute(
-        self, smartbox_attribute: tango.Attribute
-    ) -> None:
+    def _read_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
         smartbox_attribute.set_value(
             self._smartbox_state[smartbox_attribute.get_name().lower()]
         )
@@ -274,9 +265,7 @@ class MccsSmartBox(SKABaseDevice):
         if communication_state != CommunicationStatus.ESTABLISHED:
             self._component_state_callback(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self._component_state_callback(
-                power=self.component_manager._power_state
-            )
+            self._component_state_callback(power=self.component_manager._power_state)
 
         super()._communication_state_changed(communication_state)
 
@@ -314,9 +303,7 @@ class MccsSmartBox(SKABaseDevice):
             fault=fault, power=power, pasdbus_status=pasdbus_status
         )
 
-    def _health_changed_callback(
-        self: MccsSmartBox, health: HealthState
-    ) -> None:
+    def _health_changed_callback(self: MccsSmartBox, health: HealthState) -> None:
         """
         Handle change in this device's health state.
 

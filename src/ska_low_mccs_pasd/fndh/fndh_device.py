@@ -15,18 +15,9 @@ from typing import Any, Final, Optional, cast
 
 import tango
 from jsonschema import ValidationError, validate
-from ska_control_model import (
-    CommunicationStatus,
-    HealthState,
-    PowerState,
-    ResultCode,
-)
+from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
-from ska_tango_base.commands import (
-    DeviceInitCommand,
-    FastCommand,
-    SubmittedSlowCommand,
-)
+from ska_tango_base.commands import DeviceInitCommand, FastCommand, SubmittedSlowCommand
 from tango.server import attribute, command, device_property
 
 from .fndh_component_manager import FndhComponentManager
@@ -117,9 +108,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         # their power state.
         for port in range(1, self.PORT_COUNT + 1):
             attr_name = f"Port{port}PowerState"
-            self._setup_fndh_attribute(
-                attr_name, PowerState, 1, PowerState.UNKNOWN
-            )
+            self._setup_fndh_attribute(attr_name, PowerState, 1, PowerState.UNKNOWN)
 
         message = (
             "Initialised MccsFNDH device with properties:\n"
@@ -129,9 +118,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
 
     def _init_state_model(self: MccsFNDH) -> None:
         super()._init_state_model()
-        self._health_state = (
-            HealthState.UNKNOWN
-        )  # InitCommand.do() does this too late.
+        self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._health_model = FndhHealthModel(self._health_changed_callback)
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
@@ -359,9 +346,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self.set_change_event(attribute_name, True, False)
         self.set_archive_event(attribute_name, True, False)
 
-    def _read_fndh_attribute(
-        self: MccsFNDH, fndh_attribute: tango.Attribute
-    ) -> None:
+    def _read_fndh_attribute(self: MccsFNDH, fndh_attribute: tango.Attribute) -> None:
         fndh_attribute.set_value(
             self._fndh_attributes[fndh_attribute.get_name().lower()]
         )
@@ -432,9 +417,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             communication_state.name,
         )
         if communication_state != CommunicationStatus.ESTABLISHED:
-            self._update_port_power_states(
-                [PowerState.UNKNOWN] * self.PORT_COUNT
-            )
+            self._update_port_power_states([PowerState.UNKNOWN] * self.PORT_COUNT)
 
         super()._communication_state_changed(communication_state)
 

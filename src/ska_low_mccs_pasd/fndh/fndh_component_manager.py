@@ -105,9 +105,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         """
         if self._pasd_bus_proxy is None:
             try:
-                self.logger.info(
-                    f"attempting to form proxy with {self._pasd_fqdn}"
-                )
+                self.logger.info(f"attempting to form proxy with {self._pasd_fqdn}")
 
                 self._pasd_bus_proxy = MccsDeviceProxy(
                     self._pasd_fqdn, self.logger, connect=True
@@ -116,19 +114,13 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 if self._component_state_callback is not None:
                     self._component_state_callback(fault=True)
                 self.logger.error("Caught exception in forming proxy: %s", e)
-                self._update_communication_state(
-                    CommunicationStatus.NOT_ESTABLISHED
-                )
+                self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
                 return
 
         try:
             if self.communication_state != CommunicationStatus.ESTABLISHED:
-                self._update_communication_state(
-                    CommunicationStatus.NOT_ESTABLISHED
-                )
-                self._update_communication_state(
-                    CommunicationStatus.ESTABLISHED
-                )
+                self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+                self._update_communication_state(CommunicationStatus.ESTABLISHED)
 
                 # If the PaSD_BUS device can poll the device under control it is ON.
                 # If we can poll the hardware it means the communication box has
@@ -146,34 +138,22 @@ class FndhComponentManager(TaskExecutorComponentManager):
             if self._component_state_callback is not None:
                 self._component_state_callback(fault=True)
             self.logger.error("Caught exception in start_communicating: %s", e)
-            self._update_communication_state(
-                CommunicationStatus.NOT_ESTABLISHED
-            )
+            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
             return
 
         try:
-            subscription_keys = (
-                self._pasd_bus_proxy.GetPasdDeviceSubscriptions(
-                    self._pasd_device_number
-                )
+            subscription_keys = self._pasd_bus_proxy.GetPasdDeviceSubscriptions(
+                self._pasd_device_number
             )
-            subscriptions = dict.fromkeys(
-                subscription_keys, self._handle_change_event
-            )
-            subscriptions.update(
-                {"healthstate": self._pasd_health_state_changed}
-            )
+            subscriptions = dict.fromkeys(subscription_keys, self._handle_change_event)
+            subscriptions.update({"healthstate": self._pasd_health_state_changed})
             self._subscribe_to_attributes(subscriptions)
 
         except Exception as e:  # pylint: disable=broad-except
             if self._component_state_callback is not None:
                 self._component_state_callback(fault=True)
-            self.logger.error(
-                "Caught exception in attribute subscriptions: %s", e
-            )
-            self._update_communication_state(
-                CommunicationStatus.NOT_ESTABLISHED
-            )
+            self.logger.error("Caught exception in attribute subscriptions: %s", e)
+            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
             return
 
     def _handle_change_event(
@@ -199,9 +179,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         if is_a_fndh:
             attribute = attr_name[is_a_fndh.end() :].lower()
             if attribute.lower() == "portspowersensed":
-                self._port_power_state_change(
-                    attribute, attr_value, attr_quality
-                )
+                self._port_power_state_change(attribute, attr_value, attr_quality)
             self._attribute_change_callback(attribute, attr_value)
             return
 
@@ -224,9 +202,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         :param attr_value: The value of the attribute that is changing.
         :param attr_quality: The quality of the attribute.
         """
-        self.logger.info(
-            f"The health state of the pasdBus has changed to {attr_value}"
-        )
+        self.logger.info(f"The health state of the pasdBus has changed to {attr_value}")
         if self._component_state_callback is not None:
             self._component_state_callback(pasdbus_status=attr_value)
 

@@ -261,9 +261,7 @@ def find_connected_fndh_port(
     try:
         fndh_connected_ports = list(pasd_bus_device.fndhPortsConnected)
     except tango.DevFailed:
-        change_event_callbacks["fndhPortsConnected"].assert_change_event(
-            Anything
-        )
+        change_event_callbacks["fndhPortsConnected"].assert_change_event(Anything)
         fndh_connected_ports = list(pasd_bus_device.fndhPortsConnected)
 
     connected_fndh_port = fndh_connected_ports.index(True) + 1
@@ -286,15 +284,11 @@ def check_fndh_port_is_off(
     :param change_event_callbacks: dictionary of Tango change event
         callbacks with asynchrony support.
     """
-    change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
-        Anything
-    )
+    change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(Anything)
     try:
         fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
     except tango.DevFailed:
-        change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
-            Anything
-        )
+        change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(Anything)
         fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
     assert not fndh_ports_power_sensed[connected_fndh_port - 1]
 
@@ -385,15 +379,11 @@ def check_fndh_port_changes_power_state(
     """
     state_map = {"on": True, "off": False}
 
-    change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
-        Anything
-    )
+    change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(Anything)
     powered = pasd_bus_device.fndhPortsPowerSensed
 
     if powered[connected_fndh_port - 1] != state_map[state_name]:
-        change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
-            Anything
-        )
+        change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(Anything)
         powered = pasd_bus_device.fndhPortsPowerSensed
     assert powered[connected_fndh_port - 1] == state_map[state_name]
 
@@ -483,9 +473,7 @@ def check_smartbox_port_is_on(
     )
     is_on = smartbox_ports_power_sensed[connected_smartbox_port - 1]
     if not is_on:
-        turn_smartbox_port_on(
-            pasd_bus_device, smartbox_id, connected_smartbox_port
-        )
+        turn_smartbox_port_on(pasd_bus_device, smartbox_id, connected_smartbox_port)
         check_smartbox_port_changes_power_state(
             pasd_bus_device,
             smartbox_id,
@@ -574,16 +562,12 @@ def check_smartbox_port_changes_power_state(
     change_event_callbacks[
         f"smartbox{smartbox_id}PortsPowerSensed"
     ].assert_change_event(Anything)
-    powered = getattr(
-        pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"
-    )
+    powered = getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed")
 
     if powered[connected_smartbox_port - 1] != state_map[state_name]:
         change_event_callbacks[
             f"smartbox{smartbox_id}PortsPowerSensed"
         ].assert_change_event(Anything)
-        powered = getattr(
-            pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"
-        )
+        powered = getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed")
 
     assert powered[connected_smartbox_port - 1] == state_map[state_name]

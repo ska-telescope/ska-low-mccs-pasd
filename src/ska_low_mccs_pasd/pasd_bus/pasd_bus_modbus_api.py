@@ -39,9 +39,7 @@ class PasdBusModbusApi:
         self._decoder = ModbusAsciiFramer(ServerDecoder(), client=None)
         self._slave_ids = list(range(len(simulators)))
 
-    def _handle_read_attributes(
-        self, device_id: int, names: list[str]
-    ) -> list[Any]:
+    def _handle_read_attributes(self, device_id: int, names: list[str]) -> list[Any]:
         """
         Return list of attribute values.
 
@@ -80,9 +78,7 @@ class PasdBusModbusApi:
                     # TODO: Map register numbers from message.address and
                     # message.count to the corresponding attribute names
                     attr_names = ["outside_temperature"]
-                    values = self._handle_read_attributes(
-                        message.slave_id, attr_names
-                    )
+                    values = self._handle_read_attributes(message.slave_id, attr_names)
                     response = ReadHoldingRegistersResponse(
                         slave=message.slave_id,
                         address=message.address,
@@ -143,9 +139,7 @@ class PasdBusModbusApiClient:
             match reply:
                 case ReadHoldingRegistersResponse():
                     attributes_dict = {}
-                    for attr, register in zip(
-                        attribute_names, reply.registers
-                    ):
+                    for attr, register in zip(attribute_names, reply.registers):
                         attributes_dict[attr] = register
                     response = {
                         "source": slave_id,
@@ -176,9 +170,7 @@ class PasdBusModbusApiClient:
 
         :return: dictionary of attribute values keyed by name
         """
-        response = self._do_read_request(
-            {"device_id": device_id, "read": names}
-        )
+        response = self._do_read_request({"device_id": device_id, "read": names})
         assert response["source"] == device_id
         assert response["data"]["type"] == "reads"
         return response["data"]["attributes"]

@@ -58,9 +58,7 @@ def mocked_pasd_proxy_fixture(pasd_device_number: int) -> unittest.mock.Mock:
     """
     mock = unittest.mock.Mock()
     mock.GetPasdDeviceSubscriptions = unittest.mock.Mock(
-        return_value=MccsPasdBus._ATTRIBUTE_MAP[
-            int(pasd_device_number)
-        ].values()
+        return_value=MccsPasdBus._ATTRIBUTE_MAP[int(pasd_device_number)].values()
     )
     return mock
 
@@ -131,9 +129,7 @@ class TestFndhComponentManager:
 
         # check that the communication state goes to DISABLED after stop communication.
         fndh_component_manager.stop_communicating()
-        mock_callbacks["communication_state"].assert_call(
-            CommunicationStatus.DISABLED
-        )
+        mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
         mock_callbacks["communication_state"].assert_not_called()
 
         # Check failed MccsDeviceProxy acts as desired.
@@ -217,9 +213,7 @@ class TestFndhComponentManager:
             )
 
         else:
-            mock_response = unittest.mock.Mock(
-                return_value=pasd_proxy_response
-            )
+            mock_response = unittest.mock.Mock(return_value=pasd_proxy_response)
             setattr(mocked_pasd_proxy, pasd_proxy_command, mock_response)
             mocked_pasd_proxy.TurnSmartboxOff = unittest.mock.Mock(
                 return_value=pasd_proxy_response
@@ -232,9 +226,7 @@ class TestFndhComponentManager:
                 == expected_manager_result
             )
             callbacks["task_callback"].assert_call(status=TaskStatus.QUEUED)
-            callbacks["task_callback"].assert_call(
-                status=TaskStatus.IN_PROGRESS
-            )
+            callbacks["task_callback"].assert_call(status=TaskStatus.IN_PROGRESS)
             callbacks["task_callback"].assert_call(
                 status=TaskStatus.COMPLETED, result=command_tracked_response
             )
@@ -298,9 +290,7 @@ class TestFndhComponentManager:
         :param callbacks: the callbacks.
         """
         # setup the response from the mocked pasd proxy
-        mock_response = unittest.mock.MagicMock(
-            return_value=pasd_proxy_response
-        )
+        mock_response = unittest.mock.MagicMock(return_value=pasd_proxy_response)
         setattr(mocked_pasd_proxy, pasd_proxy_command, mock_response)
 
         # check component manager can issue a command and it returns as expected

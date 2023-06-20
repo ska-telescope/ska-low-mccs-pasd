@@ -829,9 +829,7 @@ class PasdBusSimulator:
         logger.info(
             f"PaSD configuration data loaded into simulator for station {station_id}."
         )
-        logger.info(
-            f"Initialised PaSD bus simulator for station {station_id}."
-        )
+        logger.info(f"Initialised PaSD bus simulator for station {station_id}.")
 
     def get_fndh(self: PasdBusSimulator) -> FndhSimulator:
         """
@@ -891,11 +889,7 @@ class PasdBusSimulator:
             smartbox_port = antenna_config["smartbox_port"]
             smartbox_ports_connected[smartbox_id - 1][smartbox_port - 1] = True
 
-        for (smartbox_index, ports_connected) in enumerate(
-            smartbox_ports_connected
-        ):
-            self._smartbox_simulators[smartbox_index].configure(
-                ports_connected
-            )
+        for (smartbox_index, ports_connected) in enumerate(smartbox_ports_connected):
+            self._smartbox_simulators[smartbox_index].configure(ports_connected)
 
         return True
