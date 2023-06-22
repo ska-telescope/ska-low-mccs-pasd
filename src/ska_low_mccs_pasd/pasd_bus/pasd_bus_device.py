@@ -12,6 +12,7 @@ from __future__ import annotations
 import importlib.resources
 import json
 import logging
+import sys
 from typing import Any, Final, Optional, cast
 
 import tango.server
@@ -22,7 +23,6 @@ from ska_control_model import (
     ResultCode,
     SimulationMode,
 )
-from ska_low_mccs_common import release
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidator
 from tango.server import attribute, command
@@ -125,8 +125,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         super().init_device()
 
-        self._build_state: str = release.get_release_info()
-        self._version_id: str = release.version
+        self._build_state: str = sys.modules["ska_low_mccs_pasd"].__version_info__
+        self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
 
         self._pasd_state: dict[str, Any] = {}
         self._setup_fndh_attributes()
@@ -241,9 +241,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self.Port,
             self.Timeout,
             self.logger,
-            self._communication_state_changed,
-            self._component_state_changed,
-            self._pasd_device_state_changed,
+            self._communication_state_callback,
+            self._component_state_callback,
+            self._pasd_device_state_callback,
         )
 
     def init_command_objects(self: MccsPasdBus) -> None:
@@ -257,11 +257,18 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("ResetFndhPortBreaker", MccsPasdBus._ResetFndhPortBreakerCommand),
             ("TurnSmartboxPortOn", MccsPasdBus._TurnSmartboxPortOnCommand),
             ("TurnSmartboxPortOff", MccsPasdBus._TurnSmartboxPortOffCommand),
-            ("SetSmartboxLedPattern", MccsPasdBus._SetSmartboxLedPatternCommand),
-            ("ResetSmartboxPortBreaker", MccsPasdBus._ResetSmartboxPortBreakerCommand),
+            (
+                "SetSmartboxLedPattern",
+                MccsPasdBus._SetSmartboxLedPatternCommand,
+            ),
+            (
+                "ResetSmartboxPortBreaker",
+                MccsPasdBus._ResetSmartboxPortBreakerCommand,
+            ),
         ]:
             self.register_command_object(
-                command_name, command_class(self.component_manager, self.logger)
+                command_name,
+                command_class(self.component_manager, self.logger),
             )
 
         self.register_command_object(
@@ -297,7 +304,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     # ----------
     # Callbacks
     # ----------
-    def _communication_state_changed(
+    def _communication_state_callback(
         self: MccsPasdBus,
         communication_state: CommunicationStatus,
     ) -> None:
@@ -323,7 +330,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         self._health_model.update_state(communicating=True)
 
-    def _component_state_changed(
+    def _component_state_callback(
         self: MccsPasdBus,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,
@@ -352,7 +359,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         super()._component_state_changed(fault=fault, power=power)
         self._health_model.update_state(fault=fault, power=power)
 
-    def _pasd_device_state_changed(
+    def _pasd_device_state_callback(
         self: MccsPasdBus,
         pasd_device_number: int,
         **kwargs: Any,
@@ -501,7 +508,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         if success:
             return ([ResultCode.OK], ["TurnFndhPortOn succeeded"])
         if success is None:
-            return ([ResultCode.OK], ["TurnFndhPortOn succeeded: nothing to do"])
+            return (
+                [ResultCode.OK],
+                ["TurnFndhPortOn succeeded: nothing to do"],
+            )
         return ([ResultCode.FAILED], ["TurnFndhPortOn failed"])
 
     class _TurnFndhPortOffCommand(FastCommand):
@@ -588,7 +598,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         if success:
             return ([ResultCode.OK], ["SetFndhLedPattern succeeded"])
         if success is None:
-            return ([ResultCode.OK], ["SetFndhLedPattern succeeded: nothing to do"])
+            return (
+                [ResultCode.OK],
+                ["SetFndhLedPattern succeeded: nothing to do"],
+            )
         return ([ResultCode.FAILED], ["SetFndhLedPattern failed"])
 
     class _ResetFndhPortBreakerCommand(FastCommand):
@@ -634,7 +647,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         if success:
             return ([ResultCode.OK], ["ResetFndhPortBreaker succeeded"])
         if success is None:
-            return ([ResultCode.OK], ["ResetFndhPortBreaker succeeded: nothing to do"])
+            return (
+                [ResultCode.OK],
+                ["ResetFndhPortBreaker succeeded: nothing to do"],
+            )
         return ([ResultCode.FAILED], ["ResetFndhPortBreaker failed"])
 
     class _TurnSmartboxPortOnCommand(FastCommand):

@@ -13,12 +13,12 @@ from dataclasses import dataclass
 from typing import Any, Callable, Final, Iterator, Literal, Optional
 
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
-from ska_low_mccs_common.component import check_communicating
 from ska_ser_devices.client_server import (
     ApplicationClient,
     SentinelBytesMarshaller,
     TcpClient,
 )
+from ska_tango_base.base import check_communicating
 from ska_tango_base.poller import PollingComponentManager
 
 from .pasd_bus_json_api import PasdBusJsonApiClient
@@ -231,7 +231,9 @@ class PasdBusRequestProvider:
         match change:
             case (True, stay_on_when_offline):
                 return PasdBusRequest(
-                    device_id, "turn_port_on", [port_number, stay_on_when_offline]
+                    device_id,
+                    "turn_port_on",
+                    [port_number, stay_on_when_offline],
                 )
             case False:
                 return PasdBusRequest(device_id, "turn_port_off", [port_number])
@@ -299,9 +301,9 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         port: int,
         timeout: float,
         logger: logging.Logger,
-        communication_state_changed_callback: Callable[[CommunicationStatus], None],
-        component_state_changed_callback: Callable[..., None],
-        pasd_device_state_changed_callback: Callable[..., None],
+        communication_state_callback: Callable[[CommunicationStatus], None],
+        component_state_callback: Callable[..., None],
+        pasd_device_state_callback: Callable[..., None],
     ) -> None:
         """
         Initialise a new instance.
@@ -311,16 +313,16 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param timeout: maximum time to wait for a response to a server
             request (in seconds).
         :param logger: a logger for this object to use
-        :param communication_state_changed_callback: callback to be
+        :param communication_state_callback: callback to be
             called when the status of the communications channel between
             the component manager and its component changes
-        :param component_state_changed_callback: callback to be called
+        :param component_state_callback: callback to be called
             when the component state changes. Note this in this case the
             "component" is the PaSD bus itself. The PaSD bus has no
             no monitoring points. All we can do is infer that it is
             powered on and not in fault, from the fact that we receive
             responses to our requests.
-        :param pasd_device_state_changed_callback: callback to be called
+        :param pasd_device_state_callback: callback to be called
             when one of the PaSD devices (i.e. the FNDH or one of the
             smartboxes) provides updated information about its state.
             This callable takes a single positional argument, which is
@@ -334,16 +336,15 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             tcp_client, marshaller.marshall, marshaller.unmarshall
         )
         self._pasd_bus_api_client = PasdBusJsonApiClient(application_client)
-        self._pasd_bus_device_state_changed_callback = (
-            pasd_device_state_changed_callback
-        )
+        self._pasd_bus_device_state_callback = pasd_device_state_callback
 
         self._poll_request_provider = PasdBusRequestProvider(logger)
 
         super().__init__(
             logger,
-            communication_state_changed_callback,
-            component_state_changed_callback,
+            communication_state_callback,
+            component_state_callback,
+            fndh_status=None,
         )
 
     def off(
@@ -432,7 +433,9 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             )
         else:
             response_data = self._pasd_bus_api_client.execute_command(
-                poll_request.device_id, poll_request.command, *poll_request.arguments
+                poll_request.device_id,
+                poll_request.command,
+                *poll_request.arguments,
             )
         return PasdBusResponse(
             poll_request.device_id, poll_request.command, response_data
@@ -456,7 +459,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._update_component_state(power=PowerState.ON, fault=False)
 
         if poll_response.command is None:
-            self._pasd_bus_device_state_changed_callback(
+            self._pasd_bus_device_state_callback(
                 poll_response.device_id,
                 **(poll_response.data),
             )

@@ -135,7 +135,9 @@ def pasd_address_context_manager_factory_fixture() -> Callable[
                 simulator.get_fndh(), simulator.get_smartboxes()
             )
             server = TcpServer(
-                "127.0.0.1", 0, simulator_server  # let the kernel give us a port
+                "127.0.0.1",
+                0,
+                simulator_server,  # let the kernel give us a port
             )
             with server:
                 server_thread = threading.Thread(

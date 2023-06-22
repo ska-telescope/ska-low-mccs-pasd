@@ -80,7 +80,9 @@ class PasdBusModbusApi:
                     attr_names = ["outside_temperature"]
                     values = self._handle_read_attributes(message.slave_id, attr_names)
                     response = ReadHoldingRegistersResponse(
-                        slave=message.slave_id, address=message.address, values=values
+                        slave=message.slave_id,
+                        address=message.address,
+                        values=values,
                     )
                 case _:
                     self._handle_no_match(message)

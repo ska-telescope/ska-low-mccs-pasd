@@ -382,7 +382,9 @@ class PasdHardwareSimulator:
         return self._ports[port_number - 1].turn_off()
 
     @property
-    def ports_desired_power_when_online(self: PasdHardwareSimulator) -> list[bool]:
+    def ports_desired_power_when_online(
+        self: PasdHardwareSimulator,
+    ) -> list[bool]:
         """
         Return the desired power of each port when the device is online.
 
@@ -395,7 +397,9 @@ class PasdHardwareSimulator:
         return [port.desired_power_when_online for port in self._ports]
 
     @property
-    def ports_desired_power_when_offline(self: PasdHardwareSimulator) -> list[bool]:
+    def ports_desired_power_when_offline(
+        self: PasdHardwareSimulator,
+    ) -> list[bool]:
         """
         Return the desired power of each port when the device is offline.
 

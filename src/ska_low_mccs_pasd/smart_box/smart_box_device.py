@@ -133,7 +133,9 @@ class MccsSmartBox(SKABaseDevice):
     # --------------
     # Initialization
     # --------------
-    def create_component_manager(self: MccsSmartBox) -> SmartBoxComponentManager:
+    def create_component_manager(
+        self: MccsSmartBox,
+    ) -> SmartBoxComponentManager:
         """
         Create and return a component manager for this device.
 
@@ -142,7 +144,7 @@ class MccsSmartBox(SKABaseDevice):
         return SmartBoxComponentManager(
             self.logger,
             self._communication_state_changed,
-            self._component_state_changed_callback,
+            self._component_state_callback,
             self._attribute_changed_callback,
             self.PORT_COUNT,
             self.FndhPort,
@@ -261,17 +263,15 @@ class MccsSmartBox(SKABaseDevice):
         )
 
         if communication_state != CommunicationStatus.ESTABLISHED:
-            self._component_state_changed_callback(power=PowerState.UNKNOWN)
+            self._component_state_callback(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self._component_state_changed_callback(
-                power=self.component_manager.power_state
-            )
+            self._component_state_callback(power=self.component_manager._power_state)
 
         super()._communication_state_changed(communication_state)
 
         self._health_model.update_state(communicating=True)
 
-    def _component_state_changed_callback(  # pylint: disable=too-many-arguments
+    def _component_state_callback(  # pylint: disable=too-many-arguments
         self: MccsSmartBox,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,

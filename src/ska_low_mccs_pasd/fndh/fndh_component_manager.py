@@ -17,7 +17,7 @@ from typing import Any, Callable, Optional
 import tango
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_mccs_common import MccsDeviceProxy
-from ska_low_mccs_common.component import check_communicating
+from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
 
@@ -36,8 +36,8 @@ class FndhComponentManager(TaskExecutorComponentManager):
     def __init__(  # pylint: disable=too-many-arguments
         self: FndhComponentManager,
         logger: logging.Logger,
-        communication_state_changed_callback: Callable[[CommunicationStatus], None],
-        component_state_changed_callback: Callable[..., None],
+        communication_state_callback: Callable[[CommunicationStatus], None],
+        component_state_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
         update_port_power_states: Callable[..., None],
         pasd_fqdn: str,
@@ -47,10 +47,10 @@ class FndhComponentManager(TaskExecutorComponentManager):
         Initialise a new instance.
 
         :param logger: a logger for this object to use
-        :param communication_state_changed_callback: callback to be
+        :param communication_state_callback: callback to be
             called when the status of the communications channel between
             the component manager and its component changes
-        :param component_state_changed_callback: callback to be
+        :param component_state_callback: callback to be
             called when the component state changes
         :param attribute_change_callback: callback to be
             called when a attribute changes
@@ -62,14 +62,14 @@ class FndhComponentManager(TaskExecutorComponentManager):
         """
         super().__init__(
             logger,
-            communication_state_changed_callback,
-            component_state_changed_callback,
+            communication_state_callback,
+            component_state_callback,
             max_workers=1,
             power=None,
             fault=None,
             pasdbus_status=None,
         )
-        self._component_state_changed_callback = component_state_changed_callback
+        self._component_state_callback = component_state_callback
         self._attribute_change_callback = attribute_change_callback
         self._update_port_power_states = update_port_power_states
         self._pasd_fqdn = pasd_fqdn
@@ -93,7 +93,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 attribute, subscriptions[attribute]
             )
 
-    def start_communicating(self: FndhComponentManager) -> None:
+    def start_communicating(self: FndhComponentManager) -> None:  # noqa: C901
         """
         Establish communication with the pasdBus via a proxy.
 
@@ -111,7 +111,8 @@ class FndhComponentManager(TaskExecutorComponentManager):
                     self._pasd_fqdn, self.logger, connect=True
                 )
             except Exception as e:  # pylint: disable=broad-except
-                self._component_state_changed_callback(fault=True)
+                if self._component_state_callback is not None:
+                    self._component_state_callback(fault=True)
                 self.logger.error("Caught exception in forming proxy: %s", e)
                 self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
                 return
@@ -124,16 +125,18 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 # If the PaSD_BUS device can poll the device under control it is ON.
                 # If we can poll the hardware it means the communication box has
                 # power, therefore the FNDH has power.
-                if self._pasd_bus_proxy.state() == tango.DevState.ON:
-                    self._component_state_changed_callback(power=PowerState.ON)
-                else:
-                    # This will propagate faults from PaSD bus
-                    self._component_state_changed_callback(
-                        power=self._pasd_bus_proxy.state()
-                    )
+                if self._component_state_callback is not None:
+                    if self._pasd_bus_proxy.state() == tango.DevState.ON:
+                        self._component_state_callback(power=PowerState.ON)
+                    else:
+                        # This will propagate faults from PaSD bus
+                        self._component_state_callback(
+                            power=self._pasd_bus_proxy.state()
+                        )
 
         except Exception as e:  # pylint: disable=broad-except
-            self._component_state_changed_callback(fault=True)
+            if self._component_state_callback is not None:
+                self._component_state_callback(fault=True)
             self.logger.error("Caught exception in start_communicating: %s", e)
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
             return
@@ -147,7 +150,8 @@ class FndhComponentManager(TaskExecutorComponentManager):
             self._subscribe_to_attributes(subscriptions)
 
         except Exception as e:  # pylint: disable=broad-except
-            self._component_state_changed_callback(fault=True)
+            if self._component_state_callback is not None:
+                self._component_state_callback(fault=True)
             self.logger.error("Caught exception in attribute subscriptions: %s", e)
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
             return
@@ -199,7 +203,8 @@ class FndhComponentManager(TaskExecutorComponentManager):
         :param attr_quality: The quality of the attribute.
         """
         self.logger.info(f"The health state of the pasdBus has changed to {attr_value}")
-        self._component_state_changed_callback(pasdbus_status=attr_value)
+        if self._component_state_callback is not None:
+            self._component_state_callback(pasdbus_status=attr_value)
 
     def _port_power_state_change(
         self: FndhComponentManager,
@@ -230,7 +235,8 @@ class FndhComponentManager(TaskExecutorComponentManager):
             return
 
         self._update_communication_state(CommunicationStatus.DISABLED)
-        self._component_state_changed_callback(power=None, fault=None)
+        if self._component_state_callback is not None:
+            self._component_state_callback(power=None, fault=None)
 
     @check_communicating
     def on(
@@ -300,7 +306,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         :return: the task status and a human-readable status message
         """
         return self.submit_task(
-            self._power_off_port,
+            self._power_off_port,  # type: ignore[arg-type]
             args=[port_number],
             task_callback=task_callback,
         )
@@ -315,9 +321,10 @@ class FndhComponentManager(TaskExecutorComponentManager):
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
             assert self._pasd_bus_proxy
-            ([result_code], [return_message]) = self._pasd_bus_proxy.TurnFndhPortOff(
-                port_number
-            )
+            (
+                [result_code],
+                [return_message],
+            ) = self._pasd_bus_proxy.TurnFndhPortOff(port_number)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {repr(ex)}")
@@ -354,7 +361,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         :return: the task status and a human-readable status message
         """
         return self.submit_task(
-            self._power_on_port,
+            self._power_on_port,  # type: ignore[arg-type]
             args=[
                 port_number,
             ],

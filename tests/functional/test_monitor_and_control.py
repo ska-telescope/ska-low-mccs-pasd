@@ -529,7 +529,10 @@ def turn_smartbox_port_off(
         power delivery.
     """
     json_argument = json.dumps(
-        {"smartbox_number": smartbox_id, "port_number": connected_smartbox_port}
+        {
+            "smartbox_number": smartbox_id,
+            "port_number": connected_smartbox_port,
+        }
     )
     pasd_bus_device.TurnSmartboxPortOff(json_argument)
 

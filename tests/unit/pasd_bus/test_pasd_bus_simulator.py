@@ -482,7 +482,10 @@ class TestSmartboxSimulator:
                 "power_supply_temperature",
                 SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE,
             ),
-            ("outside_temperature", SmartboxSimulator.DEFAULT_OUTSIDE_TEMPERATURE),
+            (
+                "outside_temperature",
+                SmartboxSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
+            ),
             ("pcb_temperature", SmartboxSimulator.DEFAULT_PCB_TEMPERATURE),
             (
                 "modbus_register_map_revision",
