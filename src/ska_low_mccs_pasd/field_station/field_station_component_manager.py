@@ -14,7 +14,8 @@ import threading
 from typing import Any, Callable, Optional
 
 from ska_control_model import CommunicationStatus, TaskStatus
-from ska_low_mccs_common.component import DeviceComponentManager, check_communicating
+from ska_low_mccs_common.component import DeviceComponentManager
+from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
 
@@ -132,7 +133,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :return: the task status and a human-readable status message
         """
         return self.submit_task(
-            self._turn_on_antenna,
+            self._turn_on_antenna,  # type: ignore[arg-type]
             args=[
                 antenna_number,
             ],
