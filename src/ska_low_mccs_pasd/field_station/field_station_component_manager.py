@@ -13,7 +13,7 @@ import logging
 import threading
 from typing import Any, Callable, Optional
 
-from ska_control_model import CommunicationStatus, TaskStatus
+from ska_control_model import TaskStatus
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
@@ -35,8 +35,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         logger: logging.Logger,
         fndh_name: str,
         smartbox_names: list[str],
-        communication_state_changed_callback: Callable[..., None],
-        component_state_changed_callback: Callable[..., None],
+        communication_state_callback: Callable[..., None],
+        component_state_changed: Callable[..., None],
         _fndh_proxy: Optional[Any] = None,
         _smartbox_proxys: Optional[dict[str, Any]] = None,
     ) -> None:
@@ -48,32 +48,29 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             encompasses
         :param smartbox_names: the names of the smartboxes this field station
             encompasses
-        :param communication_state_changed_callback: callback to be
+        :param communication_state_callback: callback to be
             called when the status of the communications channel between
             the component manager and its component changes
-        :param component_state_changed_callback: callback to be
+        :param component_state_changed: callback to be
             called when the component state changes
         :param _fndh_proxy: a injected fndh proxy for purposes of testing only.
         :param _smartbox_proxys: injected smartbox proxys for purposes of testing only.
         """
-        self._component_state_callback: Callable[
-            ..., None
-        ] = component_state_changed_callback
-        self._communication_state_changed_callback = (
-            communication_state_changed_callback
-        )
+        self._communication_state_callback: Callable[..., None]
         max_workers = 1
         super().__init__(
             logger,
-            communication_state_changed_callback,
-            component_state_changed_callback,
+            communication_state_callback,
+            component_state_changed,
             max_workers=max_workers,
         )
         self._fndh_proxy = _fndh_proxy or DeviceComponentManager(
             fndh_name,
             logger,
             max_workers,
-            functools.partial(self._communication_state_changed, device_name=fndh_name),
+            functools.partial(
+                self._communication_state_callback, device_name=fndh_name
+            ),
             functools.partial(self._component_state_changed, device_name=fndh_name),
         )
 
@@ -87,7 +84,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     logger,
                     max_workers,
                     functools.partial(
-                        self._communication_state_changed, device_name=smartbox_name
+                        self._communication_state_callback, device_name=smartbox_name
                     ),
                     functools.partial(
                         self._component_state_changed, device_name=smartbox_name
@@ -96,21 +93,14 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         self.logger = logger
 
-    def _communication_state_changed(
-        self: FieldStationComponentManager,
-        communication_state: CommunicationStatus,
-        device_name: str,
-    ) -> None:
-        print(f"called comm state change {device_name}: {communication_state}")
-        self._communication_state_changed_callback(communication_state, device_name)
-
     def _component_state_changed(
         self: FieldStationComponentManager,
         state_change: dict[str, Any],
         device_name: str,
     ) -> None:
         print(f"called state change {device_name}: {state_change}")
-        self._component_state_callback(**state_change, device_name=device_name)
+        if self._component_state_callback:
+            self._component_state_callback(**state_change, device_name=device_name)
 
     @check_communicating
     def turn_on_antenna(

@@ -68,7 +68,7 @@ class MccsFieldStation(SKABaseDevice):
             self.FndhFQDN,
             self.SmartBoxFQDNs,
             self._communication_state_changed_callback,
-            self._component_state_changed_callback,
+            self._component_state_callback,
         )
 
     def init_command_objects(self: MccsFieldStation) -> None:
@@ -93,14 +93,14 @@ class MccsFieldStation(SKABaseDevice):
     # ----------
     # Callbacks
     # ----------
-    def _communication_state_changed_callback(
+    def _communication_state_callback(
         self: MccsFieldStation,
         communication_state: CommunicationStatus,
         device_name: str,
     ) -> None:
         super()._communication_state_changed(communication_state)
 
-    def _component_state_changed_callback(
+    def _component_state_callback(
         self: MccsFieldStation,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,
