@@ -6,6 +6,8 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module contains the tests of forwarded attribute in FieldStation."""
+# TODO: this test starts with the letter z pending MCCS-1474.
+
 from __future__ import annotations
 
 import tango
