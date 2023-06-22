@@ -1,0 +1,55 @@
+{{- $defaults := dict "enabled" true "logging_level_default" 3}}
+{{- $fieldStations := .Values.deviceServers.fieldstations}}
+
+name: "fieldStation-{{.Release.Name}}"
+function: ska-low-mccs-pasd
+domain: ska-low-mccs-pasd
+instances:
+{{- range $key, $this_fieldStation := $fieldStations.instances}}
+{{- if (pluck "enabled" $this_fieldStation $fieldStations $defaults | first)}}
+  - {{printf "fieldstation-%03d" (int $key)}}
+{{- end}}
+{{- end}}
+command: MccsFieldStation
+server: 
+  name: "MccsFieldStation"
+  instances:
+{{- range $key, $this_fieldStation := $fieldStations.instances}}
+    - name: {{printf "fieldstation-%03d" (int $key)}}
+      classes:
+      - name: "MccsFieldStation"
+        devices:
+        - name: {{printf "low-mccs/fieldstation/%03d" (int $key)}}
+          attribute_properties:
+          - attribute: "OutsideTemperature"
+            properties:
+            - name: "__root_att"
+              values:
+              - {{printf "low-mccs/fndh/%03d/OutsideTemperature" (int $key)}}
+          properties:
+          - name: "FndhFQDN"
+            values: 
+            - {{$this_fieldStation.FndhFQDN | toString |  quote}}
+          - name: "SmartBoxFQDNs"
+            values: 
+          {{- range $key, $SmartBoxFQDN := $this_fieldStation.SmartBoxFQDNs}}
+            - {{$SmartBoxFQDN | toString |  quote}}
+          {{- end}}
+          - name: "LoggingLevelDefault"
+            values: 
+            - {{pluck "logging_level_default" $this_fieldStation $fieldStations $defaults | first | toString | quote}}
+{{- end}}
+depends_on:
+  - device: sys/database/2
+{{- range $key, $dependency := $fieldStations.dependency}}
+  - device: {{$dependency | toString | quote}}
+{{- end}}
+image:
+  registry: "{{.Values.low_mccs_pasd.image.registry}}"
+  image: "{{.Values.low_mccs_pasd.image.image}}"
+  tag: "{{.Values.low_mccs_pasd.image.tag}}"
+  pullPolicy: "{{.Values.low_mccs_pasd.image.pullPolicy}}"
+livenessProbe:
+{{ toYaml .Values.livenessProbe | indent 2 }}
+readinessProbe:
+{{ toYaml .Values.readinessProbe | indent 2 }}
