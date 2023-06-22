@@ -8,7 +8,7 @@
 """This module provides a register mapping utility for the PaSD bus."""
 from __future__ import annotations
 
-from typing import Any, Callable, Final
+from typing import Any, Callable, Final, List
 
 from .pasd_bus_conversions import PasdConversionUtility
 
@@ -50,13 +50,13 @@ class PasdBusAttribute:
         """
         return self._count
 
-    def convert_value(self: PasdBusAttribute, *values: Any) -> Any:
+    def convert_value(self: PasdBusAttribute, values: List[Any]) -> Any:
         """
         Execute the attribute's conversion function on the supplied value.
 
         Convert the raw register value(s) into a meaningful value
 
-        :param values: the values to convert
+        :param values: a list of the raw value(s) to convert
         :return: the converted value
         """
         return self._conversion_function(values)
@@ -75,7 +75,7 @@ class PasdBusRegisterMap:
         "cpu_id": PasdBusAttribute(3, 2, PasdConversionUtility.convert_cpu_id),
         "chip_id": PasdBusAttribute(5, 8, PasdConversionUtility.convert_chip_id),
         "firmware_version": PasdBusAttribute(13, 1),
-        "uptime": PasdBusAttribute(14, 2, PasdConversionUtility.bytes_to_n),
+        "uptime": PasdBusAttribute(14, 2),
         "sys_address": PasdBusAttribute(16, 1),
         "psu48v_voltages": PasdBusAttribute(17, 2, PasdConversionUtility.scale_48v),
         "psu48v_current": PasdBusAttribute(
@@ -111,7 +111,7 @@ class PasdBusRegisterMap:
         "cpu_id": PasdBusAttribute(3, 2, PasdConversionUtility.convert_cpu_id),
         "chip_id": PasdBusAttribute(5, 8),
         "firmware_version": PasdBusAttribute(13, 1),
-        "uptime": PasdBusAttribute(14, 2, PasdConversionUtility.bytes_to_n),
+        "uptime": PasdBusAttribute(14, 2),
         "sys_address": PasdBusAttribute(16, 1),
         "input_voltage": PasdBusAttribute(17, 1, PasdConversionUtility.scale_48v),
         "power_supply_output_voltage": PasdBusAttribute(
@@ -155,12 +155,12 @@ class PasdBusRegisterMap:
         if device_id == cls._FNDH_ADDRESS:
             return {
                 name: attr
-                for (name, attr) in cls._FNDH_REGISTER_MAP.items()
+                for name, attr in cls._FNDH_REGISTER_MAP.items()
                 if name in attribute_names
             }
         return {
             name: attr
-            for (name, attr) in cls._SMARTBOX_REGISTER_MAP.items()
+            for name, attr in cls._SMARTBOX_REGISTER_MAP.items()
             if name in attribute_names
         }
 

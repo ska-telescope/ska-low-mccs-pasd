@@ -7,7 +7,7 @@
 # See LICENSE for more info.
 """This module provides scaling and other conversion functions for the PaSD."""
 
-from typing import Any
+from typing import Any, List
 
 
 class PasdConversionUtility:
@@ -60,13 +60,15 @@ class PasdConversionUtility:
         raise ValueError(f"Received invalid number of bytes to convert: {nbytes}")
 
     @classmethod
-    def default_conversion(cls, value: Any) -> Any:
+    def default_conversion(cls, value: List[Any]) -> Any:
         """
         Return the supplied raw value with no conversion.
 
         :param value: raw value
         :return: the value unchanged
         """
+        if len(value) == 1:
+            return value[0]
         return value
 
     @classmethod

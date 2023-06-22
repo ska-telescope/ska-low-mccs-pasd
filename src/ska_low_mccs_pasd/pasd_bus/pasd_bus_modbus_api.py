@@ -8,6 +8,7 @@
 """This module provides a Modbus API to the PaSD bus."""
 from __future__ import annotations
 
+import logging
 from typing import Any, Callable, Sequence
 
 from pymodbus.factory import ClientDecoder, ServerDecoder
@@ -20,20 +21,20 @@ from pymodbus.register_read_message import (
 from .pasd_bus_register_map import PasdBusRegisterMap
 from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
 
+logger = logging.getLogger()
+
 
 # pylint: disable=too-few-public-methods
 class PasdBusModbusApi:
     """A Modbus API for a PaSD bus simulator."""
 
-    def __init__(
-        self,
-        simulators: Sequence[FndhSimulator | SmartboxSimulator],
-    ) -> None:
+    def __init__(self, simulators: Sequence[FndhSimulator | SmartboxSimulator]) -> None:
         """
         Initialise a new instance.
 
         :param simulators: sequence of simulators (fndh and smartbox)
             that this API fronts.
+
         """
         self._simulators = simulators
         self._framer = ModbusAsciiFramer(None)
@@ -110,17 +111,23 @@ class PasdBusModbusApiClient:
     """A client class for a PaSD bus simulator with a Modbus API."""
 
     def __init__(
-        self: PasdBusModbusApiClient, transport: Callable[[bytes], bytes]
+        self: PasdBusModbusApiClient,
+        transport: Callable[[bytes], bytes],
+        logging_level: int = logging.INFO,
     ) -> None:
         """
         Initialise a new instance.
 
         :param transport: the transport layer client; a callable that
             accepts request bytes and returns response bytes.
+        :param logging_level: the logging level to use
         """
+        logger.setLevel(logging_level)
         self._transport = transport
         self._framer = ModbusAsciiFramer(None)
         self._decoder = ModbusAsciiFramer(ClientDecoder())
+        # Change the response delimiter from the default \r\n to \n
+        self._decoder._end = b"\r"
 
     def _do_read_request(self, request: dict) -> dict:
         slave_id = request["device_id"]
@@ -131,14 +138,25 @@ class PasdBusModbusApiClient:
 
         # Retrieve the list of keys (attribute names) in Modbus address order
         keys = list(attributes)
+        count = (
+            attributes[keys[-1]].address
+            + attributes[keys[-1]].count
+            - attributes[keys[0]].address
+        )
+        logger.debug(
+            f"MODBUS Request: slave {slave_id}, "
+            f"start address {attributes[keys[0]].address}, count {count}"
+        )
 
         message = ReadHoldingRegistersRequest(
             address=attributes[keys[0]].address,
             slave=slave_id,
-            count=attributes[keys[-1]].address + attributes[keys[-1]].count,
+            count=count,
         )
         request_bytes = self._framer.buildPacket(message)
+        # logger.debug(f"Request bytes: {request_bytes}")
         response_bytes = self._transport(request_bytes)
+        # logger.debug(f"Response bytes: {response_bytes}")
         response = {}
 
         def process_read_reply(reply: Any) -> None:
@@ -165,7 +183,7 @@ class PasdBusModbusApiClient:
                     }
                 case _:
                     # TODO
-                    pass
+                    logger.error(f"Unexpected response type: {type(reply)}")
 
         self._decoder.processIncomingPacket(
             response_bytes, process_read_reply, slave=slave_id
