@@ -5,5 +5,6 @@ Feature: Forwarded attributes.
     @xfail
     Scenario: FieldStation forwarded attributes.
         Given we have a fndh device
-        When we have a fieldstation device
+        And we have a fieldstation device
+        When we query their outsideTemperature attributes
         Then they agree on the outsideTemperature

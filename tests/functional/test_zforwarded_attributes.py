@@ -47,7 +47,7 @@ def fndh_online(
         change_event_callbacks["state"].assert_change_event(Anything)
 
 
-@when("we have a fieldstation device")
+@given("we have a fieldstation device")
 def fieldstation_online(
     field_station_device: tango.DeviceProxy,
 ) -> None:
@@ -60,17 +60,34 @@ def fieldstation_online(
         field_station_device.adminMode = AdminMode.ONLINE
 
 
-@then("they agree on the outsideTemperature")
-def agree_on_attribute_value(
+@when(
+    "we query their outsideTemperature attributes",
+    target_fixture="outside_temperatures",
+)
+def query_attribute(
     field_station_device: tango.DeviceProxy,
     fndh_device_proxy: tango.DeviceProxy,
-) -> None:
+) -> list[float]:
     """
-    Ensure FNDH and fieldStation agree on the attribute value.
+    Return the outsideTemperature as reported by both devices.
 
     :param field_station_device: a proxy to the field station device.
     :param fndh_device_proxy: a proxy to the FNDH device.
+
+    :return: a target fixture with the temperature as reported by both devices.
     """
-    assert (
-        fndh_device_proxy.outsideTemperature == field_station_device.outsideTemperature
-    )
+    return [
+        fndh_device_proxy.outsideTemperature,
+        field_station_device.outsideTemperature,
+    ]
+
+
+@then("they agree on the outsideTemperature")
+def agree_on_attribute_value(outside_temperatures: dict) -> None:
+    """
+    Ensure FNDH and fieldStation agree on the attribute value.
+
+    :param outside_temperatures: the outside temperature as reported by both the
+        field station and FNDH.
+    """
+    assert outside_temperatures[0] == outside_temperatures[1]
