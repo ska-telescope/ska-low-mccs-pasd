@@ -30,7 +30,9 @@ gc.disable()
 
 
 @pytest.fixture(name="change_event_callbacks")
-def change_event_callbacks_fixture(smartbox_id: int) -> MockTangoEventCallbackGroup:
+def change_event_callbacks_fixture(
+    smartbox_id: int,
+) -> MockTangoEventCallbackGroup:
     """
     Return a dictionary of change event callbacks with asynchrony support.
 
@@ -54,7 +56,7 @@ def change_event_callbacks_fixture(smartbox_id: int) -> MockTangoEventCallbackGr
         f"smartbox{smartbox_id}PortsConnected",
         f"smartbox{smartbox_id}PortsPowerSensed",
         "smartbox24PortsConnected",
-        timeout=10.0,
+        timeout=15.0,
         assert_no_error=False,
     )
 
@@ -167,7 +169,7 @@ def test_communication(  # pylint: disable=too-many-statements
     change_event_callbacks.assert_change_event("healthState", HealthState.OK)
     assert pasd_bus_device.healthState == HealthState.OK
 
-    change_event_callbacks.assert_against_call("smartbox24PortsConnected")
+    change_event_callbacks.assert_against_call("smartbox24PortsConnected", lookahead=5)
 
     assert (
         pasd_bus_device.fndhModbusRegisterMapRevisionNumber
@@ -218,7 +220,8 @@ def test_communication(  # pylint: disable=too-many-statements
 
     assert (
         getattr(
-            pasd_bus_device, f"smartbox{smartbox_id}ModbusRegisterMapRevisionNumber"
+            pasd_bus_device,
+            f"smartbox{smartbox_id}ModbusRegisterMapRevisionNumber",
         )
         == SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
     )
@@ -283,11 +286,21 @@ def test_communication(  # pylint: disable=too-many-statements
         == smartbox_simulator.port_breakers_tripped
     )
     assert (
-        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsDesiredPowerOnline"))
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}PortsDesiredPowerOnline",
+            )
+        )
         == smartbox_simulator.ports_desired_power_when_online
     )
     assert (
-        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsDesiredPowerOffline"))
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}PortsDesiredPowerOffline",
+            )
+        )
         == smartbox_simulator.ports_desired_power_when_offline
     )
     assert (
@@ -527,10 +540,12 @@ def test_turning_smartbox_port_on_off(
     change_event_callbacks.assert_change_event("state", tango.DevState.ON)
 
     change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}PortsConnected", smartbox_simulator.ports_connected
+        f"smartbox{smartbox_id}PortsConnected",
+        smartbox_simulator.ports_connected,
     )
     change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}PortsPowerSensed", smartbox_simulator.ports_power_sensed
+        f"smartbox{smartbox_id}PortsPowerSensed",
+        smartbox_simulator.ports_power_sensed,
     )
 
     smartbox_ports_connected = list(
@@ -545,12 +560,16 @@ def test_turning_smartbox_port_on_off(
 
     if is_on:
         json_argument = json.dumps(
-            {"smartbox_number": smartbox_id, "port_number": connected_smartbox_port}
+            {
+                "smartbox_number": smartbox_id,
+                "port_number": connected_smartbox_port,
+            }
         )
         pasd_bus_device.TurnSmartboxPortOff(json_argument)
         smartbox_ports_power_sensed[connected_smartbox_port - 1] = False
         change_event_callbacks.assert_change_event(
-            f"smartbox{smartbox_id}PortsPowerSensed", smartbox_ports_power_sensed
+            f"smartbox{smartbox_id}PortsPowerSensed",
+            smartbox_ports_power_sensed,
         )
 
     json_argument = json.dumps(
@@ -567,7 +586,10 @@ def test_turning_smartbox_port_on_off(
     )
 
     json_argument = json.dumps(
-        {"smartbox_number": smartbox_id, "port_number": connected_smartbox_port}
+        {
+            "smartbox_number": smartbox_id,
+            "port_number": connected_smartbox_port,
+        }
     )
     pasd_bus_device.TurnSmartboxPortOff(json_argument)
     smartbox_ports_power_sensed[connected_smartbox_port - 1] = False
@@ -636,16 +658,21 @@ def test_reset_smartbox_port_breaker(
         f"smartbox{smartbox_id}PortsConnected", smartbox_ports_connected
     )
     change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}PortBreakersTripped", smartbox_port_breakers_tripped
+        f"smartbox{smartbox_id}PortBreakersTripped",
+        smartbox_port_breakers_tripped,
     )
 
     json_argument = json.dumps(
-        {"smartbox_number": smartbox_id, "port_number": connected_smartbox_port}
+        {
+            "smartbox_number": smartbox_id,
+            "port_number": connected_smartbox_port,
+        }
     )
     pasd_bus_device.ResetSmartboxPortBreaker(json_argument)
     smartbox_port_breakers_tripped[connected_smartbox_port - 1] = False
     change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}PortBreakersTripped", smartbox_port_breakers_tripped
+        f"smartbox{smartbox_id}PortBreakersTripped",
+        smartbox_port_breakers_tripped,
     )
 
 

@@ -309,7 +309,7 @@ class TestSmartBoxComponentManager:
         :param command_tracked_response: The result of the command.
         :param callbacks: the callbacks.
         """
-        smartbox_component_manager.power_state = PowerState.ON
+        smartbox_component_manager._power_state = PowerState.ON
         smartbox_component_manager._update_communication_state(
             CommunicationStatus.ESTABLISHED
         )
@@ -328,7 +328,8 @@ class TestSmartBoxComponentManager:
         callbacks["task_callback"].assert_call(status=TaskStatus.QUEUED)
         callbacks["task_callback"].assert_call(status=TaskStatus.IN_PROGRESS)
         callbacks["task_callback"].assert_call(
-            status=command_tracked_response[0], result=command_tracked_response[1]
+            status=command_tracked_response[0],
+            result=command_tracked_response[1],
         )
 
     @pytest.mark.parametrize(
@@ -385,7 +386,7 @@ class TestSmartBoxComponentManager:
         :param command_tracked_response: The result of the command.
         :param callbacks: the callbacks.
         """
-        smartbox_component_manager.power_state = PowerState.ON
+        smartbox_component_manager._power_state = PowerState.ON
         smartbox_component_manager._update_communication_state(
             CommunicationStatus.ESTABLISHED
         )
@@ -405,7 +406,8 @@ class TestSmartBoxComponentManager:
             )
             assert (
                 getattr(smartbox_component_manager, component_manager_command)(
-                    component_manager_command_argument, callbacks["task_callback"]
+                    component_manager_command_argument,
+                    callbacks["task_callback"],
                 )
                 == expected_manager_result
             )
@@ -476,7 +478,7 @@ class TestSmartBoxComponentManager:
         # setup the response from the mocked pasd proxy
         mock_response = unittest.mock.MagicMock(return_value=pasd_proxy_response)
         setattr(mocked_pasd_proxy, pasd_proxy_command, mock_response)
-        smartbox_component_manager.power_state = PowerState.ON
+        smartbox_component_manager._power_state = PowerState.ON
         smartbox_component_manager._update_communication_state(
             CommunicationStatus.ESTABLISHED
         )

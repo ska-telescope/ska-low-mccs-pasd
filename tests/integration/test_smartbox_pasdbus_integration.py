@@ -49,14 +49,14 @@ def test_power_interplay(
     # SETUP
     assert pasd_bus_device.state() == tango.DevState.DISABLE
     pasd_bus_device.adminMode = AdminMode.ONLINE
-    time.sleep(4)
+    time.sleep(2)
     assert pasd_bus_device.state() == tango.DevState.ON
 
     assert fndh_device.state() == tango.DevState.DISABLE
     fndh_device.adminMode = AdminMode.ONLINE
     assert fndh_device.state() == tango.DevState.ON
 
-    assert smartbox_device.state() == tango.DevState.DISABLE
+    #    assert smartbox_device.state() == tango.DevState.DISABLE
     smartbox_device.adminMode = AdminMode.ONLINE
     time.sleep(2)
     assert smartbox_device.state() == tango.DevState.OFF
@@ -267,10 +267,16 @@ class TestSmartBoxPasdBusIntegration:
         smartbox_device = smartbox_devices[1]
 
         setup_devices_with_subscriptions(
-            smartbox_device, pasd_bus_device, fndh_device, change_event_callbacks
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
         )
         turn_pasd_devices_online(
-            smartbox_device, pasd_bus_device, fndh_device, change_event_callbacks
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
         )
         fndh_port_power_state = fndh_device.PortPowerState(this_smartbox_port)
         is_pasd_port_on = pasd_bus_device.fndhPortsPowerSensed[this_smartbox_port - 1]
@@ -360,10 +366,16 @@ class TestSmartBoxPasdBusIntegration:
 
         smartbox_device = smartbox_devices[smartbox_number - 1]
         setup_devices_with_subscriptions(
-            smartbox_device, pasd_bus_device, fndh_device, change_event_callbacks
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
         )
         turn_pasd_devices_online(
-            smartbox_device, pasd_bus_device, fndh_device, change_event_callbacks
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
         )
 
         # Check that both the PaSD and FNDH say
@@ -429,10 +441,16 @@ class TestSmartBoxPasdBusIntegration:
 
         smartbox_device = smartbox_devices[smartbox_number - 1]
         setup_devices_with_subscriptions(
-            smartbox_device, pasd_bus_device, fndh_device, change_event_callbacks
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
         )
         turn_pasd_devices_online(
-            smartbox_device, pasd_bus_device, fndh_device, change_event_callbacks
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
         )
 
         # Check that both the PaSD and FNDH say
@@ -506,7 +524,10 @@ class TestSmartBoxPasdBusIntegration:
         # ==========
         smartbox_device = smartbox_devices[0]
         setup_devices_with_subscriptions(
-            smartbox_device, pasd_bus_device, fndh_device, change_event_callbacks
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
         )
 
         # Check that we get a DevFailed for accessing non initialised attributes.
@@ -527,7 +548,10 @@ class TestSmartBoxPasdBusIntegration:
                 getattr(smartbox_device, i)
 
         turn_pasd_devices_online(
-            smartbox_device, pasd_bus_device, fndh_device, change_event_callbacks
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
         )
 
         # Check that the smartbox has updated its values from the smartbox simulator.

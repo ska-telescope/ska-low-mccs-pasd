@@ -18,7 +18,7 @@ pytango = "9.3.6"
 PyYAML = "^6.0"
 ska-tango-base = "^0.18.0"
 ska-control-model = "0.3.1"
-ska-low-mccs-common = "^0.6.0"
+ska-low-mccs-common = "^0.8.0"
 ska-ser-devices = "^0.1.0"
 pymodbus = "^3.2.2"
 

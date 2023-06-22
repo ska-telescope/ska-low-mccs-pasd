@@ -17,7 +17,8 @@ from typing import Any, Callable, Optional
 import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState, TaskStatus
 from ska_low_mccs_common import MccsDeviceProxy
-from ska_low_mccs_common.component import DeviceComponentManager, check_communicating
+from ska_low_mccs_common.component import DeviceComponentManager
+from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
 
@@ -91,10 +92,8 @@ class _SmartBoxProxy(DeviceComponentManager):
         fndh_port: int,
         logger: logging.Logger,
         max_workers: int,
-        smartbox_communication_state_changed_callback: Callable[
-            [CommunicationStatus], None
-        ],
-        smartbox_state_changed_callback: Callable[[dict[str, Any]], None],
+        smartbox_communication_state_callback: Callable[[CommunicationStatus], None],
+        smartbox_state_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
     ) -> None:
         """
@@ -105,9 +104,9 @@ class _SmartBoxProxy(DeviceComponentManager):
         :param logger: the logger to be used by this object.
         :param max_workers: the maximum worker threads for the slow commands
             associated with this component manager.
-        :param smartbox_communication_state_changed_callback: callback to be
+        :param smartbox_communication_state_callback: callback to be
             called when the status of the communications change.
-        :param smartbox_state_changed_callback: callback to be called when the
+        :param smartbox_state_callback: callback to be called when the
             component state changes
         :param attribute_change_callback: callback for when a attribute relevant to
             this smartbox changes.
@@ -121,8 +120,8 @@ class _SmartBoxProxy(DeviceComponentManager):
             fqdn,
             logger,
             max_workers,
-            smartbox_communication_state_changed_callback,
-            smartbox_state_changed_callback,
+            smartbox_communication_state_callback,
+            smartbox_state_callback,
         )
 
     def _subscribe_to_attributes(self: _SmartBoxProxy) -> None:
@@ -229,11 +228,9 @@ class _FndhProxy(DeviceComponentManager):
         fndh_port: int,
         logger: logging.Logger,
         max_workers: int,
-        fndh_communication_state_changed_callback: Callable[
-            [CommunicationStatus], None
-        ],
-        fndh_state_changed_callback: Callable[[dict[str, Any]], None],
-        port_power_changed_callback: Callable[[str, Any, Any], None],
+        fndh_communication_state_callback: Callable[[CommunicationStatus], None],
+        fndh_state_callback: Callable[..., None],
+        port_power_callback: Callable[[str, Any, Any], None],
     ) -> None:
         """
         Initialise a new instance.
@@ -243,15 +240,15 @@ class _FndhProxy(DeviceComponentManager):
         :param logger: the logger to be used by this object.
         :param max_workers: the maximum worker threads for the slow commands
             associated with this component manager.
-        :param fndh_communication_state_changed_callback: callback to be
+        :param fndh_communication_state_callback: callback to be
             called when the status of the communications change.
-        :param fndh_state_changed_callback: callback to be called when the
+        :param fndh_state_callback: callback to be called when the
             component state changes
-        :param port_power_changed_callback: callback for when the
+        :param port_power_callback: callback for when the
             power delivered to this device changes.
         """
         self._fndh_port = fndh_port
-        self._port_power_changed_callback = port_power_changed_callback
+        self._port_power_callback = port_power_callback
 
         assert (
             0 < fndh_port < 29
@@ -260,8 +257,8 @@ class _FndhProxy(DeviceComponentManager):
             fqdn,
             logger,
             max_workers,
-            fndh_communication_state_changed_callback,
-            fndh_state_changed_callback,
+            fndh_communication_state_callback,
+            fndh_state_callback,
         )
 
     def _subscribe_to_attributes(self: _FndhProxy) -> None:
@@ -272,7 +269,7 @@ class _FndhProxy(DeviceComponentManager):
             not in self._proxy._change_event_subscription_ids.keys()
         ):
             self._proxy.add_change_event_callback(
-                f"Port{self._fndh_port}PowerState", self._port_power_changed_callback
+                f"Port{self._fndh_port}PowerState", self._port_power_callback
             )
 
 
@@ -291,8 +288,8 @@ class SmartBoxComponentManager(
     def __init__(
         self: SmartBoxComponentManager,
         logger: logging.Logger,
-        communication_state_changed_callback: Callable[[CommunicationStatus], None],
-        component_state_changed_callback: Callable[..., None],
+        communication_state_callback: Callable[[CommunicationStatus], None],
+        component_state_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
         port_count: int,
         fndh_port: int,
@@ -306,10 +303,10 @@ class SmartBoxComponentManager(
         Initialise a new instance.
 
         :param logger: a logger for this object to use
-        :param communication_state_changed_callback: callback to be
+        :param communication_state_callback: callback to be
             called when the status of the communications channel between
             the component manager and its component changes
-        :param component_state_changed_callback: callback to be
+        :param component_state_callback: callback to be
             called when the component state changes
         :param attribute_change_callback: callback to be called when a attribute
             of interest changes.
@@ -346,36 +343,39 @@ class SmartBoxComponentManager(
         self._pasd_communication_state = CommunicationStatus.NOT_ESTABLISHED
         super().__init__(
             logger,
-            communication_state_changed_callback,
-            component_state_changed_callback,
-            max_workers=1,
+            communication_state_callback,
+            component_state_callback,
+            max_workers=max_workers,
             power=None,
+            health=None,
             fault=None,
             pasdbus_status=None,
         )
 
-        self._component_state_changed_callback = component_state_changed_callback
         self._pasd_fqdn = pasd_fqdn
         self._fndh_fqdn = fndh_fqdn
         self.logger = logger
         self.ports = [
             Port(self.turn_on_port, port, logger) for port in range(1, port_count + 1)
         ]
-        self.power_state = PowerState.UNKNOWN
+        self._power_state = PowerState.UNKNOWN
         self._fndh_port = fndh_port
 
     def _pasdbus_state_changed(
         self: SmartBoxComponentManager, state_change: dict[str, Any]
     ) -> None:
-        self._component_state_changed_callback(**state_change, fqdn=self._pasd_fqdn)
+        if self._component_state_callback is not None:
+            self._component_state_callback(**state_change, fqdn=self._pasd_fqdn)
 
     def _fndh_state_changed(
         self: SmartBoxComponentManager, state_change: dict[str, Any]
     ) -> None:
-        self._component_state_changed_callback(**state_change, fqdn=self._fndh_fqdn)
+        if self._component_state_callback is not None:
+            self._component_state_callback(**state_change, fqdn=self._fndh_fqdn)
 
     def _smartbox_communication_state_changed(
-        self: SmartBoxComponentManager, communication_state: CommunicationStatus
+        self: SmartBoxComponentManager,
+        communication_state: CommunicationStatus,
     ) -> None:
         self._pasd_communication_state = communication_state
         if communication_state == CommunicationStatus.ESTABLISHED:
@@ -385,7 +385,8 @@ class SmartBoxComponentManager(
             self.update_device_communication_state()
 
     def _fndh_communication_state_changed(
-        self: SmartBoxComponentManager, communication_state: CommunicationStatus
+        self: SmartBoxComponentManager,
+        communication_state: CommunicationStatus,
     ) -> None:
         self._fndh_communication_state = communication_state
         if communication_state == CommunicationStatus.ESTABLISHED:
@@ -394,7 +395,9 @@ class SmartBoxComponentManager(
         if communication_state != self._communication_state:
             self.update_device_communication_state()
 
-    def update_device_communication_state(self: SmartBoxComponentManager) -> None:
+    def update_device_communication_state(
+        self: SmartBoxComponentManager,
+    ) -> None:
         """
         Update the communication state.
 
@@ -432,25 +435,29 @@ class SmartBoxComponentManager(
         :param event_quality: The event_quality
         """
         if event_name.lower() == f"port{self._fndh_port}powerstate":
-            self.power_state = power_state
+            self._power_state = power_state
             # Turn on any pending ports
-            if self.power_state == PowerState.ON:
+            if self._power_state == PowerState.ON:
                 for port in self.ports:
                     if port.desire_on:
                         port.turn_on()
-
-            self._component_state_changed_callback(power=self.power_state)
+            if self._component_state_callback is not None:
+                self._component_state_callback(power=self._power_state)
         else:
             return
 
     def stop_communicating(self: SmartBoxComponentManager) -> None:
         """Stop communication with components under control."""
+        if self.communication_state == CommunicationStatus.DISABLED:
+            return
         self._smartbox_proxy.stop_communicating()
         self._fndh_proxy.stop_communicating()
+        self._update_component_state(power=None, fault=None)
 
     @check_communicating
     def on(
-        self: SmartBoxComponentManager, task_callback: Optional[Callable] = None
+        self: SmartBoxComponentManager,
+        task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
         Turn the Smartbox on.
@@ -460,7 +467,7 @@ class SmartBoxComponentManager(
         :return: a result code and a unique_id or message.
         """
         return self.submit_task(
-            self._on,
+            self._on,  # type: ignore[arg-type]
             args=[],
             task_callback=task_callback,
         )
@@ -477,7 +484,10 @@ class SmartBoxComponentManager(
                 if self._smartbox_proxy is None:
                     raise ValueError(f"Power on smartbox '{self._fndh_port} failed'")
                 json_argument = json.dumps(
-                    {"port_number": self._fndh_port, "stay_on_when_offline": True}
+                    {
+                        "port_number": self._fndh_port,
+                        "stay_on_when_offline": True,
+                    }
                 )
                 (
                     result_code,
@@ -508,7 +518,8 @@ class SmartBoxComponentManager(
 
     @check_communicating
     def off(
-        self: SmartBoxComponentManager, task_callback: Optional[Callable] = None
+        self: SmartBoxComponentManager,
+        task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
         Turn the Smartbox off.
@@ -518,7 +529,7 @@ class SmartBoxComponentManager(
         :return: a result code and a unique_id or message.
         """
         return self.submit_task(
-            self._off,
+            self._off,  # type: ignore[arg-type]
             args=[],
             task_callback=task_callback,
         )
@@ -580,7 +591,7 @@ class SmartBoxComponentManager(
         :return: the task status and a human-readable status message
         """
         return self.submit_task(
-            self._turn_off_port,
+            self._turn_off_port,  # type: ignore[arg-type]
             args=[antenna_number],
             task_callback=task_callback,
         )
@@ -597,7 +608,10 @@ class SmartBoxComponentManager(
             if self._smartbox_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
             json_argument = json.dumps(
-                {"smartbox_number": self._fndh_port, "port_number": port_number}
+                {
+                    "smartbox_number": self._fndh_port,
+                    "port_number": port_number,
+                }
             )
             (
                 result_code,
@@ -639,7 +653,7 @@ class SmartBoxComponentManager(
         :return: the task status and a human-readable status message
         """
         return self.submit_task(
-            self._turn_on_port,
+            self._turn_on_port,  # type: ignore[arg-type]
             args=[
                 antenna_number,
             ],
@@ -659,7 +673,7 @@ class SmartBoxComponentManager(
                 raise NotImplementedError("pasd_bus_proxy is None")
             port = self.ports[port_number - 1]
             # Turn smartbox on if not already.
-            if self.power_state != PowerState.ON:
+            if self._power_state != PowerState.ON:
                 assert port._port_id == port_number
                 port.set_desire_on(task_callback)  # type: ignore[assignment]
                 self.on()

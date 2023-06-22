@@ -220,7 +220,8 @@ class TestFndhComponentManager:
             )
             assert (
                 getattr(fndh_component_manager, component_manager_command)(
-                    component_manager_command_argument, callbacks["task_callback"]
+                    component_manager_command_argument,
+                    callbacks["task_callback"],
                 )
                 == expected_manager_result
             )

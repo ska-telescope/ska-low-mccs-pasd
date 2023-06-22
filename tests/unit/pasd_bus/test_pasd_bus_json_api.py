@@ -264,7 +264,11 @@ class TestPasdBusJsonApi:
         :param encoding: the encoding to use when converting between string
             and bytes
         """
-        request = {"device_id": 0, "execute": "nonexistent_command", "arguments": []}
+        request = {
+            "device_id": 0,
+            "execute": "nonexistent_command",
+            "arguments": [],
+        }
         request_str = json.dumps(request)
         request_bytes = request_str.encode(encoding)
         response_bytes = api(request_bytes)
@@ -300,7 +304,11 @@ class TestPasdBusJsonApi:
         :param encoding: the encoding to use when converting between string
             and bytes
         """
-        request = {"device_id": 0, "execute": "reset_port_breaker", "arguments": [2]}
+        request = {
+            "device_id": 0,
+            "execute": "reset_port_breaker",
+            "arguments": [2],
+        }
         request_str = json.dumps(request)
         request_bytes = request_str.encode(encoding)
         response_bytes = api(request_bytes)

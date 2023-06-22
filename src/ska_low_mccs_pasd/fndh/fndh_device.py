@@ -224,7 +224,8 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             )
         except ValidationError as error:
             self.logger.error(
-                "Failed to configure the device due to invalid schema: %s", str(error)
+                "Failed to configure the device due to invalid schema: %s",
+                str(error),
             )
 
     class PortPowerStateCommand(FastCommand):

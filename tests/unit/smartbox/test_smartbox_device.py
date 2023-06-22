@@ -59,8 +59,8 @@ def patched_smartbox_device_class_fixture(
 
             :return: a mock component manager
             """
-            mock_component_manager._component_state_changed_callback = (
-                self._component_state_changed_callback
+            mock_component_manager._component_state_callback = (
+                self._component_state_callback
             )
 
             return mock_component_manager
@@ -98,8 +98,8 @@ def tango_harness_fixture(
         smartbox_name,
         patched_smartbox_device_class,
         FndhPort=5,
-        PasdFQDN="low-mccs-pasd/pasdbus/001",
-        FndhFQDN="low-mccs-pasd/fndh/001",
+        PasdFQDN="low-mccs/pasdbus/001",
+        FndhFQDN="low-mccs/fndh/001",
         SmartBoxNumber=5,
         LoggingLevelDefault=int(LoggingLevel.DEBUG),
     )
