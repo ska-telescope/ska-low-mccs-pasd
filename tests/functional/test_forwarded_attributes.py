@@ -16,6 +16,7 @@ from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 scenarios("./features/forwarded_attributes.feature")
 
+
 @given("we have a fndh device")
 def fndh_online(
     pasd_bus_device: tango.DeviceProxy,
