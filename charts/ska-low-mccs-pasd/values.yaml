@@ -114,10 +114,6 @@ deviceServers:
 
   fieldstations:
     logging_level_default: 5 # optional, defaults to 3
-    dependency:
-      1: low-mccs/fndh/001
-      2: low-mccs/smartbox/00001
-      3: low-mccs/smartbox/00002
     instances:
       1:
         FndhFQDN: "low-mccs/fndh/001"

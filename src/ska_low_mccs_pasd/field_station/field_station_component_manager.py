@@ -57,6 +57,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :param _smartbox_proxys: injected smartbox proxys for purposes of testing only.
         """
         self._communication_state_callback: Callable[..., None]
+        self._component_state_callback: Callable[..., None]
         max_workers = 1
         super().__init__(
             logger,
@@ -71,7 +72,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             functools.partial(
                 self._communication_state_callback, device_name=fndh_name
             ),
-            functools.partial(self._component_state_changed, device_name=fndh_name),
+            functools.partial(self._component_state_callback, device_name=fndh_name),
         )
 
         self._smartbox_proxys = {}
@@ -87,20 +88,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                         self._communication_state_callback, device_name=smartbox_name
                     ),
                     functools.partial(
-                        self._component_state_changed, device_name=smartbox_name
+                        self._component_state_callback, device_name=smartbox_name
                     ),
                 )
 
         self.logger = logger
-
-    def _component_state_changed(
-        self: FieldStationComponentManager,
-        state_change: dict[str, Any],
-        device_name: str,
-    ) -> None:
-        print(f"called state change {device_name}: {state_change}")
-        if self._component_state_callback:
-            self._component_state_callback(**state_change, device_name=device_name)
 
     @check_communicating
     def turn_on_antenna(

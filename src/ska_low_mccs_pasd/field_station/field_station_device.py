@@ -67,7 +67,7 @@ class MccsFieldStation(SKABaseDevice):
             self.logger,
             self.FndhFQDN,
             self.SmartBoxFQDNs,
-            self._communication_state_changed_callback,
+            self._communication_state_callback,
             self._component_state_callback,
         )
 

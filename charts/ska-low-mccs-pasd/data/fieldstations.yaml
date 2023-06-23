@@ -38,11 +38,12 @@ server:
           - name: "LoggingLevelDefault"
             values: 
             - {{pluck "logging_level_default" $this_fieldStation $fieldStations $defaults | first | toString | quote}}
-{{- end}}
 depends_on:
   - device: sys/database/2
-{{- range $key, $dependency := $fieldStations.dependency}}
-  - device: {{$dependency | toString | quote}}
+  - device: {{$this_fieldStation.FndhFQDN | toString |  quote}}
+{{- range $key, $SmartBoxFQDN := $this_fieldStation.SmartBoxFQDNs}}
+  - device: {{$SmartBoxFQDN | toString | quote}}
+{{- end}}
 {{- end}}
 image:
   registry: "{{.Values.low_mccs_pasd.image.registry}}"

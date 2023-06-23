@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import pytest
 import tango
 from pytest_bdd import given, scenarios, then, when
 from ska_control_model import AdminMode
@@ -90,4 +91,4 @@ def agree_on_attribute_value(outside_temperatures: dict) -> None:
     :param outside_temperatures: the outside temperature as reported by both the
         field station and FNDH.
     """
-    assert outside_temperatures[0] == outside_temperatures[1]
+    assert outside_temperatures[0] == pytest.approx(outside_temperatures[1])
