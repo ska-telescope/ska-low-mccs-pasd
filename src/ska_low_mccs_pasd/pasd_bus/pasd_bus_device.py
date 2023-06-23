@@ -133,13 +133,19 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         for smartbox_number in range(1, 25):
             self._setup_smartbox_attributes(smartbox_number)
 
-        message = (
-            "Initialised MccsPasdBus device with properties:\n"
+        self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
+        self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
+        device_name = f'{str(self.__class__).rsplit(".", maxsplit=1)[-1][0:-2]}'
+        version = f"{device_name} Software Version: {self._version_id}"
+        properties = (
+            f"Initialised {device_name} device with properties:\n"
             f"\tHost: {self.Host}\n"
             f"\tPort: {self.Port}\n"
             f"\tTimeout: {self.Timeout}\n"
         )
-        self.logger.info(message)
+        self.logger.info(
+            "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
+        )
 
     def _setup_fndh_attributes(self: MccsPasdBus) -> None:
         for (slug, data_type, length) in [
