@@ -67,8 +67,6 @@ class PasdConversionUtility:
         :param value: raw value
         :return: the value unchanged
         """
-        if len(value) == 1:
-            return value[0]
         return value
 
     @classmethod
@@ -95,25 +93,24 @@ class PasdConversionUtility:
 
     @classmethod
     def scale_48v(
-        cls, value: int | float, reverse: bool = False, pcb_version: int = 0
-    ) -> int | float:
+        cls, values: List[int | float], reverse: bool = False, pcb_version: int = 0
+    ) -> List[int | float]:
         """
         Convert a raw register value to Volts.
 
         For now, raw values are hundredths of a volt, positive only.
 
-        :param value: raw register contents as a value from 0-65535, or a
-            voltage in Volts
+        :param value: raw register contents as a list of  values from 0-65535
 
         :param reverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
 
         :param pcb_version: integer PCB version number, 0-65535
-        :return: output_value in Volts
+        :return: list of output_values in Volts
         """
         if reverse:
-            return int(value * 100) & 0xFFFF
-        return value / 100.0
+            return [int(value * 100) & 0xFFFF for value in values]
+        return [value / 100.0 for value in values]
 
     @classmethod
     def scale_temp(

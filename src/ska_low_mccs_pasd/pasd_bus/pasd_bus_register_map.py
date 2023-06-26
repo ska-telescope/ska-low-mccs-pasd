@@ -70,28 +70,28 @@ class PasdBusRegisterMap:
     # Dictionary mapping FNDH attribute name (as used by clients) to
     # PasdBusAttribute
     _FNDH_REGISTER_MAP: Final = {
-        "modbus_register_map_revision": PasdBusAttribute(1, 1),
-        "pcb_revision": PasdBusAttribute(2, 1),
-        "cpu_id": PasdBusAttribute(3, 2, PasdConversionUtility.convert_cpu_id),
-        "chip_id": PasdBusAttribute(5, 8, PasdConversionUtility.convert_chip_id),
-        "firmware_version": PasdBusAttribute(13, 1),
-        "uptime": PasdBusAttribute(14, 2),
-        "sys_address": PasdBusAttribute(16, 1),
-        "psu48v_voltages": PasdBusAttribute(17, 2, PasdConversionUtility.scale_48v),
+        "modbus_register_map_revision": PasdBusAttribute(0, 1),
+        "pcb_revision": PasdBusAttribute(1, 1),
+        "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
+        "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_chip_id),
+        "firmware_version": PasdBusAttribute(12, 1),
+        "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.bytes_to_n),
+        "sys_address": PasdBusAttribute(15, 1),
+        "psu48v_voltages": PasdBusAttribute(16, 2, PasdConversionUtility.scale_48v),
         "psu48v_current": PasdBusAttribute(
-            19, 1, PasdConversionUtility.scale_48vcurrent
+            18, 1, PasdConversionUtility.scale_48vcurrent
         ),
-        "psu48v_temperature": PasdBusAttribute(20, 2, PasdConversionUtility.scale_temp),
-        "pcb_temperature": PasdBusAttribute(22, 1, PasdConversionUtility.scale_temp),
+        "psu48v_temperature": PasdBusAttribute(19, 2, PasdConversionUtility.scale_temp),
+        "pcb_temperature": PasdBusAttribute(21, 1, PasdConversionUtility.scale_temp),
         "outside_temperature": PasdBusAttribute(
-            23, 1, PasdConversionUtility.scale_temp
+            22, 1, PasdConversionUtility.scale_temp
         ),
-        "humidity": PasdBusAttribute(24, 1),
-        "status": PasdBusAttribute(25, 1),
-        "led_pattern": PasdBusAttribute(26, 1),
+        "humidity": PasdBusAttribute(23, 1),
+        "status": PasdBusAttribute(24, 1),
+        "led_pattern": PasdBusAttribute(25, 1),
         # TODO: Handle port attributes
-        # "ports_connected": PortStatus(26, 28),
-        # "port_forcings": PortStatus(26, 28),
+        # "ports_connected": PortStatus(36, 28),
+        # "port_forcings": PortStatus(36, 28),
         # "ports_power_sensed": PortStatus(36, 28),
         # "ports_desired_power_when_online": PortStatus(36, 28),
         # "ports_desired_power_when_offline": PortStatus(36, 28),
@@ -106,24 +106,24 @@ class PasdBusRegisterMap:
     # Dictionary mapping smartbox attribute name (as used by clients) to
     # PasdAttribute
     _SMARTBOX_REGISTER_MAP: Final = {
-        "modbus_register_map_revision": PasdBusAttribute(1, 1),
-        "pcb_revision": PasdBusAttribute(2, 1),
-        "cpu_id": PasdBusAttribute(3, 2, PasdConversionUtility.convert_cpu_id),
-        "chip_id": PasdBusAttribute(5, 8),
-        "firmware_version": PasdBusAttribute(13, 1),
-        "uptime": PasdBusAttribute(14, 2),
-        "sys_address": PasdBusAttribute(16, 1),
-        "input_voltage": PasdBusAttribute(17, 1, PasdConversionUtility.scale_48v),
+        "modbus_register_map_revision": PasdBusAttribute(0, 1),
+        "pcb_revision": PasdBusAttribute(1, 1),
+        "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
+        "chip_id": PasdBusAttribute(4, 8),
+        "firmware_version": PasdBusAttribute(12, 1),
+        "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.bytes_to_n),
+        "sys_address": PasdBusAttribute(15, 1),
+        "input_voltage": PasdBusAttribute(16, 1, PasdConversionUtility.scale_48v),
         "power_supply_output_voltage": PasdBusAttribute(
             18, 1, PasdConversionUtility.scale_5v
         ),
-        "psu_temperature": PasdBusAttribute(19, 1, PasdConversionUtility.scale_temp),
-        "pcb_temperature": PasdBusAttribute(20, 1, PasdConversionUtility.scale_temp),
+        "psu_temperature": PasdBusAttribute(18, 1, PasdConversionUtility.scale_temp),
+        "pcb_temperature": PasdBusAttribute(19, 1, PasdConversionUtility.scale_temp),
         "outside_temperature": PasdBusAttribute(
-            21, 1, PasdConversionUtility.scale_temp
+            20, 1, PasdConversionUtility.scale_temp
         ),
-        "status": PasdBusAttribute(22, 1),
-        "led_pattern": PasdBusAttribute(23, 1),
+        "status": PasdBusAttribute(21, 1),
+        "led_pattern": PasdBusAttribute(22, 1),
         # TODO: Handle port attributes
         # "ports_connected": PortStatus(36, 12),
         # "port_forcings": PortStatus(36, 12),

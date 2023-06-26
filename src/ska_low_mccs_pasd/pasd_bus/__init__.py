@@ -23,10 +23,14 @@ __all__ = [
     "PasdBusSimulatorJsonServer",
     "MccsPasdBus",
     "SmartboxSimulator",
+    "PasdBusConnectionTest",
+    "CustomReadHoldingRegistersResponse"
 ]
 
 from .pasd_bus_component_manager import PasdBusComponentManager
+from .pasd_bus_connection_tests import PasdBusConnectionTest
 from .pasd_bus_conversions import PasdConversionUtility
+from .pasd_bus_custom_pymodbus import CustomReadHoldingRegistersResponse
 from .pasd_bus_device import MccsPasdBus
 from .pasd_bus_health_model import PasdBusHealthModel
 from .pasd_bus_json_api import PasdBusJsonApi, PasdBusJsonApiClient

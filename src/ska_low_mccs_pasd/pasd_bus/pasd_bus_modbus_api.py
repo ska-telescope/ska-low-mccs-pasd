@@ -18,6 +18,7 @@ from pymodbus.register_read_message import (
     ReadHoldingRegistersResponse,
 )
 
+from .pasd_bus_custom_pymodbus import CustomReadHoldingRegistersResponse
 from .pasd_bus_register_map import PasdBusRegisterMap
 from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
 
@@ -125,7 +126,9 @@ class PasdBusModbusApiClient:
         logger.setLevel(logging_level)
         self._transport = transport
         self._framer = ModbusAsciiFramer(None)
-        self._decoder = ModbusAsciiFramer(ClientDecoder())
+        self._client = ClientDecoder()
+        self._client.register(CustomReadHoldingRegistersResponse)
+        self._decoder = ModbusAsciiFramer(self._client)
         # Change the response delimiter from the default \r\n to \n
         self._decoder._end = b"\r"
 
@@ -154,26 +157,30 @@ class PasdBusModbusApiClient:
             count=count,
         )
         request_bytes = self._framer.buildPacket(message)
-        # logger.debug(f"Request bytes: {request_bytes}")
+        logger.debug(f"Request bytes: {request_bytes}")
         response_bytes = self._transport(request_bytes)
-        # logger.debug(f"Response bytes: {response_bytes}")
+        logger.debug(f"Response bytes: {response_bytes}")
         response = {}
 
         def process_read_reply(reply: Any) -> None:
             nonlocal response, attributes, keys
             match reply:
-                case ReadHoldingRegistersResponse():
+                case CustomReadHoldingRegistersResponse():
                     results = {}
                     register_index = 0
                     for key in keys:
                         # Convert the raw register value(s) into meaningful
                         # data and add to the attributes dictionary to be returned
-                        results[key] = attributes[key].convert_value(
-                            reply.registers[
-                                register_index : register_index + attributes[key].count
-                            ]
-                        )
-                        register_index = register_index + attributes[key].count
+                        raw_values = reply.registers[
+                            register_index : register_index + attributes[key].count
+                        ]
+                        if len(raw_values) == 1:
+                            results[key] = attributes[key].convert_value(raw_values[0])
+                        else:
+                            results[key] = attributes[key].convert_value(raw_values)
+
+                        # results[key] = reply.registers[register_index : register_index + attributes[key].count]
+                        # register_index = register_index + attributes[key].count
                     response = {
                         "source": slave_id,
                         "data": {
