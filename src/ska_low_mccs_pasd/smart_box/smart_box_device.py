@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import Any, Final, Optional, cast
 
 import tango
@@ -93,14 +94,21 @@ class MccsSmartBox(SKABaseDevice):
         super().init_device()
         self._smartbox_state: dict[str, Any] = {}
         self._setup_smartbox_attributes()
-        message = (
-            "Initialised MccsSmartBox device with properties:\n"
+
+        self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
+        self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
+        device_name = f'{str(self.__class__).rsplit(".", maxsplit=1)[-1][0:-2]}'
+        version = f"{device_name} Software Version: {self._version_id}"
+        properties = (
+            f"Initialised {device_name} device with properties:\n"
             f"\tFndhPort: {self.FndhPort}\n"
             f"\tPasdFQDN: {self.PasdFQDN}\n"
             f"\tFndhFQDN: {self.FndhFQDN}\n"
             f"\tSmartBoxNumber: {self.SmartBoxNumber}\n"
         )
-        self.logger.info(message)
+        self.logger.info(
+            "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
+        )
 
     def _init_state_model(self: MccsSmartBox) -> None:
         super()._init_state_model()
