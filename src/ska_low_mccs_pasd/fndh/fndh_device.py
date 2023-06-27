@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from typing import Any, Final, Optional, cast
 
 import tango
@@ -26,6 +27,7 @@ from .fndh_health_model import FndhHealthModel
 __all__ = ["MccsFNDH", "main"]
 
 
+# pylint: disable=too-many-instance-attributes
 class MccsFNDH(SKABaseDevice[FndhComponentManager]):
     """An implementation of the FNDH device for MCCS."""
 
@@ -110,11 +112,17 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             attr_name = f"Port{port}PowerState"
             self._setup_fndh_attribute(attr_name, PowerState, 1, PowerState.UNKNOWN)
 
-        message = (
-            "Initialised MccsFNDH device with properties:\n"
+        self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
+        self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
+        device_name = f'{str(self.__class__).rsplit(".", maxsplit=1)[-1][0:-2]}'
+        version = f"{device_name} Software Version: {self._version_id}"
+        properties = (
+            f"Initialised {device_name} device with properties:\n"
             f"\tPasdFQDN: {self.PasdFQDN}\n"
         )
-        self.logger.info(message)
+        self.logger.info(
+            "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
+        )
 
     def _init_state_model(self: MccsFNDH) -> None:
         super()._init_state_model()
