@@ -23,13 +23,14 @@ __all__ = [
     # devices
     "MccsPasdBus",
     "MccsSmartBox",
+    "MccsFieldStation",
     # device subpackages
     "pasd_bus",
     "smart_box",
     "fndh",
     "MccsFNDH",
 ]
-
+from .field_station import MccsFieldStation
 from .fndh import MccsFNDH
 from .pasd_bus import MccsPasdBus
 from .smart_box import MccsSmartBox
