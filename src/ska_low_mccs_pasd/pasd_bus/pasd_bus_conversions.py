@@ -7,7 +7,7 @@
 # See LICENSE for more info.
 """This module provides scaling and other conversion functions for the PaSD."""
 
-from typing import Any, List
+from typing import Any
 
 
 class PasdConversionUtility:
@@ -59,48 +59,52 @@ class PasdConversionUtility:
             return list(divmod(high_word, 256)) + list(divmod(low_word, 256))
         raise ValueError(f"Received invalid number of bytes to convert: {nbytes}")
 
-    @classmethod
-    def default_conversion(cls, value: List[Any]) -> Any:
-        """
-        Return the supplied raw value with no conversion.
-
-        :param value: raw value
-        :return: the value unchanged
-        """
-        return value
+    # The following methods each accept and return a list of values, to simplify
+    # the calling code
 
     @classmethod
-    def scale_5v(
-        cls, value: int | float, reverse: bool = False, pcb_version: int = 0
-    ) -> int | float:
+    def default_conversion(cls, values: list[Any]) -> list[Any]:
         """
-        Convert a raw register value to a voltage.
+        Return the supplied raw value(s) with no conversion.
+
+        :param values: raw value(s)
+        :return: the value(s) unchanged
+        """
+        return values
+
+    @classmethod
+    def scale_5vs(
+        cls, value_list: list[int | float], reverse: bool = False, pcb_version: int = 0
+    ) -> list[int | float]:
+        """
+        Convert raw register value(s) to Volts.
 
         For now, raw values are hundredths of a volt, positive only.
 
-        :param value: raw register contents as a value from 0-65535, or a
-            voltage in Volts
+        :param value_list: raw register contents as a list of values from 0-65535, or a
+            list of voltages
 
         :param reverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
 
         :param pcb_version: integer PCB version number, 0-65535
-        :return: output_value in Volts
+        :return: output_values in Volts
         """
         if reverse:
-            return int(value * 100) & 0xFFFF
-        return value / 100.0
+            return [int(value * 100) & 0xFFFF for value in value_list]
+        return [value / 100.0 for value in value_list]
 
     @classmethod
-    def scale_48v(
-        cls, values: List[int | float], reverse: bool = False, pcb_version: int = 0
-    ) -> List[int | float]:
+    def scale_48vs(
+        cls, value_list: list[int | float], reverse: bool = False, pcb_version: int = 0
+    ) -> list[int | float]:
         """
-        Convert a raw register value to Volts.
+        Convert raw register value(s) to Volts.
 
         For now, raw values are hundredths of a volt, positive only.
 
-        :param value: raw register contents as a list of  values from 0-65535
+        :param value_list: raw register contents as a list of  values from 0-65535, or a
+            list of voltages
 
         :param reverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
@@ -109,21 +113,21 @@ class PasdConversionUtility:
         :return: list of output_values in Volts
         """
         if reverse:
-            return [int(value * 100) & 0xFFFF for value in values]
-        return [value / 100.0 for value in values]
+            return [int(value * 100) & 0xFFFF for value in value_list]
+        return [value / 100.0 for value in value_list]
 
     @classmethod
-    def scale_temp(
-        cls, value: int | float, reverse: bool = False, pcb_version: int = 0
-    ) -> int | float:
+    def scale_temps(
+        cls, value_list: list[int | float], reverse: bool = False, pcb_version: int = 0
+    ) -> list[int | float]:
         """
-        Convert a raw register value to deg C.
+        Convert raw register value(s) to deg C.
 
         For now, raw values are hundredths of a deg C, as a
         signed 16-bit integer value
 
-        :param value: raw register contents as a value from 0-65535, or a
-            floating point temperature in degrees
+        :param value_list: raw register contents as a list of values from 0-65535, or
+            floating point temperatures in degrees
 
         :param reverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
@@ -133,58 +137,62 @@ class PasdConversionUtility:
             unsigned 16 bit integer
 
         """
-        if reverse:
+
+        def raw_to_deg(value: int) -> float:
+            if value >= 32768:
+                value -= 65536
+            return value / 100.0
+
+        def deg_to_raw(value: float) -> int:
             if value < 0:
                 return (int(value * 100) + 65536) & 0xFFFF
             return int(value * 100) & 0xFFFF
 
-        if value >= 32768:
-            value -= 65536
-        return (
-            value / 100.0
-        )  # raw_value is a signed 16-bit integer containing temp in 1/100th of a degree
+        if reverse:
+            return [deg_to_raw(value) for value in value_list]
+
+        return [raw_to_deg(int(value)) for value in value_list]
 
     @classmethod
-    def scale_48vcurrent(
-        cls, value: int | float, reverse: bool = False, pcb_version: int = 0
-    ) -> int | float:
+    def scale_48vcurrents(
+        cls, value_list: list[int | float], reverse: bool = False, pcb_version: int = 0
+    ) -> list[int | float]:
         """
-        Convert a raw register value to Amps.
+        Convert raw register value(s) to Amps.
 
         For now, raw values are hundredths of an Amp, positive only.
 
-        :param value: raw register contents as a value from 0-65535 or current
-            in amps
+        :param value_list: raw register contents as a list of values from 0-65535 or
+            list of currents in amps
 
         :param reverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
 
         :param pcb_version: integer PCB version number, 0-65535
-        :return: output_value in Amps
+        :return: list of output_values
         """
         if reverse:
-            return int(value * 100) & 0xFFFF
-        return value / 100.0
+            return [int(value * 100) & 0xFFFF for value in value_list]
+        return [value / 100.0 for value in value_list]
 
     @classmethod
-    def convert_cpu_id(cls, value_list: list[int], pcb_version: int = 0) -> str:
+    def convert_to_hex(cls, value_list: list[int], pcb_version: int = 0) -> list[str]:
         """
-        Convert 2 raw register values to a string representing the CPU ID.
+        Convert a number of raw register values to a hex string.
 
         :param value_list: list of raw register contents
         :param pcb_version: integer PCB version number, 0-65535
         :return: string ID
         """
-        return hex(cls.bytes_to_n(value_list))
+        return [hex(cls.bytes_to_n(value_list))]
 
     @classmethod
-    def convert_chip_id(cls, value_list: list[int], pcb_version: int = 0) -> str:
+    def convert_uptime(cls, value_list: list[int], pcb_version: int = 0) -> list[int]:
         """
-        Convert 8 raw register values to a string representing the chip ID.
+        Convert the raw register values to an uptime in seconds.
 
         :param value_list: list of raw register contents
         :param pcb_version: integer PCB version number, 0-65535
-        :return: string ID
+        :return: integer number of seconds
         """
-        raw_int = cls.bytes_to_n(value_list)
-        return bytes(raw_int).decode("utf8")
+        return [cls.bytes_to_n(value_list)]

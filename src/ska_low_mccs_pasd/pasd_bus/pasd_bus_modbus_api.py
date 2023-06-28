@@ -127,6 +127,8 @@ class PasdBusModbusApiClient:
         self._transport = transport
         self._framer = ModbusAsciiFramer(None)
         self._client = ClientDecoder()
+        # Register a custom response as a workaround to the firmware issue
+        # (see JIRA ticket PRTS-255)
         self._client.register(CustomReadHoldingRegistersResponse)
         self._decoder = ModbusAsciiFramer(self._client)
         # Change the response delimiter from the default \r\n to \n
@@ -139,8 +141,16 @@ class PasdBusModbusApiClient:
         # PasdAttributes
         attributes = PasdBusRegisterMap.get_attributes(slave_id, request["read"])
 
+        if len(attributes) == 0:
+            logger.warning(
+                f"No attributes matching {request['read']} in PaSD register map"
+            )
+            return {}
+
         # Retrieve the list of keys (attribute names) in Modbus address order
         keys = list(attributes)
+
+        # Calculate the number of registers to read
         count = (
             attributes[keys[-1]].address
             + attributes[keys[-1]].count
@@ -157,9 +167,10 @@ class PasdBusModbusApiClient:
             count=count,
         )
         request_bytes = self._framer.buildPacket(message)
-        logger.debug(f"Request bytes: {request_bytes}")
+
+        logger.debug(f"Request bytes: {request_bytes.decode('utf-8')}")
         response_bytes = self._transport(request_bytes)
-        logger.debug(f"Response bytes: {response_bytes}")
+        logger.debug(f"Response bytes: {response_bytes.decode('utf-8')}")
         response = {}
 
         def process_read_reply(reply: Any) -> None:
@@ -171,16 +182,17 @@ class PasdBusModbusApiClient:
                     for key in keys:
                         # Convert the raw register value(s) into meaningful
                         # data and add to the attributes dictionary to be returned
-                        raw_values = reply.registers[
-                            register_index : register_index + attributes[key].count
-                        ]
-                        if len(raw_values) == 1:
-                            results[key] = attributes[key].convert_value(raw_values[0])
-                        else:
-                            results[key] = attributes[key].convert_value(raw_values)
-
-                        # results[key] = reply.registers[register_index : register_index + attributes[key].count]
-                        # register_index = register_index + attributes[key].count
+                        converted_values = attributes[key].convert_value(
+                            reply.registers[
+                                register_index : register_index + attributes[key].count
+                            ]
+                        )
+                        results[key] = (
+                            converted_values[0]
+                            if len(converted_values) == 1
+                            else converted_values
+                        )
+                        register_index += attributes[key].count
                     response = {
                         "source": slave_id,
                         "data": {

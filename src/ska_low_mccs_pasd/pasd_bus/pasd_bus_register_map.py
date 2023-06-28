@@ -68,23 +68,25 @@ class PasdBusRegisterMap:
     _FNDH_ADDRESS: Final = 101
 
     # Dictionary mapping FNDH attribute name (as used by clients) to
-    # PasdBusAttribute
+    # PasdBusAttribute. These must be stored in Modbus address order
     _FNDH_REGISTER_MAP: Final = {
         "modbus_register_map_revision": PasdBusAttribute(0, 1),
         "pcb_revision": PasdBusAttribute(1, 1),
-        "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
-        "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_chip_id),
+        "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_to_hex),
+        "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_to_hex),
         "firmware_version": PasdBusAttribute(12, 1),
-        "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.bytes_to_n),
+        "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
         "sys_address": PasdBusAttribute(15, 1),
-        "psu48v_voltages": PasdBusAttribute(16, 2, PasdConversionUtility.scale_48v),
+        "psu48v_voltages": PasdBusAttribute(16, 2, PasdConversionUtility.scale_48vs),
         "psu48v_current": PasdBusAttribute(
-            18, 1, PasdConversionUtility.scale_48vcurrent
+            18, 1, PasdConversionUtility.scale_48vcurrents
         ),
-        "psu48v_temperature": PasdBusAttribute(19, 2, PasdConversionUtility.scale_temp),
-        "pcb_temperature": PasdBusAttribute(21, 1, PasdConversionUtility.scale_temp),
+        "psu48v_temperature": PasdBusAttribute(
+            19, 2, PasdConversionUtility.scale_temps
+        ),
+        "pcb_temperature": PasdBusAttribute(21, 1, PasdConversionUtility.scale_temps),
         "outside_temperature": PasdBusAttribute(
-            22, 1, PasdConversionUtility.scale_temp
+            22, 1, PasdConversionUtility.scale_temps
         ),
         "humidity": PasdBusAttribute(23, 1),
         "status": PasdBusAttribute(24, 1),
@@ -104,23 +106,23 @@ class PasdBusRegisterMap:
     }
 
     # Dictionary mapping smartbox attribute name (as used by clients) to
-    # PasdAttribute
+    # PasdAttribute. These must be stored in Modbus address order
     _SMARTBOX_REGISTER_MAP: Final = {
         "modbus_register_map_revision": PasdBusAttribute(0, 1),
         "pcb_revision": PasdBusAttribute(1, 1),
-        "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
-        "chip_id": PasdBusAttribute(4, 8),
+        "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_to_hex),
+        "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_to_hex),
         "firmware_version": PasdBusAttribute(12, 1),
-        "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.bytes_to_n),
+        "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
         "sys_address": PasdBusAttribute(15, 1),
-        "input_voltage": PasdBusAttribute(16, 1, PasdConversionUtility.scale_48v),
+        "input_voltage": PasdBusAttribute(16, 1, PasdConversionUtility.scale_48vs),
         "power_supply_output_voltage": PasdBusAttribute(
-            18, 1, PasdConversionUtility.scale_5v
+            18, 1, PasdConversionUtility.scale_5vs
         ),
-        "psu_temperature": PasdBusAttribute(18, 1, PasdConversionUtility.scale_temp),
-        "pcb_temperature": PasdBusAttribute(19, 1, PasdConversionUtility.scale_temp),
+        "psu_temperature": PasdBusAttribute(18, 1, PasdConversionUtility.scale_temps),
+        "pcb_temperature": PasdBusAttribute(19, 1, PasdConversionUtility.scale_temps),
         "outside_temperature": PasdBusAttribute(
-            20, 1, PasdConversionUtility.scale_temp
+            20, 1, PasdConversionUtility.scale_temps
         ),
         "status": PasdBusAttribute(21, 1),
         "led_pattern": PasdBusAttribute(22, 1),

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import pprint
+import time
 
 from ska_ser_devices.client_server import (
     ApplicationClient,
@@ -41,8 +42,24 @@ if __name__ == "__main__":
     conn = PasdBusConnectionTest("127.0.0.1", 5000, 5)
 
     # Read FNDH polling registers
-    # conn.read(101, "modbus_register_map_revision", "pcb_revision", "cpu_id", "chip_id", "firmware_version", "uptime", "sys_address", "psu48v_voltages", "psu48v_current", "psu48v_temperature", "pcb_temperature", "outside_temperature", "humidity", "status", "led_pattern")
-    conn.read(101, "cpu_id")
+    conn.read(
+        101,
+        "modbus_register_map_revision",
+        "pcb_revision",
+        "cpu_id",
+        "chip_id",
+        "firmware_version",
+        "uptime",
+        "sys_address",
+        "psu48v_voltages",
+        "psu48v_current",
+        "psu48v_temperature",
+        "pcb_temperature",
+        "outside_temperature",
+        "humidity",
+        "status",
+        "led_pattern",
+    )
 
     # Smart box on port 1
     # conn.read(1, "modbus_register_map_revision", "pcb_revision", "cpu_id", "chip_id", "firmware_version", "uptime", "sys_address", "input_voltage", "power_supply_output_voltage", "psu_temperature", "pcb_temperature", "outside_temperature", "status", "led_pattern")
