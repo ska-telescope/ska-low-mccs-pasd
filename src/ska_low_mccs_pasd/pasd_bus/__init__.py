@@ -24,7 +24,7 @@ __all__ = [
     "MccsPasdBus",
     "SmartboxSimulator",
     "PasdBusConnectionTest",
-    "CustomReadHoldingRegistersResponse"
+    "CustomReadHoldingRegistersResponse",
 ]
 
 from .pasd_bus_component_manager import PasdBusComponentManager
