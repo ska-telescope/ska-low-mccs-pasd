@@ -414,7 +414,13 @@ class SmartBoxComponentManager(
             ):
                 self._update_communication_state(communication_state)
                 return
-            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+            if CommunicationStatus.DISABLED in [
+                self._fndh_communication_state,
+                self._pasd_communication_state,
+            ]:
+                self._update_communication_state(CommunicationStatus.DISABLED)
+                return
+        self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """Establish communication."""
