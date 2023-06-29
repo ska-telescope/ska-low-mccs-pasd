@@ -306,7 +306,7 @@ class MccsSmartBox(SKABaseDevice):
             # TODO: use this in the health model.
             if power == PowerState.UNKNOWN:
                 # If a proxy calls back with a unknown power. As a precaution it is
-                # assumed there is a communication issue, we transition to NOT_ESTABLISHED.
+                # assumed that communication is NOT_ESTABLISHED.
                 self._communication_state_changed(CommunicationStatus.NOT_ESTABLISHED)
             else:
                 return

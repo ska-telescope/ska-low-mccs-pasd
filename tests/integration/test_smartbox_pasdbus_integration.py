@@ -320,8 +320,12 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.DISABLE
         )
-        #change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
-        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.UNKNOWN)
+        # change_event_callbacks["fndh_state"].assert_change_event(
+        # tango.DevState.UNKNOWN
+        # )
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
 
     @pytest.mark.xfail(
         reason="Cannot unsubscribe from proxy so event received,"
