@@ -232,7 +232,6 @@ def setup_devices_with_subscriptions(
 class TestSmartBoxPasdBusIntegration:
     """Test pasdbus, smartbox, fndh integration."""
 
-    @pytest.mark.xfail(reason="The proxy callback is called with incorrect value.")
     def test_component_state_callbacks(
         self: TestSmartBoxPasdBusIntegration,
         fndh_device: tango.DeviceProxy,

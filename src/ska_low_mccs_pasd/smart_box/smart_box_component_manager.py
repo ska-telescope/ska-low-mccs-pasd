@@ -8,6 +8,7 @@
 """This module implements the component management for smartbox."""
 from __future__ import annotations
 
+import functools
 import json
 import logging
 import re
@@ -320,6 +321,14 @@ class SmartBoxComponentManager(
             purposes only. defaults to None
         """
         max_workers = 1
+        self._fndh_fqdn = fndh_fqdn
+        self._pasd_fqdn = pasd_fqdn
+        self.logger = logger
+        self.ports = [
+            Port(self.turn_on_port, port, logger) for port in range(1, port_count + 1)
+        ]
+        self._power_state = PowerState.UNKNOWN
+        self._fndh_port = fndh_port
 
         self._smartbox_proxy = _smartbox_proxy or _SmartBoxProxy(
             pasd_fqdn,
@@ -327,7 +336,7 @@ class SmartBoxComponentManager(
             logger,
             max_workers,
             self._smartbox_communication_state_changed,
-            self._pasdbus_state_changed,
+            functools.partial(component_state_callback, fqdn=self._pasd_fqdn),
             attribute_change_callback,
         )
         self._fndh_proxy = _fndh_bus_proxy or _FndhProxy(
@@ -336,7 +345,7 @@ class SmartBoxComponentManager(
             logger,
             max_workers,
             self._fndh_communication_state_changed,
-            self._fndh_state_changed,
+            functools.partial(component_state_callback, fqdn=self._fndh_fqdn),
             self._power_state_change,
         )
         self._fndh_communication_state = CommunicationStatus.NOT_ESTABLISHED
@@ -351,27 +360,6 @@ class SmartBoxComponentManager(
             fault=None,
             pasdbus_status=None,
         )
-
-        self._pasd_fqdn = pasd_fqdn
-        self._fndh_fqdn = fndh_fqdn
-        self.logger = logger
-        self.ports = [
-            Port(self.turn_on_port, port, logger) for port in range(1, port_count + 1)
-        ]
-        self._power_state = PowerState.UNKNOWN
-        self._fndh_port = fndh_port
-
-    def _pasdbus_state_changed(
-        self: SmartBoxComponentManager, state_change: dict[str, Any]
-    ) -> None:
-        if self._component_state_callback is not None:
-            self._component_state_callback(**state_change, fqdn=self._pasd_fqdn)
-
-    def _fndh_state_changed(
-        self: SmartBoxComponentManager, state_change: dict[str, Any]
-    ) -> None:
-        if self._component_state_callback is not None:
-            self._component_state_callback(**state_change, fqdn=self._fndh_fqdn)
 
     def _smartbox_communication_state_changed(
         self: SmartBoxComponentManager,
@@ -423,7 +411,13 @@ class SmartBoxComponentManager(
         self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
-        """Establish communication."""
+        """
+        Establish communication.
+
+        :raises AttributeError: the smartbox/fndh proxy is None.
+        """
+        if not self._smartbox_proxy and self._fndh_proxy:
+            raise AttributeError("The smartbox has a proxy of value None")
         self._smartbox_proxy.start_communicating()
         self._fndh_proxy.start_communicating()
 
