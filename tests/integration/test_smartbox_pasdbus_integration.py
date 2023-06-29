@@ -232,6 +232,9 @@ def setup_devices_with_subscriptions(
 class TestSmartBoxPasdBusIntegration:
     """Test pasdbus, smartbox, fndh integration."""
 
+    @pytest.mark.xfail(
+        reason="MCCSFndh does not subscribe to state changes on the PasdBus."
+    )
     def test_component_state_callbacks(
         self: TestSmartBoxPasdBusIntegration,
         fndh_device: tango.DeviceProxy,
@@ -320,9 +323,8 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.DISABLE
         )
-        # change_event_callbacks["fndh_state"].assert_change_event(
-        # tango.DevState.UNKNOWN
-        # )
+        # TODO: Update the FNDH to subscribe to state changes on the MccsPaSDBus.
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.UNKNOWN
         )
