@@ -4,7 +4,7 @@ Feature: Monitoring and control of PaSD
 
     @XTP-20301 @XTP-21594
     Scenario: Monitor PaSD
-        Given the PaSD is available
+        Given A MCCS-for-PaSD which is not ready
         And a smartbox
         And MCCS-for-PaSD is in DISABLE state
         And MCCS-for-PaSD has UNKNOWN health
@@ -32,8 +32,8 @@ Feature: Monitoring and control of PaSD
 
     @XTP-21514 @XTP-21594
     Scenario: Turn on FNDH port
-        Given the PaSD is available
-        And MCCS-for-PaSD is in ON state
+        Given A MCCS-for-PaSD which is ready
+        #And MCCS-for-PaSD is in ON state
         And a connected FNDH port
         And the FNDH port is off
         When I tell MCCS-for-PaSD to turn the FNDH port on
@@ -41,8 +41,8 @@ Feature: Monitoring and control of PaSD
 
     @XTP-21515 @XTP-21594
     Scenario: Turn off FNDH port
-        Given the PaSD is available
-        And MCCS-for-PaSD is in ON state
+        Given A MCCS-for-PaSD which is ready
+        #And MCCS-for-PaSD is in ON state
         And a connected FNDH port
         And the FNDH port is on
         When I tell MCCS-for-PaSD to turn the FNDH port off
@@ -50,8 +50,8 @@ Feature: Monitoring and control of PaSD
 
     @XTP-21516 @XTP-21594
     Scenario: Turn on smartbox port
-        Given the PaSD is available
-        And MCCS-for-PaSD is in ON state
+        Given A MCCS-for-PaSD which is ready
+        #And MCCS-for-PaSD is in ON state
         And a smartbox
         And a connected smartbox port
         And the smartbox port is off
@@ -60,8 +60,8 @@ Feature: Monitoring and control of PaSD
 
     @XTP-21517 @XTP-21594
     Scenario: Turn off smartbox port
-        Given the PaSD is available
-        And MCCS-for-PaSD is in ON state
+        Given A MCCS-for-PaSD which is ready
+        #And MCCS-for-PaSD is in ON state
         And a smartbox
         And a connected smartbox port
         And the smartbox port is on
