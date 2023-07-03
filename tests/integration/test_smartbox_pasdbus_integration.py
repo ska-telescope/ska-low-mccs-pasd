@@ -233,7 +233,7 @@ class TestSmartBoxPasdBusIntegration:
     """Test pasdbus, smartbox, fndh integration."""
 
     @pytest.mark.xfail(
-        reason="MCCSFndh does not subscribe to state changes on the PasdBus."
+        reason="MccsFndh does not subscribe to state changes on the PasdBus."
     )
     def test_component_state_callbacks(
         self: TestSmartBoxPasdBusIntegration,

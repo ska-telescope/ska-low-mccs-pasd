@@ -60,17 +60,6 @@ def fndh_fqdn_fixture() -> str:
     return "low-mccs/fndh/001"
 
 
-def fndh_port_value() -> int:
-    """
-    Return the fndh port the smartbox is attached to.
-
-    This is purely to use in pytest paramaters.
-
-    :return: the fndh port this smartbox is attached.
-    """
-    return 2
-
-
 @pytest.fixture(name="fndh_port")
 def fndh_port_fixture() -> int:
     """
@@ -78,7 +67,7 @@ def fndh_port_fixture() -> int:
 
     :return: the fndh port this smartbox is attached.
     """
-    return fndh_port_value()
+    return 2
 
 
 @pytest.fixture(name="smartbox_number")

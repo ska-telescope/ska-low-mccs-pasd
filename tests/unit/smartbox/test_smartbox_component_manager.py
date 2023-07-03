@@ -18,27 +18,6 @@ from ska_tango_testing.mock import MockCallableGroup
 from ska_low_mccs_pasd.smart_box import SmartBoxComponentManager, _SmartBoxProxy
 
 
-def fndh_port_value() -> int:
-    """
-    Return the fndh port the smartbox is attached to.
-
-    This is purely to use in pytest paramaters.
-
-    :return: the fndh port this smartbox is attached.
-    """
-    return 2
-
-
-@pytest.fixture(name="fndh_port")
-def fndh_port_fixture() -> int:
-    """
-    Return the fndh port the smartbox is attached to.
-
-    :return: the fndh port this smartbox is attached.
-    """
-    return fndh_port_value()
-
-
 class TestSmartBoxComponentManager:
     """Tests for the SmartBox component manager."""
 
@@ -179,7 +158,7 @@ class TestSmartBoxComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    f"Power on smartbox '{fndh_port_value()}  success'",
+                    "Power on smartbox '{fndh_port}  success'",
                 ),
             ),
             (
@@ -187,7 +166,7 @@ class TestSmartBoxComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    f"Power off smartbox '{fndh_port_value()}  success'",
+                    "Power off smartbox '{fndh_port}  success'",
                 ),
             ),
         ],
@@ -198,6 +177,7 @@ class TestSmartBoxComponentManager:
         component_manager_command: Any,
         expected_manager_result: Any,
         command_tracked_response: Any,
+        fndh_port: int,
         mock_callbacks: MockCallableGroup,
     ) -> None:
         """
@@ -208,6 +188,7 @@ class TestSmartBoxComponentManager:
         :param component_manager_command: command to issue to the component manager
         :param expected_manager_result: expected response from the call
         :param command_tracked_response: The result of the command.
+        :param fndh_port: the fndh port the smartbox is attached to.
         :param mock_callbacks: the mock_callbacks.
         """
         smartbox_component_manager.start_communicating()
@@ -228,7 +209,7 @@ class TestSmartBoxComponentManager:
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(
             status=command_tracked_response[0],
-            result=command_tracked_response[1],
+            result=command_tracked_response[1].format(fndh_port=fndh_port),
         )
 
     @pytest.mark.parametrize(
