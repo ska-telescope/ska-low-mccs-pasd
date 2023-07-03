@@ -308,10 +308,6 @@ class MccsSmartBox(SKABaseDevice):
                 # If a proxy calls back with a unknown power. As a precaution it is
                 # assumed that communication is NOT_ESTABLISHED.
                 self._communication_state_changed(CommunicationStatus.NOT_ESTABLISHED)
-            if power == PowerState.ON:
-                self._component_state_callback(
-                    power=self.component_manager._power_state
-                )
             return
         super()._component_state_changed(fault=fault, power=power)
         self._health_model.update_state(
