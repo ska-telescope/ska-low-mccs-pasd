@@ -191,15 +191,8 @@ class PasdBusModbusApiClient:
                     },
                 }
             case ModbusIOException():
-                message = f"Modbus IO exception: {reply.message}"
-                logger.error(message)
-                response = {
-                    "error": {
-                        "code": "i/o",
-                        "detail": message,
-                    },
-                    "timestamp": datetime.utcnow().isoformat(),
-                }
+                # No reply: pass this exception on up to the caller
+                raise reply
             case ExceptionResponse():
                 message = f"Modbus exception response: {reply}"
                 logger.error(message)
@@ -236,6 +229,7 @@ class PasdBusModbusApiClient:
         :param device_id: id of the device to be read from.
         :param names: names of the attributes to be read.
 
+        :raises: ModbusIOException if the h/w failed to respond
         :return: dictionary of attribute values keyed by name
         """
         response = self._do_read_request({"device_id": device_id, "read": names})
