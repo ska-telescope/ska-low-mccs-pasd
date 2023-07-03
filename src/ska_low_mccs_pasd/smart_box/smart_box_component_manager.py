@@ -125,13 +125,16 @@ class _SmartBoxProxy(DeviceComponentManager):
             smartbox_state_callback,
         )
 
-    def _subscribe_to_attributes(self: _SmartBoxProxy) -> None:
+    def subscribe_to_attributes(self: _SmartBoxProxy) -> None:
         """Subscribe to attributes relating to this SmartBox."""
         assert self._proxy is not None
         # Ask what attributes to subscribe to and subscribe to them.
         subscriptions = self._proxy.GetPasdDeviceSubscriptions(self._fndh_port)
         for attribute in subscriptions:
-            self._proxy.add_change_event_callback(attribute, self._on_attribute_change)
+            if attribute not in self._proxy._change_event_subscription_ids.keys():
+                self._proxy.add_change_event_callback(
+                    attribute, self._on_attribute_change
+                )
 
     def _on_attribute_change(
         self: _SmartBoxProxy,
@@ -262,7 +265,7 @@ class _FndhProxy(DeviceComponentManager):
             fndh_state_callback,
         )
 
-    def _subscribe_to_attributes(self: _FndhProxy) -> None:
+    def subscribe_to_attributes(self: _FndhProxy) -> None:
         """Subscribe to power state of this SmartBox's port."""
         assert self._proxy is not None
         if (
@@ -367,7 +370,7 @@ class SmartBoxComponentManager(
     ) -> None:
         self._pasd_communication_state = communication_state
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self._smartbox_proxy._subscribe_to_attributes()
+            self._smartbox_proxy.subscribe_to_attributes()
         # Only update state on change.
         if communication_state != self._communication_state:
             self.update_device_communication_state()
@@ -378,7 +381,7 @@ class SmartBoxComponentManager(
     ) -> None:
         self._fndh_communication_state = communication_state
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self._fndh_proxy._subscribe_to_attributes()
+            self._fndh_proxy.subscribe_to_attributes()
         # Only update state on change.
         if communication_state != self._communication_state:
             self.update_device_communication_state()
@@ -416,8 +419,8 @@ class SmartBoxComponentManager(
 
         :raises AttributeError: the smartbox/fndh proxy is None.
         """
-        if not self._smartbox_proxy and self._fndh_proxy:
-            raise AttributeError("The smartbox has a proxy of value None")
+        if None in [self._smartbox_proxy, self._fndh_proxy]:
+            raise AttributeError("smartbox_proxy or fndh_proxy has None value.")
         self._smartbox_proxy.start_communicating()
         self._fndh_proxy.start_communicating()
 
@@ -441,8 +444,7 @@ class SmartBoxComponentManager(
                 for port in self.ports:
                     if port.desire_on:
                         port.turn_on()
-            if self._component_state_callback is not None:
-                self._component_state_callback(power=self._power_state)
+            self._update_component_state(power=self._power_state)
         else:
             return
 
