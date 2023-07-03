@@ -22,15 +22,8 @@ class PasdBusConnectionTest:
     def __init__(
         self: PasdBusConnectionTest, host: str, port: int, timeout: int
     ) -> None:
-        tcp_client = TcpClient(host, port, timeout)
-        marshaller = SentinelBytesMarshaller(b"\n")
-        application_client = ApplicationClient(
-            tcp_client, marshaller.marshall, marshaller.unmarshall
-        )
         logging.basicConfig()
-        self._pasd_bus_api_client = PasdBusModbusApiClient(
-            application_client, logging.DEBUG
-        )
+        self._pasd_bus_api_client = PasdBusModbusApiClient(host, port, logging.DEBUG)
 
     def read(self: PasdBusConnectionTest, address: int, *attributes: str) -> None:
         results = self._pasd_bus_api_client.read_attributes(address, *attributes)
@@ -61,8 +54,21 @@ if __name__ == "__main__":
         "led_pattern",
     )
 
-    # Smart box on port 1
-    # conn.read(1, "modbus_register_map_revision", "pcb_revision", "cpu_id", "chip_id", "firmware_version", "uptime", "sys_address", "input_voltage", "power_supply_output_voltage", "psu_temperature", "pcb_temperature", "outside_temperature", "status", "led_pattern")
-
     # Smart box on port 2
-    # conn.read(2, "modbus_register_map_revision", "pcb_revision", "cpu_id", "chip_id", "firmware_version", "uptime", "sys_address", "input_voltage", "power_supply_output_voltage", "psu_temperature", "pcb_temperature", "outside_temperature", "status", "led_pattern")
+    conn.read(
+        2,
+        "modbus_register_map_revision",
+        "pcb_revision",
+        "cpu_id",
+        "chip_id",
+        "firmware_version",
+        "uptime",
+        "sys_address",
+        "input_voltage",
+        "power_supply_output_voltage",
+        "psu_temperature",
+        "pcb_temperature",
+        "outside_temperature",
+        "status",
+        "led_pattern",
+    )
