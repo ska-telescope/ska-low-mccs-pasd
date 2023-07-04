@@ -9,9 +9,11 @@
 import logging
 import os
 import threading
+import time
 from contextlib import contextmanager
 from functools import lru_cache
 from typing import (
+    Any,
     Callable,
     ContextManager,
     Generator,
@@ -20,7 +22,6 @@ from typing import (
     Union,
     cast,
 )
-import time
 
 import _pytest
 import pytest
@@ -31,7 +32,6 @@ from ska_tango_testing.context import (
     ThreadedTestTangoContextManager,
     TrueTangoContextManager,
 )
-from pytest_bdd import given, parsers, scenario, then, when
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -126,9 +126,7 @@ def pasd_address_context_manager_factory_fixture() -> Callable[
     else:
 
         @contextmanager
-        def launch_simulator_server() -> Iterator[
-            tuple[str | bytes | bytearray, int]
-        ]:
+        def launch_simulator_server() -> Iterator[tuple[str | bytes | bytearray, int]]:
             # Imports are deferred until now,
             # so that we do not try to import from ska_low_mccs_pasd
             # until we know that we need to.
@@ -200,9 +198,8 @@ def pasd_timeout_fixture() -> Optional[float]:
 def tango_harness_fixture(
     true_context: bool,
     pasd_bus_name: str,
-    pasd_address_context_manager_factory: Callable[
-        [], ContextManager[tuple[str, int]]
-    ],
+    fndh_name: str,
+    pasd_address_context_manager_factory: Callable[[], ContextManager[tuple[str, int]]],
     pasd_timeout: Optional[float],
 ) -> Generator[TangoContextProtocol, None, None]:
     """
@@ -211,6 +208,7 @@ def tango_harness_fixture(
     :param true_context: whether to test against an existing Tango
         deployment
     :param pasd_bus_name: name of the PaSD bus Tango device.
+    :param fndh_name: the name of the FNDH Tango device.
     :param pasd_address_context_manager_factory: a callable that returns
         a context manager that, when entered, yields the host and port
         of a PaSD bus.
@@ -230,9 +228,7 @@ def tango_harness_fixture(
     else:
         with pasd_address_context_manager_factory() as (pasd_host, pasd_port):
             tango_context_manager = ThreadedTestTangoContextManager()
-            cast(
-                ThreadedTestTangoContextManager, tango_context_manager
-            ).add_device(
+            cast(ThreadedTestTangoContextManager, tango_context_manager).add_device(
                 pasd_bus_name,
                 "ska_low_mccs_pasd.MccsPasdBus",
                 Host=pasd_host,
@@ -240,19 +236,28 @@ def tango_harness_fixture(
                 Timeout=pasd_timeout,
                 LoggingLevelDefault=int(LoggingLevel.DEBUG),
             )
+            cast(ThreadedTestTangoContextManager, tango_context_manager).add_device(
+                fndh_name,
+                "ska_low_mccs_pasd.MccsFNDH",
+                PasdFQDN=pasd_bus_name,
+                LoggingLevelDefault=int(LoggingLevel.DEBUG),
+            )
             with tango_context_manager as context:
                 yield context
 
 
 @pytest.fixture(name="change_event_callbacks", scope="session")
-def change_event_callbacks_fixture(device_subscriptions: dict[str,list]) -> MockTangoEventCallbackGroup:
+def change_event_callbacks_fixture(
+    device_subscriptions: dict[str, list]
+) -> MockTangoEventCallbackGroup:
     """
     Return a dictionary of callables to be used as Tango change event callbacks.
+
+    :param device_subscriptions: list of subscriptions to make.
 
     :return: a dictionary of callables to be used as tango change event
         callbacks.
     """
-
     keys = [
         f"{device_name}/{device_attribute}"
         for device_name in device_subscriptions.keys()
@@ -267,67 +272,64 @@ def change_event_callbacks_fixture(device_subscriptions: dict[str,list]) -> Mock
 
 @pytest.fixture(name="pasd_bus_device", scope="session")
 def pasd_bus_device_fixture(
-    tango_harness: TangoContextProtocol,
     pasd_bus_name: str,
-    change_event_callbacks: MockTangoEventCallbackGroup,
-    get_device_proxy: Callable
+    get_device_proxy: Callable,
 ) -> tango.DeviceProxy:
     """
     Return a DeviceProxy to an instance of MccsPasdBus.
 
-    :param tango_harness: a test harness for Tango devices.
     :param pasd_bus_name: the name of the PaSD bus device under test.
-    :param change_event_callbacks: dictionary of Tango change event
-        callbacks with asynchrony support.
+    :param get_device_proxy: cached fixture for setting up device proxy.
 
     :return: A proxy to an instance of MccsPasdBus.
     """
-    # proxy = tango_harness.get_device(pasd_bus_name)
-
-    # for attribute_name in [
-    #     "state",
-    #     "healthState",
-    #     "fndhUptime",
-    #     "fndhStatus",
-    #     "fndhLedPattern",
-    #     "fndhPsu48vVoltages",
-    #     "fndhPsu48vCurrent",
-    #     "fndhPsu48vTemperature",
-    #     "fndhPsu5vVoltage",
-    #     "fndhPsu5vTemperature",
-    #     "fndhPcbTemperature",
-    #     "fndhOutsideTemperature",
-    #     "fndhPortsConnected",
-    #     "fndhPortsPowerSensed",
-    #     "smartbox1Uptime",
-    #     "smartbox1Status",
-    #     "smartbox1LedPattern",
-    #     "smartbox1InputVoltage",
-    #     "smartbox1PowerSupplyOutputVoltage",
-    #     "smartbox1PowerSupplyTemperature",
-    #     "smartbox1PcbTemperature",
-    #     "smartbox1OutsideTemperature",
-    #     "smartbox1PortsConnected",
-    #     "smartbox1PortsPowerSensed",
-    # ]:
-    #     print(f"Subscribing proxy to {attribute_name}...")
-    #     proxy.subscribe_event(
-    #         attribute_name,
-    #         tango.EventType.CHANGE_EVENT,
-    #         change_event_callbacks[attribute_name],
-    #     )
-    #     change_event_callbacks.assert_change_event(attribute_name, Anything)
-
     return get_device_proxy(pasd_bus_name)
 
 
+@pytest.fixture(name="fndh_device", scope="session")
+def fndh_device_fixture(
+    fndh_name: str, get_device_proxy: Callable
+) -> tango.DeviceProxy:
+    """
+    Return a DeviceProxy to an instance of MccsFNDH.
+
+    :param fndh_name: the name of the FNDH device under test.
+    :param get_device_proxy: cached fixture for setting up device proxy.
+
+    :return: A proxy to an instance of MccsFNDH.
+    """
+    return get_device_proxy(fndh_name)
+
+
 @pytest.fixture(name="device_mapping", scope="session")
-def device_mapping_fixture(fndh_name, pasd_bus_name,):
+def device_mapping_fixture(
+    fndh_name: str,
+    pasd_bus_name: str,
+) -> dict[str, str]:
+    """
+    Return a dictionary mapping short name to FQDN for devices under test.
+
+    :param fndh_name: the name of the FNDH device under test.
+    :param pasd_bus_name: the name of the pasd bus device under test.
+
+    :return: A dictionary mapping short name to FQDN for devices under test.
+    """
     device_dict = {"MccsFndh": fndh_name, "MCCS-for-PaSD": pasd_bus_name}
     return device_dict
 
+
 @pytest.fixture(name="device_subscriptions", scope="session")
-def device_subscriptions_fixture(fndh_name, pasd_bus_name):
+def device_subscriptions_fixture(
+    fndh_name: str, pasd_bus_name: str
+) -> dict[str, list[str]]:
+    """
+    Return a dictionary mapping device name to list of subscriptions to make.
+
+    :param fndh_name: the name of the FNDH device under test.
+    :param pasd_bus_name: the name of the pasd bus device under test.
+
+    :return: A dictionary mapping device name to list of subscriptions to make.
+    """
     device_subscriptions = {
         pasd_bus_name: [
             "state",
@@ -360,16 +362,30 @@ def device_subscriptions_fixture(fndh_name, pasd_bus_name):
             "state",
             "healthState",
             "adminMode",
-        ]
+        ],
     }
     return device_subscriptions
 
 
 @pytest.fixture(name="get_device_proxy", scope="session")
-def get_device_proxy_fixture(device_subscriptions: list[str], tango_harness: TangoContextProtocol, change_event_callbacks: MockTangoEventCallbackGroup) -> tango.DeviceProxy:
+def get_device_proxy_fixture(
+    device_subscriptions: dict[str, list[str]],
+    tango_harness: TangoContextProtocol,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> tango.DeviceProxy:
+    """
+    Return a cached device proxy with subscriptions set up.
+
+    :param device_subscriptions: list of subscriptions to make.
+    :param tango_harness: a Tango context containing the devices under test.
+    :param change_event_callbacks: a dictionary of callables to be used as
+        tango change event callbacks.
+
+    :return: A cached device proxy with subscriptions set up.
+    """
 
     @lru_cache
-    def _get_device_proxy(device_name: str):    
+    def _get_device_proxy(device_name: str) -> tango.DeviceProxy:
         proxy = tango_harness.get_device(device_name)
         print(f"Creating proxy for {device_name}")
         for attribute_name in device_subscriptions[device_name]:
@@ -379,9 +395,9 @@ def get_device_proxy_fixture(device_subscriptions: list[str], tango_harness: Tan
                 tango.EventType.CHANGE_EVENT,
                 change_event_callbacks[f"{device_name}/{attribute_name}"],
             )
-            #print(proxy.read_attribute(attribute_name).value)
-            time.sleep(0.1)
-            change_event_callbacks.assert_change_event(f"{device_name}/{attribute_name}", Anything,lookahead=50)
+            change_event_callbacks[
+                f"{device_name}/{attribute_name}"
+            ].assert_change_event(Anything)
         return proxy
 
     return _get_device_proxy
@@ -389,19 +405,25 @@ def get_device_proxy_fixture(device_subscriptions: list[str], tango_harness: Tan
 
 @pytest.fixture(name="set_device_state", scope="session")
 def set_device_state_fixture(
-    # device: str,
-    # state: tango.DevState,
-    # mode: AdminMode,
-    device_mapping: dict[str],
+    device_mapping: dict[str, str],
     get_device_proxy: Callable,
-    change_event_callbacks,
-    ) -> None:
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> Callable:
     """
-    Hello World.
+    Set device state.
 
-    123
+    :param device_mapping: A dictionary mapping short name to FQDN for devices
+        under test.
+    :param get_device_proxy: A cached device proxy with subscriptions set up.
+    :param change_event_callbacks: a dictionary of callables to be used as
+        tango change event callbacks.
+
+    :return: A function to set device state.
     """
-    def _set_device_state(device, state, mode):
+
+    def _set_device_state(
+        device: tango.DeviceProxy, state: tango.DevState, mode: AdminMode
+    ) -> None:
         device_name = device_mapping[device]
 
         device_proxy = get_device_proxy(device_name)
@@ -410,19 +432,17 @@ def set_device_state_fixture(
         if device_proxy.adminMode != mode:
             device_proxy.adminMode = mode
             admin_mode_callback.assert_change_event(mode)
-        # else:
-        #     admin_mode_callback.assert_not_called()
-        print(device_proxy.adminMode)
-        print(mode)
-        time.sleep(5)
+        time.sleep(3)  # Allow methods triggered by adminMode change to finish.
         state_callback = change_event_callbacks[f"{device_name}/state"]
         if device_proxy.read_attribute("state").value != state:
             print(f"Turning {device_proxy.dev_name()} {state}")
-            set_tango_device_state(change_event_callbacks, get_device_proxy, device_name, state)
+            set_tango_device_state(
+                change_event_callbacks, get_device_proxy, device_name, state
+            )
             state_callback.assert_change_event(mode)
-        # else:
-        #     state_callback.assert_not_called()
+
     return _set_device_state
+
 
 def set_tango_device_state(
     change_event_callbacks: MockTangoEventCallbackGroup,
@@ -434,14 +454,15 @@ def set_tango_device_state(
     Turn a Tango device on or off using its On() and Off() commands.
 
     :param change_event_callbacks: dictionary of mock change event
-        callbacks with asynchrony support
-    :param get_device: a caching Tango device factory
-    :param short_name: the short name of the device
-    :param desired_state: the desired power state, either "on" or "off"
+        callbacks with asynchrony support.
+    :param get_device_proxy: a caching Tango device factory.
+    :param device_name: the FQDN of the device.
+    :param desired_state: the desired power state, either "on" or "off" or "standby"
+
+    :raises ValueError: if input desired_state is not valid.
     """
     dev = get_device_proxy(device_name)
     # Issue the command
-    print(dev.state())
     if desired_state != dev.state():
         if desired_state == tango.DevState.ON:
             [result_code], [command_id] = dev.On()
@@ -455,37 +476,74 @@ def set_tango_device_state(
     assert result_code == ResultCode.QUEUED
     print(f"Command queued on {dev.dev_name()}: {command_id}")
 
-    # while not (
-    #     result_code == "COMPLETED"
-    #     or (
-    #         # status to FAILED even when it succeeds in turning its TPM on
-    #         dev.info().dev_class == "MccsTile"
-    #         and result_code == "FAILED"
-    #     )
-    # ):
-    #     call_details = change_event_callbacks[
-    #         f"{dev.dev_name()}/longRunningCommandStatus"
-    #     ].assert_against_call()
-    #     print(f"LRCS on {dev.dev_name()}: {call_details['attribute_value']}")
-    #     assert call_details["attribute_value"][-2] == command_id
-    #     result_code = call_details["attribute_value"][-1]
-    # time.sleep(5)
-    change_event_callbacks[f"{dev.dev_name()}/state"].assert_change_event(desired_state,lookahead=100)
+    change_event_callbacks[f"{dev.dev_name()}/state"].assert_change_event(desired_state)
 
 
-@given(parsers.parse("A {device} which is ready"))
-def get_ready_device(device: str, set_device_state: Callable) -> None:
+@pytest.fixture(name="queue_command", scope="session")
+def queue_command_fixture() -> Callable:
     """
-    Get ready device
-    """
-    print(device)
-    set_device_state(device=device, state=tango.DevState.ON, mode=AdminMode.ONLINE)
+    Queue command on device, check it is queued.
 
-@given(parsers.parse("A {device} which is not ready"))
-def get_not_ready_device(device: str, set_device_state: Callable) -> None:
+    :returns: A callable which queues command on device, check it is queued.
     """
-    Get ready device
-    """
-    print(device)
-    set_device_state(device=device, state=tango.DevState.DISABLE, mode=AdminMode.OFFLINE)
 
+    def _queue_command(
+        device_proxy: tango.DeviceProxy, command: str, args: Any
+    ) -> None:
+        assert device_proxy.command_inout(command, args)[0] == ResultCode.QUEUED
+
+    return _queue_command
+
+
+@pytest.fixture(name="check_change_event", scope="session")
+def check_change_event_fixture(
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> Callable:
+    """
+    Check given change event will be called.
+
+    :param change_event_callbacks: dictionary of mock change event
+        callbacks with asynchrony support.
+
+    :returns: A callable which checks given change event will be called.
+    """
+
+    def _check_change_event(
+        device_proxy: tango.DeviceProxy, attribute_name: str
+    ) -> None:
+        device_name = device_proxy.dev_name()
+        change_event_callbacks[f"{device_name}/{attribute_name}"].assert_change_event(
+            Anything
+        )
+
+    return _check_change_event
+
+
+@pytest.fixture(name="check_attribute", scope="session")
+def check_attribute_fixture() -> Callable:
+    """
+    Check value of device attribute.
+
+    :returns: A callable which checks value of device attribute.
+    """
+
+    def _check_attribute(device_proxy: tango.DeviceProxy, attribute_name: str) -> None:
+        return device_proxy.read_attribute(attribute_name).value
+
+    return _check_attribute
+
+
+@pytest.fixture(name="check_fastcommand", scope="session")
+def check_fastcommand_fixture() -> Callable:
+    """
+    Check value of given FastCommand.
+
+    :returns: A callable which checks value of given FastCommand.
+    """
+
+    def _check_fastcommand(
+        device_proxy: tango.DeviceProxy, command: str, args: str
+    ) -> None:
+        return device_proxy.command_inout(command, args)
+
+    return _check_fastcommand
