@@ -400,6 +400,7 @@ def device_subscriptions_fixture(
         field_station_name: [
             "state",
             "healthState",
+            "adminMode",
             "OutsideTemperature",
         ],
     }

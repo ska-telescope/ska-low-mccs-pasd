@@ -4,7 +4,8 @@ Feature: Forwarded attributes.
     # by Multidevicetestcontext
     @xfail
     Scenario: FieldStation forwarded attributes.
-        Given we have a fndh device
-        And we have a fieldstation device
+        Given A MCCS-for-PaSD which is ready
+        And A MccsFndh which is ready
+        And A MccsFieldStation which is ready
         When we query their outsideTemperature attributes
         Then they agree on the outsideTemperature
