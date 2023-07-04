@@ -233,6 +233,103 @@ class TestSmartBoxPasdBusIntegration:
     """Test pasdbus, smartbox, fndh integration."""
 
     @pytest.mark.xfail(
+        reason="MccsFndh does not subscribe to state changes on the PasdBus."
+    )
+    def test_component_state_callbacks(
+        self: TestSmartBoxPasdBusIntegration,
+        fndh_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        smartbox_device: tango.DeviceProxy,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test the component state callbacks.
+
+        :param smartbox_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param pasd_bus_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param fndh_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param change_event_callbacks: group of Tango change event
+            callback with asynchrony support
+        """
+        assert fndh_device.adminMode == AdminMode.OFFLINE
+        assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+
+        fndh_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndh_state"],
+        )
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
+        change_event_callbacks["fndh_state"].assert_not_called()
+
+        smartbox_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartbox_state"],
+        )
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
+        change_event_callbacks["smartbox_state"].assert_not_called()
+
+        pasd_bus_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasd_bus_state"],
+        )
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
+        change_event_callbacks["pasd_bus_state"].assert_not_called()
+
+        # Smartbox start communicating without the MccsPaSDBus
+        # communicating with PaSD system.
+        smartbox_device.adminMode = 0
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["pasd_bus_state"].assert_not_called()
+
+        # MccsPaSD started communicating, the smartbox should not
+        # change state since it requires
+        # both the MCCSPaSD and MccsFNDH to determine its state.
+        pasd_bus_device.adminMode = 0
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["smartbox_state"].assert_not_called()
+        change_event_callbacks["pasd_bus_state"].assert_not_called()
+
+        # When we start communicating on the MccsFNDH,
+        # it should transition to ON (always on).
+        # The smartbox should transition to OFF/ON dependent on
+        # the power state of the port the smartbox is attached to.
+        fndh_device.adminMode = 0
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
+        change_event_callbacks["fndh_state"].assert_not_called()
+        change_event_callbacks["pasd_bus_state"].assert_not_called()
+        change_event_callbacks["smartbox_state"].assert_not_called()
+
+        pasd_bus_device.adminMode = 1
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
+        # TODO: Update the FNDH to subscribe to state changes on the MccsPaSDBus.
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+
+    @pytest.mark.xfail(
         reason="Cannot unsubscribe from proxy so event received,"
         "even though communication is not established"
     )

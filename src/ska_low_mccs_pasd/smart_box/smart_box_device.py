@@ -304,7 +304,10 @@ class MccsSmartBox(SKABaseDevice):
         """
         if fqdn is not None:
             # TODO: use this in the health model.
-            self.logger.info(f"Handle the {fqdn} in health.")
+            if power == PowerState.UNKNOWN:
+                # If a proxy calls back with a unknown power. As a precaution it is
+                # assumed that communication is NOT_ESTABLISHED.
+                self._communication_state_changed(CommunicationStatus.NOT_ESTABLISHED)
             return
         super()._component_state_changed(fault=fault, power=power)
         self._health_model.update_state(

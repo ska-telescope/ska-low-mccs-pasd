@@ -8,6 +8,7 @@
 """This module implements the component management for smartbox."""
 from __future__ import annotations
 
+import functools
 import json
 import logging
 import re
@@ -124,13 +125,16 @@ class _SmartBoxProxy(DeviceComponentManager):
             smartbox_state_callback,
         )
 
-    def _subscribe_to_attributes(self: _SmartBoxProxy) -> None:
+    def subscribe_to_attributes(self: _SmartBoxProxy) -> None:
         """Subscribe to attributes relating to this SmartBox."""
         assert self._proxy is not None
         # Ask what attributes to subscribe to and subscribe to them.
         subscriptions = self._proxy.GetPasdDeviceSubscriptions(self._fndh_port)
         for attribute in subscriptions:
-            self._proxy.add_change_event_callback(attribute, self._on_attribute_change)
+            if attribute not in self._proxy._change_event_subscription_ids.keys():
+                self._proxy.add_change_event_callback(
+                    attribute, self._on_attribute_change
+                )
 
     def _on_attribute_change(
         self: _SmartBoxProxy,
@@ -261,7 +265,7 @@ class _FndhProxy(DeviceComponentManager):
             fndh_state_callback,
         )
 
-    def _subscribe_to_attributes(self: _FndhProxy) -> None:
+    def subscribe_to_attributes(self: _FndhProxy) -> None:
         """Subscribe to power state of this SmartBox's port."""
         assert self._proxy is not None
         if (
@@ -320,6 +324,14 @@ class SmartBoxComponentManager(
             purposes only. defaults to None
         """
         max_workers = 1
+        self._fndh_fqdn = fndh_fqdn
+        self._pasd_fqdn = pasd_fqdn
+        self.logger = logger
+        self.ports = [
+            Port(self.turn_on_port, port, logger) for port in range(1, port_count + 1)
+        ]
+        self._power_state = PowerState.UNKNOWN
+        self._fndh_port = fndh_port
 
         self._smartbox_proxy = _smartbox_proxy or _SmartBoxProxy(
             pasd_fqdn,
@@ -327,7 +339,7 @@ class SmartBoxComponentManager(
             logger,
             max_workers,
             self._smartbox_communication_state_changed,
-            self._pasdbus_state_changed,
+            functools.partial(component_state_callback, fqdn=self._pasd_fqdn),
             attribute_change_callback,
         )
         self._fndh_proxy = _fndh_bus_proxy or _FndhProxy(
@@ -336,7 +348,7 @@ class SmartBoxComponentManager(
             logger,
             max_workers,
             self._fndh_communication_state_changed,
-            self._fndh_state_changed,
+            functools.partial(component_state_callback, fqdn=self._fndh_fqdn),
             self._power_state_change,
         )
         self._fndh_communication_state = CommunicationStatus.NOT_ESTABLISHED
@@ -352,34 +364,13 @@ class SmartBoxComponentManager(
             pasdbus_status=None,
         )
 
-        self._pasd_fqdn = pasd_fqdn
-        self._fndh_fqdn = fndh_fqdn
-        self.logger = logger
-        self.ports = [
-            Port(self.turn_on_port, port, logger) for port in range(1, port_count + 1)
-        ]
-        self._power_state = PowerState.UNKNOWN
-        self._fndh_port = fndh_port
-
-    def _pasdbus_state_changed(
-        self: SmartBoxComponentManager, state_change: dict[str, Any]
-    ) -> None:
-        if self._component_state_callback is not None:
-            self._component_state_callback(**state_change, fqdn=self._pasd_fqdn)
-
-    def _fndh_state_changed(
-        self: SmartBoxComponentManager, state_change: dict[str, Any]
-    ) -> None:
-        if self._component_state_callback is not None:
-            self._component_state_callback(**state_change, fqdn=self._fndh_fqdn)
-
     def _smartbox_communication_state_changed(
         self: SmartBoxComponentManager,
         communication_state: CommunicationStatus,
     ) -> None:
         self._pasd_communication_state = communication_state
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self._smartbox_proxy._subscribe_to_attributes()
+            self._smartbox_proxy.subscribe_to_attributes()
         # Only update state on change.
         if communication_state != self._communication_state:
             self.update_device_communication_state()
@@ -390,7 +381,7 @@ class SmartBoxComponentManager(
     ) -> None:
         self._fndh_communication_state = communication_state
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self._fndh_proxy._subscribe_to_attributes()
+            self._fndh_proxy.subscribe_to_attributes()
         # Only update state on change.
         if communication_state != self._communication_state:
             self.update_device_communication_state()
@@ -414,10 +405,22 @@ class SmartBoxComponentManager(
             ):
                 self._update_communication_state(communication_state)
                 return
-            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+            if CommunicationStatus.DISABLED in [
+                self._fndh_communication_state,
+                self._pasd_communication_state,
+            ]:
+                self._update_communication_state(CommunicationStatus.DISABLED)
+                return
+        self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
-        """Establish communication."""
+        """
+        Establish communication.
+
+        :raises AttributeError: the smartbox/fndh proxy is None.
+        """
+        if None in [self._smartbox_proxy, self._fndh_proxy]:
+            raise AttributeError("smartbox_proxy or fndh_proxy has None value.")
         self._smartbox_proxy.start_communicating()
         self._fndh_proxy.start_communicating()
 
@@ -441,8 +444,7 @@ class SmartBoxComponentManager(
                 for port in self.ports:
                     if port.desire_on:
                         port.turn_on()
-            if self._component_state_callback is not None:
-                self._component_state_callback(power=self._power_state)
+            self._update_component_state(power=self._power_state)
         else:
             return
 
