@@ -12,8 +12,10 @@ __all__ = [
     "FndhComponentManager",
     "FndhHealthModel",
     "MccsFNDH",
+    "_PasdBusProxy",
 ]
 
-from .fndh_component_manager import FndhComponentManager
+from .fndh_component_manager import FndhComponentManager, _PasdBusProxy
 from .fndh_device import MccsFNDH
 from .fndh_health_model import FndhHealthModel
+

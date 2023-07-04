@@ -426,6 +426,10 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         )
         if communication_state != CommunicationStatus.ESTABLISHED:
             self._update_port_power_states([PowerState.UNKNOWN] * self.PORT_COUNT)
+            self._component_state_changed_callback(power=PowerState.UNKNOWN)
+        if communication_state == CommunicationStatus.ESTABLISHED:
+            self._component_state_changed_callback(power=PowerState.ON)
+            self._update_port_power_states(self._port_power_states)
 
         super()._communication_state_changed(communication_state)
 
@@ -442,11 +446,14 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 self.push_change_event(
                     attr_name, self._fndh_attributes[attr_name.lower()]
                 )
+                if power_states[port] != PowerState.UNKNOWN:
+                    self._port_power_states[port] = power_states[port]
 
     def _component_state_changed_callback(
         self: MccsFNDH,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,
+        fqdn: Optional[str] = None,
         pasdbus_status: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
@@ -458,10 +465,21 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
 
         :param fault: whether the component is in fault.
         :param power: the power state of the component
+        :param fqdn: the fqdn of the device passing calling.
         :param pasdbus_status: the status of the pasd_bus
         :param kwargs: additional keyword arguments defining component
             state.
         """
+        if fqdn is not None:
+            # TODO: use this in the health model.
+            if power == PowerState.UNKNOWN:
+                # If a proxy calls back with a unknown power. As a precaution it is
+                # assumed that communication is NOT_ESTABLISHED.
+                self._communication_state_changed(CommunicationStatus.NOT_ESTABLISHED)
+                return
+            if power == PowerState.ON:
+                self._update_port_power_states(self._port_power_states)
+
         super()._component_state_changed(fault=fault, power=power)
         self._health_model.update_state(
             fault=fault, power=power, pasdbus_status=pasdbus_status
@@ -498,10 +516,6 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         :param attr_name: the name of the attribute that needs updating
         :param attr_value: the value to update with.
         """
-        # Status is a bad name, it conflicts with tango status()
-        if attr_name.lower() == "status":
-            attr_name = "pasdstatus"
-
         try:
             assert (
                 len(
@@ -544,3 +558,4 @@ def main(*args: str, **kwargs: str) -> int:
 
 if __name__ == "__main__":
     main()
+
