@@ -23,136 +23,6 @@ from ska_low_mccs_pasd.pasd_bus import SmartboxSimulator
 gc.disable()  # TODO: why is this needed?
 
 
-def test_power_interplay(  # pylint: disable=too-many-statements
-    fndh_device: tango.DeviceProxy,
-    pasd_bus_device: tango.DeviceProxy,
-    smartbox_device: tango.DeviceProxy,
-    change_event_callbacks: MockTangoEventCallbackGroup,
-    smartbox_id: int,
-) -> None:
-    """
-    Test power interplay between TANGO devices.
-
-    :param smartbox_device: fixture that provides a
-        :py:class:`tango.DeviceProxy` to the device under test, in a
-        :py:class:`tango.test_context.DeviceTestContext`.
-    :param pasd_bus_device: fixture that provides a
-        :py:class:`tango.DeviceProxy` to the device under test, in a
-        :py:class:`tango.test_context.DeviceTestContext`.
-    :param fndh_device: fixture that provides a
-        :py:class:`tango.DeviceProxy` to the device under test, in a
-        :py:class:`tango.test_context.DeviceTestContext`.
-    :param change_event_callbacks: group of Tango change event
-        callback with asynchrony support
-    :param smartbox_id: the smartbox number
-    """
-    assert fndh_device.adminMode == AdminMode.OFFLINE
-    assert pasd_bus_device.adminMode == AdminMode.OFFLINE
-
-    fndh_device.subscribe_event(
-        "state",
-        tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["fndh_state"],
-    )
-    change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
-    change_event_callbacks["fndh_state"].assert_not_called()
-
-    smartbox_device.subscribe_event(
-        "state",
-        tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["smartbox_state"],
-    )
-    change_event_callbacks["smartbox_state"].assert_change_event(
-        tango.DevState.DISABLE
-    )
-    change_event_callbacks["smartbox_state"].assert_not_called()
-
-    pasd_bus_device.subscribe_event(
-        "state",
-        tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["pasd_bus_state"],
-    )
-    change_event_callbacks["pasd_bus_state"].assert_change_event(
-        tango.DevState.DISABLE
-    )
-    change_event_callbacks["pasd_bus_state"].assert_not_called()
-
-    # SETUP
-    pasd_bus_device.adminMode = AdminMode.ONLINE
-    change_event_callbacks["pasd_bus_state"].assert_change_event(
-        tango.DevState.UNKNOWN
-    )
-    change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
-    change_event_callbacks["pasd_bus_state"].assert_not_called()
-
-    # change_event_callbacks.assert_against_call("smartbox24portscurrentdraw")
-
-    # ---------------------
-    # FNDH adminMode online
-    # ---------------------
-    fndh_device.adminMode = AdminMode.ONLINE
-    change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
-    change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
-    change_event_callbacks["fndh_state"].assert_not_called()
-
-    # -------------------------
-    # SmartBox adminMode Online
-    # -------------------------
-
-    # The Smartbox will estabish a connection and transition to OFF.
-    smartbox_device.adminMode = AdminMode.ONLINE
-    change_event_callbacks["smartbox_state"].assert_change_event(
-        tango.DevState.UNKNOWN
-    )
-    change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
-    change_event_callbacks["smartbox_state"].assert_not_called()
-
-    # Subscribe
-    fndh_device.subscribe_event(
-        f"Port{smartbox_id+1}PowerState",
-        tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["fndhportpowerstate"],
-    )
-    # change_event_callbacks["fndhportpowerstate"].assert_not_called()
-    change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.OFF)
-    change_event_callbacks["fndhportpowerstate"].assert_not_called()
-
-    fndh_device.PowerOnPort(smartbox_id + 1)
-    change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.ON)
-    change_event_callbacks["fndhportpowerstate"].assert_not_called()
-    change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
-    assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
-    change_event_callbacks["smartbox_state"].assert_not_called()
-
-    fndh_device.PowerOffPort(smartbox_id + 1)
-    change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.OFF)
-    change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
-    assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
-    change_event_callbacks["smartbox_state"].assert_not_called()
-    json_argument = json.dumps(
-        {"port_number": smartbox_id + 1, "stay_on_when_offline": True}
-    )
-    pasd_bus_device.TurnFndhPortOn(json_argument)
-    change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.ON)
-    change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
-    assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
-
-    pasd_bus_device.TurnFndhPortOff(smartbox_id + 1)
-    change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.OFF)
-    change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
-    assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
-
-    smartbox_device.On()
-    change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.ON)
-    change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
-    assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
-
-    smartbox_device.Off()
-    change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.OFF)
-    change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
-    assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
-
-
 def turn_pasd_devices_online(
     smartbox_device: tango.DeviceProxy,
     pasd_bus_device: tango.DeviceProxy,
@@ -273,6 +143,137 @@ def setup_devices_with_subscriptions(
 
 class TestSmartBoxPasdBusIntegration:
     """Test pasdbus, smartbox, fndh integration."""
+
+    def test_power_interplay(  # pylint: disable=too-many-statements
+        self: TestSmartBoxPasdBusIntegration,
+        fndh_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        smartbox_device: tango.DeviceProxy,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+        smartbox_id: int,
+    ) -> None:
+        """
+        Test power interplay between TANGO devices.
+
+        :param smartbox_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param pasd_bus_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param fndh_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param change_event_callbacks: group of Tango change event
+            callback with asynchrony support
+        :param smartbox_id: the smartbox number
+        """
+        assert fndh_device.adminMode == AdminMode.OFFLINE
+        assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+
+        fndh_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndh_state"],
+        )
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
+        change_event_callbacks["fndh_state"].assert_not_called()
+
+        smartbox_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartbox_state"],
+        )
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
+        change_event_callbacks["smartbox_state"].assert_not_called()
+
+        pasd_bus_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasd_bus_state"],
+        )
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
+        change_event_callbacks["pasd_bus_state"].assert_not_called()
+
+        # SETUP
+        pasd_bus_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["pasd_bus_state"].assert_not_called()
+
+        # change_event_callbacks.assert_against_call("smartbox24portscurrentdraw")
+
+        # ---------------------
+        # FNDH adminMode online
+        # ---------------------
+        fndh_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["fndh_state"].assert_not_called()
+
+        # -------------------------
+        # SmartBox adminMode Online
+        # -------------------------
+
+        # The Smartbox will estabish a connection and transition to OFF.
+        smartbox_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
+        change_event_callbacks["smartbox_state"].assert_not_called()
+
+        # Subscribe
+        fndh_device.subscribe_event(
+            f"Port{smartbox_id+1}PowerState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndhportpowerstate"],
+        )
+        # change_event_callbacks["fndhportpowerstate"].assert_not_called()
+        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.OFF)
+        change_event_callbacks["fndhportpowerstate"].assert_not_called()
+
+        fndh_device.PowerOnPort(smartbox_id + 1)
+        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.ON)
+        change_event_callbacks["fndhportpowerstate"].assert_not_called()
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
+        assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
+        change_event_callbacks["smartbox_state"].assert_not_called()
+
+        fndh_device.PowerOffPort(smartbox_id + 1)
+        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.OFF)
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
+        assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
+        change_event_callbacks["smartbox_state"].assert_not_called()
+        json_argument = json.dumps(
+            {"port_number": smartbox_id + 1, "stay_on_when_offline": True}
+        )
+        pasd_bus_device.TurnFndhPortOn(json_argument)
+        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.ON)
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
+        assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
+
+        pasd_bus_device.TurnFndhPortOff(smartbox_id + 1)
+        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.OFF)
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
+        assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
+
+        smartbox_device.On()
+        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.ON)
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
+        assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
+
+        smartbox_device.Off()
+        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.OFF)
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
+        assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
+
 
     @pytest.mark.xfail(
         reason="MccsFndh does not subscribe to state changes on the PasdBus."
