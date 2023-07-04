@@ -558,4 +558,3 @@ def main(*args: str, **kwargs: str) -> int:
 
 if __name__ == "__main__":
     main()
-

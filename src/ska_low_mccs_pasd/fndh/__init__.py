@@ -18,4 +18,3 @@ __all__ = [
 from .fndh_component_manager import FndhComponentManager, _PasdBusProxy
 from .fndh_device import MccsFNDH
 from .fndh_health_model import FndhHealthModel
-

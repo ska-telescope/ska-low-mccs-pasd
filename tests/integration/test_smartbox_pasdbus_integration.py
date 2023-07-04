@@ -144,7 +144,7 @@ def setup_devices_with_subscriptions(
 class TestSmartBoxPasdBusIntegration:
     """Test pasdbus, smartbox, fndh integration."""
 
-    def test_power_interplay(  # pylint: disable=too-many-statements
+    def test_power_interplay(  # pylint: disable=too-many-arguments, too-many-statements
         self: TestSmartBoxPasdBusIntegration,
         fndh_device: tango.DeviceProxy,
         pasd_bus_device: tango.DeviceProxy,
@@ -274,10 +274,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
         assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
 
-
-    @pytest.mark.xfail(
-        reason="MccsFndh does not subscribe to state changes on the PasdBus."
-    )
     def test_component_state_callbacks(
         self: TestSmartBoxPasdBusIntegration,
         fndh_device: tango.DeviceProxy,
@@ -371,6 +367,31 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.UNKNOWN
         )
+        change_event_callbacks["fndh_state"].assert_not_called()
+        change_event_callbacks["smartbox_state"].assert_not_called()
+
+        pasd_bus_device.adminMode = 0
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
+
+        fndh_device.adminMode = 1
+        change_event_callbacks["pasd_bus_state"].assert_not_called()
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["fndh_state"].assert_not_called()
+        change_event_callbacks["smartbox_state"].assert_not_called()
+
+        fndh_device.adminMode = 0
+        change_event_callbacks["pasd_bus_state"].assert_not_called()
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
 
     @pytest.mark.xfail(
         reason="Cannot unsubscribe from proxy so event received,"
@@ -440,12 +461,6 @@ class TestSmartBoxPasdBusIntegration:
 
         # 1 - SmartBox stops listening to device
         smartbox_device.adminMode = AdminMode.OFFLINE
-        # It will transition into UNKNOWN when the first proxy
-        # changes to the DISABLE state and then DISABLE when the second
-        # changes to DISABLE
-        change_event_callbacks["smartbox_state"].assert_change_event(
-            tango.DevState.UNKNOWN
-        )
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.DISABLE
         )
@@ -623,7 +638,7 @@ class TestSmartBoxPasdBusIntegration:
         assert fndh_device.PortPowerState(smartbox_number) == PowerState.ON
 
         # manual sleep to allow time for polling and callbacks.
-        time.sleep(1)
+        time.sleep(2)
         for port in smartbox_ports_desired_on:
             # Check that the requested ports are powered on.
             assert smartbox_device.PortsPowerSensed[port - 1]

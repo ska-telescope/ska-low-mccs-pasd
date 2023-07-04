@@ -360,4 +360,3 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 result=f"Power on port '{port_number} success'",
             )
         return result_code, unique_id
-
