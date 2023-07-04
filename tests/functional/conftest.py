@@ -174,7 +174,7 @@ def pasd_bus_name_fixture() -> str:
     return "low-mccs/pasdbus/001"
 
 
-@pytest.fixture(name="field_station_name", scope="module")
+@pytest.fixture(name="field_station_name", scope="session")
 def field_station_name_fixture() -> str:
     """
     Return the name of the PaSD bus device under test.
@@ -184,27 +184,7 @@ def field_station_name_fixture() -> str:
     return "low-mccs/fieldstation/001"
 
 
-@pytest.fixture(name="fndh_name", scope="module")
-def fndh_name_fixture() -> str:
-    """
-    Return the name of the PaSD bus device under test.
-
-    :return: the name of the PaSD bus device under test.
-    """
-    return "low-mccs/fndh/001"
-
-
-@pytest.fixture(name="field_station_name", scope="module")
-def field_station_name_fixture() -> str:
-    """
-    Return the name of the PaSD bus device under test.
-
-    :return: the name of the PaSD bus device under test.
-    """
-    return "low-mccs/fieldstation/001"
-
-
-@pytest.fixture(name="fndh_name", scope="module")
+@pytest.fixture(name="fndh_name", scope="session")
 def fndh_name_fixture() -> str:
     """
     Return the name of the PaSD bus device under test.
@@ -295,164 +275,25 @@ def change_event_callbacks_fixture(
     ]
     return MockTangoEventCallbackGroup(
         *keys,
-        "outsideTemperature",
-        "smartbox24PortsCurrentDraw",
-        "fieldstationoutsideTemperature",
         timeout=10.0,
         assert_no_error=False,
     )
 
 
-@pytest.fixture(name="fndh_device_proxy", scope="module")
-def fndh_device_proxy_fixture(
-    tango_harness: TangoContextProtocol,
-    fndh_name: str,
-    change_event_callbacks: MockTangoEventCallbackGroup,
-) -> tango.DeviceProxy:
-    """
-    Return a DeviceProxy to an instance of MccsFndh.
-
-    :param tango_harness: a test harness for Tango devices.
-    :param fndh_name: the name of the fndh device under test.
-    :param change_event_callbacks: dictionary of Tango change event
-        callbacks with asynchrony support.
-
-    :return: A proxy to an instance of MccsFndh.
-    """
-    proxy = tango_harness.get_device(fndh_name)
-
-    for attribute_name in [
-        "state",
-        "healthState",
-        "outsideTemperature",
-    ]:
-        print(f"Subscribing proxy to {attribute_name}...")
-        proxy.subscribe_event(
-            attribute_name,
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[attribute_name],
-        )
-        change_event_callbacks.assert_change_event(attribute_name, Anything)
-
-    return proxy
-
-
-@pytest.fixture(name="field_station_device", scope="module")
+@pytest.fixture(name="field_station_device", scope="session")
 def field_station_device_fixture(
-    tango_harness: TangoContextProtocol,
     field_station_name: str,
-    change_event_callbacks: MockTangoEventCallbackGroup,
+    get_device_proxy: Callable,
 ) -> tango.DeviceProxy:
     """
     Return a DeviceProxy to an instance of MccsFieldStation.
 
-    :param tango_harness: a test harness for Tango devices.
     :param field_station_name: the name of the field station device under test.
-    :param change_event_callbacks: dictionary of Tango change event
-        callbacks with asynchrony support.
+    :param get_device_proxy: cached fixture for setting up device proxy.
 
     :return: A proxy to an instance of MccsFieldStation.
     """
-    proxy = tango_harness.get_device(field_station_name)
-
-    for attribute_name in [
-        "state",
-        "healthState",
-    ]:
-        print(f"Subscribing proxy to {attribute_name}...")
-        proxy.subscribe_event(
-            attribute_name,
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[attribute_name],
-        )
-        change_event_callbacks.assert_change_event(attribute_name, Anything)
-
-    print("Subscribing proxy to outsideTemperature...")
-    proxy.subscribe_event(
-        "OutsideTemperature",
-        tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["fieldstationoutsideTemperature"],
-    )
-    change_event_callbacks["fieldstationoutsideTemperature"].assert_change_event(
-        Anything
-    )
-    return proxy
-
-
-@pytest.fixture(name="fndh_device_proxy", scope="module")
-def fndh_device_proxy_fixture(
-    tango_harness: TangoContextProtocol,
-    fndh_name: str,
-    change_event_callbacks: MockTangoEventCallbackGroup,
-) -> tango.DeviceProxy:
-    """
-    Return a DeviceProxy to an instance of MccsFndh.
-
-    :param tango_harness: a test harness for Tango devices.
-    :param fndh_name: the name of the fndh device under test.
-    :param change_event_callbacks: dictionary of Tango change event
-        callbacks with asynchrony support.
-
-    :return: A proxy to an instance of MccsFndh.
-    """
-    proxy = tango_harness.get_device(fndh_name)
-
-    for attribute_name in [
-        "state",
-        "healthState",
-        "outsideTemperature",
-    ]:
-        print(f"Subscribing proxy to {attribute_name}...")
-        proxy.subscribe_event(
-            attribute_name,
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[attribute_name],
-        )
-        change_event_callbacks.assert_change_event(attribute_name, Anything)
-
-    return proxy
-
-
-@pytest.fixture(name="field_station_device", scope="module")
-def field_station_device_fixture(
-    tango_harness: TangoContextProtocol,
-    field_station_name: str,
-    change_event_callbacks: MockTangoEventCallbackGroup,
-) -> tango.DeviceProxy:
-    """
-    Return a DeviceProxy to an instance of MccsFieldStation.
-
-    :param tango_harness: a test harness for Tango devices.
-    :param field_station_name: the name of the field station device under test.
-    :param change_event_callbacks: dictionary of Tango change event
-        callbacks with asynchrony support.
-
-    :return: A proxy to an instance of MccsFieldStation.
-    """
-    proxy = tango_harness.get_device(field_station_name)
-
-    for attribute_name in [
-        "state",
-        "healthState",
-    ]:
-        print(f"Subscribing proxy to {attribute_name}...")
-        proxy.subscribe_event(
-            attribute_name,
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[attribute_name],
-        )
-        change_event_callbacks.assert_change_event(attribute_name, Anything)
-
-    print("Subscribing proxy to outsideTemperature...")
-    proxy.subscribe_event(
-        "OutsideTemperature",
-        tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["fieldstationoutsideTemperature"],
-    )
-    change_event_callbacks["fieldstationoutsideTemperature"].assert_change_event(
-        Anything
-    )
-    return proxy
+    return get_device_proxy(field_station_name)
 
 
 @pytest.fixture(name="pasd_bus_device", scope="session")
@@ -490,28 +331,35 @@ def fndh_device_fixture(
 def device_mapping_fixture(
     fndh_name: str,
     pasd_bus_name: str,
+    field_station_name: str,
 ) -> dict[str, str]:
     """
     Return a dictionary mapping short name to FQDN for devices under test.
 
     :param fndh_name: the name of the FNDH device under test.
     :param pasd_bus_name: the name of the pasd bus device under test.
+    :param field_station_name: the name of the field station device under test.
 
     :return: A dictionary mapping short name to FQDN for devices under test.
     """
-    device_dict = {"MccsFndh": fndh_name, "MCCS-for-PaSD": pasd_bus_name}
+    device_dict = {
+        "MccsFndh": fndh_name,
+        "MCCS-for-PaSD": pasd_bus_name,
+        "MccsFieldStation": field_station_name,
+    }
     return device_dict
 
 
 @pytest.fixture(name="device_subscriptions", scope="session")
 def device_subscriptions_fixture(
-    fndh_name: str, pasd_bus_name: str
+    fndh_name: str, pasd_bus_name: str, field_station_name: str
 ) -> dict[str, list[str]]:
     """
     Return a dictionary mapping device name to list of subscriptions to make.
 
     :param fndh_name: the name of the FNDH device under test.
     :param pasd_bus_name: the name of the pasd bus device under test.
+    :param field_station_name: the name of the field station device under test.
 
     :return: A dictionary mapping device name to list of subscriptions to make.
     """
@@ -542,11 +390,17 @@ def device_subscriptions_fixture(
             "smartbox1OutsideTemperature",
             "smartbox1PortsConnected",
             "smartbox1PortsPowerSensed",
+            "smartbox24PortsCurrentDraw",
         ],
         fndh_name: [
             "state",
             "healthState",
             "adminMode",
+        ],
+        field_station_name: [
+            "state",
+            "healthState",
+            "OutsideTemperature",
         ],
     }
     return device_subscriptions
@@ -584,42 +438,6 @@ def get_device_proxy_fixture(
                 f"{device_name}/{attribute_name}"
             ].assert_change_event(Anything)
         return proxy
-    for attribute_name in [
-        "state",
-        "healthState",
-        "fndhUptime",
-        "fndhStatus",
-        "fndhLedPattern",
-        "fndhPsu48vVoltages",
-        "fndhPsu48vCurrent",
-        "fndhPsu48vTemperature",
-        "fndhPsu5vVoltage",
-        "fndhPsu5vTemperature",
-        "fndhPcbTemperature",
-        "fndhOutsideTemperature",
-        "fndhPortsConnected",
-        "fndhPortsPowerSensed",
-        "smartbox1Uptime",
-        "smartbox1Status",
-        "smartbox1LedPattern",
-        "smartbox1InputVoltage",
-        "smartbox1PowerSupplyOutputVoltage",
-        "smartbox1PowerSupplyTemperature",
-        "smartbox1PcbTemperature",
-        "smartbox1OutsideTemperature",
-        "smartbox1PortsConnected",
-        "smartbox1PortsPowerSensed",
-        "smartbox24PortsCurrentDraw",
-    ]:
-        print(f"Subscribing proxy to {attribute_name}...")
-        proxy.subscribe_event(
-            attribute_name,
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[attribute_name],
-        )
-        change_event_callbacks.assert_change_event(attribute_name, Anything)
-
-    return proxy
 
     return _get_device_proxy
 
