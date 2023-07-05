@@ -5,13 +5,6 @@ from __future__ import annotations
 
 import logging
 import pprint
-import time
-
-from ska_ser_devices.client_server import (
-    ApplicationClient,
-    SentinelBytesMarshaller,
-    TcpClient,
-)
 
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_modbus_api import PasdBusModbusApiClient
 
@@ -19,9 +12,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_modbus_api import PasdBusModbusApiClien
 class PasdBusConnectionTest:
     """Class to test the PaSD comms by directly using the Modbus API client"""
 
-    def __init__(
-        self: PasdBusConnectionTest, host: str, port: int, timeout: int
-    ) -> None:
+    def __init__(self: PasdBusConnectionTest, host: str, port: int) -> None:
         logging.basicConfig()
         self._pasd_bus_api_client = PasdBusModbusApiClient(host, port, logging.DEBUG)
 
@@ -32,7 +23,7 @@ class PasdBusConnectionTest:
 
 
 if __name__ == "__main__":
-    conn = PasdBusConnectionTest("127.0.0.1", 5000, 5)
+    conn = PasdBusConnectionTest("127.0.0.1", 5000)
 
     # Read FNDH polling registers
     conn.read(
@@ -54,9 +45,19 @@ if __name__ == "__main__":
         "led_pattern",
     )
 
-    # Smart box on port 2
+    # Port status:
     conn.read(
-        2,
+        101,
+        "port_forcings",
+        "port_breakers_tripped",
+        "ports_desired_power_when_online",
+        "ports_desired_power_when_offline",
+        "ports_power_sensed",
+    )
+
+    # Smart box on port 1
+    conn.read(
+        1,
         "modbus_register_map_revision",
         "pcb_revision",
         "cpu_id",
@@ -71,4 +72,15 @@ if __name__ == "__main__":
         "outside_temperature",
         "status",
         "led_pattern",
+    )
+
+    # Port status:
+    conn.read(
+        1,
+        "port_forcings",
+        "port_breakers_tripped",
+        "ports_desired_power_when_online",
+        "ports_desired_power_when_offline",
+        "ports_power_sensed",
+        "ports_current_draw",
     )

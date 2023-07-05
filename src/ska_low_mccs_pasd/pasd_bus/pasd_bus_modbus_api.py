@@ -23,7 +23,7 @@ from pymodbus.register_read_message import (
 )
 
 from .pasd_bus_custom_pymodbus import CustomReadHoldingRegistersResponse
-from .pasd_bus_register_map import PasdBusRegisterMap
+from .pasd_bus_register_map import PasdBusPortAttribute, PasdBusRegisterMap
 from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
 
 logger = logging.getLogger()
@@ -75,6 +75,7 @@ class PasdBusModbusApi:
         raise NotImplementedError
 
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
+        # TODO (temporary placeholder code here only)
         response = None
 
         def handle_request(message: Any) -> None:
@@ -118,7 +119,7 @@ class PasdBusModbusApiClient:
     def __init__(
         self: PasdBusModbusApiClient,
         ip_address: str,
-        port: str,
+        port: int,
         logging_level: int = logging.INFO,
     ) -> None:
         """
@@ -132,13 +133,13 @@ class PasdBusModbusApiClient:
         self._client = ModbusTcpClient(ip_address, port, ModbusAsciiFramer)
         # Register a custom response as a workaround to the firmware issue
         # (see JIRA ticket PRTS-255)
-        self._client.register(CustomReadHoldingRegistersResponse)
+        self._client.register(CustomReadHoldingRegistersResponse)  # type: ignore
 
     def _do_read_request(self, request: dict) -> dict:
         slave_id = request["device_id"]
 
         # Get a dictionary mapping the requested attribute names to
-        # PasdAttributes
+        # PasdBusAttributes
         attributes = PasdBusRegisterMap.get_attributes(slave_id, request["read"])
 
         if len(attributes) == 0:
@@ -167,14 +168,26 @@ class PasdBusModbusApiClient:
 
         match reply:
             case ReadHoldingRegistersResponse():
-                results = {}
-                register_index = 0
+                results = {}  # attributes dict to be returned
+                register_index = 0  # current index into the register list
+                last_attribute = None  # last handled attribute
+
+                # Iterate through the requested attribute names, converting the raw
+                # received register values into meaningful data and adding
+                # to the attributes dictionary to be returned
                 for key in keys:
-                    # Convert the raw register value(s) into meaningful
-                    # data and add to the attributes dictionary to be returned
-                    converted_values = attributes[key].convert_value(
+                    current_attribute = attributes[key]
+
+                    # Check if we're moving on from reading a set of port attribute data
+                    # as we'll need to increment the register index
+                    if isinstance(
+                        last_attribute, PasdBusPortAttribute
+                    ) and not isinstance(current_attribute, PasdBusPortAttribute):
+                        register_index += last_attribute.count
+
+                    converted_values = current_attribute.convert_value(
                         reply.registers[
-                            register_index : register_index + attributes[key].count
+                            register_index : register_index + current_attribute.count
                         ]
                     )
                     results[key] = (
@@ -182,7 +195,11 @@ class PasdBusModbusApiClient:
                         if len(converted_values) == 1
                         else converted_values
                     )
-                    register_index += attributes[key].count
+                    # Only increment the register index if we are not
+                    # parsing a port status attribute as there might be more to come
+                    if not isinstance(current_attribute, PasdBusPortAttribute):
+                        register_index += current_attribute.count
+                    last_attribute = current_attribute
                 response = {
                     "source": slave_id,
                     "data": {
@@ -198,7 +215,7 @@ class PasdBusModbusApiClient:
                 logger.error(message)
                 response = {
                     "error": {
-                        "code": "decode",
+                        "code": "?",  # TODO: what error code to use?
                         "detail": message,
                     },
                     "timestamp": datetime.utcnow().isoformat(),
@@ -208,7 +225,7 @@ class PasdBusModbusApiClient:
                 logger.error(message)
                 response = {
                     "error": {
-                        "code": "decode",
+                        "code": "?",  # TODO: what error code to use?
                         "detail": message,
                     },
                     "timestamp": datetime.utcnow().isoformat(),

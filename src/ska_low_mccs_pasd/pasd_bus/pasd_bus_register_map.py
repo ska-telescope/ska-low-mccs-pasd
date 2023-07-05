@@ -8,9 +8,24 @@
 """This module provides a register mapping utility for the PaSD bus."""
 from __future__ import annotations
 
+import logging
+from enum import Enum
 from typing import Any, Callable, Final, List
 
 from .pasd_bus_conversions import PasdConversionUtility
+
+logger = logging.getLogger()
+
+
+class PortStatusString(Enum):
+    """Enum type for port status strings."""
+
+    PORTS_CONNECTED = "ports_connected"
+    PORT_FORCINGS = "port_forcings"
+    BREAKERS_TRIPPED = "port_breakers_tripped"
+    DSON = "ports_desired_power_when_online"
+    DSOFF = "ports_desired_power_when_offline"
+    POWER_SENSED = "ports_power_sensed"
 
 
 class PasdBusAttribute:
@@ -62,6 +77,74 @@ class PasdBusAttribute:
         return self._conversion_function(values)
 
 
+class PasdBusPortAttribute(PasdBusAttribute):
+    """Class representing a port status attribute."""
+
+    def __init__(
+        self: PasdBusPortAttribute,
+        address: int,
+        count: int,
+        desired_info: PortStatusString,
+    ):
+        """Initialise a new instance.
+
+        :param address: starting register address
+        :param count: number of registers containing the port data
+        :param desired_info: port status attribute of interest
+            (must match member of PortStatusStrings)
+        """
+        super().__init__(address, count, self.parse_port_bitmaps)
+        self.desired_info = desired_info
+
+    def parse_port_bitmaps(
+        self: PasdBusPortAttribute, values: List[int]
+    ) -> List[bool | str | None]:
+        """
+        Parse the port register bitmap data into the desired port information.
+
+        :param: values: list of raw port bitmaps (one per port)
+        :return: list of flags representing the desired port information
+        """
+        forcing_map = {
+            True: "ON",
+            False: "OFF",
+            None: "NONE",
+        }
+        results: List[bool | str | None] = []
+        for status_bitmap, port_number in zip(values, range(1, len(values) + 1)):
+            bitstring = f"{status_bitmap:016b}"
+            match (self.desired_info):
+                case PortStatusString.DSON | PortStatusString.DSOFF:
+                    if bitstring[2:4] == "10":
+                        results.append(False)
+                    elif bitstring[2:4] == "11":
+                        results.append(True)
+                    else:
+                        logger.warning(
+                            f"Unknown {self.desired_info.value} flag {bitstring[2:4]}"
+                            f" for port {port_number}"
+                        )
+                        results.append(None)
+                case PortStatusString.PORT_FORCINGS:
+                    if bitstring[6:8] == "10":
+                        results.append(forcing_map[False])
+                    elif bitstring[6:8] == "11":
+                        results.append(forcing_map[True])
+                    elif bitstring[6:8] == "01":
+                        results.append(forcing_map[None])
+                    else:
+                        logger.warning(
+                            f"Unknown port forcing: {bitstring[2:4]}"
+                            f" for port {port_number}"
+                        )
+                        results.append(forcing_map[None])
+                case PortStatusString.BREAKERS_TRIPPED:
+                    results.append(bitstring[8] == "1")
+                case PortStatusString.POWER_SENSED:
+                    results.append(bitstring[9] == "1")
+        return results
+
+
 class PasdBusRegisterMap:
     """A register mapping utility for the PaSD."""
 
@@ -91,12 +174,22 @@ class PasdBusRegisterMap:
         "humidity": PasdBusAttribute(23, 1),
         "status": PasdBusAttribute(24, 1),
         "led_pattern": PasdBusAttribute(25, 1),
-        # TODO: Handle port attributes
-        # "ports_connected": PortStatus(36, 28),
-        # "port_forcings": PortStatus(36, 28),
-        # "ports_power_sensed": PortStatus(36, 28),
-        # "ports_desired_power_when_online": PortStatus(36, 28),
-        # "ports_desired_power_when_offline": PortStatus(36, 28),
+        "ports_connected": PasdBusPortAttribute(
+            35, 28, PortStatusString.PORTS_CONNECTED
+        ),
+        "port_forcings": PasdBusPortAttribute(35, 28, PortStatusString.PORT_FORCINGS),
+        "port_breakers_tripped": PasdBusPortAttribute(
+            35, 28, PortStatusString.BREAKERS_TRIPPED
+        ),
+        "ports_desired_power_when_online": PasdBusPortAttribute(
+            35, 28, PortStatusString.DSON
+        ),
+        "ports_desired_power_when_offline": PasdBusPortAttribute(
+            35, 28, PortStatusString.DSOFF
+        ),
+        "ports_power_sensed": PasdBusPortAttribute(
+            35, 28, PortStatusString.POWER_SENSED
+        ),
     }
 
     # Inverse dictionary mapping register number (address) to
@@ -126,13 +219,24 @@ class PasdBusRegisterMap:
         ),
         "status": PasdBusAttribute(21, 1),
         "led_pattern": PasdBusAttribute(22, 1),
-        # TODO: Handle port attributes
-        # "ports_connected": PortStatus(36, 12),
-        # "port_forcings": PortStatus(36, 12),
-        # "port_breakers_tripped": PortStatus(36, 12),
-        # "ports_desired_power_when_online": PortStatus(36, 12),
-        # "ports_desired_power_when_offline": PortStatus(36, 12),
-        # "ports_current_draw": PortStatus(48, 12),
+        "sensor_status": PasdBusAttribute(23, 12),
+        "ports_connected": PasdBusPortAttribute(
+            35, 12, PortStatusString.PORTS_CONNECTED
+        ),
+        "port_forcings": PasdBusPortAttribute(35, 12, PortStatusString.PORT_FORCINGS),
+        "port_breakers_tripped": PasdBusPortAttribute(
+            35, 12, PortStatusString.BREAKERS_TRIPPED
+        ),
+        "ports_desired_power_when_online": PasdBusPortAttribute(
+            35, 12, PortStatusString.DSON
+        ),
+        "ports_desired_power_when_offline": PasdBusPortAttribute(
+            35, 12, PortStatusString.DSOFF
+        ),
+        "ports_power_sensed": PasdBusPortAttribute(
+            35, 12, PortStatusString.POWER_SENSED
+        ),
+        "ports_current_draw": PasdBusAttribute(47, 12),
     }
 
     # Inverse dictionary mapping register number to attribute name
