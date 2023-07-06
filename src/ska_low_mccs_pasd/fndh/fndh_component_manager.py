@@ -57,7 +57,7 @@ class _PasdBusProxy(DeviceComponentManager):
         self._attribute_change_callback = attribute_change_callback
         self._pasd_device = 0
         max_workers = 1
-        
+
         super().__init__(
             fqdn,
             logger,

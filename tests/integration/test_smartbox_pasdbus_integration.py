@@ -16,8 +16,9 @@ import time
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState, PowerState
-from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 from ska_tango_testing.mock.placeholders import Anything
+from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
+
 from ska_low_mccs_pasd.pasd_bus import SmartboxSimulator
 
 gc.disable()  # TODO: why is this needed?
@@ -620,7 +621,6 @@ class TestSmartBoxPasdBusIntegration:
         # Check that the Port is not ON
         for port in smartbox_ports_desired_on:
             assert not smartbox_device.PortsPowerSensed[port - 1]
-
 
         smartbox_device.subscribe_event(
             "PortsPowerSensed",
