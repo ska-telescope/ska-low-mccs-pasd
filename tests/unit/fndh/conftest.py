@@ -73,7 +73,7 @@ def pasd_bus_proxy_fixture(
     :param logger: a loger for the antenna component manager to use
     :param mock_callbacks: A group of callables.
 
-    :return: a _SmartBoxProxy to the PaSDBus device.
+    :return: a _PasdBusProxy to the PaSDBus device.
     """
     return _PasdBusProxy(
         pasdbus_fqdn,

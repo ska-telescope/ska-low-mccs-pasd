@@ -465,13 +465,13 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
 
         :param fault: whether the component is in fault.
         :param power: the power state of the component
-        :param fqdn: the fqdn of the device passing calling.
+        :param fqdn: the fqdn of the device calling.
         :param pasdbus_status: the status of the pasd_bus
         :param kwargs: additional keyword arguments defining component
             state.
         """
         if fqdn is not None:
-            # TODO: use this in the health model.
+            # TODO: The information passed here could factor into the FNDH health
             if power == PowerState.UNKNOWN:
                 # If a proxy calls back with a unknown power. As a precaution it is
                 # assumed that communication is NOT_ESTABLISHED.

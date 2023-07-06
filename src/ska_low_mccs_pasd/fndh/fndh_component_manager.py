@@ -34,8 +34,8 @@ class _PasdBusProxy(DeviceComponentManager):
         self: _PasdBusProxy,
         fqdn: str,
         logger: logging.Logger,
-        smartbox_communication_state_callback: Callable[[CommunicationStatus], None],
-        smartbox_state_callback: Callable[..., None],
+        communication_state_callback: Callable[[CommunicationStatus], None],
+        state_change_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
         update_port_power_states: Callable[..., None],
     ) -> None:
@@ -44,31 +44,31 @@ class _PasdBusProxy(DeviceComponentManager):
 
         :param fqdn: the FQDN of the MccsPaSDBus device
         :param logger: the logger to be used by this object.
-        :param smartbox_communication_state_callback: callback to be
-            called when the status of the communications change.
-        :param smartbox_state_callback: callback to be called when the
+        :param communication_state_callback: callback to be
+            called when communication state changes.
+        :param state_change_callback: callback to be called when the
             component state changes
-        :param attribute_change_callback: callback for when a attribute relevant to
-            this smartbox changes.
+        :param attribute_change_callback: callback for when a subscribed attribute
+            on the pasdbus changes.
         :param update_port_power_states: callback to be called when the port
             power states changes.
         """
         self._update_port_power_states = update_port_power_states
         self._attribute_change_callback = attribute_change_callback
-        self.pasd_device = 0
+        self._pasd_device = 0
 
         super().__init__(
             fqdn,
             logger,
             1,
-            smartbox_communication_state_callback,
-            smartbox_state_callback,
+            communication_state_callback,
+            state_change_callback,
         )
 
     def subscribe_to_attributes(self: _PasdBusProxy) -> None:
         """Subscribe to attributes relating to this FNDH."""
         assert self._proxy is not None
-        subscriptions = self._proxy.GetPasdDeviceSubscriptions(self.pasd_device)
+        subscriptions = self._proxy.GetPasdDeviceSubscriptions(self._pasd_device)
         for attribute in subscriptions:
             if attribute not in self._proxy._change_event_subscription_ids.keys():
                 self.logger.info(f"subscribing to attribute {attribute}.....")
@@ -100,10 +100,11 @@ class _PasdBusProxy(DeviceComponentManager):
                         return PowerState.ON
                     return PowerState.OFF
 
-                power_states = map(get_power_state, attr_value)
+                port_power_states = map(get_power_state, attr_value)
 
-                self._update_port_power_states(list(power_states))
+                self._update_port_power_states(list(port_power_states))
 
+            # Status is a bad name since it conflicts with TANGO status.
             if tango_attribute_name.lower() == "status":
                 tango_attribute_name = "pasdstatus"
 
