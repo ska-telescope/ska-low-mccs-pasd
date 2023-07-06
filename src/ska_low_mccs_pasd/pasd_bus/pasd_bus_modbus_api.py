@@ -23,7 +23,11 @@ from pymodbus.register_read_message import (
 )
 
 from .pasd_bus_custom_pymodbus import CustomReadHoldingRegistersResponse
-from .pasd_bus_register_map import PasdBusPortAttribute, PasdBusRegisterMap
+from .pasd_bus_register_map import (
+    PasdBusPortAttribute,
+    PasdBusRegisterMap,
+    PasdReadError,
+)
 from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
 
 logger = logging.getLogger()
@@ -135,12 +139,26 @@ class PasdBusModbusApiClient:
         # (see JIRA ticket PRTS-255)
         self._client.register(CustomReadHoldingRegistersResponse)  # type: ignore
 
+    def _create_error_response(self, error_code: str, message: str) -> dict:
+        return {
+            "error": {
+                "code": error_code,
+                "detail": message,
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
     def _do_read_request(self, request: dict) -> dict:
         slave_id = request["device_id"]
 
         # Get a dictionary mapping the requested attribute names to
         # PasdBusAttributes
-        attributes = PasdBusRegisterMap.get_attributes(slave_id, request["read"])
+        try:
+            attributes = PasdBusRegisterMap.get_attributes(slave_id, request["read"])
+        except PasdReadError as e:
+            return self._create_error_response(
+                "request", str(e)
+            )  # TODO: What error code to use?
 
         if len(attributes) == 0:
             logger.warning(
@@ -211,25 +229,13 @@ class PasdBusModbusApiClient:
                 # No reply: pass this exception on up to the caller
                 raise reply
             case ExceptionResponse():
-                message = f"Modbus exception response: {reply}"
-                logger.error(message)
-                response = {
-                    "error": {
-                        "code": "?",  # TODO: what error code to use?
-                        "detail": message,
-                    },
-                    "timestamp": datetime.utcnow().isoformat(),
-                }
+                response = self._create_error_response(
+                    "read", f"Modbus exception response: {reply}"
+                )  # TODO: what error code to use?
             case _:
-                message = f"Unexpected response type: {type(reply)}"
-                logger.error(message)
-                response = {
-                    "error": {
-                        "code": "?",  # TODO: what error code to use?
-                        "detail": message,
-                    },
-                    "timestamp": datetime.utcnow().isoformat(),
-                }
+                response = self._create_error_response(
+                    "read", f"Unexpected response type: {type(reply)}"
+                )  # TODO: what error code to use?
 
         return response
 

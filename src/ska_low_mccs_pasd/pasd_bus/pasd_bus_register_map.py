@@ -17,6 +17,20 @@ from .pasd_bus_conversions import PasdConversionUtility
 logger = logging.getLogger()
 
 
+class PasdReadError(Exception):
+    """Exception to be raised for invalid read requests."""
+
+    def __init__(self: PasdReadError, attribute1: str, attribute2: str):
+        """Initialize new instance.
+
+        :param attribute1: name of the first attribute causing the error
+        :param attribute2: name of the second
+        """
+        super().__init__(
+            f"Non-contiguous registers requested: {attribute1}, {attribute2}"
+        )
+
+
 class PortStatusString(Enum):
     """Enum type for port status strings."""
 
@@ -155,8 +169,8 @@ class PasdBusRegisterMap:
     _FNDH_REGISTER_MAP: Final = {
         "modbus_register_map_revision": PasdBusAttribute(0, 1),
         "pcb_revision": PasdBusAttribute(1, 1),
-        "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_to_hex),
-        "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_to_hex),
+        "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
+        "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_chip_id),
         "firmware_version": PasdBusAttribute(12, 1),
         "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
         "sys_address": PasdBusAttribute(15, 1),
@@ -168,12 +182,12 @@ class PasdBusRegisterMap:
             19, 2, PasdConversionUtility.scale_temps
         ),
         "pcb_temperature": PasdBusAttribute(21, 1, PasdConversionUtility.scale_temps),
-        "outside_temperature": PasdBusAttribute(
-            22, 1, PasdConversionUtility.scale_temps
-        ),
+        "fncb_temperature": PasdBusAttribute(22, 1, PasdConversionUtility.scale_temps),
         "humidity": PasdBusAttribute(23, 1),
-        "status": PasdBusAttribute(24, 1),
-        "led_pattern": PasdBusAttribute(25, 1),
+        "status": PasdBusAttribute(24, 1, PasdConversionUtility.convert_fndh_status),
+        "led_pattern": PasdBusAttribute(
+            25, 1, PasdConversionUtility.convert_led_status
+        ),
         "ports_connected": PasdBusPortAttribute(
             35, 28, PortStatusString.PORTS_CONNECTED
         ),
@@ -203,22 +217,26 @@ class PasdBusRegisterMap:
     _SMARTBOX_REGISTER_MAP: Final = {
         "modbus_register_map_revision": PasdBusAttribute(0, 1),
         "pcb_revision": PasdBusAttribute(1, 1),
-        "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_to_hex),
-        "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_to_hex),
+        "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
+        "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_chip_id),
         "firmware_version": PasdBusAttribute(12, 1),
         "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
         "sys_address": PasdBusAttribute(15, 1),
         "input_voltage": PasdBusAttribute(16, 1, PasdConversionUtility.scale_48vs),
         "power_supply_output_voltage": PasdBusAttribute(
-            18, 1, PasdConversionUtility.scale_5vs
+            17, 1, PasdConversionUtility.scale_5vs
         ),
         "psu_temperature": PasdBusAttribute(18, 1, PasdConversionUtility.scale_temps),
         "pcb_temperature": PasdBusAttribute(19, 1, PasdConversionUtility.scale_temps),
         "outside_temperature": PasdBusAttribute(
             20, 1, PasdConversionUtility.scale_temps
         ),
-        "status": PasdBusAttribute(21, 1),
-        "led_pattern": PasdBusAttribute(22, 1),
+        "status": PasdBusAttribute(
+            21, 1, PasdConversionUtility.convert_smartbox_status
+        ),
+        "led_pattern": PasdBusAttribute(
+            22, 1, PasdConversionUtility.convert_led_status
+        ),
         "sensor_status": PasdBusAttribute(23, 12),
         "ports_connected": PasdBusPortAttribute(
             35, 12, PortStatusString.PORTS_CONNECTED
@@ -252,6 +270,8 @@ class PasdBusRegisterMap:
         """
         Map a list of attribute names to PasdAttribute objects.
 
+        :raises PasdReadError: If non-contiguous set of registers requested
+
         :param device_id: the ID of the smartbox / FNDH device
         :param attribute_names: name of the attribute(s)
 
@@ -259,16 +279,30 @@ class PasdBusRegisterMap:
             inserted in Modbus address order
         """
         if device_id == cls._FNDH_ADDRESS:
-            return {
+            attributes = {
                 name: attr
                 for name, attr in cls._FNDH_REGISTER_MAP.items()
                 if name in attribute_names
             }
-        return {
-            name: attr
-            for name, attr in cls._SMARTBOX_REGISTER_MAP.items()
-            if name in attribute_names
-        }
+        else:
+            attributes = {
+                name: attr
+                for name, attr in cls._SMARTBOX_REGISTER_MAP.items()
+                if name in attribute_names
+            }
+        # Check a contiguous set of registers has been requested
+        last_attr = None
+        for name, attr in attributes.items():
+            if (
+                not last_attr
+                or last_attr.address + last_attr.count == attr.address
+                or last_attr.address == attr.address
+            ):
+                last_attr = attr
+                last_name = name
+                continue
+            raise PasdReadError(last_name, name)
+        return attributes
 
     @classmethod
     def get_attribute_names(cls, device_id: int, addresses: list[int]) -> list[str]:
