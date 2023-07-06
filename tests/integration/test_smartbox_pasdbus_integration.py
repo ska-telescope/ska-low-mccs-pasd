@@ -17,7 +17,7 @@ import pytest
 import tango
 from ska_control_model import AdminMode, HealthState, PowerState
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
-
+from ska_tango_testing.mock.placeholders import Anything
 from ska_low_mccs_pasd.pasd_bus import SmartboxSimulator
 
 gc.disable()  # TODO: why is this needed?
@@ -621,6 +621,13 @@ class TestSmartBoxPasdBusIntegration:
         for port in smartbox_ports_desired_on:
             assert not smartbox_device.PortsPowerSensed[port - 1]
 
+
+        smartbox_device.subscribe_event(
+            "PortsPowerSensed",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartboxportpowersensed"],
+        )
+        change_event_callbacks["smartboxportpowersensed"].assert_change_event(Anything)
         # ===
         # ACT
         # ===
@@ -637,8 +644,7 @@ class TestSmartBoxPasdBusIntegration:
 
         assert fndh_device.PortPowerState(smartbox_number) == PowerState.ON
 
-        # manual sleep to allow time for polling and callbacks.
-        time.sleep(2)
+        change_event_callbacks["smartboxportpowersensed"].assert_change_event(Anything)
         for port in smartbox_ports_desired_on:
             # Check that the requested ports are powered on.
             assert smartbox_device.PortsPowerSensed[port - 1]
@@ -776,6 +782,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "healthState",
         "smartbox24portscurrentdraw",
         "smartbox24portsconnected",
+        "smartboxportpowersensed",
         "smartboxinputvoltage",
         "fndhport2powerstate",
         "fndhportpowerstate",

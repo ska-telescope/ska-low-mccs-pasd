@@ -56,11 +56,12 @@ class _PasdBusProxy(DeviceComponentManager):
         self._update_port_power_states = update_port_power_states
         self._attribute_change_callback = attribute_change_callback
         self._pasd_device = 0
-
+        max_workers = 1
+        
         super().__init__(
             fqdn,
             logger,
-            1,
+            max_workers,
             communication_state_callback,
             state_change_callback,
         )
@@ -197,56 +198,6 @@ class FndhComponentManager(TaskExecutorComponentManager):
             return
         self._pasd_bus_proxy.stop_communicating()
         self._update_component_state(power=None, fault=None)
-
-    @check_communicating
-    def on(
-        self: FndhComponentManager, task_callback: Optional[Callable] = None
-    ) -> tuple[TaskStatus, str]:
-        """
-        Turn on the FNDH.
-
-        :param task_callback: Update task state, defaults to None
-
-        :return: a result code and a unique_id or message.
-        """
-        return self.submit_task(
-            self._on,
-            args=[],
-            task_callback=task_callback,
-        )
-
-    def _on(
-        self: FndhComponentManager,
-        task_callback: Optional[Callable] = None,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> None:
-
-        return
-
-    @check_communicating
-    def off(
-        self: FndhComponentManager, task_callback: Optional[Callable] = None
-    ) -> tuple[TaskStatus, str]:
-        """
-        Turn off the FNDH.
-
-        :param task_callback: Update task state, defaults to None
-
-        :return: a result code and a unique_id or message.
-        """
-        return self.submit_task(
-            self._off,
-            args=[],
-            task_callback=task_callback,
-        )
-
-    def _off(
-        self: FndhComponentManager,
-        task_callback: Optional[Callable] = None,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> None:
-
-        return
 
     @check_communicating
     def power_off_port(
