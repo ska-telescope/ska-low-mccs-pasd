@@ -41,11 +41,15 @@ def get_ready_device(device_name: str, set_device_state: Callable) -> None:
     set_device_state(device=device_name, state=tango.DevState.ON, mode=AdminMode.ONLINE)
 
 
+@then(
+    parsers.parse("they both agree on the power state of port {port_no}"),
+    converters={"port_no": int},
+)
 @given(
     parsers.parse("they both agree on the power state of port {port_no}"),
     converters={"port_no": int},
 )
-def check_inital_power_states(
+def check_power_states(
     pasd_bus_device: tango.DeviceProxy,
     fndh_device: tango.DeviceProxy,
     port_no: int,
@@ -61,11 +65,24 @@ def check_inital_power_states(
     :param check_attribute: fixture for checking device attribute.
     :param check_fastcommand: fixture for checking fast command result.
     """
-    assert (
-        bool(check_attribute(pasd_bus_device, "fndhPortsPowerSensed")[port_no - 1])
-        is False
-    )
-    assert check_fastcommand(fndh_device, "PortPowerState", port_no) == PowerState.OFF
+    power_map = {False: PowerState.OFF, True: PowerState.ON, None: PowerState.UNKNOWN}
+    timeout = 10
+    current_time = time.time()
+    while time.time() < current_time + timeout:
+        try:
+            assert power_map[
+                check_attribute(pasd_bus_device, "fndhPortsPowerSensed")[port_no - 1]
+            ] == check_fastcommand(fndh_device, "PortPowerState", port_no)
+        except AssertionError:
+            print("Power states don't yet agree.")
+            time.sleep(0.1)
+        else:
+            break
+    assert power_map[
+        check_attribute(pasd_bus_device, "fndhPortsPowerSensed")[port_no - 1]
+    ] == check_fastcommand(
+        fndh_device, "PortPowerState", port_no
+    ), "Power states don't agree after timeout."
 
 
 @when(
@@ -75,7 +92,10 @@ def check_inital_power_states(
     converters={"port_no": int},
 )
 def command_port_power_state(
-    fndh_device: tango.DeviceProxy, port_no: int, queue_command: Callable
+    fndh_device: tango.DeviceProxy,
+    port_no: int,
+    queue_command: Callable,
+    check_fastcommand: Callable,
 ) -> None:
     """
     Power on port given by port no.
@@ -83,8 +103,12 @@ def command_port_power_state(
     :param fndh_device: a proxy to the FNDH device.
     :param port_no: the port number of the FNDH.
     :param queue_command: fixture for queuing command on device.
+    :param check_fastcommand: fixture for checking fast command result.
     """
-    queue_command(fndh_device, "PowerOnPort", port_no)
+    if check_fastcommand(fndh_device, "PortPowerState", port_no) == PowerState.OFF:
+        queue_command(fndh_device, "PowerOnPort", port_no)
+    else:
+        queue_command(fndh_device, "PowerOffPort", port_no)
 
 
 @then(
@@ -101,35 +125,3 @@ def check_pasd_port_power_changed(
     :param check_change_event: a fixture for checking if change event received.
     """
     check_change_event(pasd_bus_device, "fndhPortsPowerSensed")
-
-
-@then(
-    parsers.parse("they both agree on the power state of port {port_no}"),
-    converters={"port_no": int},
-)
-def check_final_power_state(
-    pasd_bus_device: tango.DeviceProxy,
-    fndh_device: tango.DeviceProxy,
-    port_no: int,
-    check_attribute: Callable,
-    check_fastcommand: Callable,
-) -> None:
-    """
-    Check final power states.
-
-    :param pasd_bus_device: a proxy to the PaSD bus device.
-    :param fndh_device: a proxy to the FNDH device.
-    :param port_no: the port number of the FNDH.
-    :param check_attribute: fixture for checking device attribute.
-    :param check_fastcommand: fixture for checking fast command result.
-    """
-    timeout = 10
-    current_time = time.time()
-    while time.time() < current_time + timeout:
-        if check_fastcommand(fndh_device, "PortPowerState", port_no) == PowerState.ON:
-            break
-    assert (
-        bool(check_attribute(pasd_bus_device, "fndhPortsPowerSensed")[port_no - 1])
-        is True
-    )
-    assert check_fastcommand(fndh_device, "PortPowerState", port_no) == PowerState.ON
