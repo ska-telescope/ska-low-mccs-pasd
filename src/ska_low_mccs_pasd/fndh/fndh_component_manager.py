@@ -113,8 +113,8 @@ class _PasdBusProxy(DeviceComponentManager):
             return
 
         self.logger.info(
-            f"""Attribute subscription {attr_name} does not seem to begin
-             with 'fndh' string so it is assumed it is a incorrect subscription"""
+            f"Attribute subscription {attr_name} does not seem to begin"
+            "with 'fndh' string so it is assumed it is a incorrect subscription"
         )
 
 
