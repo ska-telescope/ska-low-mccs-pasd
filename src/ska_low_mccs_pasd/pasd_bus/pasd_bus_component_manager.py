@@ -330,8 +330,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             number), and keyword arguments representing the state
             changes.
         """
-        tcp_client = TcpClient(host, port, timeout)
-        marshaller = SentinelBytesMarshaller(b"\n")
+        tcp_client = TcpClient(host, port, timeout, logger=logger)
+        marshaller = SentinelBytesMarshaller(b"\n", logger=logger)
         application_client = ApplicationClient(
             tcp_client, marshaller.marshall, marshaller.unmarshall
         )

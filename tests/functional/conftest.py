@@ -87,9 +87,9 @@ def true_context_fixture(request: pytest.FixtureRequest) -> bool:
 
 
 @pytest.fixture(name="pasd_address_context_manager_factory", scope="session")
-def pasd_address_context_manager_factory_fixture() -> Callable[
-    [], ContextManager[tuple[str | bytes | bytearray, int]]
-]:
+def pasd_address_context_manager_factory_fixture(
+    logger: logging.Logger,
+) -> Callable[[], ContextManager[tuple[str | bytes | bytearray, int]]]:
     """
     Return a PaSD address context manager factory.
 
@@ -110,6 +110,8 @@ def pasd_address_context_manager_factory_fixture() -> Callable[
     manager for a PaSD simulator server instance. When entered, that
     context manager will launch the PaSD simulator server, and then
     yield the host and port on which it is running.
+
+    :param logger: a python standard logger
 
     :return: a callable that returns a context manager that, when
         entered, yields the host and port of a PaSD server.
@@ -149,6 +151,7 @@ def pasd_address_context_manager_factory_fixture() -> Callable[
                 "127.0.0.1",
                 0,
                 simulator_server,  # let the kernel give us a port
+                logger=logger,
             )
             with server:
                 server_thread = threading.Thread(
