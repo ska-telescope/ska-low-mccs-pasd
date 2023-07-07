@@ -271,6 +271,7 @@ def mock_smartbox_simulator(
 def pasd_bus_simulator_server_launcher_fixture(
     mock_fndh_simulator: FndhSimulator,
     mock_smartbox_simulators: Sequence[SmartboxSimulator],
+    logger: logging.Logger,
 ) -> Callable[[], ContextManager[TcpServer]]:
     """
     Return a context manager factory for a PaSD bus simulator server.
@@ -286,6 +287,7 @@ def pasd_bus_simulator_server_launcher_fixture(
     :param mock_smartbox_simulators:
         the smartbox simulator backends that the TCP server will front,
         each wrapped with a mock so that we can assert calls.
+    :param logger: a python standard logger
 
     :return: a PaSD bus simulator server context manager factory
     """
@@ -299,6 +301,7 @@ def pasd_bus_simulator_server_launcher_fixture(
             "localhost",
             0,  # let the kernel give us a port
             simulator_server,
+            logger=logger,
         )
 
         with server:

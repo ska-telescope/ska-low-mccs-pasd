@@ -49,6 +49,8 @@ class PasdBusSimulatorJsonServer(ApplicationServer):
 
 def main() -> None:
     """Run the simulator server."""
+    logger = logging.getLogger()
+
     station_id = os.getenv("SIMULATOR_STATION", "1")
     host = os.getenv("SIMULATOR_HOST", gethostname())
     port = int(os.getenv("SIMULATOR_PORT", "502"))
@@ -57,6 +59,6 @@ def main() -> None:
     simulator_server = PasdBusSimulatorJsonServer(
         simulator.get_fndh(), simulator.get_smartboxes()
     )
-    server = TcpServer(host, port, simulator_server)
+    server = TcpServer(host, port, simulator_server, logger=logger)
     with server:
         server.serve_forever()
