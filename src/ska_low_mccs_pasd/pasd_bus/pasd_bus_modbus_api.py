@@ -137,7 +137,7 @@ class PasdBusModbusApiClient:
         self._client = ModbusTcpClient(ip_address, port, ModbusAsciiFramer)
         # Register a custom response as a workaround to the firmware issue
         # (see JIRA ticket PRTS-255)
-        self._client.register(CustomReadHoldingRegistersResponse)  # type: ignore
+        #self._client.register(CustomReadHoldingRegistersResponse)  # type: ignore
 
         # Initialise a default register map
         self._register_map = PasdBusRegisterMap()
