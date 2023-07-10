@@ -48,13 +48,13 @@ class PasdBusModbusApi:
         self._simulators = simulators
         self._framer = ModbusAsciiFramer(None)
         self._decoder = ModbusAsciiFramer(ServerDecoder(), client=None)
-        self._slave_ids = list(range(len(simulators)))
+        self.responder_ids = list(range(len(simulators)))
 
     def _handle_read_attributes(self, device_id: int, names: list[str]) -> list[Any]:
         """
         Return list of attribute values.
 
-        :param device_id: The slave ID
+        :param device_id: The responder ID
         :param names: List of string attribute names to read
 
         :return: List of attribute values
@@ -100,7 +100,7 @@ class PasdBusModbusApi:
                     self._handle_no_match(message)
 
         self._decoder.processIncomingPacket(
-            modbus_request_str, handle_request, slave=self._slave_ids
+            modbus_request_str, handle_request, slave=self.responder_ids
         )
 
         return self._framer.buildPacket(response)
@@ -152,12 +152,12 @@ class PasdBusModbusApiClient:
         }
 
     def _do_read_request(self, request: dict) -> dict:
-        slave_id = request["device_id"]
+        responder_id = request["device_id"]
 
         # Get a dictionary mapping the requested attribute names to
         # PasdBusAttributes
         try:
-            attributes = self._register_map.get_attributes(slave_id, request["read"])
+            attributes = self._register_map.get_attributes(responder_id, request["read"])
         except PasdReadError as e:
             return self._create_error_response(
                 "request", str(e)
@@ -179,12 +179,12 @@ class PasdBusModbusApiClient:
             - attributes[keys[0]].address
         )
         logger.debug(
-            f"MODBUS Request: slave {slave_id}, "
+            f"MODBUS Request: responder {responder_id}, "
             f"start address {attributes[keys[0]].address}, count {count}"
         )
 
         reply = self._client.read_holding_registers(
-            attributes[keys[0]].address, count, slave_id
+            attributes[keys[0]].address, count, responder_id
         )
 
         match reply:
@@ -227,7 +227,7 @@ class PasdBusModbusApiClient:
                         register_index += current_attribute.count
                     last_attribute = current_attribute
                 response = {
-                    "source": slave_id,
+                    "source": responder_id,
                     "data": {
                         "type": "reads",
                         "attributes": results,
