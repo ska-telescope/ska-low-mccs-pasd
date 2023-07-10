@@ -8,11 +8,11 @@
 """This module provides scaling and other conversion functions for the PaSD."""
 
 import logging
-from typing import Any
+from typing import Any, Final
 
 logger = logging.getLogger()
 
-FNDH_STATUS_MAP = {
+FNDH_STATUS_MAP: Final = {
     -1: "UNDEFINED",  # We should never receive an undefined status
     0: "OK",  # Initialised, system health OK
     1: "WARNING",  # Initialised, and at least one sensor in WARNING
@@ -23,7 +23,7 @@ FNDH_STATUS_MAP = {
     # then go through full powerup sequence
 }
 
-SMARTBOX_STATUS_MAP = {
+SMARTBOX_STATUS_MAP: Final = {
     -1: "UNDEFINED",  # We should never receive an undefined status
     0: "OK",  # Initialised, system health OK
     1: "WARNING",  # Initialised, and at least one sensor in WARNING
@@ -34,14 +34,14 @@ SMARTBOX_STATUS_MAP = {
 }
 
 # Map for the service LED (MSB in SYS_LIGHTS register)
-LED_SERVICE_MAP = {
+LED_SERVICE_MAP: Final = {
     -1: "UNDEFINED",
     0: "OFF",
     255: "ON",
 }
 
 # Map for the status LED (LSB in SYS_LIGHTS register)
-LED_STATUS_MAP = {
+LED_STATUS_MAP: Final = {
     -1: "UNDEFINED",  # We should never receive an undefined status
     0: "OFF",
     10: "GREEN",  # always ON - used for 'OK and OFFLINE'
@@ -260,7 +260,7 @@ class PasdConversionUtility:
             return []
 
     @classmethod
-    def convert_chip_id(cls, value_list: list[int]) -> list[int]:
+    def convert_chip_id(cls, value_list: list[int]) -> list[str]:
         """
         Convert the raw register values to a string chip id.
 

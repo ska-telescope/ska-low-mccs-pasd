@@ -164,14 +164,27 @@ class PasdBusRegisterMap:
 
     _FNDH_ADDRESS: Final = 101
 
-    # Dictionary mapping FNDH attribute name (as used by clients) to
-    # PasdBusAttribute. These must be stored in Modbus address order
-    _FNDH_REGISTER_MAP: Final = {
-        "modbus_register_map_revision": PasdBusAttribute(0, 1),
+    MODBUS_REGISTER_MAP_REVISION = "modbus_register_map_revision"
+
+    # Register map for the 'info' registers, guaranteed to be the same
+    # across versions. Used for both the FNDH and smartboxes.
+    _INFO_REGISTER_MAP: Final = {
+        MODBUS_REGISTER_MAP_REVISION: PasdBusAttribute(0, 1),
         "pcb_revision": PasdBusAttribute(1, 1),
         "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
         "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_chip_id),
         "firmware_version": PasdBusAttribute(12, 1),
+    }
+
+    # Inverse dictionary mapping register number (address) to
+    # attribute name, to be used by the server simulation
+    _INFO_REGISTER_INVERSE_MAP: Final = {
+        v.address: k for k, v in _INFO_REGISTER_MAP.items()
+    }
+
+    # Register maps for the attributes which might change across versions
+    # NB: The attributes must be inserted in register number order
+    _FNDH_REGISTER_MAP_V1: Final = {
         "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
         "sys_address": PasdBusAttribute(15, 1),
         "psu48v_voltages": PasdBusAttribute(16, 2, PasdConversionUtility.scale_48vs),
@@ -206,20 +219,7 @@ class PasdBusRegisterMap:
         ),
     }
 
-    # Inverse dictionary mapping register number (address) to
-    # attribute name, to be used by the server simulation
-    _FNDH_REGISTER_INVERSE_MAP: Final = {
-        v.address: k for k, v in _FNDH_REGISTER_MAP.items()
-    }
-
-    # Dictionary mapping smartbox attribute name (as used by clients) to
-    # PasdAttribute. These must be stored in Modbus address order
-    _SMARTBOX_REGISTER_MAP: Final = {
-        "modbus_register_map_revision": PasdBusAttribute(0, 1),
-        "pcb_revision": PasdBusAttribute(1, 1),
-        "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
-        "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_chip_id),
-        "firmware_version": PasdBusAttribute(12, 1),
+    _SMARTBOX_REGISTER_MAP_V1: Final = {
         "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
         "sys_address": PasdBusAttribute(15, 1),
         "input_voltage": PasdBusAttribute(16, 1, PasdConversionUtility.scale_48vs),
@@ -257,39 +257,68 @@ class PasdBusRegisterMap:
         "ports_current_draw": PasdBusAttribute(47, 12),
     }
 
-    # Inverse dictionary mapping register number to attribute name
-    # (to be used by the server simulation)
-    _SMARTBOX_REGISTER_INVERSE_MAP: Final = {
-        v.address: k for k, v in _SMARTBOX_REGISTER_MAP.items()
-    }
+    # Map modbus register revision number to the corresponding register map
+    _FNDH_REGISTER_MAPS: Final = {1: _FNDH_REGISTER_MAP_V1}
+    _SMARTBOX_REGISTER_MAPS: Final = {1: _SMARTBOX_REGISTER_MAP_V1}
 
-    @classmethod
+    def __init__(self, revision_number: int = 1):
+        """
+        Initialize a new instance.
+
+        :param revision_number: Modbus register map revision number,
+            if known (this will be set later after interrogating
+            the h/w)
+        """
+        self._revision_number = revision_number
+
+    @property
+    def revision_number(self) -> int:
+        """Return the Modbus register map revision number.
+
+        :return: The integer revision number
+        """
+        return self._revision_number
+
+    @revision_number.setter
+    def revision_number(self, value: int) -> None:
+        """Set the Modbus register map revision number.
+
+        : param: value: the integer revision number to set
+        """
+        self._revision_number = value
+
     def get_attributes(
-        cls, device_id: int, attribute_names: list[str]
+        self, device_id: int, attribute_names: list[str]
     ) -> dict[str, PasdBusAttribute]:
         """
         Map a list of attribute names to PasdAttribute objects.
 
         :raises PasdReadError: If non-contiguous set of registers requested
 
-        :param device_id: the ID of the smartbox / FNDH device
+        :param device_id: the ID (address) of the smartbox / FNDH device
         :param attribute_names: name of the attribute(s)
 
         :return: A dictionary mapping attribute names to PasdAttributes,
             inserted in Modbus address order
         """
-        if device_id == cls._FNDH_ADDRESS:
-            attributes = {
-                name: attr
-                for name, attr in cls._FNDH_REGISTER_MAP.items()
-                if name in attribute_names
-            }
+        # Get the register map for the current revision number
+        if device_id == self._FNDH_ADDRESS:
+            attribute_map = self._FNDH_REGISTER_MAPS[self.revision_number]
         else:
-            attributes = {
+            attribute_map = self._SMARTBOX_REGISTER_MAPS[self.revision_number]
+
+        attributes = {
+            name: attr
+            for name, attr in self._INFO_REGISTER_MAP.items()
+            if name in attribute_names
+        }
+        attributes.update(
+            {
                 name: attr
-                for name, attr in cls._SMARTBOX_REGISTER_MAP.items()
+                for name, attr in attribute_map.items()
                 if name in attribute_names
             }
+        )
         # Check a contiguous set of registers has been requested
         last_attr = None
         for name, attr in attributes.items():
@@ -304,8 +333,7 @@ class PasdBusRegisterMap:
             raise PasdReadError(last_name, name)
         return attributes
 
-    @classmethod
-    def get_attribute_names(cls, device_id: int, addresses: list[int]) -> list[str]:
+    def get_attribute_names(self, device_id: int, addresses: list[int]) -> list[str]:
         """
         Map a list of register numbers to attribute names.
 
@@ -314,6 +342,16 @@ class PasdBusRegisterMap:
 
         :return: A list of the corresponding string attribute names
         """
-        if device_id == cls._FNDH_ADDRESS:
-            return [cls._FNDH_REGISTER_INVERSE_MAP[address] for address in addresses]
-        return [cls._SMARTBOX_REGISTER_INVERSE_MAP[address] for address in addresses]
+        names = [self._INFO_REGISTER_INVERSE_MAP[address] for address in addresses]
+        if device_id == self._FNDH_ADDRESS:
+            inverse_map = {
+                v.address: k
+                for k, v in self._FNDH_REGISTER_MAPS[self.revision_number].items()
+            }
+        else:
+            inverse_map = {
+                v.address: k
+                for k, v in self._SMARTBOX_REGISTER_MAPS[self.revision_number].items()
+            }
+        names.extend([inverse_map[address] for address in addresses])
+        return names

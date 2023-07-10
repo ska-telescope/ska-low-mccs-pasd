@@ -139,6 +139,9 @@ class PasdBusModbusApiClient:
         # (see JIRA ticket PRTS-255)
         self._client.register(CustomReadHoldingRegistersResponse)  # type: ignore
 
+        # Initialise a default register map
+        self._register_map = PasdBusRegisterMap()
+
     def _create_error_response(self, error_code: str, message: str) -> dict:
         return {
             "error": {
@@ -154,7 +157,7 @@ class PasdBusModbusApiClient:
         # Get a dictionary mapping the requested attribute names to
         # PasdBusAttributes
         try:
-            attributes = PasdBusRegisterMap.get_attributes(slave_id, request["read"])
+            attributes = self._register_map.get_attributes(slave_id, request["read"])
         except PasdReadError as e:
             return self._create_error_response(
                 "request", str(e)
@@ -213,6 +216,11 @@ class PasdBusModbusApiClient:
                         if len(converted_values) == 1
                         else converted_values
                     )
+
+                    # Check if we need to update the register map revision number
+                    if key == PasdBusRegisterMap.MODBUS_REGISTER_MAP_REVISION:
+                        self._register_map.revision_number = results[key]
+
                     # Only increment the register index if we are not
                     # parsing a port status attribute as there might be more to come
                     if not isinstance(current_attribute, PasdBusPortAttribute):

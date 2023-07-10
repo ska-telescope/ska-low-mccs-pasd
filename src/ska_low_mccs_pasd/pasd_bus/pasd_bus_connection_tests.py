@@ -57,33 +57,33 @@ if __name__ == "__main__":
     )
 
     # # Port status:
-    conn.read(
-        101,
-        "port_forcings",
-        "port_breakers_tripped",
-        "ports_desired_power_when_online",
-        "ports_desired_power_when_offline",
-        "ports_power_sensed",
-    )
+    # conn.read(
+    #     101,
+    #     "port_forcings",
+    #     "port_breakers_tripped",
+    #     "ports_desired_power_when_online",
+    #     "ports_desired_power_when_offline",
+    #     "ports_power_sensed",
+    # )
 
     # # Smart box on port 1
-    # conn.read(
-    #     1,
-    #     "modbus_register_map_revision",
-    #     "pcb_revision",
-    #     "cpu_id",
-    #     "chip_id",
-    #     "firmware_version",
-    #     "uptime",
-    #     "sys_address",
-    #     "input_voltage",
-    #     "power_supply_output_voltage",
-    #     "psu_temperature",
-    #     "pcb_temperature",
-    #     "outside_temperature",
-    #     "status",
-    #     "led_pattern",
-    # )
+    conn.read(
+        1,
+        "modbus_register_map_revision",
+        "pcb_revision",
+        "cpu_id",
+        "chip_id",
+        "firmware_version",
+        "uptime",
+        "sys_address",
+        "input_voltage",
+        "power_supply_output_voltage",
+        "psu_temperature",
+        "pcb_temperature",
+        "outside_temperature",
+        "status",
+        "led_pattern",
+    )
 
     # Port status:
     # conn.read(
