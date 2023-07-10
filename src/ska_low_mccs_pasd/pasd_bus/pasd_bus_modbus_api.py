@@ -157,7 +157,9 @@ class PasdBusModbusApiClient:
         # Get a dictionary mapping the requested attribute names to
         # PasdBusAttributes
         try:
-            attributes = self._register_map.get_attributes(responder_id, request["read"])
+            attributes = self._register_map.get_attributes(
+                responder_id, request["read"]
+            )
         except PasdReadError as e:
             return self._create_error_response(
                 "request", str(e)
