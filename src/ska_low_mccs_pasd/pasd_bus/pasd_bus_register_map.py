@@ -148,7 +148,7 @@ class PasdBusPortAttribute(PasdBusAttribute):
                         results.append(forcing_map[None])
                     else:
                         logger.warning(
-                            f"Unknown port forcing: {bitstring[2:4]}"
+                            f"Unknown port forcing: {bitstring[6:8]}"
                             f" for port {port_number}"
                         )
                         results.append(forcing_map[None])
@@ -191,7 +191,7 @@ class PasdBusRegisterMap:
         "psu48v_current": PasdBusAttribute(
             18, 1, PasdConversionUtility.scale_48vcurrents
         ),
-        "psu48v_temperature": PasdBusAttribute(
+        "psu48v_temperatures": PasdBusAttribute(
             19, 2, PasdConversionUtility.scale_temps
         ),
         "pcb_temperature": PasdBusAttribute(21, 1, PasdConversionUtility.scale_temps),

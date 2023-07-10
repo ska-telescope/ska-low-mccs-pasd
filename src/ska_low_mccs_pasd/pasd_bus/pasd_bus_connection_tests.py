@@ -34,8 +34,6 @@ class PasdBusConnectionTest:
 if __name__ == "__main__":
     conn = PasdBusConnectionTest("127.0.0.1", 5000)
 
-    # conn.read(101, "status")
-
     # Read FNDH polling registers
     conn.read(
         101,
@@ -48,7 +46,7 @@ if __name__ == "__main__":
         "sys_address",
         "psu48v_voltages",
         "psu48v_current",
-        "psu48v_temperature",
+        "psu48v_temperatures",
         "pcb_temperature",
         "fncb_temperature",
         "humidity",
@@ -56,17 +54,17 @@ if __name__ == "__main__":
         "led_pattern",
     )
 
-    # # Port status:
-    # conn.read(
-    #     101,
-    #     "port_forcings",
-    #     "port_breakers_tripped",
-    #     "ports_desired_power_when_online",
-    #     "ports_desired_power_when_offline",
-    #     "ports_power_sensed",
-    # )
+    # Port status:
+    conn.read(
+        101,
+        "port_forcings",
+        "port_breakers_tripped",
+        "ports_desired_power_when_online",
+        "ports_desired_power_when_offline",
+        "ports_power_sensed",
+    )
 
-    # # Smart box on port 1
+    # Smart box on port 1
     conn.read(
         1,
         "modbus_register_map_revision",
@@ -86,12 +84,12 @@ if __name__ == "__main__":
     )
 
     # Port status:
-    # conn.read(
-    #     1,
-    #     "port_forcings",
-    #     "port_breakers_tripped",
-    #     "ports_desired_power_when_online",
-    #     "ports_desired_power_when_offline",
-    #     "ports_power_sensed",
-    #     "ports_current_draw",
-    # )
+    conn.read(
+        1,
+        "port_forcings",
+        "port_breakers_tripped",
+        "ports_desired_power_when_online",
+        "ports_desired_power_when_offline",
+        "ports_power_sensed",
+        "ports_current_draw",
+    )
