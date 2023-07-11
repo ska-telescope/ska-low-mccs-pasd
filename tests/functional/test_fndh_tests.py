@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
-"""This module contains a simple tests of the MCCS FNDH Tango device."""
+"""This module contains a simple test of the MCCS FNDH Tango device."""
 from __future__ import annotations
 
 import gc
@@ -57,7 +57,7 @@ def check_power_states(
     check_fastcommand: Callable,
 ) -> None:
     """
-    Check initial power states.
+    Compare power states.
 
     :param pasd_bus_device: a proxy to the PaSD bus device.
     :param fndh_device: a proxy to the FNDH device.
@@ -66,8 +66,8 @@ def check_power_states(
     :param check_fastcommand: fixture for checking fast command result.
     """
     power_map = {False: PowerState.OFF, True: PowerState.ON, None: PowerState.UNKNOWN}
-    timeout = 10
-    current_time = time.time()
+    timeout = 10  # Seconds
+    current_time = time.time()  # Seconds
     while time.time() < current_time + timeout:
         try:
             assert power_map[

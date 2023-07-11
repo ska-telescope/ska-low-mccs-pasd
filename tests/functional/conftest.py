@@ -9,7 +9,6 @@
 import logging
 import os
 import threading
-import time
 from contextlib import contextmanager
 from functools import lru_cache
 from typing import (
@@ -472,11 +471,14 @@ def set_device_state_fixture(
         device_proxy = get_device_proxy(device_name)
 
         admin_mode_callback = change_event_callbacks[f"{device_name}/adminMode"]
+        state_callback = change_event_callbacks[f"{device_name}/state"]
         if device_proxy.adminMode != mode:
             device_proxy.adminMode = mode
             admin_mode_callback.assert_change_event(mode)
-        time.sleep(3)  # Allow methods triggered by adminMode change to finish.
-        state_callback = change_event_callbacks[f"{device_name}/state"]
+            if mode != AdminMode.OFFLINE:
+                state_callback.assert_change_event(tango.DevState.UNKNOWN)
+            state_callback.assert_change_event(Anything)
+
         if device_proxy.read_attribute("state").value != state:
             print(f"Turning {device_proxy.dev_name()} {state}")
             set_tango_device_state(
