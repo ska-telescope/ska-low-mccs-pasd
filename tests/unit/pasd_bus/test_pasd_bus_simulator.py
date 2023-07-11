@@ -497,7 +497,6 @@ class TestSmartboxSimulator:
             ("chip_id", SmartboxSimulator.CHIP_ID),
             ("firmware_version", SmartboxSimulator.DEFAULT_FIRMWARE_VERSION),
             ("uptime", SmartboxSimulator.DEFAULT_UPTIME),
-            ("status", SmartboxSimulator.DEFAULT_STATUS),
             ("led_pattern", SmartboxSimulator.DEFAULT_LED_PATTERN),
         ],
     )
@@ -532,3 +531,16 @@ class TestSmartboxSimulator:
         assert smartbox_simulator.led_pattern == "SERVICE"
         assert smartbox_simulator.set_led_pattern("OFF")
         assert smartbox_simulator.led_pattern == "OFF"
+
+    def test_status_ok(
+        self: TestSmartboxSimulator,
+        smartbox_simulator: SmartboxSimulator,
+    ) -> None:
+        """
+        Test if the smartbox status is initialized to OK.
+
+        :param smartbox_simulator: the smartbox simulator under test.
+        """
+        assert smartbox_simulator.status == "UNINITIALISED"
+        assert smartbox_simulator.update_status()
+        assert smartbox_simulator.status == "OK"

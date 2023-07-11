@@ -767,6 +767,27 @@ class TestSmartBoxPasdBusIntegration:
         assert smartbox_device.InputVoltage != initial_input_voltage
         assert smartbox_device.InputVoltage == 10
 
+        # Test smartbox status attribute
+        # assert smartbox_device.Status == SmartboxSimulator.DEFAULT_STATUS
+        # initial_status = smartbox_device.Status
+        # smartbox_device.subscribe_event(
+        #     "Status",
+        #     tango.EventType.CHANGE_EVENT,
+        #     change_event_callbacks["smartboxstatus"],
+        # )
+        # change_event_callbacks.assert_change_event(
+        #     "smartboxstatus", initial_status
+        # )
+
+        # When we mock a change in an attribute at the simulator level.
+        # This is received and pushed onward by the MccsSmartbox device.
+
+        # smartbox_simulator.update_status()
+        # change_event_callbacks.assert_change_event("smartboxstatus", "OK")
+
+        # assert smartbox_device.Status != initial_status
+        # assert smartbox_device.Status == "OK"
+
 
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
@@ -785,6 +806,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "smartbox24portsconnected",
         "smartboxportpowersensed",
         "smartboxinputvoltage",
+        "smartboxstatus",
         "fndhport2powerstate",
         "fndhportpowerstate",
         timeout=10.0,

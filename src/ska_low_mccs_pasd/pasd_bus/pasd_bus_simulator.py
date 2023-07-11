@@ -38,8 +38,8 @@ import importlib.resources
 import logging
 from datetime import datetime
 from typing import Final, Optional, Sequence
-
 import yaml
+# from .pasd_bus_conversions import PasdConversionUtility
 
 logger = logging.getLogger()
 
@@ -268,7 +268,7 @@ class PasdHardwareSimulator:
         """
         if len(ports_connected) != len(self._ports):
             raise ValueError("Configuration must match the number of ports.")
-        for (port, is_connected) in zip(self._ports, ports_connected):
+        for port, is_connected in zip(self._ports, ports_connected):
             port.connected = is_connected
 
     @property
@@ -455,8 +455,9 @@ class FndhSimulator(PasdHardwareSimulator):
     will only be used as a component of a PaSD bus simulator.
     """
 
-    NUMBER_OF_PORTS = 28
+    NUMBER_OF_PORTS: Final  = 28
 
+<<<<<<< HEAD
     CPU_ID = 22
     CHIP_ID = 23
     MODBUS_REGISTER_MAP_REVISION = 20
@@ -472,10 +473,28 @@ class FndhSimulator(PasdHardwareSimulator):
     DEFAULT_PCB_TEMPERATURE = 41.4
     DEFAULT_FNCB_TEMPERATURE = 41.5
     DEFAULT_HUMIDITY = 50.2
+=======
+    CPU_ID: Final  = 22
+    CHIP_ID: Final  = 23
+    MODBUS_REGISTER_MAP_REVISION: Final  = 20
+    PCB_REVISION: Final  = 21
+
+    DEFAULT_FIRMWARE_VERSION: Final  = "1.2.3-fake"
+    # DEFAULT_STATUS = PasdConversionUtility.convert_fndh_status([4])[0]
+    DEFAULT_STATUS: Final = "UNINITIALISED"
+    DEFAULT_UPTIME: Final  = 2000
+    DEFAULT_PSU48V_VOLTAGES: Final  = [47.9, 48.1]
+    DEFAULT_PSU5V_VOLTAGE: Final  = 5.1
+    DEFAULT_PSU48V_CURRENT: Final  = 20.1
+    DEFAULT_PSU48V_TEMPERATURE: Final  = 41.2
+    DEFAULT_PSU5V_TEMPERATURE: Final  = 41.3
+    DEFAULT_PCB_TEMPERATURE: Final  = 41.4
+    DEFAULT_OUTSIDE_TEMPERATURE: Final  = 41.5
+>>>>>>> 0c3d67a (added update_status function to smartbox simulator)
 
     def __init__(self: FndhSimulator) -> None:
         """Initialise a new instance."""
-        self._update_time = datetime.now().isoformat()
+        self._init_time = datetime.now().isoformat()
 
         super().__init__(self.NUMBER_OF_PORTS)
 
@@ -630,18 +649,43 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_POWER_SUPPLY_TEMPERATURE: Final = 42.1
     DEFAULT_OUTSIDE_TEMPERATURE: Final = 44.4
     DEFAULT_PCB_TEMPERATURE: Final = 38.6
-    DEFAULT_STATUS: Final = "OK"
+    # DEFAULT_STATUS: Final = PasdConversionUtility.convert_smartbox_status([4])[0]
+    DEFAULT_STATUS: Final = "UNINITIALISED"
     DEFAULT_UPTIME: Final = 1000
 
     DEFAULT_PORT_CURRENT_DRAW: Final = 20.5
+
+    # thresholds with over-value alarm and warning, as well as under-value alarm and warning
+    THRESHOLD_REGISTERS = {
+        "SYS_48V_V_TH": (1001, 4, "Incoming 48VDC voltage AH, WH, WL, AL", None),
+        "SYS_PSU_V_TH": (1005, 4, "PSU output voltage AH, WH, WL, AL", None),
+        "SYS_PSUTEMP_TH": (1009, 4, "PSU temperature AH, WH, WL, AL", None),
+        "SYS_PCBTEMP_TH": (1013, 4, "PCB temperature AH, WH, WL, AL", None),
+        "SYS_AMBTEMP_TH": (1017, 4, "Ambient temperature AH, WH, WL, AL", None),
+        "SYS_SENSE01_TH": (1021, 4, "Sensor 1 AH, WH, WL, AL", None),
+        "SYS_SENSE02_TH": (1025, 4, "Sensor 2 AH, WH, WL, AL", None),
+        "SYS_SENSE03_TH": (1029, 4, "Sensor 3 AH, WH, WL, AL", None),
+        "SYS_SENSE04_TH": (1033, 4, "Sensor 4 AH, WH, WL, AL", None),
+        "SYS_SENSE05_TH": (1037, 4, "Sensor 5 AH, WH, WL, AL", None),
+        "SYS_SENSE06_TH": (1041, 4, "Sensor 6 AH, WH, WL, AL", None),
+        "SYS_SENSE07_TH": (1045, 4, "Sensor 7 AH, WH, WL, AL", None),
+        "SYS_SENSE08_TH": (1049, 4, "Sensor 8 AH, WH, WL, AL", None),
+        "SYS_SENSE09_TH": (1053, 4, "Sensor 9 AH, WH, WL, AL", None),
+        "SYS_SENSE10_TH": (1057, 4, "Sensor 10 AH, WH, WL, AL", None),
+        "SYS_SENSE11_TH": (1061, 4, "Sensor 11 AH, WH, WL, AL", None),
+        "SYS_SENSE12_TH": (1065, 4, "Sensor 12 AH, WH, WL, AL", None),
+    }
 
     def __init__(self: SmartboxSimulator) -> None:
         """Initialise a new instance."""
         super().__init__(self.NUMBER_OF_PORTS)
         self._port_breaker_tripped = [False] * self.NUMBER_OF_PORTS
-        self._update_time = datetime.now().isoformat()
-
+        self._init_time = datetime.now().isoformat()
+        self._status = self.DEFAULT_STATUS
         self._input_voltage = self.DEFAULT_INPUT_VOLTAGE
+        self._sensor_states = {
+            threshold_register: "OK" for threshold_register in self.THRESHOLD_REGISTERS
+        }
 
     @property
     def sys_address(self: SmartboxSimulator) -> int:
@@ -679,7 +723,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
     @input_voltage.setter
     def input_voltage(self: SmartboxSimulator, value: float) -> None:
         """
-        Return the input voltage, in volts.
+        Set the input voltage, in volts.
 
         :param value: the value to simulate.
         """
@@ -700,10 +744,27 @@ class SmartboxSimulator(PasdHardwareSimulator):
         """
         Return the status of the smartbox.
 
-        :return: a string statuses.
+        :return: a string status.
         """
-        # TODO: We're currently returning canned results.
-        return self.DEFAULT_STATUS
+        return self._status
+
+    def update_status(self: SmartboxSimulator) -> bool:
+        """
+        Update the status of the smartbox.
+        """
+        try:
+            if "ALARM" in self._sensor_states.values():
+                self._status = "ALARM"
+            elif "RECOVERY" in self._sensor_states.values():
+                self._status = "RECOVERY"
+            elif "WARNING" in self._sensor_states.values():
+                self._status = "WARNING"
+            else:
+                self._status = "OK"
+            return True
+        except LookupError:
+            return False
+        # self._status = PasdConversionUtility.convert_smartbox_status([value])[0]
 
     @property
     def power_supply_temperature(self: SmartboxSimulator) -> float:
@@ -899,7 +960,7 @@ class PasdBusSimulator:
             smartbox_port = antenna_config["smartbox_port"]
             smartbox_ports_connected[smartbox_id - 1][smartbox_port - 1] = True
 
-        for (smartbox_index, ports_connected) in enumerate(smartbox_ports_connected):
+        for smartbox_index, ports_connected in enumerate(smartbox_ports_connected):
             self._smartbox_simulators[smartbox_index].configure(ports_connected)
 
         return True
