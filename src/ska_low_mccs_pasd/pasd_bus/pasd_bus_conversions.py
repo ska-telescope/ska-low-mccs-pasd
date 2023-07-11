@@ -82,7 +82,7 @@ class PasdConversionUtility:
         :return: The integer result
         """
         nbytes = len(value_list)
-        if nbytes != 2 * (nbytes // 2):
+        if nbytes % 2:
             raise ValueError(f"Odd number of bytes to convert: {value_list}")
 
         return sum(value_list[i] * (256 ** (nbytes - i - 1)) for i in range(nbytes))
