@@ -85,7 +85,9 @@ class PasdConversionUtility:
         if nbytes % 2:
             raise ValueError(f"Odd number of bytes to convert: {value_list}")
 
-        return sum(value * (256 ** (nbytes - i - 1)) for i, value in enumerate(value_list))
+        return sum(
+            value * (256 ** (nbytes - i - 1)) for i, value in enumerate(value_list)
+        )
 
     @classmethod
     def n_to_bytes(cls, value: int, nbytes: int = 2) -> list[int]:
