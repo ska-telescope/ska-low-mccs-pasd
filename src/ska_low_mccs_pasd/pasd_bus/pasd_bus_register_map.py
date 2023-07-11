@@ -187,7 +187,7 @@ class PasdBusRegisterMap:
     _FNDH_REGISTER_MAP_V1: Final = {
         "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
         "sys_address": PasdBusAttribute(15, 1),
-        "psu48v_voltages": PasdBusAttribute(16, 2, PasdConversionUtility.scale_48vs),
+        "psu48v_voltages": PasdBusAttribute(16, 2, PasdConversionUtility.scale_volts),
         "psu48v_current": PasdBusAttribute(
             18, 1, PasdConversionUtility.scale_48vcurrents
         ),
@@ -222,9 +222,9 @@ class PasdBusRegisterMap:
     _SMARTBOX_REGISTER_MAP_V1: Final = {
         "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
         "sys_address": PasdBusAttribute(15, 1),
-        "input_voltage": PasdBusAttribute(16, 1, PasdConversionUtility.scale_48vs),
+        "input_voltage": PasdBusAttribute(16, 1, PasdConversionUtility.scale_volts),
         "power_supply_output_voltage": PasdBusAttribute(
-            17, 1, PasdConversionUtility.scale_5vs
+            17, 1, PasdConversionUtility.scale_volts
         ),
         "psu_temperature": PasdBusAttribute(18, 1, PasdConversionUtility.scale_temps),
         "pcb_temperature": PasdBusAttribute(19, 1, PasdConversionUtility.scale_temps),

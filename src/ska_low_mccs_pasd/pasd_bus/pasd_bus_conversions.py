@@ -133,7 +133,7 @@ class PasdConversionUtility:
         return values
 
     @classmethod
-    def scale_5vs(
+    def scale_volts(
         cls, value_list: list[int | float], reverse: bool = False
     ) -> list[int | float]:
         """
@@ -148,27 +148,6 @@ class PasdConversionUtility:
             instead of raw->physical
 
         :return: output_values in Volts
-        """
-        if reverse:
-            return [int(value * 100) & 0xFFFF for value in value_list]
-        return [value / 100.0 for value in value_list]
-
-    @classmethod
-    def scale_48vs(
-        cls, value_list: list[int | float], reverse: bool = False
-    ) -> list[int | float]:
-        """
-        Convert raw register value(s) to Volts.
-
-        For now, raw values are hundredths of a volt, positive only.
-
-        :param value_list: raw register contents as a list of  values from 0-65535, or a
-            list of voltages
-
-        :param reverse: Boolean, True to perform physical->raw conversion
-            instead of raw->physical
-
-        :return: list of output_values in Volts
         """
         if reverse:
             return [int(value * 100) & 0xFFFF for value in value_list]
