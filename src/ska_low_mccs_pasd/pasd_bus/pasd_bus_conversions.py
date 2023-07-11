@@ -134,7 +134,7 @@ class PasdConversionUtility:
 
     @classmethod
     def scale_volts(
-        cls, value_list: list[int | float], reverse: bool = False
+        cls, value_list: list[int | float], inverse: bool = False
     ) -> list[int | float]:
         """
         Convert raw register value(s) to Volts.
@@ -144,18 +144,18 @@ class PasdConversionUtility:
         :param value_list: raw register contents as a list of values from 0-65535, or a
             list of voltages
 
-        :param reverse: Boolean, True to perform physical->raw conversion
+        :param inverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
 
         :return: output_values in Volts
         """
-        if reverse:
+        if inverse:
             return [int(value * 100) & 0xFFFF for value in value_list]
         return [value / 100.0 for value in value_list]
 
     @classmethod
     def scale_temps(
-        cls, value_list: list[int | float], reverse: bool = False
+        cls, value_list: list[int | float], inverse: bool = False
     ) -> list[int | float]:
         """
         Convert raw register value(s) to deg C.
@@ -166,10 +166,10 @@ class PasdConversionUtility:
         :param value_list: raw register contents as a list of values from 0-65535, or
             floating point temperatures in degrees
 
-        :param reverse: Boolean, True to perform physical->raw conversion
+        :param inverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
 
-        :return: value in deg C (if reverse=False), or raw value as an
+        :return: value in deg C (if inverse=False), or raw value as an
             unsigned 16 bit integer
 
         """
@@ -184,14 +184,14 @@ class PasdConversionUtility:
                 return (int(value * 100) + 65536) & 0xFFFF
             return int(value * 100) & 0xFFFF
 
-        if reverse:
+        if inverse:
             return [deg_to_raw(value) for value in value_list]
 
         return [raw_to_deg(int(value)) for value in value_list]
 
     @classmethod
     def scale_48vcurrents(
-        cls, value_list: list[int | float], reverse: bool = False
+        cls, value_list: list[int | float], inverse: bool = False
     ) -> list[int | float]:
         """
         Convert raw register value(s) to Amps.
@@ -201,12 +201,12 @@ class PasdConversionUtility:
         :param value_list: raw register contents as a list of values from 0-65535 or
             list of currents in amps
 
-        :param reverse: Boolean, True to perform physical->raw conversion
+        :param inverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
 
         :return: list of output_values
         """
-        if reverse:
+        if inverse:
             return [int(value * 100) & 0xFFFF for value in value_list]
         return [value / 100.0 for value in value_list]
 
