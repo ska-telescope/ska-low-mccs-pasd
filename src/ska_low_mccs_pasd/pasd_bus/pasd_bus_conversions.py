@@ -8,61 +8,68 @@
 """This module provides scaling and other conversion functions for the PaSD."""
 
 import logging
-from typing import Any, Final
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger()
 
-FNDH_STATUS_MAP: Final = {
-    -1: "UNDEFINED",  # We should never receive an undefined status
-    0: "OK",  # Initialised, system health OK
-    1: "WARNING",  # Initialised, and at least one sensor in WARNING
-    2: "ALARM",  # Initialised, and at least one sensor in ALARM
-    3: "RECOVERY",  # Initialised, and at least one sensor in RECOVERY
-    4: "UNINITIALISED",  # NOT initialised, regardless of sensor states
-    5: "POWERUP",  # Local tech wants to turn off all ports,
+
+class FndhStatusMap(Enum):
+    """Enum type for FNDH health status strings."""
+
+    UNDEFINED = -1  # We should never receive an undefined status
+    OK = 0  # Initialised, system health OK
+    WARNING = 1  # Initialised, and at least one sensor in WARNING
+    ALARM = 2  # Initialised, and at least one sensor in ALARM
+    RECOVERY = 3  # Initialised, and at least one sensor in RECOVERY
+    UNINITIALISED = 4  # NOT initialised, regardless of sensor states
+    POWERUP = 5  # Local tech wants to turn off all ports,
     # then go through full powerup sequence
-}
 
-SMARTBOX_STATUS_MAP: Final = {
-    -1: "UNDEFINED",  # We should never receive an undefined status
-    0: "OK",  # Initialised, system health OK
-    1: "WARNING",  # Initialised, and at least one sensor in WARNING
-    2: "ALARM",  # Initialised, and at least one sensor in ALARM
-    3: "RECOVERY",  # Initialised, and at least one sensor in RECOVERY
-    4: "UNINITIALISED",  # NOT initialised, regardless of sensor states
-    5: "POWERDOWN",  # Local tech wants to turn off 48V to all ports in the station
-}
 
-# Map for the service LED (MSB in SYS_LIGHTS register)
-LED_SERVICE_MAP: Final = {
-    -1: "UNDEFINED",
-    0: "OFF",
-    255: "ON",
-}
+class SmartBoxStatusMap(Enum):
+    """Enum type for SmartBox health status strings."""
 
-# Map for the status LED (LSB in SYS_LIGHTS register)
-LED_STATUS_MAP: Final = {
-    -1: "UNDEFINED",  # We should never receive an undefined status
-    0: "OFF",
-    10: "GREEN",  # always ON - used for 'OK and OFFLINE'
-    11: "GREENSLOW",  # 1.25 Hz strobe  - used for 'OK and ONLINE'
-    12: "GREENFAST",  # 2.5 Hz strobe
-    13: "GREENVFAST",  # 5 Hz strobe
-    14: "GREENDOTDASH",  # SOS in Morse code
-    20: "YELLOW",  # always ON  - used for 'WARNING and OFFLINE'
-    21: "YELLOWSLOW",  # 1.25 Hz strobe  - used for 'WARNING and ONLINE'
-    22: "YELLOWFAST",  # 2.5 Hz strobe  - used for 'UNINITIALISED'
-    23: "YELLOWVFAST",  # 5 Hz strobe
-    24: "YELLOWDOTDASH",  # SOS in Morse code
-    30: "RED",  # always ON
-    31: "REDSLOW",  # 1.25 Hz strobe
-    32: "REDFAST",  # 2.5 Hz strobe
-    33: "REDVFAST",  # 5 Hz strobe
-    34: "REDDOTDASH",  # SOS in Morse code
-    40: "YELLOWRED",  # Alternating yellow and red at 1.25 Hz
-    41: "YELLOWREDSLOW",  # red 0.5sec, 0.3 sec off, yellow 0.5 sec, 0.3 sec off pattern
-    50: "GREENRED",  # Alternating green and red at 1.25 Hz - used for 'POWERDOWN'
-}
+    UNDEFINED = -1  # We should never receive an undefined status
+    OK = 0  # Initialised, system health OK
+    WARNING = 1  # Initialised, and at least one sensor in WARNING
+    ALARM = 2  # Initialised, and at least one sensor in ALARM
+    RECOVERY = 3  # Initialised, and at least one sensor in RECOVERY
+    UNINITIALISED = 4  # NOT initialised, regardless of sensor states
+    POWERDOWN = 5  # Local tech wants to turn off 48V to all ports in the station
+
+
+class LEDServiceMap(Enum):
+    """Enum type for the service LED (MSB in SYS_LIGHTS register)."""
+
+    UNDEFINED = -1
+    OFF = 0
+    ON = 255
+
+
+class LEDStatusMap(Enum):
+    """Enum type for the status LED (LSB in SYS_LIGHTS_REGISTER)."""
+
+    UNDEFINED = -1  # We should never receive an undefined status
+    OFF = 0
+    GREEN = 10  # always ON - used for 'OK and OFFLINE'
+    GREENSLOW = 11  # 1.25 Hz strobe  - used for 'OK and ONLINE'
+    GREENFAST = 12  # 2.5 Hz strobe
+    GREENVFAST = 13  # 5 Hz strobe
+    GREENDOTDASH = 14  # SOS in Morse code
+    YELLOW = 20  # always ON  - used for 'WARNING and OFFLINE'
+    YELLOWSLOW = 21  # 1.25 Hz strobe  - used for 'WARNING and ONLINE'
+    YELLOWFAST = 22  # 2.5 Hz strobe  - used for 'UNINITIALISED'
+    YELLOWVFAST = 23  # 5 Hz strobe
+    YELLOWDOTDASH = 24  # SOS in Morse code
+    RED = 30  # always ON
+    REDSLOW = 31  # 1.25 Hz strobe
+    REDFAST = 32  # 2.5 Hz strobe
+    REDVFAST = 33  # 5 Hz strobe
+    REDDOTDASH = 34  # SOS in Morse code
+    YELLOWRED = 40  # Alternating yellow and red at 1.25 Hz
+    YELLOWREDSLOW = 41  # red 0.5sec, 0.3 sec off, yellow 0.5 sec, 0.3 sec off pattern
+    GREENRED = 50  # Alternating green and red at 1.25 Hz - used for 'POWERDOWN'
 
 
 class PasdConversionUtility:
@@ -266,10 +273,10 @@ class PasdConversionUtility:
         :return: string status representation
         """
         try:
-            return [FNDH_STATUS_MAP[value_list[0]]]
-        except KeyError:
+            return [FndhStatusMap(value_list[0]).name]
+        except ValueError:
             logger.error(f"Invalid FNDH status value received: {value_list[0]}")
-            return [FNDH_STATUS_MAP[-1]]
+            return [FndhStatusMap.UNDEFINED.name]
 
     @classmethod
     def convert_smartbox_status(cls, value_list: list[int]) -> list[str]:
@@ -280,10 +287,10 @@ class PasdConversionUtility:
         :return: string status representation
         """
         try:
-            return [SMARTBOX_STATUS_MAP[value_list[0]]]
-        except KeyError:
+            return [SmartBoxStatusMap(value_list[0]).name]
+        except ValueError:
             logger.error(f"Invalid Smartbox status value received: {value_list[0]}")
-            return [SMARTBOX_STATUS_MAP[-1]]
+            return [SmartBoxStatusMap.UNDEFINED.name]
 
     @classmethod
     def convert_led_status(cls, value_list: list[int]) -> dict:
@@ -300,18 +307,21 @@ class PasdConversionUtility:
             byte_list = cls.n_to_bytes(raw_value)
         except ValueError:
             logger.error(f"Invalid LED register value received: {raw_value}")
-            return {"service": LED_SERVICE_MAP[-1], "status": LED_STATUS_MAP[-1]}
+            return {
+                "service": LEDServiceMap.UNDEFINED.name,
+                "status": LEDStatusMap.UNDEFINED.name,
+            }
 
         try:
-            service = LED_SERVICE_MAP[byte_list[0]]
-        except KeyError:
+            service = LEDServiceMap(byte_list[0]).name
+        except ValueError:
             logger.error(f"Invalid service LED value received: {byte_list[0]}")
-            service = LED_SERVICE_MAP[-1]
+            service = LEDServiceMap.UNDEFINED.name
 
         try:
-            status = LED_STATUS_MAP[byte_list[1]]
-        except KeyError:
+            status = LEDStatusMap(byte_list[1]).name
+        except ValueError:
             logger.error(f"Invalid status LED value received: {byte_list[1]}")
-            status = LED_STATUS_MAP[-1]
+            status = LEDStatusMap.UNDEFINED.name
 
         return {"service": service, "status": status}
