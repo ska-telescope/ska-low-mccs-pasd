@@ -8,42 +8,53 @@
 """This module provides a Modbus API to the PaSD bus."""
 from __future__ import annotations
 
-from typing import Any, Callable, Sequence
+import logging
+from datetime import datetime
+from typing import Any, Sequence
 
-from pymodbus.factory import ClientDecoder, ServerDecoder
+from pymodbus.client import ModbusTcpClient
+from pymodbus.exceptions import ModbusIOException
+from pymodbus.factory import ServerDecoder
 from pymodbus.framer.ascii_framer import ModbusAsciiFramer
+from pymodbus.pdu import ExceptionResponse
 from pymodbus.register_read_message import (
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
 )
 
+# from .pasd_bus_custom_pymodbus import CustomReadHoldingRegistersResponse
+from .pasd_bus_register_map import (
+    PasdBusPortAttribute,
+    PasdBusRegisterMap,
+    PasdReadError,
+)
 from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
+
+logger = logging.getLogger()
 
 
 # pylint: disable=too-few-public-methods
 class PasdBusModbusApi:
     """A Modbus API for a PaSD bus simulator."""
 
-    def __init__(
-        self,
-        simulators: Sequence[FndhSimulator | SmartboxSimulator],
-    ) -> None:
+    def __init__(self, simulators: Sequence[FndhSimulator | SmartboxSimulator]) -> None:
         """
         Initialise a new instance.
 
         :param simulators: sequence of simulators (fndh and smartbox)
             that this API fronts.
+
         """
         self._simulators = simulators
         self._framer = ModbusAsciiFramer(None)
         self._decoder = ModbusAsciiFramer(ServerDecoder(), client=None)
-        self._slave_ids = list(range(len(simulators)))
+        self.responder_ids = list(range(len(simulators)))
 
     def _handle_read_attributes(self, device_id: int, names: list[str]) -> list[Any]:
         """
         Return list of attribute values.
 
-        :param device_id: The slave ID
+        :param device_id: The responder ID
         :param names: List of string attribute names to read
 
         :return: List of attribute values
@@ -68,6 +79,7 @@ class PasdBusModbusApi:
         raise NotImplementedError
 
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
+        # TODO (temporary placeholder code here only)
         response = None
 
         def handle_request(message: Any) -> None:
@@ -88,7 +100,7 @@ class PasdBusModbusApi:
                     self._handle_no_match(message)
 
         self._decoder.processIncomingPacket(
-            modbus_request_str, handle_request, slave=self._slave_ids
+            modbus_request_str, handle_request, slave=self.responder_ids
         )
 
         return self._framer.buildPacket(response)
@@ -106,55 +118,135 @@ class PasdBusModbusApi:
 
 
 class PasdBusModbusApiClient:
-    """A client class for a PaSD bus simulator with a Modbus API."""
+    """A client class for a PaSD (simulator or h/w) with a Modbus API."""
 
     def __init__(
-        self: PasdBusModbusApiClient, transport: Callable[[bytes], bytes]
+        self: PasdBusModbusApiClient,
+        ip_address: str,
+        port: int,
+        logging_level: int = logging.INFO,
     ) -> None:
         """
         Initialise a new instance.
 
-        :param transport: the transport layer client; a callable that
-            accepts request bytes and returns response bytes.
+        :param ip_address: the IP address for the PaSD
+        :param port: the PaSD port
+        :param logging_level: the logging level to use
         """
-        self._transport = transport
-        self._framer = ModbusAsciiFramer(None)
-        self._decoder = ModbusAsciiFramer(ClientDecoder())
+        logger.setLevel(logging_level)
+        self._client = ModbusTcpClient(ip_address, port, ModbusAsciiFramer)
+        # Register a custom response as a workaround to the firmware issue
+        # (see JIRA ticket PRTS-255)
+        # self._client.register(CustomReadHoldingRegistersResponse)  # type: ignore
+
+        # Initialise a default register map
+        self._register_map = PasdBusRegisterMap()
+
+    def _create_error_response(self, error_code: str, message: str) -> dict:
+        return {
+            "error": {
+                "code": error_code,
+                "detail": message,
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+        }
 
     def _do_read_request(self, request: dict) -> dict:
-        attribute_names = request["read"]
-        slave_id = request["device_id"]
+        responder_id = request["device_id"]
 
-        # TODO: Map requested attribute names to holding register numbers
-        starting_register = 23
-        message = ReadHoldingRegistersRequest(
-            address=starting_register, slave=slave_id, count=1
+        # Get a dictionary mapping the requested attribute names to
+        # PasdBusAttributes
+        try:
+            attributes = self._register_map.get_attributes(
+                responder_id, request["read"]
+            )
+        except PasdReadError as e:
+            return self._create_error_response(
+                "request", str(e)
+            )  # TODO: What error code to use?
+
+        if len(attributes) == 0:
+            logger.warning(
+                f"No attributes matching {request['read']} in PaSD register map"
+            )
+            return {"data": {"attributes": {}}}
+
+        # Retrieve the list of keys (attribute names) in Modbus address order
+        keys = list(attributes)
+
+        # Calculate the number of registers to read
+        count = (
+            attributes[keys[-1]].address
+            + attributes[keys[-1]].count
+            - attributes[keys[0]].address
         )
-        request_bytes = self._framer.buildPacket(message)
-        response_bytes = self._transport(request_bytes)
-        response = {}
-
-        def process_read_reply(reply: Any) -> None:
-            nonlocal response
-            match reply:
-                case ReadHoldingRegistersResponse():
-                    attributes_dict = {}
-                    for attr, register in zip(attribute_names, reply.registers):
-                        attributes_dict[attr] = register
-                    response = {
-                        "source": slave_id,
-                        "data": {
-                            "type": "reads",
-                            "attributes": attributes_dict,
-                        },
-                    }
-                case _:
-                    # TODO
-                    pass
-
-        self._decoder.processIncomingPacket(
-            response_bytes, process_read_reply, slave=slave_id
+        logger.debug(
+            f"MODBUS Request: responder {responder_id}, "
+            f"start address {attributes[keys[0]].address}, count {count}"
         )
+
+        reply = self._client.read_holding_registers(
+            attributes[keys[0]].address, count, responder_id
+        )
+
+        match reply:
+            case ReadHoldingRegistersResponse():
+                results = {}  # attributes dict to be returned
+                register_index = 0  # current index into the register list
+                last_attribute = None  # last handled attribute
+
+                # Iterate through the requested attribute names, converting the raw
+                # received register values into meaningful data and adding
+                # to the attributes dictionary to be returned
+                for key in keys:
+                    current_attribute = attributes[key]
+
+                    # Check if we're moving on from reading a set of port attribute data
+                    # as we'll need to increment the register index
+                    if isinstance(
+                        last_attribute, PasdBusPortAttribute
+                    ) and not isinstance(current_attribute, PasdBusPortAttribute):
+                        register_index += last_attribute.count
+
+                    converted_values = current_attribute.convert_value(
+                        reply.registers[
+                            register_index : register_index + current_attribute.count
+                        ]
+                    )
+                    results[key] = (
+                        converted_values[0]
+                        if len(converted_values) == 1
+                        else converted_values
+                    )
+
+                    # Check if we need to update the register map revision number
+                    if key == PasdBusRegisterMap.MODBUS_REGISTER_MAP_REVISION:
+                        self._register_map.revision_number = results[key]
+
+                    # Only increment the register index if we are not
+                    # parsing a port status attribute as there might be more to come
+                    if not isinstance(current_attribute, PasdBusPortAttribute):
+                        register_index += current_attribute.count
+                    last_attribute = current_attribute
+                response = {
+                    "source": responder_id,
+                    "data": {
+                        "type": "reads",
+                        "attributes": results,
+                    },
+                }
+            case ModbusIOException():
+                # No reply: pass this exception on up to the caller
+                raise reply
+            case ExceptionResponse():
+                response = self._create_error_response(
+                    "read", f"Modbus exception response: {reply}"
+                )  # TODO: what error code to use?
+            case _:
+                response = self._create_error_response(
+                    "read", f"Unexpected response type: {type(reply)}"
+                )  # TODO: what error code to use?
+
         return response
 
     def _do_write_request(self, request: dict) -> dict:
@@ -165,15 +257,18 @@ class PasdBusModbusApiClient:
         """
         Read attribute values from the server.
 
+        Note these must be stored in contiguous Modbus registers in the h/w.
+
         :param device_id: id of the device to be read from.
         :param names: names of the attributes to be read.
 
+        :raises: ModbusIOException if the h/w failed to respond
         :return: dictionary of attribute values keyed by name
         """
         response = self._do_read_request({"device_id": device_id, "read": names})
-        assert response["source"] == device_id
-        assert response["data"]["type"] == "reads"
-        return response["data"]["attributes"]
+        if "data" in response:
+            return response["data"]["attributes"]
+        return response
 
     def execute_command(self, device_id: int, name: str, *args: Any) -> Any:
         """
