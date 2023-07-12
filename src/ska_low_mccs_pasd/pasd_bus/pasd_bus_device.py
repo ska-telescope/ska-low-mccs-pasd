@@ -13,6 +13,7 @@ import importlib.resources
 import json
 import logging
 import sys
+import traceback
 from typing import Any, Final, Optional, cast
 
 import tango.server
@@ -226,7 +227,15 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         self.set_archive_event(attribute_name, True, False)
 
     def _read_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
-        pasd_attribute.set_value(self._pasd_state[pasd_attribute.get_name()])
+        attr_name = pasd_attribute.get_name()
+        attr_value = self._pasd_state[attr_name]
+        if attr_value is None:
+            msg = f"Attempted read of {attr_name} before it has been polled."
+            self.logger.warning(msg)
+            raise tango.Except.throw_exception(
+                f"Error: {attr_name} is None", msg, "".join(traceback.format_stack())
+            )
+        pasd_attribute.set_value(attr_value)
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()

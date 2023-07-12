@@ -472,11 +472,14 @@ def set_device_state_fixture(
         device_proxy = get_device_proxy(device_name)
 
         admin_mode_callback = change_event_callbacks[f"{device_name}/adminMode"]
+        state_callback = change_event_callbacks[f"{device_name}/state"]
         if device_proxy.adminMode != mode:
             device_proxy.adminMode = mode
             admin_mode_callback.assert_change_event(mode)
-        time.sleep(3)  # Allow methods triggered by adminMode change to finish.
-        state_callback = change_event_callbacks[f"{device_name}/state"]
+            if mode != AdminMode.OFFLINE:
+                state_callback.assert_change_event(tango.DevState.UNKNOWN)
+            state_callback.assert_change_event(Anything)
+
         if device_proxy.read_attribute("state").value != state:
             print(f"Turning {device_proxy.dev_name()} {state}")
             set_tango_device_state(
@@ -565,13 +568,27 @@ def check_change_event_fixture(
 @pytest.fixture(name="check_attribute", scope="session")
 def check_attribute_fixture() -> Callable:
     """
-    Check value of device attribute.
+    Check value of device attribute within timeout.
 
     :returns: A callable which checks value of device attribute.
     """
 
-    def _check_attribute(device_proxy: tango.DeviceProxy, attribute_name: str) -> None:
-        return device_proxy.read_attribute(attribute_name).value
+    def _check_attribute(
+        device_proxy: tango.DeviceProxy, attribute_name: str, timeout: float = 3
+    ) -> None:
+        current_time = time.time()
+        value = None
+        while time.time() < current_time + timeout:
+            try:
+                value = device_proxy.read_attribute(attribute_name).value
+                break
+            except tango.DevFailed:
+                time.sleep(0.1)
+        assert value is not None, (
+            f"Failed to read {device_proxy.dev_name()}/{attribute_name} "
+            f"within {timeout}s."
+        )
+        return value
 
     return _check_attribute
 
@@ -579,14 +596,26 @@ def check_attribute_fixture() -> Callable:
 @pytest.fixture(name="check_fastcommand", scope="session")
 def check_fastcommand_fixture() -> Callable:
     """
-    Check value of given FastCommand.
+    Check value of given FastCommand within timeout.
 
     :returns: A callable which checks value of given FastCommand.
     """
 
     def _check_fastcommand(
-        device_proxy: tango.DeviceProxy, command: str, args: str
+        device_proxy: tango.DeviceProxy, command: str, args: str, timeout: float = 3
     ) -> None:
-        return device_proxy.command_inout(command, args)
+        current_time = time.time()
+        value = None
+        while time.time() < current_time + timeout:
+            try:
+                value = device_proxy.command_inout(command, args)
+                break
+            except tango.DevFailed:
+                time.sleep(0.1)
+        assert value is not None, (
+            f"Failed to receive value from {device_proxy.dev_name()}/{command}, "
+            f"args = {args} within {timeout}s."
+        )
+        return value
 
     return _check_fastcommand
