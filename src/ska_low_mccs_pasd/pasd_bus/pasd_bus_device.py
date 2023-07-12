@@ -13,12 +13,10 @@ import importlib.resources
 import json
 import logging
 import sys
-import time
 from typing import Any, Final, Optional, cast
 
 import tango.server
 from ska_control_model import (
-    AdminMode,
     CommunicationStatus,
     HealthState,
     PowerState,
@@ -228,23 +226,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         self.set_archive_event(attribute_name, True, False)
 
     def _read_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
-        timeout = 10  # Seconds
-        current_time = time.time()  # Seconds
-        attribute_name = pasd_attribute.get_name()
-
-        def check_within_timeout() -> None:
-            while time.time() < current_time + timeout:
-                if self._pasd_state[attribute_name]:
-                    return
-                time.sleep(0.1)
-            self.logger.error(
-                f"Failed to read {attribute_name} within {timeout} seconds."
-            )
-            raise tango.DevFailed
-
-        if self._admin_mode != AdminMode.OFFLINE:
-            check_within_timeout()
-        pasd_attribute.set_value(self._pasd_state[pasd_attribute.get_name()])
+        attr_name = pasd_attribute.get_name()
+        attr_value = self._pasd_state[attr_name]
+        if attr_value is None:
+            msg = f"Attempted read of {attr_name} before it has been polled."
+            self.logger.warning(msg)
+            raise ValueError(msg)
+        pasd_attribute.set_value(attr_value)
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()
