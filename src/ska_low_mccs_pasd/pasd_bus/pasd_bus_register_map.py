@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Final, List, Optional, Sequence
 
@@ -241,13 +242,21 @@ class PasdBusPortAttribute(PasdBusAttribute):
         self.value = int(bitstring, 2)
 
 
+@dataclass
+class PasdBusRegisterInfo:
+    """Hold register information for a PaSD device."""
+
+    register_map: dict[str, PasdBusAttribute]
+    number_of_ports: int
+    starting_port_register: int
+
+
 class PasdBusRegisterMap:
     """A register mapping utility for the PaSD."""
 
     _FNDH_ADDRESS: Final = 101
 
     MODBUS_REGISTER_MAP_REVISION = "modbus_register_map_revision"
-    PORT_STARTING_REGISTER = "port_starting_register"
     LED_PATTERN = "led_pattern"
 
     # Register map for the 'info' registers, guaranteed to be the same
@@ -283,7 +292,6 @@ class PasdBusRegisterMap:
         "humidity": PasdBusAttribute(23, 1),
         "status": PasdBusAttribute(24, 1, PasdConversionUtility.convert_fndh_status),
         LED_PATTERN: PasdBusAttribute(25, 1, PasdConversionUtility.convert_led_status),
-        PORT_STARTING_REGISTER: 35,
         "ports_connected": PasdBusPortAttribute(
             35, 28, PortStatusString.PORTS_CONNECTED
         ),
@@ -319,7 +327,6 @@ class PasdBusRegisterMap:
         ),
         LED_PATTERN: PasdBusAttribute(22, 1, PasdConversionUtility.convert_led_status),
         "sensor_status": PasdBusAttribute(23, 12),
-        PORT_STARTING_REGISTER: 35,
         "ports_connected": PasdBusPortAttribute(
             35, 12, PortStatusString.PORTS_CONNECTED
         ),
@@ -339,9 +346,17 @@ class PasdBusRegisterMap:
         "ports_current_draw": PasdBusAttribute(47, 12),
     }
 
-    # Map modbus register revision number to the corresponding register map
-    _FNDH_REGISTER_MAPS: Final = {1: _FNDH_REGISTER_MAP_V1}
-    _SMARTBOX_REGISTER_MAPS: Final = {1: _SMARTBOX_REGISTER_MAP_V1}
+    # Map modbus register revision number to the corresponding PasdRegisterInfo
+    _FNDH_REGISTER_MAPS: Final = {
+        1: PasdBusRegisterInfo(
+            _FNDH_REGISTER_MAP_V1, number_of_ports=28, starting_port_register=35
+        )
+    }
+    _SMARTBOX_REGISTER_MAPS: Final = {
+        1: PasdBusRegisterInfo(
+            _SMARTBOX_REGISTER_MAP_V1, number_of_ports=12, starting_port_register=35
+        )
+    }
 
     def __init__(self, revision_number: int = 1):
         """
@@ -369,7 +384,7 @@ class PasdBusRegisterMap:
         """
         self._revision_number = value
 
-    def _get_register_map(self, device_id: int) -> dict:
+    def _get_register_info(self, device_id: int) -> PasdBusRegisterInfo:
         if device_id == self._FNDH_ADDRESS:
             return self._FNDH_REGISTER_MAPS[self.revision_number]
         return self._SMARTBOX_REGISTER_MAPS[self.revision_number]
@@ -389,7 +404,7 @@ class PasdBusRegisterMap:
             inserted in Modbus address order
         """
         # Get the register map for the current revision number
-        attribute_map = self._get_register_map(device_id)
+        attribute_map = self._get_register_info(device_id).register_map
 
         attributes = {
             name: attr
@@ -427,7 +442,7 @@ class PasdBusRegisterMap:
         :return: A list of the corresponding string attribute names
         """
         names = [self._INFO_REGISTER_INVERSE_MAP[address] for address in addresses]
-        register_map = self._get_register_map(device_id)
+        register_map = self._get_register_info(device_id).register_map
         inverse_map = {v.address: k for k, v in register_map.items()}
         names.extend([inverse_map[address] for address in addresses])
         return names
@@ -435,7 +450,7 @@ class PasdBusRegisterMap:
     def _create_led_pattern_command(
         self, device_id: int, arguments: Sequence[Any]
     ) -> Optional[PasdBusAttribute]:
-        attribute_map = self._get_register_map(device_id)
+        attribute_map = self._get_register_info(device_id).register_map
 
         attribute = PasdBusAttribute(attribute_map[self.LED_PATTERN].address, 1)
         try:
@@ -449,13 +464,11 @@ class PasdBusRegisterMap:
     def _create_port_command(
         self, device_id: int, command: PasdCommandStrings, arguments: Sequence[Any]
     ) -> Optional[PasdBusPortAttribute]:
-        attribute_map = self._get_register_map(device_id)
+        first_port = self._get_register_info(device_id).starting_port_register
 
         # First argument is the port number
         port_number = arguments[0]
-        attribute = PasdBusPortAttribute(
-            attribute_map[self.PORT_STARTING_REGISTER] - 1 + port_number, 1
-        )
+        attribute = PasdBusPortAttribute(first_port - 1 + port_number, 1)
         match command:
             case PasdCommandStrings.TURN_PORT_ON:
                 attribute._set_bitmap_value(True, arguments[1])
