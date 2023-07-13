@@ -472,21 +472,6 @@ class TestSmartboxSimulator:
     @pytest.mark.parametrize(
         ("attribute_name", "expected_value"),
         [
-            ("input_voltage", SmartboxSimulator.DEFAULT_INPUT_VOLTAGE),
-            (
-                "power_supply_output_voltage",
-                SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE,
-            ),
-            ("status", SmartboxSimulator.DEFAULT_STATUS),
-            (
-                "power_supply_temperature",
-                SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE,
-            ),
-            (
-                "outside_temperature",
-                SmartboxSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
-            ),
-            ("pcb_temperature", SmartboxSimulator.DEFAULT_PCB_TEMPERATURE),
             (
                 "modbus_register_map_revision",
                 SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION,
@@ -532,15 +517,21 @@ class TestSmartboxSimulator:
         assert smartbox_simulator.set_led_pattern("OFF")
         assert smartbox_simulator.led_pattern == "OFF"
 
-    def test_status_ok(
+    def test_status(
         self: TestSmartboxSimulator,
         smartbox_simulator: SmartboxSimulator,
     ) -> None:
         """
-        Test if the smartbox status is initialized to OK.
+        Test if the smartbox status is initialized to OK and changes.
 
         :param smartbox_simulator: the smartbox simulator under test.
         """
         assert smartbox_simulator.status == "UNINITIALISED"
-        assert smartbox_simulator.update_status()
+        smartbox_simulator.input_voltage = 48.5
+        assert smartbox_simulator.status == "UNINITIALISED"
+        smartbox_simulator.status = "write to initialise"
         assert smartbox_simulator.status == "OK"
+        smartbox_simulator.input_voltage = 49.5
+        assert smartbox_simulator.status == "WARNING"
+        smartbox_simulator.input_voltage = 51.0
+        assert smartbox_simulator.status == "ALARM"

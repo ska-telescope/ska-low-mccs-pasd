@@ -1,0 +1,41 @@
+thresholds:
+- psu1_voltage:
+  - high_alarm:   55.0
+    high_warning: 50.0
+    low_warning:  35.0
+    low_alarm:    30.0
+- psu2_voltage:
+  - high_alarm:   55.0
+    high_warning: 50.0
+    low_warning:  35.0
+    low_alarm:    30.0
+- total_current:
+  - high_alarm:   15.0
+    high_warning: 14.0
+    low_warning:  12.0
+    low_alarm:    11.0
+- psu1_temperature:
+  - high_alarm:   60.0
+    high_warning: 50.0
+    low_warning:  8.0
+    low_alarm:    4.0
+- psu2_temperature:
+  - high_alarm:   60.0
+    high_warning: 50.0
+    low_warning:  8.0
+    low_alarm:    4.0
+- panel_temperature:
+  - high_alarm:   60.0
+    high_warning: 50.0
+    low_warning:  8.0
+    low_alarm:    4.0
+- fncb_temperature:
+  - high_alarm:   60.0
+    high_warning: 50.0
+    low_warning:  8.0
+    low_alarm:    4.0
+- fncb_humidity:
+  - high_alarm:   40.0
+    high_warning: 35.0
+    low_warning:  30.0
+    low_alarm:    25.0

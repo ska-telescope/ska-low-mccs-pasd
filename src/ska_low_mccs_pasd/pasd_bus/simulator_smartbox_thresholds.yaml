@@ -1,0 +1,38 @@
+thresholds:
+  # port1_current_trip: 2200
+  # port2_current_trip: 2200
+  # port3_current_trip: 2200
+  # port4_current_trip: 2200
+  # port5_current_trip: 2200
+  # port6_current_trip: 2200
+  # port7_current_trip: 2200
+  # port8_current_trip: 2200
+  # port9_current_trip: 2200
+  # port10_current_trip: 2200
+  # port11_current_trip: 2200
+  # port12_current_trip: 2200
+- input_voltage:
+  - high_alarm:   50.4
+    high_warning: 49.0
+    low_warning:  47.0
+    low_alarm:    45.6
+- outside_temperature:
+  - high_alarm:   50.0
+    high_warning: 45.0
+    low_warning:  10.0
+    low_alarm:    5.0
+- pcb_temperature:
+  - high_alarm:   60.0
+    high_warning: 50.0
+    low_warning:  10.0
+    low_alarm:    5.0
+- psu_temperature:
+  - high_alarm:   60.0
+    high_warning: 50.0
+    low_warning:  10.0
+    low_alarm:    5.0
+- psu_output_voltage:
+  - high_alarm:   5.25
+    high_warning: 5.1
+    low_warning:  4.9
+    low_alarm:    4.75
