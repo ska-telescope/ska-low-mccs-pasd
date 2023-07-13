@@ -535,3 +535,16 @@ class TestSmartboxSimulator:
         assert smartbox_simulator.status == "WARNING"
         smartbox_simulator.input_voltage = 51.0
         assert smartbox_simulator.status == "ALARM"
+        smartbox_simulator.input_voltage = 48.0
+        assert smartbox_simulator.status == "OK"
+        smartbox_simulator.outside_temperature = 47.0
+        assert smartbox_simulator.status == "WARNING"
+        smartbox_simulator.pcb_temperature = 65.0
+        assert smartbox_simulator.status == "ALARM"
+        smartbox_simulator.outside_temperature = 30.0
+        smartbox_simulator.pcb_temperature = 30.0
+        assert smartbox_simulator.status == "OK"
+        smartbox_simulator.power_supply_temperature = 8.0
+        assert smartbox_simulator.status == "WARNING"
+        smartbox_simulator.power_supply_output_voltage = 4.7
+        assert smartbox_simulator.status == "ALARM"

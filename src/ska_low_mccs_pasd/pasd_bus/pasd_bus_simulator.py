@@ -803,8 +803,17 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
         :return: the power supply output voltage
         """
-        # TODO: We're currently returning canned results.
-        return self.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
+        return self._sensors["psu_output_voltage"].value
+
+    @power_supply_output_voltage.setter
+    def power_supply_output_voltage(self: SmartboxSimulator, value: float) -> None:
+        """
+        Set the power supply output voltage, in volts.
+
+        :param value: the value to simulate.
+        """
+        self._sensors["psu_output_voltage"].value = value
+        self._sensors["psu_output_voltage"].update_status()
 
     @property
     def power_supply_temperature(self: SmartboxSimulator) -> float:
@@ -813,8 +822,17 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
         :return: the power supply temperature.
         """
-        # TODO: We're currently returning canned results.
-        return self.DEFAULT_POWER_SUPPLY_TEMPERATURE
+        return self._sensors["psu_temperature"].value
+
+    @power_supply_temperature.setter
+    def power_supply_temperature(self: SmartboxSimulator, value: float) -> None:
+        """
+        Set the power supply temperature, in celcius.
+
+        :param value: the value to simulate.
+        """
+        self._sensors["psu_temperature"].value = value
+        self._sensors["psu_temperature"].update_status()
 
     @property
     def outside_temperature(self: SmartboxSimulator) -> float:
@@ -823,8 +841,17 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
         :return: the outside temperature.
         """
-        # TODO: We're currently returning canned results.
-        return self.DEFAULT_OUTSIDE_TEMPERATURE
+        return self._sensors["outside_temperature"].value
+
+    @outside_temperature.setter
+    def outside_temperature(self: SmartboxSimulator, value: float) -> None:
+        """
+        Set the smartbox's outside temperature, in celcius.
+
+        :param value: the value to simulate.
+        """
+        self._sensors["outside_temperature"].value = value
+        self._sensors["outside_temperature"].update_status()
 
     @property
     def pcb_temperature(self: SmartboxSimulator) -> float:
@@ -833,8 +860,17 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
         :return: the PCB temperatures.
         """
-        # TODO: We're currently returning canned results.
-        return self.DEFAULT_PCB_TEMPERATURE
+        return self._sensors["pcb_temperature"].value
+
+    @pcb_temperature.setter
+    def pcb_temperature(self: SmartboxSimulator, value: float) -> None:
+        """
+        Set the smartbox's PCB temperature, in celcius.
+
+        :param value: the value to simulate.
+        """
+        self._sensors["pcb_temperature"].value = value
+        self._sensors["pcb_temperature"].update_status()
 
     @property
     def modbus_register_map_revision(self: SmartboxSimulator) -> int:
