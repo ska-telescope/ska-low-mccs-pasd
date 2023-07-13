@@ -464,14 +464,32 @@ class PasdBusRegisterMap:
     def _create_port_command(
         self, device_id: int, command: PasdCommandStrings, arguments: Sequence[Any]
     ) -> Optional[PasdBusPortAttribute]:
-        first_port = self._get_register_info(device_id).starting_port_register
+        register_info = self._get_register_info(device_id)
+        first_port_address = register_info.starting_port_register
+        last_port_address = first_port_address + register_info.number_of_ports - 1
 
         # First argument is the port number
+        if len(arguments) == 0:
+            logger.error(f"Missing port argument for command: {command}")
+            return None
         port_number = arguments[0]
-        attribute = PasdBusPortAttribute(first_port - 1 + port_number, 1)
+        if (
+            not isinstance(port_number, int)
+            or not first_port_address
+            <= (port_address := first_port_address + port_number - 1)
+            <= last_port_address
+        ):
+            logger.error(f"Invalid port requested: {port_number}")
+            return None
+
+        attribute = PasdBusPortAttribute(port_address, 1)
         match command:
             case PasdCommandStrings.TURN_PORT_ON:
-                attribute._set_bitmap_value(True, arguments[1])
+                if len(arguments) == 2 and isinstance(arguments[1], bool):
+                    desired_on_offline = arguments[1]
+                else:
+                    desired_on_offline = True  # default case
+                attribute._set_bitmap_value(True, desired_on_offline)
             case PasdCommandStrings.TURN_PORT_OFF:
                 attribute._set_bitmap_value(False, False)
             case PasdCommandStrings.RESET_PORT_BREAKER:
