@@ -21,6 +21,7 @@ from pymodbus.register_read_message import (
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
 )
+from pymodbus.register_write_message import WriteSingleRegisterResponse
 
 # from .pasd_bus_custom_pymodbus import CustomReadHoldingRegistersResponse
 from .pasd_bus_register_map import (
@@ -181,7 +182,7 @@ class PasdBusModbusApiClient:
             - attributes[keys[0]].address
         )
         logger.debug(
-            f"MODBUS Request: responder {responder_id}, "
+            f"MODBUS read request: responder {responder_id}, "
             f"start address {attributes[keys[0]].address}, count {count}"
         )
 
@@ -250,8 +251,49 @@ class PasdBusModbusApiClient:
         return response
 
     def _do_write_request(self, request: dict) -> dict:
-        # TODO
-        raise NotImplementedError
+        responder_id = request["device_id"]
+
+        # Get a PasdBusCommand object for this command
+        command = self._register_map.get_command(
+            responder_id, request["execute"], request["arguments"]
+        )
+
+        if not command:
+            logger.warning(
+                f"No commands matching "
+                f"'{request['execute']} {request['arguments']}' in PaSD register map"
+            )
+            return {"data": {"result": False}}
+
+        logger.debug(
+            f"MODBUS write request: responder {responder_id}, "
+            f"address {command.address}, value {command.value}"
+        )
+
+        reply = self._client.write_register(
+            command.address, command.value, responder_id
+        )
+
+        match reply:
+            case WriteSingleRegisterResponse():
+                # A normal echo response has been received
+                response = {
+                    "source": responder_id,
+                    "data": {"type": "command_result", "result": True},
+                }
+            case ModbusIOException():
+                # No reply: pass this exception on up to the caller
+                raise reply
+            case ExceptionResponse():
+                response = self._create_error_response(
+                    "write", f"Modbus exception response: {reply}"
+                )  # TODO: what error code to use?
+            case _:
+                response = self._create_error_response(
+                    "write", f"Unexpected response type: {type(reply)}"
+                )  # TODO: what error code to use?
+
+        return response
 
     def read_attributes(self, device_id: int, *names: str) -> dict[str, Any]:
         """
@@ -283,6 +325,6 @@ class PasdBusModbusApiClient:
         response = self._do_write_request(
             {"device_id": device_id, "execute": name, "arguments": args}
         )
-        assert response["data"]["source"] == device_id
-        assert response["data"]["type"] == "command_result"
-        return response["data"]["attributes"]
+        if "data" in response:
+            return response["data"]["result"]
+        return response
