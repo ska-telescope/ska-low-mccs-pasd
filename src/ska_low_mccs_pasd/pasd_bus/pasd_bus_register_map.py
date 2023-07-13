@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import Any, Callable, Final, List, Sequence
+from typing import Any, Callable, Final, List, Optional, Sequence
 
 from .pasd_bus_conversions import PasdConversionUtility
 
@@ -142,7 +142,7 @@ class PasdBusPortAttribute(PasdBusAttribute):
         self: PasdBusPortAttribute,
         address: int,
         count: int,
-        desired_info: PortStatusString | None = None,
+        desired_info: Optional[PortStatusString] = None,
     ):
         """Initialise a new instance.
 
@@ -215,8 +215,8 @@ class PasdBusPortAttribute(PasdBusAttribute):
 
     def _set_bitmap_value(
         self: PasdBusPortAttribute,
-        desired_on_online: bool | None,
-        desired_on_offline: bool | None,
+        desired_on_online: Optional[bool],
+        desired_on_offline: Optional[bool],
         reset_breaker: bool = False,
     ) -> None:
         # First two bits are read-only (ENABLE and ONLINE)
@@ -434,7 +434,7 @@ class PasdBusRegisterMap:
 
     def _create_led_pattern_command(
         self, device_id: int, arguments: Sequence[Any]
-    ) -> PasdBusAttribute | None:
+    ) -> Optional[PasdBusAttribute]:
         attribute_map = self._get_register_map(device_id)
 
         attribute = PasdBusAttribute(attribute_map[self.LED_PATTERN].address, 1)
@@ -448,7 +448,7 @@ class PasdBusRegisterMap:
 
     def _create_port_command(
         self, device_id: int, command: PasdCommandStrings, arguments: Sequence[Any]
-    ) -> PasdBusPortAttribute | None:
+    ) -> Optional[PasdBusPortAttribute]:
         attribute_map = self._get_register_map(device_id)
 
         # First argument is the port number
@@ -458,7 +458,6 @@ class PasdBusRegisterMap:
         )
         match command:
             case PasdCommandStrings.TURN_PORT_ON:
-                # Second argument is desired_on_offline request
                 attribute._set_bitmap_value(True, arguments[1])
             case PasdCommandStrings.TURN_PORT_OFF:
                 attribute._set_bitmap_value(False, False)
@@ -468,7 +467,7 @@ class PasdBusRegisterMap:
 
     def get_command(
         self, device_id: int, command_string: str, arguments: Sequence[Any]
-    ) -> PasdBusAttribute | None:
+    ) -> Optional[PasdBusAttribute]:
         """
         Get a PasdBusAttribute object for the specified command.
 
@@ -477,7 +476,7 @@ class PasdBusRegisterMap:
         :param arguments: arguments (if any)
 
         :return: PasdBusAttribute object populated with converted value
-            ready to send over Modbus
+            ready to send over Modbus or None if command is invalid
         """
         try:
             command = PasdCommandStrings(command_string)
