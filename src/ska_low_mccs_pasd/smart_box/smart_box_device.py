@@ -46,7 +46,7 @@ class MccsSmartBox(SKABaseDevice):
         ("ChipId", int, None),
         ("FirmwareVersion", str, None),
         ("Uptime", int, None),
-        ("Status", str, None),
+        ("PasdStatus", str, None),
         ("SysAddress", int, None),
         ("LedPattern", str, None),
         ("InputVoltage", float, None),

@@ -729,6 +729,7 @@ class TestSmartBoxPasdBusIntegration:
             == SmartboxSimulator.DEFAULT_FIRMWARE_VERSION
         )
         assert smartbox_device.Uptime == SmartboxSimulator.DEFAULT_UPTIME
+        assert smartbox_device.PasdStatus == SmartboxSimulator.DEFAULT_STATUS
         assert smartbox_device.InputVoltage == SmartboxSimulator.DEFAULT_INPUT_VOLTAGE
         assert (
             smartbox_device.PowerSupplyOutputVoltage
@@ -745,6 +746,10 @@ class TestSmartBoxPasdBusIntegration:
         assert (
             smartbox_device.PcbTemperature == SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
         )
+
+        # Initialise smartbox status
+        # smartbox_device.PasdStatus = "Write to initialise"
+        # assert smartbox_device.PasdStatus == "OK"
 
         # We are just testing one attribute here to check the functionality
         # TODO: probably worth testing every attribute.
@@ -767,11 +772,10 @@ class TestSmartBoxPasdBusIntegration:
         assert smartbox_device.InputVoltage != initial_input_voltage
         assert smartbox_device.InputVoltage == 10
 
-        # Test smartbox status attribute
-        # assert smartbox_device.Status == SmartboxSimulator.DEFAULT_STATUS
-        # initial_status = smartbox_device.Status
+        # # Test smartbox status attribute
+        # initial_status = smartbox_device.PasdStatus
         # smartbox_device.subscribe_event(
-        #     "Status",
+        #     "PasdStatus",
         #     tango.EventType.CHANGE_EVENT,
         #     change_event_callbacks["smartboxstatus"],
         # )
@@ -779,14 +783,13 @@ class TestSmartBoxPasdBusIntegration:
         #     "smartboxstatus", initial_status
         # )
 
-        # When we mock a change in an attribute at the simulator level.
-        # This is received and pushed onward by the MccsSmartbox device.
+        # # When we mock a change in an attribute at the simulator level.
+        # # This is received and pushed onward by the MccsSmartbox device.
 
-        # smartbox_simulator.update_status()
         # change_event_callbacks.assert_change_event("smartboxstatus", "OK")
 
-        # assert smartbox_device.Status != initial_status
-        # assert smartbox_device.Status == "OK"
+        # assert smartbox_device.PasdStatus != initial_status
+        # assert smartbox_device.PasdStatus == "OK"
 
 
 @pytest.fixture(name="change_event_callbacks")

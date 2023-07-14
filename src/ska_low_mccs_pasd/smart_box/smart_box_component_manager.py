@@ -155,8 +155,13 @@ class _SmartBoxProxy(DeviceComponentManager):
         is_a_smartbox = re.search("^smartbox[1-2][1-5]|[1-9]", attr_name)
 
         if is_a_smartbox:
-            attribute = attr_name[is_a_smartbox.end() :].lower()
-            self._attribute_change_callback(attribute, attr_value)
+            tango_attribute_name = attr_name[is_a_smartbox.end() :].lower()
+
+            # Status is a bad name since it conflicts with TANGO status.
+            if tango_attribute_name.lower() == "status":
+                tango_attribute_name = "pasdstatus"
+            
+            self._attribute_change_callback(tango_attribute_name, attr_value)
             return
 
         self.logger.error(
