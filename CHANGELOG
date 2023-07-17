@@ -1,6 +1,9 @@
 # Version History
 
-## unrelease
+## unreleased
+
+* MCCS-1636 - Use ska-ser-sphinx-theme for documentation
+
 ## 0.2.1
 
 * MCCS-1526 - Fix broken docs.
