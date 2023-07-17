@@ -517,34 +517,58 @@ class TestSmartboxSimulator:
         assert smartbox_simulator.set_led_pattern("OFF")
         assert smartbox_simulator.led_pattern == "OFF"
 
-    def test_status(
+    @pytest.mark.parametrize(
+        ("sensor_name", "simulated_value", "expected_status"),
+        [
+            ("input_voltage", 51.0, "ALARM"),
+            ("input_voltage", 50.0, "WARNING"),
+            ("input_voltage", 48.0, "OK"),
+            ("input_voltage", 46.0, "WARNING"),
+            ("input_voltage", 45.0, "ALARM"),
+            ("power_supply_output_voltage", 5.3, "ALARM"),
+            ("power_supply_output_voltage", 5.2, "WARNING"),
+            ("power_supply_output_voltage", 5.0, "OK"),
+            ("power_supply_output_voltage", 4.8, "WARNING"),
+            ("power_supply_output_voltage", 4.7, "ALARM"),
+            ("power_supply_temperature", 65.0, "ALARM"),
+            ("power_supply_temperature", 55.0, "WARNING"),
+            ("power_supply_temperature", 25.0, "OK"),
+            ("power_supply_temperature", 8.0, "WARNING"),
+            ("power_supply_temperature", 4.0, "ALARM"),
+            ("outside_temperature", 65.0, "ALARM"),
+            ("outside_temperature", 55.0, "WARNING"),
+            ("outside_temperature", 25.0, "OK"),
+            ("outside_temperature", 8.0, "WARNING"),
+            ("outside_temperature", 4.0, "ALARM"),
+            ("pcb_temperature", 65.0, "ALARM"),
+            ("pcb_temperature", 55.0, "WARNING"),
+            ("pcb_temperature", 25.0, "OK"),
+            ("pcb_temperature", 8.0, "WARNING"),
+            ("pcb_temperature", 4.0, "ALARM"),
+        ],
+    )
+    def test_sensor_status_transitions(
         self: TestSmartboxSimulator,
         smartbox_simulator: SmartboxSimulator,
+        sensor_name: str,
+        simulated_value: float,
+        expected_status: str,
     ) -> None:
         """
-        Test if the smartbox status is initialized to OK and changes.
+        Test the smartbox sensors and status.
+
+        Check if status is initialized to OK, and changes if a given sensor
+        value is out of bounds.
 
         :param smartbox_simulator: the smartbox simulator under test.
+        :param sensor_name: name of the sensor to test.
+        :param simulated_value: value to set the sensor to.
+        :param expected_status: the expected status of the sensor and smartbox.
         """
-        assert smartbox_simulator.status == "UNINITIALISED"
-        smartbox_simulator.input_voltage = 48.5
         assert smartbox_simulator.status == "UNINITIALISED"
         smartbox_simulator.status = "write to initialise"
         assert smartbox_simulator.status == "OK"
-        smartbox_simulator.input_voltage = 49.5
-        assert smartbox_simulator.status == "WARNING"
-        smartbox_simulator.input_voltage = 51.0
-        assert smartbox_simulator.status == "ALARM"
-        smartbox_simulator.input_voltage = 48.0
-        assert smartbox_simulator.status == "OK"
-        smartbox_simulator.outside_temperature = 47.0
-        assert smartbox_simulator.status == "WARNING"
-        smartbox_simulator.pcb_temperature = 65.0
-        assert smartbox_simulator.status == "ALARM"
-        smartbox_simulator.outside_temperature = 30.0
-        smartbox_simulator.pcb_temperature = 30.0
-        assert smartbox_simulator.status == "OK"
-        smartbox_simulator.power_supply_temperature = 8.0
-        assert smartbox_simulator.status == "WARNING"
-        smartbox_simulator.power_supply_output_voltage = 4.7
-        assert smartbox_simulator.status == "ALARM"
+        sensor = getattr(smartbox_simulator, sensor_name)
+        setattr(sensor, "value", simulated_value)
+        assert getattr(sensor, "value") == simulated_value
+        assert smartbox_simulator.status == expected_status

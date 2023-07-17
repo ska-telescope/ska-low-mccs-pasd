@@ -36,7 +36,6 @@ from __future__ import annotations
 
 import importlib.resources
 import logging
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Final, Optional, Sequence
 import yaml
@@ -241,6 +240,10 @@ class PasdHardwareSimulator:
     """
 
     DEFAULT_LED_PATTERN = "OFF"
+    DEFAULT_STATUS = "UNINITIALISED"
+
+    # Temporary
+    DEFAULT_UPTIME: Final = 1000
 
     def __init__(
         self: PasdHardwareSimulator,
@@ -253,7 +256,8 @@ class PasdHardwareSimulator:
         """
         self._ports = [_PasdPortSimulator() for _ in range(number_of_ports)]
         self._led_pattern = str(self.DEFAULT_LED_PATTERN)
-        self._sensors = {}
+        self._status = self.DEFAULT_STATUS
+        self._power_on_time = None
 
     def _load_thresholds(self: PasdHardwareSimulator, file_path: str) -> bool:
         """
@@ -280,14 +284,17 @@ class PasdHardwareSimulator:
             )
             raise
 
-        for sensor in sensor_thresholds["thresholds"]:
-            key = list(sensor)[0]
-            thresholds = sensor[key][0]
-            if key in self._sensors:
-                self._sensors[key].high_alarm = thresholds.get("high_alarm")
-                self._sensors[key].high_warning = thresholds.get("high_warning")
-                self._sensors[key].low_warning = thresholds.get("low_warning")
-                self._sensors[key].low_alarm = thresholds.get("low_alarm")
+        for entry in sensor_thresholds["thresholds"]:
+            name = list(entry)[0]
+            thresholds = entry[name][0]
+            try:
+                sensor = getattr(self, name)
+                setattr(sensor, "high_alarm", thresholds.get("high_alarm"))
+                setattr(sensor, "high_warning", thresholds.get("high_warning"))
+                setattr(sensor, "low_warning", thresholds.get("low_warning"))
+                setattr(sensor, "low_alarm", thresholds.get("low_alarm"))
+            except AttributeError:
+                pass
         return True
 
     def configure(
@@ -331,7 +338,10 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do.
         """
-        return self._ports[port_number - 1].simulate_forcing(forcing)
+        turned_on = self._ports[port_number - 1].simulate_forcing(forcing)
+        if turned_on:
+            self._power_on_time = datetime.now()
+        return turned_on
 
     @property
     def port_forcings(self: PasdHardwareSimulator) -> list[str]:
@@ -401,9 +411,12 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do
         """
-        return self._ports[port_number - 1].turn_on(
+        turned_on = self._ports[port_number - 1].turn_on(
             stay_on_when_offline=stay_on_when_offline
         )
+        if turned_on:
+            self._power_on_time = datetime.now()
+        return turned_on
 
     def turn_port_off(
         self: PasdHardwareSimulator,
@@ -416,7 +429,10 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do
         """
-        return self._ports[port_number - 1].turn_off()
+        turned_off = self._ports[port_number - 1].turn_off()
+        if turned_off:
+            self._power_on_time = None
+        return turned_off
 
     @property
     def ports_desired_power_when_online(
@@ -484,29 +500,61 @@ class PasdHardwareSimulator:
         return True
 
 
-@dataclass
 class Sensor:
     """Single sensor's attributes of a FNDH/Smartbox."""
 
-    value: float = 0.0
-    status: str = "UNINITIALISED"
-    high_alarm: float = None
-    high_warning: float = None
-    low_warning: float = None
-    low_alarm: float = None
+    def __init__(self: Sensor, value: float) -> None:
+        """
+        Initialise a new instance.
 
-    def update_status(self) -> None:
+        :param value: value to simulate
+        """
+        self.value = value
+        self.status = "UNINITIALISED"
+        self.high_alarm = None
+        self.high_warning = None
+        self.low_warning = None
+        self.low_alarm = None
+
+    def __getattr__(self: Sensor, name: str):
+        """
+        Get attribute.
+
+        :param name: name
+        :return: value
+        :raises AttributeError: if it does not exist in object dict
+        """
+        try:
+            return self.__dict__[f"_{name}"]
+        except KeyError as exc:
+            raise AttributeError from exc
+
+    def __setattr__(self: Sensor, name: str, value: float):
+        """
+        Set attribute.
+
+        :param name: name
+        :param value: value
+        """
+        self.__dict__[f"_{name}"] = value
+        if name != "status":
+            self._update_status()
+
+    def _update_status(self: Sensor) -> None:
         """Update the sensor status based on the thresholds."""
-        if self.high_alarm is not None and self.value > self.high_alarm:
-            self.status = "ALARM"
-        elif self.low_alarm is not None and self.value < self.low_alarm:
-            self.status = "ALARM"
-        elif self.high_warning is not None and self.value > self.high_warning:
-            self.status = "WARNING"
-        elif self.low_warning is not None and self.value < self.low_warning:
-            self.status = "WARNING"
-        else:
-            self.status = "OK"
+        try:
+            if self.high_alarm is not None and self.value > self.high_alarm:
+                self.status = "ALARM"
+            elif self.low_alarm is not None and self.value < self.low_alarm:
+                self.status = "ALARM"
+            elif self.high_warning is not None and self.value > self.high_warning:
+                self.status = "WARNING"
+            elif self.low_warning is not None and self.value < self.low_warning:
+                self.status = "WARNING"
+            else:
+                self.status = "OK"
+        except AttributeError:
+            return
 
 
 class FndhSimulator(PasdHardwareSimulator):
@@ -525,8 +573,6 @@ class FndhSimulator(PasdHardwareSimulator):
     PCB_REVISION: Final = 21
 
     DEFAULT_FIRMWARE_VERSION: Final = "1.2.3-fake"
-    DEFAULT_STATUS: Final = FndhStatusMap.UNINITIALISED.name
-    DEFAULT_UPTIME: Final = 2000
     DEFAULT_PSU48V_VOLTAGES: Final = [47.9, 48.1]
     DEFAULT_PSU5V_VOLTAGE: Final = 5.1
     DEFAULT_PSU48V_CURRENT: Final = 20.1
@@ -540,8 +586,6 @@ class FndhSimulator(PasdHardwareSimulator):
 
     def __init__(self: FndhSimulator) -> None:
         """Initialise a new instance."""
-        self._init_time = datetime.now().isoformat()
-
         super().__init__(self.NUMBER_OF_PORTS)
         # self._load_thresholds(self.THRESHOLDS_PATH)
 
@@ -700,14 +744,12 @@ class SmartboxSimulator(PasdHardwareSimulator):
     CHIP_ID: Final = 25
 
     DEFAULT_FIRMWARE_VERSION = "0.1.2-fake"
-    DEFAULT_UPTIME: Final = 1000
     # Address
     DEFAULT_INPUT_VOLTAGE: Final = 48.0
     DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE: Final = 5.0
     DEFAULT_POWER_SUPPLY_TEMPERATURE: Final = 42.1
     DEFAULT_PCB_TEMPERATURE: Final = 38.6  # Not currently implemented in hardware
     DEFAULT_OUTSIDE_TEMPERATURE: Final = 44.4
-    DEFAULT_STATUS: Final = SmartBoxStatusMap.UNINITIALISED.name
 
     DEFAULT_PORT_CURRENT_DRAW: Final = 20.5
 
@@ -718,31 +760,15 @@ class SmartboxSimulator(PasdHardwareSimulator):
         """Initialise a new instance."""
         super().__init__(self.NUMBER_OF_PORTS)
         self._port_breaker_tripped = [False] * self.NUMBER_OF_PORTS
-        self._init_time = datetime.now().isoformat()
-        self._status = self.DEFAULT_STATUS
         # Sensors
-        self._sensors = {
-            "input_voltage": Sensor(self.DEFAULT_INPUT_VOLTAGE),
-            "psu_output_voltage": Sensor(self.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE),
-            "psu_temperature": Sensor(self.DEFAULT_POWER_SUPPLY_TEMPERATURE),
-            "pcb_temperature": Sensor(self.DEFAULT_PCB_TEMPERATURE),
-            "outside_temperature": Sensor(self.DEFAULT_OUTSIDE_TEMPERATURE),
-        }
+        self.input_voltage = Sensor(self.DEFAULT_INPUT_VOLTAGE)
+        self.power_supply_output_voltage = Sensor(
+            self.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
+        )
+        self.power_supply_temperature = Sensor(self.DEFAULT_POWER_SUPPLY_TEMPERATURE)
+        self.pcb_temperature = Sensor(self.DEFAULT_PCB_TEMPERATURE)
+        self.outside_temperature = Sensor(self.DEFAULT_OUTSIDE_TEMPERATURE)
         self._load_thresholds(self.THRESHOLDS_PATH)
-
-    @property
-    def ports_current_draw(
-        self: SmartboxSimulator,
-    ) -> list[float]:
-        """
-        Return the current being drawn from each smartbox port.
-
-        :return: the current being drawn from each smartbox port.
-        """
-        return [
-            self.DEFAULT_PORT_CURRENT_DRAW if connected else 0.0
-            for connected in self.ports_connected
-        ]
 
     @property
     def status(self: SmartboxSimulator) -> str:
@@ -754,7 +780,13 @@ class SmartboxSimulator(PasdHardwareSimulator):
         # Status is not updated until attribute is initialised
         if self._status is not SmartBoxStatusMap.UNINITIALISED.name:
             # Gather all sensors' statuses in a list
-            sensors_status = [v.status for v in self._sensors.values()]
+            sensors_status = [
+                self.input_voltage.status,
+                self.power_supply_output_voltage.status,
+                self.power_supply_temperature.status,
+                self.pcb_temperature.status,
+                self.outside_temperature.status,
+            ]
             # Set the smartbox status to the highest priority status of any sensor
             if SmartBoxStatusMap.RECOVERY.name in sensors_status:
                 self._status = SmartBoxStatusMap.RECOVERY.name
@@ -778,99 +810,18 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self._status = self.status
 
     @property
-    def input_voltage(self: SmartboxSimulator) -> float:
+    def ports_current_draw(
+        self: SmartboxSimulator,
+    ) -> list[float]:
         """
-        Return the input voltage, in volts.
+        Return the current being drawn from each smartbox port.
 
-        :return: the input voltage.
+        :return: the current being drawn from each smartbox port.
         """
-        return self._sensors["input_voltage"].value
-
-    @input_voltage.setter
-    def input_voltage(self: SmartboxSimulator, value: float) -> None:
-        """
-        Set the input voltage, in volts, and update the status.
-
-        :param value: the value to simulate.
-        """
-        self._sensors["input_voltage"].value = value
-        self._sensors["input_voltage"].update_status()
-
-    @property
-    def power_supply_output_voltage(self: SmartboxSimulator) -> float:
-        """
-        Return the power supply output voltage, in volts.
-
-        :return: the power supply output voltage
-        """
-        return self._sensors["psu_output_voltage"].value
-
-    @power_supply_output_voltage.setter
-    def power_supply_output_voltage(self: SmartboxSimulator, value: float) -> None:
-        """
-        Set the power supply output voltage, in volts.
-
-        :param value: the value to simulate.
-        """
-        self._sensors["psu_output_voltage"].value = value
-        self._sensors["psu_output_voltage"].update_status()
-
-    @property
-    def power_supply_temperature(self: SmartboxSimulator) -> float:
-        """
-        Return the smartbox's power supply temperature, in celcius.
-
-        :return: the power supply temperature.
-        """
-        return self._sensors["psu_temperature"].value
-
-    @power_supply_temperature.setter
-    def power_supply_temperature(self: SmartboxSimulator, value: float) -> None:
-        """
-        Set the power supply temperature, in celcius.
-
-        :param value: the value to simulate.
-        """
-        self._sensors["psu_temperature"].value = value
-        self._sensors["psu_temperature"].update_status()
-
-    @property
-    def outside_temperature(self: SmartboxSimulator) -> float:
-        """
-        Return the smartbox's outside temperature, in celcius.
-
-        :return: the outside temperature.
-        """
-        return self._sensors["outside_temperature"].value
-
-    @outside_temperature.setter
-    def outside_temperature(self: SmartboxSimulator, value: float) -> None:
-        """
-        Set the smartbox's outside temperature, in celcius.
-
-        :param value: the value to simulate.
-        """
-        self._sensors["outside_temperature"].value = value
-        self._sensors["outside_temperature"].update_status()
-
-    @property
-    def pcb_temperature(self: SmartboxSimulator) -> float:
-        """
-        Return the smartbox's PCB temperature, in celcius.
-
-        :return: the PCB temperatures.
-        """
-        return self._sensors["pcb_temperature"].value
-
-    @pcb_temperature.setter
-    def pcb_temperature(self: SmartboxSimulator, value: float) -> None:
-        """
-        Set the smartbox's PCB temperature, in celcius.
-
-        :param value: the value to simulate.
-        """
-        self._sensors["pcb_temperature"].value = value
-        self._sensors["pcb_temperature"].update_status()
+        return [
+            self.DEFAULT_PORT_CURRENT_DRAW if connected else 0.0
+            for connected in self.ports_connected
+        ]
 
     @property
     def modbus_register_map_revision(self: SmartboxSimulator) -> int:

@@ -17,8 +17,8 @@ thresholds:
     low_warning:  47.0
     low_alarm:    45.6
 - outside_temperature:
-  - high_alarm:   50.0
-    high_warning: 45.0
+  - high_alarm:   60.0
+    high_warning: 50.0
     low_warning:  10.0
     low_alarm:    5.0
 - pcb_temperature:
@@ -26,12 +26,12 @@ thresholds:
     high_warning: 50.0
     low_warning:  10.0
     low_alarm:    5.0
-- psu_temperature:
+- power_supply_temperature:
   - high_alarm:   60.0
     high_warning: 50.0
     low_warning:  10.0
     low_alarm:    5.0
-- psu_output_voltage:
+- power_supply_output_voltage:
   - high_alarm:   5.25
     high_warning: 5.1
     low_warning:  4.9
