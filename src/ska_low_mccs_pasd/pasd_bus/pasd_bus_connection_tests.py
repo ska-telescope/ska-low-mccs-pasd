@@ -52,7 +52,7 @@ if __name__ == "__main__":
     # conn.execute_command(101, "turn_port_on", 3, True)
     # conn.execute_command(101, "reset_port_breaker", 3)
     # conn.execute_command(101, "set_led_pattern", "OFF")
-    #conn.execute_command(1, "turn_port_off", 1)
+    # conn.execute_command(1, "turn_port_off", 1)
     conn.execute_command(1, "turn_port_on")
     # conn.execute_command(1, "turn_port_on", 2, True)
 
