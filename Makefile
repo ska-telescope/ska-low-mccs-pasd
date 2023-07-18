@@ -119,8 +119,7 @@ HELM_CHARTS_TO_PUBLISH = ska-low-mccs-pasd
 #######################################
 include .make/docs.mk
 
-DOCS_SOURCEDIR=./docs/src
-DOCS_SPHINXOPTS= -n -W --keep-going
+DOCS_SPHINXOPTS= -W --keep-going
 
 docs-pre-build:
 	poetry config virtualenvs.create false
