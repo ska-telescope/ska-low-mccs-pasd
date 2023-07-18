@@ -747,9 +747,18 @@ class TestSmartBoxPasdBusIntegration:
             smartbox_device.PcbTemperature == SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
         )
 
-        # Initialise smartbox status
+        # Initialise smartbox status (PasdStatus is not writable)
         # smartbox_device.PasdStatus = "Write to initialise"
-        # assert smartbox_device.PasdStatus == "OK"
+        initial_status = smartbox_device.PasdStatus
+        # assert initial_status == "OK"
+        smartbox_device.subscribe_event(
+            "PasdStatus",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartboxstatus"],
+        )
+        change_event_callbacks.assert_change_event(
+            "smartboxstatus", initial_status
+        )
 
         # We are just testing one attribute here to check the functionality
         # TODO: probably worth testing every attribute.
@@ -771,25 +780,6 @@ class TestSmartBoxPasdBusIntegration:
 
         assert smartbox_device.InputVoltage != initial_input_voltage
         assert smartbox_device.InputVoltage == 10
-
-        # # Test smartbox status attribute
-        # initial_status = smartbox_device.PasdStatus
-        # smartbox_device.subscribe_event(
-        #     "PasdStatus",
-        #     tango.EventType.CHANGE_EVENT,
-        #     change_event_callbacks["smartboxstatus"],
-        # )
-        # change_event_callbacks.assert_change_event(
-        #     "smartboxstatus", initial_status
-        # )
-
-        # # When we mock a change in an attribute at the simulator level.
-        # # This is received and pushed onward by the MccsSmartbox device.
-
-        # change_event_callbacks.assert_change_event("smartboxstatus", "OK")
-
-        # assert smartbox_device.PasdStatus != initial_status
-        # assert smartbox_device.PasdStatus == "OK"
 
 
 @pytest.fixture(name="change_event_callbacks")

@@ -239,11 +239,9 @@ class PasdHardwareSimulator:
     locally forced, experience a breaker trip, etc.
     """
 
-    DEFAULT_LED_PATTERN = "OFF"
-    DEFAULT_STATUS = "UNINITIALISED"
-
-    # Temporary
-    DEFAULT_UPTIME: Final = 1000
+    DEFAULT_LED_PATTERN: Final = "OFF"
+    DEFAULT_STATUS: Final = "UNINITIALISED"
+    DEFAULT_UPTIME: Final = 0
 
     def __init__(
         self: PasdHardwareSimulator,
@@ -338,10 +336,7 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do.
         """
-        turned_on = self._ports[port_number - 1].simulate_forcing(forcing)
-        if turned_on:
-            self._power_on_time = datetime.now()
-        return turned_on
+        return self._ports[port_number - 1].simulate_forcing(forcing)
 
     @property
     def port_forcings(self: PasdHardwareSimulator) -> list[str]:
@@ -411,12 +406,9 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do
         """
-        turned_on = self._ports[port_number - 1].turn_on(
+        return self._ports[port_number - 1].turn_on(
             stay_on_when_offline=stay_on_when_offline
         )
-        if turned_on:
-            self._power_on_time = datetime.now()
-        return turned_on
 
     def turn_port_off(
         self: PasdHardwareSimulator,
@@ -429,10 +421,7 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do
         """
-        turned_off = self._ports[port_number - 1].turn_off()
-        if turned_off:
-            self._power_on_time = None
-        return turned_off
+        return self._ports[port_number - 1].turn_off()
 
     @property
     def ports_desired_power_when_online(
@@ -499,6 +488,17 @@ class PasdHardwareSimulator:
         self._led_pattern = led_pattern
         return True
 
+    @property
+    def uptime(self: FndhSimulator) -> int:
+        """
+        Return the uptime, as an integer.
+
+        :return: the uptime.
+        """
+        if self._power_on_time is None:
+            return self.DEFAULT_UPTIME
+        return datetime.now().timestamp() - self._power_on_time.timestamp()
+
 
 class Sensor:
     """Single sensor's attributes of a FNDH/Smartbox."""
@@ -516,29 +516,22 @@ class Sensor:
         self.low_warning = None
         self.low_alarm = None
 
-    def __getattr__(self: Sensor, name: str):
+    def __setattr__(self: Sensor, name: str, value):
         """
-        Get attribute.
-
-        :param name: name
-        :return: value
-        :raises AttributeError: if it does not exist in object dict
-        """
-        try:
-            return self.__dict__[f"_{name}"]
-        except KeyError as exc:
-            raise AttributeError from exc
-
-    def __setattr__(self: Sensor, name: str, value: float):
-        """
-        Set attribute.
+        Set attribute method.
 
         :param name: name
         :param value: value
         """
-        self.__dict__[f"_{name}"] = value
-        if name != "status":
-            self._update_status()
+        if value is not None:
+            if name == "status":
+                self.__dict__[name] = value
+            else:
+                try:
+                    self.__dict__[name] = float(value)
+                    self._update_status()
+                except TypeError:
+                    logger.log(logging.ERROR, f"'{value}' cannot be converted to float")
 
     def _update_status(self: Sensor) -> None:
         """Update the sensor status based on the thresholds."""
@@ -587,6 +580,7 @@ class FndhSimulator(PasdHardwareSimulator):
     def __init__(self: FndhSimulator) -> None:
         """Initialise a new instance."""
         super().__init__(self.NUMBER_OF_PORTS)
+        # self._power_on_time = datetime.now()
         # self._load_thresholds(self.THRESHOLDS_PATH)
 
     @property
@@ -713,15 +707,6 @@ class FndhSimulator(PasdHardwareSimulator):
         :return: the firmware version.
         """
         return self.DEFAULT_FIRMWARE_VERSION
-
-    @property
-    def uptime(self: FndhSimulator) -> int:
-        """
-        Return the uptime, as an integer.
-
-        :return: the uptime.
-        """
-        return self.DEFAULT_UPTIME
 
     @property
     def status(self: FndhSimulator) -> str:
@@ -867,15 +852,6 @@ class SmartboxSimulator(PasdHardwareSimulator):
         :return: the firmware version.
         """
         return self.DEFAULT_FIRMWARE_VERSION
-
-    @property
-    def uptime(self: SmartboxSimulator) -> int:
-        """
-        Return the uptime in seconds.
-
-        :return: the uptime
-        """
-        return self.DEFAULT_UPTIME
 
 
 class PasdBusSimulator:
