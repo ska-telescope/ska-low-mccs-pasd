@@ -568,7 +568,6 @@ class TestSmartboxSimulator:
         assert smartbox_simulator.status == "UNINITIALISED"
         smartbox_simulator.status = "write to initialise"
         assert smartbox_simulator.status == "OK"
-        sensor = getattr(smartbox_simulator, sensor_name)
-        setattr(sensor, "value", simulated_value)
-        assert getattr(sensor, "value") == simulated_value
+        setattr(smartbox_simulator, sensor_name, simulated_value)
+        assert getattr(smartbox_simulator, sensor_name) == simulated_value
         assert smartbox_simulator.status == expected_status

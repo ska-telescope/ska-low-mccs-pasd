@@ -39,7 +39,8 @@ import logging
 from datetime import datetime
 from typing import Final, Optional, Sequence
 import yaml
-from .pasd_bus_conversions import FndhStatusMap, SmartBoxStatusMap
+
+# from .pasd_bus_conversions import FndhStatusMap, SmartBoxStatusMap
 
 logger = logging.getLogger()
 
@@ -252,19 +253,18 @@ class PasdHardwareSimulator:
 
         :param number_of_ports: number of ports managed by this hardware
         """
-        self._ports = [_PasdPortSimulator() for _ in range(number_of_ports)]
-        self._led_pattern = str(self.DEFAULT_LED_PATTERN)
-        self._status = self.DEFAULT_STATUS
         self._power_on_time = None
+        self._ports = [_PasdPortSimulator() for _ in range(number_of_ports)]
+        self._sensors_status = {}
+        self._status = self.DEFAULT_STATUS
+        self._led_pattern = str(self.DEFAULT_LED_PATTERN)
 
     def _load_thresholds(self: PasdHardwareSimulator, file_path: str) -> bool:
         """
         Load PaSD sensor thresholds from a file into this simulator.
 
         :param file_path: path to sensor thresholds YAML file
-
         :return: whether successful
-
         :raises yaml.YAMLError: if the config file cannot be parsed.
         """
         config_data = importlib.resources.read_text(
@@ -283,17 +283,45 @@ class PasdHardwareSimulator:
             raise
 
         for entry in sensor_thresholds["thresholds"]:
-            name = list(entry)[0]
-            thresholds = entry[name][0]
+            sensor = list(entry)[0]
+            thresholds = entry[sensor][0]
             try:
-                sensor = getattr(self, name)
-                setattr(sensor, "high_alarm", thresholds.get("high_alarm"))
-                setattr(sensor, "high_warning", thresholds.get("high_warning"))
-                setattr(sensor, "low_warning", thresholds.get("low_warning"))
-                setattr(sensor, "low_alarm", thresholds.get("low_alarm"))
+                setattr(self, sensor + "_high_alarm", Sensor())
+                setattr(self, sensor + "_high_alarm", thresholds.get("high_alarm"))
+                setattr(self, sensor + "_high_warning", Sensor())
+                setattr(self, sensor + "_high_warning", thresholds.get("high_warning"))
+                setattr(self, sensor + "_low_warning", Sensor())
+                setattr(self, sensor + "_low_warning", thresholds.get("low_warning"))
+                setattr(self, sensor + "_low_alarm", Sensor())
+                setattr(self, sensor + "_low_alarm", thresholds.get("low_alarm"))
             except AttributeError:
                 pass
         return True
+
+    def _update_sensor_status(self: PasdHardwareSimulator, sensor_name: str) -> None:
+        """
+        Update the sensor status based on the thresholds.
+
+        :param sensor_name: Base name string of the sensor's attributes
+        """
+        try:
+            sensor_value = getattr(self, sensor_name)
+            high_alarm = getattr(self, sensor_name + "_high_alarm", None)
+            high_warning = getattr(self, sensor_name + "_high_warning", None)
+            low_warning = getattr(self, sensor_name + "_low_warning", None)
+            low_alarm = getattr(self, sensor_name + "_low_alarm", None)
+            if high_alarm is not None and sensor_value > high_alarm:
+                self._sensors_status[sensor_name] = "ALARM"
+            elif low_alarm is not None and sensor_value < low_alarm:
+                self._sensors_status[sensor_name] = "ALARM"
+            elif high_warning is not None and sensor_value > high_warning:
+                self._sensors_status[sensor_name] = "WARNING"
+            elif low_warning is not None and sensor_value < low_warning:
+                self._sensors_status[sensor_name] = "WARNING"
+            else:
+                self._sensors_status[sensor_name] = "OK"
+        except AttributeError:
+            return
 
     def configure(
         self: PasdHardwareSimulator,
@@ -312,6 +340,37 @@ class PasdHardwareSimulator:
             raise ValueError("Configuration must match the number of ports.")
         for port, is_connected in zip(self._ports, ports_connected):
             port.connected = is_connected
+
+    @property
+    def status(self: PasdHardwareSimulator) -> str:
+        """
+        Return the status of the smartbox.
+
+        :return: a string status.
+        """
+        # Status is not updated until attribute is initialised
+        if self._status is not self.DEFAULT_STATUS:
+            # Set the smartbox status to the highest priority status of any sensor
+            if "RECOVERY" in self._sensors_status.values():
+                self._status = "RECOVERY"
+            elif "ALARM" in self._sensors_status.values():
+                self._status = "ALARM"
+            elif "WARNING" in self._sensors_status.values():
+                self._status = "WARNING"
+            else:
+                self._status = "OK"
+        return self._status
+
+    @status.setter
+    def status(self: PasdHardwareSimulator, value: any) -> None:
+        """
+        Initiliaze the smartbox status.
+
+        :param value: ignored
+        """
+        # Temporarily set status to undefined and read the status
+        self._status = "UNDEFINED"
+        self._status = self.status
 
     @property
     def ports_connected(self: PasdHardwareSimulator) -> list[bool]:
@@ -489,7 +548,7 @@ class PasdHardwareSimulator:
         return True
 
     @property
-    def uptime(self: FndhSimulator) -> int:
+    def uptime(self: PasdHardwareSimulator) -> int:
         """
         Return the uptime, as an integer.
 
@@ -501,53 +560,41 @@ class PasdHardwareSimulator:
 
 
 class Sensor:
-    """Single sensor's attributes of a FNDH/Smartbox."""
+    """
+    Descriptor for sensor attributes of a FNDH/Smartbox.
 
-    def __init__(self: Sensor, value: float) -> None:
+    This descriptor allows for handling sensor attributes within the context
+    of a FNDH/Smartbox simulator class.
+    """
+
+    def __set_name__(self, owner, name):
         """
-        Initialise a new instance.
+        Set the name of the sensor attribute.
 
-        :param value: value to simulate
+        :param owner: The owner object.
+        :param name: The name of the object created in the instance.
         """
-        self.value = value
-        self.status = "UNINITIALISED"
-        self.high_alarm = None
-        self.high_warning = None
-        self.low_warning = None
-        self.low_alarm = None
+        self.name = name
 
-    def __setattr__(self: Sensor, name: str, value):
+    def __get__(self, obj, objtype=None) -> float:
         """
-        Set attribute method.
+        Get the value of the sensor attribute from the instance.
 
-        :param name: name
-        :param value: value
+        :param obj: The instance of the class where the descriptor is being used.
+        :param objtype: The type of the instance (usually the class).
+        :returns: Sensor value stored in the instance's __dict__.
         """
-        if value is not None:
-            if name == "status":
-                self.__dict__[name] = value
-            else:
-                try:
-                    self.__dict__[name] = float(value)
-                    self._update_status()
-                except TypeError:
-                    logger.log(logging.ERROR, f"'{value}' cannot be converted to float")
+        return obj.__dict__.get(self.name)
 
-    def _update_status(self: Sensor) -> None:
-        """Update the sensor status based on the thresholds."""
-        try:
-            if self.high_alarm is not None and self.value > self.high_alarm:
-                self.status = "ALARM"
-            elif self.low_alarm is not None and self.value < self.low_alarm:
-                self.status = "ALARM"
-            elif self.high_warning is not None and self.value > self.high_warning:
-                self.status = "WARNING"
-            elif self.low_warning is not None and self.value < self.low_warning:
-                self.status = "WARNING"
-            else:
-                self.status = "OK"
-        except AttributeError:
-            return
+    def __set__(self, obj, value) -> None:
+        """
+        Set the value of the sensor attribute for the instance.
+
+        :param obj: The instance of the class where the descriptor is being used.
+        :param value: The value to be set for the sensor attribute.
+        """
+        obj.__dict__[self.name] = float(value)
+        obj._update_sensor_status(f"{self.name}")
 
 
 class FndhSimulator(PasdHardwareSimulator):
@@ -741,58 +788,23 @@ class SmartboxSimulator(PasdHardwareSimulator):
     # Thresholds with over- and under-value alarm and warning
     THRESHOLDS_PATH = "simulator_smartbox_thresholds.yaml"
 
+    input_voltage = Sensor()
+    power_supply_output_voltage = Sensor()
+    power_supply_temperature = Sensor()
+    pcb_temperature = Sensor()
+    outside_temperature = Sensor()
+
     def __init__(self: SmartboxSimulator) -> None:
         """Initialise a new instance."""
         super().__init__(self.NUMBER_OF_PORTS)
         self._port_breaker_tripped = [False] * self.NUMBER_OF_PORTS
         # Sensors
-        self.input_voltage = Sensor(self.DEFAULT_INPUT_VOLTAGE)
-        self.power_supply_output_voltage = Sensor(
-            self.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
-        )
-        self.power_supply_temperature = Sensor(self.DEFAULT_POWER_SUPPLY_TEMPERATURE)
-        self.pcb_temperature = Sensor(self.DEFAULT_PCB_TEMPERATURE)
-        self.outside_temperature = Sensor(self.DEFAULT_OUTSIDE_TEMPERATURE)
+        self.input_voltage = self.DEFAULT_INPUT_VOLTAGE
+        self.power_supply_output_voltage = self.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
+        self.power_supply_temperature = self.DEFAULT_POWER_SUPPLY_TEMPERATURE
+        self.pcb_temperature = self.DEFAULT_PCB_TEMPERATURE
+        self.outside_temperature = self.DEFAULT_OUTSIDE_TEMPERATURE
         self._load_thresholds(self.THRESHOLDS_PATH)
-
-    @property
-    def status(self: SmartboxSimulator) -> str:
-        """
-        Return the status of the smartbox.
-
-        :return: a string status.
-        """
-        # Status is not updated until attribute is initialised
-        if self._status is not SmartBoxStatusMap.UNINITIALISED.name:
-            # Gather all sensors' statuses in a list
-            sensors_status = [
-                self.input_voltage.status,
-                self.power_supply_output_voltage.status,
-                self.power_supply_temperature.status,
-                self.pcb_temperature.status,
-                self.outside_temperature.status,
-            ]
-            # Set the smartbox status to the highest priority status of any sensor
-            if SmartBoxStatusMap.RECOVERY.name in sensors_status:
-                self._status = SmartBoxStatusMap.RECOVERY.name
-            elif SmartBoxStatusMap.ALARM.name in sensors_status:
-                self._status = SmartBoxStatusMap.ALARM.name
-            elif SmartBoxStatusMap.WARNING.name in sensors_status:
-                self._status = SmartBoxStatusMap.WARNING.name
-            else:
-                self._status = SmartBoxStatusMap.OK.name
-        return self._status
-
-    @status.setter
-    def status(self: SmartboxSimulator, value: any) -> None:
-        """
-        Initiliaze the smartbox status.
-
-        :param value: ignored
-        """
-        # Temporarily set status to undefined and read the status
-        self._status = SmartBoxStatusMap.UNDEFINED.name
-        self._status = self.status
 
     @property
     def ports_current_draw(
