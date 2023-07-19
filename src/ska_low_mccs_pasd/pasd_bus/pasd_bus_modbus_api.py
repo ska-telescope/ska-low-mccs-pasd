@@ -139,6 +139,7 @@ class PasdBusModbusApiClient:
         logger.setLevel(logging_level)
         self._client = ModbusTcpClient(host, port, ModbusAsciiFramer)
         logger.info(f"****Created Modbus TCP client for address {host}, port {port}")
+        self._client.connect()
         # Register a custom response as a workaround to the firmware issue
         # (see JIRA ticket PRTS-255)
         # self._client.register(CustomReadHoldingRegistersResponse)  # type: ignore
@@ -147,7 +148,7 @@ class PasdBusModbusApiClient:
         self._register_map = PasdBusRegisterMap()
 
     def _create_error_response(self, error_code: str, message: str) -> dict:
-        logger.error(f"Returning error response: {str}")
+        logger.error(f"Returning error response: {message}")
         return {
             "error": {
                 "code": error_code,
@@ -168,7 +169,7 @@ class PasdBusModbusApiClient:
             )
         except PasdReadError as e:
             return self._create_error_response(
-                "request", str(e)
+                "request", e
             )  # TODO: What error code to use?
 
         if len(attributes) == 0:
