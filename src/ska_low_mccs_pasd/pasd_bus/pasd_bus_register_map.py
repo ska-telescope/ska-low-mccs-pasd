@@ -254,8 +254,6 @@ class PasdBusRegisterInfo:
 class PasdBusRegisterMap:
     """A register mapping utility for the PaSD."""
 
-    _FNDH_ADDRESS: Final = 101
-
     MODBUS_REGISTER_MAP_REVISION = "modbus_register_map_revision"
     LED_PATTERN = "led_pattern"
 
@@ -317,7 +315,7 @@ class PasdBusRegisterMap:
         "power_supply_output_voltage": PasdBusAttribute(
             17, 1, PasdConversionUtility.scale_volts
         ),
-        "psu_temperature": PasdBusAttribute(18, 1, PasdConversionUtility.scale_temps),
+        "power_supply_temperature": PasdBusAttribute(18, 1, PasdConversionUtility.scale_temps),
         "pcb_temperature": PasdBusAttribute(19, 1, PasdConversionUtility.scale_temps),
         "outside_temperature": PasdBusAttribute(
             20, 1, PasdConversionUtility.scale_temps
@@ -385,7 +383,7 @@ class PasdBusRegisterMap:
         self._revision_number = value
 
     def _get_register_info(self, device_id: int) -> PasdBusRegisterInfo:
-        if device_id == self._FNDH_ADDRESS:
+        if device_id == 0:
             return self._FNDH_REGISTER_MAPS[self.revision_number]
         return self._SMARTBOX_REGISTER_MAPS[self.revision_number]
 

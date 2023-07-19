@@ -51,34 +51,34 @@ if __name__ == "__main__":
 
     # conn.execute_command(101, "turn_port_on", 3, True)
     # conn.execute_command(101, "reset_port_breaker", 3)
-    # conn.execute_command(101, "set_led_pattern", "OFF")
+    # conn.execute_command(1, "set_led_pattern", "OFF")
     # conn.execute_command(1, "turn_port_off", 1)
-    conn.execute_command(1, "turn_port_on")
+    # conn.execute_command(1, "turn_port_on")
     # conn.execute_command(1, "turn_port_on", 2, True)
 
     # Read FNDH polling registers
-    # conn.read(
-    #     101,
-    #     "modbus_register_map_revision",
-    #     "pcb_revision",
-    #     "cpu_id",
-    #     "chip_id",
-    #     "firmware_version",
-    #     "uptime",
-    #     "sys_address",
-    #     "psu48v_voltages",
-    #     "psu48v_current",
-    #     "psu48v_temperatures",
-    #     "pcb_temperature",
-    #     "fncb_temperature",
-    #     "humidity",
-    #     "status",
-    #     "led_pattern",
-    # )
+    conn.read(
+        0,
+        "modbus_register_map_revision",
+        "pcb_revision",
+        "cpu_id",
+        "chip_id",
+        "firmware_version",
+        "uptime",
+        "sys_address",
+        "psu48v_voltages",
+        "psu48v_current",
+        "psu48v_temperatures",
+        "pcb_temperature",
+        "fncb_temperature",
+        "humidity",
+        "status",
+        "led_pattern",
+    )
 
     # #Port status:
     # conn.read(
-    #     101,
+    #     0,
     #     "port_forcings",
     #     "port_breakers_tripped",
     #     "ports_desired_power_when_online",
@@ -87,31 +87,31 @@ if __name__ == "__main__":
     # )
 
     # # # Smart box on port 1
-    # conn.read(
-    #     1,
-    #     "modbus_register_map_revision",
-    #     "pcb_revision",
-    #     "cpu_id",
-    #     "chip_id",
-    #     "firmware_version",
-    #     "uptime",
-    #     "sys_address",
-    #     "input_voltage",
-    #     "power_supply_output_voltage",
-    #     "psu_temperature",
-    #     "pcb_temperature",
-    #     "outside_temperature",
-    #     "status",
-    #     "led_pattern",
-    # )
-
-    # # # Port status:
     conn.read(
         1,
-        "port_forcings",
-        "port_breakers_tripped",
-        "ports_desired_power_when_online",
-        "ports_desired_power_when_offline",
-        "ports_power_sensed",
-        "ports_current_draw",
+        "modbus_register_map_revision",
+        "pcb_revision",
+        "cpu_id",
+        "chip_id",
+        "firmware_version",
+        "uptime",
+        "sys_address",
+        "input_voltage",
+        "power_supply_output_voltage",
+        "power_supply_temperature",
+        "pcb_temperature",
+        "outside_temperature",
+        "status",
+        "led_pattern",
     )
+
+    # # # Port status:
+    # conn.read(
+    #     1,
+    #     "port_forcings",
+    #     "port_breakers_tripped",
+    #     "ports_desired_power_when_online",
+    #     "ports_desired_power_when_offline",
+    #     "ports_power_sensed",
+    #     "ports_current_draw",
+    # )
