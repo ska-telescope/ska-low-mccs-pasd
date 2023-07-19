@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Sequence
+from typing import Any, Final, Sequence
 
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
@@ -121,21 +121,24 @@ class PasdBusModbusApi:
 class PasdBusModbusApiClient:
     """A client class for a PaSD (simulator or h/w) with a Modbus API."""
 
+    FNDH_ADDRESS: Final = 101
+
     def __init__(
         self: PasdBusModbusApiClient,
-        ip_address: str,
+        host: str,
         port: int,
         logging_level: int = logging.INFO,
     ) -> None:
         """
         Initialise a new instance.
 
-        :param ip_address: the IP address for the PaSD
+        :param host: the host IP address for the PaSD
         :param port: the PaSD port
         :param logging_level: the logging level to use
         """
         logger.setLevel(logging_level)
-        self._client = ModbusTcpClient(ip_address, port, ModbusAsciiFramer)
+        self._client = ModbusTcpClient(host, port, ModbusAsciiFramer)
+        logger.info(f"****Created Modbus TCP client for address {host}, port {port}")
         # Register a custom response as a workaround to the firmware issue
         # (see JIRA ticket PRTS-255)
         # self._client.register(CustomReadHoldingRegistersResponse)  # type: ignore
@@ -144,6 +147,7 @@ class PasdBusModbusApiClient:
         self._register_map = PasdBusRegisterMap()
 
     def _create_error_response(self, error_code: str, message: str) -> dict:
+        logger.error(f"Returning error response: {str}")
         return {
             "error": {
                 "code": error_code,
@@ -154,6 +158,7 @@ class PasdBusModbusApiClient:
 
     def _do_read_request(self, request: dict) -> dict:
         responder_id = request["device_id"]
+        modbus_address = self.FNDH_ADDRESS if responder_id == 0 else responder_id
 
         # Get a dictionary mapping the requested attribute names to
         # PasdBusAttributes
@@ -182,12 +187,12 @@ class PasdBusModbusApiClient:
             - attributes[keys[0]].address
         )
         logger.debug(
-            f"MODBUS read request: responder {responder_id}, "
+            f"MODBUS read request: modbus address {modbus_address}, "
             f"start address {attributes[keys[0]].address}, count {count}"
         )
 
         reply = self._client.read_holding_registers(
-            attributes[keys[0]].address, count, responder_id
+            attributes[keys[0]].address, count, modbus_address
         )
 
         match reply:
@@ -252,6 +257,7 @@ class PasdBusModbusApiClient:
 
     def _do_write_request(self, request: dict) -> dict:
         responder_id = request["device_id"]
+        modbus_address = self.FNDH_ADDRESS if responder_id == 0 else responder_id
 
         # Get a PasdBusCommand object for this command
         command = self._register_map.get_command(
@@ -266,12 +272,12 @@ class PasdBusModbusApiClient:
             return {"data": {"result": False}}
 
         logger.debug(
-            f"MODBUS write request: responder {responder_id}, "
-            f"address {command.address}, value {command.value}"
+            f"MODBUS write request: modbus address {modbus_address}, "
+            f"register address {command.address}, value {command.value}"
         )
 
         reply = self._client.write_register(
-            command.address, command.value, responder_id
+            command.address, command.value, modbus_address
         )
 
         match reply:
