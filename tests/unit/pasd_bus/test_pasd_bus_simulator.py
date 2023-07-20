@@ -199,13 +199,6 @@ class TestFndhSimulator:
     @pytest.mark.parametrize(
         ("attribute_name", "expected_value"),
         [
-            ("psu48v_voltages", FndhSimulator.DEFAULT_PSU48V_VOLTAGES),
-            ("psu48v_current", FndhSimulator.DEFAULT_PSU48V_CURRENT),
-            ("psu48v_temperatures", FndhSimulator.DEFAULT_PSU48V_TEMPERATURES),
-            ("pcb_temperature", FndhSimulator.DEFAULT_PCB_TEMPERATURE),
-            ("fncb_temperature", FndhSimulator.DEFAULT_FNCB_TEMPERATURE),
-            ("humidity", FndhSimulator.DEFAULT_HUMIDITY),
-            ("status", FndhSimulator.DEFAULT_STATUS),
             (
                 "modbus_register_map_revision",
                 FndhSimulator.MODBUS_REGISTER_MAP_REVISION,
@@ -246,6 +239,67 @@ class TestFndhSimulator:
         assert fndh_simulator.led_pattern == "OFF"
         assert fndh_simulator.set_led_pattern("SERVICE")
         assert fndh_simulator.led_pattern == "SERVICE"
+
+    @pytest.mark.parametrize(
+        ("sensor_name", "simulated_value", "expected_status"),
+        [
+            ("psu48v_voltage", 51.0, "ALARM"),
+            ("psu48v_voltage", 50.0, "WARNING"),
+            ("psu48v_voltage", 48.0, "OK"),
+            ("psu48v_voltage", 46.0, "WARNING"),
+            ("psu48v_voltage", 45.0, "ALARM"),
+            ("psu48v_temperature", 65.0, "ALARM"),
+            ("psu48v_temperature", 55.0, "WARNING"),
+            ("psu48v_temperature", 25.0, "OK"),
+            ("psu48v_temperature", 8.0, "WARNING"),
+            ("psu48v_temperature", 4.0, "ALARM"),
+            ("psu5v_voltage", 5.3, "ALARM"),
+            ("psu5v_voltage", 5.2, "WARNING"),
+            ("psu5v_voltage", 5.0, "OK"),
+            ("psu5v_voltage", 4.8, "WARNING"),
+            ("psu5v_voltage", 4.7, "ALARM"),
+            ("psu5v_temperature", 65.0, "ALARM"),
+            ("psu5v_temperature", 55.0, "WARNING"),
+            ("psu5v_temperature", 25.0, "OK"),
+            ("psu5v_temperature", 8.0, "WARNING"),
+            ("psu5v_temperature", 4.0, "ALARM"),
+            ("outside_temperature", 65.0, "ALARM"),
+            ("outside_temperature", 55.0, "WARNING"),
+            ("outside_temperature", 25.0, "OK"),
+            ("outside_temperature", 8.0, "WARNING"),
+            ("outside_temperature", 4.0, "ALARM"),
+            ("pcb_temperature", 65.0, "ALARM"),
+            ("pcb_temperature", 55.0, "WARNING"),
+            ("pcb_temperature", 25.0, "OK"),
+            ("pcb_temperature", 8.0, "WARNING"),
+            ("pcb_temperature", 4.0, "ALARM"),
+        ],
+    )
+    def test_sensors_and_status_transitions(
+        self: TestFndhSimulator,
+        fndh_simulator: FndhSimulator,
+        sensor_name: str,
+        simulated_value: float,
+        expected_status: str,
+    ) -> None:
+        """
+        Test the FNDH sensors and status.
+
+        Check if status is initialized to OK, and changes if a given sensor
+        value is out of bounds.
+
+        :param fndh_simulator: the FNDH simulator under test.
+        :param sensor_name: name of the sensor to test.
+        :param simulated_value: value to set the sensor to.
+        :param expected_status: the expected status of the sensor and FNDH.
+        """
+        assert fndh_simulator.status == "UNINITIALISED"
+        fndh_simulator.status = "write to initialise"
+        print(fndh_simulator._sensors_status)
+        assert fndh_simulator.status == "OK"
+        setattr(fndh_simulator, sensor_name, simulated_value)
+        assert getattr(fndh_simulator, sensor_name) == simulated_value
+        assert fndh_simulator.status == expected_status
 
 
 class TestSmartboxSimulator:
@@ -547,7 +601,7 @@ class TestSmartboxSimulator:
             ("pcb_temperature", 4.0, "ALARM"),
         ],
     )
-    def test_sensor_status_transitions(
+    def test_sensors_and_status_transitions(
         self: TestSmartboxSimulator,
         smartbox_simulator: SmartboxSimulator,
         sensor_name: str,
