@@ -158,14 +158,15 @@ class PasdBusModbusApiClient:
         }
 
     def _do_read_request(self, request: dict) -> dict:
-        responder_id = request["device_id"]
-        modbus_address = self.FNDH_ADDRESS if responder_id == 0 else responder_id
+        modbus_address = (
+            self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
+        )
 
         # Get a dictionary mapping the requested attribute names to
         # PasdBusAttributes
         try:
             attributes = self._register_map.get_attributes(
-                responder_id, request["read"]
+                request["device_id"], request["read"]
             )
         except PasdReadError as e:
             return self._create_error_response(
@@ -236,7 +237,7 @@ class PasdBusModbusApiClient:
                         register_index += current_attribute.count
                     last_attribute = current_attribute
                 response = {
-                    "source": responder_id,
+                    "source": request["device_id"],
                     "data": {
                         "type": "reads",
                         "attributes": results,
@@ -257,12 +258,13 @@ class PasdBusModbusApiClient:
         return response
 
     def _do_write_request(self, request: dict) -> dict:
-        responder_id = request["device_id"]
-        modbus_address = self.FNDH_ADDRESS if responder_id == 0 else responder_id
+        modbus_address = (
+            self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
+        )
 
         # Get a PasdBusCommand object for this command
         command = self._register_map.get_command(
-            responder_id, request["execute"], request["arguments"]
+            request["device_id"], request["execute"], request["arguments"]
         )
 
         if not command:
@@ -285,7 +287,7 @@ class PasdBusModbusApiClient:
             case WriteSingleRegisterResponse():
                 # A normal echo response has been received
                 response = {
-                    "source": responder_id,
+                    "source": request["device_id"],
                     "data": {"type": "command_result", "result": True},
                 }
             case ModbusIOException():

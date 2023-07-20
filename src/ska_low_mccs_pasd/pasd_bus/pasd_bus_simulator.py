@@ -461,6 +461,7 @@ class FndhSimulator(PasdHardwareSimulator):
     CHIP_ID = 23
     MODBUS_REGISTER_MAP_REVISION = 20
     PCB_REVISION = 21
+    SYS_ADDRESS = 101
 
     DEFAULT_FIRMWARE_VERSION = "1.2.3-fake"
     DEFAULT_STATUS = "OK"
@@ -468,16 +469,26 @@ class FndhSimulator(PasdHardwareSimulator):
     DEFAULT_PSU48V_VOLTAGES = [47.9, 48.1]
     DEFAULT_PSU5V_VOLTAGE = 5.1
     DEFAULT_PSU48V_CURRENT = 20.1
-    DEFAULT_PSU48V_TEMPERATURE = 41.2
+    DEFAULT_PSU48V_TEMPERATURES = [41.2, 42.9]
     DEFAULT_PSU5V_TEMPERATURE = 41.3
     DEFAULT_PCB_TEMPERATURE = 41.4
-    DEFAULT_OUTSIDE_TEMPERATURE = 41.5
+    DEFAULT_FNCB_TEMPERATURE = 41.5
+    DEFAULT_HUMIDITY = 50.2
 
     def __init__(self: FndhSimulator) -> None:
         """Initialise a new instance."""
         self._update_time = datetime.now().isoformat()
 
         super().__init__(self.NUMBER_OF_PORTS)
+
+    @property
+    def sys_address(self: FndhSimulator) -> int:
+        """
+        Return the sys address.
+
+        :return: the system address.
+        """
+        return self.SYS_ADDRESS
 
     @property
     def psu48v_voltages(self: FndhSimulator) -> list[float]:
@@ -511,14 +522,14 @@ class FndhSimulator(PasdHardwareSimulator):
         return self.DEFAULT_PSU48V_CURRENT
 
     @property
-    def psu48v_temperature(self: FndhSimulator) -> float:
+    def psu48v_temperatures(self: FndhSimulator) -> list[float]:
         """
-        Return the common temperature for both 48V power supplies, in celcius.
+        Return the temperatures for both 48V power supplies, in celcius.
 
-        :return: the common temperature for both 48V power supplies, in celcius.
+        :return: the temperatures for both 48V power supplies, in celcius.
         """
         # TODO: We're currently returning canned results.
-        return self.DEFAULT_PSU48V_TEMPERATURE
+        return self.DEFAULT_PSU48V_TEMPERATURES
 
     @property
     def psu5v_temperature(self: FndhSimulator) -> float:
@@ -541,14 +552,24 @@ class FndhSimulator(PasdHardwareSimulator):
         return self.DEFAULT_PCB_TEMPERATURE
 
     @property
-    def outside_temperature(self: FndhSimulator) -> float:
+    def fncb_temperature(self: FndhSimulator) -> float:
         """
-        Return the temperature outside the FNDH, in celcius.
+        Return the FNCB temperature, in celcius.
 
-        :return: the temperature outside the FNDH, in celcius.
+        :return: the FNCB temperature, in celcius.
         """
         # TODO: We're currently returning canned results.
-        return self.DEFAULT_OUTSIDE_TEMPERATURE
+        return self.DEFAULT_FNCB_TEMPERATURE
+
+    @property
+    def humidity(self: FndhSimulator) -> float:
+        """
+        Return the humidity, in %.
+
+        :return: the humidity in %.
+        """
+        # TODO: We're currently returning canned results.
+        return self.DEFAULT_HUMIDITY
 
     @property
     def modbus_register_map_revision(self: FndhSimulator) -> int:
@@ -623,6 +644,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
     CHIP_ID: Final = 25
     MODBUS_REGISTER_MAP_REVISION: Final = 20
     PCB_REVISION: Final = 21
+    SYS_ADDRESS: Final = 1
 
     DEFAULT_FIRMWARE_VERSION = "0.1.2-fake"
     DEFAULT_INPUT_VOLTAGE: Final = 48.0
@@ -642,6 +664,16 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self._update_time = datetime.now().isoformat()
 
         self._input_voltage = self.DEFAULT_INPUT_VOLTAGE
+
+    @property
+    def sys_address(self: SmartboxSimulator) -> int:
+        """
+        Return the sys address.
+
+        :return: the system address.
+        """
+        # TODO: We are currently returning canned results.
+        return self.SYS_ADDRESS
 
     @property
     def ports_current_draw(
