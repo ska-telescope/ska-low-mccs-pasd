@@ -87,6 +87,9 @@ class PasdBusRequestProvider:
     It keeps track of the current intent of PaSD monitoring and control,
     for example, whether a command has been requested to be executed;
     and it decides what should be done in the next poll.
+
+    NOTE: The order of attributes is fixed and must match the Modbus
+    register order
     """
 
     STATIC_INFO_ATTRIBUTES: Final = (
@@ -99,19 +102,18 @@ class PasdBusRequestProvider:
 
     FNDH_STATUS_ATTRIBUTES: Final = (
         "uptime",
+        "sys_address",
+        "psu48v_voltages",
+        "psu48v_current",
+        "psu48v_temperatures",
+        "pcb_temperature",
+        "fncb_temperature",
+        "humidity",
         "status",
         "led_pattern",
-        "psu48v_voltages",
-        "psu5v_voltage",
-        "psu48v_current",
-        "psu48v_temperature",
-        "psu5v_temperature",
-        "pcb_temperature",
-        "outside_temperature",
     )
 
     FNDH_PORTS_STATUS_ATTRIBUTES: Final = (
-        "ports_connected",
         "port_forcings",
         "port_breakers_tripped",
         "ports_desired_power_when_online",
@@ -121,17 +123,17 @@ class PasdBusRequestProvider:
 
     SMARTBOX_STATUS_ATTRIBUTES: Final = (
         "uptime",
-        "status",
-        "led_pattern",
+        "sys_address",
         "input_voltage",
         "power_supply_output_voltage",
         "power_supply_temperature",
-        "outside_temperature",
         "pcb_temperature",
+        "outside_temperature",
+        "status",
+        "led_pattern",
     )
 
     SMARTBOX_PORTS_STATUS_ATTRIBUTES: Final = (
-        "ports_connected",
         "port_forcings",
         "port_breakers_tripped",
         "ports_desired_power_when_online",
@@ -147,7 +149,6 @@ class PasdBusRequestProvider:
         :param logger: a logger.
         """
         self._logger = logger
-
         self._led_pattern_writes: dict[int, str] = {}
         self._port_power_changes: dict[
             tuple[int, int], tuple[Literal[True], bool] | Literal[False]

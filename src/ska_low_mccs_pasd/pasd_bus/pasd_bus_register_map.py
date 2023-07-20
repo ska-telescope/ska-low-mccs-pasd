@@ -27,6 +27,7 @@ class PasdReadError(Exception):
         :param attribute1: name of the first attribute causing the error
         :param attribute2: name of the second
         """
+        logger.error(f"Non-contiguous registers requested: {attribute1}, {attribute2}")
         super().__init__(
             f"Non-contiguous registers requested: {attribute1}, {attribute2}"
         )
@@ -315,7 +316,9 @@ class PasdBusRegisterMap:
         "power_supply_output_voltage": PasdBusAttribute(
             17, 1, PasdConversionUtility.scale_volts
         ),
-        "power_supply_temperature": PasdBusAttribute(18, 1, PasdConversionUtility.scale_temps),
+        "power_supply_temperature": PasdBusAttribute(
+            18, 1, PasdConversionUtility.scale_temps
+        ),
         "pcb_temperature": PasdBusAttribute(19, 1, PasdConversionUtility.scale_temps),
         "outside_temperature": PasdBusAttribute(
             20, 1, PasdConversionUtility.scale_temps

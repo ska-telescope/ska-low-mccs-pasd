@@ -47,7 +47,7 @@ class PasdBusConnectionTest:
 
 
 if __name__ == "__main__":
-    #conn = PasdBusConnectionTest("127.0.0.1", 5000)
+    # conn = PasdBusConnectionTest("127.0.0.1", 5000)
     conn = PasdBusConnectionTest("127.0.0.1", 5001)
 
     # conn.execute_command(101, "turn_port_on", 3, True)
