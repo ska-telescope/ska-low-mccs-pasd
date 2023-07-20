@@ -52,7 +52,8 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         ("SysAddress", int, None),
         ("PasdStatus", str, None),
         ("LedPattern", str, None),
-        ("Psu48vVoltages", (float,), 2),
+        ("Psu48vVoltage", float, None),
+        ("Psu5vVoltage", float, None),  # Is this an attribute of FNDH?
         ("Psu48vCurrent", float, None),
         ("Psu48vTemperatures", (float,), 2),
         ("PcbTemperature", float, None),

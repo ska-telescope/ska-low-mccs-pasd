@@ -374,7 +374,7 @@ def device_subscriptions_fixture(
             "fndhUptime",
             "fndhStatus",
             "fndhLedPattern",
-            "fndhPsu48vVoltages",
+            "fndhPsu48vVoltage",
             "fndhPsu48vCurrent",
             "fndhPsu48vTemperatures",
             "fndhPcbTemperature",

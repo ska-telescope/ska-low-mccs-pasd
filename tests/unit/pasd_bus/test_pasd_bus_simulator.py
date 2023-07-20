@@ -295,7 +295,6 @@ class TestFndhSimulator:
         """
         assert fndh_simulator.status == "UNINITIALISED"
         fndh_simulator.status = "write to initialise"
-        print(fndh_simulator._sensors_status)
         assert fndh_simulator.status == "OK"
         setattr(fndh_simulator, sensor_name, simulated_value)
         assert getattr(fndh_simulator, sensor_name) == simulated_value

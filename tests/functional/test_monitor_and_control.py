@@ -240,7 +240,7 @@ def check_monitoring_point_is_reported(
         "FNDH uptime": "fndhUptime",
         "FNDH status": "fndhStatus",
         "FNDH LED pattern": "fndhLedPattern",
-        "FNDH 48v PSU voltages": "fndhPsu48vVoltages",
+        "FNDH 48v PSU voltages": "fndhPsu48vVoltage",
         "FNDH 48v PSU current": "fndhPsu48vCurrent",
         "FNDH 48v PSU temperatures": "fndhPsu48vTemperatures",
         "FNDH PCB temperature": "fndhPcbTemperature",
