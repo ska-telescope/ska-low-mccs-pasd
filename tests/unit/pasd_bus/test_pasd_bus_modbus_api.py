@@ -64,7 +64,7 @@ class TestPasdBusModbusApi:
             pasd_bus_simulator.get_fndh(),
             spec_set=True,
             instance=True,
-            outside_temperature=40,
+            fncb_temperature=40,
         )
         mock.set_led_pattern.return_value = True
         mock.reset_port_breaker.side_effect = ValueError("Mock error")
@@ -136,7 +136,7 @@ class TestPasdBusModbusApi:
                 assert message.slave_id == 0
                 assert len(message.registers) == 1
                 assert message.registers[0] == pytest.approx(
-                    backend_fndh.outside_temperature
+                    backend_fndh.fncb_temperature
                 )
 
         decoder = ModbusAsciiFramer(ClientDecoder())

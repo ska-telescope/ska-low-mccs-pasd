@@ -183,6 +183,7 @@ class TestfndhPasdBusIntegration:
             fndh_device.ModbusRegisterMapRevisionNumber
             == FndhSimulator.MODBUS_REGISTER_MAP_REVISION
         )
+        assert fndh_device.SysAddress == FndhSimulator.SYS_ADDRESS
         assert fndh_device.PcbRevisionNumber == FndhSimulator.PCB_REVISION
         assert fndh_device.CpuId == FndhSimulator.CPU_ID
         assert fndh_device.ChipId == FndhSimulator.CHIP_ID
@@ -191,14 +192,13 @@ class TestfndhPasdBusIntegration:
         assert fndh_device.pasdStatus == FndhSimulator.DEFAULT_STATUS
         assert fndh_device.LedPattern == FndhSimulator.DEFAULT_LED_PATTERN
         assert list(fndh_device.Psu48vVoltages) == FndhSimulator.DEFAULT_PSU48V_VOLTAGES
-        assert fndh_device.Psu5vVoltage == FndhSimulator.DEFAULT_PSU5V_VOLTAGE
         assert fndh_device.Psu48vCurrent == FndhSimulator.DEFAULT_PSU48V_CURRENT
-        assert fndh_device.Psu48vTemperature == FndhSimulator.DEFAULT_PSU48V_TEMPERATURE
-        assert fndh_device.Psu5vTemperature == FndhSimulator.DEFAULT_PSU5V_TEMPERATURE
-        assert fndh_device.PcbTemperature == FndhSimulator.DEFAULT_PCB_TEMPERATURE
         assert (
-            fndh_device.OutsideTemperature == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+            list(fndh_device.Psu48vTemperatures)
+            == FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
         )
+        assert fndh_device.PcbTemperature == FndhSimulator.DEFAULT_PCB_TEMPERATURE
+        assert fndh_device.FncbTemperature == FndhSimulator.DEFAULT_FNCB_TEMPERATURE
         assert list(fndh_device.PortsConnected) == fndh_simulator.ports_connected
         assert (
             list(fndh_device.PortBreakersTripped)

@@ -15,11 +15,10 @@ Feature: Monitoring and control of PaSD
         And MCCS-for-PaSD reports its FNDH LED pattern
         And MCCS-for-PaSD reports its FNDH 48v PSU voltages
         And MCCS-for-PaSD reports its FNDH 48v PSU current
-        And MCCS-for-PaSD reports its FNDH 48v PSU temperature
-        And MCCS-for-PaSD reports its FNDH 5v PSU voltage 
-        And MCCS-for-PaSD reports its FNDH 5v PSU temperature 
+        And MCCS-for-PaSD reports its FNDH 48v PSU temperatures
         And MCCS-for-PaSD reports its FNDH PCB temperature
-        And MCCS-for-PaSD reports its FNDH outside temperature
+        And MCCS-for-PaSD reports its FNDH FNCB ambient temperature
+        And MCCS-for-PaSD reports its FNDH FNCB ambient humidity
         And MCCS-for-PaSD reports its smartbox uptime
         And MCCS-for-PaSD reports its smartbox status
         And MCCS-for-PaSD reports its smartbox LED pattern

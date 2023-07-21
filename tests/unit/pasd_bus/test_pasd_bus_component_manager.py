@@ -58,6 +58,7 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call(
             "pasd_device_state",
             0,  # FNDH
+            sys_address=FndhSimulator.SYS_ADDRESS,
             modbus_register_map_revision=FndhSimulator.MODBUS_REGISTER_MAP_REVISION,
             pcb_revision=FndhSimulator.PCB_REVISION,
             cpu_id=FndhSimulator.CPU_ID,
@@ -70,6 +71,7 @@ class TestPasdBusComponentManager:
             mock_callbacks.assert_call(
                 "pasd_device_state",
                 smartbox_number,
+                sys_address=SmartboxSimulator.SYS_ADDRESS,
                 modbus_register_map_revision=(
                     SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
                 ),
@@ -87,12 +89,11 @@ class TestPasdBusComponentManager:
             status=FndhSimulator.DEFAULT_STATUS,
             led_pattern=FndhSimulator.DEFAULT_LED_PATTERN,
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
-            psu5v_voltage=FndhSimulator.DEFAULT_PSU5V_VOLTAGE,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
-            psu48v_temperature=FndhSimulator.DEFAULT_PSU48V_TEMPERATURE,
-            psu5v_temperature=FndhSimulator.DEFAULT_PSU5V_TEMPERATURE,
+            psu48v_temperatures=FndhSimulator.DEFAULT_PSU48V_TEMPERATURES,
             pcb_temperature=FndhSimulator.DEFAULT_PCB_TEMPERATURE,
-            outside_temperature=FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
+            fncb_temperature=FndhSimulator.DEFAULT_FNCB_TEMPERATURE,
+            humidity=FndhSimulator.DEFAULT_HUMIDITY,
         )
 
         expected_fndh_ports_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
@@ -369,12 +370,11 @@ class TestPasdBusComponentManager:
             status=FndhSimulator.DEFAULT_STATUS,
             led_pattern="SERVICE",
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
-            psu5v_voltage=FndhSimulator.DEFAULT_PSU5V_VOLTAGE,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
-            psu48v_temperature=FndhSimulator.DEFAULT_PSU48V_TEMPERATURE,
-            psu5v_temperature=FndhSimulator.DEFAULT_PSU5V_TEMPERATURE,
+            psu48v_temperatures=FndhSimulator.DEFAULT_PSU48V_TEMPERATURES,
             pcb_temperature=FndhSimulator.DEFAULT_PCB_TEMPERATURE,
-            outside_temperature=FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
+            fncb_temperature=FndhSimulator.DEFAULT_FNCB_TEMPERATURE,
+            humidity=FndhSimulator.DEFAULT_HUMIDITY,
             lookahead=75,
         )
 

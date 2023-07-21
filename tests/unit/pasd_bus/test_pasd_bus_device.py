@@ -175,6 +175,7 @@ def test_communication(  # pylint: disable=too-many-statements
         pasd_bus_device.fndhModbusRegisterMapRevisionNumber
         == FndhSimulator.MODBUS_REGISTER_MAP_REVISION
     )
+    assert pasd_bus_device.fndhSysAddress == FndhSimulator.SYS_ADDRESS
     assert pasd_bus_device.fndhPcbRevisionNumber == FndhSimulator.PCB_REVISION
     assert pasd_bus_device.fndhCpuId == FndhSimulator.CPU_ID
     assert pasd_bus_device.fndhChipId == FndhSimulator.CHIP_ID
@@ -186,20 +187,14 @@ def test_communication(  # pylint: disable=too-many-statements
         list(pasd_bus_device.fndhPsu48vVoltages)
         == FndhSimulator.DEFAULT_PSU48V_VOLTAGES
     )
-    assert pasd_bus_device.fndhPsu5vVoltage == FndhSimulator.DEFAULT_PSU5V_VOLTAGE
     assert pasd_bus_device.fndhPsu48vCurrent == FndhSimulator.DEFAULT_PSU48V_CURRENT
     assert (
-        pasd_bus_device.fndhPsu48vTemperature
-        == FndhSimulator.DEFAULT_PSU48V_TEMPERATURE
-    )
-    assert (
-        pasd_bus_device.fndhPsu5vTemperature == FndhSimulator.DEFAULT_PSU5V_TEMPERATURE
+        list(pasd_bus_device.fndhPsu48vTemperatures)
+        == FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
     )
     assert pasd_bus_device.fndhPcbTemperature == FndhSimulator.DEFAULT_PCB_TEMPERATURE
-    assert (
-        pasd_bus_device.fndhOutsideTemperature
-        == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
-    )
+    assert pasd_bus_device.fndhFncbTemperature == FndhSimulator.DEFAULT_FNCB_TEMPERATURE
+    assert pasd_bus_device.fndhHumidity == FndhSimulator.DEFAULT_HUMIDITY
     assert list(pasd_bus_device.fndhPortsConnected) == fndh_simulator.ports_connected
     assert (
         list(pasd_bus_device.fndhPortBreakersTripped)

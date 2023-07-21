@@ -117,13 +117,14 @@ def mock_fndh_simulator_fixture(
         "ports_desired_power_when_online",
         "ports_desired_power_when_offline",
         "ports_power_sensed",
+        "led_pattern",
+        "sys_address",
         "psu48v_voltages",
-        "psu5v_voltage",
         "psu48v_current",
-        "psu48v_temperature",
-        "psu5v_temperature",
+        "psu48v_temperatures",
         "pcb_temperature",
-        "outside_temperature",
+        "fncb_temperature",
+        "humidity",
         "modbus_register_map_revision",
         "pcb_revision",
         "cpu_id",
@@ -131,7 +132,6 @@ def mock_fndh_simulator_fixture(
         "firmware_version",
         "uptime",
         "status",
-        "led_pattern",
     ]:
         setattr(
             type(mock_simulator),
@@ -189,6 +189,8 @@ def mock_smartbox_simulators_fixture(
             "ports_desired_power_when_online",
             "ports_desired_power_when_offline",
             "ports_power_sensed",
+            "led_pattern",
+            "sys_address",
             "ports_current_draw",
             "input_voltage",
             "power_supply_output_voltage",
@@ -202,7 +204,6 @@ def mock_smartbox_simulators_fixture(
             "chip_id",
             "firmware_version",
             "uptime",
-            "led_pattern",
         ]:
             setattr(
                 type(mock_simulator),

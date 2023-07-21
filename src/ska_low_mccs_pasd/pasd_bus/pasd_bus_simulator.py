@@ -467,10 +467,8 @@ class FndhSimulator(PasdHardwareSimulator):
     DEFAULT_STATUS = "OK"
     DEFAULT_UPTIME = 2000
     DEFAULT_PSU48V_VOLTAGES = [47.9, 48.1]
-    DEFAULT_PSU5V_VOLTAGE = 5.1
     DEFAULT_PSU48V_CURRENT = 20.1
     DEFAULT_PSU48V_TEMPERATURES = [41.2, 42.9]
-    DEFAULT_PSU5V_TEMPERATURE = 41.3
     DEFAULT_PCB_TEMPERATURE = 41.4
     DEFAULT_FNCB_TEMPERATURE = 41.5
     DEFAULT_HUMIDITY = 50.2
@@ -502,16 +500,6 @@ class FndhSimulator(PasdHardwareSimulator):
         return self.DEFAULT_PSU48V_VOLTAGES
 
     @property
-    def psu5v_voltage(self: FndhSimulator) -> float:
-        """
-        Return the output voltage on the 5V power supply, in volts.
-
-        :return: the output voltage on the 5V power supply, in volts.
-        """
-        # TODO: We're currently returning canned results.
-        return self.DEFAULT_PSU5V_VOLTAGE
-
-    @property
     def psu48v_current(self: FndhSimulator) -> float:
         """
         Return the total current on the 48V DC bus, in amperes.
@@ -530,16 +518,6 @@ class FndhSimulator(PasdHardwareSimulator):
         """
         # TODO: We're currently returning canned results.
         return self.DEFAULT_PSU48V_TEMPERATURES
-
-    @property
-    def psu5v_temperature(self: FndhSimulator) -> float:
-        """
-        Return the temperature of the 5V power supply, in celcius.
-
-        :return: the temperature of the 5V power supply, in celcius.
-        """
-        # TODO: We're currently returning canned results.
-        return self.DEFAULT_PSU5V_TEMPERATURE
 
     @property
     def pcb_temperature(self: FndhSimulator) -> float:
