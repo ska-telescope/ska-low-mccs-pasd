@@ -67,7 +67,7 @@ class PasdBusModbusApi:
                 # TODO: Handle multi-register attributes
             except AttributeError:
                 # TODO
-                pass
+                logger.error(f"Attribute not found: {name}")
             values.append(value)
         return values
 
@@ -90,7 +90,7 @@ class PasdBusModbusApi:
                 case ReadHoldingRegistersRequest():
                     # TODO: Map register numbers from message.address and
                     # message.count to the corresponding attribute names
-                    attr_names = ["outside_temperature"]
+                    attr_names = ["fncb_temperature"]
                     values = self._handle_read_attributes(message.slave_id, attr_names)
                     response = ReadHoldingRegistersResponse(
                         slave=message.slave_id,
@@ -170,7 +170,7 @@ class PasdBusModbusApiClient:
             )
         except PasdReadError as e:
             return self._create_error_response(
-                "request", e
+                "request", f"Exception: {e}"
             )  # TODO: What error code to use?
 
         if len(attributes) == 0:

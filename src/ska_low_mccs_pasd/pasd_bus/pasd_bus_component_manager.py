@@ -98,11 +98,12 @@ class PasdBusRequestProvider:
         "cpu_id",
         "chip_id",
         "firmware_version",
+        "sys_address",
     )
 
     FNDH_STATUS_ATTRIBUTES: Final = (
         "uptime",
-        "sys_address",
+        # "sys_address",
         "psu48v_voltages",
         "psu48v_current",
         "psu48v_temperatures",
@@ -114,16 +115,17 @@ class PasdBusRequestProvider:
     )
 
     FNDH_PORTS_STATUS_ATTRIBUTES: Final = (
-        "port_forcings",
-        "port_breakers_tripped",
-        "ports_desired_power_when_online",
-        "ports_desired_power_when_offline",
-        "ports_power_sensed",
+        "ports_connected",  # Register STATE[6] - POWER?
+        "port_forcings",  # Register STATE[9:8] - TO
+        "port_breakers_tripped",  # Not in FNDH state register
+        "ports_desired_power_when_online",  # Register STATE[13:12] - DSON
+        "ports_desired_power_when_offline",  # Register STATE[11:10] - DSOFF
+        "ports_power_sensed",  # Register STATE[7] - PWRSENSE
     )
 
     SMARTBOX_STATUS_ATTRIBUTES: Final = (
         "uptime",
-        "sys_address",
+        # "sys_address",
         "input_voltage",
         "power_supply_output_voltage",
         "power_supply_temperature",
@@ -134,12 +136,13 @@ class PasdBusRequestProvider:
     )
 
     SMARTBOX_PORTS_STATUS_ATTRIBUTES: Final = (
-        "port_forcings",
-        "port_breakers_tripped",
-        "ports_desired_power_when_online",
-        "ports_desired_power_when_offline",
-        "ports_power_sensed",
-        "ports_current_draw",
+        "ports_connected",  # Register STATE[6] - POWER?
+        "port_forcings",  # Register STATE[9:8] - TO
+        "port_breakers_tripped",  # Register STATE[7] - BREAKER
+        "ports_desired_power_when_online",  # Register STATE[13:12] - DSON
+        "ports_desired_power_when_offline",  # Register STATE[11:10] - DSOFF
+        "ports_power_sensed",  # Not in smartbox state register
+        "ports_current_draw",  # Register CURRENT
     )
 
     def __init__(self, logger: logging.Logger) -> None:
