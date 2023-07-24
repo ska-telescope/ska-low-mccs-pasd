@@ -19,8 +19,8 @@ from ska_ser_devices.client_server import (
     TcpServer,
 )
 
-from .pasd_bus_json_api import PasdBusJsonApi
-from .pasd_bus_simulator import FndhSimulator, PasdBusSimulator, SmartboxSimulator
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_json_api import PasdBusJsonApi
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import FndhSimulator, PasdBusSimulator, SmartboxSimulator
 
 
 # pylint: disable-next=too-few-public-methods
@@ -49,16 +49,21 @@ class PasdBusSimulatorJsonServer(ApplicationServer):
 
 def main() -> None:
     """Run the simulator server."""
+    print("Starting daq server...", flush=True)
     logger = logging.getLogger()
 
     station_id = os.getenv("SIMULATOR_STATION", "1")
-    host = os.getenv("SIMULATOR_HOST", gethostname())
-    port = int(os.getenv("SIMULATOR_PORT", "502"))
+    host = os.getenv("SIMULATOR_HOST", "xyz.xyz.xyz.xyz")
+    port = int(os.getenv("SIMULATOR_PORT", "50051"))
 
     simulator = PasdBusSimulator(int(station_id), logging.DEBUG)
     simulator_server = PasdBusSimulatorJsonServer(
         simulator.get_fndh(), simulator.get_smartboxes()
     )
+    print(f"Starting daq server...port:{port}, host:{host}", flush=True)
     server = TcpServer(host, port, simulator_server, logger=logger)
     with server:
         server.serve_forever()
+
+if __name__ == "__main__":
+    main()

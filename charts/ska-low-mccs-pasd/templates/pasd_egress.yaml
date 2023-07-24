@@ -1,0 +1,47 @@
+{{- /*
+Create egress to a pasd host.
+
+Check if the receiver spec has "egress" set to "true".
+If so, then the traffic from the pod will be routed by this service 
+to a EndPoint specified by the host and port parameters. 
+*/}}
+
+{{- range $id, $spec := .Values.deviceServers.pasds.instances}}
+
+{{- if (hasKey $spec "egress") }}
+
+{{$egress := $spec.egress}}
+{{$pasd_id := (int $id)}}
+
+---
+{{- $service_name := (printf "pasd-egress-%03d" $pasd_id)}}
+{{- $service_name := (printf "pasd-egress-%03d" $pasd_id)}}
+
+{{- $host := $spec.host}}
+{{- $port := $spec.port}}
+
+kind: Endpoints
+apiVersion: v1
+metadata:
+ name: {{$service_name}}
+ labels:
+  kubernetes.io/service-name: {{$service_name}}
+subsets:
+ - addresses:
+     - ip: {{$egress.host}}
+   ports:
+     - port: {{$egress.port}}
+---
+kind: Service
+apiVersion: v1
+metadata:
+ name: {{$service_name}}
+spec:
+ type: ClusterIP
+ ports:
+ - port: {{$port}}
+   targetPort: {{$port}}
+{{- end }}
+{{- end }}
+
+

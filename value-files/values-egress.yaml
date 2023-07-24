@@ -1,0 +1,41 @@
+# This file is for developers to deploy a cluster configured to their needs.
+deviceServers:
+  pasds:
+    instances:
+      1:
+        host: "pasd-egress-001"
+        port: 5001
+        egress:
+          host: "xyz.xyz.xyz.xyz"
+          port: 50051
+    logging_level_default: 5
+
+  # Example.
+  smartboxes:
+    logging_level_default: 5 # optional, defaults to 3
+    instances:
+      1:
+        fndhPort: 1 # mandatory
+        pasdFQDN: "low-mccs/pasdbus/001" # mandatory
+        fndhFQDN: "low-mccs/fndh/001" # mandatory
+        smartBoxNumber: 1 # mandatory
+      2:
+        fndhPort: 2 # mandatory
+        fndhFQDN: "low-mccs/fndh/001" # mandatory
+        pasdFQDN: "low-mccs/pasdbus/001" # mandatory
+        smartBoxNumber: 2 # mandatory
+
+  fndhs:
+    logging_level_default: 5 # optional, defaults to 3
+    instances:
+      1:
+        pasdFQDN: "low-mccs/pasdbus/001" # mandatory
+
+  fieldstations:
+    logging_level_default: 5 # optional, defaults to 3
+    instances:
+      1:
+        FndhFQDN: "low-mccs/fndh/001"
+        SmartBoxFQDNs: 
+          1: low-mccs/smartbox/00001
+          2: low-mccs/smartbox/00002
