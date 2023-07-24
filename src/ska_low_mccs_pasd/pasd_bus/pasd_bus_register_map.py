@@ -51,6 +51,7 @@ class PasdCommandStrings(Enum):
     TURN_PORT_OFF = "turn_port_off"
     RESET_PORT_BREAKER = "reset_port_breaker"
     SET_LED_PATTERN = "set_led_pattern"
+    INITIALIZE = "initialize"
 
 
 class PasdServiceLEDPattern(Enum):
@@ -257,6 +258,7 @@ class PasdBusRegisterMap:
 
     MODBUS_REGISTER_MAP_REVISION = "modbus_register_map_revision"
     LED_PATTERN = "led_pattern"
+    STATUS = "status"
 
     # Register map for the 'info' registers, guaranteed to be the same
     # across versions. Used for both the FNDH and smartboxes.
@@ -289,7 +291,7 @@ class PasdBusRegisterMap:
         "pcb_temperature": PasdBusAttribute(21, 1, PasdConversionUtility.scale_temps),
         "fncb_temperature": PasdBusAttribute(22, 1, PasdConversionUtility.scale_temps),
         "humidity": PasdBusAttribute(23, 1),
-        "status": PasdBusAttribute(24, 1, PasdConversionUtility.convert_fndh_status),
+        STATUS: PasdBusAttribute(24, 1, PasdConversionUtility.convert_fndh_status),
         LED_PATTERN: PasdBusAttribute(25, 1, PasdConversionUtility.convert_led_status),
         "ports_connected": PasdBusPortAttribute(
             35, 28, PortStatusString.PORTS_CONNECTED
@@ -323,9 +325,7 @@ class PasdBusRegisterMap:
         "outside_temperature": PasdBusAttribute(
             20, 1, PasdConversionUtility.scale_temps
         ),
-        "status": PasdBusAttribute(
-            21, 1, PasdConversionUtility.convert_smartbox_status
-        ),
+        STATUS: PasdBusAttribute(21, 1, PasdConversionUtility.convert_smartbox_status),
         LED_PATTERN: PasdBusAttribute(22, 1, PasdConversionUtility.convert_led_status),
         "sensor_status": PasdBusAttribute(23, 12),
         "ports_connected": PasdBusPortAttribute(
@@ -462,6 +462,12 @@ class PasdBusRegisterMap:
             logger.warning(f"Unknown LED pattern {arguments[0]}")
             return None
 
+    def _create_initialize_command(self, device_id: int) -> PasdBusAttribute:
+        attribute_map = self._get_register_info(device_id).register_map
+        attribute = PasdBusAttribute(attribute_map[self.STATUS].address, 1)
+        attribute.value = 1  # Write any value to initialize the device
+        return attribute
+
     def _create_port_command(
         self, device_id: int, command: PasdCommandStrings, arguments: Sequence[Any]
     ) -> Optional[PasdBusPortAttribute]:
@@ -518,6 +524,8 @@ class PasdBusRegisterMap:
 
         if command == PasdCommandStrings.SET_LED_PATTERN:
             attribute = self._create_led_pattern_command(device_id, arguments)
+        elif command == PasdCommandStrings.INITIALIZE:
+            attribute = self._create_initialize_command(device_id)
         else:
             # All other commands relate to port control
             attribute = self._create_port_command(device_id, command, arguments)
