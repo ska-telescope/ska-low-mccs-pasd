@@ -47,6 +47,7 @@ def change_event_callbacks_fixture(
         "longRunningCommandResult",
         "longRunningCommandStatus",
         "state",
+        "fndhStatus",
         "fndhLedPattern",
         "fndhPortBreakersTripped",
         "fndhPortsConnected",
@@ -175,12 +176,12 @@ def test_communication(  # pylint: disable=too-many-statements
         pasd_bus_device.fndhModbusRegisterMapRevisionNumber
         == FndhSimulator.MODBUS_REGISTER_MAP_REVISION
     )
-    assert pasd_bus_device.fndhSysAddress == FndhSimulator.SYS_ADDRESS
     assert pasd_bus_device.fndhPcbRevisionNumber == FndhSimulator.PCB_REVISION
     assert pasd_bus_device.fndhCpuId == FndhSimulator.CPU_ID
     assert pasd_bus_device.fndhChipId == FndhSimulator.CHIP_ID
     assert pasd_bus_device.fndhFirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
     assert pasd_bus_device.fndhUptime == FndhSimulator.DEFAULT_UPTIME
+    assert pasd_bus_device.fndhSysAddress == FndhSimulator.SYS_ADDRESS
     assert pasd_bus_device.fndhStatus == FndhSimulator.DEFAULT_STATUS
     assert pasd_bus_device.fndhLedPattern == FndhSimulator.DEFAULT_LED_PATTERN
     assert (
@@ -192,9 +193,8 @@ def test_communication(  # pylint: disable=too-many-statements
         list(pasd_bus_device.fndhPsu48vTemperatures)
         == FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
     )
-    assert pasd_bus_device.fndhPcbTemperature == FndhSimulator.DEFAULT_PCB_TEMPERATURE
     assert pasd_bus_device.fndhFncbTemperature == FndhSimulator.DEFAULT_FNCB_TEMPERATURE
-    assert pasd_bus_device.fndhHumidity == FndhSimulator.DEFAULT_HUMIDITY
+    assert pasd_bus_device.fndhFncbHumidity == FndhSimulator.DEFAULT_FNCB_HUMIDITY
     assert list(pasd_bus_device.fndhPortsConnected) == fndh_simulator.ports_connected
     assert (
         list(pasd_bus_device.fndhPortBreakersTripped)
@@ -261,8 +261,8 @@ def test_communication(  # pylint: disable=too-many-statements
         == SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
     )
     assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}OutsideTemperature")
-        == SmartboxSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}FemAmbientTemperature")
+        == SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}PcbTemperature")

@@ -90,9 +90,8 @@ class TestPasdBusComponentManager:
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
             psu48v_temperatures=FndhSimulator.DEFAULT_PSU48V_TEMPERATURES,
-            pcb_temperature=FndhSimulator.DEFAULT_PCB_TEMPERATURE,
             fncb_temperature=FndhSimulator.DEFAULT_FNCB_TEMPERATURE,
-            humidity=FndhSimulator.DEFAULT_HUMIDITY,
+            fncb_humidity=FndhSimulator.DEFAULT_FNCB_HUMIDITY,
         )
 
         expected_fndh_ports_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
@@ -126,7 +125,9 @@ class TestPasdBusComponentManager:
                 power_supply_temperature=(
                     SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
                 ),
-                outside_temperature=SmartboxSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
+                fem_ambient_temperature=(
+                    SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
+                ),
                 pcb_temperature=SmartboxSimulator.DEFAULT_PCB_TEMPERATURE,
             )
 
@@ -373,9 +374,8 @@ class TestPasdBusComponentManager:
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
             psu48v_temperatures=FndhSimulator.DEFAULT_PSU48V_TEMPERATURES,
-            pcb_temperature=FndhSimulator.DEFAULT_PCB_TEMPERATURE,
             fncb_temperature=FndhSimulator.DEFAULT_FNCB_TEMPERATURE,
-            humidity=FndhSimulator.DEFAULT_HUMIDITY,
+            fncb_humidity=FndhSimulator.DEFAULT_FNCB_HUMIDITY,
             lookahead=75,
         )
 
@@ -393,7 +393,7 @@ class TestPasdBusComponentManager:
                 SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
             ),
             power_supply_temperature=SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE,
-            outside_temperature=SmartboxSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
+            fem_ambient_temperature=SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE,
             pcb_temperature=SmartboxSimulator.DEFAULT_PCB_TEMPERATURE,
             lookahead=75,
         )

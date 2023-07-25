@@ -1,0 +1,95 @@
+fndh:
+  default_thresholds:
+    psu48v_voltages:
+      high_alarm:   52.0
+      high_warning: 50.0
+      low_warning:  45.0
+      low_alarm:    40.0
+    psu48v_current:
+      high_alarm:   18.0
+      high_warning: 16.0
+      low_warning:  -1.0
+      low_alarm:    -5.0
+    psu48v_temperatures:
+      high_alarm:   100.0
+      high_warning: 85.0
+      low_warning:  0.0
+      low_alarm:    -5.0
+    fncb_temperature:
+      high_alarm:   85.0
+      high_warning: 70.0
+      low_warning:  0.0
+      low_alarm:    -5.0
+    fncb_humidity:
+      high_alarm:   85.0
+      high_warning: 70.0
+      low_warning:  10.0
+      low_alarm:    0.0
+    e1_temperature:
+      high_alarm:   85.0
+      high_warning: 70.0
+      low_warning:  0.0
+      low_alarm:    -5.0
+    e2_temperature:
+      high_alarm:   85.0
+      high_warning: 70.0
+      low_warning:  0.0
+      low_alarm:    -5.0
+    e3_temperature:
+      high_alarm:   85.0
+      high_warning: 70.0
+      low_warning:  0.0
+      low_alarm:    -5.0
+    e4_temperature:
+      high_alarm:   85.0
+      high_warning: 70.0
+      low_warning:  0.0
+      low_alarm:    -5.0
+smartbox:
+  # default_port_current_trip: 496
+  default_thresholds:
+    input_voltage:
+      high_alarm:   50.0
+      high_warning: 49.0
+      low_warning:  45.0
+      low_alarm:    40.0
+    power_supply_output_voltage:
+      high_alarm:   5.0
+      high_warning: 4.9
+      low_warning:  4.4
+      low_alarm:    4.0
+    power_supply_temperature:
+      high_alarm:   85.0
+      high_warning: 70.0
+      low_warning:  0.0
+      low_alarm:    -5.0
+    # pcb_temperature:
+    #   high_alarm:   85.0
+    #   high_warning: 70.0
+    #   low_warning:  0.0
+    #   low_alarm:    -5.0
+    fem_ambient_temperature:
+      high_alarm:   60.0
+      high_warning: 45.0
+      low_warning:  0.0
+      low_alarm:    -5.0
+    e1_temperature:
+      high_alarm:   60.0
+      high_warning: 45.0
+      low_warning:  0.0
+      low_alarm:    -5.0
+    e2_temperature:
+      high_alarm:   60.0
+      high_warning: 45.0
+      low_warning:  0.0
+      low_alarm:    -5.0
+    e3_temperature:
+      high_alarm:   60.0
+      high_warning: 45.0
+      low_warning:  0.0
+      low_alarm:    -5.0
+    e4_temperature:
+      high_alarm:   60.0
+      high_warning: 45.0
+      low_warning:  0.0
+      low_alarm:    -5.0

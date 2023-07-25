@@ -197,8 +197,8 @@ class TestfndhPasdBusIntegration:
             list(fndh_device.Psu48vTemperatures)
             == FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
         )
-        assert fndh_device.PcbTemperature == FndhSimulator.DEFAULT_PCB_TEMPERATURE
         assert fndh_device.FncbTemperature == FndhSimulator.DEFAULT_FNCB_TEMPERATURE
+        assert fndh_device.FncbHumidity == FndhSimulator.DEFAULT_FNCB_HUMIDITY
         assert list(fndh_device.PortsConnected) == fndh_simulator.ports_connected
         assert (
             list(fndh_device.PortBreakersTripped)

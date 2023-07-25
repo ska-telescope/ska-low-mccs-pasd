@@ -703,7 +703,7 @@ class TestSmartBoxPasdBusIntegration:
             "InputVoltage",
             "PowerSupplyOutputVoltage",
             "PowerSupplyTemperature",
-            "OutsideTemperature",
+            "FemAmbientTemperature",
             "PcbTemperature",
         ]:
             with pytest.raises(tango.DevFailed):
@@ -740,8 +740,8 @@ class TestSmartBoxPasdBusIntegration:
             == SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
         )
         assert (
-            smartbox_device.OutsideTemperature
-            == SmartboxSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+            smartbox_device.FemAmbientTemperature
+            == SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
         )
         assert (
             smartbox_device.PcbTemperature == SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
@@ -756,9 +756,7 @@ class TestSmartBoxPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["smartboxstatus"],
         )
-        change_event_callbacks.assert_change_event(
-            "smartboxstatus", initial_status
-        )
+        change_event_callbacks.assert_change_event("smartboxstatus", initial_status)
 
         # We are just testing one attribute here to check the functionality
         # TODO: probably worth testing every attribute.

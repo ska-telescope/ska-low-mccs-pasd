@@ -52,7 +52,7 @@ class MccsSmartBox(SKABaseDevice):
         ("InputVoltage", float, None),
         ("PowerSupplyOutputVoltage", float, None),
         ("PowerSupplyTemperature", float, None),
-        ("OutsideTemperature", float, None),
+        ("FemAmbientTemperature", float, None),
         ("PcbTemperature", float, None),
         ("PortsConnected", (bool,), PORT_COUNT),
         ("PortForcings", (str,), PORT_COUNT),

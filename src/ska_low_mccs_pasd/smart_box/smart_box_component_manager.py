@@ -160,7 +160,7 @@ class _SmartBoxProxy(DeviceComponentManager):
             # Status is a bad name since it conflicts with TANGO status.
             if tango_attribute_name.lower() == "status":
                 tango_attribute_name = "pasdstatus"
-            
+
             self._attribute_change_callback(tango_attribute_name, attr_value)
             return
 

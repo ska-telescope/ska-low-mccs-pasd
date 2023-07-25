@@ -288,9 +288,8 @@ class PasdBusRegisterMap:
         "psu48v_temperatures": PasdBusAttribute(
             19, 2, PasdConversionUtility.scale_temps
         ),
-        "pcb_temperature": PasdBusAttribute(21, 1, PasdConversionUtility.scale_temps),
         "fncb_temperature": PasdBusAttribute(22, 1, PasdConversionUtility.scale_temps),
-        "humidity": PasdBusAttribute(23, 1),
+        "fncb_humidity": PasdBusAttribute(23, 1),
         STATUS: PasdBusAttribute(24, 1, PasdConversionUtility.convert_fndh_status),
         LED_PATTERN: PasdBusAttribute(25, 1, PasdConversionUtility.convert_led_status),
         "ports_connected": PasdBusPortAttribute(
@@ -322,7 +321,7 @@ class PasdBusRegisterMap:
             18, 1, PasdConversionUtility.scale_temps
         ),
         "pcb_temperature": PasdBusAttribute(19, 1, PasdConversionUtility.scale_temps),
-        "outside_temperature": PasdBusAttribute(
+        "fem_ambient_temperature": PasdBusAttribute(
             20, 1, PasdConversionUtility.scale_temps
         ),
         STATUS: PasdBusAttribute(21, 1, PasdConversionUtility.convert_smartbox_status),

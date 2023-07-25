@@ -243,36 +243,26 @@ class TestFndhSimulator:
     @pytest.mark.parametrize(
         ("sensor_name", "simulated_value", "expected_status"),
         [
-            ("psu48v_voltage", 51.0, "ALARM"),
-            ("psu48v_voltage", 50.0, "WARNING"),
-            ("psu48v_voltage", 48.0, "OK"),
-            ("psu48v_voltage", 46.0, "WARNING"),
-            ("psu48v_voltage", 45.0, "ALARM"),
-            ("psu48v_temperature", 65.0, "ALARM"),
-            ("psu48v_temperature", 55.0, "WARNING"),
-            ("psu48v_temperature", 25.0, "OK"),
-            ("psu48v_temperature", 8.0, "WARNING"),
-            ("psu48v_temperature", 4.0, "ALARM"),
-            ("psu5v_voltage", 5.3, "ALARM"),
-            ("psu5v_voltage", 5.2, "WARNING"),
-            ("psu5v_voltage", 5.0, "OK"),
-            ("psu5v_voltage", 4.8, "WARNING"),
-            ("psu5v_voltage", 4.7, "ALARM"),
-            ("psu5v_temperature", 65.0, "ALARM"),
-            ("psu5v_temperature", 55.0, "WARNING"),
-            ("psu5v_temperature", 25.0, "OK"),
-            ("psu5v_temperature", 8.0, "WARNING"),
-            ("psu5v_temperature", 4.0, "ALARM"),
-            ("outside_temperature", 65.0, "ALARM"),
-            ("outside_temperature", 55.0, "WARNING"),
-            ("outside_temperature", 25.0, "OK"),
-            ("outside_temperature", 8.0, "WARNING"),
-            ("outside_temperature", 4.0, "ALARM"),
-            ("pcb_temperature", 65.0, "ALARM"),
-            ("pcb_temperature", 55.0, "WARNING"),
-            ("pcb_temperature", 25.0, "OK"),
-            ("pcb_temperature", 8.0, "WARNING"),
-            ("pcb_temperature", 4.0, "ALARM"),
+            ("psu48v_voltages", [53.0, 48.0], "ALARM"),
+            ("psu48v_voltages", [48.0, 51.0], "WARNING"),
+            ("psu48v_voltages", [48.0, 48.0], "OK"),
+            ("psu48v_voltages", [44.0, 48.0], "WARNING"),
+            ("psu48v_voltages", [48.0, 39.0], "ALARM"),
+            ("psu48v_temperatures", [101.0, 60.0], "ALARM"),
+            ("psu48v_temperatures", [60.0, 86.0], "WARNING"),
+            ("psu48v_temperatures", [60.0, 60.0], "OK"),
+            ("psu48v_temperatures", [-1.0, 60.0], "WARNING"),
+            ("psu48v_temperatures", [60.0, -6.0], "ALARM"),
+            ("fncb_temperature", 90.0, "ALARM"),
+            ("fncb_temperature", 75.0, "WARNING"),
+            ("fncb_temperature", 50.0, "OK"),
+            ("fncb_temperature", -1.0, "WARNING"),
+            ("fncb_temperature", -6.0, "ALARM"),
+            ("fncb_humidity", 90.0, "ALARM"),
+            ("fncb_humidity", 75.0, "WARNING"),
+            ("fncb_humidity", 50.0, "OK"),
+            ("fncb_humidity", 5.0, "WARNING"),
+            ("fncb_humidity", -1.0, "ALARM"),
         ],
     )
     def test_sensors_and_status_transitions(
@@ -293,12 +283,19 @@ class TestFndhSimulator:
         :param simulated_value: value to set the sensor to.
         :param expected_status: the expected status of the sensor and FNDH.
         """
+        fndh_simulator.status = "illegal value"
         assert fndh_simulator.status == "UNINITIALISED"
-        fndh_simulator.status = "write to initialise"
+        fndh_simulator.status = "OK"
         assert fndh_simulator.status == "OK"
         setattr(fndh_simulator, sensor_name, simulated_value)
         assert getattr(fndh_simulator, sensor_name) == simulated_value
         assert fndh_simulator.status == expected_status
+        default_value = getattr(fndh_simulator, "DEFAULT_" + sensor_name.upper())
+        setattr(fndh_simulator, sensor_name, default_value)
+        if expected_status == "ALARM":
+            assert fndh_simulator.status == "RECOVERY"
+            fndh_simulator.status = "OK"
+        assert fndh_simulator.status == "OK"
 
 
 class TestSmartboxSimulator:
@@ -574,30 +571,28 @@ class TestSmartboxSimulator:
         ("sensor_name", "simulated_value", "expected_status"),
         [
             ("input_voltage", 51.0, "ALARM"),
-            ("input_voltage", 50.0, "WARNING"),
+            ("input_voltage", 49.5, "WARNING"),
             ("input_voltage", 48.0, "OK"),
-            ("input_voltage", 46.0, "WARNING"),
-            ("input_voltage", 45.0, "ALARM"),
-            ("power_supply_output_voltage", 5.3, "ALARM"),
-            ("power_supply_output_voltage", 5.2, "WARNING"),
-            ("power_supply_output_voltage", 5.0, "OK"),
-            ("power_supply_output_voltage", 4.8, "WARNING"),
-            ("power_supply_output_voltage", 4.7, "ALARM"),
-            ("power_supply_temperature", 65.0, "ALARM"),
-            ("power_supply_temperature", 55.0, "WARNING"),
-            ("power_supply_temperature", 25.0, "OK"),
-            ("power_supply_temperature", 8.0, "WARNING"),
-            ("power_supply_temperature", 4.0, "ALARM"),
-            ("outside_temperature", 65.0, "ALARM"),
-            ("outside_temperature", 55.0, "WARNING"),
-            ("outside_temperature", 25.0, "OK"),
-            ("outside_temperature", 8.0, "WARNING"),
-            ("outside_temperature", 4.0, "ALARM"),
-            ("pcb_temperature", 65.0, "ALARM"),
-            ("pcb_temperature", 55.0, "WARNING"),
-            ("pcb_temperature", 25.0, "OK"),
-            ("pcb_temperature", 8.0, "WARNING"),
-            ("pcb_temperature", 4.0, "ALARM"),
+            ("input_voltage", 44.0, "WARNING"),
+            ("input_voltage", 39.0, "ALARM"),
+            ("power_supply_output_voltage", 5.1, "ALARM"),
+            ("power_supply_output_voltage", 4.95, "WARNING"),
+            ("power_supply_output_voltage", 4.8, "OK"),
+            ("power_supply_output_voltage", 4.3, "WARNING"),
+            ("power_supply_output_voltage", 3.9, "ALARM"),
+            ("power_supply_temperature", 90.0, "ALARM"),
+            ("power_supply_temperature", 75.0, "WARNING"),
+            ("power_supply_temperature", 50.0, "OK"),
+            ("power_supply_temperature", -1.0, "WARNING"),
+            ("power_supply_temperature", -6.0, "ALARM"),
+            ("fem_ambient_temperature", 61.0, "ALARM"),
+            ("fem_ambient_temperature", 46.0, "WARNING"),
+            ("fem_ambient_temperature", 25.0, "OK"),
+            ("fem_ambient_temperature", -1.0, "WARNING"),
+            ("fem_ambient_temperature", -6.0, "ALARM"),
+            ("pcb_temperature", 90.0, "OK"),
+            ("pcb_temperature", 50.0, "OK"),
+            ("pcb_temperature", -1.0, "OK"),
         ],
     )
     def test_sensors_and_status_transitions(
@@ -618,9 +613,16 @@ class TestSmartboxSimulator:
         :param simulated_value: value to set the sensor to.
         :param expected_status: the expected status of the sensor and smartbox.
         """
+        smartbox_simulator.status = "illegal value"
         assert smartbox_simulator.status == "UNINITIALISED"
-        smartbox_simulator.status = "write to initialise"
+        smartbox_simulator.status = "OK"
         assert smartbox_simulator.status == "OK"
         setattr(smartbox_simulator, sensor_name, simulated_value)
         assert getattr(smartbox_simulator, sensor_name) == simulated_value
         assert smartbox_simulator.status == expected_status
+        default_value = getattr(smartbox_simulator, "DEFAULT_" + sensor_name.upper())
+        setattr(smartbox_simulator, sensor_name, default_value)
+        if expected_status == "ALARM":
+            assert smartbox_simulator.status == "RECOVERY"
+            smartbox_simulator.status = "OK"
+        assert smartbox_simulator.status == "OK"
