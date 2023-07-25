@@ -288,6 +288,7 @@ class PasdBusRegisterMap:
         "psu48v_temperatures": PasdBusAttribute(
             19, 2, PasdConversionUtility.scale_temps
         ),
+        "panel_temperature": PasdBusAttribute(21, 1, PasdConversionUtility.scale_temps),
         "fncb_temperature": PasdBusAttribute(22, 1, PasdConversionUtility.scale_temps),
         "fncb_humidity": PasdBusAttribute(23, 1),
         STATUS: PasdBusAttribute(24, 1, PasdConversionUtility.convert_fndh_status),

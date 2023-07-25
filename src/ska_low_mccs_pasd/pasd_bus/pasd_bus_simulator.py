@@ -512,33 +512,40 @@ class PasdHardwareSimulator:
     @property
     def status(self: PasdHardwareSimulator) -> str:
         """
-        Return the status of the smartbox.
+        Return the status of the FNDH/smartbox.
 
-        :return: a string status.
+        :return: an overall status.
+            "OK" means all sensors are within thresholds.
+            "WARNING" means one or more sensors are over/under warning thresholds.
+            "ALARM" means one or more sensors are over/under alarm thresholds.
+            "RECOVERY" means all sensors are back within alarm thresholds after
+            being in alarm state previously. "OK" status must be requested.
         """
-        print(self._sensors_status)
         if self._status == "ALARM" and "ALARM" not in self._sensors_status.values():
             self._status = "RECOVERY"
         elif self._status is not self.DEFAULT_STATUS:
             if "ALARM" in self._sensors_status.values():
                 self._status = "ALARM"
-            elif "WARNING" in self._sensors_status.values():
-                self._status = "WARNING"
-            else:
-                self._status = "OK"
+            elif self._status != "RECOVERY":
+                if "WARNING" in self._sensors_status.values():
+                    self._status = "WARNING"
+                else:
+                    self._status = "OK"
         return self._status
 
-    @status.setter
-    def status(self: PasdHardwareSimulator, value: str) -> None:
+    def set_status(self: PasdHardwareSimulator, request: str) -> bool | None:
         """
-        Initiliaze the smartbox status.
+        Set the smartbox status.
 
-        :param value: ignored if not "OK"
+        :param request: the only valid request is "OK", otherwise do nothing.
+        :return: whether successful, or None if there was nothing to do.
         """
         # Temporarily set status to undefined and then get the status
-        if value == "OK":
+        if request == "OK":
             self._status = "UNDEFINED"
             self._status = self.status
+            return True
+        return None
 
     @property
     def led_pattern(self: PasdHardwareSimulator) -> str:
@@ -571,8 +578,8 @@ class Sensor:
     """
     Descriptor for sensor attributes of a FNDH/Smartbox.
 
-    This descriptor allows for handling sensor attributes within the context
-    of a FNDH/Smartbox simulator class.
+    This descriptor allows for handling sensor attributes and their status
+    within the context of a FNDH/Smartbox simulator class.
     """
 
     # pylint: disable=attribute-defined-outside-init
@@ -622,6 +629,8 @@ class FndhSimulator(PasdHardwareSimulator):
     will only be used as a component of a PaSD bus simulator.
     """
 
+    # pylint: disable=too-many-instance-attributes
+
     NUMBER_OF_PORTS: Final = 28
 
     CPU_ID: Final = 22
@@ -634,15 +643,25 @@ class FndhSimulator(PasdHardwareSimulator):
     DEFAULT_PSU48V_VOLTAGES: Final = [47.9, 48.1]
     DEFAULT_PSU48V_CURRENT: Final = 15.1
     DEFAULT_PSU48V_TEMPERATURES: Final = [41.2, 42.9]
+    DEFAULT_PANEL_TEMPERATURE: Final = 37.2
     DEFAULT_FNCB_TEMPERATURE: Final = 41.5
     DEFAULT_FNCB_HUMIDITY: Final = 50.2
+    DEFAULT_COMMS_GATEWAY_TEMPERATURE: Final = 39.3
+    DEFAULT_POWER_MODULE_TEMPERATURE: Final = 45.8
+    DEFAULT_OUTSIDE_TEMPERATURE: Final = 32.5
+    DEFAULT_INTERNAL_AMBIENT_TEMPERATURE: Final = 36.0
 
     # Instantiate sensor data descriptors
     psu48v_voltages = Sensor()
     psu48v_current = Sensor()
     psu48v_temperatures = Sensor()
+    panel_temperature = Sensor()
     fncb_temperature = Sensor()
     fncb_humidity = Sensor()
+    comms_gateway_temperature = Sensor()
+    power_module_temperature = Sensor()
+    outside_temperature = Sensor()
+    internal_ambient_temperature = Sensor()
 
     def __init__(self: FndhSimulator) -> None:
         """Initialise a new instance."""
@@ -653,8 +672,13 @@ class FndhSimulator(PasdHardwareSimulator):
         self.psu48v_voltages = self.DEFAULT_PSU48V_VOLTAGES
         self.psu48v_current = self.DEFAULT_PSU48V_CURRENT
         self.psu48v_temperatures = self.DEFAULT_PSU48V_TEMPERATURES
+        self.panel_temperature = self.DEFAULT_PANEL_TEMPERATURE
         self.fncb_temperature = self.DEFAULT_FNCB_TEMPERATURE
         self.fncb_humidity = self.DEFAULT_FNCB_HUMIDITY
+        self.comms_gateway_temperature = self.DEFAULT_COMMS_GATEWAY_TEMPERATURE
+        self.power_module_temperature = self.DEFAULT_POWER_MODULE_TEMPERATURE
+        self.outside_temperature = self.DEFAULT_OUTSIDE_TEMPERATURE
+        self.internal_ambient_temperature = self.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
 
     @property
     def sys_address(self: FndhSimulator) -> int:
@@ -714,6 +738,8 @@ class FndhSimulator(PasdHardwareSimulator):
 class SmartboxSimulator(PasdHardwareSimulator):
     """A simulator for a PaSD smartbox."""
 
+    # pylint: disable=too-many-instance-attributes
+
     NUMBER_OF_PORTS: Final = 12
 
     MODBUS_REGISTER_MAP_REVISION: Final = 20
@@ -728,7 +754,9 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE: Final = 4.8
     DEFAULT_POWER_SUPPLY_TEMPERATURE: Final = 42.1
     DEFAULT_PCB_TEMPERATURE: Final = 38.6  # Not currently implemented in hardware
-    DEFAULT_FEM_AMBIENT_TEMPERATURE: Final = 44.4
+    DEFAULT_FEM_AMBIENT_TEMPERATURE: Final = 40.1
+    DEFAULT_FEM_CASE_TEMPERATURES: Final = [44.4, 44.6]
+    DEFAULT_FEM_HEATSINK_TEMPERATURES: Final = [42.8, 42.5]
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
     DEFAULT_PORT_CURRENT_TRIP_THRESHOLD: Final = 496
 
@@ -738,6 +766,8 @@ class SmartboxSimulator(PasdHardwareSimulator):
     power_supply_temperature = Sensor()
     pcb_temperature = Sensor()
     fem_ambient_temperature = Sensor()
+    fem_case_temperatures = Sensor()
+    fem_heatsink_temperatures = Sensor()
 
     def __init__(self: SmartboxSimulator) -> None:
         """Initialise a new instance."""
@@ -750,6 +780,8 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self.power_supply_temperature = self.DEFAULT_POWER_SUPPLY_TEMPERATURE
         self.pcb_temperature = self.DEFAULT_PCB_TEMPERATURE
         self.fem_ambient_temperature = self.DEFAULT_FEM_AMBIENT_TEMPERATURE
+        self.fem_case_temperatures = self.DEFAULT_FEM_CASE_TEMPERATURES
+        self.fem_heatsink_temperatures = self.DEFAULT_FEM_HEATSINK_TEMPERATURES
 
     @property
     def sys_address(self: SmartboxSimulator) -> int:
