@@ -98,12 +98,11 @@ class PasdBusRequestProvider:
         "cpu_id",
         "chip_id",
         "firmware_version",
-        "sys_address",
     )
 
     FNDH_STATUS_ATTRIBUTES: Final = (
         "uptime",
-        # "sys_address",
+        "sys_address",
         "psu48v_voltages",
         "psu48v_current",
         "psu48v_temperatures",
@@ -125,7 +124,7 @@ class PasdBusRequestProvider:
 
     SMARTBOX_STATUS_ATTRIBUTES: Final = (
         "uptime",
-        # "sys_address",
+        "sys_address",
         "input_voltage",
         "power_supply_output_voltage",
         "power_supply_temperature",
@@ -152,6 +151,7 @@ class PasdBusRequestProvider:
         :param logger: a logger.
         """
         self._logger = logger
+        self._initialize_requests: dict[int, bool] = {}
         self._led_pattern_writes: dict[int, str] = {}
         self._port_power_changes: dict[
             tuple[int, int], tuple[Literal[True], bool] | Literal[False]
@@ -162,6 +162,15 @@ class PasdBusRequestProvider:
     def desire_info(self) -> None:
         """Register a desire to obtain static info about the PaSD devices."""
         self._read_request_iterator = read_request_iterator()
+
+    def desire_initialize(self, device_id: int) -> None:
+        """
+        Register a request to initialize a device.
+
+        :param device_id: the device number.
+            This is 0 for the FNDH, otherwise a smartbox number.
+        """
+        self._initialize_requests[device_id] = True
 
     def desire_port_on(
         self, device_id: int, port_number: int, stay_on_when_offline: bool
@@ -210,6 +219,12 @@ class PasdBusRequestProvider:
         :param pattern: the name of the LED pattern.
         """
         self._led_pattern_writes[device_id] = pattern
+
+    def _get_initialize_request(self) -> PasdBusRequest | None:
+        if not self._initialize_requests:
+            return None
+        device_id, _ = self._initialize_requests.popitem()
+        return PasdBusRequest(device_id, "initialize", [])
 
     def _get_led_pattern_request(self) -> PasdBusRequest | None:
         if not self._led_pattern_writes:
@@ -467,6 +482,20 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 poll_response.device_id,
                 **(poll_response.data),
             )
+
+    @check_communicating
+    def initialize_fndh(self: PasdBusComponentManager) -> None:
+        """Initialize the FNDH by writing to its status register."""
+        self._poll_request_provider.desire_initialize(0)
+
+    @check_communicating
+    def initialize_smartbox(self: PasdBusComponentManager, smartbox_id: int) -> None:
+        """
+        Initialize a smartbox by writing to its status register.
+
+        :param: smartbox_id: id of the smartbox being addressed
+        """
+        self._poll_request_provider.desire_initialize(smartbox_id)
 
     @check_communicating
     def reset_fndh_port_breaker(
