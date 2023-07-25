@@ -296,6 +296,10 @@ class PasdBusRequestProvider:
 
         :return: a description of what should be done on the next poll.
         """
+        request = self._get_initialize_request()
+        if request is not None:
+            return request
+
         request = self._get_led_pattern_request()
         if request is not None:
             return request
