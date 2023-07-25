@@ -268,11 +268,11 @@ class PasdBusModbusApiClient:
         )
 
         if not command:
-            logger.warning(
-                f"No commands matching "
-                f"'{request['execute']} {request['arguments']}' in PaSD register map"
-            )
-            return {"data": {"result": False}}
+            return self._create_error_response(
+                "request",
+                f"Invalid command request: device: {request['device_id']}, "
+                f"command: {request['execute']}, args: {request['arguments']}",
+            )  # TODO: what error code to use?
 
         logger.debug(
             f"MODBUS write request: modbus address {modbus_address}, "
