@@ -459,7 +459,7 @@ class PasdBusRegisterMap:
             attribute.value = PasdServiceLEDPattern[arguments[0]].value
             return attribute
         except KeyError:
-            logger.warning(f"Unknown LED pattern {arguments[0]}")
+            logger.error(f"Unknown LED pattern {arguments[0]}")
             return None
 
     def _create_initialize_command(self, device_id: int) -> PasdBusAttribute:
