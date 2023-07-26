@@ -649,7 +649,7 @@ class TestSmartBoxPasdBusIntegration:
             # Check that the requested ports are powered on.
             assert smartbox_device.PortsPowerSensed[port - 1]
 
-    # pylint: disable-next=too-many-arguments
+    # pylint: disable-next=too-many-arguments,too-many-statements
     def test_smartbox_pasd_integration(
         self: TestSmartBoxPasdBusIntegration,
         smartbox_devices: tango.DeviceProxy,
@@ -703,8 +703,10 @@ class TestSmartBoxPasdBusIntegration:
             "InputVoltage",
             "PowerSupplyOutputVoltage",
             "PowerSupplyTemperature",
-            "FemAmbientTemperature",
             "PcbTemperature",
+            "FemAmbientTemperature",
+            "FemCaseTemperatures",
+            "FemHeatsinkTemperatures",
         ]:
             with pytest.raises(tango.DevFailed):
                 getattr(smartbox_device, i)
@@ -755,37 +757,130 @@ class TestSmartBoxPasdBusIntegration:
             == SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
         )
 
-        # Initialise smartbox status (PasdStatus is not writable)
-        # smartbox_device.PasdStatus = "Write to initialise"
-        initial_status = smartbox_device.PasdStatus
-        # assert initial_status == "OK"
+        # Subscribe to attribute change events
         smartbox_device.subscribe_event(
             "PasdStatus",
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["smartboxstatus"],
         )
-        change_event_callbacks.assert_change_event("smartboxstatus", initial_status)
-
-        # We are just testing one attribute here to check the functionality
-        # TODO: probably worth testing every attribute.
-        initial_input_voltage = smartbox_device.InputVoltage
+        change_event_callbacks.assert_change_event(
+            "smartboxstatus", SmartboxSimulator.DEFAULT_STATUS
+        )
         smartbox_device.subscribe_event(
             "InputVoltage",
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["smartboxinputvoltage"],
         )
         change_event_callbacks.assert_change_event(
-            "smartboxinputvoltage", initial_input_voltage
+            "smartboxinputvoltage", SmartboxSimulator.DEFAULT_INPUT_VOLTAGE
+        )
+        smartbox_device.subscribe_event(
+            "PowerSupplyOutputVoltage",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartboxpsuoutput"],
+        )
+        change_event_callbacks.assert_change_event(
+            "smartboxpsuoutput", SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
+        )
+        smartbox_device.subscribe_event(
+            "PowerSupplyTemperature",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartboxpsutemperature"],
+        )
+        change_event_callbacks.assert_change_event(
+            "smartboxpsutemperature", SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
+        )
+        smartbox_device.subscribe_event(
+            "PcbTemperature",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartboxpcbtemperature"],
+        )
+        change_event_callbacks.assert_change_event(
+            "smartboxpcbtemperature", SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
+        )
+        smartbox_device.subscribe_event(
+            "FemAmbientTemperature",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartboxfemambienttemperature"],
+        )
+        change_event_callbacks.assert_change_event(
+            "smartboxfemambienttemperature",
+            SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE,
+        )
+        smartbox_device.subscribe_event(
+            "FemCaseTemperatures",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartboxfemcasetemperatures"],
+        )
+        change_event_callbacks.assert_change_event(
+            "smartboxfemcasetemperatures",
+            SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES,
+        )
+        smartbox_device.subscribe_event(
+            "FemHeatsinkTemperatures",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartboxfemheatsinktemperatures"],
+        )
+        change_event_callbacks.assert_change_event(
+            "smartboxfemheatsinktemperatures",
+            SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES,
         )
 
         # When we mock a change in an attribute at the simulator level.
         # This is received and pushed onward by the MccsSmartbox device.
 
+        # Initialize smartbox simulator status
+        # TODO: Should be done by a command from MCCS
+        smartbox_simulator.set_status("OK")
+        change_event_callbacks.assert_change_event("smartboxstatus", "OK")
+        assert smartbox_device.PasdStatus == "OK"
+
         smartbox_simulator.input_voltage = 10
         change_event_callbacks.assert_change_event("smartboxinputvoltage", 10.0)
-
-        assert smartbox_device.InputVoltage != initial_input_voltage
+        change_event_callbacks.assert_change_event("smartboxstatus", "ALARM")
         assert smartbox_device.InputVoltage == 10
+        smartbox_simulator.input_voltage = 42
+        change_event_callbacks.assert_change_event("smartboxinputvoltage", 42.0)
+        change_event_callbacks.assert_change_event("smartboxstatus", "RECOVERY")
+        assert smartbox_device.InputVoltage == 42
+        # TODO: Should be done by a command from MCCS
+        smartbox_simulator.set_status("OK")
+        change_event_callbacks.assert_change_event("smartboxstatus", "WARNING")
+        smartbox_simulator.input_voltage = 48
+        change_event_callbacks.assert_change_event("smartboxinputvoltage", 48.0)
+        change_event_callbacks.assert_change_event("smartboxstatus", "OK")
+        assert smartbox_device.InputVoltage == 48
+
+        smartbox_simulator.power_supply_output_voltage = 4.95
+        change_event_callbacks.assert_change_event("smartboxpsuoutput", 4.95)
+        change_event_callbacks.assert_change_event("smartboxstatus", "WARNING")
+        assert smartbox_device.PowerSupplyOutputVoltage == 4.95
+
+        smartbox_simulator.power_supply_temperature = 50
+        change_event_callbacks.assert_change_event("smartboxpsutemperature", 50.0)
+        assert smartbox_device.PowerSupplyTemperature == 50
+
+        smartbox_simulator.pcb_temperature = 50
+        change_event_callbacks.assert_change_event("smartboxpcbtemperature", 50.0)
+        assert smartbox_device.PcbTemperature == 50
+
+        smartbox_simulator.fem_ambient_temperature = 50
+        change_event_callbacks.assert_change_event(
+            "smartboxfemambienttemperature", 50.0
+        )
+        assert smartbox_device.FemAmbientTemperature == 50
+
+        smartbox_simulator.fem_case_temperatures = [50, 49]
+        change_event_callbacks.assert_change_event(
+            "smartboxfemcasetemperatures", [50.0, 49.0]
+        )
+        assert (smartbox_device.FemCaseTemperatures == [50, 49]).all()
+
+        smartbox_simulator.fem_heatsink_temperatures = [51, 50]
+        change_event_callbacks.assert_change_event(
+            "smartboxfemheatsinktemperatures", [51.0, 50.0]
+        )
+        assert (smartbox_device.FemHeatsinkTemperatures == [51, 50]).all()
 
 
 @pytest.fixture(name="change_event_callbacks")
@@ -805,6 +900,12 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "smartbox24portsconnected",
         "smartboxportpowersensed",
         "smartboxinputvoltage",
+        "smartboxpsuoutput",
+        "smartboxpsutemperature",
+        "smartboxpcbtemperature",
+        "smartboxfemambienttemperature",
+        "smartboxfemcasetemperatures",
+        "smartboxfemheatsinktemperatures",
         "smartboxstatus",
         "fndhport2powerstate",
         "fndhportpowerstate",
