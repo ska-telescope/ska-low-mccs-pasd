@@ -52,8 +52,10 @@ class MccsSmartBox(SKABaseDevice):
         ("InputVoltage", float, None),
         ("PowerSupplyOutputVoltage", float, None),
         ("PowerSupplyTemperature", float, None),
-        ("FemAmbientTemperature", float, None),
         ("PcbTemperature", float, None),
+        ("FemAmbientTemperature", float, None),
+        ("FemCaseTemperatures", (float,), 2),
+        ("FemHeatsinkTemperatures", (float,), 2),
         ("PortsConnected", (bool,), PORT_COUNT),
         ("PortForcings", (str,), PORT_COUNT),
         ("PortBreakersTripped", (bool,), PORT_COUNT),
@@ -166,7 +168,7 @@ class MccsSmartBox(SKABaseDevice):
         """Initialise the command handlers for this device."""
         super().init_command_objects()
 
-        for (command_name, method_name) in [
+        for command_name, method_name in [
             ("PowerOnPort", "turn_on_port"),
             ("PowerOffPort", "turn_off_port"),
         ]:
@@ -228,7 +230,7 @@ class MccsSmartBox(SKABaseDevice):
     # Attributes
     # ----------
     def _setup_smartbox_attributes(self: MccsSmartBox) -> None:
-        for (slug, data_type, length) in self.ATTRIBUTES:
+        for slug, data_type, length in self.ATTRIBUTES:
             self._setup_smartbox_attribute(
                 f"{slug}",
                 cast(type | tuple[type], data_type),

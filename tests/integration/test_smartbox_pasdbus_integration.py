@@ -740,11 +740,19 @@ class TestSmartBoxPasdBusIntegration:
             == SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
         )
         assert (
+            smartbox_device.PcbTemperature == SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
+        )
+        assert (
             smartbox_device.FemAmbientTemperature
             == SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
         )
         assert (
-            smartbox_device.PcbTemperature == SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
+            list(smartbox_device.FemCaseTemperatures)
+            == SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+        )
+        assert (
+            list(smartbox_device.FemHeatsinkTemperatures)
+            == SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
         )
 
         # Initialise smartbox status (PasdStatus is not writable)

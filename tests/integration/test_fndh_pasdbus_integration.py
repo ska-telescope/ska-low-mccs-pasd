@@ -116,6 +116,7 @@ class TestfndhPasdBusIntegration:
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         """
+        # pylint: disable=too-many-statements
         # adminMode offline and in DISABLE state
         # ----------------------------------------------------------------
         assert fndh_device.adminMode == AdminMode.OFFLINE
@@ -197,8 +198,24 @@ class TestfndhPasdBusIntegration:
             list(fndh_device.Psu48vTemperatures)
             == FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
         )
+        assert fndh_device.PanelTemperature == FndhSimulator.DEFAULT_PANEL_TEMPERATURE
         assert fndh_device.FncbTemperature == FndhSimulator.DEFAULT_FNCB_TEMPERATURE
         assert fndh_device.FncbHumidity == FndhSimulator.DEFAULT_FNCB_HUMIDITY
+        assert (
+            fndh_device.CommsGatewayTemperature
+            == FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE
+        )
+        assert (
+            fndh_device.PowerModuleTemperature
+            == FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE
+        )
+        assert (
+            fndh_device.OutsideTemperature == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+        )
+        assert (
+            fndh_device.InternalAmbientTemperature
+            == FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+        )
         assert list(fndh_device.PortsConnected) == fndh_simulator.ports_connected
         assert (
             list(fndh_device.PortBreakersTripped)

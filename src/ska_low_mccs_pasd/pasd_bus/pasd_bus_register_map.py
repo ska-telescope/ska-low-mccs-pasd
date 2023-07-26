@@ -293,6 +293,18 @@ class PasdBusRegisterMap:
         "fncb_humidity": PasdBusAttribute(23, 1),
         STATUS: PasdBusAttribute(24, 1, PasdConversionUtility.convert_fndh_status),
         LED_PATTERN: PasdBusAttribute(25, 1, PasdConversionUtility.convert_led_status),
+        "comms_gateway_temperature": PasdBusAttribute(
+            26, 1, PasdConversionUtility.scale_temps
+        ),
+        "power_module_temperature": PasdBusAttribute(
+            27, 1, PasdConversionUtility.scale_temps
+        ),
+        "outside_temperature": PasdBusAttribute(
+            28, 1, PasdConversionUtility.scale_temps
+        ),
+        "internal_ambient_temperature": PasdBusAttribute(
+            29, 1, PasdConversionUtility.scale_temps
+        ),
         "ports_connected": PasdBusPortAttribute(
             35, 28, PortStatusString.PORTS_CONNECTED
         ),
@@ -327,7 +339,12 @@ class PasdBusRegisterMap:
         ),
         STATUS: PasdBusAttribute(21, 1, PasdConversionUtility.convert_smartbox_status),
         LED_PATTERN: PasdBusAttribute(22, 1, PasdConversionUtility.convert_led_status),
-        "sensor_status": PasdBusAttribute(23, 12),
+        "fem_case_temperatures": PasdBusAttribute(
+            23, 2, PasdConversionUtility.scale_temps
+        ),
+        "fem_heatsink_temperatures": PasdBusAttribute(
+            25, 2, PasdConversionUtility.scale_temps
+        ),
         "ports_connected": PasdBusPortAttribute(
             35, 12, PortStatusString.PORTS_CONNECTED
         ),

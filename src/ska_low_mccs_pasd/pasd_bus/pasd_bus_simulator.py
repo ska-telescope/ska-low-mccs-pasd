@@ -655,7 +655,7 @@ class FndhSimulator(PasdHardwareSimulator):
     psu48v_voltages = Sensor()
     psu48v_current = Sensor()
     psu48v_temperatures = Sensor()
-    panel_temperature = Sensor()
+    panel_temperature = Sensor()  # Not implemented in hardware?
     fncb_temperature = Sensor()
     fncb_humidity = Sensor()
     comms_gateway_temperature = Sensor()
@@ -753,7 +753,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_INPUT_VOLTAGE: Final = 48.0
     DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE: Final = 4.8
     DEFAULT_POWER_SUPPLY_TEMPERATURE: Final = 42.1
-    DEFAULT_PCB_TEMPERATURE: Final = 38.6  # Not currently implemented in hardware
+    DEFAULT_PCB_TEMPERATURE: Final = 38.6  # Not implemented in hardware?
     DEFAULT_FEM_AMBIENT_TEMPERATURE: Final = 40.1
     DEFAULT_FEM_CASE_TEMPERATURES: Final = [44.4, 44.6]
     DEFAULT_FEM_HEATSINK_TEMPERATURES: Final = [42.8, 42.5]

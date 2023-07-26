@@ -90,8 +90,15 @@ class TestPasdBusComponentManager:
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
             psu48v_temperatures=FndhSimulator.DEFAULT_PSU48V_TEMPERATURES,
+            panel_temperature=FndhSimulator.DEFAULT_PANEL_TEMPERATURE,
             fncb_temperature=FndhSimulator.DEFAULT_FNCB_TEMPERATURE,
             fncb_humidity=FndhSimulator.DEFAULT_FNCB_HUMIDITY,
+            comms_gateway_temperature=FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE,
+            power_module_temperature=FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE,
+            outside_temperature=FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
+            internal_ambient_temperature=(
+                FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+            ),
         )
 
         expected_fndh_ports_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
@@ -125,10 +132,14 @@ class TestPasdBusComponentManager:
                 power_supply_temperature=(
                     SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
                 ),
+                pcb_temperature=SmartboxSimulator.DEFAULT_PCB_TEMPERATURE,
                 fem_ambient_temperature=(
                     SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
                 ),
-                pcb_temperature=SmartboxSimulator.DEFAULT_PCB_TEMPERATURE,
+                fem_case_temperatures=(SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES),
+                fem_heatsink_temperatures=(
+                    SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+                ),
             )
 
             expected_smartbox_ports_connected = [
@@ -374,8 +385,15 @@ class TestPasdBusComponentManager:
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
             psu48v_temperatures=FndhSimulator.DEFAULT_PSU48V_TEMPERATURES,
+            panel_temperature=FndhSimulator.DEFAULT_PANEL_TEMPERATURE,
             fncb_temperature=FndhSimulator.DEFAULT_FNCB_TEMPERATURE,
             fncb_humidity=FndhSimulator.DEFAULT_FNCB_HUMIDITY,
+            comms_gateway_temperature=FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE,
+            power_module_temperature=FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE,
+            outside_temperature=FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
+            internal_ambient_temperature=(
+                FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+            ),
             lookahead=75,
         )
 
@@ -393,7 +411,11 @@ class TestPasdBusComponentManager:
                 SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
             ),
             power_supply_temperature=SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE,
-            fem_ambient_temperature=SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE,
             pcb_temperature=SmartboxSimulator.DEFAULT_PCB_TEMPERATURE,
+            fem_ambient_temperature=SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE,
+            fem_case_temperatures=(SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES),
+            fem_heatsink_temperatures=(
+                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+            ),
             lookahead=75,
         )

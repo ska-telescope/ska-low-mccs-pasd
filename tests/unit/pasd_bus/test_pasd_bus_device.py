@@ -193,8 +193,27 @@ def test_communication(  # pylint: disable=too-many-statements
         list(pasd_bus_device.fndhPsu48vTemperatures)
         == FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
     )
+    assert (
+        pasd_bus_device.fndhPanelTemperature == FndhSimulator.DEFAULT_PANEL_TEMPERATURE
+    )
     assert pasd_bus_device.fndhFncbTemperature == FndhSimulator.DEFAULT_FNCB_TEMPERATURE
     assert pasd_bus_device.fndhFncbHumidity == FndhSimulator.DEFAULT_FNCB_HUMIDITY
+    assert (
+        pasd_bus_device.fndhCommsGatewayTemperature
+        == FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE
+    )
+    assert (
+        pasd_bus_device.fndhPowerModuleTemperature
+        == FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE
+    )
+    assert (
+        pasd_bus_device.fndhOutsideTemperature
+        == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+    )
+    assert (
+        pasd_bus_device.fndhInternalAmbientTemperature
+        == FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+    )
     assert list(pasd_bus_device.fndhPortsConnected) == fndh_simulator.ports_connected
     assert (
         list(pasd_bus_device.fndhPortBreakersTripped)
@@ -261,12 +280,20 @@ def test_communication(  # pylint: disable=too-many-statements
         == SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
     )
     assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}PcbTemperature")
+        == SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
+    )
+    assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}FemAmbientTemperature")
         == SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
     )
     assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}PcbTemperature")
-        == smartbox_simulator.pcb_temperature
+        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}FemCaseTemperatures"))
+        == SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+    )
+    assert (
+        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}FemHeatsinkTemperatures"))
+        == SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
     )
     assert (
         list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsConnected"))

@@ -243,8 +243,15 @@ def check_monitoring_point_is_reported(
         "FNDH 48v PSU voltages": "fndhPsu48vVoltages",
         "FNDH 48v PSU current": "fndhPsu48vCurrent",
         "FNDH 48v PSU temperatures": "fndhPsu48vTemperatures",
+        "FNDH panel temperature": "fndhPanelTemperature",
         "FNDH FNCB ambient temperature": "fndhFncbTemperature",
         "FNDH FNCB ambient humidity": "fndhFncbHumidity",
+        "FNDH communications gateway enclosure temperature": (
+            "fndhCommsGatewayTemperature"
+        ),
+        "FNDH power module enclosure temperature": "fndhPowerModuleTemperature",
+        "FNDH ouside ambient reference temperature": "fndhOutsideTemperature",
+        "FNDH internal ambient reference temperature": "fndhInternalAmbientTemperature",
         "smartbox uptime": f"smartbox{smartbox_id}Uptime",
         "smartbox status": f"smartbox{smartbox_id}Status",
         "smartbox LED pattern": f"smartbox{smartbox_id}LedPattern",
@@ -258,6 +265,12 @@ def check_monitoring_point_is_reported(
         "smartbox PCB temperature": f"smartbox{smartbox_id}PcbTemperature",
         "smartbox FEM package ambient temperature": (
             f"smartbox{smartbox_id}FemAmbientTemperature"
+        ),
+        "smartbox FEM 6 & 12 case temperatures": (
+            f"smartbox{smartbox_id}FemCaseTemperatures"
+        ),
+        "smartbox FEM heatsink temperatures": (
+            f"smartbox{smartbox_id}FemHeatsinkTemperatures"
         ),
     }
     attribute_name = attribute_name_map[monitoring_point]
