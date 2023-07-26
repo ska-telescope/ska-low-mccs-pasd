@@ -6,6 +6,7 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module implements the MCCS PaSD bus device."""
+# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -150,7 +151,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         )
 
     def _setup_fndh_attributes(self: MccsPasdBus) -> None:
-        for (slug, data_type, length) in [
+        for slug, data_type, length in [
             ("ModbusRegisterMapRevisionNumber", int, None),
             ("PcbRevisionNumber", int, None),
             ("CpuId", int, None),
@@ -180,7 +181,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             )
 
     def _setup_smartbox_attributes(self: MccsPasdBus, smartbox_number: int) -> None:
-        for (slug, data_type, length) in [
+        for slug, data_type, length in [
             ("ModbusRegisterMapRevisionNumber", int, None),
             ("PcbRevisionNumber", int, None),
             ("CpuId", int, None),
@@ -267,7 +268,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """Initialise the command handlers for commands supported by this device."""
         super().init_command_objects()
 
-        for (command_name, command_class) in [
+        for command_name, command_class in [
+            ("InitializeFndh", MccsPasdBus._InitializeFndhCommand),
+            ("InitializeSmartbox", MccsPasdBus._InitializeSmartboxCommand),
             ("TurnFndhPortOn", MccsPasdBus._TurnFndhPortOnCommand),
             ("TurnFndhPortOff", MccsPasdBus._TurnFndhPortOffCommand),
             ("SetFndhLedPattern", MccsPasdBus._SetFndhLedPatternCommand),
@@ -472,6 +475,46 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     # ----------
     # Commands
     # ----------
+    class _InitializeFndhCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._InitializeFndhCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._InitializeFndhCommand,
+        ) -> Optional[bool]:
+            """
+            Initialize an FNDH.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.initialize_fndh()
+
+    @command(dtype_out="DevVarLongStringArray")
+    def InitializeFndh(self: MccsPasdBus) -> DevVarLongStringArrayType:
+        """
+        Initialize an FNDH.
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("InitializeFndh")
+        success = handler()
+        if success:
+            return ([ResultCode.OK], ["InitializeFndh succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["InitializeFndh succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["InitializeFndh failed"])
+
     class _TurnFndhPortOnCommand(FastCommand):
         SCHEMA: Final = json.loads(
             importlib.resources.read_text(
@@ -669,6 +712,50 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 ["ResetFndhPortBreaker succeeded: nothing to do"],
             )
         return ([ResultCode.FAILED], ["ResetFndhPortBreaker failed"])
+
+    class _InitializeSmartboxCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._InitializeSmartboxCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._InitializeSmartboxCommand, smartbox_id: int
+        ) -> Optional[bool]:
+            """
+            Initialize a Smartbox.
+
+            :param smartbox_id: id of the smartbox being addressed.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.initialize_smartbox(smartbox_id)
+
+    @command(dtype_in=int, dtype_out="DevVarLongStringArray")
+    def InitializeSmartbox(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
+        """
+        Initialize a smartbox.
+
+        :param argin: arguments encoded as a JSON string
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("InitializeSmartbox")
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], ["InitializeSmartbox succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["InitializeSmartbox succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["InitializeSmartbox failed"])
 
     class _TurnSmartboxPortOnCommand(FastCommand):
         SCHEMA: Final = json.loads(
