@@ -287,19 +287,16 @@ def change_event_callbacks_fixture(
 def field_station_device_fixture(
     field_station_name: str,
     get_device_proxy: Callable,
-    is_true_context: bool,
 ) -> tango.DeviceProxy:
     """
     Return a DeviceProxy to an instance of MccsFieldStation.
 
     :param field_station_name: the name of the field station device under test.
     :param get_device_proxy: cached fixture for setting up device proxy.
-    :param is_true_context: Are we using a true tango context.
 
     :return: A proxy to an instance of MccsFieldStation.
     """
-    # https://gitlab.com/tango-controls/pytango/-/issues/533
-    return get_device_proxy(field_station_name) if is_true_context else None
+    return get_device_proxy(field_station_name)
 
 
 @pytest.fixture(name="pasd_bus_device", scope="session")
