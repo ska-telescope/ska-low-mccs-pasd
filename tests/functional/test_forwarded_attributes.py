@@ -21,13 +21,22 @@ scenarios("./features/forwarded_attributes.feature")
 
 
 @given(parsers.parse("A {device_name} which is ready"))
-def get_ready_device(device_name: str, set_device_state: Callable) -> None:
+def get_ready_device(
+    is_true_context: bool, device_name: str, set_device_state: Callable
+) -> None:
     """
     Get device in state ON and adminmode ONLINE.
 
     :param device_name: FQDN of device under test.
     :param set_device_state: function to set device state.
+    :param is_true_context: Are we using a true tango context.
     """
+    if not is_true_context:
+        # https://gitlab.com/tango-controls/pytango/-/issues/533
+        pytest.skip(
+            "Functionality under test uses a forwarded attribute, "
+            "so cannot be run in a lightweight test context."
+        )
     print(f"Setting device {device_name} ready...")
     set_device_state(device=device_name, state=tango.DevState.ON, mode=AdminMode.ONLINE)
 
@@ -55,7 +64,9 @@ def query_attribute(
 
 
 @then("they agree on the outsideTemperature")
-def agree_on_attribute_value(outside_temperatures: dict) -> None:
+def agree_on_attribute_value(
+    outside_temperatures: dict,
+) -> None:
     """
     Ensure FNDH and fieldStation agree on the attribute value.
 

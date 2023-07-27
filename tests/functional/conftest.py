@@ -63,8 +63,8 @@ def pytest_addoption(
     )
 
 
-@pytest.fixture(name="true_context", scope="session")
-def true_context_fixture(request: pytest.FixtureRequest) -> bool:
+@pytest.fixture(name="is_true_context", scope="session")
+def is_true_context_fixture(request: pytest.FixtureRequest) -> bool:
     """
     Return whether to test against an existing Tango deployment.
 
@@ -209,7 +209,7 @@ def pasd_timeout_fixture() -> Optional[float]:
 
 @pytest.fixture(name="tango_harness", scope="session")
 def tango_harness_fixture(
-    true_context: bool,
+    is_true_context: bool,
     pasd_bus_name: str,
     fndh_name: str,
     pasd_address_context_manager_factory: Callable[[], ContextManager[tuple[str, int]]],
@@ -218,7 +218,7 @@ def tango_harness_fixture(
     """
     Yield a Tango context containing the device/s under test.
 
-    :param true_context: whether to test against an existing Tango
+    :param is_true_context: whether to test against an existing Tango
         deployment
     :param pasd_bus_name: name of the PaSD bus Tango device.
     :param fndh_name: the name of the FNDH Tango device.
@@ -234,7 +234,7 @@ def tango_harness_fixture(
     tango_context_manager: Union[
         TrueTangoContextManager, ThreadedTestTangoContextManager
     ]  # for the type checker
-    if true_context:
+    if is_true_context:
         tango_context_manager = TrueTangoContextManager()
         with tango_context_manager as context:
             yield context
