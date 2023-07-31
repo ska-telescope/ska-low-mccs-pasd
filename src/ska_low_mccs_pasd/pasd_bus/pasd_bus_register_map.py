@@ -172,7 +172,7 @@ class PasdBusPortAttribute(PasdBusAttribute):
             None: "NONE",
         }
         results: List[bool | str | None] = []
-        for status_bitmap, port_number in zip(values, range(1, len(values) + 1)):
+        for status_bitmap in values:
             bitstring = f"{status_bitmap:016b}"
             match (self.desired_info):
                 case PortStatusString.DSON:
@@ -190,13 +190,7 @@ class PasdBusPortAttribute(PasdBusAttribute):
                         results.append(forcing_map[False])
                     elif bitstring[6:8] == "11":
                         results.append(forcing_map[True])
-                    elif bitstring[6:8] == "01":
-                        results.append(forcing_map[None])
                     else:
-                        logger.warning(
-                            f"Unknown port forcing: {bitstring[6:8]}"
-                            f" for port {port_number}"
-                        )
                         results.append(forcing_map[None])
                 case PortStatusString.BREAKERS_TRIPPED:
                     results.append(bitstring[8] == "1")
