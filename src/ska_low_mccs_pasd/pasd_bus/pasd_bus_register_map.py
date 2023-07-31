@@ -176,27 +176,15 @@ class PasdBusPortAttribute(PasdBusAttribute):
             bitstring = f"{status_bitmap:016b}"
             match (self.desired_info):
                 case PortStatusString.DSON:
-                    if bitstring[2:4] == "10":
-                        results.append(False)
-                    elif bitstring[2:4] == "11":
+                    if bitstring[2:4] == "11":
                         results.append(True)
                     else:
-                        logger.warning(
-                            f"Unknown {self.desired_info.value} flag {bitstring[2:4]}"
-                            f" for port {port_number}"
-                        )
-                        results.append(None)
+                        results.append(False)
                 case PortStatusString.DSOFF:
-                    if bitstring[4:6] == "10":
-                        results.append(False)
-                    elif bitstring[4:6] == "11":
+                    if bitstring[4:6] == "11":
                         results.append(True)
                     else:
-                        logger.warning(
-                            f"Unknown {self.desired_info.value} flag {bitstring[2:4]}"
-                            f" for port {port_number}"
-                        )
-                        results.append(None)
+                        results.append(False)
                 case PortStatusString.PORT_FORCINGS:
                     if bitstring[6:8] == "10":
                         results.append(forcing_map[False])
@@ -267,7 +255,7 @@ class PasdBusRegisterMap:
         "pcb_revision": PasdBusAttribute(1, 1),
         "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
         "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_chip_id),
-        "firmware_version": PasdBusAttribute(12, 1),
+        "firmware_version": PasdBusAttribute(12, 1, lambda x: str(x[0])),
     }
 
     # Inverse dictionary mapping register number (address) to

@@ -268,7 +268,7 @@ class PasdHardwareSimulator:
         """
         if len(ports_connected) != len(self._ports):
             raise ValueError("Configuration must match the number of ports.")
-        for (port, is_connected) in zip(self._ports, ports_connected):
+        for port, is_connected in zip(self._ports, ports_connected):
             port.connected = is_connected
 
     @property
@@ -457,8 +457,8 @@ class FndhSimulator(PasdHardwareSimulator):
 
     NUMBER_OF_PORTS = 28
 
-    CPU_ID = 22
-    CHIP_ID = 23
+    CPU_ID = "22"
+    CHIP_ID = "23"
     MODBUS_REGISTER_MAP_REVISION = 20
     PCB_REVISION = 21
     SYS_ADDRESS = 101
@@ -618,8 +618,8 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
     NUMBER_OF_PORTS: Final = 12
 
-    CPU_ID: Final = 24
-    CHIP_ID: Final = 25
+    CPU_ID: Final = "24"
+    CHIP_ID: Final = "25"
     MODBUS_REGISTER_MAP_REVISION: Final = 20
     PCB_REVISION: Final = 21
     SYS_ADDRESS: Final = 1
@@ -899,7 +899,7 @@ class PasdBusSimulator:
             smartbox_port = antenna_config["smartbox_port"]
             smartbox_ports_connected[smartbox_id - 1][smartbox_port - 1] = True
 
-        for (smartbox_index, ports_connected) in enumerate(smartbox_ports_connected):
+        for smartbox_index, ports_connected in enumerate(smartbox_ports_connected):
             self._smartbox_simulators[smartbox_index].configure(ports_connected)
 
         return True

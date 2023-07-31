@@ -293,24 +293,23 @@ class PasdConversionUtility:
             return [SmartBoxStatusMap.UNDEFINED.name]
 
     @classmethod
-    def convert_led_status(cls, value_list: list[int]) -> dict:
+    def convert_led_status(cls, value_list: list[int]) -> str:
         """
         Convert the raw register value to LED status strings.
 
         :param value_list: raw register contents
             (MSB represents service LED and LSB represents status LED)
-        :return: dictionary with keys 'service' and 'status' mapping
-            to members of LED_SERVICE_MAP and LED_STATUS_MAP respectively
+        :return: string describing LED patterns
         """
         raw_value = value_list[0]
         try:
             byte_list = cls.n_to_bytes(raw_value)
         except ValueError:
             logger.error(f"Invalid LED register value received: {raw_value}")
-            return {
-                "service": LEDServiceMap.UNDEFINED.name,
-                "status": LEDStatusMap.UNDEFINED.name,
-            }
+            return (
+                f"service: {LEDServiceMap.UNDEFINED.name}, "
+                f"status: {LEDStatusMap.UNDEFINED.name}"
+            )
 
         try:
             service = LEDServiceMap(byte_list[0]).name
@@ -324,4 +323,4 @@ class PasdConversionUtility:
             logger.error(f"Invalid status LED value received: {byte_list[1]}")
             status = LEDStatusMap.UNDEFINED.name
 
-        return {"service": service, "status": status}
+        return f"service: {service}, " f"status: {status}"
