@@ -318,17 +318,18 @@ class PasdHardwareSimulator:
             if not isinstance(value_list, list):
                 value_list = [value_list]
             for i, value in enumerate(value_list, 1):
-                if high_alarm is not None and value > high_alarm:
+                if high_alarm is not None and value >= high_alarm:
                     self._sensors_status[sensor_name + str(i)] = "ALARM"
-                elif low_alarm is not None and value < low_alarm:
+                elif low_alarm is not None and value <= low_alarm:
                     self._sensors_status[sensor_name + str(i)] = "ALARM"
-                elif high_warning is not None and value > high_warning:
+                elif high_warning is not None and value >= high_warning:
                     self._sensors_status[sensor_name + str(i)] = "WARNING"
-                elif low_warning is not None and value < low_warning:
+                elif low_warning is not None and value <= low_warning:
                     self._sensors_status[sensor_name + str(i)] = "WARNING"
                 else:
                     self._sensors_status[sensor_name + str(i)] = "OK"
         except AttributeError:
+            # TODO: log
             return
 
     def configure(
@@ -544,7 +545,12 @@ class PasdHardwareSimulator:
         if request == "OK":
             self._status = "UNDEFINED"
             self._status = self.status
-            return True
+            if self._status == "OK":
+                return True
+            logger.warning(
+                f"PaSD Bus simulator status was not set to OK, status is {self._status}"
+            )
+            return False
         return None
 
     @property
@@ -595,7 +601,7 @@ class Sensor:
 
     def __get__(
         self: Sensor, obj: PasdHardwareSimulator, objtype: type
-    ) -> None | float | list[float]:
+    ) -> None | int | list[int]:
         """
         Get the value of the sensor attribute from the instance.
 
@@ -606,7 +612,7 @@ class Sensor:
         return obj.__dict__.get(self.name)
 
     def __set__(
-        self: Sensor, obj: PasdHardwareSimulator, value: float | list[float]
+        self: Sensor, obj: PasdHardwareSimulator, value: int | list[int]
     ) -> None:
         """
         Set the value of the sensor attribute for the instance.
@@ -615,9 +621,9 @@ class Sensor:
         :param value: The value to be set for the sensor attribute.
         """
         if isinstance(value, list):
-            obj.__dict__[self.name] = [float(val) for val in value]
+            obj.__dict__[self.name] = [int(val) for val in value]
         else:
-            obj.__dict__[self.name] = float(value)
+            obj.__dict__[self.name] = int(value)
         obj._update_sensor_status(f"{self.name}")
 
 
@@ -640,16 +646,16 @@ class FndhSimulator(PasdHardwareSimulator):
     SYS_ADDRESS: Final = 101
 
     DEFAULT_FIRMWARE_VERSION: Final = "1.2.3-fake"
-    DEFAULT_PSU48V_VOLTAGES: Final = [47.9, 48.1]
-    DEFAULT_PSU48V_CURRENT: Final = 15.1
-    DEFAULT_PSU48V_TEMPERATURES: Final = [41.2, 42.9]
-    DEFAULT_PANEL_TEMPERATURE: Final = 37.2
-    DEFAULT_FNCB_TEMPERATURE: Final = 41.5
-    DEFAULT_FNCB_HUMIDITY: Final = 50.2
-    DEFAULT_COMMS_GATEWAY_TEMPERATURE: Final = 39.3
-    DEFAULT_POWER_MODULE_TEMPERATURE: Final = 45.8
-    DEFAULT_OUTSIDE_TEMPERATURE: Final = 32.5
-    DEFAULT_INTERNAL_AMBIENT_TEMPERATURE: Final = 36.0
+    DEFAULT_PSU48V_VOLTAGES: Final = [4790, 4810]
+    DEFAULT_PSU48V_CURRENT: Final = 1510
+    DEFAULT_PSU48V_TEMPERATURES: Final = [4120, 4290]
+    DEFAULT_PANEL_TEMPERATURE: Final = 3720
+    DEFAULT_FNCB_TEMPERATURE: Final = 4150
+    DEFAULT_FNCB_HUMIDITY: Final = 5020
+    DEFAULT_COMMS_GATEWAY_TEMPERATURE: Final = 3930
+    DEFAULT_POWER_MODULE_TEMPERATURE: Final = 4580
+    DEFAULT_OUTSIDE_TEMPERATURE: Final = 3250
+    DEFAULT_INTERNAL_AMBIENT_TEMPERATURE: Final = 3600
 
     # Instantiate sensor data descriptors
     psu48v_voltages = Sensor()
@@ -683,7 +689,7 @@ class FndhSimulator(PasdHardwareSimulator):
     @property
     def sys_address(self: FndhSimulator) -> int:
         """
-        Return the sys address.
+        Return the system address.
 
         :return: the system address.
         """
@@ -746,19 +752,18 @@ class SmartboxSimulator(PasdHardwareSimulator):
     PCB_REVISION: Final = 21
     CPU_ID: Final = 24
     CHIP_ID: Final = 25
-    SYS_ADDRESS: Final = 1
 
+    DEFAULT_SYS_ADDRESS: Final = 1
     DEFAULT_FIRMWARE_VERSION = "0.1.2-fake"
     # Address
-    DEFAULT_INPUT_VOLTAGE: Final = 48.0
-    DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE: Final = 4.8
-    DEFAULT_POWER_SUPPLY_TEMPERATURE: Final = 42.1
-    DEFAULT_PCB_TEMPERATURE: Final = 38.6  # Not implemented in hardware?
-    DEFAULT_FEM_AMBIENT_TEMPERATURE: Final = 40.1
-    DEFAULT_FEM_CASE_TEMPERATURES: Final = [44.4, 44.6]
-    DEFAULT_FEM_HEATSINK_TEMPERATURES: Final = [42.8, 42.5]
+    DEFAULT_INPUT_VOLTAGE: Final = 4800
+    DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE: Final = 480
+    DEFAULT_POWER_SUPPLY_TEMPERATURE: Final = 4210
+    DEFAULT_PCB_TEMPERATURE: Final = 3860  # Not implemented in hardware?
+    DEFAULT_FEM_AMBIENT_TEMPERATURE: Final = 4010
+    DEFAULT_FEM_CASE_TEMPERATURES: Final = [4440, 4460]
+    DEFAULT_FEM_HEATSINK_TEMPERATURES: Final = [4280, 4250]
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
-    DEFAULT_PORT_CURRENT_TRIP_THRESHOLD: Final = 496
 
     # Instantiate sensor data descriptors
     input_voltage = Sensor()
@@ -773,6 +778,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         """Initialise a new instance."""
         super().__init__(self.NUMBER_OF_PORTS)
         self._port_breaker_tripped = [False] * self.NUMBER_OF_PORTS
+        self._sys_address = self.DEFAULT_SYS_ADDRESS
         # Sensors
         self._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
         self.input_voltage = self.DEFAULT_INPUT_VOLTAGE
@@ -786,23 +792,41 @@ class SmartboxSimulator(PasdHardwareSimulator):
     @property
     def sys_address(self: SmartboxSimulator) -> int:
         """
-        Return the sys address.
+        Return the system address.
 
         :return: the system address.
         """
-        return self.SYS_ADDRESS
+        return self._sys_address
+
+    def set_sys_address(self: SmartboxSimulator, address: int) -> bool | None:
+        """
+        Set the system address.
+
+        :param address: the system address to be set - must be in range from 1 to 99.
+
+        :return: whether successful, or None if there was nothing to do.
+        """
+        if 1 <= address <= 99:
+            if self._sys_address == address:
+                return None
+            self._sys_address = address
+            return True
+        logger.warning(
+            "PaSD Bus simulator smartbox address must be in range from 1 to 99."
+        )
+        return False
 
     @property
     def ports_current_draw(
         self: SmartboxSimulator,
-    ) -> list[float]:
+    ) -> list[int]:
         """
         Return the current being drawn from each smartbox port.
 
         :return: the current being drawn from each smartbox port.
         """
         return [
-            self.DEFAULT_PORT_CURRENT_DRAW if connected else 0.0
+            self.DEFAULT_PORT_CURRENT_DRAW if connected else 0
             for connected in self.ports_connected
         ]
 
