@@ -59,7 +59,7 @@ class TestPasdBusJsonApi:
             pasd_bus_simulator.get_fndh(),
             spec_set=True,
             instance=True,
-            outside_temperature=40.0,
+            fncb_temperature=40.0,
         )
         mock.set_led_pattern.return_value = True
         mock.reset_port_breaker.side_effect = ValueError("Mock error")
@@ -229,7 +229,7 @@ class TestPasdBusJsonApi:
         :param backend_fndh: a mock backend FNDH for this command to execute
             against.
         """
-        request = {"device_id": 0, "read": ["outside_temperature"]}
+        request = {"device_id": 0, "read": ["fncb_temperature"]}
         request_str = json.dumps(request)
         request_bytes = request_str.encode(encoding)
         response_bytes = api(request_bytes)
@@ -237,8 +237,8 @@ class TestPasdBusJsonApi:
         response = json.loads(response_str)
         assert response["source"] == 0
         assert response["data"]["type"] == "reads"
-        assert response["data"]["attributes"]["outside_temperature"] == pytest.approx(
-            backend_fndh.outside_temperature
+        assert response["data"]["attributes"]["fncb_temperature"] == pytest.approx(
+            backend_fndh.fncb_temperature
         )
 
     def test_execute_nonexistent_command(

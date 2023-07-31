@@ -87,6 +87,9 @@ class PasdBusRequestProvider:
     It keeps track of the current intent of PaSD monitoring and control,
     for example, whether a command has been requested to be executed;
     and it decides what should be done in the next poll.
+
+    NOTE: The order of attributes is fixed and must match the Modbus
+    register order
     """
 
     STATIC_INFO_ATTRIBUTES: Final = (
@@ -99,45 +102,46 @@ class PasdBusRequestProvider:
 
     FNDH_STATUS_ATTRIBUTES: Final = (
         "uptime",
+        "sys_address",
+        "psu48v_voltages",
+        "psu48v_current",
+        "psu48v_temperatures",
+        "pcb_temperature",
+        "fncb_temperature",
+        "humidity",
         "status",
         "led_pattern",
-        "psu48v_voltages",
-        "psu5v_voltage",
-        "psu48v_current",
-        "psu48v_temperature",
-        "psu5v_temperature",
-        "pcb_temperature",
-        "outside_temperature",
     )
 
     FNDH_PORTS_STATUS_ATTRIBUTES: Final = (
-        "ports_connected",
-        "port_forcings",
-        "port_breakers_tripped",
-        "ports_desired_power_when_online",
-        "ports_desired_power_when_offline",
-        "ports_power_sensed",
+        "ports_connected",  # Register STATE[6] - POWER?
+        "port_forcings",  # Register STATE[9:8] - TO
+        "port_breakers_tripped",  # Not in FNDH state register
+        "ports_desired_power_when_online",  # Register STATE[13:12] - DSON
+        "ports_desired_power_when_offline",  # Register STATE[11:10] - DSOFF
+        "ports_power_sensed",  # Register STATE[7] - PWRSENSE
     )
 
     SMARTBOX_STATUS_ATTRIBUTES: Final = (
         "uptime",
-        "status",
-        "led_pattern",
+        "sys_address",
         "input_voltage",
         "power_supply_output_voltage",
         "power_supply_temperature",
-        "outside_temperature",
         "pcb_temperature",
+        "outside_temperature",
+        "status",
+        "led_pattern",
     )
 
     SMARTBOX_PORTS_STATUS_ATTRIBUTES: Final = (
-        "ports_connected",
-        "port_forcings",
-        "port_breakers_tripped",
-        "ports_desired_power_when_online",
-        "ports_desired_power_when_offline",
-        "ports_power_sensed",
-        "ports_current_draw",
+        "ports_connected",  # Register STATE[6] - POWER?
+        "port_forcings",  # Register STATE[9:8] - TO
+        "port_breakers_tripped",  # Register STATE[7] - BREAKER
+        "ports_desired_power_when_online",  # Register STATE[13:12] - DSON
+        "ports_desired_power_when_offline",  # Register STATE[11:10] - DSOFF
+        "ports_power_sensed",  # Not in smartbox state register
+        "ports_current_draw",  # Register CURRENT
     )
 
     def __init__(self, logger: logging.Logger) -> None:
@@ -147,7 +151,7 @@ class PasdBusRequestProvider:
         :param logger: a logger.
         """
         self._logger = logger
-
+        self._initialize_requests: dict[int, bool] = {}
         self._led_pattern_writes: dict[int, str] = {}
         self._port_power_changes: dict[
             tuple[int, int], tuple[Literal[True], bool] | Literal[False]
@@ -158,6 +162,15 @@ class PasdBusRequestProvider:
     def desire_info(self) -> None:
         """Register a desire to obtain static info about the PaSD devices."""
         self._read_request_iterator = read_request_iterator()
+
+    def desire_initialize(self, device_id: int) -> None:
+        """
+        Register a request to initialize a device.
+
+        :param device_id: the device number.
+            This is 0 for the FNDH, otherwise a smartbox number.
+        """
+        self._initialize_requests[device_id] = True
 
     def desire_port_on(
         self, device_id: int, port_number: int, stay_on_when_offline: bool
@@ -206,6 +219,12 @@ class PasdBusRequestProvider:
         :param pattern: the name of the LED pattern.
         """
         self._led_pattern_writes[device_id] = pattern
+
+    def _get_initialize_request(self) -> PasdBusRequest | None:
+        if not self._initialize_requests:
+            return None
+        device_id, _ = self._initialize_requests.popitem()
+        return PasdBusRequest(device_id, "initialize", [])
 
     def _get_led_pattern_request(self) -> PasdBusRequest | None:
         if not self._led_pattern_writes:
@@ -277,6 +296,10 @@ class PasdBusRequestProvider:
 
         :return: a description of what should be done on the next poll.
         """
+        request = self._get_initialize_request()
+        if request is not None:
+            return request
+
         request = self._get_led_pattern_request()
         if request is not None:
             return request
@@ -463,6 +486,20 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 poll_response.device_id,
                 **(poll_response.data),
             )
+
+    @check_communicating
+    def initialize_fndh(self: PasdBusComponentManager) -> None:
+        """Initialize the FNDH by writing to its status register."""
+        self._poll_request_provider.desire_initialize(0)
+
+    @check_communicating
+    def initialize_smartbox(self: PasdBusComponentManager, smartbox_id: int) -> None:
+        """
+        Initialize a smartbox by writing to its status register.
+
+        :param: smartbox_id: id of the smartbox being addressed
+        """
+        self._poll_request_provider.desire_initialize(smartbox_id)
 
     @check_communicating
     def reset_fndh_port_breaker(

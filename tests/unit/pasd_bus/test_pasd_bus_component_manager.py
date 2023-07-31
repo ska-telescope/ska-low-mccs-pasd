@@ -84,15 +84,15 @@ class TestPasdBusComponentManager:
             "pasd_device_state",
             0,  # FNDH
             uptime=FndhSimulator.DEFAULT_UPTIME,
+            sys_address=FndhSimulator.SYS_ADDRESS,
             status=FndhSimulator.DEFAULT_STATUS,
             led_pattern=FndhSimulator.DEFAULT_LED_PATTERN,
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
-            psu5v_voltage=FndhSimulator.DEFAULT_PSU5V_VOLTAGE,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
-            psu48v_temperature=FndhSimulator.DEFAULT_PSU48V_TEMPERATURE,
-            psu5v_temperature=FndhSimulator.DEFAULT_PSU5V_TEMPERATURE,
+            psu48v_temperatures=FndhSimulator.DEFAULT_PSU48V_TEMPERATURES,
             pcb_temperature=FndhSimulator.DEFAULT_PCB_TEMPERATURE,
-            outside_temperature=FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
+            fncb_temperature=FndhSimulator.DEFAULT_FNCB_TEMPERATURE,
+            humidity=FndhSimulator.DEFAULT_HUMIDITY,
         )
 
         expected_fndh_ports_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
@@ -116,6 +116,7 @@ class TestPasdBusComponentManager:
                 "pasd_device_state",
                 smartbox_number,
                 uptime=SmartboxSimulator.DEFAULT_UPTIME,
+                sys_address=SmartboxSimulator.SYS_ADDRESS,
                 status=SmartboxSimulator.DEFAULT_STATUS,
                 led_pattern=SmartboxSimulator.DEFAULT_LED_PATTERN,
                 input_voltage=SmartboxSimulator.DEFAULT_INPUT_VOLTAGE,
@@ -366,15 +367,15 @@ class TestPasdBusComponentManager:
             "pasd_device_state",
             0,  # FNDH
             uptime=FndhSimulator.DEFAULT_UPTIME,
+            sys_address=FndhSimulator.SYS_ADDRESS,
             status=FndhSimulator.DEFAULT_STATUS,
             led_pattern="SERVICE",
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
-            psu5v_voltage=FndhSimulator.DEFAULT_PSU5V_VOLTAGE,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
-            psu48v_temperature=FndhSimulator.DEFAULT_PSU48V_TEMPERATURE,
-            psu5v_temperature=FndhSimulator.DEFAULT_PSU5V_TEMPERATURE,
+            psu48v_temperatures=FndhSimulator.DEFAULT_PSU48V_TEMPERATURES,
             pcb_temperature=FndhSimulator.DEFAULT_PCB_TEMPERATURE,
-            outside_temperature=FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
+            fncb_temperature=FndhSimulator.DEFAULT_FNCB_TEMPERATURE,
+            humidity=FndhSimulator.DEFAULT_HUMIDITY,
             lookahead=75,
         )
 
@@ -384,6 +385,7 @@ class TestPasdBusComponentManager:
             "pasd_device_state",
             4,
             uptime=SmartboxSimulator.DEFAULT_UPTIME,
+            sys_address=SmartboxSimulator.SYS_ADDRESS,
             status=SmartboxSimulator.DEFAULT_STATUS,
             led_pattern="SERVICE",
             input_voltage=SmartboxSimulator.DEFAULT_INPUT_VOLTAGE,

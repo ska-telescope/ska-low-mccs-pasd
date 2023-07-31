@@ -49,15 +49,14 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         ("ChipId", int, None),
         ("FirmwareVersion", str, None),
         ("Uptime", int, None),
+        ("SysAddress", int, None),
         ("PasdStatus", str, None),
         ("LedPattern", str, None),
         ("Psu48vVoltages", (float,), 2),
-        ("Psu5vVoltage", float, None),  # Is this an attribute of FNDH?
         ("Psu48vCurrent", float, None),
-        ("Psu48vTemperature", float, None),
-        ("Psu5vTemperature", float, None),  # Is this an attribute of FNDH?
+        ("Psu48vTemperatures", (float,), 2),
         ("PcbTemperature", float, None),
-        ("OutsideTemperature", float, None),
+        ("FncbTemperature", float, None),
         ("PortsConnected", (bool,), PORT_COUNT),
         ("PortBreakersTripped", (bool,), PORT_COUNT),
         ("PortForcings", (str,), PORT_COUNT),

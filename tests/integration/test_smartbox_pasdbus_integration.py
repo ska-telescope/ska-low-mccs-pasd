@@ -699,6 +699,7 @@ class TestSmartBoxPasdBusIntegration:
             "ChipId",
             "FirmwareVersion",
             "Uptime",
+            "SysAddress",
             "InputVoltage",
             "PowerSupplyOutputVoltage",
             "PowerSupplyTemperature",

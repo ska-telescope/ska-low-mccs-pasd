@@ -44,7 +44,7 @@ class LEDServiceMap(Enum):
 
     UNDEFINED = -1
     OFF = 0
-    ON = 255
+    ON = 1
 
 
 class LEDStatusMap(Enum):
