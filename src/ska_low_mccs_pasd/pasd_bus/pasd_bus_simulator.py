@@ -568,7 +568,7 @@ class FndhSimulator(PasdHardwareSimulator):
         return self.PCB_REVISION
 
     @property
-    def cpu_id(self: FndhSimulator) -> int:
+    def cpu_id(self: FndhSimulator) -> str:
         """
         Return the ID of the CPU.
 
@@ -577,7 +577,7 @@ class FndhSimulator(PasdHardwareSimulator):
         return self.CPU_ID
 
     @property
-    def chip_id(self: FndhSimulator) -> int:
+    def chip_id(self: FndhSimulator) -> str:
         """
         Return the ID of the chip.
 
@@ -754,7 +754,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         return self.PCB_REVISION
 
     @property
-    def cpu_id(self: SmartboxSimulator) -> int:
+    def cpu_id(self: SmartboxSimulator) -> str:
         """
         Return the CPU ID.
 
@@ -763,7 +763,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         return self.CPU_ID
 
     @property
-    def chip_id(self: SmartboxSimulator) -> int:
+    def chip_id(self: SmartboxSimulator) -> str:
         """
         Return the chip ID.
 
