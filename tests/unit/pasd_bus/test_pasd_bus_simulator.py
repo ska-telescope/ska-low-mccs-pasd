@@ -8,7 +8,7 @@
 """This module contains the tests of the PaSD bus component manager."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Sequence
 
 import pytest
 
@@ -16,6 +16,35 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
     FndhSimulator,
     SmartboxSimulator,
 )
+
+
+# pylint: disable=too-few-public-methods
+class TestPasdBusSimulator:
+    """Tests of the combined PasdBusSimulator."""
+
+    @pytest.mark.skip(reason="uptime currently must be a static value for tango mocks")
+    def test_uptimes(
+        self: TestPasdBusSimulator,
+        fndh_simulator: FndhSimulator,
+        smartbox_simulators: Sequence[SmartboxSimulator],
+    ) -> None:
+        """
+        Test the uptimes of a PaSD bus simulator.
+
+        Test that the uptime is tracked and differ between simulators according
+            to the order of configuration.
+
+        :param fndh_simulator: the FNDH simulator under test
+        :param smartbox_simulators: list of smartbox simulators under test
+        """
+        fndh_uptime = fndh_simulator.uptime
+        assert fndh_uptime > 0
+        previous_smartbox_uptime = 10000
+        for smartbox_simulator in smartbox_simulators:
+            assert smartbox_simulator.uptime > 0
+            assert fndh_uptime > smartbox_simulator.uptime
+            assert smartbox_simulator.uptime < previous_smartbox_uptime
+            previous_smartbox_uptime = smartbox_simulator.uptime
 
 
 class TestFndhSimulator:
@@ -78,6 +107,8 @@ class TestFndhSimulator:
         :param unconnected_fndh_port: the port number for an FNDH port
             that doesn't have a smartbox connected
         """
+        assert fndh_simulator.initialize()
+
         expected_forcings: list[str] = ["NONE"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
@@ -123,6 +154,8 @@ class TestFndhSimulator:
         :param connected_fndh_port: the port number for an FNDH port
             that has a smartbox connected
         """
+        assert fndh_simulator.initialize()
+
         expected_forcings: list[str] = ["NONE"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
@@ -168,6 +201,7 @@ class TestFndhSimulator:
         :param connected_fndh_port: the port number for an FNDH port
             that has a smartbox connected
         """
+        assert fndh_simulator.initialize()
         assert fndh_simulator.ports_connected[connected_fndh_port - 1]
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
         assert fndh_simulator.turn_port_on(connected_fndh_port)
@@ -191,6 +225,7 @@ class TestFndhSimulator:
         :param unconnected_fndh_port: the port number for an FNDH port
             that doesn't have a smartbox connected.
         """
+        assert fndh_simulator.initialize()
         assert not fndh_simulator.ports_connected[unconnected_fndh_port - 1]
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
         assert not fndh_simulator.turn_port_on(unconnected_fndh_port)
@@ -208,7 +243,6 @@ class TestFndhSimulator:
             ("cpu_id", FndhSimulator.CPU_ID),
             ("chip_id", FndhSimulator.CHIP_ID),
             ("firmware_version", FndhSimulator.DEFAULT_FIRMWARE_VERSION),
-            ("uptime", FndhSimulator.DEFAULT_UPTIME),
             ("led_pattern", FndhSimulator.DEFAULT_LED_PATTERN),
         ],
     )
@@ -308,9 +342,8 @@ class TestFndhSimulator:
         :param simulated_value: value to set the sensor to.
         :param expected_status: the expected status of the sensor and FNDH.
         """
-        assert fndh_simulator.set_status("illegal value") is None
-        assert fndh_simulator.status == "UNINITIALISED"
-        assert fndh_simulator.set_status("OK")
+        assert fndh_simulator.status == FndhSimulator.DEFAULT_STATUS
+        assert fndh_simulator.initialize()
         assert fndh_simulator.status == "OK"
         setattr(fndh_simulator, sensor_name, simulated_value)
         assert getattr(fndh_simulator, sensor_name) == simulated_value
@@ -319,8 +352,12 @@ class TestFndhSimulator:
         setattr(fndh_simulator, sensor_name, default_value)
         if expected_status == "ALARM":
             assert fndh_simulator.status == "RECOVERY"
+            setattr(fndh_simulator, sensor_name, simulated_value)
+            assert fndh_simulator.status == expected_status
+            assert fndh_simulator.initialize() is False
+            setattr(fndh_simulator, sensor_name, default_value)
             assert fndh_simulator.status == "RECOVERY"
-            assert fndh_simulator.set_status("OK")
+            assert fndh_simulator.initialize()
         assert fndh_simulator.status == "OK"
 
 
@@ -390,6 +427,7 @@ class TestSmartboxSimulator:
         :param connected_smartbox_port: a smartbox port that has an
             antenna connected to it
         """
+        assert smartbox_simulator.initialize()
         assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
         assert smartbox_simulator.simulate_port_forcing(connected_smartbox_port, True)
         assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
@@ -414,6 +452,8 @@ class TestSmartboxSimulator:
         :param connected_smartbox_port: a smartbox port that has an
             antenna connected to it
         """
+        assert smartbox_simulator.initialize()
+
         expected_when_online = [False] * SmartboxSimulator.NUMBER_OF_PORTS
         assert (
             smartbox_simulator.ports_desired_power_when_online == expected_when_online
@@ -486,6 +526,7 @@ class TestSmartboxSimulator:
         :param unconnected_smartbox_port: a smartbox port that doesn't
             have an antenna connected to it
         """
+        assert smartbox_simulator.initialize()
         assert not smartbox_simulator.ports_connected[unconnected_smartbox_port - 1]
         assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
         assert not smartbox_simulator.turn_port_on(unconnected_smartbox_port)
@@ -503,6 +544,8 @@ class TestSmartboxSimulator:
         :param connected_smartbox_port: a smartbox port that has an
             antenna connected to it
         """
+        assert smartbox_simulator.initialize()
+
         expected_tripped = [False] * SmartboxSimulator.NUMBER_OF_PORTS
         assert smartbox_simulator.port_breakers_tripped == expected_tripped
 
@@ -557,7 +600,6 @@ class TestSmartboxSimulator:
             ("cpu_id", SmartboxSimulator.CPU_ID),
             ("chip_id", SmartboxSimulator.CHIP_ID),
             ("firmware_version", SmartboxSimulator.DEFAULT_FIRMWARE_VERSION),
-            ("uptime", SmartboxSimulator.DEFAULT_UPTIME),
             ("led_pattern", SmartboxSimulator.DEFAULT_LED_PATTERN),
         ],
     )
@@ -592,6 +634,25 @@ class TestSmartboxSimulator:
         assert smartbox_simulator.led_pattern == "SERVICE"
         assert smartbox_simulator.set_led_pattern("OFF")
         assert smartbox_simulator.led_pattern == "OFF"
+
+    def test_sys_address(
+        self: TestSmartboxSimulator,
+        smartbox_simulator: SmartboxSimulator,
+    ) -> None:
+        """
+        Test setting the smartbox system address.
+
+        :param smartbox_simulator: the smartbox simulator under test.
+        """
+        assert smartbox_simulator.sys_address == smartbox_simulator.DEFAULT_SYS_ADDRESS
+        assert smartbox_simulator.set_sys_address(2)
+        assert smartbox_simulator.sys_address == 2
+        assert smartbox_simulator.set_sys_address(2) is None
+        assert smartbox_simulator.sys_address == 2
+        assert smartbox_simulator.set_sys_address(100) is False
+        assert smartbox_simulator.sys_address == 2
+        assert smartbox_simulator.set_sys_address(0) is False
+        assert smartbox_simulator.sys_address == 2
 
     @pytest.mark.parametrize(
         ("sensor_name", "simulated_value", "expected_status"),
@@ -651,9 +712,8 @@ class TestSmartboxSimulator:
         :param simulated_value: value to set the sensor to.
         :param expected_status: the expected status of the sensor and smartbox.
         """
-        assert smartbox_simulator.set_status("illegal value") is None
-        assert smartbox_simulator.status == "UNINITIALISED"
-        assert smartbox_simulator.set_status("OK")
+        assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
+        assert smartbox_simulator.initialize()
         assert smartbox_simulator.status == "OK"
         setattr(smartbox_simulator, sensor_name, simulated_value)
         assert getattr(smartbox_simulator, sensor_name) == simulated_value
@@ -662,6 +722,10 @@ class TestSmartboxSimulator:
         setattr(smartbox_simulator, sensor_name, default_value)
         if expected_status == "ALARM":
             assert smartbox_simulator.status == "RECOVERY"
+            setattr(smartbox_simulator, sensor_name, simulated_value)
+            assert smartbox_simulator.status == expected_status
+            assert smartbox_simulator.initialize() is False
+            setattr(smartbox_simulator, sensor_name, default_value)
             assert smartbox_simulator.status == "RECOVERY"
-            assert smartbox_simulator.set_status("OK")
+            assert smartbox_simulator.initialize()
         assert smartbox_simulator.status == "OK"

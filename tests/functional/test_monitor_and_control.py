@@ -315,6 +315,7 @@ def find_connected_fndh_port(
         port can be turned on and power will be sensed.
     """
     try:
+        pasd_bus_device.InitializeFndh()
         fndh_connected_ports = list(pasd_bus_device.fndhPortsConnected)
     except tango.DevFailed:
         change_event_callbacks[
@@ -486,6 +487,8 @@ def find_connected_smartbox_port(
         port can be turned on and power will be sensed.
     """
     try:
+        pasd_bus_device.InitializeFndh()
+        pasd_bus_device.InitializeSmartbox(smartbox_id)
         smartbox_connected_ports = list(
             getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsConnected")
         )

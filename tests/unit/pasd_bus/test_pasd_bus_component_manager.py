@@ -54,6 +54,7 @@ class TestPasdBusComponentManager:
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
 
+        pasd_bus_component_manager.initialize_fndh()
         # First we'll receive static info about the FNDH
         mock_callbacks.assert_call(
             "pasd_device_state",
@@ -65,8 +66,9 @@ class TestPasdBusComponentManager:
             firmware_version=FndhSimulator.DEFAULT_FIRMWARE_VERSION,
         )
 
-        # Then static info about each of the FNDHs
+        # Then static info about each of the smartboxes
         for smartbox_number in range(1, 25):
+            pasd_bus_component_manager.initialize_smartbox(smartbox_number)
             mock_callbacks.assert_call(
                 "pasd_device_state",
                 smartbox_number,
@@ -85,7 +87,7 @@ class TestPasdBusComponentManager:
             0,  # FNDH
             uptime=FndhSimulator.DEFAULT_UPTIME,
             sys_address=FndhSimulator.SYS_ADDRESS,
-            status=FndhSimulator.DEFAULT_STATUS,
+            status="OK",
             led_pattern=FndhSimulator.DEFAULT_LED_PATTERN,
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
@@ -123,7 +125,7 @@ class TestPasdBusComponentManager:
                 smartbox_number,
                 uptime=SmartboxSimulator.DEFAULT_UPTIME,
                 sys_address=SmartboxSimulator.DEFAULT_SYS_ADDRESS,
-                status=SmartboxSimulator.DEFAULT_STATUS,
+                status="OK",
                 led_pattern=SmartboxSimulator.DEFAULT_LED_PATTERN,
                 input_voltage=SmartboxSimulator.DEFAULT_INPUT_VOLTAGE,
                 power_supply_output_voltage=(
@@ -208,6 +210,8 @@ class TestPasdBusComponentManager:
         for _ in range(75):
             mock_callbacks.assert_against_call("pasd_device_state")
 
+        # TODO pasd_bus_component_manager.initialize_fndh()
+        assert fndh_simulator.initialize()
         ports_connected = fndh_simulator.ports_connected
         expected_port_forcings = fndh_simulator.port_forcings
         expected_port_breakers_tripped = fndh_simulator.port_breakers_tripped
@@ -290,6 +294,8 @@ class TestPasdBusComponentManager:
         for _ in range(75):
             mock_callbacks.assert_against_call("pasd_device_state")
 
+        # TODO pasd_bus_component_manager.initialize_smartbox(smartbox_id)
+        assert smartbox_simulator.initialize()
         ports_current_draw = smartbox_simulator.ports_current_draw
         ports_connected = smartbox_simulator.ports_connected
         expected_port_forcings = smartbox_simulator.port_forcings

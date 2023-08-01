@@ -32,10 +32,13 @@ complexity, it is composed of a separate FNDH simulator and a number of
 smartbox simulators, which in turn make use of port simulators. Only the
 PasdBusSimulator class should be considered public.
 """
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import importlib.resources
 import logging
+import time
 from datetime import datetime
 from typing import Final, Optional, Sequence
 
@@ -75,10 +78,13 @@ class _PasdPortSimulator:
     def __init__(self: _PasdPortSimulator):
         """Initialise a new instance."""
         self._connected = False
-        self._breaker_tripped = False
         self._forcing: Optional[bool] = None
-        self._desired_on_when_online = False
-        self._desired_on_when_offline = False
+        # Simulated PDoC/FEM state registers
+        # self._enabled = False  # Both
+        self._desired_on_when_online = False  # Both
+        self._desired_on_when_offline = False  # Both
+        self._breaker_tripped = False  # FEM
+        # self._port_powered = False  # Both
 
     @property
     def connected(self: _PasdPortSimulator) -> bool:
@@ -253,8 +259,9 @@ class PasdHardwareSimulator:
 
         :param number_of_ports: number of ports managed by this hardware
         """
-        self._power_on_time = None
+        self._boot_on_time: datetime | None = None
         self._ports = [_PasdPortSimulator() for _ in range(number_of_ports)]
+        self._ports_enabled = False
         self._sensors_status: dict = {}
         self._status = self.DEFAULT_STATUS
         self._led_pattern = str(self.DEFAULT_LED_PATTERN)
@@ -332,6 +339,45 @@ class PasdHardwareSimulator:
             # TODO: log
             return
 
+    def _update_system_status(
+        self: PasdHardwareSimulator, request_ok: bool = False
+    ) -> None:
+        """
+        Update the system status.
+
+        :param request_ok: optional request to transition to "OK"
+        """
+        if (
+            request_ok is False
+            and self._status in {"ALARM", "RECOVERY"}
+            and "ALARM" not in self._sensors_status.values()
+        ):
+            self._status = "RECOVERY"
+        elif request_ok or (
+            request_ok is False and self._status is not self.DEFAULT_STATUS
+        ):
+            if "ALARM" in self._sensors_status.values():
+                self._status = "ALARM"
+            elif "WARNING" in self._sensors_status.values():
+                self._status = "WARNING"
+            else:
+                self._status = "OK"
+
+    def _update_ports_state(self: PasdHardwareSimulator) -> None:
+        """
+        Update the ports state.
+
+        Enable or disable all the ports based on the system status.
+        """
+        if self._status in {"OK", "WARNING"}:
+            self._ports_enabled = True
+            for port in self._ports:
+                port.simulate_forcing(None)
+        else:
+            self._ports_enabled = False
+            for port in self._ports:
+                port.simulate_forcing(False)
+
     def configure(
         self: PasdHardwareSimulator,
         ports_connected: list[bool],
@@ -349,6 +395,9 @@ class PasdHardwareSimulator:
             raise ValueError("Configuration must match the number of ports.")
         for port, is_connected in zip(self._ports, ports_connected):
             port.connected = is_connected
+        # TODO: Add the timestamp back after figuring out how tango testing asserts
+        # can handle a changing value?
+        # self._boot_on_time = datetime.now()
 
     @property
     def ports_connected(self: PasdHardwareSimulator) -> list[bool]:
@@ -443,9 +492,11 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do
         """
-        return self._ports[port_number - 1].turn_on(
-            stay_on_when_offline=stay_on_when_offline
-        )
+        if self._ports_enabled:
+            return self._ports[port_number - 1].turn_on(
+                stay_on_when_offline=stay_on_when_offline
+            )
+        return False
 
     def turn_port_off(
         self: PasdHardwareSimulator,
@@ -502,13 +553,15 @@ class PasdHardwareSimulator:
     @property
     def uptime(self: PasdHardwareSimulator) -> int:
         """
-        Return the uptime, as an integer.
+        Return the uptime, as an integer, in microseconds.
 
         :return: the uptime.
         """
-        if self._power_on_time is None:
+        if self._boot_on_time is None:
             return self.DEFAULT_UPTIME
-        return datetime.now().timestamp() - self._power_on_time.timestamp()
+        return int(
+            (datetime.now().timestamp() - self._boot_on_time.timestamp()) * 100000
+        )
 
     @property
     def status(self: PasdHardwareSimulator) -> str:
@@ -522,29 +575,19 @@ class PasdHardwareSimulator:
             "RECOVERY" means all sensors are back within alarm thresholds after
             being in alarm state previously. "OK" status must be requested.
         """
-        if self._status == "ALARM" and "ALARM" not in self._sensors_status.values():
-            self._status = "RECOVERY"
-        elif self._status is not self.DEFAULT_STATUS:
-            if "ALARM" in self._sensors_status.values():
-                self._status = "ALARM"
-            elif self._status != "RECOVERY":
-                if "WARNING" in self._sensors_status.values():
-                    self._status = "WARNING"
-                else:
-                    self._status = "OK"
         return self._status
 
-    def set_status(self: PasdHardwareSimulator, request: str) -> bool | None:
+    def initialize(self: PasdHardwareSimulator) -> bool | None:
         """
-        Set the smartbox status.
+        Initialize a FNDH/smartbox.
 
-        :param request: the only valid request is "OK", otherwise do nothing.
+        Request to transition the FNDH/smartbox's status to "OK".
+
         :return: whether successful, or None if there was nothing to do.
         """
-        # Temporarily set status to undefined and then get the status
-        if request == "OK":
-            self._status = "UNDEFINED"
-            self._status = self.status
+        if self._status != "OK":
+            self._update_system_status(request_ok=True)
+            self._update_ports_state()
             if self._status == "OK":
                 return True
             logger.warning(
@@ -617,6 +660,8 @@ class Sensor:
         """
         Set the value of the sensor attribute for the instance.
 
+        Then update the system and ports status.
+
         :param obj: The instance of the class where the descriptor is being used.
         :param value: The value to be set for the sensor attribute.
         """
@@ -625,6 +670,8 @@ class Sensor:
         else:
             obj.__dict__[self.name] = int(value)
         obj._update_sensor_status(f"{self.name}")
+        obj._update_system_status()
+        obj._update_ports_state()
 
 
 class FndhSimulator(PasdHardwareSimulator):
@@ -672,7 +719,6 @@ class FndhSimulator(PasdHardwareSimulator):
     def __init__(self: FndhSimulator) -> None:
         """Initialise a new instance."""
         super().__init__(self.NUMBER_OF_PORTS)
-        # self._power_on_time = datetime.now()
         # Sensors
         self._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "fndh")
         self.psu48v_voltages = self.DEFAULT_PSU48V_VOLTAGES
@@ -987,5 +1033,8 @@ class PasdBusSimulator:
 
         for smartbox_index, ports_connected in enumerate(smartbox_ports_connected):
             self._smartbox_simulators[smartbox_index].configure(ports_connected)
+            # Small delay to make sure configuration timestamps differ at least
+            # by a few microseconds
+            time.sleep(0.000001)
 
         return True

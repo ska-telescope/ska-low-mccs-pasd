@@ -13,7 +13,7 @@ import gc
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState, PowerState
+from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
 from ska_tango_testing.context import TangoContextProtocol
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -318,6 +318,7 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks.assert_change_event("pasd_bus_state", tango.DevState.ON)
         change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
         assert pasd_bus_device.healthState == HealthState.OK
+        assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
 
         change_event_callbacks.assert_against_call("smartbox24PortsCurrentDraw")
 
@@ -337,7 +338,7 @@ class TestfndhPasdBusIntegration:
         )
 
         assert fndh_device.PortPowerState(2) == PowerState.OFF
-        fndh_simulator.turn_port_on(2)
+        assert fndh_simulator.turn_port_on(2)
 
         change_event_callbacks["fndhPort2PowerState"].assert_change_event(PowerState.ON)
 

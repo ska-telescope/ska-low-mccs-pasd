@@ -15,7 +15,7 @@ import time
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState, PowerState
+from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -207,6 +207,8 @@ class TestSmartBoxPasdBusIntegration:
         )
         change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["pasd_bus_state"].assert_not_called()
+        assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+        assert pasd_bus_device.InitializeSmartbox(smartbox_id)[0] == ResultCode.OK
 
         # change_event_callbacks.assert_against_call("smartbox24portscurrentdraw")
 
@@ -536,6 +538,8 @@ class TestSmartBoxPasdBusIntegration:
 
         # Check that both the PaSD and FNDH say
         # the smartbox under investigation Is OFF.
+        assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+        assert pasd_bus_device.InitializeSmartbox(smartbox_number)[0] == ResultCode.OK
         assert fndh_device.PortPowerState(smartbox_number) == PowerState.OFF
         pasd_claimed_port_states = getattr(
             pasd_bus_device, f"smartbox{smartbox_number}portspowersensed"
@@ -611,6 +615,8 @@ class TestSmartBoxPasdBusIntegration:
 
         # Check that both the PaSD and FNDH say
         # the smartbox under investigation Is OFF.
+        assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+        assert pasd_bus_device.InitializeSmartbox(smartbox_number)[0] == ResultCode.OK
         assert fndh_device.PortPowerState(smartbox_number) == PowerState.OFF
         pasd_claimed_port_states = getattr(
             pasd_bus_device, f"smartbox{smartbox_number}portspowersensed"
@@ -830,8 +836,7 @@ class TestSmartBoxPasdBusIntegration:
         # This is received and pushed onward by the MccsSmartbox device.
 
         # Initialize smartbox simulator status
-        # TODO: Should be done by a command from MCCS
-        smartbox_simulator.set_status("OK")
+        assert pasd_bus_device.InitializeSmartbox(1)[0] == ResultCode.OK
         change_event_callbacks.assert_change_event("smartboxstatus", "OK")
         assert smartbox_device.PasdStatus == "OK"
 
@@ -843,8 +848,7 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event("smartboxinputvoltage", 4200)
         change_event_callbacks.assert_change_event("smartboxstatus", "RECOVERY")
         assert smartbox_device.InputVoltage == 4200
-        # TODO: Should be done by a command from MCCS
-        smartbox_simulator.set_status("OK")
+        assert pasd_bus_device.InitializeSmartbox(1)[0] == ResultCode.OK
         change_event_callbacks.assert_change_event("smartboxstatus", "WARNING")
         smartbox_simulator.input_voltage = 4800
         change_event_callbacks.assert_change_event("smartboxinputvoltage", 4800)
