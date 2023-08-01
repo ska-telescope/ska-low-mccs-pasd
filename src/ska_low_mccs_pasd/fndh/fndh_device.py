@@ -45,8 +45,8 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
     ATTRIBUTES = [
         ("ModbusRegisterMapRevisionNumber", int, None),
         ("PcbRevisionNumber", int, None),
-        ("CpuId", int, None),
-        ("ChipId", int, None),
+        ("CpuId", str, None),
+        ("ChipId", str, None),
         ("FirmwareVersion", str, None),
         ("Uptime", int, None),
         ("SysAddress", int, None),
@@ -176,7 +176,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         """Initialise the command handlers for commands supported by this device."""
         super().init_command_objects()
 
-        for (command_name, method_name) in [
+        for command_name, method_name in [
             ("PowerOnPort", "power_on_port"),
             ("PowerOffPort", "power_off_port"),
             ("Configure", "configure"),
@@ -326,7 +326,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
     # ATTRIBUTES
     # -----------
     def _setup_fndh_attributes(self: MccsFNDH) -> None:
-        for (slug, data_type, length) in self.ATTRIBUTES:
+        for slug, data_type, length in self.ATTRIBUTES:
             self._setup_fndh_attribute(
                 f"{slug}",
                 cast(type | tuple[type], data_type),
