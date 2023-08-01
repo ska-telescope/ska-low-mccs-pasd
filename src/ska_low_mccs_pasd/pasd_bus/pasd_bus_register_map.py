@@ -42,6 +42,7 @@ class PortStatusString(Enum):
     DSON = "ports_desired_power_when_online"
     DSOFF = "ports_desired_power_when_offline"
     POWER_SENSED = "ports_power_sensed"
+    POWER = "power"
 
 
 class PasdCommandStrings(Enum):
@@ -192,9 +193,11 @@ class PasdBusPortAttribute(PasdBusAttribute):
                         results.append(forcing_map[True])
                     else:
                         results.append(forcing_map[None])
-                case PortStatusString.BREAKERS_TRIPPED:
+                case PortStatusString.BREAKERS_TRIPPED:  # Smartboxes only
                     results.append(bitstring[8] == "1")
-                case PortStatusString.POWER_SENSED:
+                case PortStatusString.POWER_SENSED:  # FNDH only
+                    results.append(bitstring[8] == "1")
+                case PortStatusString.POWER:
                     results.append(bitstring[9] == "1")
         return results
 
@@ -275,13 +278,7 @@ class PasdBusRegisterMap:
         "humidity": PasdBusAttribute(23, 1),
         STATUS: PasdBusAttribute(24, 1, PasdConversionUtility.convert_fndh_status),
         LED_PATTERN: PasdBusAttribute(25, 1, PasdConversionUtility.convert_led_status),
-        "ports_connected": PasdBusPortAttribute(
-            35, 28, PortStatusString.PORTS_CONNECTED
-        ),
         "port_forcings": PasdBusPortAttribute(35, 28, PortStatusString.PORT_FORCINGS),
-        "port_breakers_tripped": PasdBusPortAttribute(
-            35, 28, PortStatusString.BREAKERS_TRIPPED
-        ),
         "ports_desired_power_when_online": PasdBusPortAttribute(
             35, 28, PortStatusString.DSON
         ),
@@ -291,6 +288,7 @@ class PasdBusRegisterMap:
         "ports_power_sensed": PasdBusPortAttribute(
             35, 28, PortStatusString.POWER_SENSED
         ),
+        "ports_power": PasdBusPortAttribute(35, 28, PortStatusString.POWER),
     }
 
     _SMARTBOX_REGISTER_MAP_V1: Final = {
@@ -310,9 +308,6 @@ class PasdBusRegisterMap:
         STATUS: PasdBusAttribute(21, 1, PasdConversionUtility.convert_smartbox_status),
         LED_PATTERN: PasdBusAttribute(22, 1, PasdConversionUtility.convert_led_status),
         "sensor_status": PasdBusAttribute(23, 12),
-        "ports_connected": PasdBusPortAttribute(
-            35, 12, PortStatusString.PORTS_CONNECTED
-        ),
         "port_forcings": PasdBusPortAttribute(35, 12, PortStatusString.PORT_FORCINGS),
         "port_breakers_tripped": PasdBusPortAttribute(
             35, 12, PortStatusString.BREAKERS_TRIPPED
@@ -323,9 +318,7 @@ class PasdBusRegisterMap:
         "ports_desired_power_when_offline": PasdBusPortAttribute(
             35, 12, PortStatusString.DSOFF
         ),
-        "ports_power_sensed": PasdBusPortAttribute(
-            35, 12, PortStatusString.POWER_SENSED
-        ),
+        "ports_power": PasdBusPortAttribute(35, 12, PortStatusString.POWER),
         "ports_current_draw": PasdBusAttribute(47, 12),
     }
 
