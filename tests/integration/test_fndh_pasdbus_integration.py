@@ -13,7 +13,7 @@ import gc
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState, PowerState
+from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
 from ska_tango_testing.context import TangoContextProtocol
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -116,6 +116,7 @@ class TestfndhPasdBusIntegration:
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         """
+        # pylint: disable=too-many-statements
         # adminMode offline and in DISABLE state
         # ----------------------------------------------------------------
         assert fndh_device.adminMode == AdminMode.OFFLINE
@@ -189,7 +190,7 @@ class TestfndhPasdBusIntegration:
         assert fndh_device.ChipId == FndhSimulator.CHIP_ID
         assert fndh_device.FirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
         assert fndh_device.Uptime == FndhSimulator.DEFAULT_UPTIME
-        assert fndh_device.pasdStatus == FndhSimulator.DEFAULT_STATUS
+        assert fndh_device.PasdStatus == FndhSimulator.DEFAULT_STATUS
         assert fndh_device.LedPattern == FndhSimulator.DEFAULT_LED_PATTERN
         assert list(fndh_device.Psu48vVoltages) == FndhSimulator.DEFAULT_PSU48V_VOLTAGES
         assert fndh_device.Psu48vCurrent == FndhSimulator.DEFAULT_PSU48V_CURRENT
@@ -197,8 +198,24 @@ class TestfndhPasdBusIntegration:
             list(fndh_device.Psu48vTemperatures)
             == FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
         )
-        assert fndh_device.PcbTemperature == FndhSimulator.DEFAULT_PCB_TEMPERATURE
+        assert fndh_device.PanelTemperature == FndhSimulator.DEFAULT_PANEL_TEMPERATURE
         assert fndh_device.FncbTemperature == FndhSimulator.DEFAULT_FNCB_TEMPERATURE
+        assert fndh_device.FncbHumidity == FndhSimulator.DEFAULT_FNCB_HUMIDITY
+        assert (
+            fndh_device.CommsGatewayTemperature
+            == FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE
+        )
+        assert (
+            fndh_device.PowerModuleTemperature
+            == FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE
+        )
+        assert (
+            fndh_device.OutsideTemperature == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+        )
+        assert (
+            fndh_device.InternalAmbientTemperature
+            == FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+        )
         assert list(fndh_device.PortsConnected) == fndh_simulator.ports_connected
         assert (
             list(fndh_device.PortBreakersTripped)
@@ -301,6 +318,7 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks.assert_change_event("pasd_bus_state", tango.DevState.ON)
         change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
         assert pasd_bus_device.healthState == HealthState.OK
+        assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
 
         change_event_callbacks.assert_against_call("smartbox24PortsCurrentDraw")
 
@@ -320,7 +338,7 @@ class TestfndhPasdBusIntegration:
         )
 
         assert fndh_device.PortPowerState(2) == PowerState.OFF
-        fndh_simulator.turn_port_on(2)
+        assert fndh_simulator.turn_port_on(2)
 
         change_event_callbacks["fndhPort2PowerState"].assert_change_event(PowerState.ON)
 

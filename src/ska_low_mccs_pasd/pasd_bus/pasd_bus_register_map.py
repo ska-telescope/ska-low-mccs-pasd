@@ -273,11 +273,26 @@ class PasdBusRegisterMap:
         "psu48v_temperatures": PasdBusAttribute(
             19, 2, PasdConversionUtility.scale_temps
         ),
-        "pcb_temperature": PasdBusAttribute(21, 1, PasdConversionUtility.scale_temps),
+        "panel_temperature": PasdBusAttribute(21, 1, PasdConversionUtility.scale_temps),
         "fncb_temperature": PasdBusAttribute(22, 1, PasdConversionUtility.scale_temps),
-        "humidity": PasdBusAttribute(23, 1),
+        "fncb_humidity": PasdBusAttribute(23, 1),
         STATUS: PasdBusAttribute(24, 1, PasdConversionUtility.convert_fndh_status),
         LED_PATTERN: PasdBusAttribute(25, 1, PasdConversionUtility.convert_led_status),
+        "comms_gateway_temperature": PasdBusAttribute(
+            26, 1, PasdConversionUtility.scale_temps
+        ),
+        "power_module_temperature": PasdBusAttribute(
+            27, 1, PasdConversionUtility.scale_temps
+        ),
+        "outside_temperature": PasdBusAttribute(
+            28, 1, PasdConversionUtility.scale_temps
+        ),
+        "internal_ambient_temperature": PasdBusAttribute(
+            29, 1, PasdConversionUtility.scale_temps
+        ),
+        "ports_connected": PasdBusPortAttribute(
+            35, 28, PortStatusString.PORTS_CONNECTED
+        ),
         "port_forcings": PasdBusPortAttribute(35, 28, PortStatusString.PORT_FORCINGS),
         "ports_desired_power_when_online": PasdBusPortAttribute(
             35, 28, PortStatusString.DSON
@@ -302,12 +317,20 @@ class PasdBusRegisterMap:
             18, 1, PasdConversionUtility.scale_temps
         ),
         "pcb_temperature": PasdBusAttribute(19, 1, PasdConversionUtility.scale_temps),
-        "outside_temperature": PasdBusAttribute(
+        "fem_ambient_temperature": PasdBusAttribute(
             20, 1, PasdConversionUtility.scale_temps
         ),
         STATUS: PasdBusAttribute(21, 1, PasdConversionUtility.convert_smartbox_status),
         LED_PATTERN: PasdBusAttribute(22, 1, PasdConversionUtility.convert_led_status),
-        "sensor_status": PasdBusAttribute(23, 12),
+        "fem_case_temperatures": PasdBusAttribute(
+            23, 2, PasdConversionUtility.scale_temps
+        ),
+        "fem_heatsink_temperatures": PasdBusAttribute(
+            25, 2, PasdConversionUtility.scale_temps
+        ),
+        "ports_connected": PasdBusPortAttribute(
+            35, 12, PortStatusString.PORTS_CONNECTED
+        ),
         "port_forcings": PasdBusPortAttribute(35, 12, PortStatusString.PORT_FORCINGS),
         "port_breakers_tripped": PasdBusPortAttribute(
             35, 12, PortStatusString.BREAKERS_TRIPPED

@@ -106,11 +106,15 @@ class PasdBusRequestProvider:
         "psu48v_voltages",
         "psu48v_current",
         "psu48v_temperatures",
-        "pcb_temperature",
+        "panel_temperature",
         "fncb_temperature",
-        "humidity",
+        "fncb_humidity",
         "status",
         "led_pattern",
+        "comms_gateway_temperature",
+        "power_module_temperature",
+        "outside_temperature",
+        "internal_ambient_temperature",
     )
 
     FNDH_PORTS_STATUS_ATTRIBUTES: Final = (
@@ -129,9 +133,11 @@ class PasdBusRequestProvider:
         "power_supply_output_voltage",
         "power_supply_temperature",
         "pcb_temperature",
-        "outside_temperature",
+        "fem_ambient_temperature",
         "status",
         "led_pattern",
+        "fem_case_temperatures",
+        "fem_heatsink_temperatures",
     )
 
     SMARTBOX_PORTS_STATUS_ATTRIBUTES: Final = (

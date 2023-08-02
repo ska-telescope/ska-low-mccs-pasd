@@ -1,0 +1,89 @@
+fndh:
+  default_thresholds:
+    psu48v_voltages:
+      high_alarm:   5200
+      high_warning: 5000
+      low_warning:  4500
+      low_alarm:    4000
+    psu48v_current:
+      high_alarm:   1800
+      high_warning: 1600
+      low_warning:  -100
+      low_alarm:    -500
+    psu48v_temperatures:
+      high_alarm:   10000
+      high_warning: 8500
+      low_warning:  0
+      low_alarm:    -500
+    panel_temperature:
+      high_alarm:   8500
+      high_warning: 7000
+      low_warning:  0
+      low_alarm:    -500
+    fncb_temperature:
+      high_alarm:   8500
+      high_warning: 7000
+      low_warning:  0
+      low_alarm:    -500
+    fncb_humidity:
+      high_alarm:   8500
+      high_warning: 7000
+      low_warning:  1000
+      low_alarm:    0
+    comms_gateway_temperature:
+      high_alarm:   8500
+      high_warning: 7000
+      low_warning:  0
+      low_alarm:    -500
+    power_module_temperature:
+      high_alarm:   8500
+      high_warning: 7000
+      low_warning:  0
+      low_alarm:    -500
+    outside_temperature:
+      high_alarm:   8500
+      high_warning: 7000
+      low_warning:  0
+      low_alarm:    -500
+    internal_ambient_temperature:
+      high_alarm:   8500
+      high_warning: 7000
+      low_warning:  0
+      low_alarm:    -500
+smartbox:
+  default_thresholds:
+    input_voltage:
+      high_alarm:   5000
+      high_warning: 4900
+      low_warning:  4500
+      low_alarm:    4000
+    power_supply_output_voltage:
+      high_alarm:   500
+      high_warning: 490
+      low_warning:  440
+      low_alarm:    400
+    power_supply_temperature:
+      high_alarm:   8500
+      high_warning: 7000
+      low_warning:  0
+      low_alarm:    -500
+    pcb_temperature:
+      high_alarm:   8500
+      high_warning: 7000
+      low_warning:  0
+      low_alarm:    -500
+    fem_ambient_temperature:
+      high_alarm:   6000
+      high_warning: 4500
+      low_warning:  0
+      low_alarm:    -500
+    fem_case_temperatures:
+      high_alarm:   6000
+      high_warning: 4500
+      low_warning:  0
+      low_alarm:    -500
+    fem_heatsink_temperatures:
+      high_alarm:   6000
+      high_warning: 4500
+      low_warning:  0
+      low_alarm:    -500

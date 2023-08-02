@@ -243,9 +243,15 @@ def check_monitoring_point_is_reported(
         "FNDH 48v PSU voltages": "fndhPsu48vVoltages",
         "FNDH 48v PSU current": "fndhPsu48vCurrent",
         "FNDH 48v PSU temperatures": "fndhPsu48vTemperatures",
-        "FNDH PCB temperature": "fndhPcbTemperature",
+        "FNDH panel temperature": "fndhPanelTemperature",
         "FNDH FNCB ambient temperature": "fndhFncbTemperature",
-        "FNDH FNCB ambient humidity": "fndhHumidity",
+        "FNDH FNCB ambient humidity": "fndhFncbHumidity",
+        "FNDH communications gateway enclosure temperature": (
+            "fndhCommsGatewayTemperature"
+        ),
+        "FNDH power module enclosure temperature": "fndhPowerModuleTemperature",
+        "FNDH ouside ambient reference temperature": "fndhOutsideTemperature",
+        "FNDH internal ambient reference temperature": "fndhInternalAmbientTemperature",
         "smartbox uptime": f"smartbox{smartbox_id}Uptime",
         "smartbox status": f"smartbox{smartbox_id}Status",
         "smartbox LED pattern": f"smartbox{smartbox_id}LedPattern",
@@ -257,7 +263,15 @@ def check_monitoring_point_is_reported(
             f"smartbox{smartbox_id}PowerSupplyTemperature"
         ),
         "smartbox PCB temperature": f"smartbox{smartbox_id}PcbTemperature",
-        "smartbox outside temperature": f"smartbox{smartbox_id}OutsideTemperature",
+        "smartbox FEM package ambient temperature": (
+            f"smartbox{smartbox_id}FemAmbientTemperature"
+        ),
+        "smartbox FEM 6 & 12 case temperatures": (
+            f"smartbox{smartbox_id}FemCaseTemperatures"
+        ),
+        "smartbox FEM heatsink temperatures": (
+            f"smartbox{smartbox_id}FemHeatsinkTemperatures"
+        ),
     }
     attribute_name = attribute_name_map[monitoring_point]
     change_event_callbacks[f"{pasd_bus_name}/{attribute_name}"].assert_change_event(
@@ -301,6 +315,7 @@ def find_connected_fndh_port(
         port can be turned on and power will be sensed.
     """
     try:
+        pasd_bus_device.InitializeFndh()
         fndh_connected_ports = list(pasd_bus_device.fndhPortsConnected)
     except tango.DevFailed:
         change_event_callbacks[
@@ -472,6 +487,8 @@ def find_connected_smartbox_port(
         port can be turned on and power will be sensed.
     """
     try:
+        pasd_bus_device.InitializeFndh()
+        pasd_bus_device.InitializeSmartbox(smartbox_id)
         smartbox_connected_ports = list(
             getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsConnected")
         )

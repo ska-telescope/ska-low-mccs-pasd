@@ -61,9 +61,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             "psu48v_voltages": "fndhPsu48vVoltages",
             "psu48v_current": "fndhPsu48vCurrent",
             "psu48v_temperatures": "fndhPsu48vTemperatures",
-            "pcb_temperature": "fndhPcbTemperature",
+            "panel_temperature": "fndhPanelTemperature",
             "fncb_temperature": "fndhFncbTemperature",
-            "humidity": "fndhHumidity",
+            "fncb_humidity": "fndhFncbHumidity",
+            "comms_gateway_temperature": "fndhCommsGatewayTemperature",
+            "power_module_temperature": "fndhPowerModuleTemperature",
+            "outside_temperature": "fndhOutsideTemperature",
+            "internal_ambient_temperature": "fndhInternalAmbientTemperature",
             "ports_connected": "fndhPortsConnected",
             "port_breakers_tripped": "fndhPortBreakersTripped",
             "port_forcings": "fndhPortForcings",
@@ -91,8 +95,16 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 "power_supply_temperature": (
                     f"smartbox{smartbox_number}PowerSupplyTemperature"
                 ),
-                "outside_temperature": f"smartbox{smartbox_number}OutsideTemperature",
                 "pcb_temperature": f"smartbox{smartbox_number}PcbTemperature",
+                "fem_ambient_temperature": (
+                    f"smartbox{smartbox_number}FemAmbientTemperature"
+                ),
+                "fem_case_temperatures": (
+                    f"smartbox{smartbox_number}FemCaseTemperatures"
+                ),
+                "fem_heatsink_temperatures": (
+                    f"smartbox{smartbox_number}FemHeatsinkTemperatures"
+                ),
                 "ports_connected": f"smartbox{smartbox_number}PortsConnected",
                 "port_forcings": f"smartbox{smartbox_number}PortForcings",
                 "port_breakers_tripped": (
@@ -159,14 +171,18 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("FirmwareVersion", str, None),
             ("Uptime", int, None),
             ("SysAddress", int, None),
-            ("Status", str, None),
-            ("LedPattern", str, None),
             ("Psu48vVoltages", (float,), 2),
             ("Psu48vCurrent", float, None),
             ("Psu48vTemperatures", (float,), 2),
-            ("PcbTemperature", float, None),
+            ("PanelTemperature", float, None),
             ("FncbTemperature", float, None),
-            ("Humidity", float, None),
+            ("FncbHumidity", float, None),
+            ("CommsGatewayTemperature", float, None),
+            ("PowerModuleTemperature", float, None),
+            ("OutsideTemperature", float, None),
+            ("InternalAmbientTemperature", float, None),
+            ("Status", str, None),
+            ("LedPattern", str, None),
             ("PortsConnected", (bool,), NUMBER_OF_FNDH_PORTS),
             ("PortBreakersTripped", (bool,), NUMBER_OF_FNDH_PORTS),
             ("PortForcings", (str,), NUMBER_OF_FNDH_PORTS),
@@ -194,8 +210,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("InputVoltage", float, None),
             ("PowerSupplyOutputVoltage", float, None),
             ("PowerSupplyTemperature", float, None),
-            ("OutsideTemperature", float, None),
             ("PcbTemperature", float, None),
+            ("FemAmbientTemperature", float, None),
+            ("FemCaseTemperatures", (float,), 2),
+            ("FemHeatsinkTemperatures", (float,), 2),
             ("PortsConnected", (bool,), NUMBER_OF_SMARTBOX_PORTS),
             ("PortForcings", (str,), NUMBER_OF_SMARTBOX_PORTS),
             ("PortBreakersTripped", (bool,), NUMBER_OF_SMARTBOX_PORTS),

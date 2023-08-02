@@ -8,7 +8,7 @@
 """This module contains the tests of the PaSD bus component manager."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Sequence
 
 import pytest
 
@@ -16,6 +16,35 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
     FndhSimulator,
     SmartboxSimulator,
 )
+
+
+# pylint: disable=too-few-public-methods
+class TestPasdBusSimulator:
+    """Tests of the combined PasdBusSimulator."""
+
+    @pytest.mark.skip(reason="uptime currently must be a static value for tango mocks")
+    def test_uptimes(
+        self: TestPasdBusSimulator,
+        fndh_simulator: FndhSimulator,
+        smartbox_simulators: Sequence[SmartboxSimulator],
+    ) -> None:
+        """
+        Test the uptimes of a PaSD bus simulator.
+
+        Test that the uptime is tracked and differ between simulators according
+            to the order of configuration.
+
+        :param fndh_simulator: the FNDH simulator under test
+        :param smartbox_simulators: list of smartbox simulators under test
+        """
+        fndh_uptime = fndh_simulator.uptime
+        assert fndh_uptime > 0
+        previous_smartbox_uptime = 10000
+        for smartbox_simulator in smartbox_simulators:
+            assert smartbox_simulator.uptime > 0
+            assert fndh_uptime > smartbox_simulator.uptime
+            assert smartbox_simulator.uptime < previous_smartbox_uptime
+            previous_smartbox_uptime = smartbox_simulator.uptime
 
 
 class TestFndhSimulator:
@@ -78,6 +107,8 @@ class TestFndhSimulator:
         :param unconnected_fndh_port: the port number for an FNDH port
             that doesn't have a smartbox connected
         """
+        assert fndh_simulator.initialize()
+
         expected_forcings: list[str] = ["NONE"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
@@ -123,6 +154,8 @@ class TestFndhSimulator:
         :param connected_fndh_port: the port number for an FNDH port
             that has a smartbox connected
         """
+        assert fndh_simulator.initialize()
+
         expected_forcings: list[str] = ["NONE"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
@@ -168,6 +201,7 @@ class TestFndhSimulator:
         :param connected_fndh_port: the port number for an FNDH port
             that has a smartbox connected
         """
+        assert fndh_simulator.initialize()
         assert fndh_simulator.ports_connected[connected_fndh_port - 1]
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
         assert fndh_simulator.turn_port_on(connected_fndh_port)
@@ -191,6 +225,7 @@ class TestFndhSimulator:
         :param unconnected_fndh_port: the port number for an FNDH port
             that doesn't have a smartbox connected.
         """
+        assert fndh_simulator.initialize()
         assert not fndh_simulator.ports_connected[unconnected_fndh_port - 1]
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
         assert not fndh_simulator.turn_port_on(unconnected_fndh_port)
@@ -199,13 +234,6 @@ class TestFndhSimulator:
     @pytest.mark.parametrize(
         ("attribute_name", "expected_value"),
         [
-            ("psu48v_voltages", FndhSimulator.DEFAULT_PSU48V_VOLTAGES),
-            ("psu48v_current", FndhSimulator.DEFAULT_PSU48V_CURRENT),
-            ("psu48v_temperatures", FndhSimulator.DEFAULT_PSU48V_TEMPERATURES),
-            ("pcb_temperature", FndhSimulator.DEFAULT_PCB_TEMPERATURE),
-            ("fncb_temperature", FndhSimulator.DEFAULT_FNCB_TEMPERATURE),
-            ("humidity", FndhSimulator.DEFAULT_HUMIDITY),
-            ("status", FndhSimulator.DEFAULT_STATUS),
             (
                 "modbus_register_map_revision",
                 FndhSimulator.MODBUS_REGISTER_MAP_REVISION,
@@ -215,7 +243,6 @@ class TestFndhSimulator:
             ("cpu_id", FndhSimulator.CPU_ID),
             ("chip_id", FndhSimulator.CHIP_ID),
             ("firmware_version", FndhSimulator.DEFAULT_FIRMWARE_VERSION),
-            ("uptime", FndhSimulator.DEFAULT_UPTIME),
             ("led_pattern", FndhSimulator.DEFAULT_LED_PATTERN),
         ],
     )
@@ -246,6 +273,92 @@ class TestFndhSimulator:
         assert fndh_simulator.led_pattern == "OFF"
         assert fndh_simulator.set_led_pattern("SERVICE")
         assert fndh_simulator.led_pattern == "SERVICE"
+
+    @pytest.mark.parametrize(
+        ("sensor_name", "simulated_value", "expected_status"),
+        [
+            ("psu48v_voltages", [5300, 4800], "ALARM"),
+            ("psu48v_voltages", [4800, 5100], "WARNING"),
+            ("psu48v_voltages", [4800, 4800], "OK"),
+            ("psu48v_voltages", [4400, 4800], "WARNING"),
+            ("psu48v_voltages", [4800, 3900], "ALARM"),
+            ("psu48v_temperatures", [10100, 6000], "ALARM"),
+            ("psu48v_temperatures", [6000, 8600], "WARNING"),
+            ("psu48v_temperatures", [6000, 6000], "OK"),
+            ("psu48v_temperatures", [-100, 6000], "WARNING"),
+            ("psu48v_temperatures", [6000, -600], "ALARM"),
+            ("panel_temperature", 9000, "ALARM"),
+            ("panel_temperature", 7500, "WARNING"),
+            ("panel_temperature", 5000, "OK"),
+            ("panel_temperature", -100, "WARNING"),
+            ("panel_temperature", -600, "ALARM"),
+            ("fncb_temperature", 9000, "ALARM"),
+            ("fncb_temperature", 7500, "WARNING"),
+            ("fncb_temperature", 5000, "OK"),
+            ("fncb_temperature", -100, "WARNING"),
+            ("fncb_temperature", -600, "ALARM"),
+            ("fncb_humidity", 9000, "ALARM"),
+            ("fncb_humidity", 7500, "WARNING"),
+            ("fncb_humidity", 5000, "OK"),
+            ("fncb_humidity", 500, "WARNING"),
+            ("fncb_humidity", -100, "ALARM"),
+            ("comms_gateway_temperature", 9000, "ALARM"),
+            ("comms_gateway_temperature", 7500, "WARNING"),
+            ("comms_gateway_temperature", 5000, "OK"),
+            ("comms_gateway_temperature", -100, "WARNING"),
+            ("comms_gateway_temperature", -600, "ALARM"),
+            ("power_module_temperature", 9000, "ALARM"),
+            ("power_module_temperature", 7500, "WARNING"),
+            ("power_module_temperature", 5000, "OK"),
+            ("power_module_temperature", -100, "WARNING"),
+            ("power_module_temperature", -600, "ALARM"),
+            ("outside_temperature", 9000, "ALARM"),
+            ("outside_temperature", 7500, "WARNING"),
+            ("outside_temperature", 5000, "OK"),
+            ("outside_temperature", -100, "WARNING"),
+            ("outside_temperature", -600, "ALARM"),
+            ("internal_ambient_temperature", 9000, "ALARM"),
+            ("internal_ambient_temperature", 7500, "WARNING"),
+            ("internal_ambient_temperature", 5000, "OK"),
+            ("internal_ambient_temperature", -100, "WARNING"),
+            ("internal_ambient_temperature", -600, "ALARM"),
+        ],
+    )
+    def test_sensors_and_status_transitions(
+        self: TestFndhSimulator,
+        fndh_simulator: FndhSimulator,
+        sensor_name: str,
+        simulated_value: float,
+        expected_status: str,
+    ) -> None:
+        """
+        Test the FNDH sensors and status.
+
+        Check if status is initialized to OK, and changes if a given sensor
+        value is out of bounds.
+
+        :param fndh_simulator: the FNDH simulator under test.
+        :param sensor_name: name of the sensor to test.
+        :param simulated_value: value to set the sensor to.
+        :param expected_status: the expected status of the sensor and FNDH.
+        """
+        assert fndh_simulator.status == FndhSimulator.DEFAULT_STATUS
+        assert fndh_simulator.initialize()
+        assert fndh_simulator.status == "OK"
+        setattr(fndh_simulator, sensor_name, simulated_value)
+        assert getattr(fndh_simulator, sensor_name) == simulated_value
+        assert fndh_simulator.status == expected_status
+        default_value = getattr(fndh_simulator, "DEFAULT_" + sensor_name.upper())
+        setattr(fndh_simulator, sensor_name, default_value)
+        if expected_status == "ALARM":
+            assert fndh_simulator.status == "RECOVERY"
+            setattr(fndh_simulator, sensor_name, simulated_value)
+            assert fndh_simulator.status == expected_status
+            assert fndh_simulator.initialize() is False
+            setattr(fndh_simulator, sensor_name, default_value)
+            assert fndh_simulator.status == "RECOVERY"
+            assert fndh_simulator.initialize()
+        assert fndh_simulator.status == "OK"
 
 
 class TestSmartboxSimulator:
@@ -314,6 +427,7 @@ class TestSmartboxSimulator:
         :param connected_smartbox_port: a smartbox port that has an
             antenna connected to it
         """
+        assert smartbox_simulator.initialize()
         assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
         assert smartbox_simulator.simulate_port_forcing(connected_smartbox_port, True)
         assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
@@ -338,6 +452,8 @@ class TestSmartboxSimulator:
         :param connected_smartbox_port: a smartbox port that has an
             antenna connected to it
         """
+        assert smartbox_simulator.initialize()
+
         expected_when_online = [False] * SmartboxSimulator.NUMBER_OF_PORTS
         assert (
             smartbox_simulator.ports_desired_power_when_online == expected_when_online
@@ -410,6 +526,7 @@ class TestSmartboxSimulator:
         :param unconnected_smartbox_port: a smartbox port that doesn't
             have an antenna connected to it
         """
+        assert smartbox_simulator.initialize()
         assert not smartbox_simulator.ports_connected[unconnected_smartbox_port - 1]
         assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
         assert not smartbox_simulator.turn_port_on(unconnected_smartbox_port)
@@ -427,6 +544,8 @@ class TestSmartboxSimulator:
         :param connected_smartbox_port: a smartbox port that has an
             antenna connected to it
         """
+        assert smartbox_simulator.initialize()
+
         expected_tripped = [False] * SmartboxSimulator.NUMBER_OF_PORTS
         assert smartbox_simulator.port_breakers_tripped == expected_tripped
 
@@ -465,39 +584,22 @@ class TestSmartboxSimulator:
         :param smartbox_simulator: the smartbox simulator under test.
         """
         assert smartbox_simulator.ports_current_draw == [
-            SmartboxSimulator.DEFAULT_PORT_CURRENT_DRAW if port_connected else 0.0
+            SmartboxSimulator.DEFAULT_PORT_CURRENT_DRAW if port_connected else 0
             for port_connected in smartbox_simulator.ports_connected
         ]
 
     @pytest.mark.parametrize(
         ("attribute_name", "expected_value"),
         [
-            ("input_voltage", SmartboxSimulator.DEFAULT_INPUT_VOLTAGE),
-            (
-                "power_supply_output_voltage",
-                SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE,
-            ),
-            ("status", SmartboxSimulator.DEFAULT_STATUS),
-            (
-                "power_supply_temperature",
-                SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE,
-            ),
-            (
-                "outside_temperature",
-                SmartboxSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
-            ),
-            ("pcb_temperature", SmartboxSimulator.DEFAULT_PCB_TEMPERATURE),
             (
                 "modbus_register_map_revision",
                 SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION,
             ),
             ("pcb_revision", SmartboxSimulator.PCB_REVISION),
-            ("sys_address", SmartboxSimulator.SYS_ADDRESS),
+            ("sys_address", SmartboxSimulator.DEFAULT_SYS_ADDRESS),
             ("cpu_id", SmartboxSimulator.CPU_ID),
             ("chip_id", SmartboxSimulator.CHIP_ID),
             ("firmware_version", SmartboxSimulator.DEFAULT_FIRMWARE_VERSION),
-            ("uptime", SmartboxSimulator.DEFAULT_UPTIME),
-            ("status", SmartboxSimulator.DEFAULT_STATUS),
             ("led_pattern", SmartboxSimulator.DEFAULT_LED_PATTERN),
         ],
     )
@@ -532,3 +634,98 @@ class TestSmartboxSimulator:
         assert smartbox_simulator.led_pattern == "SERVICE"
         assert smartbox_simulator.set_led_pattern("OFF")
         assert smartbox_simulator.led_pattern == "OFF"
+
+    def test_sys_address(
+        self: TestSmartboxSimulator,
+        smartbox_simulator: SmartboxSimulator,
+    ) -> None:
+        """
+        Test setting the smartbox system address.
+
+        :param smartbox_simulator: the smartbox simulator under test.
+        """
+        assert smartbox_simulator.sys_address == smartbox_simulator.DEFAULT_SYS_ADDRESS
+        assert smartbox_simulator.set_sys_address(2)
+        assert smartbox_simulator.sys_address == 2
+        assert smartbox_simulator.set_sys_address(2) is None
+        assert smartbox_simulator.sys_address == 2
+        assert smartbox_simulator.set_sys_address(100) is False
+        assert smartbox_simulator.sys_address == 2
+        assert smartbox_simulator.set_sys_address(0) is False
+        assert smartbox_simulator.sys_address == 2
+
+    @pytest.mark.parametrize(
+        ("sensor_name", "simulated_value", "expected_status"),
+        [
+            ("input_voltage", 5100, "ALARM"),
+            ("input_voltage", 4950, "WARNING"),
+            ("input_voltage", 4800, "OK"),
+            ("input_voltage", 4400, "WARNING"),
+            ("input_voltage", 3900, "ALARM"),
+            ("power_supply_output_voltage", 510, "ALARM"),
+            ("power_supply_output_voltage", 490, "WARNING"),
+            ("power_supply_output_voltage", 480, "OK"),
+            ("power_supply_output_voltage", 430, "WARNING"),
+            ("power_supply_output_voltage", 390, "ALARM"),
+            ("power_supply_temperature", 9000, "ALARM"),
+            ("power_supply_temperature", 7500, "WARNING"),
+            ("power_supply_temperature", 5000, "OK"),
+            ("power_supply_temperature", -100, "WARNING"),
+            ("power_supply_temperature", -600, "ALARM"),
+            ("pcb_temperature", 9000, "ALARM"),
+            ("pcb_temperature", 7500, "WARNING"),
+            ("pcb_temperature", 5000, "OK"),
+            ("pcb_temperature", -100, "WARNING"),
+            ("pcb_temperature", -600, "ALARM"),
+            ("fem_ambient_temperature", 6100, "ALARM"),
+            ("fem_ambient_temperature", 4600, "WARNING"),
+            ("fem_ambient_temperature", 3000, "OK"),
+            ("fem_ambient_temperature", -100, "WARNING"),
+            ("fem_ambient_temperature", -600, "ALARM"),
+            ("fem_case_temperatures", [6100, 3000], "ALARM"),
+            ("fem_case_temperatures", [3000, 4600], "WARNING"),
+            ("fem_case_temperatures", [3000, 3000], "OK"),
+            ("fem_case_temperatures", [-100, 3000], "WARNING"),
+            ("fem_case_temperatures", [3000, -600], "ALARM"),
+            ("fem_heatsink_temperatures", [6100, 3000], "ALARM"),
+            ("fem_heatsink_temperatures", [3000, 4600], "WARNING"),
+            ("fem_heatsink_temperatures", [3000, 3000], "OK"),
+            ("fem_heatsink_temperatures", [-100, 3000], "WARNING"),
+            ("fem_heatsink_temperatures", [3000, -600], "ALARM"),
+        ],
+    )
+    def test_sensors_and_status_transitions(
+        self: TestSmartboxSimulator,
+        smartbox_simulator: SmartboxSimulator,
+        sensor_name: str,
+        simulated_value: float,
+        expected_status: str,
+    ) -> None:
+        """
+        Test the smartbox sensors and status.
+
+        Check if status is initialized to OK, and changes if a given sensor
+        value is out of bounds.
+
+        :param smartbox_simulator: the smartbox simulator under test.
+        :param sensor_name: name of the sensor to test.
+        :param simulated_value: value to set the sensor to.
+        :param expected_status: the expected status of the sensor and smartbox.
+        """
+        assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
+        assert smartbox_simulator.initialize()
+        assert smartbox_simulator.status == "OK"
+        setattr(smartbox_simulator, sensor_name, simulated_value)
+        assert getattr(smartbox_simulator, sensor_name) == simulated_value
+        assert smartbox_simulator.status == expected_status
+        default_value = getattr(smartbox_simulator, "DEFAULT_" + sensor_name.upper())
+        setattr(smartbox_simulator, sensor_name, default_value)
+        if expected_status == "ALARM":
+            assert smartbox_simulator.status == "RECOVERY"
+            setattr(smartbox_simulator, sensor_name, simulated_value)
+            assert smartbox_simulator.status == expected_status
+            assert smartbox_simulator.initialize() is False
+            setattr(smartbox_simulator, sensor_name, default_value)
+            assert smartbox_simulator.status == "RECOVERY"
+            assert smartbox_simulator.initialize()
+        assert smartbox_simulator.status == "OK"

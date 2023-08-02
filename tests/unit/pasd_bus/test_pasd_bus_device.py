@@ -47,6 +47,7 @@ def change_event_callbacks_fixture(
         "longRunningCommandResult",
         "longRunningCommandStatus",
         "state",
+        "fndhStatus",
         "fndhLedPattern",
         "fndhPortBreakersTripped",
         "fndhPortsConnected",
@@ -175,12 +176,12 @@ def test_communication(  # pylint: disable=too-many-statements
         pasd_bus_device.fndhModbusRegisterMapRevisionNumber
         == FndhSimulator.MODBUS_REGISTER_MAP_REVISION
     )
-    assert pasd_bus_device.fndhSysAddress == FndhSimulator.SYS_ADDRESS
     assert pasd_bus_device.fndhPcbRevisionNumber == FndhSimulator.PCB_REVISION
     assert pasd_bus_device.fndhCpuId == FndhSimulator.CPU_ID
     assert pasd_bus_device.fndhChipId == FndhSimulator.CHIP_ID
     assert pasd_bus_device.fndhFirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
-    assert pasd_bus_device.fndhUptime == FndhSimulator.DEFAULT_UPTIME
+    assert pasd_bus_device.fndhUptime == fndh_simulator.uptime
+    assert pasd_bus_device.fndhSysAddress == FndhSimulator.SYS_ADDRESS
     assert pasd_bus_device.fndhStatus == FndhSimulator.DEFAULT_STATUS
     assert pasd_bus_device.fndhLedPattern == FndhSimulator.DEFAULT_LED_PATTERN
     assert (
@@ -192,9 +193,27 @@ def test_communication(  # pylint: disable=too-many-statements
         list(pasd_bus_device.fndhPsu48vTemperatures)
         == FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
     )
-    assert pasd_bus_device.fndhPcbTemperature == FndhSimulator.DEFAULT_PCB_TEMPERATURE
+    assert (
+        pasd_bus_device.fndhPanelTemperature == FndhSimulator.DEFAULT_PANEL_TEMPERATURE
+    )
     assert pasd_bus_device.fndhFncbTemperature == FndhSimulator.DEFAULT_FNCB_TEMPERATURE
-    assert pasd_bus_device.fndhHumidity == FndhSimulator.DEFAULT_HUMIDITY
+    assert pasd_bus_device.fndhFncbHumidity == FndhSimulator.DEFAULT_FNCB_HUMIDITY
+    assert (
+        pasd_bus_device.fndhCommsGatewayTemperature
+        == FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE
+    )
+    assert (
+        pasd_bus_device.fndhPowerModuleTemperature
+        == FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE
+    )
+    assert (
+        pasd_bus_device.fndhOutsideTemperature
+        == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+    )
+    assert (
+        pasd_bus_device.fndhInternalAmbientTemperature
+        == FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+    )
     assert list(pasd_bus_device.fndhPortsConnected) == fndh_simulator.ports_connected
     assert (
         list(pasd_bus_device.fndhPortBreakersTripped)
@@ -238,7 +257,7 @@ def test_communication(  # pylint: disable=too-many-statements
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}Uptime")
-        == SmartboxSimulator.DEFAULT_UPTIME
+        == smartbox_simulator.uptime
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}Status")
@@ -261,12 +280,20 @@ def test_communication(  # pylint: disable=too-many-statements
         == SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
     )
     assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}OutsideTemperature")
-        == SmartboxSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}PcbTemperature")
+        == SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
     )
     assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}PcbTemperature")
-        == smartbox_simulator.pcb_temperature
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}FemAmbientTemperature")
+        == SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
+    )
+    assert (
+        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}FemCaseTemperatures"))
+        == SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+    )
+    assert (
+        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}FemHeatsinkTemperatures"))
+        == SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
     )
     assert (
         list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsConnected"))
@@ -349,6 +376,7 @@ def test_turn_fndh_port_on_off(
     change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
     change_event_callbacks.assert_change_event("state", tango.DevState.ON)
 
+    pasd_bus_device.InitializeFndh()
     change_event_callbacks.assert_change_event(
         "fndhPortsConnected", fndh_simulator.ports_connected
     )
@@ -534,6 +562,7 @@ def test_turning_smartbox_port_on_off(
     change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
     change_event_callbacks.assert_change_event("state", tango.DevState.ON)
 
+    pasd_bus_device.InitializeSmartbox(smartbox_id)
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}PortsConnected",
         smartbox_simulator.ports_connected,

@@ -70,9 +70,8 @@ if __name__ == "__main__":
         "psu48v_voltages",
         "psu48v_current",
         "psu48v_temperatures",
-        "pcb_temperature",
         "fncb_temperature",
-        "humidity",
+        "fncb_humidity",
         "status",
         "led_pattern",
     )
@@ -101,7 +100,7 @@ if __name__ == "__main__":
         "power_supply_output_voltage",
         "power_supply_temperature",
         "pcb_temperature",
-        "outside_temperature",
+        "fem_ambient_temperature",
         "status",
         "led_pattern",
     )
