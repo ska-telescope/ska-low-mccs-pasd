@@ -165,8 +165,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         for slug, data_type, length in [
             ("ModbusRegisterMapRevisionNumber", int, None),
             ("PcbRevisionNumber", int, None),
-            ("CpuId", int, None),
-            ("ChipId", int, None),
+            ("CpuId", str, None),
+            ("ChipId", str, None),
             ("FirmwareVersion", str, None),
             ("Uptime", int, None),
             ("SysAddress", int, None),
@@ -198,8 +198,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         for slug, data_type, length in [
             ("ModbusRegisterMapRevisionNumber", int, None),
             ("PcbRevisionNumber", int, None),
-            ("CpuId", int, None),
-            ("ChipId", int, None),
+            ("CpuId", str, None),
+            ("ChipId", str, None),
             ("FirmwareVersion", str, None),
             ("Uptime", int, None),
             ("Status", str, None),

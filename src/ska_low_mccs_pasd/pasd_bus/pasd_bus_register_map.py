@@ -42,6 +42,7 @@ class PortStatusString(Enum):
     DSON = "ports_desired_power_when_online"
     DSOFF = "ports_desired_power_when_offline"
     POWER_SENSED = "ports_power_sensed"
+    POWER = "power"
 
 
 class PasdCommandStrings(Enum):
@@ -172,47 +173,31 @@ class PasdBusPortAttribute(PasdBusAttribute):
             None: "NONE",
         }
         results: List[bool | str | None] = []
-        for status_bitmap, port_number in zip(values, range(1, len(values) + 1)):
+        for status_bitmap in values:
             bitstring = f"{status_bitmap:016b}"
             match (self.desired_info):
                 case PortStatusString.DSON:
-                    if bitstring[2:4] == "10":
-                        results.append(False)
-                    elif bitstring[2:4] == "11":
+                    if bitstring[2:4] == "11":
                         results.append(True)
                     else:
-                        logger.warning(
-                            f"Unknown {self.desired_info.value} flag {bitstring[2:4]}"
-                            f" for port {port_number}"
-                        )
-                        results.append(None)
+                        results.append(False)
                 case PortStatusString.DSOFF:
-                    if bitstring[4:6] == "10":
-                        results.append(False)
-                    elif bitstring[4:6] == "11":
+                    if bitstring[4:6] == "11":
                         results.append(True)
                     else:
-                        logger.warning(
-                            f"Unknown {self.desired_info.value} flag {bitstring[2:4]}"
-                            f" for port {port_number}"
-                        )
-                        results.append(None)
+                        results.append(False)
                 case PortStatusString.PORT_FORCINGS:
                     if bitstring[6:8] == "10":
                         results.append(forcing_map[False])
                     elif bitstring[6:8] == "11":
                         results.append(forcing_map[True])
-                    elif bitstring[6:8] == "01":
-                        results.append(forcing_map[None])
                     else:
-                        logger.warning(
-                            f"Unknown port forcing: {bitstring[6:8]}"
-                            f" for port {port_number}"
-                        )
                         results.append(forcing_map[None])
-                case PortStatusString.BREAKERS_TRIPPED:
+                case PortStatusString.BREAKERS_TRIPPED:  # Smartboxes only
                     results.append(bitstring[8] == "1")
-                case PortStatusString.POWER_SENSED:
+                case PortStatusString.POWER_SENSED:  # FNDH only
+                    results.append(bitstring[8] == "1")
+                case PortStatusString.POWER:
                     results.append(bitstring[9] == "1")
         return results
 
@@ -267,7 +252,7 @@ class PasdBusRegisterMap:
         "pcb_revision": PasdBusAttribute(1, 1),
         "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
         "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_chip_id),
-        "firmware_version": PasdBusAttribute(12, 1),
+        "firmware_version": PasdBusAttribute(12, 1, lambda x: str(x[0])),
     }
 
     # Inverse dictionary mapping register number (address) to
@@ -309,9 +294,6 @@ class PasdBusRegisterMap:
             35, 28, PortStatusString.PORTS_CONNECTED
         ),
         "port_forcings": PasdBusPortAttribute(35, 28, PortStatusString.PORT_FORCINGS),
-        "port_breakers_tripped": PasdBusPortAttribute(
-            35, 28, PortStatusString.BREAKERS_TRIPPED
-        ),
         "ports_desired_power_when_online": PasdBusPortAttribute(
             35, 28, PortStatusString.DSON
         ),
@@ -321,6 +303,7 @@ class PasdBusRegisterMap:
         "ports_power_sensed": PasdBusPortAttribute(
             35, 28, PortStatusString.POWER_SENSED
         ),
+        "ports_power": PasdBusPortAttribute(35, 28, PortStatusString.POWER),
     }
 
     _SMARTBOX_REGISTER_MAP_V1: Final = {
@@ -358,9 +341,7 @@ class PasdBusRegisterMap:
         "ports_desired_power_when_offline": PasdBusPortAttribute(
             35, 12, PortStatusString.DSOFF
         ),
-        "ports_power_sensed": PasdBusPortAttribute(
-            35, 12, PortStatusString.POWER_SENSED
-        ),
+        "ports_power": PasdBusPortAttribute(35, 12, PortStatusString.POWER),
         "ports_current_draw": PasdBusAttribute(47, 12),
     }
 

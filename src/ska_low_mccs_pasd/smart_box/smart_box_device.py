@@ -42,8 +42,8 @@ class MccsSmartBox(SKABaseDevice):
     ATTRIBUTES = [
         ("ModbusRegisterMapRevisionNumber", int, None),
         ("PcbRevisionNumber", int, None),
-        ("CpuId", int, None),
-        ("ChipId", int, None),
+        ("CpuId", str, None),
+        ("ChipId", str, None),
         ("FirmwareVersion", str, None),
         ("Uptime", int, None),
         ("PasdStatus", str, None),
