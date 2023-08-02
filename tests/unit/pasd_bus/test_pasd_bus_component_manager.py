@@ -113,7 +113,6 @@ class TestPasdBusComponentManager:
             0,  # FNDH
             ports_connected=expected_fndh_ports_connected,
             port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
-            port_breakers_tripped=[False] * FndhSimulator.NUMBER_OF_PORTS,
             ports_desired_power_when_online=[False] * FndhSimulator.NUMBER_OF_PORTS,
             ports_desired_power_when_offline=[False] * FndhSimulator.NUMBER_OF_PORTS,
             ports_power_sensed=[False] * FndhSimulator.NUMBER_OF_PORTS,
@@ -214,7 +213,6 @@ class TestPasdBusComponentManager:
         assert fndh_simulator.initialize()
         ports_connected = fndh_simulator.ports_connected
         expected_port_forcings = fndh_simulator.port_forcings
-        expected_port_breakers_tripped = fndh_simulator.port_breakers_tripped
         expected_ports_desired_power_when_online = (
             fndh_simulator.ports_desired_power_when_online
         )
@@ -235,7 +233,6 @@ class TestPasdBusComponentManager:
             0,  # FNDH
             ports_connected=ports_connected,
             port_forcings=expected_port_forcings,
-            port_breakers_tripped=expected_port_breakers_tripped,
             ports_desired_power_when_online=expected_ports_desired_power_when_online,
             ports_desired_power_when_offline=expected_ports_desired_power_when_offline,
             ports_power_sensed=expected_ports_power_sensed,
@@ -255,7 +252,6 @@ class TestPasdBusComponentManager:
             0,  # FNDH
             ports_connected=ports_connected,
             port_forcings=expected_port_forcings,
-            port_breakers_tripped=expected_port_breakers_tripped,
             ports_desired_power_when_online=expected_ports_desired_power_when_online,
             ports_desired_power_when_offline=expected_ports_desired_power_when_offline,
             ports_power_sensed=expected_ports_power_sensed,

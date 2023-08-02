@@ -118,12 +118,12 @@ class PasdBusRequestProvider:
     )
 
     FNDH_PORTS_STATUS_ATTRIBUTES: Final = (
-        "ports_connected",  # Register STATE[6] - POWER?
+        "ports_connected",  # Not a real register - but needed for simulator
         "port_forcings",  # Register STATE[9:8] - TO
-        "port_breakers_tripped",  # Not in FNDH state register
         "ports_desired_power_when_online",  # Register STATE[13:12] - DSON
         "ports_desired_power_when_offline",  # Register STATE[11:10] - DSOFF
         "ports_power_sensed",  # Register STATE[7] - PWRSENSE
+        # Register STATE[6] - POWER needs to be added
     )
 
     SMARTBOX_STATUS_ATTRIBUTES: Final = (
@@ -141,12 +141,12 @@ class PasdBusRequestProvider:
     )
 
     SMARTBOX_PORTS_STATUS_ATTRIBUTES: Final = (
-        "ports_connected",  # Register STATE[6] - POWER?
+        "ports_connected",  # Not a real register - but needed for simulator
         "port_forcings",  # Register STATE[9:8] - TO
         "port_breakers_tripped",  # Register STATE[7] - BREAKER
         "ports_desired_power_when_online",  # Register STATE[13:12] - DSON
         "ports_desired_power_when_offline",  # Register STATE[11:10] - DSOFF
-        "ports_power_sensed",  # Not in smartbox state register
+        "ports_power_sensed",  # Register STATE[6] - POWER
         "ports_current_draw",  # Register CURRENT
     )
 

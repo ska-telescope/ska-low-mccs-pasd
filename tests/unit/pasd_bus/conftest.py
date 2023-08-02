@@ -113,7 +113,6 @@ def mock_fndh_simulator_fixture(
     for property_name in [
         "ports_connected",
         "port_forcings",
-        "port_breakers_tripped",
         "ports_desired_power_when_online",
         "ports_desired_power_when_offline",
         "ports_power_sensed",

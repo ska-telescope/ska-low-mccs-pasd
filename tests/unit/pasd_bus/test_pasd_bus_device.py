@@ -49,7 +49,6 @@ def change_event_callbacks_fixture(
         "state",
         "fndhStatus",
         "fndhLedPattern",
-        "fndhPortBreakersTripped",
         "fndhPortsConnected",
         "fndhPortsPowerSensed",
         f"smartbox{smartbox_id}LedPattern",
@@ -215,10 +214,6 @@ def test_communication(  # pylint: disable=too-many-statements
         == FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
     )
     assert list(pasd_bus_device.fndhPortsConnected) == fndh_simulator.ports_connected
-    assert (
-        list(pasd_bus_device.fndhPortBreakersTripped)
-        == fndh_simulator.port_breakers_tripped
-    )
     assert list(pasd_bus_device.fndhPortForcings) == fndh_simulator.port_forcings
     assert (
         list(pasd_bus_device.fndhPortsDesiredPowerOnline)
@@ -413,6 +408,12 @@ def test_turn_fndh_port_on_off(
     )
 
 
+@pytest.mark.skip(
+    "Invalid test - FNDH does not have breakers that can trip and be reset! \
+PDOC overcurrent can be detected by contoller and will force a port off, \
+but such an event cannot be directly read from the port state registers. \
+See description of PWRSENSE and POWER bits of port state register."
+)
 def test_reset_fndh_port_breaker(
     pasd_bus_device: tango.DeviceProxy,
     fndh_simulator: FndhSimulator,
@@ -434,47 +435,6 @@ def test_reset_fndh_port_breaker(
     assert fndh_port_breakers_tripped[connected_fndh_port - 1]
     # All of the above just to set up the simulator
     # so that one of its port breakers has tripped
-
-    assert pasd_bus_device.adminMode == AdminMode.OFFLINE
-
-    pasd_bus_device.subscribe_event(
-        "state",
-        tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["state"],
-    )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
-
-    pasd_bus_device.subscribe_event(
-        "fndhPortsConnected",
-        tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["fndhPortsConnected"],
-    )
-    change_event_callbacks.assert_change_event("fndhPortsConnected", None)
-
-    pasd_bus_device.subscribe_event(
-        "fndhPortBreakersTripped",
-        tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["fndhPortBreakersTripped"],
-    )
-    change_event_callbacks.assert_change_event("fndhPortBreakersTripped", None)
-
-    pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
-
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
-
-    change_event_callbacks.assert_change_event(
-        "fndhPortsConnected", fndh_ports_connected
-    )
-    change_event_callbacks.assert_change_event(
-        "fndhPortBreakersTripped", fndh_port_breakers_tripped
-    )
-
-    pasd_bus_device.ResetFndhPortBreaker(connected_fndh_port)
-    fndh_port_breakers_tripped[connected_fndh_port - 1] = False
-    change_event_callbacks.assert_change_event(
-        "fndhPortBreakersTripped", fndh_port_breakers_tripped
-    )
 
 
 def test_fndh_led_pattern(

@@ -63,8 +63,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         ("OutsideTemperature", float, None),
         ("InternalAmbientTemperature", float, None),
         ("FncbHumidity", float, None),
-        ("PortsConnected", (bool,), PORT_COUNT),
-        ("PortBreakersTripped", (bool,), PORT_COUNT),
+        ("PortsConnected", (bool,), PORT_COUNT),  # Not a real register of the FNPC
         ("PortForcings", (str,), PORT_COUNT),
         ("PortsDesiredPowerOnline", (bool,), PORT_COUNT),
         ("PortsDesiredPowerOffline", (bool,), PORT_COUNT),
