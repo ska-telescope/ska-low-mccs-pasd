@@ -600,7 +600,9 @@ def test_reset_smartbox_port_breaker(
     smartbox_ports_connected = smartbox_simulator.ports_connected
     connected_smartbox_port = smartbox_ports_connected.index(True) + 1
 
-    smartbox_simulator.simulate_port_breaker_trip(connected_smartbox_port)
+    assert smartbox_simulator.initialize()
+    assert smartbox_simulator.turn_port_on(connected_smartbox_port)
+    assert smartbox_simulator.simulate_port_breaker_trip(connected_smartbox_port)
     smartbox_port_breakers_tripped = smartbox_simulator.port_breakers_tripped
     assert smartbox_port_breakers_tripped[connected_smartbox_port - 1]
     # All of the above just to set up the simulator

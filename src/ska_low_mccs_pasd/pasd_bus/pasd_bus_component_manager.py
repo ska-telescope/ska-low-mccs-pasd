@@ -123,7 +123,7 @@ class PasdBusRequestProvider:
         "ports_desired_power_when_online",  # Register STATE[13:12] - DSON
         "ports_desired_power_when_offline",  # Register STATE[11:10] - DSOFF
         "ports_power_sensed",  # Register STATE[7] - PWRSENSE
-        # Register STATE[6] - POWER needs to be added
+        # "ports_power_contol", # Register STATE[6] - POWER
     )
 
     SMARTBOX_STATUS_ATTRIBUTES: Final = (

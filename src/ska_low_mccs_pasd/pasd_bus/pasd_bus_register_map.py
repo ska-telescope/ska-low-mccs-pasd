@@ -303,7 +303,7 @@ class PasdBusRegisterMap:
         "ports_power_sensed": PasdBusPortAttribute(
             35, 28, PortStatusString.POWER_SENSED
         ),
-        "ports_power": PasdBusPortAttribute(35, 28, PortStatusString.POWER),
+        "ports_power_control": PasdBusPortAttribute(35, 28, PortStatusString.POWER),
     }
 
     _SMARTBOX_REGISTER_MAP_V1: Final = {
@@ -341,7 +341,7 @@ class PasdBusRegisterMap:
         "ports_desired_power_when_offline": PasdBusPortAttribute(
             35, 12, PortStatusString.DSOFF
         ),
-        "ports_power": PasdBusPortAttribute(35, 12, PortStatusString.POWER),
+        "ports_power_sensed": PasdBusPortAttribute(35, 12, PortStatusString.POWER),
         "ports_current_draw": PasdBusAttribute(47, 12),
     }
 

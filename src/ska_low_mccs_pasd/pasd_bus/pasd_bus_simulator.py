@@ -75,16 +75,38 @@ class _PasdPortSimulator:
       is no need to implement this behaviour.
     """
 
+    # pylint: disable=too-many-instance-attributes
+
     def __init__(self: _PasdPortSimulator):
         """Initialise a new instance."""
-        self._connected = False
-        self._forcing: Optional[bool] = None
+        self._connected: bool = False
+        self._on: bool = False
         # Simulated PDoC/FEM state registers
-        # self._enabled = False  # Both
-        self._desired_on_when_online = False  # Both
-        self._desired_on_when_offline = False  # Both
-        self._breaker_tripped = False  # FEM
-        # self._port_powered = False  # Both
+        self._enabled: bool = False
+        self._online: bool = True  # Redundant, as desribed above
+        self._desired_on_when_online: bool = False
+        self._desired_on_when_offline: bool = False  # Redundant, as desribed above
+        self._forcing: Optional[bool] = None
+        self._breaker_tripped: bool = False  # FEM only
+
+    def _update_port_power(self: _PasdPortSimulator) -> None:
+        """
+        Update the port power.
+
+        Turn the port ON or OFF depending on the desired power, forcing and
+        breaker trip states.
+        """
+        if self._forcing is False:
+            self._on = False
+        elif self._forcing or (self._enabled and not self._breaker_tripped):
+            if (self._desired_on_when_online and self._online) or (
+                self._desired_on_when_offline and not self._online
+            ):
+                self._on = True
+            else:
+                self._on = False
+        elif not self._enabled or self._breaker_tripped:  # forcing has priority
+            self._on = False
 
     @property
     def connected(self: _PasdPortSimulator) -> bool:
@@ -104,7 +126,26 @@ class _PasdPortSimulator:
         """
         self._connected = is_connected
 
-    def turn_on(
+    @property
+    def enabled(self: _PasdPortSimulator) -> bool:
+        """
+        Return whether this port is enabled.
+
+        :return: whether this port is enabled.
+        """
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self: _PasdPortSimulator, is_enabled: bool) -> None:
+        """
+        Set whether this port is enabled.
+
+        :param is_enabled: whether this port is enabled.
+        """
+        self._enabled = is_enabled
+        self._update_port_power()
+
+    def desired_on(
         self: _PasdPortSimulator, stay_on_when_offline: bool = True
     ) -> Optional[bool]:
         """
@@ -115,11 +156,6 @@ class _PasdPortSimulator:
 
         :return: whether successful, or None if there was nothing to do.
         """
-        if not self._connected:
-            return False  # Can't turn a port on if nothing is connected to it
-        if self._forcing is False:
-            return False  # Can't turn a port on if it is locally forced off
-
         if self._desired_on_when_online and (
             self._desired_on_when_offline == stay_on_when_offline
         ):
@@ -127,21 +163,21 @@ class _PasdPortSimulator:
 
         self._desired_on_when_online = True
         self._desired_on_when_offline = stay_on_when_offline
+        self._update_port_power()
         return True
 
-    def turn_off(self: _PasdPortSimulator) -> Optional[bool]:
+    def desired_off(self: _PasdPortSimulator) -> Optional[bool]:
         """
         Turn the port off.
 
         :return: whether successful, or None if there was nothing to do.
         """
-        if self._forcing:
-            return False  # Can't turn a port off if it is locally forced on
         if not self._desired_on_when_online:
             return None
 
         self._desired_on_when_online = False
         self._desired_on_when_offline = False
+        self._update_port_power()
         return True
 
     @property
@@ -170,6 +206,7 @@ class _PasdPortSimulator:
         if self._forcing == forcing:
             return None
         self._forcing = forcing
+        self._update_port_power()
         return True
 
     @property
@@ -187,9 +224,10 @@ class _PasdPortSimulator:
 
         :return: whether successful, or None if there was nothing to do.
         """
-        if self._breaker_tripped:
+        if self._breaker_tripped or not self._on:
             return None
         self._breaker_tripped = True
+        self._update_port_power()
         return True
 
     def reset_breaker(self: _PasdPortSimulator) -> Optional[bool]:
@@ -200,6 +238,7 @@ class _PasdPortSimulator:
         """
         if self._breaker_tripped:
             self._breaker_tripped = False
+            self._update_port_power()
             return True
         return None
 
@@ -230,11 +269,7 @@ class _PasdPortSimulator:
 
         :return: whether power is sensed on the port.
         """
-        if self._breaker_tripped:
-            return False
-        if self._forcing is not None:
-            return self._forcing
-        return self._desired_on_when_online
+        return self._on
 
 
 class PasdHardwareSimulator:
@@ -261,7 +296,6 @@ class PasdHardwareSimulator:
         """
         self._boot_on_time: datetime | None = None
         self._ports = [_PasdPortSimulator() for _ in range(number_of_ports)]
-        self._ports_enabled = False
         self._sensors_status: dict = {}
         self._status = self.DEFAULT_STATUS
         self._led_pattern = str(self.DEFAULT_LED_PATTERN)
@@ -369,14 +403,12 @@ class PasdHardwareSimulator:
 
         Enable or disable all the ports based on the system status.
         """
-        if self._status in {"OK", "WARNING"}:
-            self._ports_enabled = True
+        if self._status in {"OK", "WARNING"} and not self._ports[0].enabled:
             for port in self._ports:
-                port.simulate_forcing(None)
-        else:
-            self._ports_enabled = False
+                port.enabled = True
+        elif self._ports[0].enabled:
             for port in self._ports:
-                port.simulate_forcing(False)
+                port.enabled = False
 
     def configure(
         self: PasdHardwareSimulator,
@@ -422,6 +454,8 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do.
         """
+        # for port in self._ports:
+        #     port.simulate_forcing(forcing)
         return self._ports[port_number - 1].simulate_forcing(forcing)
 
     @property
@@ -492,11 +526,9 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do
         """
-        if self._ports_enabled:
-            return self._ports[port_number - 1].turn_on(
-                stay_on_when_offline=stay_on_when_offline
-            )
-        return False
+        return self._ports[port_number - 1].desired_on(
+            stay_on_when_offline=stay_on_when_offline
+        )
 
     def turn_port_off(
         self: PasdHardwareSimulator,
@@ -509,7 +541,7 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do
         """
-        return self._ports[port_number - 1].turn_off()
+        return self._ports[port_number - 1].desired_off()
 
     @property
     def ports_desired_power_when_online(

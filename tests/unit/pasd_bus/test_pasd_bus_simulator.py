@@ -108,11 +108,16 @@ class TestFndhSimulator:
             that doesn't have a smartbox connected
         """
         assert fndh_simulator.initialize()
+        assert fndh_simulator.status == "OK"
 
         expected_forcings: list[str] = ["NONE"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
+        fndh_simulator.fncb_temperature = 10000
+        assert fndh_simulator.status == "ALARM"
+        assert fndh_simulator.turn_port_on(unconnected_fndh_port)
+        assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
         assert fndh_simulator.simulate_port_forcing(unconnected_fndh_port, True)
         expected_forcings[unconnected_fndh_port - 1] = "ON"
         assert fndh_simulator.port_forcings == expected_forcings
@@ -155,25 +160,32 @@ class TestFndhSimulator:
             that has a smartbox connected
         """
         assert fndh_simulator.initialize()
+        assert fndh_simulator.status == "OK"
 
         expected_forcings: list[str] = ["NONE"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
 
+        fndh_simulator.fncb_temperature = 10000
+        assert fndh_simulator.status == "ALARM"
+        assert fndh_simulator.turn_port_on(connected_fndh_port)
         assert fndh_simulator.simulate_port_forcing(connected_fndh_port, True)
         expected_forcings[connected_fndh_port - 1] = "ON"
         assert fndh_simulator.port_forcings == expected_forcings
         assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
 
-        assert not fndh_simulator.turn_port_off(connected_fndh_port)
-        assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+        assert fndh_simulator.turn_port_off(connected_fndh_port)
+        assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
 
         assert fndh_simulator.simulate_port_forcing(connected_fndh_port, None)
         expected_forcings[connected_fndh_port - 1] = "NONE"
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
 
-        fndh_simulator.turn_port_on(connected_fndh_port)
+        fndh_simulator.fncb_temperature = fndh_simulator.DEFAULT_FNCB_TEMPERATURE
+        assert fndh_simulator.initialize()
+        assert fndh_simulator.status == "OK"
+        assert fndh_simulator.turn_port_on(connected_fndh_port)
         assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
 
         assert fndh_simulator.simulate_port_forcing(connected_fndh_port, False)
@@ -181,7 +193,7 @@ class TestFndhSimulator:
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
 
-        assert not fndh_simulator.turn_port_on(connected_fndh_port)
+        assert fndh_simulator.turn_port_on(connected_fndh_port) is None
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
 
         assert fndh_simulator.simulate_port_forcing(connected_fndh_port, None)
@@ -202,6 +214,7 @@ class TestFndhSimulator:
             that has a smartbox connected
         """
         assert fndh_simulator.initialize()
+        assert fndh_simulator.status == "OK"
         assert fndh_simulator.ports_connected[connected_fndh_port - 1]
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
         assert fndh_simulator.turn_port_on(connected_fndh_port)
@@ -219,7 +232,7 @@ class TestFndhSimulator:
         unconnected_fndh_port: int,
     ) -> None:
         """
-        Test that we can't power on an FNDH port that has a smartbox connected.
+        Test that we can power on an FNDH port that is unconnected.
 
         :param fndh_simulator: the FNDH simulator under test
         :param unconnected_fndh_port: the port number for an FNDH port
@@ -228,8 +241,8 @@ class TestFndhSimulator:
         assert fndh_simulator.initialize()
         assert not fndh_simulator.ports_connected[unconnected_fndh_port - 1]
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
-        assert not fndh_simulator.turn_port_on(unconnected_fndh_port)
-        assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
+        assert fndh_simulator.turn_port_on(unconnected_fndh_port)
+        assert fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
     @pytest.mark.parametrize(
         ("attribute_name", "expected_value"),
@@ -405,6 +418,12 @@ class TestSmartboxSimulator:
         :param unconnected_smartbox_port: a smartbox port that doesn't
             have an antenna connected to it
         """
+        assert smartbox_simulator.initialize()
+        assert smartbox_simulator.status == "OK"
+        assert smartbox_simulator.turn_port_on(unconnected_smartbox_port)
+
+        smartbox_simulator.power_supply_temperature = 10000
+        assert smartbox_simulator.status == "ALARM"
         assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
         assert smartbox_simulator.simulate_port_forcing(unconnected_smartbox_port, True)
         assert smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
@@ -428,12 +447,22 @@ class TestSmartboxSimulator:
             antenna connected to it
         """
         assert smartbox_simulator.initialize()
+        assert smartbox_simulator.status == "OK"
+        assert smartbox_simulator.turn_port_on(connected_smartbox_port)
+
+        smartbox_simulator.power_supply_temperature = 10000
+        assert smartbox_simulator.status == "ALARM"
         assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
         assert smartbox_simulator.simulate_port_forcing(connected_smartbox_port, True)
         assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
         assert smartbox_simulator.simulate_port_forcing(connected_smartbox_port, None)
         assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
-        smartbox_simulator.turn_port_on(connected_smartbox_port)
+
+        smartbox_simulator.power_supply_temperature = (
+            smartbox_simulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
+        )
+        assert smartbox_simulator.initialize()
+        assert smartbox_simulator.status == "OK"
         assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
         assert smartbox_simulator.simulate_port_forcing(connected_smartbox_port, False)
         assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
@@ -453,6 +482,7 @@ class TestSmartboxSimulator:
             antenna connected to it
         """
         assert smartbox_simulator.initialize()
+        assert smartbox_simulator.status == "OK"
 
         expected_when_online = [False] * SmartboxSimulator.NUMBER_OF_PORTS
         assert (
@@ -527,10 +557,11 @@ class TestSmartboxSimulator:
             have an antenna connected to it
         """
         assert smartbox_simulator.initialize()
+        assert smartbox_simulator.status == "OK"
         assert not smartbox_simulator.ports_connected[unconnected_smartbox_port - 1]
         assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
-        assert not smartbox_simulator.turn_port_on(unconnected_smartbox_port)
-        assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
+        assert smartbox_simulator.turn_port_on(unconnected_smartbox_port)
+        assert smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
 
     def test_port_breaker_trip(
         self: TestSmartboxSimulator,
