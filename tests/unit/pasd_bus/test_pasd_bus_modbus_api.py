@@ -67,7 +67,7 @@ class TestPasdBusModbusApi:
             fncb_temperature=40,
         )
         mock.set_led_pattern.return_value = True
-        mock.reset_port_breaker.side_effect = ValueError("Mock error")
+        mock.initialize.side_effect = ValueError("Mock error")
         return mock
 
     @pytest.fixture(name="backend_smartboxes")

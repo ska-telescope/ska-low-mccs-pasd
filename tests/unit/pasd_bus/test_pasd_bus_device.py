@@ -408,35 +408,6 @@ def test_turn_fndh_port_on_off(
     )
 
 
-@pytest.mark.skip(
-    "Invalid test - FNDH does not have breakers that can trip and be reset! \
-PDOC overcurrent can be detected by contoller and will force a port off, \
-but such an event cannot be directly read from the port state registers. \
-See description of PWRSENSE and POWER bits of port state register."
-)
-def test_reset_fndh_port_breaker(
-    pasd_bus_device: tango.DeviceProxy,
-    fndh_simulator: FndhSimulator,
-    change_event_callbacks: MockTangoEventCallbackGroup,
-) -> None:
-    """
-    Test the Tango device can be used to reset an FNDH port's breaker.
-
-    :param pasd_bus_device: a proxy to the PaSD bus device under test.
-    :param fndh_simulator: the FNDH simulator under test
-    :param change_event_callbacks: dictionary of mock change event
-        callbacks with asynchrony support
-    """
-    fndh_ports_connected = fndh_simulator.ports_connected
-    connected_fndh_port = fndh_ports_connected.index(True) + 1
-
-    fndh_simulator.simulate_port_breaker_trip(connected_fndh_port)
-    fndh_port_breakers_tripped = fndh_simulator.port_breakers_tripped
-    assert fndh_port_breakers_tripped[connected_fndh_port - 1]
-    # All of the above just to set up the simulator
-    # so that one of its port breakers has tripped
-
-
 def test_fndh_led_pattern(
     pasd_bus_device: tango.DeviceProxy,
     change_event_callbacks: MockTangoEventCallbackGroup,

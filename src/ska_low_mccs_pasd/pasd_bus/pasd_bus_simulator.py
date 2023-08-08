@@ -87,7 +87,7 @@ class _PasdPortSimulator:
         self._desired_on_when_online: bool = False
         self._desired_on_when_offline: bool = False  # Redundant, as desribed above
         self._forcing: Optional[bool] = None
-        self._breaker_tripped: bool = False  # FEM only
+        self._breaker_tripped: bool = False  # Smartbox FEM only
 
     def _update_port_power(self: _PasdPortSimulator) -> None:
         """
@@ -441,22 +441,21 @@ class PasdHardwareSimulator:
         return [port.connected for port in self._ports]
 
     def simulate_port_forcing(
-        self: PasdHardwareSimulator, port_number: int, forcing: Optional[bool]
+        self: PasdHardwareSimulator, forcing: Optional[bool]
     ) -> Optional[bool]:
         """
         Simulate local forcing of a port.
 
-        :param port_number: the port number for which local forcing will
-            be simulated.
         :param forcing: the new forcing status of the port. True means
             the port has been forced on. False means it has been forced
             off. None means it has not be forced.
 
         :return: whether successful, or None if there was nothing to do.
         """
-        # for port in self._ports:
-        #     port.simulate_forcing(forcing)
-        return self._ports[port_number - 1].simulate_forcing(forcing)
+        # Per port overriding is not possible in the hardware
+        for port in self._ports:
+            result = port.simulate_forcing(forcing)
+        return result
 
     @property
     def port_forcings(self: PasdHardwareSimulator) -> list[str]:
@@ -474,43 +473,6 @@ class PasdHardwareSimulator:
             None: "NONE",
         }
         return [forcing_map[port.forcing] for port in self._ports]
-
-    @property
-    def port_breakers_tripped(self: PasdHardwareSimulator) -> list[bool]:
-        """
-        Return whether each port has had its breaker tripped.
-
-        :return: whether each port has had its breaker tripped
-        """
-        return [port.breaker_tripped for port in self._ports]
-
-    def simulate_port_breaker_trip(
-        self: PasdHardwareSimulator,
-        port_number: int,
-    ) -> Optional[bool]:
-        """
-        Simulate a port breaker trip.
-
-        :param port_number: number of the port for which a breaker trip
-            will be simulated
-
-        :return: whether successful, or None if there was nothing to do
-        """
-        return self._ports[port_number - 1].simulate_breaker_trip()
-
-    def reset_port_breaker(
-        self: PasdHardwareSimulator,
-        port_number: int,
-    ) -> Optional[bool]:
-        """
-        Reset a tripped port breaker.
-
-        :param port_number: number of the port whose breaker should be
-            reset
-
-        :return: whether successful, or None if there was nothing to do
-        """
-        return self._ports[port_number - 1].reset_breaker()
 
     def turn_port_on(
         self: PasdHardwareSimulator,
@@ -855,7 +817,6 @@ class SmartboxSimulator(PasdHardwareSimulator):
     def __init__(self: SmartboxSimulator) -> None:
         """Initialise a new instance."""
         super().__init__(self.NUMBER_OF_PORTS)
-        self._port_breaker_tripped = [False] * self.NUMBER_OF_PORTS
         self._sys_address = self.DEFAULT_SYS_ADDRESS
         # Sensors
         self._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
@@ -952,6 +913,43 @@ class SmartboxSimulator(PasdHardwareSimulator):
         :return: the firmware version.
         """
         return self.DEFAULT_FIRMWARE_VERSION
+
+    @property
+    def port_breakers_tripped(self: SmartboxSimulator) -> list[bool]:
+        """
+        Return whether each port has had its breaker tripped.
+
+        :return: whether each port has had its breaker tripped
+        """
+        return [port.breaker_tripped for port in self._ports]
+
+    def simulate_port_breaker_trip(
+        self: SmartboxSimulator,
+        port_number: int,
+    ) -> Optional[bool]:
+        """
+        Simulate a port breaker trip.
+
+        :param port_number: number of the port for which a breaker trip
+            will be simulated
+
+        :return: whether successful, or None if there was nothing to do
+        """
+        return self._ports[port_number - 1].simulate_breaker_trip()
+
+    def reset_port_breaker(
+        self: SmartboxSimulator,
+        port_number: int,
+    ) -> Optional[bool]:
+        """
+        Reset a tripped port breaker.
+
+        :param port_number: number of the port whose breaker should be
+            reset
+
+        :return: whether successful, or None if there was nothing to do
+        """
+        return self._ports[port_number - 1].reset_breaker()
 
 
 class PasdBusSimulator:
