@@ -5,16 +5,16 @@
 Standard sphinx config file.
 """
 
-import sys
 import os
+import sys
 
 # WORKAROUND: https://github.com/sphinx-doc/sphinx/issues/9243
 import sphinx.builders.html
 import sphinx.builders.latex
+import sphinx.builders.linkcheck
 import sphinx.builders.texinfo
 import sphinx.builders.text
 import sphinx.ext.autodoc
-import sphinx.builders.linkcheck
 
 # This is an elaborate hack to insert write property into _all_
 # mock decorators. It is needed for getting @attribute to build
@@ -62,15 +62,15 @@ autodoc_default_options = {
 
 # -- Project information -----------------------------------------------------
 release_filename = os.path.join("..", "..", "src", "ska_low_mccs.py")
-#version = None
+# version = None
 author = "MCCS team"
-#for line in open(release_filename).readlines():
+# for line in open(release_filename).readlines():
 #    line = line.strip()
 #    if line.startswith(("author", "version")):
 #        exec(line)
 
 project = "MCCS LMC Prototype"
-#release = version
+# release = version
 copyright = "2020, SKA MCCS Team"
 
 # -- General configuration ------------------------------------------------
@@ -149,11 +149,9 @@ html_theme = "ska_ser_sphinx_theme"
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-html_theme_options = {
-}
+html_theme_options = {}
 
-html_context = {
-}
+html_context = {}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -263,7 +261,7 @@ intersphinx_mapping = {
         None,
     ),
     "ska-low-mccs-common": (
-        "https://developer.skao.int/projects/ska-low-mccs-common/en/0.8.0/",
+        "https://developer.skao.int/projects/ska-low-mccs-common/en/latest/",
         None,
     ),
 }

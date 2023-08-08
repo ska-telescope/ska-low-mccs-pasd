@@ -714,7 +714,7 @@ class FndhSimulator(PasdHardwareSimulator):
         """Initialise a new instance."""
         super().__init__(self.NUMBER_OF_PORTS)
         # Sensors
-        self._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "fndh")
+        super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "fndh")
         self.psu48v_voltages = self.DEFAULT_PSU48V_VOLTAGES
         self.psu48v_current = self.DEFAULT_PSU48V_CURRENT
         self.psu48v_temperatures = self.DEFAULT_PSU48V_TEMPERATURES
@@ -819,7 +819,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         super().__init__(self.NUMBER_OF_PORTS)
         self._sys_address = self.DEFAULT_SYS_ADDRESS
         # Sensors
-        self._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
+        super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
         self.input_voltage = self.DEFAULT_INPUT_VOLTAGE
         self.power_supply_output_voltage = self.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
         self.power_supply_temperature = self.DEFAULT_POWER_SUPPLY_TEMPERATURE
