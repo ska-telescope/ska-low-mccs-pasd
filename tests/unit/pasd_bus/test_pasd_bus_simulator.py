@@ -376,6 +376,9 @@ class TestFndhSimulator:
             assert fndh_simulator.status == "RECOVERY"
             assert fndh_simulator.initialize()
         assert fndh_simulator.status == "OK"
+        if expected_status == "OK":
+            setattr(fndh_simulator, sensor_name + "_thresholds", [0, 0, 0, 0])
+            assert fndh_simulator.status == "ALARM"
 
 
 class TestSmartboxSimulator:
@@ -762,3 +765,6 @@ class TestSmartboxSimulator:
             assert smartbox_simulator.status == "RECOVERY"
             assert smartbox_simulator.initialize()
         assert smartbox_simulator.status == "OK"
+        if expected_status == "OK":
+            setattr(smartbox_simulator, sensor_name + "_thresholds", [0, 0, 0, 0])
+            assert smartbox_simulator.status == "ALARM"

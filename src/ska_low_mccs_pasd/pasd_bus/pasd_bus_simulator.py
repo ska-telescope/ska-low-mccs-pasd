@@ -276,8 +276,8 @@ class PasdHardwareSimulator:
     """
     A class that captures commonality between FNDH and smartbox simulators.
 
-    Both things manage a set of ports, which can be switched on and off,
-    locally forced, experience a breaker trip, etc.
+    Both have a status that must be initialized and manage a set of ports -
+    which can be switched on and off, locally forced, etc.
     """
 
     DEFAULT_LED_PATTERN: Final = "OFF"
@@ -355,21 +355,25 @@ class PasdHardwareSimulator:
             low_warning = thresholds[2]
             low_alarm = thresholds[3]
             value_list = getattr(self, sensor_name)
+            if value_list is None:
+                return
             if not isinstance(value_list, list):
                 value_list = [value_list]
             for i, value in enumerate(value_list, 1):
-                if high_alarm is not None and value >= high_alarm:
+                if value >= high_alarm:
                     self._sensors_status[sensor_name + str(i)] = "ALARM"
-                elif low_alarm is not None and value <= low_alarm:
+                elif value <= low_alarm:
                     self._sensors_status[sensor_name + str(i)] = "ALARM"
-                elif high_warning is not None and value >= high_warning:
+                elif value >= high_warning:
                     self._sensors_status[sensor_name + str(i)] = "WARNING"
-                elif low_warning is not None and value <= low_warning:
+                elif value <= low_warning:
                     self._sensors_status[sensor_name + str(i)] = "WARNING"
                 else:
                     self._sensors_status[sensor_name + str(i)] = "OK"
-        except AttributeError:
-            # TODO: log
+        except TypeError:
+            logger.warning(
+                f"PaSD bus simulator: {sensor_name} has no thresholds defined!"
+            )
             return
 
     def _update_system_status(
@@ -663,7 +667,7 @@ class Sensor:
             obj.__dict__[self.name] = [int(val) for val in value]
         else:
             obj.__dict__[self.name] = int(value)
-        obj._update_sensor_status(f"{self.name}")
+        obj._update_sensor_status(self.name.removesuffix("_thresholds"))
         obj._update_system_status()
         obj._update_ports_state()
 
