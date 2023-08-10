@@ -335,7 +335,6 @@ class PasdHardwareSimulator:
                     thresholds.get("low_warning", None),
                     thresholds.get("low_alarm", None),
                 ]
-                setattr(self, sensor + "_thresholds", Sensor())
                 setattr(self, sensor + "_thresholds", thresholds_list)
         except KeyError as exception:
             logger.error(
@@ -442,7 +441,7 @@ class PasdHardwareSimulator:
 
     def simulate_port_forcing(
         self: PasdHardwareSimulator, forcing: Optional[bool]
-    ) -> Optional[bool]:
+    ) -> list[Optional[bool]]:
         """
         Simulate local forcing of a port.
 
@@ -453,9 +452,10 @@ class PasdHardwareSimulator:
         :return: whether successful, or None if there was nothing to do.
         """
         # Per port overriding is not possible in the hardware
+        results = []
         for port in self._ports:
-            result = port.simulate_forcing(forcing)
-        return result
+            results.append(port.simulate_forcing(forcing))
+        return results
 
     @property
     def port_forcings(self: PasdHardwareSimulator) -> list[str]:
@@ -700,15 +700,25 @@ class FndhSimulator(PasdHardwareSimulator):
 
     # Instantiate sensor data descriptors
     psu48v_voltages = Sensor()
+    psu48v_voltages_thresholds = Sensor()
     psu48v_current = Sensor()
+    psu48v_current_thresholds = Sensor()
     psu48v_temperatures = Sensor()
+    psu48v_temperatures_thresholds = Sensor()
     panel_temperature = Sensor()  # Not implemented in hardware?
+    panel_temperature_thresholds = Sensor()
     fncb_temperature = Sensor()
+    fncb_temperature_thresholds = Sensor()
     fncb_humidity = Sensor()
+    fncb_humidity_thresholds = Sensor()
     comms_gateway_temperature = Sensor()
+    comms_gateway_temperature_thresholds = Sensor()
     power_module_temperature = Sensor()
+    power_module_temperature_thresholds = Sensor()
     outside_temperature = Sensor()
+    outside_temperature_thresholds = Sensor()
     internal_ambient_temperature = Sensor()
+    internal_ambient_temperature_thresholds = Sensor()
 
     def __init__(self: FndhSimulator) -> None:
         """Initialise a new instance."""
@@ -807,12 +817,19 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
     # Instantiate sensor data descriptors
     input_voltage = Sensor()
+    input_voltage_thresholds = Sensor()
     power_supply_output_voltage = Sensor()
+    power_supply_output_voltage_thresholds = Sensor()
     power_supply_temperature = Sensor()
+    power_supply_temperature_thresholds = Sensor()
     pcb_temperature = Sensor()
+    pcb_temperature_thresholds = Sensor()
     fem_ambient_temperature = Sensor()
+    fem_ambient_temperature_thresholds = Sensor()
     fem_case_temperatures = Sensor()
+    fem_case_temperatures_thresholds = Sensor()
     fem_heatsink_temperatures = Sensor()
+    fem_heatsink_temperatures_thresholds = Sensor()
 
     def __init__(self: SmartboxSimulator) -> None:
         """Initialise a new instance."""

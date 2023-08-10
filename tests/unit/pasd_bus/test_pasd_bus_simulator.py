@@ -118,30 +118,36 @@ class TestFndhSimulator:
         assert fndh_simulator.status == "ALARM"
         assert fndh_simulator.turn_port_on(unconnected_fndh_port)
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
-        assert fndh_simulator.simulate_port_forcing(True)
+        assert all(fndh_simulator.simulate_port_forcing(True))
         expected_forcings = ["ON"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
-        assert fndh_simulator.simulate_port_forcing(True) is None
+        assert all(
+            result is None for result in fndh_simulator.simulate_port_forcing(True)
+        )
         assert fndh_simulator.port_forcings == expected_forcings
         assert fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
-        assert fndh_simulator.simulate_port_forcing(False)
+        assert all(fndh_simulator.simulate_port_forcing(False))
         expected_forcings = ["OFF"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
-        assert fndh_simulator.simulate_port_forcing(False) is None
+        assert all(
+            result is None for result in fndh_simulator.simulate_port_forcing(False)
+        )
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
-        assert fndh_simulator.simulate_port_forcing(None)
+        assert all(fndh_simulator.simulate_port_forcing(None))
         expected_forcings = ["NONE"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
-        assert fndh_simulator.simulate_port_forcing(None) is None
+        assert all(
+            result is None for result in fndh_simulator.simulate_port_forcing(None)
+        )
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
@@ -167,7 +173,7 @@ class TestFndhSimulator:
         fndh_simulator.fncb_temperature = 10000
         assert fndh_simulator.status == "ALARM"
         assert fndh_simulator.turn_port_on(connected_fndh_port)
-        assert fndh_simulator.simulate_port_forcing(True)
+        assert all(fndh_simulator.simulate_port_forcing(True))
         expected_forcings = ["ON"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
@@ -175,7 +181,7 @@ class TestFndhSimulator:
         assert fndh_simulator.turn_port_off(connected_fndh_port)
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
 
-        assert fndh_simulator.simulate_port_forcing(None)
+        assert all(fndh_simulator.simulate_port_forcing(None))
         expected_forcings = ["NONE"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
@@ -186,7 +192,7 @@ class TestFndhSimulator:
         assert fndh_simulator.turn_port_on(connected_fndh_port)
         assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
 
-        assert fndh_simulator.simulate_port_forcing(False)
+        assert all(fndh_simulator.simulate_port_forcing(False))
         expected_forcings = ["OFF"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
@@ -194,7 +200,7 @@ class TestFndhSimulator:
         assert fndh_simulator.turn_port_on(connected_fndh_port) is None
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
 
-        assert fndh_simulator.simulate_port_forcing(None)
+        assert all(fndh_simulator.simulate_port_forcing(None))
         expected_forcings = ["NONE"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
@@ -423,11 +429,11 @@ class TestSmartboxSimulator:
         smartbox_simulator.power_supply_temperature = 10000
         assert smartbox_simulator.status == "ALARM"
         assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
-        assert smartbox_simulator.simulate_port_forcing(True)
+        assert all(smartbox_simulator.simulate_port_forcing(True))
         assert smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
-        assert smartbox_simulator.simulate_port_forcing(False)
+        assert all(smartbox_simulator.simulate_port_forcing(False))
         assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
-        assert smartbox_simulator.simulate_port_forcing(None)
+        assert all(smartbox_simulator.simulate_port_forcing(None))
         assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
 
     def test_forcing_connected_smartbox_port(
@@ -449,9 +455,9 @@ class TestSmartboxSimulator:
         smartbox_simulator.power_supply_temperature = 10000
         assert smartbox_simulator.status == "ALARM"
         assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
-        assert smartbox_simulator.simulate_port_forcing(True)
+        assert all(smartbox_simulator.simulate_port_forcing(True))
         assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
-        assert smartbox_simulator.simulate_port_forcing(None)
+        assert all(smartbox_simulator.simulate_port_forcing(None))
         assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
         smartbox_simulator.power_supply_temperature = (
@@ -460,9 +466,9 @@ class TestSmartboxSimulator:
         assert smartbox_simulator.initialize()
         assert smartbox_simulator.status == "OK"
         assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
-        assert smartbox_simulator.simulate_port_forcing(False)
+        assert all(smartbox_simulator.simulate_port_forcing(False))
         assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
-        assert smartbox_simulator.simulate_port_forcing(None)
+        assert all(smartbox_simulator.simulate_port_forcing(None))
         assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
     def test_connected_smartbox_port_power_on_off(
