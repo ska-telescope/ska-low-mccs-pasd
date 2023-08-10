@@ -54,6 +54,7 @@ class TestPasdBusComponentManager:
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
 
+        pasd_bus_component_manager.initialize_fndh()
         # First we'll receive static info about the FNDH
         mock_callbacks.assert_call(
             "pasd_device_state",
@@ -65,8 +66,9 @@ class TestPasdBusComponentManager:
             firmware_version=FndhSimulator.DEFAULT_FIRMWARE_VERSION,
         )
 
-        # Then static info about each of the FNDHs
+        # Then static info about each of the smartboxes
         for smartbox_number in range(1, 25):
+            pasd_bus_component_manager.initialize_smartbox(smartbox_number)
             mock_callbacks.assert_call(
                 "pasd_device_state",
                 smartbox_number,
@@ -85,14 +87,20 @@ class TestPasdBusComponentManager:
             0,  # FNDH
             uptime=FndhSimulator.DEFAULT_UPTIME,
             sys_address=FndhSimulator.SYS_ADDRESS,
-            status=FndhSimulator.DEFAULT_STATUS,
+            status="OK",
             led_pattern=FndhSimulator.DEFAULT_LED_PATTERN,
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
             psu48v_temperatures=FndhSimulator.DEFAULT_PSU48V_TEMPERATURES,
-            pcb_temperature=FndhSimulator.DEFAULT_PCB_TEMPERATURE,
+            panel_temperature=FndhSimulator.DEFAULT_PANEL_TEMPERATURE,
             fncb_temperature=FndhSimulator.DEFAULT_FNCB_TEMPERATURE,
-            humidity=FndhSimulator.DEFAULT_HUMIDITY,
+            fncb_humidity=FndhSimulator.DEFAULT_FNCB_HUMIDITY,
+            comms_gateway_temperature=FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE,
+            power_module_temperature=FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE,
+            outside_temperature=FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
+            internal_ambient_temperature=(
+                FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+            ),
         )
 
         expected_fndh_ports_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
@@ -105,7 +113,6 @@ class TestPasdBusComponentManager:
             0,  # FNDH
             ports_connected=expected_fndh_ports_connected,
             port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
-            port_breakers_tripped=[False] * FndhSimulator.NUMBER_OF_PORTS,
             ports_desired_power_when_online=[False] * FndhSimulator.NUMBER_OF_PORTS,
             ports_desired_power_when_offline=[False] * FndhSimulator.NUMBER_OF_PORTS,
             ports_power_sensed=[False] * FndhSimulator.NUMBER_OF_PORTS,
@@ -116,8 +123,8 @@ class TestPasdBusComponentManager:
                 "pasd_device_state",
                 smartbox_number,
                 uptime=SmartboxSimulator.DEFAULT_UPTIME,
-                sys_address=SmartboxSimulator.SYS_ADDRESS,
-                status=SmartboxSimulator.DEFAULT_STATUS,
+                sys_address=SmartboxSimulator.DEFAULT_SYS_ADDRESS,
+                status="OK",
                 led_pattern=SmartboxSimulator.DEFAULT_LED_PATTERN,
                 input_voltage=SmartboxSimulator.DEFAULT_INPUT_VOLTAGE,
                 power_supply_output_voltage=(
@@ -126,8 +133,14 @@ class TestPasdBusComponentManager:
                 power_supply_temperature=(
                     SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
                 ),
-                outside_temperature=SmartboxSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
                 pcb_temperature=SmartboxSimulator.DEFAULT_PCB_TEMPERATURE,
+                fem_ambient_temperature=(
+                    SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
+                ),
+                fem_case_temperatures=(SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES),
+                fem_heatsink_temperatures=(
+                    SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+                ),
             )
 
             expected_smartbox_ports_connected = [
@@ -196,9 +209,10 @@ class TestPasdBusComponentManager:
         for _ in range(75):
             mock_callbacks.assert_against_call("pasd_device_state")
 
+        # TODO pasd_bus_component_manager.initialize_fndh()
+        assert fndh_simulator.initialize()
         ports_connected = fndh_simulator.ports_connected
         expected_port_forcings = fndh_simulator.port_forcings
-        expected_port_breakers_tripped = fndh_simulator.port_breakers_tripped
         expected_ports_desired_power_when_online = (
             fndh_simulator.ports_desired_power_when_online
         )
@@ -219,7 +233,6 @@ class TestPasdBusComponentManager:
             0,  # FNDH
             ports_connected=ports_connected,
             port_forcings=expected_port_forcings,
-            port_breakers_tripped=expected_port_breakers_tripped,
             ports_desired_power_when_online=expected_ports_desired_power_when_online,
             ports_desired_power_when_offline=expected_ports_desired_power_when_offline,
             ports_power_sensed=expected_ports_power_sensed,
@@ -239,7 +252,6 @@ class TestPasdBusComponentManager:
             0,  # FNDH
             ports_connected=ports_connected,
             port_forcings=expected_port_forcings,
-            port_breakers_tripped=expected_port_breakers_tripped,
             ports_desired_power_when_online=expected_ports_desired_power_when_online,
             ports_desired_power_when_offline=expected_ports_desired_power_when_offline,
             ports_power_sensed=expected_ports_power_sensed,
@@ -278,6 +290,8 @@ class TestPasdBusComponentManager:
         for _ in range(75):
             mock_callbacks.assert_against_call("pasd_device_state")
 
+        # TODO pasd_bus_component_manager.initialize_smartbox(smartbox_id)
+        assert smartbox_simulator.initialize()
         ports_current_draw = smartbox_simulator.ports_current_draw
         ports_connected = smartbox_simulator.ports_connected
         expected_port_forcings = smartbox_simulator.port_forcings
@@ -373,9 +387,15 @@ class TestPasdBusComponentManager:
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
             psu48v_temperatures=FndhSimulator.DEFAULT_PSU48V_TEMPERATURES,
-            pcb_temperature=FndhSimulator.DEFAULT_PCB_TEMPERATURE,
+            panel_temperature=FndhSimulator.DEFAULT_PANEL_TEMPERATURE,
             fncb_temperature=FndhSimulator.DEFAULT_FNCB_TEMPERATURE,
-            humidity=FndhSimulator.DEFAULT_HUMIDITY,
+            fncb_humidity=FndhSimulator.DEFAULT_FNCB_HUMIDITY,
+            comms_gateway_temperature=FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE,
+            power_module_temperature=FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE,
+            outside_temperature=FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
+            internal_ambient_temperature=(
+                FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+            ),
             lookahead=75,
         )
 
@@ -385,7 +405,7 @@ class TestPasdBusComponentManager:
             "pasd_device_state",
             4,
             uptime=SmartboxSimulator.DEFAULT_UPTIME,
-            sys_address=SmartboxSimulator.SYS_ADDRESS,
+            sys_address=SmartboxSimulator.DEFAULT_SYS_ADDRESS,
             status=SmartboxSimulator.DEFAULT_STATUS,
             led_pattern="SERVICE",
             input_voltage=SmartboxSimulator.DEFAULT_INPUT_VOLTAGE,
@@ -393,7 +413,11 @@ class TestPasdBusComponentManager:
                 SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
             ),
             power_supply_temperature=SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE,
-            outside_temperature=SmartboxSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
             pcb_temperature=SmartboxSimulator.DEFAULT_PCB_TEMPERATURE,
+            fem_ambient_temperature=SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE,
+            fem_case_temperatures=(SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES),
+            fem_heatsink_temperatures=(
+                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+            ),
             lookahead=75,
         )

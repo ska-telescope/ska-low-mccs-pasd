@@ -106,20 +106,24 @@ class PasdBusRequestProvider:
         "psu48v_voltages",
         "psu48v_current",
         "psu48v_temperatures",
-        "pcb_temperature",
+        "panel_temperature",
         "fncb_temperature",
-        "humidity",
+        "fncb_humidity",
         "status",
         "led_pattern",
+        "comms_gateway_temperature",
+        "power_module_temperature",
+        "outside_temperature",
+        "internal_ambient_temperature",
     )
 
     FNDH_PORTS_STATUS_ATTRIBUTES: Final = (
-        "ports_connected",  # Register STATE[6] - POWER?
+        "ports_connected",  # Not a real register - but needed for simulator
         "port_forcings",  # Register STATE[9:8] - TO
-        "port_breakers_tripped",  # Not in FNDH state register
         "ports_desired_power_when_online",  # Register STATE[13:12] - DSON
         "ports_desired_power_when_offline",  # Register STATE[11:10] - DSOFF
         "ports_power_sensed",  # Register STATE[7] - PWRSENSE
+        # "ports_power_contol", # Register STATE[6] - POWER
     )
 
     SMARTBOX_STATUS_ATTRIBUTES: Final = (
@@ -129,18 +133,20 @@ class PasdBusRequestProvider:
         "power_supply_output_voltage",
         "power_supply_temperature",
         "pcb_temperature",
-        "outside_temperature",
+        "fem_ambient_temperature",
         "status",
         "led_pattern",
+        "fem_case_temperatures",
+        "fem_heatsink_temperatures",
     )
 
     SMARTBOX_PORTS_STATUS_ATTRIBUTES: Final = (
-        "ports_connected",  # Register STATE[6] - POWER?
+        "ports_connected",  # Not a real register - but needed for simulator
         "port_forcings",  # Register STATE[9:8] - TO
         "port_breakers_tripped",  # Register STATE[7] - BREAKER
         "ports_desired_power_when_online",  # Register STATE[13:12] - DSON
         "ports_desired_power_when_offline",  # Register STATE[11:10] - DSOFF
-        "ports_power_sensed",  # Not in smartbox state register
+        "ports_power_sensed",  # Register STATE[6] - POWER
         "ports_current_draw",  # Register CURRENT
     )
 

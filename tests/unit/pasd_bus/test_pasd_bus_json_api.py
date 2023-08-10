@@ -62,7 +62,7 @@ class TestPasdBusJsonApi:
             fncb_temperature=40.0,
         )
         mock.set_led_pattern.return_value = True
-        mock.reset_port_breaker.side_effect = ValueError("Mock error")
+        mock.turn_port_off.side_effect = ValueError("Mock error")
         return mock
 
     @pytest.fixture(name="backend_smartboxes")
@@ -295,7 +295,7 @@ class TestPasdBusJsonApi:
                 'error': {
                     'source': 0,
                     'code': 'command',
-                    'detail': "Exception in command 'reset_port_breaker': Mock error.",
+                    'detail': "Exception in command 'turn_port_off': Mock error.",
                 },
                 'timestamp': '2023-04-05T05:45:22.430058',
             }
@@ -306,7 +306,7 @@ class TestPasdBusJsonApi:
         """
         request = {
             "device_id": 0,
-            "execute": "reset_port_breaker",
+            "execute": "turn_port_off",
             "arguments": [2],
         }
         request_str = json.dumps(request)
@@ -318,7 +318,7 @@ class TestPasdBusJsonApi:
         assert response["error"]["code"] == "command"
         assert (
             response["error"]["detail"]
-            == "Exception in command 'reset_port_breaker': Mock error."
+            == "Exception in command 'turn_port_off': Mock error."
         )
 
     def test_execute_command(

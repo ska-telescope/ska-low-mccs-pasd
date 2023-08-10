@@ -42,18 +42,20 @@ class MccsSmartBox(SKABaseDevice):
     ATTRIBUTES = [
         ("ModbusRegisterMapRevisionNumber", int, None),
         ("PcbRevisionNumber", int, None),
-        ("CpuId", int, None),
-        ("ChipId", int, None),
+        ("CpuId", str, None),
+        ("ChipId", str, None),
         ("FirmwareVersion", str, None),
         ("Uptime", int, None),
-        ("Status", str, None),
+        ("PasdStatus", str, None),
         ("SysAddress", int, None),
         ("LedPattern", str, None),
         ("InputVoltage", float, None),
         ("PowerSupplyOutputVoltage", float, None),
         ("PowerSupplyTemperature", float, None),
-        ("OutsideTemperature", float, None),
         ("PcbTemperature", float, None),
+        ("FemAmbientTemperature", float, None),
+        ("FemCaseTemperatures", (float,), 2),
+        ("FemHeatsinkTemperatures", (float,), 2),
         ("PortsConnected", (bool,), PORT_COUNT),
         ("PortForcings", (str,), PORT_COUNT),
         ("PortBreakersTripped", (bool,), PORT_COUNT),
@@ -166,7 +168,7 @@ class MccsSmartBox(SKABaseDevice):
         """Initialise the command handlers for this device."""
         super().init_command_objects()
 
-        for (command_name, method_name) in [
+        for command_name, method_name in [
             ("PowerOnPort", "turn_on_port"),
             ("PowerOffPort", "turn_off_port"),
         ]:
@@ -228,7 +230,7 @@ class MccsSmartBox(SKABaseDevice):
     # Attributes
     # ----------
     def _setup_smartbox_attributes(self: MccsSmartBox) -> None:
-        for (slug, data_type, length) in self.ATTRIBUTES:
+        for slug, data_type, length in self.ATTRIBUTES:
             self._setup_smartbox_attribute(
                 f"{slug}",
                 cast(type | tuple[type], data_type),
