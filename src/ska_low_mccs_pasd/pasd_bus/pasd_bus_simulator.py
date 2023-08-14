@@ -38,9 +38,9 @@ from __future__ import annotations
 
 import importlib.resources
 import logging
-import time
+import threading
 from datetime import datetime
-from typing import Final, Optional, Sequence
+from typing import Dict, Final, Optional, Sequence
 
 import yaml
 
@@ -79,6 +79,10 @@ class _PasdPortSimulator:
 
     def __init__(self: _PasdPortSimulator):
         """Initialise a new instance."""
+        self._event = threading.Event()
+        self._event.set()
+        self._wait = False
+        # Internal to simulator port states
         self._connected: bool = False
         self._on: bool = False
         # Simulated PDoC/FEM state registers
@@ -96,6 +100,7 @@ class _PasdPortSimulator:
         Turn the port ON or OFF depending on the desired power, forcing and
         breaker trip states.
         """
+        previous = self._on
         if self._forcing is False:
             self._on = False
         elif self._forcing or (self._enabled and not self._breaker_tripped):
@@ -107,6 +112,9 @@ class _PasdPortSimulator:
                 self._on = False
         elif not self._enabled or self._breaker_tripped:  # forcing has priority
             self._on = False
+        if self._wait and previous != self._on:
+            self._event.clear()
+            self._event.wait()
 
     @property
     def connected(self: _PasdPortSimulator) -> bool:
@@ -285,10 +293,7 @@ class PasdHardwareSimulator:
     DEFAULT_UPTIME: Final = 0
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
-    def __init__(
-        self: PasdHardwareSimulator,
-        number_of_ports: int,
-    ) -> None:
+    def __init__(self: PasdHardwareSimulator, number_of_ports: int) -> None:
         """
         Initialise a new instance.
 
@@ -724,8 +729,12 @@ class FndhSimulator(PasdHardwareSimulator):
     internal_ambient_temperature = Sensor()
     internal_ambient_temperature_thresholds = Sensor()
 
-    def __init__(self: FndhSimulator) -> None:
-        """Initialise a new instance."""
+    def __init__(self: FndhSimulator, wait: bool = False) -> None:
+        """
+        Initialise a new instance.
+
+        :param wait: implement threading event wait or not
+        """
         super().__init__(self.NUMBER_OF_PORTS)
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "fndh")
@@ -739,6 +748,9 @@ class FndhSimulator(PasdHardwareSimulator):
         self.power_module_temperature = self.DEFAULT_POWER_MODULE_TEMPERATURE
         self.outside_temperature = self.DEFAULT_OUTSIDE_TEMPERATURE
         self.internal_ambient_temperature = self.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+        if wait:
+            for port in self._ports:
+                port._wait = wait
 
     @property
     def sys_address(self: FndhSimulator) -> int:
@@ -1006,17 +1018,18 @@ class PasdBusSimulator:
             f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}."
         )
 
-        self._fndh_simulator = FndhSimulator()
-        logger.info(f"Initialised FNDH simulator for station {station_id}.")
-        self._smartbox_simulators = [
-            SmartboxSimulator() for _ in range(self.NUMBER_OF_SMARTBOXES)
-        ]
-        logger.info(
-            f"Initialised {self.NUMBER_OF_SMARTBOXES} Smartbox"
-            f" simulators for station {station_id}."
+        self._ports_thread = threading.Thread(
+            target=self._smartbox_handling_loop,
+            name="PasdBusSimulator smartbox handling thread",
+            daemon=True,
         )
 
-        self._smartbox_fndh_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
+        self._smartbox_simulators: Dict[int, SmartboxSimulator] = {}
+        self._smartboxes_ports_connected: list[list[bool]] = []
+        self._smartbox_on_port_number_map: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
+        self._fndh_simulator = FndhSimulator(wait=True)
+        self._ports_thread.start()
+        logger.info(f"Initialised FNDH simulator for station {station_id}.")
 
         self._load_config()
         logger.info(
@@ -1038,7 +1051,41 @@ class PasdBusSimulator:
 
         :return: a sequence of smartboxes.
         """
-        return list(self._smartbox_simulators)
+        return list(self._smartbox_simulators.values())
+
+    def get_smartbox_on_port_number_map(self: PasdBusSimulator) -> list[int]:
+        """
+        Return a list of FNDH port numbers each smartbox is connected to.
+
+        :return: a list of FNDH port numbers each smartbox is connected to.
+        """
+        return self._smartbox_on_port_number_map
+
+    def _smartbox_handling_loop(self: PasdBusSimulator) -> None:
+        """Instantiate or delete smartboxes according to FNDH ports' power."""
+        logger.info("PaSD simulator smartbox handling thread started.")
+        ports_power_prev = self._fndh_simulator.ports_power_sensed
+        while True:
+            ports_power_now = self._fndh_simulator.ports_power_sensed
+            for port_nr, (power_prev, power_now) in enumerate(
+                zip(ports_power_prev, ports_power_now), 1
+            ):
+                if power_prev != power_now:
+                    try:
+                        smartbox_id = (
+                            self._smartbox_on_port_number_map.index(port_nr) + 1
+                        )
+                        if power_now:
+                            self._smartbox_simulators[smartbox_id] = SmartboxSimulator()
+                            self._smartbox_simulators[smartbox_id].configure(
+                                self._smartboxes_ports_connected[smartbox_id - 1]
+                            )
+                        else:
+                            del self._smartbox_simulators[smartbox_id]
+                    except ValueError:
+                        pass
+                    self._fndh_simulator._ports[port_nr - 1]._event.set()
+            ports_power_prev = ports_power_now
 
     def _load_config(self: PasdBusSimulator) -> bool:
         """
@@ -1065,27 +1112,21 @@ class PasdBusSimulator:
 
         my_config = config["stations"][self._station_id - 1]
 
-        fndh_port_is_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
+        fndh_ports_is_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
         for smartbox_config in my_config["smartboxes"]:
             smartbox_id = smartbox_config["smartbox_id"]
             fndh_port = smartbox_config["fndh_port"]
-            self._smartbox_fndh_ports[smartbox_id - 1] = fndh_port
-            fndh_port_is_connected[fndh_port - 1] = True
-        self._fndh_simulator.configure(fndh_port_is_connected)
+            self._smartbox_on_port_number_map[smartbox_id - 1] = fndh_port
+            fndh_ports_is_connected[fndh_port - 1] = True
+        self._fndh_simulator.configure(fndh_ports_is_connected)
 
-        smartbox_ports_connected = [
+        self._smartboxes_ports_connected = [
             [False] * SmartboxSimulator.NUMBER_OF_PORTS
             for _ in range(self.NUMBER_OF_SMARTBOXES)
         ]
         for antenna_config in my_config["antennas"]:
             smartbox_id = antenna_config["smartbox_id"]
             smartbox_port = antenna_config["smartbox_port"]
-            smartbox_ports_connected[smartbox_id - 1][smartbox_port - 1] = True
-
-        for smartbox_index, ports_connected in enumerate(smartbox_ports_connected):
-            self._smartbox_simulators[smartbox_index].configure(ports_connected)
-            # Small delay to make sure configuration timestamps differ at least
-            # by a few microseconds
-            time.sleep(0.000001)
+            self._smartboxes_ports_connected[smartbox_id - 1][smartbox_port - 1] = True
 
         return True

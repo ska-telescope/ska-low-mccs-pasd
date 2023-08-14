@@ -209,8 +209,7 @@ class TestPasdBusComponentManager:
         for _ in range(75):
             mock_callbacks.assert_against_call("pasd_device_state")
 
-        # TODO pasd_bus_component_manager.initialize_fndh()
-        assert fndh_simulator.initialize()
+        pasd_bus_component_manager.initialize_fndh()
         ports_connected = fndh_simulator.ports_connected
         expected_port_forcings = fndh_simulator.port_forcings
         expected_ports_desired_power_when_online = (
@@ -290,8 +289,7 @@ class TestPasdBusComponentManager:
         for _ in range(75):
             mock_callbacks.assert_against_call("pasd_device_state")
 
-        # TODO pasd_bus_component_manager.initialize_smartbox(smartbox_id)
-        assert smartbox_simulator.initialize()
+        pasd_bus_component_manager.initialize_smartbox(smartbox_id)
         ports_current_draw = smartbox_simulator.ports_current_draw
         ports_connected = smartbox_simulator.ports_connected
         expected_port_forcings = smartbox_simulator.port_forcings
@@ -382,7 +380,7 @@ class TestPasdBusComponentManager:
             0,  # FNDH
             uptime=FndhSimulator.DEFAULT_UPTIME,
             sys_address=FndhSimulator.SYS_ADDRESS,
-            status=FndhSimulator.DEFAULT_STATUS,
+            status="OK",
             led_pattern="SERVICE",
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,

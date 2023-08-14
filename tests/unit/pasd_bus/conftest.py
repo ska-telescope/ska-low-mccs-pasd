@@ -150,15 +150,19 @@ def mock_fndh_simulator_fixture(
 @pytest.fixture(name="smartbox_simulators")
 def smartbox_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
+    fndh_simulator: FndhSimulator,
 ) -> Sequence[SmartboxSimulator]:
     """
     Return the smartbox simulators.
 
     :param pasd_bus_simulator: a PaSD bus simulator whose smartbox
         simulators are to be returned.
-
+    :param fndh_simulator: FNDH simulator the smartboxes are connected to.
     :return: a sequence of smartbox simulators
     """
+    fndh_simulator.initialize()
+    for port_nr in pasd_bus_simulator.get_smartbox_on_port_number_map():
+        fndh_simulator.turn_port_on(port_nr)
     return pasd_bus_simulator.get_smartboxes()
 
 
