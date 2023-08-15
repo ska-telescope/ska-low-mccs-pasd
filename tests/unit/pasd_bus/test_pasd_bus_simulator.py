@@ -8,7 +8,7 @@
 """This module contains the tests of the PaSD bus component manager."""
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import Any, Dict
 
 import pytest
 
@@ -18,15 +18,66 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
 )
 
 
-# pylint: disable=too-few-public-methods
+@pytest.fixture(name="fndh_config")
+def fndh_config_fixture(pasd_config: dict[str, Any]) -> list[bool]:
+    """
+    Return FNDH configuration data, specifying which ports are connected.
+
+    :param pasd_config: the overall PaSD configuration data from
+        which the FNDH configuration data will be extracted.
+    :return: a list of booleans indicating which ports are connected
+    """
+    is_port_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
+    for smartbox_config in pasd_config["smartboxes"]:
+        is_port_connected[smartbox_config["fndh_port"] - 1] = True
+    return list(is_port_connected)
+
+
 class TestPasdBusSimulator:
     """Tests of the combined PasdBusSimulator."""
+
+    def test_smartboxes_depend_on_fndh_ports(
+        self: TestPasdBusSimulator,
+        fndh_simulator: FndhSimulator,
+        smartbox_simulators: Dict[int, SmartboxSimulator],
+        fndh_config: list[bool],
+        smartbox_on_port_number_map: list[int],
+    ) -> None:
+        """
+        Test that smartbox instances depend on the state of the FNDH ports.
+
+        A smartbox instance should be destroyed when the FNDH port it is connected to
+        is turned off, and instantiated again when the port is turned back on.
+
+        :param fndh_simulator: the FNDH simulator under test
+        :param fndh_config: a list indicating which FNDH ports are connected
+        :param smartbox_simulators: list of smartbox simulators under test
+        :param smartbox_on_port_number_map: a list of FNDH port numbers each smartbox
+            is connected to.
+        """
+        assert fndh_simulator.status == "OK"
+        assert fndh_simulator.ports_connected == fndh_config
+        assert fndh_simulator.ports_desired_power_when_online == fndh_config
+        assert fndh_simulator.ports_power_sensed == fndh_config
+        for smartbox_id in list(smartbox_simulators.keys()):
+            smartbox_simulator = smartbox_simulators[smartbox_id]
+            port_nr = smartbox_on_port_number_map[smartbox_id - 1]
+            assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
+            assert smartbox_simulator.initialize()
+            assert smartbox_simulator.status == "OK"
+            assert fndh_simulator.turn_port_off(port_nr)
+            assert fndh_simulator.ports_power_sensed[port_nr - 1] is False
+            assert smartbox_simulators.get(smartbox_id) is None
+            assert fndh_simulator.turn_port_on(port_nr)
+            assert fndh_simulator.ports_power_sensed[port_nr - 1]
+            smartbox_simulator = smartbox_simulators[smartbox_id]
+            assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
 
     @pytest.mark.xfail(reason="uptime currently must be a static value for tango mocks")
     def test_uptimes(
         self: TestPasdBusSimulator,
         fndh_simulator: FndhSimulator,
-        smartbox_simulators: Sequence[SmartboxSimulator],
+        smartbox_simulators: Dict[int, SmartboxSimulator],
     ) -> None:
         """
         Test the uptimes of a PaSD bus simulator.
@@ -39,8 +90,8 @@ class TestPasdBusSimulator:
         """
         fndh_uptime = fndh_simulator.uptime
         assert fndh_uptime > 0
-        previous_smartbox_uptime = 10000
-        for smartbox_simulator in smartbox_simulators:
+        previous_smartbox_uptime = 1000000
+        for smartbox_simulator in list(smartbox_simulators.values()):
             assert smartbox_simulator.uptime > 0
             assert fndh_uptime > smartbox_simulator.uptime
             assert smartbox_simulator.uptime < previous_smartbox_uptime
@@ -49,23 +100,6 @@ class TestPasdBusSimulator:
 
 class TestFndhSimulator:
     """Tests of the FndhSimulator."""
-
-    @pytest.fixture(name="fndh_config")
-    def fndh_config_fixture(
-        self: TestFndhSimulator, pasd_config: dict[str, Any]
-    ) -> list[bool]:
-        """
-        Return FNDH configuration data, specifying which ports are connected.
-
-        :param pasd_config: the overall PaSD configuration data from
-            which the FNDH configuration data will be extracted.
-
-        :return: a list of booleans indicating which ports are connected
-        """
-        is_port_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
-        for smartbox_config in pasd_config["smartboxes"]:
-            is_port_connected[smartbox_config["fndh_port"] - 1] = True
-        return list(is_port_connected)
 
     @pytest.fixture(name="connected_fndh_port")
     def connected_fndh_port_fixture(

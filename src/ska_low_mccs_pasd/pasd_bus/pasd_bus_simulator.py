@@ -40,7 +40,7 @@ import importlib.resources
 import logging
 import threading
 from datetime import datetime
-from typing import Dict, Final, Optional, Sequence
+from typing import Dict, Final, Optional
 
 import yaml
 
@@ -299,6 +299,9 @@ class PasdHardwareSimulator:
 
         :param number_of_ports: number of ports managed by this hardware
         """
+        # TODO: Add the timestamp back after figuring out how tango testing asserts
+        # can handle a changing value?
+        # self._boot_on_time = datetime.now()
         self._boot_on_time: datetime | None = None
         self._ports = [_PasdPortSimulator() for _ in range(number_of_ports)]
         self._sensors_status: dict = {}
@@ -435,9 +438,6 @@ class PasdHardwareSimulator:
             raise ValueError("Configuration must match the number of ports.")
         for port, is_connected in zip(self._ports, ports_connected):
             port.connected = is_connected
-        # TODO: Add the timestamp back after figuring out how tango testing asserts
-        # can handle a changing value?
-        # self._boot_on_time = datetime.now()
 
     @property
     def ports_connected(self: PasdHardwareSimulator) -> list[bool]:
@@ -1045,13 +1045,13 @@ class PasdBusSimulator:
         """
         return self._fndh_simulator
 
-    def get_smartboxes(self: PasdBusSimulator) -> Sequence[SmartboxSimulator]:
+    def get_smartboxes(self: PasdBusSimulator) -> Dict[int, SmartboxSimulator]:
         """
-        Return a sequence of smartboxes.
+        Return a dictionary of smartboxes.
 
-        :return: a sequence of smartboxes.
+        :return: a dictionary of smartboxes.
         """
-        return list(self._smartbox_simulators.values())
+        return self._smartbox_simulators
 
     def get_smartbox_on_port_number_map(self: PasdBusSimulator) -> list[int]:
         """

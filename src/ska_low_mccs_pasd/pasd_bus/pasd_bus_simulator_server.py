@@ -57,7 +57,7 @@ def main() -> None:
 
     simulator = PasdBusSimulator(int(station_id), logging.DEBUG)
     simulator_server = PasdBusSimulatorJsonServer(
-        simulator.get_fndh(), simulator.get_smartboxes()
+        simulator.get_fndh(), list(simulator.get_smartboxes().values())
     )
     server = TcpServer(host, port, simulator_server, logger=logger)
     with server:

@@ -15,7 +15,7 @@ import logging
 import threading
 import unittest.mock
 from contextlib import contextmanager
-from typing import Any, Callable, ContextManager, Generator, Iterator, Sequence
+from typing import Any, Callable, ContextManager, Dict, Generator, Iterator, Sequence
 
 import pytest
 import tango
@@ -129,26 +129,46 @@ def mock_fndh_simulator_fixture(
     return mock_simulator
 
 
+@pytest.fixture(name="smartbox_on_port_number_map")
+def smartbox_on_port_number_map_fixture(
+    pasd_bus_simulator: PasdBusSimulator,
+) -> list[int]:
+    """
+    Return a list of FNDH port numbers each smartbox is connected to.
+
+    :param pasd_bus_simulator: a PasdBusSimulator.
+    :return: a list of FNDH port numbers each smartbox is connected to.
+    """
+    return pasd_bus_simulator.get_smartbox_on_port_number_map()
+
+
 @pytest.fixture(name="smartbox_simulators")
 def smartbox_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-) -> Sequence[SmartboxSimulator]:
+    fndh_simulator: FndhSimulator,
+    smartbox_on_port_number_map: list[int],
+) -> Dict[int, SmartboxSimulator]:
     """
     Return the smartbox simulators.
 
     :param pasd_bus_simulator: a PaSD bus simulator whose smartbox
         simulators are to be returned.
-
-    :return: a sequence of smartbox simulators
+    :param fndh_simulator: FNDH simulator the smartboxes are connected to.
+    :param smartbox_on_port_number_map: a list of FNDH port numbers each smartbox
+            is connected to.
+    :return: a dictionary of smartbox simulators
     """
+    fndh_simulator.initialize()
+    for port_nr in smartbox_on_port_number_map:
+        fndh_simulator.turn_port_on(port_nr)
     return pasd_bus_simulator.get_smartboxes()
 
 
 @pytest.fixture(name="smartbox_simulator")
 def smartbox_simulator_fixture(
-    smartbox_simulators: list[unittest.mock.Mock],
+    smartbox_simulators: Dict[int, SmartboxSimulator],
     smartbox_id: int,
-) -> unittest.mock.Mock:
+) -> SmartboxSimulator:
     """
     Return a smartbox simulator for testing.
 
@@ -158,7 +178,7 @@ def smartbox_simulator_fixture(
 
     :return: a smartbox simulator, wrapped in a mock.
     """
-    return smartbox_simulators[smartbox_id - 1]
+    return smartbox_simulators[smartbox_id]
 
 
 @pytest.fixture(name="smartbox_id")
@@ -173,7 +193,7 @@ def smartbox_id_fixture() -> int:
 
 @pytest.fixture(name="mock_smartbox_simulators")
 def mock_smartbox_simulators_fixture(
-    smartbox_simulators: Sequence[SmartboxSimulator],
+    smartbox_simulators: Dict[int, SmartboxSimulator],
 ) -> Sequence[unittest.mock.Mock]:
     """
     Return the mock smartbox simulators.
@@ -189,7 +209,7 @@ def mock_smartbox_simulators_fixture(
     """
     mock_simulators: list[unittest.mock.Mock] = []
 
-    for smartbox_simulator in smartbox_simulators:
+    for smartbox_simulator in list(smartbox_simulators.values()):
         mock_simulator = unittest.mock.Mock(wraps=smartbox_simulator)
 
         # "wraps" doesn't handle properties -- we have to add them manually
