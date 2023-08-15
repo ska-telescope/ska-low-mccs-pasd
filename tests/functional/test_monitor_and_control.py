@@ -347,17 +347,20 @@ def check_fndh_port_is_off(
         callbacks with asynchrony support.
     :param pasd_bus_name: FQDN of PaSD bus device.
     """
-    change_event_callbacks[f"{pasd_bus_name}/fndhPortsPowerSensed"].assert_change_event(
-        Anything
-    )
-    try:
+    fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
+    is_on = fndh_ports_power_sensed[connected_fndh_port - 1]
+    if is_on:
+        turn_fndh_port_off(pasd_bus_device, connected_fndh_port)
+        check_fndh_port_changes_power_state(
+            pasd_bus_device,
+            connected_fndh_port,
+            change_event_callbacks,
+            "off",
+            pasd_bus_name,
+        )
         fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
-    except tango.DevFailed:
-        change_event_callbacks[
-            f"{pasd_bus_name}/fndhPortsPowerSensed"
-        ].assert_change_event(Anything)
-        fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
-    assert not fndh_ports_power_sensed[connected_fndh_port - 1]
+        is_on = fndh_ports_power_sensed[connected_fndh_port - 1]
+    assert not is_on
 
 
 @given("the FNDH port is on")

@@ -190,7 +190,7 @@ class TestfndhPasdBusIntegration:
         assert fndh_device.ChipId == FndhSimulator.CHIP_ID
         assert fndh_device.FirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
         assert fndh_device.Uptime == FndhSimulator.DEFAULT_UPTIME
-        assert fndh_device.PasdStatus == FndhSimulator.DEFAULT_STATUS
+        assert fndh_device.PasdStatus == "OK"
         assert fndh_device.LedPattern == FndhSimulator.DEFAULT_LED_PATTERN
         assert list(fndh_device.Psu48vVoltages) == FndhSimulator.DEFAULT_PSU48V_VOLTAGES
         assert fndh_device.Psu48vCurrent == FndhSimulator.DEFAULT_PSU48V_CURRENT
@@ -329,16 +329,16 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["fndhPort2PowerState"],
         )
+        change_event_callbacks["fndhPort2PowerState"].assert_change_event(PowerState.ON)
+
+        assert fndh_device.PortPowerState(2) == PowerState.ON
+        assert fndh_simulator.turn_port_off(2)
+
         change_event_callbacks["fndhPort2PowerState"].assert_change_event(
             PowerState.OFF
         )
 
         assert fndh_device.PortPowerState(2) == PowerState.OFF
-        assert fndh_simulator.turn_port_on(2)
-
-        change_event_callbacks["fndhPort2PowerState"].assert_change_event(PowerState.ON)
-
-        assert fndh_device.PortPowerState(2) == PowerState.ON
 
 
 @pytest.fixture(name="change_event_callbacks")
