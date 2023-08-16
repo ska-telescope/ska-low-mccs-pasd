@@ -23,7 +23,6 @@ from pymodbus.register_read_message import (
 )
 from pymodbus.register_write_message import WriteSingleRegisterResponse
 
-# from .pasd_bus_custom_pymodbus import CustomReadHoldingRegistersResponse
 from .pasd_bus_register_map import (
     PasdBusPortAttribute,
     PasdBusRegisterMap,
@@ -140,9 +139,6 @@ class PasdBusModbusApiClient:
         self._client = ModbusTcpClient(host, port, ModbusAsciiFramer)
         logger.info(f"****Created Modbus TCP client for address {host}, port {port}")
         self._client.connect()
-        # Register a custom response as a workaround to the firmware issue
-        # (see JIRA ticket PRTS-255)
-        # self._client.register(CustomReadHoldingRegistersResponse)  # type: ignore
 
         # Initialise a default register map
         self._register_map = PasdBusRegisterMap()

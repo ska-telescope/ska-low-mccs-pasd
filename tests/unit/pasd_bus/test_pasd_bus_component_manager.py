@@ -8,7 +8,6 @@
 """This module contains the tests of the PaSD bus component manager."""
 from __future__ import annotations
 
-import pytest
 from ska_control_model import CommunicationStatus, PowerState
 from ska_tango_testing.mock import MockCallableGroup
 
@@ -28,7 +27,6 @@ class TestPasdBusComponentManager:
     common commands.
     """
 
-    @pytest.mark.skip("Temporarily")  # TODO: Fix test
     def test_attribute_updates(
         self: TestPasdBusComponentManager,
         pasd_config: dict,
@@ -105,19 +103,19 @@ class TestPasdBusComponentManager:
             ),
         )
 
-        expected_fndh_ports_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
+        expected_fndh_ports_powered = [False] * FndhSimulator.NUMBER_OF_PORTS
         for smartbox_config in pasd_config["smartboxes"]:
-            expected_fndh_ports_connected[smartbox_config["fndh_port"] - 1] = True
+            expected_fndh_ports_powered[smartbox_config["fndh_port"] - 1] = True
 
         # Then FNDH port status info
         mock_callbacks.assert_call(
             "pasd_device_state",
             0,  # FNDH
-            ports_connected=expected_fndh_ports_connected,
+            ports_connected=expected_fndh_ports_powered,
             port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
-            ports_desired_power_when_online=[False] * FndhSimulator.NUMBER_OF_PORTS,
-            ports_desired_power_when_offline=[False] * FndhSimulator.NUMBER_OF_PORTS,
-            ports_power_sensed=[False] * FndhSimulator.NUMBER_OF_PORTS,
+            ports_desired_power_when_online=expected_fndh_ports_powered,
+            ports_desired_power_when_offline=expected_fndh_ports_powered,
+            ports_power_sensed=expected_fndh_ports_powered,
         )
 
         for smartbox_number in range(1, 25):
