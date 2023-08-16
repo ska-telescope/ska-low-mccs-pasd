@@ -114,7 +114,7 @@ class _PasdPortSimulator:
             self._on = False
         if self._wait and previous != self._on:
             self._event.clear()
-            self._event.wait(1)
+            self._event.wait(0.05)
 
     @property
     def connected(self: _PasdPortSimulator) -> bool:
