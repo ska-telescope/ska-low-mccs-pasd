@@ -38,9 +38,8 @@ from __future__ import annotations
 
 import importlib.resources
 import logging
-import threading
 from datetime import datetime
-from typing import Dict, Final, Optional
+from typing import Callable, Dict, Final, Optional
 
 import yaml
 
@@ -77,11 +76,22 @@ class _PasdPortSimulator:
 
     # pylint: disable=too-many-instance-attributes
 
-    def __init__(self: _PasdPortSimulator):
-        """Initialise a new instance."""
-        self._event = threading.Event()
-        self._event.set()
-        self._wait = False
+    def __init__(
+        self: _PasdPortSimulator,
+        number: int | None = None,
+        instantiate_smartbox: Callable[[int], Optional[bool]] | None = None,
+        delete_smartbox: Callable[[int], Optional[bool]] | None = None,
+    ):
+        """
+        Initialise a new instance.
+
+        :param number: optional port number of FNDH/smartbox.
+        :param instantiate_smartbox: optional reference to PasdBusSimulator function.
+        :param delete_smartbox: optional reference to PasdBusSimulator function.
+        """
+        self._number = number
+        self._instantiate_smartbox = instantiate_smartbox
+        self._delete_smartbox = delete_smartbox
         # Internal to simulator port states
         self._connected: bool = False
         self._on: bool = False
@@ -112,9 +122,17 @@ class _PasdPortSimulator:
                 self._on = False
         elif not self._enabled or self._breaker_tripped:  # forcing has priority
             self._on = False
-        if self._wait and previous != self._on:
-            self._event.clear()
-            self._event.wait(0.05)
+        # Instantiate or delete smartbox if port state has changed
+        if (
+            previous != self._on
+            and self._instantiate_smartbox is not None
+            and self._delete_smartbox is not None
+            and self._number is not None
+        ):
+            if self._on:
+                self._instantiate_smartbox(self._number)
+            else:
+                self._delete_smartbox(self._number)
 
     @property
     def connected(self: _PasdPortSimulator) -> bool:
@@ -293,17 +311,27 @@ class PasdHardwareSimulator:
     DEFAULT_UPTIME: Final = 0
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
-    def __init__(self: PasdHardwareSimulator, number_of_ports: int) -> None:
+    def __init__(
+        self: PasdHardwareSimulator,
+        number_of_ports: int,
+        instantiate_smartbox: Callable[[int], Optional[bool]] | None = None,
+        delete_smartbox: Callable[[int], Optional[bool]] | None = None,
+    ) -> None:
         """
         Initialise a new instance.
 
-        :param number_of_ports: number of ports managed by this hardware
+        :param number_of_ports: number of ports managed by this hardware.
+        :param instantiate_smartbox: optional reference to PasdBusSimulator function.
+        :param delete_smartbox: optional reference to PasdBusSimulator function.
         """
         # TODO: Add the timestamp back after figuring out how tango testing asserts
         # can handle a changing value?
         # self._boot_on_time = datetime.now()
         self._boot_on_time: datetime | None = None
-        self._ports = [_PasdPortSimulator() for _ in range(number_of_ports)]
+        self._ports = [
+            _PasdPortSimulator(port_index + 1, instantiate_smartbox, delete_smartbox)
+            for port_index in range(number_of_ports)
+        ]
         self._sensors_status: dict = {}
         self._status = self.DEFAULT_STATUS
         self._led_pattern = str(self.DEFAULT_LED_PATTERN)
@@ -729,13 +757,18 @@ class FndhSimulator(PasdHardwareSimulator):
     internal_ambient_temperature = Sensor()
     internal_ambient_temperature_thresholds = Sensor()
 
-    def __init__(self: FndhSimulator, wait: bool = False) -> None:
+    def __init__(
+        self: FndhSimulator,
+        instantiate_smartbox: Callable[[int], Optional[bool]] | None = None,
+        delete_smartbox: Callable[[int], Optional[bool]] | None = None,
+    ) -> None:
         """
         Initialise a new instance.
 
-        :param wait: implement threading event wait or not
+        :param instantiate_smartbox: optional reference to PasdBusSimulator function.
+        :param delete_smartbox: optional reference to PasdBusSimulator function.
         """
-        super().__init__(self.NUMBER_OF_PORTS)
+        super().__init__(self.NUMBER_OF_PORTS, instantiate_smartbox, delete_smartbox)
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "fndh")
         self.psu48v_voltages = self.DEFAULT_PSU48V_VOLTAGES
@@ -748,9 +781,6 @@ class FndhSimulator(PasdHardwareSimulator):
         self.power_module_temperature = self.DEFAULT_POWER_MODULE_TEMPERATURE
         self.outside_temperature = self.DEFAULT_OUTSIDE_TEMPERATURE
         self.internal_ambient_temperature = self.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
-        if wait:
-            for port in self._ports:
-                port._wait = wait
 
     @property
     def sys_address(self: FndhSimulator) -> int:
@@ -1013,22 +1043,17 @@ class PasdBusSimulator:
         """
         self._station_id = station_id
         logger.setLevel(logging_level)
-
         logger.info(
             f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}."
-        )
-
-        self._ports_thread = threading.Thread(
-            target=self._smartbox_handling_loop,
-            name="PasdBusSimulator smartbox handling thread",
-            daemon=True,
         )
 
         self._smartbox_simulators: Dict[int, SmartboxSimulator] = {}
         self._smartboxes_ports_connected: list[list[bool]] = []
         self._smartbox_on_port_number_map: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
-        self._fndh_simulator = FndhSimulator(wait=True)
-        self._ports_thread.start()
+
+        self._fndh_simulator = FndhSimulator(
+            self._instantiate_smartbox, self._delete_smartbox
+        )
         logger.info(f"Initialised FNDH simulator for station {station_id}.")
 
         self._load_config()
@@ -1061,31 +1086,38 @@ class PasdBusSimulator:
         """
         return self._smartbox_on_port_number_map
 
-    def _smartbox_handling_loop(self: PasdBusSimulator) -> None:
-        """Instantiate or delete smartboxes according to FNDH ports' power."""
-        logger.info("PaSD simulator smartbox handling thread started.")
-        ports_power_prev = self._fndh_simulator.ports_power_sensed
-        while True:
-            ports_power_now = self._fndh_simulator.ports_power_sensed
-            for port_nr, (power_prev, power_now) in enumerate(
-                zip(ports_power_prev, ports_power_now), 1
-            ):
-                if power_prev != power_now:
-                    try:
-                        smartbox_id = (
-                            self._smartbox_on_port_number_map.index(port_nr) + 1
-                        )
-                        if power_now:
-                            self._smartbox_simulators[smartbox_id] = SmartboxSimulator()
-                            self._smartbox_simulators[smartbox_id].configure(
-                                self._smartboxes_ports_connected[smartbox_id - 1]
-                            )
-                        else:
-                            del self._smartbox_simulators[smartbox_id]
-                    except ValueError:
-                        pass
-                    self._fndh_simulator._ports[port_nr - 1]._event.set()
-            ports_power_prev = ports_power_now
+    def _instantiate_smartbox(
+        self: PasdBusSimulator, port_number: int
+    ) -> Optional[bool]:
+        """
+        Try to instantiate a smartbox.
+
+        :param port_number: of FNDH.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        try:
+            smartbox_id = self._smartbox_on_port_number_map.index(port_number) + 1
+            self._smartbox_simulators[smartbox_id] = SmartboxSimulator()
+            self._smartbox_simulators[smartbox_id].configure(
+                self._smartboxes_ports_connected[smartbox_id - 1]
+            )
+            return True
+        except ValueError:
+            return None
+
+    def _delete_smartbox(self: PasdBusSimulator, port_number: int) -> Optional[bool]:
+        """
+        Try to delete an existing smartbox instance.
+
+        :param port_number: of FNDH.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        try:
+            smartbox_id = self._smartbox_on_port_number_map.index(port_number) + 1
+            del self._smartbox_simulators[smartbox_id]
+            return True
+        except ValueError:
+            return None
 
     def _load_config(self: PasdBusSimulator) -> bool:
         """
