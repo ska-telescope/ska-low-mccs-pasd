@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Callable, Final, Sequence
+from typing import Any, Callable, Dict, Final
+from unittest.mock import Mock
 
 import jsonschema
 
@@ -84,7 +85,7 @@ class PasdBusJsonApi:
 
     def __init__(
         self,
-        simulators: Sequence[FndhSimulator | SmartboxSimulator],
+        simulators: Dict[int, FndhSimulator | SmartboxSimulator | Mock],
         encoding: str = "utf-8",
     ) -> None:
         """
@@ -102,6 +103,7 @@ class PasdBusJsonApi:
         attributes: dict[str, Any] = {}
         for name in names:
             try:
+                # TODO: Not sure how API should handle "unresponsive" smartbox
                 value = getattr(self._simulators[device_id], name)
             except AttributeError:
                 return {
@@ -109,6 +111,15 @@ class PasdBusJsonApi:
                         "source": device_id,
                         "code": "attribute",
                         "detail": f"Attribute '{name}' does not exist",
+                    },
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            except KeyError:
+                return {
+                    "error": {
+                        "source": device_id,
+                        "code": "device",
+                        "detail": f"Device '{device_id}' does not exist",
                     },
                     "timestamp": datetime.utcnow().isoformat(),
                 }
@@ -121,6 +132,7 @@ class PasdBusJsonApi:
 
     def _handle_command(self, device_id: int, name: str, args: tuple) -> dict:
         try:
+            # TODO: Not sure how API should handle "unresponsive" smartbox
             command = getattr(self._simulators[device_id], name)
         except AttributeError:
             response: dict[str, Any] = {
@@ -129,6 +141,14 @@ class PasdBusJsonApi:
                     "code": "attribute",
                     "detail": f"Command '{name}' does not exist",
                 }
+            }
+        except KeyError:
+            response = {
+                "error": {
+                    "source": device_id,
+                    "code": "device",
+                    "detail": f"Device '{device_id}' does not exist",
+                },
             }
         else:
             try:

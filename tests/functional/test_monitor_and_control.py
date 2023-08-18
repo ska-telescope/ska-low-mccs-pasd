@@ -14,7 +14,7 @@ from typing import Callable, Literal
 
 import tango
 from pytest_bdd import given, parsers, scenario, then, when
-from ska_control_model import AdminMode, HealthState
+from ska_control_model import AdminMode, HealthState, ResultCode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -315,7 +315,8 @@ def find_connected_fndh_port(
         port can be turned on and power will be sensed.
     """
     try:
-        pasd_bus_device.InitializeFndh()
+        assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+        print("PaSD bus initialized FNDH")
         fndh_connected_ports = list(pasd_bus_device.fndhPortsConnected)
     except tango.DevFailed:
         change_event_callbacks[
@@ -490,8 +491,8 @@ def find_connected_smartbox_port(
         port can be turned on and power will be sensed.
     """
     try:
-        pasd_bus_device.InitializeFndh()
-        pasd_bus_device.InitializeSmartbox(smartbox_id)
+        assert pasd_bus_device.InitializeSmartbox(smartbox_id)[0] == ResultCode.OK
+        print(f"PaSD bus initialized Smartbox {smartbox_id}")
         smartbox_connected_ports = list(
             getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsConnected")
         )

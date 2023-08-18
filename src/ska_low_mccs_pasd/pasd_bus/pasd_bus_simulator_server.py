@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import os
 from socket import gethostname
-from typing import Sequence
+from typing import Dict
 
 from ska_ser_devices.client_server import (
     ApplicationServer,
@@ -30,7 +30,7 @@ class PasdBusSimulatorJsonServer(ApplicationServer):
     def __init__(
         self: PasdBusSimulatorJsonServer,
         fndh_simulator: FndhSimulator,
-        smartbox_simulators: Sequence[SmartboxSimulator],
+        smartbox_simulators: Dict[int, SmartboxSimulator],
     ) -> None:
         """
         Initialise a new instance.
@@ -40,8 +40,8 @@ class PasdBusSimulatorJsonServer(ApplicationServer):
         :param smartbox_simulators: the smartbox simulator backends to
             which this server provides access.
         """
-        simulators: list[FndhSimulator | SmartboxSimulator] = [fndh_simulator]
-        simulators.extend(smartbox_simulators)
+        simulators: Dict[int, FndhSimulator | SmartboxSimulator] = {0: fndh_simulator}
+        simulators.update(smartbox_simulators)
         simulator_api = PasdBusJsonApi(simulators)
         marshaller = SentinelBytesMarshaller(b"\n")
         super().__init__(marshaller.unmarshall, marshaller.marshall, simulator_api)
@@ -57,7 +57,7 @@ def main() -> None:
 
     simulator = PasdBusSimulator(int(station_id), logging.DEBUG)
     simulator_server = PasdBusSimulatorJsonServer(
-        simulator.get_fndh(), list(simulator.get_smartboxes().values())
+        simulator.get_fndh(), simulator.get_smartboxes()
     )
     server = TcpServer(host, port, simulator_server, logger=logger)
     with server:

@@ -9,12 +9,17 @@
 from __future__ import annotations
 
 import json
-import unittest
-from typing import Sequence
+from typing import Dict
+from unittest import mock
 
 import pytest
 
-from ska_low_mccs_pasd.pasd_bus import PasdBusJsonApi, PasdBusSimulator
+from ska_low_mccs_pasd.pasd_bus import (
+    FndhSimulator,
+    PasdBusJsonApi,
+    PasdBusSimulator,
+    SmartboxSimulator,
+)
 
 
 class TestPasdBusJsonApi:
@@ -24,7 +29,7 @@ class TestPasdBusJsonApi:
     def backend_pasd_bus_fixture(
         self: TestPasdBusJsonApi,
         pasd_bus_simulator: PasdBusSimulator,
-    ) -> unittest.mock.Mock:
+    ) -> mock.Mock:
         """
         Return a mock backend to test the API against.
 
@@ -34,17 +39,17 @@ class TestPasdBusJsonApi:
 
         :return: a mock backend to test the API against.
         """
-        mock = unittest.mock.create_autospec(
+        backend_pasd_bus = mock.create_autospec(
             pasd_bus_simulator,
             spec_set=True,
             instance=True,
         )
-        return mock
+        return backend_pasd_bus
 
     @pytest.fixture(name="backend_fndh")
     def backend_fndh_fixture(
         self: TestPasdBusJsonApi, pasd_bus_simulator: PasdBusSimulator
-    ) -> unittest.mock.Mock:
+    ) -> mock.Mock:
         """
         Return a mock backend FNDH to test the API against.
 
@@ -55,26 +60,26 @@ class TestPasdBusJsonApi:
 
         :return: a mock backend to test the API against.
         """
-        mock = unittest.mock.create_autospec(
+        backend_fndh = mock.create_autospec(
             pasd_bus_simulator.get_fndh(),
             spec_set=True,
             instance=True,
             fncb_temperature=40.0,
         )
-        mock.set_led_pattern.return_value = True
-        mock.turn_port_off.side_effect = ValueError("Mock error")
-        return mock
+        backend_fndh.set_led_pattern.return_value = True
+        backend_fndh.turn_port_off.side_effect = ValueError("Mock error")
+        return backend_fndh
 
     @pytest.fixture(name="backend_smartboxes")
     def backend_smartboxes_fixture(
         self: TestPasdBusJsonApi,
-    ) -> Sequence[unittest.mock.Mock]:
+    ) -> Dict[int, mock.Mock]:
         """
-        Return a sequence of mock backend smartboxes to test the API against.
+        Return a dictionary of mock backend smartboxes to test the API against.
 
         :return: mock backends to test the API against.
         """
-        return [unittest.mock.Mock() for _ in range(25)]
+        return {i: mock.Mock() for i in range(1, 25)}
 
     @pytest.fixture(name="encoding")
     def encoding_fixture(
@@ -91,22 +96,26 @@ class TestPasdBusJsonApi:
     @pytest.fixture(name="api")
     def api_fixture(
         self: TestPasdBusJsonApi,
-        backend_fndh: unittest.mock.Mock,
-        backend_smartboxes: Sequence[unittest.mock.Mock],
+        backend_fndh: mock.Mock,
+        backend_smartboxes: Dict[int, mock.Mock],
         encoding: str,
     ) -> PasdBusJsonApi:
         """
         Return an API instance against which to test.
 
         :param backend_fndh: a mock backend FNDH for the API to front.
-        :param backend_smartboxes: sequence of mock backend smartboxes for
+        :param backend_smartboxes: dictionary of mock backend smartboxes for
             the API to front.
         :param encoding: the encoding to use when converting between string
             and bytes
 
         :return: an API instance against which to test
         """
-        return PasdBusJsonApi([backend_fndh] + list(backend_smartboxes), encoding)
+        backend_mocks: Dict[int, mock.Mock | FndhSimulator | SmartboxSimulator] = {
+            0: backend_fndh
+        }
+        backend_mocks.update(backend_smartboxes)
+        return PasdBusJsonApi(backend_mocks, encoding)
 
     def test_nonjson(
         self: TestPasdBusJsonApi, api: PasdBusJsonApi, encoding: str
@@ -206,7 +215,7 @@ class TestPasdBusJsonApi:
         self: TestPasdBusJsonApi,
         api: PasdBusJsonApi,
         encoding: str,
-        backend_fndh: unittest.mock.Mock,
+        backend_fndh: mock.Mock,
     ) -> None:
         """
         Test handling of an attribute read request for a nonexistent attribute.
@@ -322,10 +331,7 @@ class TestPasdBusJsonApi:
         )
 
     def test_execute_command(
-        self: TestPasdBusJsonApi,
-        api: PasdBusJsonApi,
-        encoding: str,
-        backend_fndh: unittest.mock.Mock,
+        self: TestPasdBusJsonApi, api: PasdBusJsonApi, encoding: str
     ) -> None:
         """
         Test handling of a command execution request.
@@ -350,8 +356,6 @@ class TestPasdBusJsonApi:
         :param api: the API under test
         :param encoding: the encoding to use when converting between string
             and bytes
-        :param backend_fndh: a mock backend FNDH for this command to execute
-            against.
         """
         request = {
             "device_id": 0,

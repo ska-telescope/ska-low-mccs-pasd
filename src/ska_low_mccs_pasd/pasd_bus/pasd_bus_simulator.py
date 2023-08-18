@@ -374,7 +374,7 @@ class PasdHardwareSimulator:
                 setattr(self, sensor + "_thresholds", thresholds_list)
         except KeyError as exception:
             logger.error(
-                f"PaSD hardware simulator could not load thresholds: {exception}."
+                f"PaSD hardware simulator missing thresholds for {sensor}: {exception}."
             )
         return True
 
@@ -407,7 +407,7 @@ class PasdHardwareSimulator:
                 else:
                     self._sensors_status[sensor_name + str(i)] = "OK"
         except TypeError:
-            logger.warning(
+            logger.debug(
                 f"PaSD bus simulator: {sensor_name} has no thresholds defined!"
             )
             return
@@ -621,7 +621,7 @@ class PasdHardwareSimulator:
             self._update_ports_state()
             if self._status == "OK":
                 return True
-            logger.warning(
+            logger.debug(
                 f"PaSD Bus simulator status was not set to OK, status is {self._status}"
             )
             return False
@@ -913,7 +913,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
                 return None
             self._sys_address = address
             return True
-        logger.warning(
+        logger.info(
             "PaSD Bus simulator smartbox address must be in range from 1 to 99."
         )
         return False
@@ -1101,6 +1101,7 @@ class PasdBusSimulator:
             self._smartbox_simulators[smartbox_id].configure(
                 self._smartboxes_ports_connected[smartbox_id - 1]
             )
+            logger.debug(f"Initialised Smartbox simulator {smartbox_id}.")
             return True
         except ValueError:
             return None
@@ -1115,6 +1116,7 @@ class PasdBusSimulator:
         try:
             smartbox_id = self._smartbox_on_port_number_map.index(port_number) + 1
             del self._smartbox_simulators[smartbox_id]
+            logger.debug(f"Deleted Smartbox simulator {smartbox_id}.")
             return True
         except ValueError:
             return None

@@ -72,6 +72,15 @@ testpaths = "tests/"
 addopts = "--json-report --json-report-file=build/reports/report.json --cov-report html:build/htmlcov --cov-report xml:build/reports/code-coverage.xml --cov-report term:skip-covered --cov=ska_low_mccs_pasd --junitxml=build/reports/unit-tests.xml --verbose"
 console_output_style = "progress"
 junit_family = "legacy"
+markers = [
+    "SP-1931",
+    "XTP-21594",
+    "XTP-20301",
+    "XTP-21514",
+    "XTP-21515",
+    "XTP-21516",
+    "XTP-21517",
+]
 
 [tool.coverage.paths]
 source = ["src"]

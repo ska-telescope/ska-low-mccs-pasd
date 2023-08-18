@@ -15,7 +15,7 @@ import logging
 import threading
 import unittest.mock
 from contextlib import contextmanager
-from typing import Any, Callable, ContextManager, Dict, Generator, Iterator, Sequence
+from typing import Any, Callable, ContextManager, Dict, Generator, Iterator
 
 import pytest
 import tango
@@ -194,7 +194,7 @@ def smartbox_id_fixture() -> int:
 @pytest.fixture(name="mock_smartbox_simulators")
 def mock_smartbox_simulators_fixture(
     smartbox_simulators: Dict[int, SmartboxSimulator],
-) -> Sequence[unittest.mock.Mock]:
+) -> Dict[int, unittest.mock.Mock]:
     """
     Return the mock smartbox simulators.
 
@@ -207,9 +207,9 @@ def mock_smartbox_simulators_fixture(
 
     :return: a sequence of mock smartbox simulators
     """
-    mock_simulators: list[unittest.mock.Mock] = []
+    mock_simulators: Dict[int, unittest.mock.Mock] = {}
 
-    for smartbox_simulator in list(smartbox_simulators.values()):
+    for smartbox_id, smartbox_simulator in smartbox_simulators.items():
         mock_simulator = unittest.mock.Mock(wraps=smartbox_simulator)
 
         # "wraps" doesn't handle properties -- we have to add them manually
@@ -249,7 +249,7 @@ def mock_smartbox_simulators_fixture(
                 ),
             )
 
-        mock_simulators.append(mock_simulator)
+        mock_simulators[smartbox_id] = mock_simulator
 
     return mock_simulators
 
@@ -257,7 +257,7 @@ def mock_smartbox_simulators_fixture(
 @pytest.fixture(name="pasd_bus_simulator_server_launcher")
 def pasd_bus_simulator_server_launcher_fixture(
     mock_fndh_simulator: FndhSimulator,
-    mock_smartbox_simulators: Sequence[SmartboxSimulator],
+    mock_smartbox_simulators: Dict[int, SmartboxSimulator],
     logger: logging.Logger,
 ) -> Callable[[], ContextManager[TcpServer]]:
     """
