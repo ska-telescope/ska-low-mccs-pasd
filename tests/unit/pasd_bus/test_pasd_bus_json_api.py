@@ -64,7 +64,7 @@ class TestPasdBusJsonApi:
             pasd_bus_simulator.get_fndh(),
             spec_set=True,
             instance=True,
-            fncb_temperature=40.0,
+            fncb_temperature=4150,
         )
         backend_fndh.set_led_pattern.return_value = True
         backend_fndh.turn_port_off.side_effect = ValueError("Mock error")
@@ -72,14 +72,25 @@ class TestPasdBusJsonApi:
 
     @pytest.fixture(name="backend_smartboxes")
     def backend_smartboxes_fixture(
-        self: TestPasdBusJsonApi,
+        self: TestPasdBusJsonApi, pasd_bus_simulator: PasdBusSimulator
     ) -> Dict[int, mock.Mock]:
         """
         Return a dictionary of mock backend smartboxes to test the API against.
 
+        :param pasd_bus_simulator: a PasdBusSimulator.
+            This backend fixture doesn't actually use the simulator,
+            other than to autospec a mock
+            with the same interface as its smartboxes.
+
         :return: mock backends to test the API against.
         """
-        return {i: mock.Mock() for i in range(1, 25)}
+        backend_smartbox = mock.create_autospec(
+            SmartboxSimulator(),
+            spec_set=True,
+            instance=True,
+            input_voltage=4800,
+        )
+        return {i: backend_smartbox for i in range(1, 4)}
 
     @pytest.fixture(name="encoding")
     def encoding_fixture(
@@ -211,14 +222,11 @@ class TestPasdBusJsonApi:
             == "Attribute 'nonexistent_attribute' does not exist"
         )
 
-    def test_read_attribute(
-        self: TestPasdBusJsonApi,
-        api: PasdBusJsonApi,
-        encoding: str,
-        backend_fndh: mock.Mock,
+    def test_read_unresponsive_device(
+        self: TestPasdBusJsonApi, api: PasdBusJsonApi, encoding: str
     ) -> None:
         """
-        Test handling of an attribute read request for a nonexistent attribute.
+        Test handling of an attribute read request from a nonexistent device.
 
         The expected response looks like:
 
@@ -226,8 +234,48 @@ class TestPasdBusJsonApi:
 
             {
                 "error": {
-                    "code": "attribute",
-                    "detail": "Attribute 'nonexistent_attribute' does not exist",
+                    "code": "device",
+                    "detail": "Device 10 is unresponsive",
+                },
+                "timestamp": "2023-04-05T05:33:26.730023",
+            }
+
+        :param api: the API under test
+        :param encoding: the encoding to use when converting between string
+            and bytes
+        """
+        request = {"device_id": 10, "read": ["input_voltage"]}
+        request_str = json.dumps(request)
+        request_bytes = request_str.encode(encoding)
+        response_bytes = api(request_bytes)
+        response_str = response_bytes.decode(encoding)
+        response = json.loads(response_str)
+        print(response)
+        assert response["error"]["code"] == "device"
+        assert response["error"]["detail"] == "Device 10 is unresponsive"
+
+    def test_read_attribute(
+        self: TestPasdBusJsonApi,
+        api: PasdBusJsonApi,
+        encoding: str,
+        backend_fndh: mock.Mock,
+    ) -> None:
+        """
+        Test handling of an attribute read request for an attribute.
+
+        The expected response looks like:
+
+        .. code-block: json::
+
+            {
+                "source": 0,
+                "data":
+                {
+                    "type": "reads",
+                    "attributes":
+                    {
+                        "fncb_temperature": 4150,
+                    }
                 },
                 "timestamp": "2023-04-05T05:33:26.730023",
             }
@@ -246,8 +294,9 @@ class TestPasdBusJsonApi:
         response = json.loads(response_str)
         assert response["source"] == 0
         assert response["data"]["type"] == "reads"
-        assert response["data"]["attributes"]["fncb_temperature"] == pytest.approx(
-            backend_fndh.fncb_temperature
+        assert (
+            response["data"]["attributes"]["fncb_temperature"]
+            == backend_fndh.fncb_temperature
         )
 
     def test_execute_nonexistent_command(

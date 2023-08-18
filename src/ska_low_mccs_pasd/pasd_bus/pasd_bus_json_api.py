@@ -119,7 +119,7 @@ class PasdBusJsonApi:
                     "error": {
                         "source": device_id,
                         "code": "device",
-                        "detail": f"Device '{device_id}' does not exist",
+                        "detail": f"Device {device_id} is unresponsive",
                     },
                     "timestamp": datetime.utcnow().isoformat(),
                 }
@@ -147,7 +147,7 @@ class PasdBusJsonApi:
                 "error": {
                     "source": device_id,
                     "code": "device",
-                    "detail": f"Device '{device_id}' does not exist",
+                    "detail": f"Device {device_id} is unresponsive",
                 },
             }
         else:
