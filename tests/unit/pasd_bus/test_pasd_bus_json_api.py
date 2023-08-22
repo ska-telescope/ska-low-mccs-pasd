@@ -310,8 +310,8 @@ class TestPasdBusJsonApi:
         .. code-block: json::
 
             {
+                'source': 0,
                 'error': {
-                    'source': 0,
                     'code': 'attribute',
                     'detail': "Command 'nonexistent_command' does not exist",
                 },
@@ -332,7 +332,7 @@ class TestPasdBusJsonApi:
         response_bytes = api(request_bytes)
         response_str = response_bytes.decode(encoding)
         response = json.loads(response_str)
-        assert response["error"]["source"] == 0
+        assert response["source"] == 0
         assert response["error"]["code"] == "attribute"
         assert (
             response["error"]["detail"]
@@ -350,8 +350,8 @@ class TestPasdBusJsonApi:
         .. code-block: json::
 
             {
+                'source': 0,
                 'error': {
-                    'source': 0,
                     'code': 'command',
                     'detail': "Exception in command 'turn_port_off': Mock error.",
                 },
@@ -372,7 +372,7 @@ class TestPasdBusJsonApi:
         response_bytes = api(request_bytes)
         response_str = response_bytes.decode(encoding)
         response = json.loads(response_str)
-        assert response["error"]["source"] == 0
+        assert response["source"] == 0
         assert response["error"]["code"] == "command"
         assert (
             response["error"]["detail"]
@@ -390,9 +390,9 @@ class TestPasdBusJsonApi:
         .. code-block: json::
 
             {
+                'source': 0,
                 'data': [
                     {
-                        'source': 0,
                         'type': 'command_result',
                         'attributes': {
                             'result': True
@@ -416,6 +416,6 @@ class TestPasdBusJsonApi:
         response_bytes = api(request_bytes)
         response_str = response_bytes.decode(encoding)
         response = json.loads(response_str)
-        assert response["data"]["source"] == 0
+        assert response["source"] == 0
         assert response["data"]["type"] == "command_result"
         assert response["data"]["attributes"]["set_led_pattern"] is True

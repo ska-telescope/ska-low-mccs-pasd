@@ -420,6 +420,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             )
             return
 
+        if "error" in kwargs:
+            # TODO: handle error response from API for known device
+            return
+
         for pasd_attribute_name, pasd_attribute_value in kwargs.items():
             try:
                 tango_attribute_name = attribute_map[pasd_attribute_name]
