@@ -189,7 +189,7 @@ class TestfndhPasdBusIntegration:
         assert fndh_device.CpuId == FndhSimulator.CPU_ID
         assert fndh_device.ChipId == FndhSimulator.CHIP_ID
         assert fndh_device.FirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
-        assert fndh_device.Uptime == FndhSimulator.DEFAULT_UPTIME
+        assert fndh_device.Uptime <= fndh_simulator.uptime
         assert fndh_device.PasdStatus == "OK"
         assert fndh_device.LedPattern == FndhSimulator.DEFAULT_LED_PATTERN
         assert list(fndh_device.Psu48vVoltages) == FndhSimulator.DEFAULT_PSU48V_VOLTAGES

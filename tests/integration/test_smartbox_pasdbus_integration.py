@@ -733,7 +733,7 @@ class TestSmartBoxPasdBusIntegration:
             smartbox_device.FirmwareVersion
             == SmartboxSimulator.DEFAULT_FIRMWARE_VERSION
         )
-        assert smartbox_device.Uptime == SmartboxSimulator.DEFAULT_UPTIME
+        assert smartbox_device.Uptime <= smartbox_simulator.uptime
         assert smartbox_device.PasdStatus == SmartboxSimulator.DEFAULT_STATUS
         assert smartbox_device.InputVoltage == SmartboxSimulator.DEFAULT_INPUT_VOLTAGE
         assert (

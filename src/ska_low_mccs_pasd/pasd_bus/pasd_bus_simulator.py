@@ -324,10 +324,7 @@ class PasdHardwareSimulator:
         :param instantiate_smartbox: optional reference to PasdBusSimulator function.
         :param delete_smartbox: optional reference to PasdBusSimulator function.
         """
-        # TODO: Add the timestamp back after figuring out how tango testing asserts
-        # can handle a changing value?
-        # self._boot_on_time = datetime.now()
-        self._boot_on_time: datetime | None = None
+        self._boot_on_time: datetime | None = datetime.now()
         self._ports = [
             _PasdPortSimulator(port_index + 1, instantiate_smartbox, delete_smartbox)
             for port_index in range(number_of_ports)

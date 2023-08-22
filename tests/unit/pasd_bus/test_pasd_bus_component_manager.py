@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from ska_control_model import CommunicationStatus, PowerState
 from ska_tango_testing.mock import MockCallableGroup
+from ska_tango_testing.mock.placeholders import Anything
 
 from ska_low_mccs_pasd.pasd_bus import PasdBusComponentManager
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
@@ -85,7 +86,7 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call(
             "pasd_device_state",
             0,  # FNDH
-            uptime=FndhSimulator.DEFAULT_UPTIME,
+            uptime=Anything,
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="OK",
             led_pattern=FndhSimulator.DEFAULT_LED_PATTERN,
@@ -122,7 +123,7 @@ class TestPasdBusComponentManager:
             mock_callbacks.assert_call(
                 "pasd_device_state",
                 smartbox_number,
-                uptime=SmartboxSimulator.DEFAULT_UPTIME,
+                uptime=Anything,
                 sys_address=SmartboxSimulator.DEFAULT_SYS_ADDRESS,
                 status="OK",
                 led_pattern=SmartboxSimulator.DEFAULT_LED_PATTERN,
@@ -378,7 +379,7 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call(
             "pasd_device_state",
             0,  # FNDH
-            uptime=FndhSimulator.DEFAULT_UPTIME,
+            uptime=Anything,
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="OK",
             led_pattern="SERVICE",
@@ -402,7 +403,7 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call(
             "pasd_device_state",
             4,
-            uptime=SmartboxSimulator.DEFAULT_UPTIME,
+            uptime=Anything,
             sys_address=SmartboxSimulator.DEFAULT_SYS_ADDRESS,
             status=SmartboxSimulator.DEFAULT_STATUS,
             led_pattern="SERVICE",

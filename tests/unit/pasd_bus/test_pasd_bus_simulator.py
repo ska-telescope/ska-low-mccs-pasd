@@ -73,7 +73,6 @@ class TestPasdBusSimulator:
             smartbox_simulator = smartbox_simulators[smartbox_id]
             assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
 
-    @pytest.mark.xfail(reason="uptime currently must be a static value for tango mocks")
     def test_uptimes(
         self: TestPasdBusSimulator,
         fndh_simulator: FndhSimulator,
@@ -90,11 +89,12 @@ class TestPasdBusSimulator:
         """
         fndh_uptime = fndh_simulator.uptime
         assert fndh_uptime > 0
-        previous_smartbox_uptime = 1000000
+        previous_smartbox_uptime = 0
         for smartbox_simulator in list(smartbox_simulators.values()):
             assert smartbox_simulator.uptime > 0
             assert fndh_uptime > smartbox_simulator.uptime
-            assert smartbox_simulator.uptime < previous_smartbox_uptime
+            if previous_smartbox_uptime != 0:
+                assert smartbox_simulator.uptime < previous_smartbox_uptime
             previous_smartbox_uptime = smartbox_simulator.uptime
 
 
