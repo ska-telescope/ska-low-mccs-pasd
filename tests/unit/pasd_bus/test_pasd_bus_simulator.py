@@ -36,6 +36,10 @@ def fndh_config_fixture(pasd_config: dict[str, Any]) -> list[bool]:
 class TestPasdBusSimulator:
     """Tests of the combined PasdBusSimulator."""
 
+    @pytest.mark.xfail(
+        reason="Smartbox dependency on PDoC port power temporarily disabled until MCCS"
+        "can handle it correctly. k8-tests currently fail."
+    )
     def test_smartboxes_depend_on_fndh_ports(
         self: TestPasdBusSimulator,
         fndh_simulator: FndhSimulator,

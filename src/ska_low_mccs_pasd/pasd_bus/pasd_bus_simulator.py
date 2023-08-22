@@ -1048,15 +1048,21 @@ class PasdBusSimulator:
         self._smartboxes_ports_connected: list[list[bool]] = []
         self._smartbox_on_port_number_map: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
 
-        self._fndh_simulator = FndhSimulator(
-            self._instantiate_smartbox, self._delete_smartbox
-        )
+        # TODO: Instantiate FNDH with optional smartbox functions passed and
+        # remove smartbox instantiation after _load_config() is called
+        self._fndh_simulator = FndhSimulator()
+        # self._fndh_simulator = FndhSimulator(
+        #     self._instantiate_smartbox, self._delete_smartbox
+        # )
         logger.info(f"Initialised FNDH simulator for station {station_id}.")
 
         self._load_config()
         logger.info(
             f"PaSD configuration data loaded into simulator for station {station_id}."
         )
+        # TODO: Remove instantiation of smartboxes here
+        for port_number in self._smartbox_on_port_number_map:
+            self._instantiate_smartbox(port_number)
         logger.info(f"Initialised PaSD bus simulator for station {station_id}.")
 
     def get_fndh(self: PasdBusSimulator) -> FndhSimulator:
