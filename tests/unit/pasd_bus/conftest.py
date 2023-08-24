@@ -23,12 +23,9 @@ import yaml
 from ska_ser_devices.client_server import TcpServer
 from ska_tango_testing.mock import MockCallableGroup
 
-from ska_low_mccs_pasd.pasd_bus import (
-    FndhSimulator,
-    PasdBusComponentManager,
-    PasdBusSimulator,
-    PasdBusSimulatorJsonServer,
-)
+from ska_low_mccs_pasd.pasd_bus import (FndhSimulator, PasdBusComponentManager,
+                                        PasdBusSimulator,
+                                        PasdBusSimulatorJsonServer)
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
 
 
@@ -147,8 +144,8 @@ def mock_fndh_simulator_fixture(
     return mock_simulator
 
 
-@pytest.fixture(name="smartbox_on_port_number_map")
-def smartbox_on_port_number_map_fixture(
+@pytest.fixture(name="smartbox_attached_ports")
+def smartbox_attached_ports_fixture(
     pasd_bus_simulator: PasdBusSimulator,
 ) -> list[int]:
     """
@@ -157,14 +154,14 @@ def smartbox_on_port_number_map_fixture(
     :param pasd_bus_simulator: a PasdBusSimulator.
     :return: a list of FNDH port numbers each smartbox is connected to.
     """
-    return pasd_bus_simulator.get_smartbox_on_port_number_map()
+    return pasd_bus_simulator.get_smartbox_attached_ports()
 
 
 @pytest.fixture(name="smartbox_simulators")
 def smartbox_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
     fndh_simulator: FndhSimulator,
-    smartbox_on_port_number_map: list[int],
+    smartbox_attached_ports: list[int],
 ) -> Dict[int, SmartboxSimulator]:
     """
     Return the smartbox simulators.
@@ -172,12 +169,12 @@ def smartbox_simulators_fixture(
     :param pasd_bus_simulator: a PaSD bus simulator whose smartbox
         simulators are to be returned.
     :param fndh_simulator: FNDH simulator the smartboxes are connected to.
-    :param smartbox_on_port_number_map: a list of FNDH port numbers each smartbox
+    :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
             is connected to.
     :return: a dictionary of smartbox simulators
     """
     fndh_simulator.initialize()
-    for port_nr in smartbox_on_port_number_map:
+    for port_nr in smartbox_attached_ports:
         fndh_simulator.turn_port_on(port_nr)
     return pasd_bus_simulator.get_smartboxes()
 

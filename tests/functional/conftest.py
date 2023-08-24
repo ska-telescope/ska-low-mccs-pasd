@@ -146,7 +146,7 @@ def pasd_address_context_manager_factory_fixture(
             pasd_simulator = PasdBusSimulator(1, logging.DEBUG)
             fndh_simulator = pasd_simulator.get_fndh()
             fndh_simulator.initialize()
-            for port_nr in pasd_simulator.get_smartbox_on_port_number_map():
+            for port_nr in pasd_simulator.get_smartbox_attached_ports():
                 fndh_simulator.turn_port_on(port_nr)
             smartbox_simulators = pasd_simulator.get_smartboxes()
 

@@ -71,16 +71,9 @@ class TestPasdBusJsonApi:
         return backend_fndh
 
     @pytest.fixture(name="backend_smartboxes")
-    def backend_smartboxes_fixture(
-        self: TestPasdBusJsonApi, pasd_bus_simulator: PasdBusSimulator
-    ) -> Dict[int, mock.Mock]:
+    def backend_smartboxes_fixture(self: TestPasdBusJsonApi) -> Dict[int, mock.Mock]:
         """
         Return a dictionary of mock backend smartboxes to test the API against.
-
-        :param pasd_bus_simulator: a PasdBusSimulator.
-            This backend fixture doesn't actually use the simulator,
-            other than to autospec a mock
-            with the same interface as its smartboxes.
 
         :return: mock backends to test the API against.
         """
@@ -122,9 +115,7 @@ class TestPasdBusJsonApi:
 
         :return: an API instance against which to test
         """
-        backend_mocks: Dict[int, mock.Mock | FndhSimulator | SmartboxSimulator] = {
-            0: backend_fndh
-        }
+        backend_mocks: Dict[int, FndhSimulator | SmartboxSimulator] = {0: backend_fndh}
         backend_mocks.update(backend_smartboxes)
         return PasdBusJsonApi(backend_mocks, encoding)
 

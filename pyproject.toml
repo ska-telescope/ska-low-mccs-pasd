@@ -89,7 +89,6 @@ source = ["src"]
 data_file = ".coverage/.coverage"
 branch = true
 source = ["ska_low_mccs-pasd"]
-omit = ["./src/ska_low_mccs_pasd/pasd_bus/pasd_bus_connection_tests.py"]
 
 [tool.coverage.report]
 show_missing = false

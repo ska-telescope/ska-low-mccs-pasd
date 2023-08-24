@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from typing import Any, Callable, Dict, Final
-from unittest.mock import Mock
 
 import jsonschema
 
@@ -85,7 +84,7 @@ class PasdBusJsonApi:
 
     def __init__(
         self,
-        simulators: Dict[int, FndhSimulator | SmartboxSimulator | Mock],
+        simulators: Dict[int, FndhSimulator | SmartboxSimulator],
         encoding: str = "utf-8",
     ) -> None:
         """
@@ -263,7 +262,7 @@ class PasdBusJsonApiClient:
         response = json.loads(response_str)
         return response
 
-    def read_attributes(self, device_id: int, *names: str) -> Any:
+    def read_attributes(self, device_id: int, *names: str) -> dict[str, Any]:
         """
         Read attribute values from the server.
 
@@ -273,15 +272,13 @@ class PasdBusJsonApiClient:
         :return: dictionary of attribute values keyed by name
         """
         response = self._do_request({"device_id": device_id, "read": names})
-        assert response["source"] == device_id
         if "data" in response:
+            assert response["source"] == device_id
             assert response["data"]["type"] == "reads"
             return response["data"]["attributes"]
-        if "error" in response:
-            return response
-        return None
+        return response
 
-    def execute_command(self, device_id: int, name: str, *args: Any) -> Any:
+    def execute_command(self, device_id: int, name: str, *args: Any) -> dict[str, Any]:
         """
         Execute a command and return the results.
 
@@ -294,10 +291,8 @@ class PasdBusJsonApiClient:
         response = self._do_request(
             {"device_id": device_id, "execute": name, "arguments": args}
         )
-        assert response["source"] == device_id
         if "data" in response:
+            assert response["source"] == device_id
             assert response["data"]["type"] == "command_result"
             return response["data"]["attributes"]
-        if "error" in response:
-            return response
-        return None
+        return response

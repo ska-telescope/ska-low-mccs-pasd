@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from typing import Any, Dict, Final
-from unittest.mock import Mock
 
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
@@ -39,7 +38,7 @@ class PasdBusModbusApi:
     """A Modbus API for a PaSD bus simulator."""
 
     def __init__(
-        self, simulators: Dict[int, FndhSimulator | SmartboxSimulator | Mock]
+        self, simulators: Dict[int, FndhSimulator | SmartboxSimulator]
     ) -> None:
         """
         Initialise a new instance.
@@ -320,7 +319,7 @@ class PasdBusModbusApiClient:
             return response["data"]["attributes"]
         return response
 
-    def execute_command(self, device_id: int, name: str, *args: Any) -> Any:
+    def execute_command(self, device_id: int, name: str, *args: Any) -> dict[str, Any]:
         """
         Execute a command and return the results.
 

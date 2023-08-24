@@ -113,9 +113,7 @@ class TestPasdBusModbusApi:
 
         :return: an API instance against which to test
         """
-        backend_mocks: Dict[int, mock.Mock | FndhSimulator | SmartboxSimulator] = {
-            0: backend_fndh
-        }
+        backend_mocks: Dict[int, FndhSimulator | SmartboxSimulator] = {0: backend_fndh}
         backend_mocks.update(backend_smartboxes)
         return PasdBusModbusApi(backend_mocks)
 

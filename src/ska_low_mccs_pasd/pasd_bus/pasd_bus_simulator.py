@@ -404,7 +404,7 @@ class PasdHardwareSimulator:
                 else:
                     self._sensors_status[sensor_name + str(i)] = "OK"
         except TypeError:
-            logger.debug(
+            logger.error(
                 f"PaSD bus simulator: {sensor_name} has no thresholds defined!"
             )
             return
@@ -651,9 +651,9 @@ class PasdHardwareSimulator:
         return True
 
 
-class Sensor:
+class _Sensor:
     """
-    Descriptor for sensor attributes of a FNDH/Smartbox.
+    Data descriptor for sensor attributes of a FNDH/Smartbox.
 
     This descriptor allows for handling sensor attributes and their status
     within the context of a FNDH/Smartbox simulator class.
@@ -661,7 +661,7 @@ class Sensor:
 
     # pylint: disable=attribute-defined-outside-init
 
-    def __set_name__(self: Sensor, owner: PasdHardwareSimulator, name: str) -> None:
+    def __set_name__(self: _Sensor, owner: PasdHardwareSimulator, name: str) -> None:
         """
         Set the name of the sensor attribute.
 
@@ -671,7 +671,7 @@ class Sensor:
         self.name = name
 
     def __get__(
-        self: Sensor, obj: PasdHardwareSimulator, objtype: type
+        self: _Sensor, obj: PasdHardwareSimulator, objtype: type
     ) -> None | int | list[int]:
         """
         Get the value of the sensor attribute from the instance.
@@ -683,7 +683,7 @@ class Sensor:
         return obj.__dict__.get(self.name)
 
     def __set__(
-        self: Sensor, obj: PasdHardwareSimulator, value: int | list[int]
+        self: _Sensor, obj: PasdHardwareSimulator, value: int | list[int]
     ) -> None:
         """
         Set the value of the sensor attribute for the instance.
@@ -733,26 +733,36 @@ class FndhSimulator(PasdHardwareSimulator):
     DEFAULT_INTERNAL_AMBIENT_TEMPERATURE: Final = 3600
 
     # Instantiate sensor data descriptors
-    psu48v_voltages = Sensor()
-    psu48v_voltages_thresholds = Sensor()
-    psu48v_current = Sensor()
-    psu48v_current_thresholds = Sensor()
-    psu48v_temperatures = Sensor()
-    psu48v_temperatures_thresholds = Sensor()
-    panel_temperature = Sensor()  # Not implemented in hardware?
-    panel_temperature_thresholds = Sensor()
-    fncb_temperature = Sensor()
-    fncb_temperature_thresholds = Sensor()
-    fncb_humidity = Sensor()
-    fncb_humidity_thresholds = Sensor()
-    comms_gateway_temperature = Sensor()
-    comms_gateway_temperature_thresholds = Sensor()
-    power_module_temperature = Sensor()
-    power_module_temperature_thresholds = Sensor()
-    outside_temperature = Sensor()
-    outside_temperature_thresholds = Sensor()
-    internal_ambient_temperature = Sensor()
-    internal_ambient_temperature_thresholds = Sensor()
+    psu48v_voltages = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    psu48v_voltages_thresholds = _Sensor()
+    psu48v_current = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    psu48v_current_thresholds = _Sensor()
+    psu48v_temperatures = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    psu48v_temperatures_thresholds = _Sensor()
+    panel_temperature = _Sensor()  # Not implemented in hardware?
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    panel_temperature_thresholds = _Sensor()
+    fncb_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    fncb_temperature_thresholds = _Sensor()
+    fncb_humidity = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    fncb_humidity_thresholds = _Sensor()
+    comms_gateway_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    comms_gateway_temperature_thresholds = _Sensor()
+    power_module_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    power_module_temperature_thresholds = _Sensor()
+    outside_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    outside_temperature_thresholds = _Sensor()
+    internal_ambient_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    internal_ambient_temperature_thresholds = _Sensor()
 
     def __init__(
         self: FndhSimulator,
@@ -859,20 +869,27 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
 
     # Instantiate sensor data descriptors
-    input_voltage = Sensor()
-    input_voltage_thresholds = Sensor()
-    power_supply_output_voltage = Sensor()
-    power_supply_output_voltage_thresholds = Sensor()
-    power_supply_temperature = Sensor()
-    power_supply_temperature_thresholds = Sensor()
-    pcb_temperature = Sensor()
-    pcb_temperature_thresholds = Sensor()
-    fem_ambient_temperature = Sensor()
-    fem_ambient_temperature_thresholds = Sensor()
-    fem_case_temperatures = Sensor()
-    fem_case_temperatures_thresholds = Sensor()
-    fem_heatsink_temperatures = Sensor()
-    fem_heatsink_temperatures_thresholds = Sensor()
+    input_voltage = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    input_voltage_thresholds = _Sensor()
+    power_supply_output_voltage = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    power_supply_output_voltage_thresholds = _Sensor()
+    power_supply_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    power_supply_temperature_thresholds = _Sensor()
+    pcb_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    pcb_temperature_thresholds = _Sensor()
+    fem_ambient_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    fem_ambient_temperature_thresholds = _Sensor()
+    fem_case_temperatures = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    fem_case_temperatures_thresholds = _Sensor()
+    fem_heatsink_temperatures = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    fem_heatsink_temperatures_thresholds = _Sensor()
 
     def __init__(self: SmartboxSimulator) -> None:
         """Initialise a new instance."""
@@ -1081,7 +1098,7 @@ class PasdBusSimulator:
         """
         return self._smartbox_simulators
 
-    def get_smartbox_on_port_number_map(self: PasdBusSimulator) -> list[int]:
+    def get_smartbox_attached_ports(self: PasdBusSimulator) -> list[int]:
         """
         Return a list of FNDH port numbers each smartbox is connected to.
 

@@ -12,10 +12,8 @@ from typing import Any, Dict
 
 import pytest
 
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
-    FndhSimulator,
-    SmartboxSimulator,
-)
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (FndhSimulator,
+                                                           SmartboxSimulator)
 
 
 @pytest.fixture(name="fndh_config")
@@ -45,7 +43,7 @@ class TestPasdBusSimulator:
         fndh_simulator: FndhSimulator,
         smartbox_simulators: Dict[int, SmartboxSimulator],
         fndh_config: list[bool],
-        smartbox_on_port_number_map: list[int],
+        smartbox_attached_ports: list[int],
     ) -> None:
         """
         Test that smartbox instances depend on the state of the FNDH ports.
@@ -56,7 +54,7 @@ class TestPasdBusSimulator:
         :param fndh_simulator: the FNDH simulator under test
         :param fndh_config: a list indicating which FNDH ports are connected
         :param smartbox_simulators: list of smartbox simulators under test
-        :param smartbox_on_port_number_map: a list of FNDH port numbers each smartbox
+        :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
             is connected to.
         """
         assert fndh_simulator.status == "OK"
@@ -65,7 +63,7 @@ class TestPasdBusSimulator:
         assert fndh_simulator.ports_power_sensed == fndh_config
         for smartbox_id in list(smartbox_simulators.keys()):
             smartbox_simulator = smartbox_simulators[smartbox_id]
-            port_nr = smartbox_on_port_number_map[smartbox_id - 1]
+            port_nr = smartbox_attached_ports[smartbox_id - 1]
             assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
             assert smartbox_simulator.initialize()
             assert smartbox_simulator.status == "OK"
