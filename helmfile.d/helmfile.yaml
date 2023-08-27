@@ -75,17 +75,23 @@ repositories:
     url: https://jupyterhub.github.io/helm-chart
 
 releases:
-
   - name: ska-low-mccs-pasd
     namespace: ska-low-mccs
     chart: ../charts/ska-low-mccs-pasd
     version: 0.2.1-dirty
     values:
-      - pasd/templates/globals.yaml.gotmpl
+      - values/globals.yaml.gotmpl
       - pasd/templates/fieldstations.yaml.gotmpl
       - pasd/templates/fndhs.yaml.gotmpl
       - pasd/templates/pasdbuses.yaml.gotmpl
       - pasd/templates/smartboxes.yaml.gotmpl
+
+  - name: ska-tango-base
+    namespace: ska-low-mccs
+    chart: skao/ska-tango-base
+    version: 0.3.10
+    values:
+      - values/globals.yaml.gotmpl
 
 {{- $_jupyterhub_provided := dig "platform" "cluster" "services" "jupyterhub" false .Values}}
 {{- $jupyterhub_provided := dig "overrides" "cluster" "services" "jupyterhub" $_jupyterhub_provided .Values}}
@@ -137,5 +143,6 @@ releases:
     chart: skao/ska-tango-tangogql
     version: 1.3.8
     values:
+      - values/globals.yaml.gotmpl
       - ska-tango-base:
           enabled: false
