@@ -88,6 +88,7 @@ def is_true_context_fixture(request: pytest.FixtureRequest) -> bool:
 
 @pytest.fixture(name="pasd_address_context_manager_factory", scope="session")
 def pasd_address_context_manager_factory_fixture(
+    pasd_config_path: str,
     logger: logging.Logger,
 ) -> Callable[[], ContextManager[tuple[str | bytes | bytearray, int]]]:
     """
@@ -111,6 +112,7 @@ def pasd_address_context_manager_factory_fixture(
     context manager will launch the PaSD simulator server, and then
     yield the host and port on which it is running.
 
+    :param pasd_config_path: path to the PaSD configuration file
     :param logger: a python standard logger
 
     :return: a callable that returns a context manager that, when
@@ -143,7 +145,7 @@ def pasd_address_context_manager_factory_fixture(
                 PasdBusSimulatorJsonServer,
             )
 
-            simulator = PasdBusSimulator(1, logging.DEBUG)
+            simulator = PasdBusSimulator(pasd_config_path, 1, logging.DEBUG)
             simulator_server = PasdBusSimulatorJsonServer(
                 simulator.get_fndh(), simulator.get_smartboxes()
             )

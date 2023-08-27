@@ -1,4 +1,16 @@
+{{- $pasd_config := .Files.Get "data/pasd_configuration.yaml"}}
 {{- range $key, $value := ((.Values.simulators).pasds)}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pasd-configuration-{{$key}}
+  namespace: {{$.Release.Namespace}}
+  labels:
+    component: pasd-simulator-{{$key}}
+data:
+  pasd_configuration.yaml: |-
+{{ $pasd_config | indent 4}}
 ---
 apiVersion: v1
 kind: Service
@@ -44,4 +56,13 @@ spec:
             value: "1"
           - name: SIMULATOR_PORT
             value: {{$value.port | default "502" | quote}}
+          - name: SIMULATOR_CONFIG_PATH
+            value: /etc/pasd-configuration/pasd_configuration.yaml
+        volumeMounts:
+        - name: pasd-configuration-volume
+          mountPath: /etc/pasd-configuration
+      volumes:
+        - name: pasd-configuration-volume
+          configMap:
+            name: pasd-configuration-{{$key}}
 {{- end}}

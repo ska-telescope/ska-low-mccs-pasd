@@ -983,19 +983,19 @@ class PasdBusSimulator:
     * Voltages, currents and temperatures never change.
     """
 
-    CONFIG_PATH = "pasd_configuration.yaml"
-
     NUMBER_OF_SMARTBOXES = 24
     NUMBER_OF_ANTENNAS = 256
 
     def __init__(
         self: PasdBusSimulator,
+        pasd_configuration_path: str,
         station_id: int,
         logging_level: int = logging.INFO,
     ) -> None:
         """
         Initialise a new instance.
 
+        :param pasd_configuration_path: path to a PaSD configuration file.
         :param station_id: id of the station to which this PaSD belongs.
         :param logging_level: the level to log at.
         """
@@ -1018,7 +1018,7 @@ class PasdBusSimulator:
 
         self._smartbox_fndh_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
 
-        self._load_config()
+        self._load_config(pasd_configuration_path)
         logger.info(
             f"PaSD configuration data loaded into simulator for station {station_id}."
         )
@@ -1040,28 +1040,24 @@ class PasdBusSimulator:
         """
         return list(self._smartbox_simulators)
 
-    def _load_config(self: PasdBusSimulator) -> bool:
+    def _load_config(self: PasdBusSimulator, path: str) -> bool:
         """
         Load PaSD configuration data from a file into this simulator.
+
+        :param path: path to a file from which to load configuration.
 
         :return: whether successful
 
         :raises yaml.YAMLError: if the config file cannot be parsed.
         """
-        config_data = importlib.resources.read_text(
-            "ska_low_mccs_pasd.pasd_bus",
-            self.CONFIG_PATH,
-        )
-
-        assert config_data is not None  # for the type-checker
-
-        try:
-            config = yaml.safe_load(config_data)
-        except yaml.YAMLError as exception:
-            logger.error(
-                f"PaSD Bus simulator could not load configuration: {exception}."
-            )
-            raise
+        with open(path, "r", encoding="utf-8") as config_file:
+            try:
+                config = yaml.safe_load(config_file)
+            except yaml.YAMLError as exception:
+                logger.error(
+                    f"PaSD Bus simulator could not load configuration: {exception}."
+                )
+                raise
 
         my_config = config["stations"][self._station_id - 1]
 
