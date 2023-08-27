@@ -54,8 +54,7 @@ def pasd_config_fixture(pasd_config_path: str, station_id: int) -> dict:
     :return: the PaSD config that the PaSD bus object under test uses.
     """
     with open(pasd_config_path, "r", encoding="utf-8") as config_file:
-        config = yaml.safe_load(config_file)
-        return config["stations"][station_id - 1]
+        return yaml.safe_load(config_file)
 
 
 @pytest.fixture(name="pasd_bus_simulator")

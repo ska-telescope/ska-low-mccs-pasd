@@ -1059,11 +1059,11 @@ class PasdBusSimulator:
                 )
                 raise
 
-        my_config = config["stations"][self._station_id - 1]
+        pasd_config = config["pasd"]
 
         fndh_port_is_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
-        for smartbox_config in my_config["smartboxes"]:
-            smartbox_id = smartbox_config["smartbox_id"]
+        for smartbox_id, smartbox_config in pasd_config["smartboxes"].items():
+            smartbox_id = int(smartbox_id)
             fndh_port = smartbox_config["fndh_port"]
             self._smartbox_fndh_ports[smartbox_id - 1] = fndh_port
             fndh_port_is_connected[fndh_port - 1] = True
@@ -1073,8 +1073,8 @@ class PasdBusSimulator:
             [False] * SmartboxSimulator.NUMBER_OF_PORTS
             for _ in range(self.NUMBER_OF_SMARTBOXES)
         ]
-        for antenna_config in my_config["antennas"]:
-            smartbox_id = antenna_config["smartbox_id"]
+        for antenna_config in config["antennas"].values():
+            smartbox_id = int(antenna_config["smartbox"])
             smartbox_port = antenna_config["smartbox_port"]
             smartbox_ports_connected[smartbox_id - 1][smartbox_port - 1] = True
 
