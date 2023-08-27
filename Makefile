@@ -34,16 +34,20 @@ include .make/oci.mk
 #######################################
 # K8S
 #######################################
+K8S_USE_HELMFILE = true
+K8S_HELMFILE = helmfile.d/helmfile.yaml
+K8S_HELMFILE_ENV ?= stfc-ci
+
 include .make/k8s.mk
 include .make/xray.mk
 
 # THIS IS SPECIFIC TO THIS REPO
 ifdef CI_REGISTRY_IMAGE
 K8S_CHART_PARAMS = \
-	--set low_mccs_pasd.image.registry=$(CI_REGISTRY_IMAGE) \
-	--set low_mccs_pasd.image.tag=$(VERSION)-dev.c$(CI_COMMIT_SHORT_SHA)
+	--selector chart=ska-low-mccs-pasd \
+	--set image.registry=$(CI_REGISTRY_IMAGE) \
+	--set image.tag=$(VERSION)-dev.c$(CI_COMMIT_SHORT_SHA)
 endif
-
 
 JUNITXML_REPORT_PATH ?= build/reports/functional-tests.xml
 CUCUMBER_JSON_PATH ?= build/reports/cucumber.json

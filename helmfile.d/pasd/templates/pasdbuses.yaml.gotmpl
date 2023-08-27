@@ -1,0 +1,78 @@
+{{- /* Configure the PaSD bus Tango devices. */}}
+{{- $overrides := dict}}
+{{- if hasKey .Values "overrides"}}
+{{- $overrides = .Values.overrides}}
+{{- end}}
+{{- $merged := mergeOverwrite .Values.platform $overrides}}
+{{- $defaults := .Values.defaults}}
+
+{{- $pasdbus_instances := dict}}
+{{- $pasdbus_simulators := dict}}
+
+{{- range $station_cluster_id, $station_cluster_spec := $merged.array.station_clusters}}
+{{- range $station_id, $station_spec := $station_cluster_spec.stations}}
+
+{{- $station_enabled := dig "enabled" true $station_spec}}
+{{- $pasd_spec := dig "pasd" dict $station_spec}}
+{{- $pasd_enabled := dig "enabled" $station_enabled $pasd_spec}}
+{{- $pasdbus_spec := dig "fndh" "gateway" dict $pasd_spec}}
+{{- $pasdbus_enabled := dig "enabled" $pasd_enabled $pasdbus_spec}}
+{{- if $pasdbus_enabled}}
+
+{{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
+
+{{- $pasdbus_name := printf "low-mccs/pasdbus/%s" $station_name}}
+{{- $pasdbus_host := $pasdbus_spec.host}}
+{{- $pasdbus_port := $pasdbus_spec.port}}
+
+{{- $pasdbus_instance := pick $pasdbus_spec "timeout"}}
+
+{{- $pasdbus_logging_level_defaults := pluck "logging_level_default" $pasdbus_spec $defaults}}
+{{- if $pasdbus_logging_level_defaults}}
+{{- $_ := set $pasdbus_instance "logging_level_default" (first $pasdbus_logging_level_defaults)}}
+{{- end }}
+
+{{- $pasdbus_simulated := dig "simulated" false $pasdbus_spec}}
+{{- if $pasdbus_simulated}}
+{{- $pasdbus_host = printf "pasd-simulator-%s" $station_name}}
+{{- $pasdbus_simulator := dict "host" $pasdbus_host "port" $pasdbus_port}}
+
+{{- $_ := set $pasdbus_simulator "config" dict}}
+
+{{- $_ := set $pasdbus_simulator.config "pasd" (dict "smartboxes" dict)}}
+{{- range $smartbox_id, $smartbox_spec := $pasd_spec.smartboxes}}
+{{- $_ := set $pasdbus_simulator.config.pasd.smartboxes $smartbox_id (pick $smartbox_spec "fndh_port")}}
+{{- end}}
+
+{{- $_ := set $pasdbus_simulator.config "antennas" dict}}
+{{- range $antenna_id, $antenna_spec := $station_spec.antennas}}
+{{- $_ := set $pasdbus_simulator.config.antennas $antenna_id (pick $antenna_spec "smartbox" "smartbox_port")}}
+{{- end}}
+
+{{- $_ := set $pasdbus_simulators $station_name $pasdbus_simulator}}
+{{- end }}
+
+{{- $_ := set $pasdbus_instance "host" $pasdbus_host}}
+{{- $_ := set $pasdbus_instance "port" $pasdbus_port}}
+{{- $_ := set $pasdbus_instances $station_name (dict $pasdbus_name $pasdbus_instance)}}
+{{- end}}
+{{- end}}
+{{- end}}
+
+{{- if $pasdbus_instances}}
+deviceServers:
+  pasdbuses:
+{{- range $server_name, $pasdbus_spec := $pasdbus_instances}}
+    {{$server_name}}:
+{{toYaml $pasdbus_spec | indent 6}}
+{{- end }}
+{{- end }}
+
+{{- if $pasdbus_simulators}}
+simulators:
+  pasdbuses:
+{{- range $server_name, $pasdbus_spec := $pasdbus_simulators}}
+    {{$server_name}}:
+{{toYaml $pasdbus_spec | indent 6}}
+{{- end }}
+{{- end }}

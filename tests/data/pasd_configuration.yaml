@@ -1,0 +1,36 @@
+pasd:
+  smartboxes:
+    "1":
+      fndh_port: 1
+      modbus_id: 1
+antennas:
+  "100":
+    smartbox: "1"
+    smartbox_port: 5
+  "113":
+    smartbox: "1"
+    smartbox_port: 7
+  "121":
+    smartbox: "1"
+    smartbox_port: 4
+  "134":
+    smartbox: "1"
+    smartbox_port: 6
+  "155":
+    smartbox: "1"
+    smartbox_port: 3
+  "168":
+    smartbox: "1"
+    smartbox_port: 8
+  "189":
+    smartbox: "1"
+    smartbox_port: 2
+  "202":
+    smartbox: "1"
+    smartbox_port: 9
+  "223":
+    smartbox: "1"
+    smartbox_port: 10
+  "244":
+    smartbox: "1"
+    smartbox_port: 1

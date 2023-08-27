@@ -5,31 +5,17 @@
 display: ":0"
 xauthority: "~/.Xauthority"
 
-enabled: true
-
 system: SW-infrastructure
 subsystem: low-mccs-pasd
 telescope: SKA-low
 
 labels:
   app: ska-low-mccs-pasd
-annotations:
-  app.gitlab.com/app: CI_PROJECT_PATH_SLUG
-  app.gitlab.com/env: CI_ENVIRONMENT_SLUG
 
 global:
-  sub-system:
-    ska-tango-base:
-      enabled: false
-    taranta:
-      enabled: false
-    archiver:
-      enabled: false
-  annotations:
-    app.gitlab.com/app: taranta
-    app.gitlab.com/env: taranta
   minikube: true
   tango_host: databaseds-tango-base-test:10000
+  cluster_domain: cluster.local
 
 livenessProbe:
   initialDelaySeconds: 0
@@ -44,7 +30,6 @@ readinessProbe:
   successThreshold: 1
   failureThreshold: 3
 
-
 dsconfig:
   image:
     registry: artefact.skao.int
@@ -58,65 +43,55 @@ dsconfig:
       tag: 9.3.6
       pullPolicy: IfNotPresent
 
-ska-tango-base:
-  enabled: true
-  vnc:
-    enabled: true
-  tangorest:
-    enabled: true
-
 resources:
   requests:
     cpu: 20m
     memory: 50Mi
 
+image:
+  registry: artefact.skao.int
+  name: ska-low-mccs-pasd
+  tag: 0.2.1-dirty
+  pullPolicy: IfNotPresent
 
-# Default docker image - used by all of MCCS
-low_mccs_pasd:
-  enabled: true
-  image:
-    registry: artefact.skao.int
-    image: ska-low-mccs-pasd
-    tag: 0.2.1-dirty
-    pullPolicy: IfNotPresent
+deviceServers: {}  # e.g.:
+  # fieldstations:
+  #   s8-1:
+  #     low-mccs/fndh/s8-1:
+  #       fndh_name: low-mccs/fndh/s8-1
+  #       smartbox_names:
+  #         - low-mccs/smartbox/s8-1-01
+  #         - low-mccs/smartbox/s8-1-02
+  #       logging_level_default: 5
+  # fndhs:
+  #   s8-1:
+  #     low-mccs/fndh/s8-1:
+  #       logging_level_default: 5
+  # smartboxes:
+  #   s8-1-01:
+  #     low-mccs/smartbox/s8-1-01:
+  #       smartbox_number: 1
+  #       fndh_name: "low-mccs/fndh/s8-1"
+  #       fndh_port: 1
+  #       pasdbus_name: "low-mccs/pasdbus/s8-1"
+  #       logging_level_default: 5
+  #   s8-1-02:
+  #     low-mccs/smartbox/s8-1-01:
+  #       pasdbus_name: "low-mccs/pasdbus/s8-1"
+  #       fndh_name: "low-mccs/fndh/s8-1"
+  #       smartbox_number: 1
+  #       fndh_port: 1
+  #       logging_level_default: 5
+  # pasdbuses:
+  #   s8-1:
+  #     low-mccs/pasdbus/s8-1:
+  #       host: 10.137.0.129
+  #       port: 502
+  #       timeout: 10
+  #       logging_level_default: 5
 
-
-facility: aavs2  # e.g. psi-low, aavs2, ...
-simulators:
-  pasds:
-    1:
-      host: pasd-simulator-1  # mandatory
-      port: 8502  # optional, defaults to 502
-deviceServers:
-  pasds:
-    logging_level_default: 5
-
-  # Example.
-  smartboxes:
-    logging_level_default: 5 # optional, defaults to 3
-    instances:
-      1:
-        fndhPort: 1 # mandatory
-        pasdFQDN: "low-mccs/pasdbus/001" # mandatory
-        fndhFQDN: "low-mccs/fndh/001" # mandatory
-        smartBoxNumber: 1 # mandatory
-      2:
-        fndhPort: 2 # mandatory
-        fndhFQDN: "low-mccs/fndh/001" # mandatory
-        pasdFQDN: "low-mccs/pasdbus/001" # mandatory
-        smartBoxNumber: 2 # mandatory
-
-  fndhs:
-    logging_level_default: 5 # optional, defaults to 3
-    instances:
-      1:
-        pasdFQDN: "low-mccs/pasdbus/001" # mandatory
-
-  fieldstations:
-    logging_level_default: 5 # optional, defaults to 3
-    instances:
-      1:
-        FndhFQDN: "low-mccs/fndh/001"
-        SmartBoxFQDNs: 
-          1: low-mccs/smartbox/00001
-          2: low-mccs/smartbox/00002
+simulators: {} # e.g.
+  # pasds:
+  #   s8-1:
+  #     host: pasd-simulator-s8-1  # mandatory
+  #     port: 8502  # optional, defaults to 502

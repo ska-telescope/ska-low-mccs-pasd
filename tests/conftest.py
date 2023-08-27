@@ -35,7 +35,7 @@ def pasd_config_path_fixture() -> str:
 
     :return: path to the PaSD configuration file to be used in these tests.
     """
-    return "charts/ska-low-mccs-pasd/data/pasd_configuration.yaml"
+    return "tests/data/pasd_configuration.yaml"
 
 
 @pytest.fixture(scope="session", name="logger")

@@ -1,0 +1,15 @@
+defaults:
+  logging_level_default: 5
+
+{{- /* TODO: https://github.com/roboll/helmfile/issues/1242#issuecomment-655423707
+Some services, such as jupyterhub and some taranta services,
+are already provided on some platforms.
+These are specified in "platform.cluster.services".
+We want to launch these services ourselves, if and only if they are not already provided.
+Unfortunately, helmfile currently only supports release conditions of the form "foo.enabled",
+so we have to do some templating here to make it work. */}}
+{{- $platform_spec := fromYaml (readFile "../../platform/psi-low.yaml")}}
+{{- range $service := (list "jupyterhub" "taranta-platform")}}
+{{$service}}:
+  enabled: {{not (dig "platform" "cluster" "services" $service false $platform_spec)}}
+{{- end}}

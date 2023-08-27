@@ -1,21 +1,65 @@
+{{- /*
+Deploy the Tango devices. For example,
+
+  deviceServers:
+    fieldstations:
+      s8-1:
+        low-mccs/fieldstation/s8-1:
+          fndh_name: low-mccs/fndh/s8-1
+          smartbox_names:
+            - low-mccs/smartbox/s8-1-01
+            - low-mccs/smartbox/s8-1-02
+            - low-mccs/smartbox/s8-1-03
+            - low-mccs/smartbox/s8-1-04
+            - low-mccs/smartbox/s8-1-05
+            - low-mccs/smartbox/s8-1-06
+            - low-mccs/smartbox/s8-1-07
+            - low-mccs/smartbox/s8-1-08
+            - low-mccs/smartbox/s8-1-09
+            - low-mccs/smartbox/s8-1-10
+            - low-mccs/smartbox/s8-1-11
+            - low-mccs/smartbox/s8-1-12
+            - low-mccs/smartbox/s8-1-13
+            - low-mccs/smartbox/s8-1-14
+            - low-mccs/smartbox/s8-1-15
+            - low-mccs/smartbox/s8-1-16
+            - low-mccs/smartbox/s8-1-17
+            - low-mccs/smartbox/s8-1-18
+            - low-mccs/smartbox/s8-1-19
+            - low-mccs/smartbox/s8-1-20
+            - low-mccs/smartbox/s8-1-21
+            - low-mccs/smartbox/s8-1-22
+            - low-mccs/smartbox/s8-1-23
+            - low-mccs/smartbox/s8-1-24
+          logging_level_default: 5
+    pasdbuses:
+      s8-1:
+        low-mccs/pasdbus/s8-1:
+          host: 10.137.0.129
+          port: 502
+          timeout: 10
+          logging_level_default: 5
+    fndhs:
+      s8-1:
+        low-mccs/fndh/s8-1:
+          logging_level_default: 5
+    smartboxes:
+      s8-1-1:
+        "low-mccs/smartbox/s8-1-01"
+          smartbox_number: 1
+          fndh_name: "low-mccs/fndh/s8-1"
+          fndh_port: 1
+          pasdbus_name: "low-mccs/pasdbus/s8-1"
+          logging_level_default: 5
+*/}}
 {{ $localchart := . }}
-
-{{- $suts := .Files.Get (printf "data/%s.yaml" .Values.facility) | fromYaml}}
-
-{{- range $type, $specs := .Values.simulators}}
-{{- $_ := set $suts $type (default (dict "instances" dict) (index $suts $type))}}
-{{- range $key, $spec := $specs}}
-{{- $_ := set (index $suts $type).instances $key $spec}}
-{{- end }}
-{{- end }}
-
-{{- $_ := set .Values "deviceServers" (default dict .Values.deviceServers)}}
-{{- $_ := merge .Values.deviceServers $suts}}
 
 {{- range $key, $deviceserver := .Values.deviceServers }}
 
 {{- $filedeviceserver := tpl ($.Files.Get (printf "data/%s.yaml" $key)) $ | fromYaml }}
-{{- $context := dict "name" $key "deviceserver" $filedeviceserver "image" $filedeviceserver.image "local" $localchart}}
+{{- $name := $filedeviceserver.kubernetesName | default $key}}
+
+{{- $context := dict "name" $name "deviceserver" $filedeviceserver "image" $filedeviceserver.image "local" $localchart}}
 {{ template "ska-tango-util.multidevice-config.tpl" $context }}
 {{ template "ska-tango-util.multidevice-sacc-role.tpl" $context }}
 {{ template "ska-tango-util.multidevice-job.tpl" $context }}
