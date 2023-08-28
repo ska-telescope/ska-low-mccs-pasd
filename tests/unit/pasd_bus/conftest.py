@@ -23,9 +23,12 @@ import yaml
 from ska_ser_devices.client_server import TcpServer
 from ska_tango_testing.mock import MockCallableGroup
 
-from ska_low_mccs_pasd.pasd_bus import (FndhSimulator, PasdBusComponentManager,
-                                        PasdBusSimulator,
-                                        PasdBusSimulatorJsonServer)
+from ska_low_mccs_pasd.pasd_bus import (
+    FndhSimulator,
+    PasdBusComponentManager,
+    PasdBusSimulator,
+    PasdBusSimulatorJsonServer,
+)
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
 
 

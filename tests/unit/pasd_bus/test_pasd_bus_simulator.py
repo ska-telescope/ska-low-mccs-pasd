@@ -12,8 +12,10 @@ from typing import Any, Dict
 
 import pytest
 
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (FndhSimulator,
-                                                           SmartboxSimulator)
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
+    FndhSimulator,
+    SmartboxSimulator,
+)
 
 
 @pytest.fixture(name="fndh_config")

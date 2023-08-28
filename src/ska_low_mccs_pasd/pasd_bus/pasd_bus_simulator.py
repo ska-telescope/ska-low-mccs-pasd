@@ -39,7 +39,7 @@ from __future__ import annotations
 import importlib.resources
 import logging
 from datetime import datetime
-from typing import Callable, Dict, Final, Optional
+from typing import Callable, Dict, Final, Optional, Sequence
 
 import yaml
 
@@ -48,22 +48,15 @@ logger = logging.getLogger()
 
 class _PasdPortSimulator:
     """
-    A private class that manages a single simulated port of a PaSD device.
+    A private common class of a single FNDH/smartbox simulated port.
 
     It supports:
 
-    * breaker tripping: in the real hardware, a port breaker might trip,
-      for example as a result of an overcurrent condition. This
-      simulator provides for simulating a breaker trip. Once tripped,
-      the port will not deliver any power until the breaker has been
-      reset.
-
-    * local forcing: a technician in the field can manually force the
+    * Local forcing: a technician in the field can manually force the
       power state of a port. If forced off, a port will not deliver
-      power regardless of other settings. If forced on, an (untripped)
-      port will deliver power regardless of other settings.
+      power regardless of other settings.
 
-    * online and offline delivery of power. When we tell a port to turn
+    * Online and offline delivery of power. When we tell a port to turn
       on, we can also indicate whether we want it to remain on if the
       control system goes offline. This simulator remembers that
       information, but there's no way to tell the simulator that the
@@ -79,19 +72,13 @@ class _PasdPortSimulator:
     def __init__(
         self: _PasdPortSimulator,
         number: int | None = None,
-        instantiate_smartbox: Callable[[int], Optional[bool]] | None = None,
-        delete_smartbox: Callable[[int], Optional[bool]] | None = None,
     ):
         """
         Initialise a new instance.
 
         :param number: optional port number of FNDH/smartbox.
-        :param instantiate_smartbox: optional reference to PasdBusSimulator function.
-        :param delete_smartbox: optional reference to PasdBusSimulator function.
         """
         self._number = number
-        self._instantiate_smartbox = instantiate_smartbox
-        self._delete_smartbox = delete_smartbox
         # Internal to simulator port states
         self._connected: bool = False
         self._on: bool = False
@@ -101,38 +88,10 @@ class _PasdPortSimulator:
         self._desired_on_when_online: bool = False
         self._desired_on_when_offline: bool = False  # Redundant, as desribed above
         self._forcing: Optional[bool] = None
-        self._breaker_tripped: bool = False  # Smartbox FEM only
 
     def _update_port_power(self: _PasdPortSimulator) -> None:
-        """
-        Update the port power.
-
-        Turn the port ON or OFF depending on the desired power, forcing and
-        breaker trip states.
-        """
-        previous = self._on
-        if self._forcing is False:
-            self._on = False
-        elif self._forcing or (self._enabled and not self._breaker_tripped):
-            if (self._desired_on_when_online and self._online) or (
-                self._desired_on_when_offline and not self._online
-            ):
-                self._on = True
-            else:
-                self._on = False
-        elif not self._enabled or self._breaker_tripped:  # forcing has priority
-            self._on = False
-        # Instantiate or delete smartbox if port state has changed
-        if (
-            previous != self._on
-            and self._instantiate_smartbox is not None
-            and self._delete_smartbox is not None
-            and self._number is not None
-        ):
-            if self._on:
-                self._instantiate_smartbox(self._number)
-            else:
-                self._delete_smartbox(self._number)
+        """Update the port power."""
+        # This method should be overridden by child classes
 
     @property
     def connected(self: _PasdPortSimulator) -> bool:
@@ -236,39 +195,6 @@ class _PasdPortSimulator:
         return True
 
     @property
-    def breaker_tripped(self: _PasdPortSimulator) -> bool:
-        """
-        Return whether the port breaker has been tripped.
-
-        :return: whether the breaker has been tripped
-        """
-        return self._breaker_tripped
-
-    def simulate_breaker_trip(self: _PasdPortSimulator) -> Optional[bool]:
-        """
-        Simulate a breaker trip.
-
-        :return: whether successful, or None if there was nothing to do.
-        """
-        if self._breaker_tripped or not self._on:
-            return None
-        self._breaker_tripped = True
-        self._update_port_power()
-        return True
-
-    def reset_breaker(self: _PasdPortSimulator) -> Optional[bool]:
-        """
-        Reset the breaker.
-
-        :return: whether successful, or None if there was nothing to do.
-        """
-        if self._breaker_tripped:
-            self._breaker_tripped = False
-            self._update_port_power()
-            return True
-        return None
-
-    @property
     def desired_power_when_online(self: _PasdPortSimulator) -> bool:
         """
         Return the desired power mode of the port when the control system is online.
@@ -298,6 +224,133 @@ class _PasdPortSimulator:
         return self._on
 
 
+class _FndhPortSimulator(_PasdPortSimulator):
+    """
+    A private class that manages a single simulated port of a FNDH.
+
+    It adds:
+
+    * Update port power: Controls the state of a FNDH simulator port, with the optional
+      capability of instantiating or deleting the attached smartbox simulator in the
+      top public PasdBusSimulator instance when the port is turned on or off.
+    """
+
+    def __init__(
+        self: _FndhPortSimulator,
+        number: int | None = None,
+        instantiate_smartbox: Callable[[int], Optional[bool]] | None = None,
+        delete_smartbox: Callable[[int], Optional[bool]] | None = None,
+    ):
+        super().__init__(number)
+        self._instantiate_smartbox = instantiate_smartbox
+        self._delete_smartbox = delete_smartbox
+
+    def _update_port_power(self: _FndhPortSimulator) -> None:
+        """
+        Update the port power.
+
+        Turn the port ON or OFF depending on the desired power and forcing state.
+        """
+        previous = self._on
+        if self._forcing is False:
+            self._on = False
+        elif self._forcing or self._enabled:
+            if (self._desired_on_when_online and self._online) or (
+                self._desired_on_when_offline and not self._online
+            ):
+                self._on = True
+            else:
+                self._on = False
+        elif not self._enabled:  # forcing has priority
+            self._on = False
+        # Instantiate or delete smartbox if port state has changed
+        if (
+            previous != self._on
+            and self._instantiate_smartbox is not None
+            and self._delete_smartbox is not None
+            and self._number is not None
+        ):
+            if self._on:
+                self._instantiate_smartbox(self._number)
+            else:
+                self._delete_smartbox(self._number)
+
+
+class _SmartboxPortSimulator(_PasdPortSimulator):
+    """
+    A private class that manages a single simulated port of a Smartbox.
+
+    It adds:
+
+    * Update port power: Controls the state of a Smartbox simulator port.
+
+    * Breaker tripping: In the real hardware, a port breaker might trip,
+      for example as a result of an overcurrent condition. This
+      simulator provides for simulating a breaker trip. Once tripped,
+      the port will not deliver any power until the breaker has been
+      reset.
+    """
+
+    def __init__(
+        self: _SmartboxPortSimulator,
+        number: int | None = None,
+    ):
+        super().__init__(number)
+        self._breaker_tripped: bool = False  # Smartbox FEM only
+
+    def _update_port_power(self: _SmartboxPortSimulator) -> None:
+        """
+        Update the port power.
+
+        Turn the port ON or OFF depending on the desired power, forcing and
+        breaker trip states.
+        """
+        if self._forcing is False:
+            self._on = False
+        elif self._forcing or (self._enabled and not self._breaker_tripped):
+            if (self._desired_on_when_online and self._online) or (
+                self._desired_on_when_offline and not self._online
+            ):
+                self._on = True
+            else:
+                self._on = False
+        elif not self._enabled or self._breaker_tripped:  # forcing has priority
+            self._on = False
+
+    @property
+    def breaker_tripped(self: _SmartboxPortSimulator) -> bool:
+        """
+        Return whether the port breaker has been tripped.
+
+        :return: whether the breaker has been tripped
+        """
+        return self._breaker_tripped
+
+    def simulate_breaker_trip(self: _SmartboxPortSimulator) -> Optional[bool]:
+        """
+        Simulate a breaker trip.
+
+        :return: whether successful, or None if there was nothing to do.
+        """
+        if self._breaker_tripped or not self._on:
+            return None
+        self._breaker_tripped = True
+        self._update_port_power()
+        return True
+
+    def reset_breaker(self: _SmartboxPortSimulator) -> Optional[bool]:
+        """
+        Reset the breaker.
+
+        :return: whether successful, or None if there was nothing to do.
+        """
+        if self._breaker_tripped:
+            self._breaker_tripped = False
+            self._update_port_power()
+            return True
+        return None
+
+
 class PasdHardwareSimulator:
     """
     A class that captures commonality between FNDH and smartbox simulators.
@@ -311,24 +364,10 @@ class PasdHardwareSimulator:
     DEFAULT_UPTIME: Final = 0
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
-    def __init__(
-        self: PasdHardwareSimulator,
-        number_of_ports: int,
-        instantiate_smartbox: Callable[[int], Optional[bool]] | None = None,
-        delete_smartbox: Callable[[int], Optional[bool]] | None = None,
-    ) -> None:
-        """
-        Initialise a new instance.
-
-        :param number_of_ports: number of ports managed by this hardware.
-        :param instantiate_smartbox: optional reference to PasdBusSimulator function.
-        :param delete_smartbox: optional reference to PasdBusSimulator function.
-        """
+    def __init__(self: PasdHardwareSimulator) -> None:
+        """Initialise a new instance."""
         self._boot_on_time: datetime | None = datetime.now()
-        self._ports = [
-            _PasdPortSimulator(port_index + 1, instantiate_smartbox, delete_smartbox)
-            for port_index in range(number_of_ports)
-        ]
+        self._ports: Sequence[_PasdPortSimulator]
         self._sensors_status: dict = {}
         self._status = self.DEFAULT_STATUS
         self._led_pattern = str(self.DEFAULT_LED_PATTERN)
@@ -775,7 +814,11 @@ class FndhSimulator(PasdHardwareSimulator):
         :param instantiate_smartbox: optional reference to PasdBusSimulator function.
         :param delete_smartbox: optional reference to PasdBusSimulator function.
         """
-        super().__init__(self.NUMBER_OF_PORTS, instantiate_smartbox, delete_smartbox)
+        super().__init__()
+        self._ports: Sequence[_FndhPortSimulator] = [
+            _FndhPortSimulator(port_index + 1, instantiate_smartbox, delete_smartbox)
+            for port_index in range(self.NUMBER_OF_PORTS)
+        ]
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "fndh")
         self.psu48v_voltages = self.DEFAULT_PSU48V_VOLTAGES
@@ -893,7 +936,11 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
     def __init__(self: SmartboxSimulator) -> None:
         """Initialise a new instance."""
-        super().__init__(self.NUMBER_OF_PORTS)
+        super().__init__()
+        self._ports: Sequence[_SmartboxPortSimulator] = [
+            _SmartboxPortSimulator(port_index + 1)
+            for port_index in range(self.NUMBER_OF_PORTS)
+        ]
         self._sys_address = self.DEFAULT_SYS_ADDRESS
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")

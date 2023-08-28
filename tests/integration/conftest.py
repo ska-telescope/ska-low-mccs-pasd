@@ -145,22 +145,18 @@ def smartbox_attached_ports_fixture(
 @pytest.fixture(name="smartbox_simulators")
 def smartbox_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-    fndh_simulator: FndhSimulator,
-    smartbox_attached_ports: list[int],
 ) -> Dict[int, SmartboxSimulator]:
     """
     Return the smartbox simulators.
 
     :param pasd_bus_simulator: a PaSD bus simulator whose smartbox
         simulators are to be returned.
-    :param fndh_simulator: FNDH simulator the smartboxes are connected to.
-    :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
-            is connected to.
     :return: a dictionary of smartbox simulators
     """
-    fndh_simulator.initialize()
-    for port_nr in smartbox_attached_ports:
-        fndh_simulator.turn_port_on(port_nr)
+    # TODO
+    # fndh_simulator.initialize()
+    # for port_nr in smartbox_attached_ports:
+    #     fndh_simulator.turn_port_on(port_nr)
     return pasd_bus_simulator.get_smartboxes()
 
 
