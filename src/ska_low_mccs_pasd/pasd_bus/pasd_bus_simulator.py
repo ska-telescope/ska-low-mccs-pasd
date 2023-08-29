@@ -95,6 +95,31 @@ class _PasdPortSimulator(ABC):
         """Update the port power."""
 
     @property
+    def breaker_tripped(self: _PasdPortSimulator) -> bool:
+        """
+        Return whether the port breaker has been tripped.
+
+        :raises NotImplementedError: raised if not implemented in subclass
+        """
+        raise NotImplementedError
+
+    def simulate_breaker_trip(self: _PasdPortSimulator) -> Optional[bool]:
+        """
+        Simulate a breaker trip.
+
+        :raises NotImplementedError: raised if not implemented in subclass
+        """
+        raise NotImplementedError
+
+    def reset_breaker(self: _PasdPortSimulator) -> Optional[bool]:
+        """
+        Reset the breaker.
+
+        :raises NotImplementedError: raised if not implemented in subclass
+        """
+        raise NotImplementedError
+
+    @property
     def connected(self: _PasdPortSimulator) -> bool:
         """
         Return whether anything is connected to this port.
