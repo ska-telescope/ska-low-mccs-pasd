@@ -74,7 +74,9 @@ def pasd_bus_simulator_fixture(station_id: int) -> PasdBusSimulator:
 
     :return: a PaSD bus simulator
     """
-    return PasdBusSimulator(station_id, logging.DEBUG)
+    return PasdBusSimulator(
+        station_id, logging.DEBUG, smartboxes_depend_on_attached_ports=True
+    )
 
 
 @pytest.fixture(name="fndh_simulator")

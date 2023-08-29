@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import importlib.resources
 import logging
+from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Callable, Dict, Final, Optional, Sequence
 
@@ -46,9 +47,9 @@ import yaml
 logger = logging.getLogger()
 
 
-class _PasdPortSimulator:
+class _PasdPortSimulator(ABC):
     """
-    A private common class of a single FNDH/smartbox simulated port.
+    A private abstract base class of a single FNDH/smartbox simulated port.
 
     It supports:
 
@@ -89,9 +90,9 @@ class _PasdPortSimulator:
         self._desired_on_when_offline: bool = False  # Redundant, as desribed above
         self._forcing: Optional[bool] = None
 
+    @abstractmethod
     def _update_port_power(self: _PasdPortSimulator) -> None:
         """Update the port power."""
-        # This method should be overridden by child classes
 
     @property
     def connected(self: _PasdPortSimulator) -> bool:
@@ -364,10 +365,17 @@ class PasdHardwareSimulator:
     DEFAULT_UPTIME: Final = 0
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
-    def __init__(self: PasdHardwareSimulator) -> None:
-        """Initialise a new instance."""
+    def __init__(
+        self: PasdHardwareSimulator,
+        ports: Sequence[_FndhPortSimulator | _SmartboxPortSimulator],
+    ) -> None:
+        """
+        Initialise a new instance.
+
+        :param ports: instantiated ports for the simulator.
+        """
+        self._ports = ports
         self._boot_on_time: datetime | None = datetime.now()
-        self._ports: Sequence[_PasdPortSimulator]
         self._sensors_status: dict = {}
         self._status = self.DEFAULT_STATUS
         self._led_pattern = str(self.DEFAULT_LED_PATTERN)
@@ -814,11 +822,11 @@ class FndhSimulator(PasdHardwareSimulator):
         :param instantiate_smartbox: optional reference to PasdBusSimulator function.
         :param delete_smartbox: optional reference to PasdBusSimulator function.
         """
-        super().__init__()
-        self._ports: Sequence[_FndhPortSimulator] = [
+        ports: Sequence[_FndhPortSimulator] = [
             _FndhPortSimulator(port_index + 1, instantiate_smartbox, delete_smartbox)
             for port_index in range(self.NUMBER_OF_PORTS)
         ]
+        super().__init__(ports)
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "fndh")
         self.psu48v_voltages = self.DEFAULT_PSU48V_VOLTAGES
@@ -936,11 +944,11 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
     def __init__(self: SmartboxSimulator) -> None:
         """Initialise a new instance."""
-        super().__init__()
-        self._ports: Sequence[_SmartboxPortSimulator] = [
+        ports: Sequence[_SmartboxPortSimulator] = [
             _SmartboxPortSimulator(port_index + 1)
             for port_index in range(self.NUMBER_OF_PORTS)
         ]
+        super().__init__(ports)
         self._sys_address = self.DEFAULT_SYS_ADDRESS
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
@@ -1095,12 +1103,15 @@ class PasdBusSimulator:
         self: PasdBusSimulator,
         station_id: int,
         logging_level: int = logging.INFO,
+        smartboxes_depend_on_attached_ports: bool = False,
     ) -> None:
         """
         Initialise a new instance.
 
         :param station_id: id of the station to which this PaSD belongs.
         :param logging_level: the level to log at.
+        :param smartboxes_depend_on_attached_ports: enable instantiation/deleting
+            of smartboxes when FNDH ports are turned on and off.
         """
         self._station_id = station_id
         logger.setLevel(logging_level)
@@ -1110,23 +1121,24 @@ class PasdBusSimulator:
 
         self._smartbox_simulators: Dict[int, SmartboxSimulator] = {}
         self._smartboxes_ports_connected: list[list[bool]] = []
-        self._smartbox_on_port_number_map: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
+        self._smartbox_attached_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
 
-        # TODO: Instantiate FNDH with optional smartbox functions passed and
-        # remove smartbox instantiation after _load_config() is called
-        self._fndh_simulator = FndhSimulator()
-        # self._fndh_simulator = FndhSimulator(
-        #     self._instantiate_smartbox, self._delete_smartbox
-        # )
+        if smartboxes_depend_on_attached_ports:
+            self._fndh_simulator = FndhSimulator(
+                self._instantiate_smartbox, self._delete_smartbox
+            )
+        else:
+            self._fndh_simulator = FndhSimulator()
         logger.info(f"Initialised FNDH simulator for station {station_id}.")
 
         self._load_config()
         logger.info(
             f"PaSD configuration data loaded into simulator for station {station_id}."
         )
-        # TODO: Remove instantiation of smartboxes here
-        for port_number in self._smartbox_on_port_number_map:
-            self._instantiate_smartbox(port_number)
+
+        if not smartboxes_depend_on_attached_ports:
+            for port_number in self._smartbox_attached_ports:
+                self._instantiate_smartbox(port_number)
         logger.info(f"Initialised PaSD bus simulator for station {station_id}.")
 
     def get_fndh(self: PasdBusSimulator) -> FndhSimulator:
@@ -1147,11 +1159,11 @@ class PasdBusSimulator:
 
     def get_smartbox_attached_ports(self: PasdBusSimulator) -> list[int]:
         """
-        Return a list of FNDH port numbers each smartbox is connected to.
+        Return a list of FNDH port numbers each smartbox is attached to.
 
-        :return: a list of FNDH port numbers each smartbox is connected to.
+        :return: a list of FNDH port numbers each smartbox is attached to.
         """
-        return self._smartbox_on_port_number_map
+        return self._smartbox_attached_ports
 
     def _instantiate_smartbox(
         self: PasdBusSimulator, port_number: int
@@ -1163,7 +1175,7 @@ class PasdBusSimulator:
         :return: whether successful, or None if there was nothing to do.
         """
         try:
-            smartbox_id = self._smartbox_on_port_number_map.index(port_number) + 1
+            smartbox_id = self._smartbox_attached_ports.index(port_number) + 1
             self._smartbox_simulators[smartbox_id] = SmartboxSimulator()
             self._smartbox_simulators[smartbox_id].configure(
                 self._smartboxes_ports_connected[smartbox_id - 1]
@@ -1181,7 +1193,7 @@ class PasdBusSimulator:
         :return: whether successful, or None if there was nothing to do.
         """
         try:
-            smartbox_id = self._smartbox_on_port_number_map.index(port_number) + 1
+            smartbox_id = self._smartbox_attached_ports.index(port_number) + 1
             del self._smartbox_simulators[smartbox_id]
             logger.debug(f"Deleted Smartbox simulator {smartbox_id}.")
             return True
@@ -1217,7 +1229,7 @@ class PasdBusSimulator:
         for smartbox_config in my_config["smartboxes"]:
             smartbox_id = smartbox_config["smartbox_id"]
             fndh_port = smartbox_config["fndh_port"]
-            self._smartbox_on_port_number_map[smartbox_id - 1] = fndh_port
+            self._smartbox_attached_ports[smartbox_id - 1] = fndh_port
             fndh_ports_is_connected[fndh_port - 1] = True
         self._fndh_simulator.configure(fndh_ports_is_connected)
 
