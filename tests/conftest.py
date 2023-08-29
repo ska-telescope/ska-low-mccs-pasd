@@ -28,6 +28,16 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     print(tango.utils.info())
 
 
+@pytest.fixture(name="pasd_config_path", scope="session")
+def pasd_config_path_fixture() -> str:
+    """
+    Return the path to the PaSD configuration file to be used in these tests.
+
+    :return: path to the PaSD configuration file to be used in these tests.
+    """
+    return "charts/ska-low-mccs-pasd/data/pasd_configuration.yaml"
+
+
 @pytest.fixture(scope="session", name="logger")
 def logger_fixture() -> logging.Logger:
     """

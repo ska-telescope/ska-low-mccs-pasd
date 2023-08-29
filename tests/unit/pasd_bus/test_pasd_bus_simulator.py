@@ -28,7 +28,7 @@ def fndh_config_fixture(pasd_config: dict[str, Any]) -> list[bool]:
     :return: a list of booleans indicating which ports are connected
     """
     is_port_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
-    for smartbox_config in pasd_config["smartboxes"]:
+    for smartbox_config in pasd_config["pasd"]["smartboxes"]:
         is_port_connected[smartbox_config["fndh_port"] - 1] = True
     return list(is_port_connected)
 

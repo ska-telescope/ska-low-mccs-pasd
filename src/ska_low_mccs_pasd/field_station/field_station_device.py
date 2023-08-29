@@ -49,9 +49,8 @@ class MccsFieldStation(SKABaseDevice):
 
         message = (
             "Initialised MccsFieldStation device with properties:\n"
-            f"type:{type(self.SmartBoxFQDNs)}"
             f"\tFndhFQDN: {self.FndhFQDN}\n"
-            f"\tSmartBoxFQDN: {self.SmartBoxFQDNs}\n"
+            f"\tSmartBoxFQDNs: {self.SmartBoxFQDNs}\n"
         )
         self.logger.info(message)
 

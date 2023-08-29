@@ -104,9 +104,9 @@ class TestPasdBusComponentManager:
             ),
         )
 
-        expected_fndh_ports_powered = [False] * FndhSimulator.NUMBER_OF_PORTS
-        for smartbox_config in pasd_config["smartboxes"]:
-            expected_fndh_ports_powered[smartbox_config["fndh_port"] - 1] = True
+        expected_fndh_ports_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
+        for smartbox_config in pasd_config["pasd"]["smartboxes"].values():
+            expected_fndh_ports_connected[smartbox_config["fndh_port"] - 1] = True
 
         # Then FNDH port status info
         mock_callbacks.assert_call(
@@ -147,8 +147,8 @@ class TestPasdBusComponentManager:
             expected_smartbox_ports_connected = [
                 False
             ] * SmartboxSimulator.NUMBER_OF_PORTS
-            for antenna_config in pasd_config["antennas"]:
-                if antenna_config["smartbox_id"] != smartbox_number:
+            for antenna_config in pasd_config["antennas"].values():
+                if int(antenna_config["smartbox"]) != smartbox_number:
                     continue
                 smartbox_port = antenna_config["smartbox_port"]
                 expected_smartbox_ports_connected[smartbox_port - 1] = True

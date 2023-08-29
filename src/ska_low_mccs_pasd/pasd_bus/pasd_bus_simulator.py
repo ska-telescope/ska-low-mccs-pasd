@@ -1119,13 +1119,12 @@ class PasdBusSimulator:
     * Voltages, currents and temperatures never change.
     """
 
-    CONFIG_PATH = "pasd_configuration.yaml"
-
     NUMBER_OF_SMARTBOXES = 24
     NUMBER_OF_ANTENNAS = 256
 
     def __init__(
         self: PasdBusSimulator,
+        pasd_configuration_path: str,
         station_id: int,
         logging_level: int = logging.INFO,
         smartboxes_depend_on_attached_ports: bool = False,
@@ -1133,6 +1132,7 @@ class PasdBusSimulator:
         """
         Initialise a new instance.
 
+        :param pasd_configuration_path: path to a PaSD configuration file.
         :param station_id: id of the station to which this PaSD belongs.
         :param logging_level: the level to log at.
         :param smartboxes_depend_on_attached_ports: enable instantiation/deleting
@@ -1156,7 +1156,7 @@ class PasdBusSimulator:
             self._fndh_simulator = FndhSimulator()
         logger.info(f"Initialised FNDH simulator for station {station_id}.")
 
-        self._load_config()
+        self._load_config(pasd_configuration_path)
         logger.info(
             f"PaSD configuration data loaded into simulator for station {station_id}."
         )
@@ -1225,34 +1225,30 @@ class PasdBusSimulator:
         except ValueError:
             return None
 
-    def _load_config(self: PasdBusSimulator) -> bool:
+    def _load_config(self: PasdBusSimulator, path: str) -> bool:
         """
         Load PaSD configuration data from a file into this simulator.
+
+        :param path: path to a file from which to load configuration.
 
         :return: whether successful
 
         :raises yaml.YAMLError: if the config file cannot be parsed.
         """
-        config_data = importlib.resources.read_text(
-            "ska_low_mccs_pasd.pasd_bus",
-            self.CONFIG_PATH,
-        )
+        with open(path, "r", encoding="utf-8") as config_file:
+            try:
+                config = yaml.safe_load(config_file)
+            except yaml.YAMLError as exception:
+                logger.error(
+                    f"PaSD Bus simulator could not load configuration: {exception}."
+                )
+                raise
 
-        assert config_data is not None  # for the type-checker
+        pasd_config = config["pasd"]
 
-        try:
-            config = yaml.safe_load(config_data)
-        except yaml.YAMLError as exception:
-            logger.error(
-                f"PaSD Bus simulator could not load configuration: {exception}."
-            )
-            raise
-
-        my_config = config["stations"][self._station_id - 1]
-
-        fndh_ports_is_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
-        for smartbox_config in my_config["smartboxes"]:
-            smartbox_id = smartbox_config["smartbox_id"]
+        fndh_port_is_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
+        for smartbox_id, smartbox_config in pasd_config["smartboxes"].items():
+            smartbox_id = int(smartbox_id)
             fndh_port = smartbox_config["fndh_port"]
             self._smartbox_attached_ports[smartbox_id - 1] = fndh_port
             fndh_ports_is_connected[fndh_port - 1] = True
@@ -1262,8 +1258,8 @@ class PasdBusSimulator:
             [False] * SmartboxSimulator.NUMBER_OF_PORTS
             for _ in range(self.NUMBER_OF_SMARTBOXES)
         ]
-        for antenna_config in my_config["antennas"]:
-            smartbox_id = antenna_config["smartbox_id"]
+        for antenna_config in config["antennas"].values():
+            smartbox_id = int(antenna_config["smartbox"])
             smartbox_port = antenna_config["smartbox_port"]
             self._smartboxes_ports_connected[smartbox_id - 1][smartbox_port - 1] = True
 
