@@ -71,10 +71,10 @@ def pasd_bus_simulator_fixture(
     :return: a PaSD bus simulator
     """
     return PasdBusSimulator(
-        pasd_config_path, 
-        station_id, 
-        logging.DEBUG, 
-        smartboxes_depend_on_attached_ports=True
+        pasd_config_path,
+        station_id,
+        logging.DEBUG,
+        smartboxes_depend_on_attached_ports=True,
     )
 
 

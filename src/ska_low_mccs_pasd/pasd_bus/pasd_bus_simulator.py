@@ -1246,7 +1246,7 @@ class PasdBusSimulator:
 
         pasd_config = config["pasd"]
 
-        fndh_port_is_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
+        fndh_ports_is_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
         for smartbox_id, smartbox_config in pasd_config["smartboxes"].items():
             smartbox_id = int(smartbox_id)
             fndh_port = smartbox_config["fndh_port"]

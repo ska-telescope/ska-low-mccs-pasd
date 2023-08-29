@@ -104,9 +104,9 @@ class TestPasdBusComponentManager:
             ),
         )
 
-        expected_fndh_ports_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
+        expected_fndh_ports_powered = [False] * FndhSimulator.NUMBER_OF_PORTS
         for smartbox_config in pasd_config["pasd"]["smartboxes"].values():
-            expected_fndh_ports_connected[smartbox_config["fndh_port"] - 1] = True
+            expected_fndh_ports_powered[smartbox_config["fndh_port"] - 1] = True
 
         # Then FNDH port status info
         mock_callbacks.assert_call(
