@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import functools
-import importlib.resources
 import logging
 import threading
 import unittest.mock
@@ -44,37 +43,34 @@ def station_id_fixture() -> int:
 
 
 @pytest.fixture(name="pasd_config")
-def pasd_config_fixture(station_id: int) -> dict:
+def pasd_config_fixture(pasd_config_path: str, station_id: int) -> dict:
     """
     Return the PaSD config that the pasd bus device uses.
 
+    :param pasd_config_path: path to the PaSD configuration file
     :param station_id: id of the staion whose configuration will be used
         in testing.
 
     :return: the PaSD config that the PaSD bus object under test uses.
     """
-    config_data = importlib.resources.read_text(
-        "ska_low_mccs_pasd.pasd_bus",
-        PasdBusSimulator.CONFIG_PATH,
-    )
-
-    assert config_data
-
-    config = yaml.safe_load(config_data)
-    return config["stations"][station_id - 1]
+    with open(pasd_config_path, "r", encoding="utf-8") as config_file:
+        return yaml.safe_load(config_file)
 
 
 @pytest.fixture(name="pasd_bus_simulator")
-def pasd_bus_simulator_fixture(station_id: int) -> PasdBusSimulator:
+def pasd_bus_simulator_fixture(
+    pasd_config_path: str, station_id: int
+) -> PasdBusSimulator:
     """
     Fixture that returns a PaSD bus simulator.
 
+    :param pasd_config_path: path to the PaSD configuration file
     :param station_id: the id of the station whose PaSD bus we are
         simulating.
 
     :return: a PaSD bus simulator
     """
-    return PasdBusSimulator(station_id, logging.DEBUG)
+    return PasdBusSimulator(pasd_config_path, station_id, logging.DEBUG)
 
 
 @pytest.fixture(name="fndh_simulator")

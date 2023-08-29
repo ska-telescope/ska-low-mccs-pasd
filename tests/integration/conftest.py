@@ -47,16 +47,19 @@ def station_id_fixture() -> int:
 
 
 @pytest.fixture(name="pasd_bus_simulator")
-def pasd_bus_simulator_fixture(station_id: int) -> PasdBusSimulator:
+def pasd_bus_simulator_fixture(
+    pasd_config_path: str, station_id: int
+) -> PasdBusSimulator:
     """
     Fixture that returns a PaSD bus simulator.
 
+    :param pasd_config_path: path to the PaSD configuration file
     :param station_id: the id of the station whose PaSD bus we are
         simulating.
 
     :return: a PaSD bus simulator
     """
-    return PasdBusSimulator(station_id, logging.DEBUG)
+    return PasdBusSimulator(pasd_config_path, station_id, logging.DEBUG)
 
 
 @pytest.fixture(name="fndh_simulator")

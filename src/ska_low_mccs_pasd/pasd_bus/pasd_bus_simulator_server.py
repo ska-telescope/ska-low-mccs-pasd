@@ -48,14 +48,22 @@ class PasdBusSimulatorJsonServer(ApplicationServer):
 
 
 def main() -> None:
-    """Run the simulator server."""
+    """
+    Run the simulator server.
+
+    :raises ValueError: if SIMULATOR_CONFIG_PATH is not set in the environment.
+    """
     logger = logging.getLogger()
 
     station_id = os.getenv("SIMULATOR_STATION", "1")
+    config_path = os.getenv("SIMULATOR_CONFIG_PATH")
     host = os.getenv("SIMULATOR_HOST", gethostname())
     port = int(os.getenv("SIMULATOR_PORT", "502"))
 
-    simulator = PasdBusSimulator(int(station_id), logging.DEBUG)
+    if config_path is None:
+        raise ValueError("SIMULATOR_CONFIG_PATH environment variable must be set.")
+
+    simulator = PasdBusSimulator(config_path, int(station_id), logging.DEBUG)
     simulator_server = PasdBusSimulatorJsonServer(
         simulator.get_fndh(), simulator.get_smartboxes()
     )
