@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Callable, Final, Sequence
+from typing import Any, Callable, Dict, Final
 
 import jsonschema
 
@@ -84,7 +84,7 @@ class PasdBusJsonApi:
 
     def __init__(
         self,
-        simulators: Sequence[FndhSimulator | SmartboxSimulator],
+        simulators: Dict[int, FndhSimulator | SmartboxSimulator],
         encoding: str = "utf-8",
     ) -> None:
         """
@@ -102,13 +102,23 @@ class PasdBusJsonApi:
         attributes: dict[str, Any] = {}
         for name in names:
             try:
+                # TODO: Not sure how API should handle "unresponsive" smartbox
                 value = getattr(self._simulators[device_id], name)
             except AttributeError:
                 return {
+                    "source": device_id,
                     "error": {
-                        "source": device_id,
                         "code": "attribute",
                         "detail": f"Attribute '{name}' does not exist",
+                    },
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            except KeyError:
+                return {
+                    "source": device_id,
+                    "error": {
+                        "code": "device",
+                        "detail": f"Device {device_id} is unresponsive",
                     },
                     "timestamp": datetime.utcnow().isoformat(),
                 }
@@ -121,33 +131,42 @@ class PasdBusJsonApi:
 
     def _handle_command(self, device_id: int, name: str, args: tuple) -> dict:
         try:
+            # TODO: Not sure how API should handle "unresponsive" smartbox
             command = getattr(self._simulators[device_id], name)
         except AttributeError:
             response: dict[str, Any] = {
+                "source": device_id,
                 "error": {
-                    "source": device_id,
                     "code": "attribute",
                     "detail": f"Command '{name}' does not exist",
-                }
+                },
+            }
+        except KeyError:
+            response = {
+                "source": device_id,
+                "error": {
+                    "code": "device",
+                    "detail": f"Device {device_id} is unresponsive",
+                },
             }
         else:
             try:
                 result = command(*args)
             except Exception as error:  # pylint: disable=broad-exception-caught
                 response = {
+                    "source": device_id,
                     "error": {
-                        "source": device_id,
                         "code": "command",
                         "detail": f"Exception in command '{name}': {str(error)}.",
-                    }
+                    },
                 }
             else:
                 response = {
+                    "source": device_id,
                     "data": {
-                        "source": device_id,
                         "type": "command_result",
                         "attributes": {name: result},
-                    }
+                    },
                 }
         response["timestamp"] = datetime.utcnow().isoformat()
         return response
@@ -253,11 +272,13 @@ class PasdBusJsonApiClient:
         :return: dictionary of attribute values keyed by name
         """
         response = self._do_request({"device_id": device_id, "read": names})
-        assert response["source"] == device_id
-        assert response["data"]["type"] == "reads"
-        return response["data"]["attributes"]
+        if "data" in response:
+            assert response["source"] == device_id
+            assert response["data"]["type"] == "reads"
+            return response["data"]["attributes"]
+        return response
 
-    def execute_command(self, device_id: int, name: str, *args: Any) -> Any:
+    def execute_command(self, device_id: int, name: str, *args: Any) -> dict[str, Any]:
         """
         Execute a command and return the results.
 
@@ -270,6 +291,8 @@ class PasdBusJsonApiClient:
         response = self._do_request(
             {"device_id": device_id, "execute": name, "arguments": args}
         )
-        assert response["data"]["source"] == device_id
-        assert response["data"]["type"] == "command_result"
-        return response["data"]["attributes"]
+        if "data" in response:
+            assert response["source"] == device_id
+            assert response["data"]["type"] == "command_result"
+            return response["data"]["attributes"]
+        return response

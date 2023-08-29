@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from ska_control_model import CommunicationStatus, PowerState
 from ska_tango_testing.mock import MockCallableGroup
+from ska_tango_testing.mock.placeholders import Anything
 
 from ska_low_mccs_pasd.pasd_bus import PasdBusComponentManager
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
@@ -85,7 +86,7 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call(
             "pasd_device_state",
             0,  # FNDH
-            uptime=FndhSimulator.DEFAULT_UPTIME,
+            uptime=Anything,
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="OK",
             led_pattern=FndhSimulator.DEFAULT_LED_PATTERN,
@@ -103,26 +104,26 @@ class TestPasdBusComponentManager:
             ),
         )
 
-        expected_fndh_ports_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
+        expected_fndh_ports_powered = [False] * FndhSimulator.NUMBER_OF_PORTS
         for smartbox_config in pasd_config["pasd"]["smartboxes"].values():
-            expected_fndh_ports_connected[smartbox_config["fndh_port"] - 1] = True
+            expected_fndh_ports_powered[smartbox_config["fndh_port"] - 1] = True
 
         # Then FNDH port status info
         mock_callbacks.assert_call(
             "pasd_device_state",
             0,  # FNDH
-            ports_connected=expected_fndh_ports_connected,
+            ports_connected=expected_fndh_ports_powered,
             port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
-            ports_desired_power_when_online=[False] * FndhSimulator.NUMBER_OF_PORTS,
-            ports_desired_power_when_offline=[False] * FndhSimulator.NUMBER_OF_PORTS,
-            ports_power_sensed=[False] * FndhSimulator.NUMBER_OF_PORTS,
+            ports_desired_power_when_online=expected_fndh_ports_powered,
+            ports_desired_power_when_offline=expected_fndh_ports_powered,
+            ports_power_sensed=expected_fndh_ports_powered,
         )
 
         for smartbox_number in range(1, 25):
             mock_callbacks.assert_call(
                 "pasd_device_state",
                 smartbox_number,
-                uptime=SmartboxSimulator.DEFAULT_UPTIME,
+                uptime=Anything,
                 sys_address=SmartboxSimulator.DEFAULT_SYS_ADDRESS,
                 status="OK",
                 led_pattern=SmartboxSimulator.DEFAULT_LED_PATTERN,
@@ -209,8 +210,7 @@ class TestPasdBusComponentManager:
         for _ in range(75):
             mock_callbacks.assert_against_call("pasd_device_state")
 
-        # TODO pasd_bus_component_manager.initialize_fndh()
-        assert fndh_simulator.initialize()
+        pasd_bus_component_manager.initialize_fndh()
         ports_connected = fndh_simulator.ports_connected
         expected_port_forcings = fndh_simulator.port_forcings
         expected_ports_desired_power_when_online = (
@@ -290,8 +290,7 @@ class TestPasdBusComponentManager:
         for _ in range(75):
             mock_callbacks.assert_against_call("pasd_device_state")
 
-        # TODO pasd_bus_component_manager.initialize_smartbox(smartbox_id)
-        assert smartbox_simulator.initialize()
+        pasd_bus_component_manager.initialize_smartbox(smartbox_id)
         ports_current_draw = smartbox_simulator.ports_current_draw
         ports_connected = smartbox_simulator.ports_connected
         expected_port_forcings = smartbox_simulator.port_forcings
@@ -380,9 +379,9 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call(
             "pasd_device_state",
             0,  # FNDH
-            uptime=FndhSimulator.DEFAULT_UPTIME,
+            uptime=Anything,
             sys_address=FndhSimulator.SYS_ADDRESS,
-            status=FndhSimulator.DEFAULT_STATUS,
+            status="OK",
             led_pattern="SERVICE",
             psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
             psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
@@ -404,7 +403,7 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call(
             "pasd_device_state",
             4,
-            uptime=SmartboxSimulator.DEFAULT_UPTIME,
+            uptime=Anything,
             sys_address=SmartboxSimulator.DEFAULT_SYS_ADDRESS,
             status=SmartboxSimulator.DEFAULT_STATUS,
             led_pattern="SERVICE",

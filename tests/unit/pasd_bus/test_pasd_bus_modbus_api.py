@@ -8,8 +8,8 @@
 """Tests of the PasdBusModbusApi."""
 from __future__ import annotations
 
-import unittest
-from typing import Any, Sequence
+from typing import Any, Dict
+from unittest import mock
 
 import pytest
 from pymodbus.factory import ClientDecoder
@@ -19,7 +19,12 @@ from pymodbus.register_read_message import (
     ReadHoldingRegistersResponse,
 )
 
-from ska_low_mccs_pasd.pasd_bus import PasdBusModbusApi, PasdBusSimulator
+from ska_low_mccs_pasd.pasd_bus import (
+    FndhSimulator,
+    PasdBusModbusApi,
+    PasdBusSimulator,
+    SmartboxSimulator,
+)
 
 
 class TestPasdBusModbusApi:
@@ -29,7 +34,7 @@ class TestPasdBusModbusApi:
     def backend_pasd_bus_fixture(
         self: TestPasdBusModbusApi,
         pasd_bus_simulator: PasdBusSimulator,
-    ) -> unittest.mock.Mock:
+    ) -> mock.Mock:
         """
         Return a mock backend to test the API against.
 
@@ -39,17 +44,17 @@ class TestPasdBusModbusApi:
 
         :return: a mock backend to test the API against.
         """
-        mock = unittest.mock.create_autospec(
+        backend_pasd_bus = mock.create_autospec(
             pasd_bus_simulator,
             spec_set=True,
             instance=True,
         )
-        return mock
+        return backend_pasd_bus
 
     @pytest.fixture(name="backend_fndh")
     def backend_fndh_fixture(
         self: TestPasdBusModbusApi, pasd_bus_simulator: PasdBusSimulator
-    ) -> unittest.mock.Mock:
+    ) -> mock.Mock:
         """
         Return a mock backend FNDH to test the API against.
 
@@ -60,26 +65,26 @@ class TestPasdBusModbusApi:
 
         :return: a mock backend to test the API against.
         """
-        mock = unittest.mock.create_autospec(
+        backend_fndh = mock.create_autospec(
             pasd_bus_simulator.get_fndh(),
             spec_set=True,
             instance=True,
             fncb_temperature=40,
         )
-        mock.set_led_pattern.return_value = True
-        mock.initialize.side_effect = ValueError("Mock error")
-        return mock
+        backend_fndh.set_led_pattern.return_value = True
+        backend_fndh.initialize.side_effect = ValueError("Mock error")
+        return backend_fndh
 
     @pytest.fixture(name="backend_smartboxes")
     def backend_smartboxes_fixture(
         self: TestPasdBusModbusApi,
-    ) -> Sequence[unittest.mock.Mock]:
+    ) -> Dict[int, mock.Mock]:
         """
-        Return a sequence of mock backend smartboxes to test the API against.
+        Return a dictionary of mock backend smartboxes to test the API against.
 
         :return: mock backends to test the API against.
         """
-        return [unittest.mock.Mock() for _ in range(25)]
+        return {i: mock.Mock() for i in range(1, 25)}
 
     @pytest.fixture(name="encoding")
     def encoding_fixture(
@@ -96,24 +101,26 @@ class TestPasdBusModbusApi:
     @pytest.fixture(name="api")
     def api_fixture(
         self: TestPasdBusModbusApi,
-        backend_fndh: unittest.mock.Mock,
-        backend_smartboxes: Sequence[unittest.mock.Mock],
+        backend_fndh: mock.Mock,
+        backend_smartboxes: Dict[int, mock.Mock],
     ) -> PasdBusModbusApi:
         """
         Return an API instance against which to test.
 
         :param backend_fndh: a mock backend FNDH for the API to front.
-        :param backend_smartboxes: sequence of mock backend smartboxes for
+        :param backend_smartboxes: dictionary of mock backend smartboxes for
             the API to front.
 
         :return: an API instance against which to test
         """
-        return PasdBusModbusApi([backend_fndh] + list(backend_smartboxes))
+        backend_mocks: Dict[int, FndhSimulator | SmartboxSimulator] = {0: backend_fndh}
+        backend_mocks.update(backend_smartboxes)
+        return PasdBusModbusApi(backend_mocks)
 
     def test_read_attribute(
         self: TestPasdBusModbusApi,
         api: PasdBusModbusApi,
-        backend_fndh: unittest.mock.Mock,
+        backend_fndh: mock.Mock,
     ) -> None:
         """
         Test handling of an attribute read request for an existing attribute.

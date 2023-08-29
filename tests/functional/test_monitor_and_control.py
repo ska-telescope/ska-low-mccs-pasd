@@ -14,7 +14,7 @@ from typing import Callable, Literal
 
 import tango
 from pytest_bdd import given, parsers, scenario, then, when
-from ska_control_model import AdminMode, HealthState
+from ska_control_model import AdminMode, HealthState, ResultCode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -315,7 +315,8 @@ def find_connected_fndh_port(
         port can be turned on and power will be sensed.
     """
     try:
-        pasd_bus_device.InitializeFndh()
+        assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+        print("PaSD bus initialized FNDH")
         fndh_connected_ports = list(pasd_bus_device.fndhPortsConnected)
     except tango.DevFailed:
         change_event_callbacks[
@@ -347,17 +348,20 @@ def check_fndh_port_is_off(
         callbacks with asynchrony support.
     :param pasd_bus_name: FQDN of PaSD bus device.
     """
-    change_event_callbacks[f"{pasd_bus_name}/fndhPortsPowerSensed"].assert_change_event(
-        Anything
-    )
-    try:
+    fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
+    is_on = fndh_ports_power_sensed[connected_fndh_port - 1]
+    if is_on:
+        turn_fndh_port_off(pasd_bus_device, connected_fndh_port)
+        check_fndh_port_changes_power_state(
+            pasd_bus_device,
+            connected_fndh_port,
+            change_event_callbacks,
+            "off",
+            pasd_bus_name,
+        )
         fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
-    except tango.DevFailed:
-        change_event_callbacks[
-            f"{pasd_bus_name}/fndhPortsPowerSensed"
-        ].assert_change_event(Anything)
-        fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
-    assert not fndh_ports_power_sensed[connected_fndh_port - 1]
+        is_on = fndh_ports_power_sensed[connected_fndh_port - 1]
+    assert not is_on
 
 
 @given("the FNDH port is on")
@@ -487,8 +491,8 @@ def find_connected_smartbox_port(
         port can be turned on and power will be sensed.
     """
     try:
-        pasd_bus_device.InitializeFndh()
-        pasd_bus_device.InitializeSmartbox(smartbox_id)
+        assert pasd_bus_device.InitializeSmartbox(smartbox_id)[0] == ResultCode.OK
+        print(f"PaSD bus initialized Smartbox {smartbox_id}")
         smartbox_connected_ports = list(
             getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsConnected")
         )

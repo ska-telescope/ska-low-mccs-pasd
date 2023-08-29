@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Final, Sequence
+from typing import Any, Dict, Final
 
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
@@ -23,7 +23,6 @@ from pymodbus.register_read_message import (
 )
 from pymodbus.register_write_message import WriteSingleRegisterResponse
 
-# from .pasd_bus_custom_pymodbus import CustomReadHoldingRegistersResponse
 from .pasd_bus_register_map import (
     PasdBusPortAttribute,
     PasdBusRegisterMap,
@@ -38,7 +37,9 @@ logger = logging.getLogger()
 class PasdBusModbusApi:
     """A Modbus API for a PaSD bus simulator."""
 
-    def __init__(self, simulators: Sequence[FndhSimulator | SmartboxSimulator]) -> None:
+    def __init__(
+        self, simulators: Dict[int, FndhSimulator | SmartboxSimulator]
+    ) -> None:
         """
         Initialise a new instance.
 
@@ -140,9 +141,6 @@ class PasdBusModbusApiClient:
         self._client = ModbusTcpClient(host, port, ModbusAsciiFramer)
         logger.info(f"****Created Modbus TCP client for address {host}, port {port}")
         self._client.connect()
-        # Register a custom response as a workaround to the firmware issue
-        # (see JIRA ticket PRTS-255)
-        # self._client.register(CustomReadHoldingRegistersResponse)  # type: ignore
 
         # Initialise a default register map
         self._register_map = PasdBusRegisterMap()
@@ -321,7 +319,7 @@ class PasdBusModbusApiClient:
             return response["data"]["attributes"]
         return response
 
-    def execute_command(self, device_id: int, name: str, *args: Any) -> Any:
+    def execute_command(self, device_id: int, name: str, *args: Any) -> dict[str, Any]:
         """
         Execute a command and return the results.
 

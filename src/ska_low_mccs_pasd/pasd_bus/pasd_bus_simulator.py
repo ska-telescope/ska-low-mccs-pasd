@@ -38,33 +38,26 @@ from __future__ import annotations
 
 import importlib.resources
 import logging
-import time
+from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Final, Optional, Sequence
+from typing import Callable, Dict, Final, Optional, Sequence
 
 import yaml
 
 logger = logging.getLogger()
 
 
-class _PasdPortSimulator:
+class _PasdPortSimulator(ABC):
     """
-    A private class that manages a single simulated port of a PaSD device.
+    A private abstract base class of a single FNDH/smartbox simulated port.
 
     It supports:
 
-    * breaker tripping: in the real hardware, a port breaker might trip,
-      for example as a result of an overcurrent condition. This
-      simulator provides for simulating a breaker trip. Once tripped,
-      the port will not deliver any power until the breaker has been
-      reset.
-
-    * local forcing: a technician in the field can manually force the
+    * Local forcing: a technician in the field can manually force the
       power state of a port. If forced off, a port will not deliver
-      power regardless of other settings. If forced on, an (untripped)
-      port will deliver power regardless of other settings.
+      power regardless of other settings.
 
-    * online and offline delivery of power. When we tell a port to turn
+    * Online and offline delivery of power. When we tell a port to turn
       on, we can also indicate whether we want it to remain on if the
       control system goes offline. This simulator remembers that
       information, but there's no way to tell the simulator that the
@@ -77,8 +70,17 @@ class _PasdPortSimulator:
 
     # pylint: disable=too-many-instance-attributes
 
-    def __init__(self: _PasdPortSimulator):
-        """Initialise a new instance."""
+    def __init__(
+        self: _PasdPortSimulator,
+        number: int | None = None,
+    ):
+        """
+        Initialise a new instance.
+
+        :param number: optional port number of FNDH/smartbox.
+        """
+        self._number = number
+        # Internal to simulator port states
         self._connected: bool = False
         self._on: bool = False
         # Simulated PDoC/FEM state registers
@@ -87,26 +89,35 @@ class _PasdPortSimulator:
         self._desired_on_when_online: bool = False
         self._desired_on_when_offline: bool = False  # Redundant, as desribed above
         self._forcing: Optional[bool] = None
-        self._breaker_tripped: bool = False  # Smartbox FEM only
 
+    @abstractmethod
     def _update_port_power(self: _PasdPortSimulator) -> None:
-        """
-        Update the port power.
+        """Update the port power."""
 
-        Turn the port ON or OFF depending on the desired power, forcing and
-        breaker trip states.
+    @property
+    def breaker_tripped(self: _PasdPortSimulator) -> bool:
         """
-        if self._forcing is False:
-            self._on = False
-        elif self._forcing or (self._enabled and not self._breaker_tripped):
-            if (self._desired_on_when_online and self._online) or (
-                self._desired_on_when_offline and not self._online
-            ):
-                self._on = True
-            else:
-                self._on = False
-        elif not self._enabled or self._breaker_tripped:  # forcing has priority
-            self._on = False
+        Return whether the port breaker has been tripped.
+
+        :raises NotImplementedError: raised if not implemented in subclass
+        """
+        raise NotImplementedError
+
+    def simulate_breaker_trip(self: _PasdPortSimulator) -> Optional[bool]:
+        """
+        Simulate a breaker trip.
+
+        :raises NotImplementedError: raised if not implemented in subclass
+        """
+        raise NotImplementedError
+
+    def reset_breaker(self: _PasdPortSimulator) -> Optional[bool]:
+        """
+        Reset the breaker.
+
+        :raises NotImplementedError: raised if not implemented in subclass
+        """
+        raise NotImplementedError
 
     @property
     def connected(self: _PasdPortSimulator) -> bool:
@@ -210,39 +221,6 @@ class _PasdPortSimulator:
         return True
 
     @property
-    def breaker_tripped(self: _PasdPortSimulator) -> bool:
-        """
-        Return whether the port breaker has been tripped.
-
-        :return: whether the breaker has been tripped
-        """
-        return self._breaker_tripped
-
-    def simulate_breaker_trip(self: _PasdPortSimulator) -> Optional[bool]:
-        """
-        Simulate a breaker trip.
-
-        :return: whether successful, or None if there was nothing to do.
-        """
-        if self._breaker_tripped or not self._on:
-            return None
-        self._breaker_tripped = True
-        self._update_port_power()
-        return True
-
-    def reset_breaker(self: _PasdPortSimulator) -> Optional[bool]:
-        """
-        Reset the breaker.
-
-        :return: whether successful, or None if there was nothing to do.
-        """
-        if self._breaker_tripped:
-            self._breaker_tripped = False
-            self._update_port_power()
-            return True
-        return None
-
-    @property
     def desired_power_when_online(self: _PasdPortSimulator) -> bool:
         """
         Return the desired power mode of the port when the control system is online.
@@ -272,6 +250,133 @@ class _PasdPortSimulator:
         return self._on
 
 
+class _FndhPortSimulator(_PasdPortSimulator):
+    """
+    A private class that manages a single simulated port of a FNDH.
+
+    It adds:
+
+    * Update port power: Controls the state of a FNDH simulator port, with the optional
+      capability of instantiating or deleting the attached smartbox simulator in the
+      top public PasdBusSimulator instance when the port is turned on or off.
+    """
+
+    def __init__(
+        self: _FndhPortSimulator,
+        number: int | None = None,
+        instantiate_smartbox: Callable[[int], Optional[bool]] | None = None,
+        delete_smartbox: Callable[[int], Optional[bool]] | None = None,
+    ):
+        super().__init__(number)
+        self._instantiate_smartbox = instantiate_smartbox
+        self._delete_smartbox = delete_smartbox
+
+    def _update_port_power(self: _FndhPortSimulator) -> None:
+        """
+        Update the port power.
+
+        Turn the port ON or OFF depending on the desired power and forcing state.
+        """
+        previous = self._on
+        if self._forcing is False:
+            self._on = False
+        elif self._forcing or self._enabled:
+            if (self._desired_on_when_online and self._online) or (
+                self._desired_on_when_offline and not self._online
+            ):
+                self._on = True
+            else:
+                self._on = False
+        elif not self._enabled:  # forcing has priority
+            self._on = False
+        # Instantiate or delete smartbox if port state has changed
+        if (
+            previous != self._on
+            and self._instantiate_smartbox is not None
+            and self._delete_smartbox is not None
+            and self._number is not None
+        ):
+            if self._on:
+                self._instantiate_smartbox(self._number)
+            else:
+                self._delete_smartbox(self._number)
+
+
+class _SmartboxPortSimulator(_PasdPortSimulator):
+    """
+    A private class that manages a single simulated port of a Smartbox.
+
+    It adds:
+
+    * Update port power: Controls the state of a Smartbox simulator port.
+
+    * Breaker tripping: In the real hardware, a port breaker might trip,
+      for example as a result of an overcurrent condition. This
+      simulator provides for simulating a breaker trip. Once tripped,
+      the port will not deliver any power until the breaker has been
+      reset.
+    """
+
+    def __init__(
+        self: _SmartboxPortSimulator,
+        number: int | None = None,
+    ):
+        super().__init__(number)
+        self._breaker_tripped: bool = False  # Smartbox FEM only
+
+    def _update_port_power(self: _SmartboxPortSimulator) -> None:
+        """
+        Update the port power.
+
+        Turn the port ON or OFF depending on the desired power, forcing and
+        breaker trip states.
+        """
+        if self._forcing is False:
+            self._on = False
+        elif self._forcing or (self._enabled and not self._breaker_tripped):
+            if (self._desired_on_when_online and self._online) or (
+                self._desired_on_when_offline and not self._online
+            ):
+                self._on = True
+            else:
+                self._on = False
+        elif not self._enabled or self._breaker_tripped:  # forcing has priority
+            self._on = False
+
+    @property
+    def breaker_tripped(self: _SmartboxPortSimulator) -> bool:
+        """
+        Return whether the port breaker has been tripped.
+
+        :return: whether the breaker has been tripped
+        """
+        return self._breaker_tripped
+
+    def simulate_breaker_trip(self: _SmartboxPortSimulator) -> Optional[bool]:
+        """
+        Simulate a breaker trip.
+
+        :return: whether successful, or None if there was nothing to do.
+        """
+        if self._breaker_tripped or not self._on:
+            return None
+        self._breaker_tripped = True
+        self._update_port_power()
+        return True
+
+    def reset_breaker(self: _SmartboxPortSimulator) -> Optional[bool]:
+        """
+        Reset the breaker.
+
+        :return: whether successful, or None if there was nothing to do.
+        """
+        if self._breaker_tripped:
+            self._breaker_tripped = False
+            self._update_port_power()
+            return True
+        return None
+
+
 class PasdHardwareSimulator:
     """
     A class that captures commonality between FNDH and smartbox simulators.
@@ -287,15 +392,15 @@ class PasdHardwareSimulator:
 
     def __init__(
         self: PasdHardwareSimulator,
-        number_of_ports: int,
+        ports: Sequence[_FndhPortSimulator | _SmartboxPortSimulator],
     ) -> None:
         """
         Initialise a new instance.
 
-        :param number_of_ports: number of ports managed by this hardware
+        :param ports: instantiated ports for the simulator.
         """
-        self._boot_on_time: datetime | None = None
-        self._ports = [_PasdPortSimulator() for _ in range(number_of_ports)]
+        self._ports = ports
+        self._boot_on_time: datetime | None = datetime.now()
         self._sensors_status: dict = {}
         self._status = self.DEFAULT_STATUS
         self._led_pattern = str(self.DEFAULT_LED_PATTERN)
@@ -338,7 +443,7 @@ class PasdHardwareSimulator:
                 setattr(self, sensor + "_thresholds", thresholds_list)
         except KeyError as exception:
             logger.error(
-                f"PaSD hardware simulator could not load thresholds: {exception}."
+                f"PaSD hardware simulator missing thresholds for {sensor}: {exception}."
             )
         return True
 
@@ -371,7 +476,7 @@ class PasdHardwareSimulator:
                 else:
                     self._sensors_status[sensor_name + str(i)] = "OK"
         except TypeError:
-            logger.warning(
+            logger.error(
                 f"PaSD bus simulator: {sensor_name} has no thresholds defined!"
             )
             return
@@ -430,9 +535,6 @@ class PasdHardwareSimulator:
             raise ValueError("Configuration must match the number of ports.")
         for port, is_connected in zip(self._ports, ports_connected):
             port.connected = is_connected
-        # TODO: Add the timestamp back after figuring out how tango testing asserts
-        # can handle a changing value?
-        # self._boot_on_time = datetime.now()
 
     @property
     def ports_connected(self: PasdHardwareSimulator) -> list[bool]:
@@ -588,7 +690,7 @@ class PasdHardwareSimulator:
             self._update_ports_state()
             if self._status == "OK":
                 return True
-            logger.warning(
+            logger.debug(
                 f"PaSD Bus simulator status was not set to OK, status is {self._status}"
             )
             return False
@@ -621,9 +723,9 @@ class PasdHardwareSimulator:
         return True
 
 
-class Sensor:
+class _Sensor:
     """
-    Descriptor for sensor attributes of a FNDH/Smartbox.
+    Data descriptor for sensor attributes of a FNDH/Smartbox.
 
     This descriptor allows for handling sensor attributes and their status
     within the context of a FNDH/Smartbox simulator class.
@@ -631,7 +733,7 @@ class Sensor:
 
     # pylint: disable=attribute-defined-outside-init
 
-    def __set_name__(self: Sensor, owner: PasdHardwareSimulator, name: str) -> None:
+    def __set_name__(self: _Sensor, owner: PasdHardwareSimulator, name: str) -> None:
         """
         Set the name of the sensor attribute.
 
@@ -641,7 +743,7 @@ class Sensor:
         self.name = name
 
     def __get__(
-        self: Sensor, obj: PasdHardwareSimulator, objtype: type
+        self: _Sensor, obj: PasdHardwareSimulator, objtype: type
     ) -> None | int | list[int]:
         """
         Get the value of the sensor attribute from the instance.
@@ -653,7 +755,7 @@ class Sensor:
         return obj.__dict__.get(self.name)
 
     def __set__(
-        self: Sensor, obj: PasdHardwareSimulator, value: int | list[int]
+        self: _Sensor, obj: PasdHardwareSimulator, value: int | list[int]
     ) -> None:
         """
         Set the value of the sensor attribute for the instance.
@@ -703,30 +805,53 @@ class FndhSimulator(PasdHardwareSimulator):
     DEFAULT_INTERNAL_AMBIENT_TEMPERATURE: Final = 3600
 
     # Instantiate sensor data descriptors
-    psu48v_voltages = Sensor()
-    psu48v_voltages_thresholds = Sensor()
-    psu48v_current = Sensor()
-    psu48v_current_thresholds = Sensor()
-    psu48v_temperatures = Sensor()
-    psu48v_temperatures_thresholds = Sensor()
-    panel_temperature = Sensor()  # Not implemented in hardware?
-    panel_temperature_thresholds = Sensor()
-    fncb_temperature = Sensor()
-    fncb_temperature_thresholds = Sensor()
-    fncb_humidity = Sensor()
-    fncb_humidity_thresholds = Sensor()
-    comms_gateway_temperature = Sensor()
-    comms_gateway_temperature_thresholds = Sensor()
-    power_module_temperature = Sensor()
-    power_module_temperature_thresholds = Sensor()
-    outside_temperature = Sensor()
-    outside_temperature_thresholds = Sensor()
-    internal_ambient_temperature = Sensor()
-    internal_ambient_temperature_thresholds = Sensor()
+    psu48v_voltages = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    psu48v_voltages_thresholds = _Sensor()
+    psu48v_current = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    psu48v_current_thresholds = _Sensor()
+    psu48v_temperatures = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    psu48v_temperatures_thresholds = _Sensor()
+    panel_temperature = _Sensor()  # Not implemented in hardware?
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    panel_temperature_thresholds = _Sensor()
+    fncb_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    fncb_temperature_thresholds = _Sensor()
+    fncb_humidity = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    fncb_humidity_thresholds = _Sensor()
+    comms_gateway_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    comms_gateway_temperature_thresholds = _Sensor()
+    power_module_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    power_module_temperature_thresholds = _Sensor()
+    outside_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    outside_temperature_thresholds = _Sensor()
+    internal_ambient_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    internal_ambient_temperature_thresholds = _Sensor()
 
-    def __init__(self: FndhSimulator) -> None:
-        """Initialise a new instance."""
-        super().__init__(self.NUMBER_OF_PORTS)
+    def __init__(
+        self: FndhSimulator,
+        instantiate_smartbox: Callable[[int], Optional[bool]] | None = None,
+        delete_smartbox: Callable[[int], Optional[bool]] | None = None,
+    ) -> None:
+        """
+        Initialise a new instance.
+
+        :param instantiate_smartbox: optional reference to PasdBusSimulator function.
+        :param delete_smartbox: optional reference to PasdBusSimulator function.
+        """
+        ports: Sequence[_FndhPortSimulator] = [
+            _FndhPortSimulator(port_index + 1, instantiate_smartbox, delete_smartbox)
+            for port_index in range(self.NUMBER_OF_PORTS)
+        ]
+        super().__init__(ports)
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "fndh")
         self.psu48v_voltages = self.DEFAULT_PSU48V_VOLTAGES
@@ -820,24 +945,35 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
 
     # Instantiate sensor data descriptors
-    input_voltage = Sensor()
-    input_voltage_thresholds = Sensor()
-    power_supply_output_voltage = Sensor()
-    power_supply_output_voltage_thresholds = Sensor()
-    power_supply_temperature = Sensor()
-    power_supply_temperature_thresholds = Sensor()
-    pcb_temperature = Sensor()
-    pcb_temperature_thresholds = Sensor()
-    fem_ambient_temperature = Sensor()
-    fem_ambient_temperature_thresholds = Sensor()
-    fem_case_temperatures = Sensor()
-    fem_case_temperatures_thresholds = Sensor()
-    fem_heatsink_temperatures = Sensor()
-    fem_heatsink_temperatures_thresholds = Sensor()
+    input_voltage = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    input_voltage_thresholds = _Sensor()
+    power_supply_output_voltage = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    power_supply_output_voltage_thresholds = _Sensor()
+    power_supply_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    power_supply_temperature_thresholds = _Sensor()
+    pcb_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    pcb_temperature_thresholds = _Sensor()
+    fem_ambient_temperature = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    fem_ambient_temperature_thresholds = _Sensor()
+    fem_case_temperatures = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    fem_case_temperatures_thresholds = _Sensor()
+    fem_heatsink_temperatures = _Sensor()
+    """Public attribute as _Sensor() data descriptor: *int*"""
+    fem_heatsink_temperatures_thresholds = _Sensor()
 
     def __init__(self: SmartboxSimulator) -> None:
         """Initialise a new instance."""
-        super().__init__(self.NUMBER_OF_PORTS)
+        ports: Sequence[_SmartboxPortSimulator] = [
+            _SmartboxPortSimulator(port_index + 1)
+            for port_index in range(self.NUMBER_OF_PORTS)
+        ]
+        super().__init__(ports)
         self._sys_address = self.DEFAULT_SYS_ADDRESS
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
@@ -871,7 +1007,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
                 return None
             self._sys_address = address
             return True
-        logger.warning(
+        logger.info(
             "PaSD Bus simulator smartbox address must be in range from 1 to 99."
         )
         return False
@@ -991,6 +1127,7 @@ class PasdBusSimulator:
         pasd_configuration_path: str,
         station_id: int,
         logging_level: int = logging.INFO,
+        smartboxes_depend_on_attached_ports: bool = False,
     ) -> None:
         """
         Initialise a new instance.
@@ -998,30 +1135,35 @@ class PasdBusSimulator:
         :param pasd_configuration_path: path to a PaSD configuration file.
         :param station_id: id of the station to which this PaSD belongs.
         :param logging_level: the level to log at.
+        :param smartboxes_depend_on_attached_ports: enable instantiation/deleting
+            of smartboxes when FNDH ports are turned on and off.
         """
         self._station_id = station_id
         logger.setLevel(logging_level)
-
         logger.info(
             f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}."
         )
 
-        self._fndh_simulator = FndhSimulator()
-        logger.info(f"Initialised FNDH simulator for station {station_id}.")
-        self._smartbox_simulators = [
-            SmartboxSimulator() for _ in range(self.NUMBER_OF_SMARTBOXES)
-        ]
-        logger.info(
-            f"Initialised {self.NUMBER_OF_SMARTBOXES} Smartbox"
-            f" simulators for station {station_id}."
-        )
+        self._smartbox_simulators: Dict[int, SmartboxSimulator] = {}
+        self._smartboxes_ports_connected: list[list[bool]] = []
+        self._smartbox_attached_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
 
-        self._smartbox_fndh_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
+        if smartboxes_depend_on_attached_ports:
+            self._fndh_simulator = FndhSimulator(
+                self._instantiate_smartbox, self._delete_smartbox
+            )
+        else:
+            self._fndh_simulator = FndhSimulator()
+        logger.info(f"Initialised FNDH simulator for station {station_id}.")
 
         self._load_config(pasd_configuration_path)
         logger.info(
             f"PaSD configuration data loaded into simulator for station {station_id}."
         )
+
+        if not smartboxes_depend_on_attached_ports:
+            for port_number in self._smartbox_attached_ports:
+                self._instantiate_smartbox(port_number)
         logger.info(f"Initialised PaSD bus simulator for station {station_id}.")
 
     def get_fndh(self: PasdBusSimulator) -> FndhSimulator:
@@ -1032,13 +1174,56 @@ class PasdBusSimulator:
         """
         return self._fndh_simulator
 
-    def get_smartboxes(self: PasdBusSimulator) -> Sequence[SmartboxSimulator]:
+    def get_smartboxes(self: PasdBusSimulator) -> Dict[int, SmartboxSimulator]:
         """
-        Return a sequence of smartboxes.
+        Return a dictionary of smartboxes.
 
-        :return: a sequence of smartboxes.
+        :return: a dictionary of smartboxes.
         """
-        return list(self._smartbox_simulators)
+        return self._smartbox_simulators
+
+    def get_smartbox_attached_ports(self: PasdBusSimulator) -> list[int]:
+        """
+        Return a list of FNDH port numbers each smartbox is attached to.
+
+        :return: a list of FNDH port numbers each smartbox is attached to.
+        """
+        return self._smartbox_attached_ports
+
+    def _instantiate_smartbox(
+        self: PasdBusSimulator, port_number: int
+    ) -> Optional[bool]:
+        """
+        Try to instantiate a smartbox.
+
+        :param port_number: of FNDH.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        try:
+            smartbox_id = self._smartbox_attached_ports.index(port_number) + 1
+            self._smartbox_simulators[smartbox_id] = SmartboxSimulator()
+            self._smartbox_simulators[smartbox_id].configure(
+                self._smartboxes_ports_connected[smartbox_id - 1]
+            )
+            logger.debug(f"Initialised Smartbox simulator {smartbox_id}.")
+            return True
+        except ValueError:
+            return None
+
+    def _delete_smartbox(self: PasdBusSimulator, port_number: int) -> Optional[bool]:
+        """
+        Try to delete an existing smartbox instance.
+
+        :param port_number: of FNDH.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        try:
+            smartbox_id = self._smartbox_attached_ports.index(port_number) + 1
+            del self._smartbox_simulators[smartbox_id]
+            logger.debug(f"Deleted Smartbox simulator {smartbox_id}.")
+            return True
+        except ValueError:
+            return None
 
     def _load_config(self: PasdBusSimulator, path: str) -> bool:
         """
@@ -1061,27 +1246,21 @@ class PasdBusSimulator:
 
         pasd_config = config["pasd"]
 
-        fndh_port_is_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
+        fndh_ports_is_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
         for smartbox_id, smartbox_config in pasd_config["smartboxes"].items():
             smartbox_id = int(smartbox_id)
             fndh_port = smartbox_config["fndh_port"]
-            self._smartbox_fndh_ports[smartbox_id - 1] = fndh_port
-            fndh_port_is_connected[fndh_port - 1] = True
-        self._fndh_simulator.configure(fndh_port_is_connected)
+            self._smartbox_attached_ports[smartbox_id - 1] = fndh_port
+            fndh_ports_is_connected[fndh_port - 1] = True
+        self._fndh_simulator.configure(fndh_ports_is_connected)
 
-        smartbox_ports_connected = [
+        self._smartboxes_ports_connected = [
             [False] * SmartboxSimulator.NUMBER_OF_PORTS
             for _ in range(self.NUMBER_OF_SMARTBOXES)
         ]
         for antenna_config in config["antennas"].values():
             smartbox_id = int(antenna_config["smartbox"])
             smartbox_port = antenna_config["smartbox_port"]
-            smartbox_ports_connected[smartbox_id - 1][smartbox_port - 1] = True
-
-        for smartbox_index, ports_connected in enumerate(smartbox_ports_connected):
-            self._smartbox_simulators[smartbox_index].configure(ports_connected)
-            # Small delay to make sure configuration timestamps differ at least
-            # by a few microseconds
-            time.sleep(0.000001)
+            self._smartboxes_ports_connected[smartbox_id - 1][smartbox_port - 1] = True
 
         return True

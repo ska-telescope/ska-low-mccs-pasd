@@ -179,9 +179,9 @@ def test_communication(  # pylint: disable=too-many-statements
     assert pasd_bus_device.fndhCpuId == FndhSimulator.CPU_ID
     assert pasd_bus_device.fndhChipId == FndhSimulator.CHIP_ID
     assert pasd_bus_device.fndhFirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
-    assert pasd_bus_device.fndhUptime == fndh_simulator.uptime
+    assert pasd_bus_device.fndhUptime <= fndh_simulator.uptime
     assert pasd_bus_device.fndhSysAddress == FndhSimulator.SYS_ADDRESS
-    assert pasd_bus_device.fndhStatus == FndhSimulator.DEFAULT_STATUS
+    assert pasd_bus_device.fndhStatus == "OK"
     assert pasd_bus_device.fndhLedPattern == FndhSimulator.DEFAULT_LED_PATTERN
     assert (
         list(pasd_bus_device.fndhPsu48vVoltages)
@@ -252,7 +252,7 @@ def test_communication(  # pylint: disable=too-many-statements
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}Uptime")
-        == smartbox_simulator.uptime
+        <= smartbox_simulator.uptime
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}Status")
