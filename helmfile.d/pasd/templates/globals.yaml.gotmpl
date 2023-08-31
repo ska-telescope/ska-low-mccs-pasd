@@ -1,5 +1,6 @@
 {{- /* Configure global chart values. */}}
-{{- $platform := .Values.platform}}
+{{- $overrides := .Values | get "overrides" dict}}
+{{- $platform := mergeOverwrite .Values.platform $overrides}}
 global:
   cluster_domain: {{dig "cluster" "domain" "cluster.local" $platform}}
   minikube: {{dig "cluster" "minikube" false $platform}}

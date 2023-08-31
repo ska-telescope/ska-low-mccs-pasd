@@ -1,5 +1,6 @@
 {{- /* Configure the field station Tango devices. */}}
-{{- $platform := .Values.platform}}
+{{- $overrides := .Values | get "overrides" dict}}
+{{- $platform := mergeOverwrite .Values.platform $overrides}}
 {{- $defaults := .Values.defaults}}
 
 {{- $fieldstation_instances := dict}}
@@ -10,7 +11,7 @@
 {{- $station_enabled := dig "enabled" true $station_spec}}
 {{- $pasd_enabled := dig "pasd" "enabled" $station_enabled $station_spec}}
 
-{{- $fieldstation_spec := dig "pasd" "field_station" dict $station_spec}}
+{{- $fieldstation_spec := dig "pasd" "field_station" (dict "enabled" false) $station_spec}}
 {{- $fieldstation_enabled := dig "enabled" $pasd_enabled $fieldstation_spec}}
 
 {{- if $fieldstation_enabled}}

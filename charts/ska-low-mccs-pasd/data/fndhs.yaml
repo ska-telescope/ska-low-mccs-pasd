@@ -5,6 +5,7 @@ Define the deployment for MccsFndh devices.
     fndhs:
       s8-1:
         low-mccs/fndh/s8-1:
+          pasdbus_name: low-mccs/pasdbus/s8-1
           logging_level_default: 5
 
 */}}

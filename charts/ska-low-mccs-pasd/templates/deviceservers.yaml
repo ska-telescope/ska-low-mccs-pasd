@@ -42,14 +42,15 @@ Deploy the Tango devices. For example,
     fndhs:
       s8-1:
         low-mccs/fndh/s8-1:
+          pasdbus_name: low-mccs/pasdbus/s8-1
           logging_level_default: 5
     smartboxes:
       s8-1-1:
-        "low-mccs/smartbox/s8-1-01"
+        low-mccs/smartbox/s8-1-01
           smartbox_number: 1
-          fndh_name: "low-mccs/fndh/s8-1"
+          fndh_name: low-mccs/fndh/s8-1
           fndh_port: 1
-          pasdbus_name: "low-mccs/pasdbus/s8-1"
+          pasdbus_name: low-mccs/pasdbus/s8-1
           logging_level_default: 5
 */}}
 {{ $localchart := . }}

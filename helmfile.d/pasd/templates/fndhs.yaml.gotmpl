@@ -1,5 +1,6 @@
 {{- /* Configure the FNDH Tango devices. */}}
-{{- $platform := .Values.platform}}
+{{- $overrides := .Values | get "overrides" dict}}
+{{- $platform := mergeOverwrite .Values.platform $overrides}}
 {{- $defaults := .Values.defaults}}
 
 {{- $fndh_instances := dict}}
@@ -10,7 +11,7 @@
 {{- $station_enabled := dig "enabled" true $station_spec}}
 {{- $pasd_enabled := dig "pasd" "enabled" $station_enabled $station_spec}}
 
-{{- $fndh_spec := dig "pasd" "fndh" "controller" dict $station_spec}}
+{{- $fndh_spec := dig "pasd" "fndh" "controller" (dict "enabled" false) $station_spec}}
 {{- $fndh_enabled := dig "enabled" $pasd_enabled $fndh_spec}}
 
 {{- if $fndh_enabled}}

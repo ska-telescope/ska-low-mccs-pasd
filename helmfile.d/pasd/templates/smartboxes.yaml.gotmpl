@@ -1,5 +1,6 @@
 {{- /* Configure the Smartbox Tango devices. */}}
-{{- $platform := .Values.platform}}
+{{- $overrides := .Values | get "overrides" dict}}
+{{- $platform := mergeOverwrite .Values.platform $overrides}}
 {{- $defaults := .Values.defaults}}
 
 {{- $smartbox_instances := dict}}
