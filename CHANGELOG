@@ -2,7 +2,28 @@
 
 ## unreleased
 
-* MCCS-1636 - Use ska-ser-sphinx-theme for documentation
+## 0.3.0
+
+* [MCCS-1685] remove ska-tango-base
+* [MCCS-1680] platform dependent configuration
+* [WOM-103] [WOM-104] Smartbox simulator instances depend on FNDH ports' power state.
+  Uptime tracked from instantiation.
+* [MCCS-1679] external PaSD configuration
+* [WOM-59] [WOM-46] FNDH/smartbox attributes and simulator updates
+* Implementation of PaSD commands
+* [MCCS-1646] Remove xfail from fieldStation device.
+* [MCCS-1636] Use ska-ser-sphinx-theme
+* [MCCS-1633] Update /docs/src/_static/img/ in MCCS repos
+* [MCCS-1482] Implement solution to "attribute requested before first Poll" error.
+* [WOM-43] Implement read_attributes part of Modbus client API
+* [MCCS-1619] MccsFNDH does not subscribe to state or adminMode changes on MccsPaSDBus
+* [MCCS-1622] Transport logging
+* [MCCS-1503] fndh functional test
+* [MCCS-1618] Update proxy callbacks in MccsSmartbox
+* [MCCS-1569] Add FieldStation device with forwarded attribute outsideTemperature
+* [MCCS-1613] Add version logging to device init
+* [MCCS-1356] Update state changed callback to use kwargs
+* [WOM-30] skeleton Modbus API
 
 ## 0.2.1
 
