@@ -1,16 +1,18 @@
-{{- $pasd_config := .Files.Get "data/pasd_configuration.yaml"}}
-{{- range $key, $value := ((.Values.simulators).pasds)}}
+{{- $labels := coalesce .Values.global.labels .Values.labels "label:none" }}
+{{- range $key, $value := ((.Values.simulators).pasdbuses)}}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: pasd-configuration-{{$key}}
   namespace: {{$.Release.Namespace}}
+{{- with $labels}}
   labels:
-    component: pasd-simulator-{{$key}}
+{{ toYaml . | indent 4 }}
+{{- end}}
 data:
-  pasd_configuration.yaml: |-
-{{ $pasd_config | indent 4}}
+  pasd_configuration.yaml: |
+{{toYaml $value.config | indent 4}}
 ---
 apiVersion: v1
 kind: Service
@@ -47,7 +49,7 @@ spec:
     spec:
       containers:
       - name: simulator-{{$key}}
-        image: {{$.Values.low_mccs_pasd.image.registry}}/{{$.Values.low_mccs_pasd.image.image}}:{{$.Values.low_mccs_pasd.image.tag}}
+        image: {{$.Values.image.registry}}/{{$.Values.image.name}}:{{$.Values.image.tag}}
         imagePullPolicy: IfNotPresent
         command:
           - "PasdBusSimulatorServer"

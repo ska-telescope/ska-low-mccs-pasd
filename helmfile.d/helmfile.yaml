@@ -1,0 +1,141 @@
+environments:
+  default:
+    kubeContext: minikube
+    values:
+      - platform/minikube.yaml
+  stfc-ci:
+    values:
+      - platform/minikube.yaml
+      - pasd/values/values-stfc-ci.yaml
+  aa0.5:
+    kubeContext: aavs3-in-low-itf  # temporary target platform
+    values:
+      - platform/aa0.5/aa0-5.yaml
+      - platform/aa0.5/aa0-5-s8-1.yaml
+      - platform/aa0.5/aa0-5-s8-6.yaml
+      - platform/aa0.5/aa0-5-s9-2.yaml
+      - platform/aa0.5/aa0-5-s9-5.yaml
+      - platform/aa0.5/aa0-5-s10-3.yaml
+      - platform/aa0.5/aa0-5-s10-6.yaml
+      - pasd/values/values-aa0-5.yaml
+  aa0.5-minikube:
+    kubeContext: minikube
+    values:
+      - platform/aa0.5/aa0-5.yaml
+      - platform/aa0.5/aa0-5-s8-1.yaml
+      - platform/aa0.5/aa0-5-s8-6.yaml
+      - platform/aa0.5/aa0-5-s9-2.yaml
+      - platform/aa0.5/aa0-5-s9-5.yaml
+      - platform/aa0.5/aa0-5-s10-3.yaml
+      - platform/aa0.5/aa0-5-s10-6.yaml
+      - pasd/values/values-aa0-5.yaml
+      - platform/minikube.yaml
+  aavs3-production:
+    kubeContext: aavs3-production
+    values:
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=16ecec50d5691291157e47ec98ffd536bf255e79
+      - pasd/values/values-aavs3.yaml
+  aavs3-minikube:
+    kubeContext: minikube
+    values:
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=16ecec50d5691291157e47ec98ffd536bf255e79
+      - pasd/values/values-aavs3.yaml
+      - platform/minikube.yaml
+  aavs3-in-low-itf:
+    kubeContext: aavs3-in-low-itf
+    values:
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3-in-low-itf.yaml?ref=16ecec50d5691291157e47ec98ffd536bf255e79
+      - pasd/values/values-aavs3-in-low-itf.yaml
+  aavs3-in-low-itf-minikube:
+    kubeContext: minikube
+    values:
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3-in-low-itf.yaml?ref=16ecec50d5691291157e47ec98ffd536bf255e79
+      - pasd/values/values-aavs3-in-low-itf.yaml
+      - platform/minikube.yaml
+  low-itf:
+    kubeContext: low-itf
+    values:
+      - git::https://gitlab.com/ska-telescope/aiv/ska-low-itf.git@/helmfile.d/values/platform.yaml?ref=53c6326fb8d5bf65ee3575722e1cb2e14e79726a
+      - pasd/values/values-low-itf.yaml
+  low-itf-minikube:
+    kubeContext: minikube
+    values:
+      - git::https://gitlab.com/ska-telescope/aiv/ska-low-itf.git@/helmfile.d/values/platform.yaml?ref=53c6326fb8d5bf65ee3575722e1cb2e14e79726a
+      - pasd/values/values-low-itf.yaml
+      - platform/minikube.yaml
+
+---
+
+repositories:
+  - name: skao
+    url: https://artefact.skao.int/repository/helm-internal
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+  - name: jupyterhub
+    url: https://jupyterhub.github.io/helm-chart
+
+releases:
+
+  - name: ska-low-mccs-pasd
+    namespace: ska-low-mccs
+    chart: ../charts/ska-low-mccs-pasd
+    version: 0.2.1-dirty
+    values:
+      - pasd/templates/globals.yaml.gotmpl
+      - pasd/templates/fieldstations.yaml.gotmpl
+      - pasd/templates/fndhs.yaml.gotmpl
+      - pasd/templates/pasdbuses.yaml.gotmpl
+      - pasd/templates/smartboxes.yaml.gotmpl
+
+{{- $_jupyterhub_provided := dig "platform" "cluster" "services" "jupyterhub" false .Values}}
+{{- $jupyterhub_provided := dig "overrides" "cluster" "services" "jupyterhub" $_jupyterhub_provided .Values}}
+{{- if not $jupyterhub_provided}}
+  - name: jupyterhub
+    namespace: ska-low-mccs
+    chart: jupyterhub/jupyterhub
+    version: 3.0.0
+    values:
+      - values/jupyterhub.yaml
+{{- end}}
+
+{{- $_taranta_platform_provided := dig "platform" "cluster" "services" "taranta-platform" false .Values}}
+{{- $taranta_platform_provided := dig "overrides" "cluster" "services" "taranta-platform" $_taranta_platform_provided .Values}}
+{{- if not $taranta_platform_provided}}
+  - name: taranta-dashboard
+    namespace: ska-low-mccs
+    chart: skao/ska-tango-taranta-dashboard
+    version: 1.4.0
+    values:
+      - ingress:
+          enabled: true
+          hostname: "*"
+
+  - name: taranta-dashboard-pvc
+    namespace: ska-low-mccs
+    chart: skao/ska-tango-taranta-dashboard-pvc
+    version: 1.4.0
+
+  - name: taranta-auth
+    namespace: ska-low-mccs
+    chart: skao/ska-tango-taranta-auth
+    version: 0.1.6
+    values:
+      - ingress:
+          enabled: true
+          hostname: "*"
+{{- end}}
+
+  - name: taranta
+    namespace: ska-low-mccs
+    chart: skao/ska-tango-taranta
+    version: 2.2.4
+    values:
+      - values/taranta.yaml
+
+  - name: tangogql
+    namespace: ska-low-mccs
+    chart: skao/ska-tango-tangogql
+    version: 1.3.8
+    values:
+      - ska-tango-base:
+          enabled: false

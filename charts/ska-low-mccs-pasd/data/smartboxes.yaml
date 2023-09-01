@@ -1,51 +1,68 @@
-{{- $defaults := dict "enabled" true "logging_level_default" 3}}
-{{- $smartboxes := .Values.deviceServers.smartboxes}}
+{{- /*
+Define the deployment for MccsSmartbox devices.
 
+  deviceServers:
+    smartboxes:
+      s8-1-01:
+        low-mccs/smartbox/s8-1-01:
+          pasdbus_name: "low-mccs/pasdbus/s8-1"
+          fndh_name: "low-mccs/fndh/s8-1"
+          smartbox_number: 1
+          fndh_port: 1
+          logging_level_default: 5
 
+*/}}
+{{- $smartboxes := dig "smartboxes" dict .Values.deviceServers}}
+{{- if $smartboxes}}
 name: "smartbox-{{.Release.Name}}"
-function: ska-low-mccs-pasd
-domain: ska-low-mccs-pasd
+function: ska-low-mccs-pasd-smartbox
+domain: ska-low-mccs-pasd-smartbox
 instances:
-{{- range $key, $this_smartbox := $smartboxes.instances}}
-{{- if (pluck "enabled" $this_smartbox $smartboxes $defaults | first)}}
-  - {{printf "smartbox-%05d" (int $key)}}
-{{- end}}
+{{- range $server_key := keys $smartboxes}}
+  - {{printf "smartbox-%s" $server_key}}
 {{- end}}
 command: MccsSmartBox
 server: 
-  name: "MccsSmartBox"
+  name: "MccsSmartbox"
   instances:
-{{- range $key, $this_smartbox := $smartboxes.instances}}
-    - name: {{printf "smartbox-%05d" (int $key)}}
+{{- range $server_key, $this_server := $smartboxes}}
+    - name: {{printf "smartbox-%s" $server_key}}
       classes:
-      - name: "MccsSmartBox"
-        devices:
-        - name: {{printf "low-mccs/smartbox/%05d" (int $key)}}
-          properties:
-          - name: "PasdFQDN"
-            values: 
-            - {{$this_smartbox.pasdFQDN | toString | quote}}
-          - name: "FndhFQDN"
-            values: 
-            - {{$this_smartbox.fndhFQDN | toString | quote}}
-          - name: "SmartBoxNumber"
-            values: 
-            - {{$this_smartbox.smartBoxNumber | toString | quote}}
-          - name: "FndhPort"
-            values: 
-            - {{$this_smartbox.fndhPort | toString | quote}}
-          - name: "LoggingLevelDefault"
-            values: 
-            - {{pluck "logging_level_default" $this_smartbox $smartboxes $defaults | first | toString | quote}}
+        - name: "MccsSmartbox"
+          devices:
+{{- range $smartbox_name, $this_smartbox := $this_server}}
+            - name: {{$smartbox_name}}
+              properties:
+                - name: SmartBoxNumber
+                  values: 
+                    - {{quote $this_smartbox.smartbox_number}}
+                - name: PasdFQDN
+                  values: 
+                    - {{$this_smartbox.pasdbus_name}}
+                - name: FndhFQDN
+                  values: 
+                    - {{$this_smartbox.fndh_name}}
+                - name: FndhPort
+                  values: 
+                    - {{quote $this_smartbox.fndh_port}}
+{{- with $this_smartbox.logging_level_default}}
+                - name: LoggingLevelDefault
+                  values:
+                    - {{quote .}}
+{{- end}}
+{{- end}}
 {{- end}}
 depends_on:
   - device: sys/database/2
 image:
-  registry: "{{.Values.low_mccs_pasd.image.registry}}"
-  image: "{{.Values.low_mccs_pasd.image.image}}"
-  tag: "{{.Values.low_mccs_pasd.image.tag}}"
-  pullPolicy: "{{.Values.low_mccs_pasd.image.pullPolicy}}"
+{{- with .Values.image}}
+  registry: {{.registry | quote}}
+  image: {{.name | quote}}
+  tag: {{.tag | quote}}
+  pullPolicy: {{.pullPolicy | quote}}
+{{- end}}
 livenessProbe:
 {{ toYaml .Values.livenessProbe | indent 2 }}
 readinessProbe:
 {{ toYaml .Values.readinessProbe | indent 2 }}
+{{- end}}

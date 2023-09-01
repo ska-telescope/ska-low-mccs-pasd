@@ -175,34 +175,50 @@ def pasd_address_context_manager_factory_fixture(
         return launch_simulator_server
 
 
+@pytest.fixture(name="station_name", scope="session")
+def station_name_fixture() -> str:
+    """
+    Return the name of the station under test.
+
+    :return: the name of the station under test.
+    """
+    return "ci-1"
+
+
 @pytest.fixture(name="pasd_bus_name", scope="session")
-def pasd_bus_name_fixture() -> str:
+def pasd_bus_name_fixture(station_name: str) -> str:
     """
     Return the name of the PaSD bus device under test.
 
+    :param station_name: the name of the station under test.
+
     :return: the name of the PaSD bus device under test.
     """
-    return "low-mccs/pasdbus/001"
+    return f"low-mccs/pasdbus/{station_name}"
 
 
 @pytest.fixture(name="field_station_name", scope="session")
-def field_station_name_fixture() -> str:
+def field_station_name_fixture(station_name: str) -> str:
     """
     Return the name of the PaSD bus device under test.
 
+    :param station_name: the name of the station under test.
+
     :return: the name of the PaSD bus device under test.
     """
-    return "low-mccs/fieldstation/001"
+    return f"low-mccs/fieldstation/{station_name}"
 
 
 @pytest.fixture(name="fndh_name", scope="session")
-def fndh_name_fixture() -> str:
+def fndh_name_fixture(station_name: str) -> str:
     """
     Return the name of the PaSD bus device under test.
 
+    :param station_name: the name of the station under test.
+
     :return: the name of the PaSD bus device under test.
     """
-    return "low-mccs/fndh/001"
+    return f"low-mccs/fndh/{station_name}"
 
 
 @pytest.fixture(name="pasd_timeout", scope="session")

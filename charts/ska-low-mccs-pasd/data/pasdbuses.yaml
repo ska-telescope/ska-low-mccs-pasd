@@ -1,0 +1,64 @@
+{{- /*
+Define the deployment for MccsSmartbox devices.
+
+  deviceServers:
+    pasdbuses:
+      s8-1:
+        low-mccs/pasdbus/s8-1:
+          host: 10.137.0.129
+          port: 502
+          timeout: 10
+          logging_level_default: 5
+
+*/}}
+{{- $pasdbuses := dig "pasdbuses" dict .Values.deviceServers}}
+{{- if $pasdbuses}}
+name: "pasdbus-{{.Release.Name}}"
+function: ska-low-mccs-pasd-bus
+domain: ska-low-mccs-pasd-bus
+instances:
+{{- range $server_key := keys $pasdbuses}}
+  - {{printf "pasdbus-%s" $server_key}}
+{{- end}}
+command: MccsPasdBus
+server: 
+  name: MccsPasdBus
+  instances:
+{{- range $server_key, $this_server := $pasdbuses}}
+    - name: {{printf "pasdbus-%s" $server_key}}
+      classes:
+        - name: MccsPasdBus
+          devices:
+{{- range $pasdbus_name, $this_pasdbus := $this_server}}
+            - name: {{$pasdbus_name}}
+              properties:
+                - name: Host
+                  values: 
+                    - {{$this_pasdbus.host}}
+                - name: Port
+                  values: 
+                    - {{quote $this_pasdbus.port}}
+                - name: Timeout
+                  values: 
+                    - {{quote $this_pasdbus.timeout}}
+{{- with $this_pasdbus.logging_level_default}}
+                - name: LoggingLevelDefault
+                  values:
+                    - {{quote .}}
+{{- end}}
+{{- end}}
+{{- end}}
+depends_on:
+  - device: sys/database/2
+image:
+{{- with .Values.image}}
+  registry: {{.registry | quote}}
+  image: {{.name | quote}}
+  tag: {{.tag | quote}}
+  pullPolicy: {{.pullPolicy | quote}}
+{{- end}}
+livenessProbe:
+{{ toYaml .Values.livenessProbe | indent 2 }}
+readinessProbe:
+{{ toYaml .Values.readinessProbe | indent 2 }}
+{{- end}}

@@ -1,56 +1,91 @@
-{{- $defaults := dict "enabled" true "logging_level_default" 3}}
-{{- $fieldStations := .Values.deviceServers.fieldstations}}
+{{- /*
+Define the deployment for MccsFieldStation devices.
 
-name: "fieldStation-{{.Release.Name}}"
-function: ska-low-mccs-pasd
-domain: ska-low-mccs-pasd
+  deviceServers:
+    fieldstations:
+      s8-1:
+        low-mccs/fieldstation/s8-1:
+          fndh_name: low-mccs/fndh/s8-1
+          smartbox_names:
+            - low-mccs/smartbox/s8-1-01
+            - low-mccs/smartbox/s8-1-02
+            - low-mccs/smartbox/s8-1-03
+            - low-mccs/smartbox/s8-1-04
+            - low-mccs/smartbox/s8-1-05
+            - low-mccs/smartbox/s8-1-06
+            - low-mccs/smartbox/s8-1-07
+            - low-mccs/smartbox/s8-1-08
+            - low-mccs/smartbox/s8-1-09
+            - low-mccs/smartbox/s8-1-10
+            - low-mccs/smartbox/s8-1-11
+            - low-mccs/smartbox/s8-1-12
+            - low-mccs/smartbox/s8-1-13
+            - low-mccs/smartbox/s8-1-14
+            - low-mccs/smartbox/s8-1-15
+            - low-mccs/smartbox/s8-1-16
+            - low-mccs/smartbox/s8-1-17
+            - low-mccs/smartbox/s8-1-18
+            - low-mccs/smartbox/s8-1-19
+            - low-mccs/smartbox/s8-1-20
+            - low-mccs/smartbox/s8-1-21
+            - low-mccs/smartbox/s8-1-22
+            - low-mccs/smartbox/s8-1-23
+            - low-mccs/smartbox/s8-1-24
+          outside_temperature_attribute_name: low-mccs/fndh/s8-1/OutsideTemperature
+          logging_level_default: 5
+
+*/}}
+{{- $fieldstations := dig "fieldstations" dict .Values.deviceServers}}
+{{- if $fieldstations}}
+name: "fieldstation-{{.Release.Name}}"
+function: ska-low-mccs-pasd-fieldstation
+domain: ska-low-mccs-pasd-fieldstation
 instances:
-{{- range $key, $this_fieldStation := $fieldStations.instances}}
-{{- if (pluck "enabled" $this_fieldStation $fieldStations $defaults | first)}}
-  - {{printf "fieldstation-%03d" (int $key)}}
-{{- end}}
+{{- range $server_key := keys $fieldstations}}
+  - {{printf "fieldstation-%s" $server_key}}
 {{- end}}
 command: MccsFieldStation
 server: 
-  name: "MccsFieldStation"
+  name: MccsFieldStation
   instances:
-{{- range $key, $this_fieldStation := $fieldStations.instances}}
-    - name: {{printf "fieldstation-%03d" (int $key)}}
+{{- range $server_key, $this_server := $fieldstations}}
+    - name: {{printf "fieldstation-%s" $server_key}}
       classes:
-      - name: "MccsFieldStation"
-        devices:
-        - name: {{printf "low-mccs/fieldstation/%03d" (int $key)}}
-          attribute_properties:
-          - attribute: "OutsideTemperature"
-            properties:
-            - name: "__root_att"
-              values:
-              - {{printf "low-mccs/fndh/%03d/OutsideTemperature" (int $key)}}
-          properties:
-          - name: "FndhFQDN"
-            values: 
-            - {{$this_fieldStation.FndhFQDN | toString |  quote}}
-          - name: "SmartBoxFQDNs"
-            values: 
-          {{- range $key, $SmartBoxFQDN := $this_fieldStation.SmartBoxFQDNs}}
-            - {{$SmartBoxFQDN | toString |  quote}}
-          {{- end}}
-          - name: "LoggingLevelDefault"
-            values: 
-            - {{pluck "logging_level_default" $this_fieldStation $fieldStations $defaults | first | toString | quote}}
+        - name: MccsFieldStation
+          devices:
+{{- range $fieldstation_name, $this_fieldstation := $this_server}}
+            - name: {{$fieldstation_name}}
+              attribute_properties:
+                - attribute: "OutsideTemperature"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fieldstation.outside_temperature_attribute_name}}
+              properties:
+                - name: "FndhFQDN"
+                  values: 
+                    - {{quote $this_fieldstation.fndh_name}}
+                - name: "SmartBoxFQDNs"
+                  values: 
+{{toYaml $this_fieldstation.smartbox_names | indent 20}}
+{{- with $this_fieldstation.logging_level_default}}
+                - name: "LoggingLevelDefault"
+                  values:
+                    - {{quote .}}
+{{- end}}
+{{- end}}
+{{- end}}
 depends_on:
   - device: sys/database/2
-  - device: {{$this_fieldStation.FndhFQDN | toString |  quote}}
-{{- range $key, $SmartBoxFQDN := $this_fieldStation.SmartBoxFQDNs}}
-  - device: {{$SmartBoxFQDN | toString | quote}}
-{{- end}}
-{{- end}}
 image:
-  registry: "{{.Values.low_mccs_pasd.image.registry}}"
-  image: "{{.Values.low_mccs_pasd.image.image}}"
-  tag: "{{.Values.low_mccs_pasd.image.tag}}"
-  pullPolicy: "{{.Values.low_mccs_pasd.image.pullPolicy}}"
+{{- with .Values.image}}
+  registry: {{.registry | quote}}
+  image: {{.name | quote}}
+  tag: {{.tag | quote}}
+  pullPolicy: {{.pullPolicy | quote}}
+{{- end}}
 livenessProbe:
 {{ toYaml .Values.livenessProbe | indent 2 }}
 readinessProbe:
 {{ toYaml .Values.readinessProbe | indent 2 }}
+{{- end}}

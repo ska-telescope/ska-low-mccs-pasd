@@ -1,41 +1,56 @@
-{{- $defaults := dict "enabled" true "logging_level_default" 3}}
-{{- $FNDHs := .Values.deviceServers.fndhs}}
+{{- /*
+Define the deployment for MccsFndh devices.
 
+  deviceServers:
+    fndhs:
+      s8-1:
+        low-mccs/fndh/s8-1:
+          pasdbus_name: low-mccs/pasdbus/s8-1
+          logging_level_default: 5
+
+*/}}
+{{- $fndhs := dig "fndhs" dict .Values.deviceServers}}
+{{- if $fndhs}}
 name: "fndh-{{.Release.Name}}"
-function: ska-low-mccs-pasd
-domain: ska-low-mccs-pasd
+function: ska-low-mccs-pasd-fndh
+domain: ska-low-mccs-pasd-fndh
 instances:
-{{- range $key, $this_fndh := $FNDHs.instances}}
-{{- if (pluck "enabled" $this_fndh $FNDHs $defaults | first)}}
-  - {{printf "fndh-%03d" (int $key)}}
-{{- end}}
+{{- range $server_key := keys $fndhs}}
+  - {{printf "fndh-%s" $server_key}}
 {{- end}}
 command: MccsFNDH
 server: 
-  name: "MccsFNDH"
+  name: MccsFndh
   instances:
-{{- range $key, $this_fndh := $FNDHs.instances}}
-    - name: {{printf "fndh-%03d" (int $key)}}
+{{- range $server_key, $this_server := $fndhs}}
+    - name: {{printf "fndh-%s" $server_key}}
       classes:
-      - name: "MccsFNDH"
-        devices:
-        - name: {{printf "low-mccs/fndh/%03d" (int $key)}}
-          properties:
-          - name: "PasdFQDN"
-            values: 
-            - {{$this_fndh.pasdFQDN | toString |  quote}}
-          - name: "LoggingLevelDefault"
-            values: 
-            - {{pluck "logging_level_default" $this_fndh $FNDHs $defaults | first | toString | quote}}
+        - name: MccsFndh
+          devices:
+{{- range $fndh_name, $this_fndh := $this_server}}
+            - name: {{$fndh_name}}
+              properties:
+                - name: PasdFQDN
+                  values: 
+                    - {{quote $this_fndh.pasdbus_name}}
+{{- with $this_fndh.logging_level_default}}
+                - name: LoggingLevelDefault
+                  values:
+                    - {{quote .}}
+{{- end}}
+{{- end}}
 {{- end}}
 depends_on:
   - device: sys/database/2
 image:
-  registry: "{{.Values.low_mccs_pasd.image.registry}}"
-  image: "{{.Values.low_mccs_pasd.image.image}}"
-  tag: "{{.Values.low_mccs_pasd.image.tag}}"
-  pullPolicy: "{{.Values.low_mccs_pasd.image.pullPolicy}}"
+{{- with .Values.image}}
+  registry: {{.registry | quote}}
+  image: {{.name | quote}}
+  tag: {{.tag | quote}}
+  pullPolicy: {{.pullPolicy | quote}}
+{{- end}}
 livenessProbe:
 {{ toYaml .Values.livenessProbe | indent 2 }}
 readinessProbe:
 {{ toYaml .Values.readinessProbe | indent 2 }}
+{{- end}}

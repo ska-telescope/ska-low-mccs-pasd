@@ -1,6 +1,0 @@
-pasds:
-  port: 502
-  timeout: 3.0
-  instances:
-    1:
-      host: pasd_hostname_tba
