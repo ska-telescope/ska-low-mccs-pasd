@@ -4,10 +4,4 @@
 global:
   cluster_domain: {{dig "cluster" "domain" "cluster.local" $platform}}
   minikube: {{dig "cluster" "minikube" false $platform}}
-
-{{- if (hasKey .Values "ska-tango-base")}}
-{{- if (hasKey (index .Values "ska-tango-base") "enabled")}}
-ska-tango-base:
-  enabled: {{(index .Values "ska-tango-base").enabled}}
-{{- end}}
-{{- end}}
+  tango_host: databaseds-tango-base:10000

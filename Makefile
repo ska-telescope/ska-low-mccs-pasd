@@ -45,6 +45,7 @@ include .make/xray.mk
 ifdef CI_REGISTRY_IMAGE
 K8S_CHART_PARAMS = \
 	--selector chart=ska-low-mccs-pasd \
+	--selector chart=ska-tango-base \
 	--set image.registry=$(CI_REGISTRY_IMAGE) \
 	--set image.tag=$(VERSION)-dev.c$(CI_COMMIT_SHORT_SHA)
 endif
@@ -66,7 +67,7 @@ K8S_TEST_RUNNER_CHART_REGISTRY ?= https://artefact.skao.int/repository/helm-inte
 K8S_TEST_RUNNER_CHART_NAME ?= ska-low-mccs-k8s-test-runner
 K8S_TEST_RUNNER_CHART_TAG ?= 0.2.0
 
-K8S_TEST_RUNNER_CHART_OVERRIDES =
+K8S_TEST_RUNNER_CHART_OVERRIDES = --set global.tango_host=databaseds-tango-base:10000  # TODO: This should be the default in the k8s-test-runner
 ifdef K8S_TEST_RUNNER_IMAGE_REGISTRY
 K8S_TEST_RUNNER_CHART_OVERRIDES += --set image.registry=$(K8S_TEST_RUNNER_IMAGE_REGISTRY)
 endif
