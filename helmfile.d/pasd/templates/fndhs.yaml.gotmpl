@@ -9,10 +9,13 @@
 {{- range $station_id, $station_spec := $station_cluster_spec.stations}}
 
 {{- $station_enabled := dig "enabled" true $station_spec}}
-{{- $pasd_enabled := dig "pasd" "enabled" $station_enabled $station_spec}}
+{{- if $station_enabled}}
+{{- $pasd_spec := dig "pasd" (dict "enabled" false) $station_spec}}
+{{- $pasd_enabled := dig "enabled" true $pasd_spec}}
+{{- if $pasd_enabled}}
 
-{{- $fndh_spec := dig "pasd" "fndh" "controller" (dict "enabled" false) $station_spec}}
-{{- $fndh_enabled := dig "enabled" $pasd_enabled $fndh_spec}}
+{{- $fndh_spec := dig "fndh" "controller" (dict "enabled" false) $pasd_spec}}
+{{- $fndh_enabled := dig "enabled" true $fndh_spec}}
 
 {{- if $fndh_enabled}}
 
@@ -27,6 +30,8 @@
 {{- end }}
 
 {{- $_ := set $fndh_instances $station_name (dict $fndh_name $fndh_instance)}}
+{{- end}}
+{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}

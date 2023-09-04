@@ -9,9 +9,12 @@
 {{- range $station_id, $station_spec := $station_cluster_spec.stations}}
 
 {{- $station_enabled := dig "enabled" true $station_spec}}
-{{- $pasd_enabled := dig "pasd" "enabled" $station_enabled $station_spec}}
+{{- if $station_enabled}}
+{{- $pasd_spec := dig "pasd" (dict "enabled" false) $station_spec}}
+{{- $pasd_enabled := dig "enabled" true $pasd_spec}}
+{{- if $pasd_enabled}}
 
-{{- $fieldstation_spec := dig "pasd" "field_station" (dict "enabled" false) $station_spec}}
+{{- $fieldstation_spec := dig "pasd" "field_station" dict $station_spec}}
 {{- $fieldstation_enabled := dig "enabled" $pasd_enabled $fieldstation_spec}}
 
 {{- if $fieldstation_enabled}}
@@ -37,6 +40,8 @@
 {{- end }}
 
 {{- $_ := set $fieldstation_instances $station_name (dict $fieldstation_name $fieldstation_instance)}}
+{{- end}}
+{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}
