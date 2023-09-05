@@ -101,7 +101,7 @@ releases:
     chart: jupyterhub/jupyterhub
     version: 3.0.0
     values:
-      - values/jupyterhub.yaml
+      - values/jupyterhub.yaml.gotmpl
 {{- end}}
 
 {{- $_taranta_platform_provided := dig "platform" "cluster" "services" "taranta-platform" false .Values}}
