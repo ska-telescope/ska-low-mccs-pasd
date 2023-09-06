@@ -13,17 +13,19 @@ from dataclasses import dataclass
 from typing import Any, Callable, Final, Optional
 
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
-from ska_ser_devices.client_server import (
-    ApplicationClient,
-    SentinelBytesMarshaller,
-    TcpClient,
-)
+
+# from ska_ser_devices.client_server import (
+#     ApplicationClient,
+#     SentinelBytesMarshaller,
+#     TcpClient,
+# )
 from ska_tango_base.base import check_communicating
 from ska_tango_base.poller import PollingComponentManager
 
-# from .pasd_bus_modbus_api import PasdBusModbusApiClient
-from .pasd_bus_json_api import PasdBusJsonApiClient
-from .pasd_bus_poll_management import PasdBusRequestProvider
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_poll_management import PasdBusRequestProvider
+
+# from .pasd_bus_json_api import PasdBusJsonApiClient
+from .pasd_bus_modbus_api import PasdBusModbusApiClient
 
 
 @dataclass
@@ -212,17 +214,15 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """
         self._logger = logger
         self._logger.debug(
-            f"Creating TCP client for ({host}, {port}) with timeout {timeout}..."
+            f"Creating client for ({host}, {port}) with timeout {timeout}..."
         )
-        tcp_client = TcpClient((host, port), timeout, logger=logger)
-
-        self._logger.debug(r"Creating marshaller with sentinel '\n'...")
-        marshaller = SentinelBytesMarshaller(b"\n", logger=logger)
-        application_client = ApplicationClient[bytes, bytes](
-            tcp_client, marshaller.marshall, marshaller.unmarshall
-        )
-        self._pasd_bus_api_client = PasdBusJsonApiClient(application_client)
-        # self._pasd_bus_api_client = PasdBusModbusApiClient(host, port, logger)
+        # tcp_client = TcpClient(host, port, timeout, logger=logger)
+        # marshaller = SentinelBytesMarshaller(b"\n", logger=logger)
+        # application_client = ApplicationClient(
+        #     tcp_client, marshaller.marshall, marshaller.unmarshall
+        # )
+        # self._pasd_bus_api_client = PasdBusJsonApiClient(application_client)
+        self._pasd_bus_api_client = PasdBusModbusApiClient(host, port, logger)
         self._pasd_bus_device_state_callback = pasd_device_state_callback
 
         self._min_ticks = int(device_polling_rate / polling_rate)
