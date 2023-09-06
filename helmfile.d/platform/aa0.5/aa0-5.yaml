@@ -30,6 +30,8 @@ platform:
     services:
       jupyterhub: true
       taranta-platform: true
+      tango-base:
+        tango-host: databaseds.tango-base:10000
     daq:
       storage_class: nfss1
       runtime_class: nvidia

@@ -4,4 +4,4 @@
 global:
   cluster_domain: {{dig "cluster" "domain" "cluster.local" $platform}}
   minikube: {{dig "cluster" "minikube" false $platform}}
-  tango_host: databaseds-tango-base:10000
+  tango_host: {{dig "cluster" "services" "tango-base" "tango-host" "" $platform | default "databaseds-tango-base:10000"}}

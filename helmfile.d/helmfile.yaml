@@ -33,23 +33,23 @@ environments:
   aavs3-production:
     kubeContext: aavs3-production
     values:
-      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=16ecec50d5691291157e47ec98ffd536bf255e79
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=28c8505016419170e9249e1d9ae0b7db38834bc0
       - pasd/values/values-aavs3.yaml
   aavs3-minikube:
     kubeContext: minikube
     values:
-      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=16ecec50d5691291157e47ec98ffd536bf255e79
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=28c8505016419170e9249e1d9ae0b7db38834bc0
       - pasd/values/values-aavs3.yaml
       - platform/minikube.yaml
   aavs3-in-low-itf:
     kubeContext: aavs3-in-low-itf
     values:
-      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3-in-low-itf.yaml?ref=16ecec50d5691291157e47ec98ffd536bf255e79
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3-in-low-itf.yaml?ref=28c8505016419170e9249e1d9ae0b7db38834bc0
       - pasd/values/values-aavs3-in-low-itf.yaml
   aavs3-in-low-itf-minikube:
     kubeContext: minikube
     values:
-      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3-in-low-itf.yaml?ref=16ecec50d5691291157e47ec98ffd536bf255e79
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3-in-low-itf.yaml?ref=28c8505016419170e9249e1d9ae0b7db38834bc0
       - pasd/values/values-aavs3-in-low-itf.yaml
       - platform/minikube.yaml
   low-itf:
@@ -86,12 +86,16 @@ releases:
       - pasd/templates/pasdbuses.yaml.gotmpl
       - pasd/templates/smartboxes.yaml.gotmpl
 
+{{- $_tango_host_provided := dig "platform" "cluster" "services" "tango-base" "tango-host" "" .Values}}
+{{- $tango_host_provided := dig "overrides" "cluster" "services" "tango-base" "tango-host" $_tango_host_provided .Values}}
+{{- if not $tango_host_provided}}
   - name: ska-tango-base
     namespace: ska-low-mccs
     chart: skao/ska-tango-base
     version: 0.3.10
     values:
       - values/globals.yaml.gotmpl
+{{- end}}
 
 {{- $_jupyterhub_provided := dig "platform" "cluster" "services" "jupyterhub" false .Values}}
 {{- $jupyterhub_provided := dig "overrides" "cluster" "services" "jupyterhub" $_jupyterhub_provided .Values}}
