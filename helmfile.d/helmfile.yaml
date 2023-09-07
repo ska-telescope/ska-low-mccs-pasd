@@ -92,7 +92,7 @@ releases:
   - name: ska-tango-base
     namespace: ska-low-mccs
     chart: skao/ska-tango-base
-    version: 0.3.10
+    version: 0.4.7
     values:
       - values/globals.yaml.gotmpl
 {{- end}}
