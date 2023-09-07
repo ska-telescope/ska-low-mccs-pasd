@@ -250,18 +250,18 @@ epub_exclude_files = ["search.html"]
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.10/", None),
-    "numpy": ("https://numpy.org/doc/1.23/", None),
-    "pytango": ("https://pytango.readthedocs.io/en/v9.3.6/", None),
+    "numpy": ("https://numpy.org/doc/1.25/", None),
+    "pytango": ("https://pytango.readthedocs.io/en/v9.4.2/", None),
     "ska-control-model": (
         "https://developer.skao.int/projects/ska-control-model/en/0.3.1/",
         None,
     ),
     "ska-tango-base": (
-        "https://developer.skatelescope.org/projects/ska-tango-base/en/0.18.1/",
+        "https://developer.skatelescope.org/projects/ska-tango-base/en/0.19.1/",
         None,
     ),
     "ska-low-mccs-common": (
-        "https://developer.skao.int/projects/ska-low-mccs-common/en/latest/",
+        "https://developer.skao.int/projects/ska-low-mccs-common/en/0.9.1/",
         None,
     ),
 }
