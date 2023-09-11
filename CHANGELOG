@@ -2,6 +2,12 @@
 
 ## unreleased
 
+## 0.4.0
+
+* [MCCS-1769] Update to pytango 9.4.2
+* [MCCS-1697] Support using platform-service tangodb instead of always deploying our own.
+* [MCCS-1694] Fix bug in use of "enabled" key to control what gets deployed
+
 ## 0.3.0
 
 * [MCCS-1685] remove ska-tango-base
