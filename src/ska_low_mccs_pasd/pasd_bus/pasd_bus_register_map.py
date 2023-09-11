@@ -36,7 +36,6 @@ class PasdReadError(Exception):
 class PortStatusString(Enum):
     """Enum type for port status strings."""
 
-    PORTS_CONNECTED = "ports_connected"
     PORT_FORCINGS = "port_forcings"
     BREAKERS_TRIPPED = "port_breakers_tripped"
     DSON = "ports_desired_power_when_online"
@@ -290,9 +289,6 @@ class PasdBusRegisterMap:
         "internal_ambient_temperature": PasdBusAttribute(
             29, 1, PasdConversionUtility.scale_temps
         ),
-        "ports_connected": PasdBusPortAttribute(
-            35, 28, PortStatusString.PORTS_CONNECTED
-        ),
         "port_forcings": PasdBusPortAttribute(35, 28, PortStatusString.PORT_FORCINGS),
         "ports_desired_power_when_online": PasdBusPortAttribute(
             35, 28, PortStatusString.DSON
@@ -327,9 +323,6 @@ class PasdBusRegisterMap:
         ),
         "fem_heatsink_temperatures": PasdBusAttribute(
             25, 2, PasdConversionUtility.scale_temps
-        ),
-        "ports_connected": PasdBusPortAttribute(
-            35, 12, PortStatusString.PORTS_CONNECTED
         ),
         "port_forcings": PasdBusPortAttribute(35, 12, PortStatusString.PORT_FORCINGS),
         "port_breakers_tripped": PasdBusPortAttribute(

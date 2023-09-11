@@ -96,7 +96,6 @@ def mock_fndh_simulator_fixture(
 
     # "wraps" doesn't handle properties -- we have to add them manually
     for property_name in [
-        "ports_connected",
         "port_forcings",
         "ports_desired_power_when_online",
         "ports_desired_power_when_offline",
@@ -230,7 +229,6 @@ def mock_smartbox_simulators_fixture(
             "led_pattern",
             "fem_case_temperatures",
             "fem_heatsink_temperatures",
-            "ports_connected",
             "port_forcings",
             "port_breakers_tripped",
             "ports_desired_power_when_online",

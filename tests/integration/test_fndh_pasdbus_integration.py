@@ -216,7 +216,6 @@ class TestfndhPasdBusIntegration:
             fndh_device.InternalAmbientTemperature
             == FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
         )
-        assert list(fndh_device.PortsConnected) == fndh_simulator.ports_connected
         assert list(fndh_device.PortForcings) == fndh_simulator.port_forcings
         assert (
             list(fndh_device.PortsDesiredPowerOnline)
