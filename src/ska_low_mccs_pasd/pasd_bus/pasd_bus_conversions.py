@@ -324,3 +324,31 @@ class PasdConversionUtility:
             status = LEDStatusMap.UNDEFINED.name
 
         return f"service: {service}, " f"status: {status}"
+
+    @classmethod
+    def convert_fndh_alarm_status(cls, value_list: list[int]) -> str:
+        """
+        Convert the alarm and warning flag registers to strings.
+
+        :param value_list: raw register contents
+            (each of the 16 bits represents a potential alarm cause)
+        :return: string describing the parameters that have triggered
+            the alarm or warning.
+        """
+        raw_value = value_list[0]
+        # TODO: Decide what to do with this alarm status
+        return str(raw_value)
+
+    @classmethod
+    def convert_smartbox_alarm_status(cls, value_list: list[int]) -> str:
+        """
+        Convert the alarm and warning flag registers to strings.
+
+        :param value_list: raw register contents
+            (each of the 16 bits represents a potential alarm cause)
+        :return: string describing the parameters that have triggered
+            the alarm or warning.
+        """
+        raw_value = value_list[0]
+        # TODO: Decide what to do with this alarm status
+        return str(raw_value)

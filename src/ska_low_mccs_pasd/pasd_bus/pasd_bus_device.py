@@ -227,15 +227,17 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         attribute_name: str,
         data_type: type | tuple[type],
         max_dim_x: Optional[int] = None,
+        access: tango.AttrWriteType = tango.AttrWriteType.READ,
     ) -> None:
         self._pasd_state[attribute_name] = None
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,
-            access=tango.AttrWriteType.READ,
+            access=access,
             label=attribute_name,
             max_dim_x=max_dim_x,
             fread="_read_pasd_attribute",
+            # fwrite="_write_pasd_attribute",
         ).to_attr()
         self.add_attribute(attr, self._read_pasd_attribute, None, None)
         self.set_change_event(attribute_name, True, False)
@@ -251,6 +253,12 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 f"Error: {attr_name} is None", msg, "".join(traceback.format_stack())
             )
         pasd_attribute.set_value(attr_value)
+
+    def _write_pasd_attribute(
+        self, pasd_attribute: tango.Attribute, value: Any
+    ) -> None:
+        # TODO
+        pass
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()

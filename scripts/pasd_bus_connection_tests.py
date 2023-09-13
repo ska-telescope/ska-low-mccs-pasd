@@ -30,6 +30,17 @@ class PasdBusConnectionTest:
         pp = pprint.PrettyPrinter(indent=4)
         pp.pprint(results)
 
+    def write(
+        self: PasdBusConnectionTest, address: int, attribute: str, values: Any
+    ) -> None:
+        """Write the requested attribute values.
+
+        :param address: Modbus slave address
+        :param attribute: name of the attribute to write
+        :param values: values to write
+        """
+        self._pasd_bus_api_client.write_attribute(address, attribute, values)
+
     def execute_command(
         self: PasdBusConnectionTest, address: int, command: str, *arguments: Any
     ) -> None:
@@ -48,35 +59,37 @@ class PasdBusConnectionTest:
 
 if __name__ == "__main__":
     # conn = PasdBusConnectionTest("127.0.0.1", 5000)
-    conn = PasdBusConnectionTest("127.0.0.1", 5001)
+    conn = PasdBusConnectionTest("10.135.155.50", 5000)
 
-    # conn.execute_command(101, "turn_port_on", 3, True)
-    # conn.execute_command(101, "reset_port_breaker", 3)
-    # conn.execute_command(1, "set_led_pattern", "OFF")
+    # Examples of commands
+    # conn.execute_command(0, "turn_port_on", 3, True)
+    # conn.execute_command(0, "reset_port_breaker", 3)
+    # conn.execute_command(0, "set_led_pattern", "OFF")
     # conn.execute_command(1, "turn_port_off", 1)
     # conn.execute_command(1, "turn_port_on")
     # conn.execute_command(1, "turn_port_on", 2, True)
 
     # Read FNDH polling registers
-    conn.read(
-        0,
-        "modbus_register_map_revision",
-        "pcb_revision",
-        "cpu_id",
-        "chip_id",
-        "firmware_version",
-        "uptime",
-        "sys_address",
-        "psu48v_voltages",
-        "psu48v_current",
-        "psu48v_temperatures",
-        "fncb_temperature",
-        "fncb_humidity",
-        "status",
-        "led_pattern",
-    )
+    # conn.read(
+    #     0,
+    #     "modbus_register_map_revision",
+    #     "pcb_revision",
+    #     "cpu_id",
+    #     "chip_id",
+    #     "firmware_version",
+    #     "uptime",
+    #     "sys_address",
+    #     "psu48v_voltages",
+    #     "psu48v_current",
+    #     "psu48v_temperatures",
+    #     "panel_temperature",
+    #     "fncb_temperature",
+    #     "fncb_humidity",
+    #     "status",
+    #     "led_pattern",
+    # )
 
-    # #Port status:
+    # Port status:
     # conn.read(
     #     0,
     #     "port_forcings",
@@ -87,23 +100,23 @@ if __name__ == "__main__":
     # )
 
     # # # Smart box on port 1
-    conn.read(
-        1,
-        "modbus_register_map_revision",
-        "pcb_revision",
-        "cpu_id",
-        "chip_id",
-        "firmware_version",
-        "uptime",
-        "sys_address",
-        "input_voltage",
-        "power_supply_output_voltage",
-        "power_supply_temperature",
-        "pcb_temperature",
-        "fem_ambient_temperature",
-        "status",
-        "led_pattern",
-    )
+    # conn.read(
+    #     3,
+    #     "modbus_register_map_revision",
+    #     "pcb_revision",
+    #     "cpu_id",
+    #     "chip_id",
+    #     "firmware_version",
+    #     "uptime",
+    #     "sys_address",
+    #     "input_voltage",
+    #     "power_supply_output_voltage",
+    #     "power_supply_temperature",
+    #     "pcb_temperature",
+    #     "fem_ambient_temperature",
+    #     "status",
+    #     "led_pattern",
+    # )
 
     # # # Port status:
     # conn.read(

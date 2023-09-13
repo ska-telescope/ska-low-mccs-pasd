@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Final
+from typing import Any, Dict, Final, List
 
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
@@ -21,12 +21,13 @@ from pymodbus.register_read_message import (
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
 )
-from pymodbus.register_write_message import WriteSingleRegisterResponse
+from pymodbus.register_write_message import WriteMultipleRegistersResponse
 
 from .pasd_bus_register_map import (
     PasdBusPortAttribute,
     PasdBusRegisterMap,
     PasdReadError,
+    PasdWriteError,
 )
 from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
 
@@ -262,7 +263,57 @@ class PasdBusModbusApiClient:
 
         return response
 
+    def _write_registers(
+        self, modbus_address: int, start_address: int, values: int | List[int]
+    ) -> dict:
+        logger.debug(
+            f"MODBUS write request: modbus address {modbus_address}, "
+            f"register address {start_address}, values {values}"
+        )
+
+        reply = self._client.write_registers(start_address, values, modbus_address)
+
+        match reply:
+            case WriteMultipleRegistersResponse():
+                # A normal echo response has been received
+                response = {
+                    "source": modbus_address,
+                    "data": {"type": "command_result", "result": True},
+                }
+            case ModbusIOException():
+                # No reply: pass this exception on up to the caller
+                raise reply
+            case ExceptionResponse():
+                response = self._create_error_response(
+                    "write", f"Modbus exception response: {reply}"
+                )  # TODO: what error code to use?
+            case _:
+                response = self._create_error_response(
+                    "write", f"Unexpected response type: {type(reply)}"
+                )  # TODO: what error code to use?
+
+        return response
+
     def _do_write_request(self, request: dict) -> dict:
+        modbus_address = (
+            self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
+        )
+
+        # Get PasdBusAttribute objects for this request
+        try:
+            attribute = self._register_map.get_writeable_attribute(
+                request["device_id"], request["write"]
+            )
+        except PasdWriteError as e:
+            return self._create_error_response(
+                "request", f"Exception: {e}"
+            )  # TODO: What error code to use?
+
+        return self._write_registers(
+            modbus_address, attribute.address, request["values"]
+        )
+
+    def _do_command_request(self, request: dict) -> dict:
         modbus_address = (
             self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
         )
@@ -279,35 +330,7 @@ class PasdBusModbusApiClient:
                 f"command: {request['execute']}, args: {request['arguments']}",
             )  # TODO: what error code to use?
 
-        logger.debug(
-            f"MODBUS write request: modbus address {modbus_address}, "
-            f"register address {command.address}, value {command.value}"
-        )
-
-        reply = self._client.write_register(
-            command.address, command.value, modbus_address
-        )
-
-        match reply:
-            case WriteSingleRegisterResponse():
-                # A normal echo response has been received
-                response = {
-                    "source": request["device_id"],
-                    "data": {"type": "command_result", "result": True},
-                }
-            case ModbusIOException():
-                # No reply: pass this exception on up to the caller
-                raise reply
-            case ExceptionResponse():
-                response = self._create_error_response(
-                    "write", f"Modbus exception response: {reply}"
-                )  # TODO: what error code to use?
-            case _:
-                response = self._create_error_response(
-                    "write", f"Unexpected response type: {type(reply)}"
-                )  # TODO: what error code to use?
-
-        return response
+        return self._write_registers(modbus_address, command.address, command.value)
 
     def read_attributes(self, device_id: int, *names: str) -> dict[str, Any]:
         """
@@ -326,6 +349,19 @@ class PasdBusModbusApiClient:
             return response["data"]["attributes"]
         return response
 
+    def write_attribute(self, device_id: int, name: str, values: Any) -> None:
+        """
+        Write a new attribute value.
+
+        :param device_id: id of the device to write to.
+        :param: name: attribute name to write.
+        :param: values: new value(s).
+        :raises: ModbusIOException if the h/w failed to respond.
+        """
+        self._do_write_request(
+            {"device_id": device_id, "write": name, "values": values}
+        )
+
     def execute_command(self, device_id: int, name: str, *args: Any) -> dict[str, Any]:
         """
         Execute a command and return the results.
@@ -336,7 +372,7 @@ class PasdBusModbusApiClient:
 
         :return: the results of the command execution.
         """
-        response = self._do_write_request(
+        response = self._do_command_request(
             {"device_id": device_id, "execute": name, "arguments": args}
         )
         if "data" in response:

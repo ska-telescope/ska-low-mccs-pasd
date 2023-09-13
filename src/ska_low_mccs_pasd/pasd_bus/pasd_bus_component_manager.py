@@ -165,6 +165,7 @@ class PasdBusRequestProvider:
             tuple[int, int], tuple[Literal[True], bool] | Literal[False]
         ] = {}
         self._port_breaker_resets: dict[tuple[int, int], bool] = {}
+        self._attribute_writes: dict[str, Any] = {}
         self._read_request_iterator = read_request_iterator()
 
     def desire_info(self) -> None:
@@ -229,6 +230,17 @@ class PasdBusRequestProvider:
         :param pattern: the name of the LED pattern.
         """
         self._led_pattern_writes[device_id] = pattern
+
+    def write_attribute(self, device_id: int, attribute_name: str, value: Any) -> None:
+        """
+        Register a request to write a new value to an attribute.
+
+        :param device_id: the device number.
+            This is 0 for the FNDH, otherwise a smartbox number.
+        :param attribute_name: the name of the attribute to set.
+        :param value: the new value to write.
+        """
+        self._attribute_writes[attribute_name] = value
 
     def _get_initialize_request(self) -> PasdBusRequest | None:
         if not self._initialize_requests:
@@ -695,3 +707,19 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
             Options are "OFF" and "SERVICE".
         """
         self._poll_request_provider.set_led_pattern(smartbox_id, led_pattern)
+
+    @check_communicating
+    def write_attribute(
+        self: PasdBusComponentManager,
+        device_id: int,
+        attribute_name: str,
+        value: Any,
+    ) -> None:
+        """
+        Write a new value to an attribute.
+
+        :param device_id: the smartbox or FNDH id
+        :param attribute_name: the name of the attribute to write
+        :param value: the new value to write
+        """
+        self._poll_request_provider.write_attribute(device_id, attribute_name, value)
