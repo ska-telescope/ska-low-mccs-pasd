@@ -13,10 +13,18 @@
                     }
                 },
                 "terminal.integration.defaultProfile.linux": "bash",
+                "editor.formatOnSave": true,
+                "editor.codeActionsOnSave": {
+                    "source.organizeImports": true
+                },
                 "python.pythonPath": "/usr/bin/python3",
-                "python.linting.enabled": true,
-                "python.linting.pylintEnabled": true,
-                "python.linting.pylintPath": "/usr/local/bin/pylint",
+                "python.testing.pytestEnabled": true,
+                "pylint.path": [
+                    "/usr/local/bin/pylint"
+                ],
+                "[python]": {
+                    "editor.defaultFormatter": "ms-python.black-formatter"
+                },
                 "coverage-gutters.manualCoverageFilePaths": [
                     "/workspaces/ska-low-mccs-pasd/build/reports/code-coverage.xml"
                 ],
@@ -25,7 +33,11 @@
             "extensions": [
                 "ms-python.pylint",
                 "ms-python.python",
-                "ryanluker.vscode-coverage-gutters"
+                "ryanluker.vscode-coverage-gutters",
+                "ms-python.black-formatter",
+                "ms-python.flake8",
+                "ms-python.isort",
+                "ms-python.mypy-type-checker"
             ]
         }
     },
