@@ -12,7 +12,8 @@ from __future__ import annotations
 import gc
 import json
 import unittest.mock
-from typing import Any, Generator
+from contextlib import nullcontext
+from typing import Any, ContextManager, Generator
 
 import pytest
 import tango
@@ -228,7 +229,7 @@ def test_is_port_on(
 
 
 @pytest.mark.parametrize(
-    "config_in, expected_config",
+    "config_in, expected_config, context",
     [
         pytest.param(
             {
@@ -241,6 +242,7 @@ def test_is_port_on(
                 "overVoltageThreshold": 45.6,
                 "humidityThreshold": 78.9,
             },
+            None,
             id="valid config is entered correctly",
         ),
         pytest.param(
@@ -250,6 +252,7 @@ def test_is_port_on(
                 "overVoltageThreshold": 0.0,
                 "humidityThreshold": 78.9,
             },
+            None,
             id="missing config data is valid",
         ),
         pytest.param(
@@ -263,6 +266,7 @@ def test_is_port_on(
                 "overVoltageThreshold": 45.6,
                 "humidityThreshold": 78.9,
             },
+            None,
             id="invalid named configs are skipped",
         ),
         pytest.param(
@@ -271,12 +275,11 @@ def test_is_port_on(
                 "overVoltageThreshold": True,
                 "humidityThreshold": [78.9, 12.3],
             },
-            {
-                "overCurrentThreshold": 0.0,
-                "overVoltageThreshold": 0.0,
-                "humidityThreshold": 0.0,
-            },
-            id="invalid types dont apply",
+            None,
+            pytest.raises(
+                tango.DevFailed, match="ValidationError: True is not of type 'number'"
+            ),
+            id="invalid types raise validation error",
         ),
         pytest.param(
             {},
@@ -285,6 +288,7 @@ def test_is_port_on(
                 "overVoltageThreshold": 0.0,
                 "humidityThreshold": 0.0,
             },
+            None,
             id="empty dict is no op",
         ),
     ],
@@ -293,7 +297,8 @@ def test_configure(
     fndh_device: tango.DeviceProxy,
     change_event_callbacks: MockTangoEventCallbackGroup,
     config_in: dict,
-    expected_config: dict,
+    expected_config: dict | None,
+    context: ContextManager | None,
 ) -> None:
     """
     Test for Configure.
@@ -305,6 +310,9 @@ def test_configure(
         we can use to change events on device.
     :param config_in: configuration of the device
     :param expected_config: the expected output configuration
+    :param context: context in which to invoke the Configure command.
+        Useful for asserting whether the command will raise an error or
+        not.
     """
     fndh_device.subscribe_event(
         "adminMode",
@@ -318,11 +326,17 @@ def test_configure(
     change_event_callbacks.assert_change_event("adminMode", AdminMode.ONLINE)
     assert fndh_device.adminMode == AdminMode.ONLINE
 
-    fndh_device.Configure(json.dumps(config_in))
+    with context or nullcontext():
+        fndh_device.Configure(json.dumps(config_in))
 
-    assert fndh_device.overCurrentThreshold == expected_config["overCurrentThreshold"]
-    assert fndh_device.overVoltageThreshold == expected_config["overVoltageThreshold"]
-    assert fndh_device.humidityThreshold == expected_config["humidityThreshold"]
+    if expected_config is not None:
+        assert (
+            fndh_device.overCurrentThreshold == expected_config["overCurrentThreshold"]
+        )
+        assert (
+            fndh_device.overVoltageThreshold == expected_config["overVoltageThreshold"]
+        )
+        assert fndh_device.humidityThreshold == expected_config["humidityThreshold"]
 
 
 def test_threshold_attributes(

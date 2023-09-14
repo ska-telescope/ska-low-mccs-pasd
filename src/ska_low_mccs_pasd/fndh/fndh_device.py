@@ -9,22 +9,28 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import sys
 from typing import Any, Final, Optional, cast
 
 import tango
-from jsonschema import ValidationError, validate
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
-from ska_tango_base.commands import DeviceInitCommand, FastCommand, SubmittedSlowCommand
+from ska_tango_base.commands import (
+    DeviceInitCommand,
+    FastCommand,
+    JsonValidator,
+    SubmittedSlowCommand,
+)
 from tango.server import attribute, command, device_property
 
 from .fndh_component_manager import FndhComponentManager
 from .fndh_health_model import FndhHealthModel
 
 __all__ = ["MccsFNDH", "main"]
+
+
+DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
 
 
 # pylint: disable=too-many-instance-attributes
@@ -184,7 +190,6 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         for command_name, method_name in [
             ("PowerOnPort", "power_on_port"),
             ("PowerOffPort", "power_off_port"),
-            ("Configure", "configure"),
         ]:
             self.register_command_object(
                 command_name,
@@ -201,20 +206,35 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             "PortPowerState",
             self.PortPowerStateCommand(self, self.logger),
         )
+        self.register_command_object(
+            "Configure",
+            self.ConfigureCommand(self, self.logger),
+        )
 
     # ----------
     # Commands
     # ----------
-    @command(dtype_in="DevString")
-    def Configure(self: MccsFNDH, argin: str) -> None:
+    class ConfigureCommand(FastCommand):
         """
-        Configure the Fndh device attributes.
+        Class for handling the Configure() command.
 
-        :param argin: the configuration for the device in stringified json format
+        This command takes as input a JSON string that conforms to the
+        following schema:
+
+        .. code-block:: json
+
+           {
+               "type": "object",
+               "properties": {
+                   "overCurrentThreshold": {"type": "number"},
+                   "overVoltageThreshold": {"type": "number"},
+                   "humidityThreshold": {"type": "number"},
+               },
+           }
+
         """
-        config = json.loads(argin)
 
-        fndh_config_schema = {
+        SCHEMA: Final = {
             "type": "object",
             "properties": {
                 "overCurrentThreshold": {"type": "number"},
@@ -223,22 +243,73 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             },
         }
 
-        try:
-            validate(instance=config, schema=fndh_config_schema)
-            self._overCurrentThreshold = config.get(
-                "overCurrentThreshold", self._overCurrentThreshold
-            )
-            self._overVoltageThreshold = config.get(
-                "overVoltageThreshold", self._overVoltageThreshold
-            )
-            self._humidityThreshold = config.get(
-                "humidityThreshold", self._humidityThreshold
-            )
-        except ValidationError as error:
-            self.logger.error(
-                "Failed to configure the device due to invalid schema: %s",
-                str(error),
-            )
+        def __init__(
+            self: MccsFNDH.ConfigureCommand,
+            device: MccsFNDH,
+            logger: Optional[logging.Logger] = None,
+        ) -> None:
+            """
+            Initialise a new ConfigureCommand instance.
+
+            :param device: the device that this command acts upon
+            :param logger: a logger for this command to use.
+            """
+            self._device = device
+            validator = JsonValidator("Configure", self.SCHEMA, logger)
+            super().__init__(logger, validator)
+
+        def do(
+            self: MccsFNDH.ConfigureCommand,
+            *args: Any,
+            **kwargs: Any,
+        ) -> tuple[ResultCode, str]:
+            """
+            Implement :py:meth:`.MccsFNDH.Configure` command functionality.
+
+            :param args: Positional arguments. This should be empty and
+                is provided for type hinting purposes only.
+            :param kwargs: keyword arguments unpacked from the JSON
+                argument to the command.
+
+            :return: A tuple containing a return code and a string
+                message indicating status. The message is for
+                information purpose only.
+            """
+            over_current_threshold = kwargs.get("overCurrentThreshold")
+            if over_current_threshold is not None:
+                self._device._overCurrentThreshold = over_current_threshold
+                self.logger.debug(
+                    f"Over-current threshold set to {over_current_threshold}."
+                )
+
+            over_voltage_threshold = kwargs.get("overVoltageThreshold")
+            if over_voltage_threshold is not None:
+                self._device._overVoltageThreshold = over_voltage_threshold
+                self.logger.debug(
+                    f"Over-voltage threshold set to {over_voltage_threshold}."
+                )
+
+            humidity_threshold = kwargs.get("humidityThreshold")
+            if humidity_threshold is not None:
+                self._device._humidityThreshold = humidity_threshold
+                self.logger.debug(f"Humidity threshold set to {humidity_threshold}.")
+
+            return (ResultCode.OK, "Configure completed OK")
+
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def Configure(self: MccsFNDH, argin: str) -> DevVarLongStringArrayType:
+        """
+        Configure the Fndh device attributes.
+
+        :param argin: the configuration for the device in stringified json format
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("Configure")
+        (return_code, message) = handler(argin)
+        return ([return_code], [message])
 
     class PortPowerStateCommand(FastCommand):
         """A class for the MccsFndh PortPowerStateCommand() command."""

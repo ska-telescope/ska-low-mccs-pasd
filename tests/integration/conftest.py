@@ -26,7 +26,7 @@ from ska_tango_testing.context import (
     ThreadedTestTangoContextManager,
 )
 
-from ska_low_mccs_pasd import MccsFNDH, MccsPasdBus, MccsSmartBox
+from ska_low_mccs_pasd import MccsFieldStation, MccsFNDH, MccsPasdBus, MccsSmartBox
 from ska_low_mccs_pasd.pasd_bus import (
     FndhSimulator,
     PasdBusSimulator,
@@ -436,8 +436,19 @@ def fndh_name_fixture() -> str:
     return "low-mccs/fndh/001"
 
 
+@pytest.fixture(name="field_station_name", scope="session")
+def field_station_name_fixture() -> str:
+    """
+    Return the name of the field station Tango device.
+
+    :return: the name of the field station Tango device.
+    """
+    return "low-mccs/field_station/001"
+
+
 @pytest.fixture(name="tango_harness")
 def tango_harness_fixture(
+    field_station_name: str,
     smartbox_names: list[str],
     pasd_bus_name: str,
     fndh_name: str,
@@ -446,6 +457,7 @@ def tango_harness_fixture(
     """
     Return a Tango harness against which to run tests of the deployment.
 
+    :param field_station_name: the name of the field station device
     :param smartbox_names: the name of the smartbox_bus Tango device
     :param pasd_bus_name: the fqdn of the pasdbus
     :param fndh_name: the fqdn of the fndh
@@ -455,6 +467,13 @@ def tango_harness_fixture(
     """
     context_manager = ThreadedTestTangoContextManager()
     # Add the pasdbus.
+    context_manager.add_device(
+        field_station_name,
+        MccsFieldStation,
+        FndhFQDN=fndh_name,
+        SmartBoxFQDNs=smartbox_names,
+        LoggingLevelDefault=int(LoggingLevel.DEBUG),
+    )
     context_manager.add_device(
         pasd_bus_name,
         MccsPasdBus,
@@ -486,16 +505,6 @@ def tango_harness_fixture(
         yield context
 
 
-@pytest.fixture(name="fndh_fqdn", scope="session")
-def fndh_fqdn_fixture() -> str:
-    """
-    Return the name of the fndh Tango device.
-
-    :return: the name of the fndh Tango device.
-    """
-    return "low-mccs/fndh/001"
-
-
 @pytest.fixture(name="fndh_device")
 def fndh_device_fixture(
     tango_harness: TangoContextProtocol,
@@ -510,3 +519,19 @@ def fndh_device_fixture(
     :yield: the fndh Tango device under test.
     """
     yield tango_harness.get_device(fndh_name)
+
+
+@pytest.fixture(name="field_station_device")
+def field_station_device_fixture(
+    tango_harness: TangoContextProtocol,
+    field_station_name: str,
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns the field station Tango device under test.
+
+    :param tango_harness: a test harness for Tango devices.
+    :param field_station_name: name of the field station Tango device.
+
+    :yield: the field station Tango device under test.
+    """
+    yield tango_harness.get_device(field_station_name)
