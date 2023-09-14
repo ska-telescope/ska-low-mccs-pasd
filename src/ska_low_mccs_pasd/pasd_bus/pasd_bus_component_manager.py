@@ -587,12 +587,12 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
                 poll_request.command,
                 *poll_request.arguments,
             )
-        elif poll_request.attribute_to_write is not None:
-            response_data = self._pasd_bus_api_client.write_attribute(
-                poll_request.device_id,
-                poll_request.attribute_to_write,
-                *poll_request.arguments,
-            )
+        # elif poll_request.attribute_to_write is not None:
+        #     response_data = self._pasd_bus_api_client.write_attribute(
+        #         poll_request.device_id,
+        #         poll_request.attribute_to_write,
+        #         *poll_request.arguments,
+        #     )
         else:
             response_data = self._pasd_bus_api_client.read_attributes(
                 poll_request.device_id, *poll_request.arguments

@@ -80,14 +80,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             "panel_temperature_thresholds": "fndhPanelTemperatureThresholds",
             "fncb_temperature_thresholds": "fndhFncbTemperatureThresholds",
             "humidity_thresholds": "fndhHumidityThresholds",
-            "comms_gateway_temperature_thresholds":
-                "fndhCommsGatewayTemperatureThresholds",
-            "power_module_temperature_thresholds":
-                "fndhPowerModuleTemperatureThresholds",
-            "outside_temperature_thresholds":
-                "fndhOutsideTemperatureThresholds",
-            "internal_ambient_temperature_thresholds":
-                "fndhInternalAmbientTemperatureThresholds",
+            "comms_gateway_temperature_thresholds": "fndhCommsGatewayTemperatureThresholds",
+            "power_module_temperature_thresholds": "fndhPowerModuleTemperatureThresholds",
+            "outside_temperature_thresholds": "fndhOutsideTemperatureThresholds",
+            "internal_ambient_temperature_thresholds": "fndhInternalAmbientTemperatureThresholds",
         },
         **{
             smartbox_number: {
@@ -131,48 +127,27 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 ),
                 "ports_power_sensed": f"smartbox{smartbox_number}PortsPowerSensed",
                 "ports_current_draw": f"smartbox{smartbox_number}PortsCurrentDraw",
-                "input_voltage_thresholds":
-                    f"smartbox{smartbox_number}InputVoltageThresholds",
-                "power_supply_output_voltage_thresholds":
-                    f"smartbox{smartbox_number}PowerSupplyOutputVoltageThresholds",
-                "power_supply_temperature_thresholds":
-                    f"smartbox{smartbox_number}PowerSupplyTemperatureThresholds",
-                "pcb_temperature_thresholds":
-                    f"smartbox{smartbox_number}PcbTemperatureThresholds",
-                "fem_ambient_temperature_thresholds":
-                    f"smartbox{smartbox_number}FemAbientTemperatureThresholds",
-                "fem_case_temperature_1_thresholds":
-                    f"smartbox{smartbox_number}FemCaseTemperature1Thresholds",
-                "fem_case_temperature_2_thresholds":
-                    f"smartbox{smartbox_number}FemCaseTemperature2Thresholds",
-                "fem_heatsink_temperature1_thresholds":
-                    f"smartbox{smartbox_number}FemHeatsinkTemperature1Thresholds",
-                "fem_heatsink_temperature2_thresholds":
-                    f"smartbox{smartbox_number}FemHeatsinkTemperature2Thresholds",
-                "fem1_current_trip_threshold":
-                    f"smartbox{smartbox_number}Fem1CurrentTripThreshold",
-                "fem2_current_trip_threshold":
-                    f"smartbox{smartbox_number}Fem2CurrentTripThreshold",
-                "fem3_current_trip_threshold":
-                    f"smartbox{smartbox_number}Fem3CurrentTripThreshold",
-                "fem4_current_trip_threshold":
-                    f"smartbox{smartbox_number}Fem4CurrentTripThreshold",
-                "fem5_current_trip_threshold":
-                    f"smartbox{smartbox_number}Fem5CurrentTripThreshold",
-                "fem6_current_trip_threshold":
-                    f"smartbox{smartbox_number}Fem6CurrentTripThreshold",
-                "fem7_current_trip_threshold":
-                    f"smartbox{smartbox_number}Fem7CurrentTripThreshold",
-                "fem8_current_trip_threshold":
-                    f"smartbox{smartbox_number}Fem8CurrentTripThreshold",
-                "fem9_current_trip_threshold":
-                    f"smartbox{smartbox_number}Fem9CurrentTripThreshold",
-                "fem10_current_trip_threshold":
-                    f"smartbox{smartbox_number}Fem10CurrentTripThreshold",
-                "fem11_current_trip_threshold":
-                    f"smartbox{smartbox_number}Fem11CurrentTripThreshold",
-                "fem12_current_trip_threshold":
-                    f"smartbox{smartbox_number}Fem12CurrentTripThreshold",
+                "input_voltage_thresholds": f"smartbox{smartbox_number}InputVoltageThresholds",
+                "power_supply_output_voltage_thresholds": f"smartbox{smartbox_number}PowerSupplyOutputVoltageThresholds",
+                "power_supply_temperature_thresholds": f"smartbox{smartbox_number}PowerSupplyTemperatureThresholds",
+                "pcb_temperature_thresholds": f"smartbox{smartbox_number}PcbTemperatureThresholds",
+                "fem_ambient_temperature_thresholds": f"smartbox{smartbox_number}FemAbientTemperatureThresholds",
+                "fem_case_temperature_1_thresholds": f"smartbox{smartbox_number}FemCaseTemperature1Thresholds",
+                "fem_case_temperature_2_thresholds": f"smartbox{smartbox_number}FemCaseTemperature2Thresholds",
+                "fem_heatsink_temperature1_thresholds": f"smartbox{smartbox_number}FemHeatsinkTemperature1Thresholds",
+                "fem_heatsink_temperature2_thresholds": f"smartbox{smartbox_number}FemHeatsinkTemperature2Thresholds",
+                "fem1_current_trip_threshold": f"smartbox{smartbox_number}Fem1CurrentTripThreshold",
+                "fem2_current_trip_threshold": f"smartbox{smartbox_number}Fem2CurrentTripThreshold",
+                "fem3_current_trip_threshold": f"smartbox{smartbox_number}Fem3CurrentTripThreshold",
+                "fem4_current_trip_threshold": f"smartbox{smartbox_number}Fem4CurrentTripThreshold",
+                "fem5_current_trip_threshold": f"smartbox{smartbox_number}Fem5CurrentTripThreshold",
+                "fem6_current_trip_threshold": f"smartbox{smartbox_number}Fem6CurrentTripThreshold",
+                "fem7_current_trip_threshold": f"smartbox{smartbox_number}Fem7CurrentTripThreshold",
+                "fem8_current_trip_threshold": f"smartbox{smartbox_number}Fem8CurrentTripThreshold",
+                "fem9_current_trip_threshold": f"smartbox{smartbox_number}Fem9CurrentTripThreshold",
+                "fem10_current_trip_threshold": f"smartbox{smartbox_number}Fem10CurrentTripThreshold",
+                "fem11_current_trip_threshold": f"smartbox{smartbox_number}Fem11CurrentTripThreshold",
+                "fem12_current_trip_threshold": f"smartbox{smartbox_number}Fem12CurrentTripThreshold",
             }
             for smartbox_number in range(1, 25)
         },
