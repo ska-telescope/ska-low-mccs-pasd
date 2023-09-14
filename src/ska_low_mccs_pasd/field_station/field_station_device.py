@@ -9,16 +9,19 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Final, Optional
 
-from ska_control_model import CommunicationStatus, PowerState
+from ska_control_model import CommunicationStatus, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
-from ska_tango_base.commands import SubmittedSlowCommand
-from tango.server import attribute, device_property
+from ska_tango_base.commands import JsonValidator, SubmittedSlowCommand
+from tango.server import attribute, command, device_property
 
 from .field_station_component_manager import FieldStationComponentManager
 
 __all__ = ["MccsFieldStation", "main"]
+
+
+DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
 
 
 class MccsFieldStation(SKABaseDevice):
@@ -74,9 +77,25 @@ class MccsFieldStation(SKABaseDevice):
         """Initialise the command handlers for commands supported by this device."""
         super().init_command_objects()
 
-        for (command_name, method_name) in [
-            ("PowerOnAntenna", "turn_on_antenna"),
+        configure_schema: Final = {
+            "type": "object",
+            "properties": {
+                "overCurrentThreshold": {"type": "number"},
+                "overVoltageThreshold": {"type": "number"},
+                "humidityThreshold": {"type": "number"},
+            },
+        }
+
+        for (command_name, method_name, schema) in [
+            ("PowerOnAntenna", "turn_on_antenna", None),
+            ("Configure", "configure", configure_schema),
         ]:
+            validator = (
+                None
+                if schema is None
+                else JsonValidator(command_name, schema, self.logger)
+            )
+
             self.register_command_object(
                 command_name,
                 SubmittedSlowCommand(
@@ -86,6 +105,7 @@ class MccsFieldStation(SKABaseDevice):
                     method_name,
                     callback=None,
                     logger=self.logger,
+                    validator=validator,
                 ),
             )
 
@@ -117,6 +137,26 @@ class MccsFieldStation(SKABaseDevice):
             state.
         """
         super()._component_state_changed(fault=fault, power=power)
+
+    # --------
+    # Commands
+    # --------
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def Configure(self: MccsFieldStation, argin: str) -> DevVarLongStringArrayType:
+        """
+        Configure the field station.
+
+        Currently this only configures FNDH device attributes.
+
+        :param argin: the configuration for the device in stringified json format
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("Configure")
+        (return_code, message) = handler(argin)
+        return ([return_code], [message])
 
 
 # ----------

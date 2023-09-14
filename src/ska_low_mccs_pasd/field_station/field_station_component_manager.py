@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import functools
+import json
 import logging
 import threading
 from typing import Any, Callable, Optional
@@ -18,6 +19,8 @@ from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
+
+from ..command_proxy import MccsCommandProxy
 
 __all__ = ["FieldStationComponentManager"]
 
@@ -37,7 +40,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         smartbox_names: list[str],
         communication_state_callback: Callable[..., None],
         component_state_changed: Callable[..., None],
-        _fndh_proxy: Optional[Any] = None,
+        _fndh_proxy: Optional[DeviceComponentManager] = None,
         _smartbox_proxys: Optional[dict[str, Any]] = None,
     ) -> None:
         """
@@ -65,6 +68,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             component_state_changed,
             max_workers=max_workers,
         )
+        self._fndh_name = fndh_name
         self._fndh_proxy = _fndh_proxy or DeviceComponentManager(
             fndh_name,
             logger,
@@ -200,3 +204,22 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     ) -> None:
         # TODO: This will turn off all antennas that make up this station.
         raise NotImplementedError("Off functionality not yet implemented")
+
+    def configure(
+        self: FieldStationComponentManager,
+        task_callback: Optional[Callable] = None,
+        **kwargs: Any,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Configure the field station.
+
+        Currently this only supports configuring FNDH alarm thresholds.
+
+        :param task_callback: callback to be called when the status of
+            the command changes
+        :param kwargs: keyword arguments extracted from the JSON string.
+
+        :return: the task status and a human-readable status message
+        """
+        command_proxy = MccsCommandProxy(self._fndh_name, "Configure", self.logger)
+        return command_proxy(json.dumps(kwargs), task_callback=task_callback)
