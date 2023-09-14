@@ -299,7 +299,7 @@ class PasdBusModbusApiClient:
             self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
         )
 
-        # Get PasdBusAttribute objects for this request
+        # Get a PasdBusAttribute object for this request
         try:
             attribute = self._register_map.get_writeable_attribute(
                 request["device_id"], request["write"]
@@ -349,16 +349,17 @@ class PasdBusModbusApiClient:
             return response["data"]["attributes"]
         return response
 
-    def write_attribute(self, device_id: int, name: str, values: Any) -> None:
+    def write_attribute(self, device_id: int, name: str, values: Any) -> dict[str, Any]:
         """
         Write a new attribute value.
 
         :param device_id: id of the device to write to.
         :param: name: attribute name to write.
         :param: values: new value(s).
+        :returns: TBD
         :raises: ModbusIOException if the h/w failed to respond.
         """
-        self._do_write_request(
+        return self._do_write_request(
             {"device_id": device_id, "write": name, "values": values}
         )
 

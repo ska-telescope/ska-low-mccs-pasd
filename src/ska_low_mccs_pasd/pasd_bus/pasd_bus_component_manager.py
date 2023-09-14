@@ -33,15 +33,16 @@ class PasdBusRequest:
     """
     Class representing an action to be performed by a poll.
 
-    it comprises a device ID number, a command name, and a list of
-    arguments to the command.
+    it comprises a device ID number, a command name or attribute to write, and a list of
+    command arguments or values
 
-    If the command name is None, then the arguments are interpreted as
-    a list of attribute values to read.
+    If the command name and attribute_to_write are both None, then the arguments
+    are interpreted as a list of attribute values to read.
     """
 
     device_id: int
     command: str | None
+    attribute_to_write: str | None
     arguments: list[Any]
 
 
@@ -78,10 +79,18 @@ def read_request_iterator() -> Iterator[tuple[int, str]]:
     """
     for device_id in range(NUMBER_OF_SMARTBOXES + 1):
         yield (device_id, "INFO")
+        yield (device_id, "THRESHOLDS")
+        if device_id != 0:
+            # Current trip thresholds only for smartboxes
+            yield (device_id, "CURRENT_TRIP_THRESHOLDS")
     while True:
         for device_id in range(NUMBER_OF_SMARTBOXES + 1):
             yield (device_id, "STATUS")
             yield (device_id, "PORTS")
+            yield (device_id, "ALARM_FLAGS")
+            yield (device_id, "WARNING_FLAGS")
+            yield (device_id, "THRESHOLDS")  # Temporary for testing
+            yield (device_id, "CURRENT_TRIP_THRESHOLDS")  # Temporary for testing
 
 
 class PasdBusRequestProvider:
@@ -129,6 +138,21 @@ class PasdBusRequestProvider:
         # "ports_power_contol", # Register STATE[6] - POWER
     )
 
+    FNDH_THRESHOLD_ATTRIBUTES: Final = (
+        "psu48v_voltage1_thresholds",
+        "psu48v_voltage_2_thresholds",
+        "psu48v_current_thresholds",
+        "psu48v_temperature_1_thresholds",
+        "psu48v_temperature_2_thresholds",
+        "panel_temperature_thresholds",
+        "fncb_temperature_thresholds",
+        "humidity_thresholds",
+        "comms_gateway_temperature_thresholds",
+        "power_module_temperature_thresholds",
+        "outside_temperature_thresholds",
+        "internal_ambient_temperature_thresholds",
+    )
+
     SMARTBOX_STATUS_ATTRIBUTES: Final = (
         "uptime",
         "sys_address",
@@ -152,6 +176,38 @@ class PasdBusRequestProvider:
         "ports_current_draw",  # Register CURRENT
     )
 
+    SMARTBOX_THRESHOLD_ATTRIBUTES: Final = (
+        "input_voltage_thresholds",
+        "power_supply_output_voltage_thresholds",
+        "power_supply_temperature_thresholds",
+        "pcb_temperature_thresholds",
+        "fem_ambient_temperature_thresholds",
+        "fem_case_temperature_1_thresholds",
+        "fem_case_temperature_2_thresholds",
+        "fem_heatsink_temperature1_thresholds",
+        "fem_heatsink_temperature2_thresholds",
+    )
+
+    SMARTBOX_CURRENT_TRIP_THRESHOLD_ATTRIBUTES: Final = (
+        "fem1_current_trip_threshold",
+        "fem2_current_trip_threshold",
+        "fem3_current_trip_threshold",
+        "fem4_current_trip_threshold",
+        "fem5_current_trip_threshold",
+        "fem6_current_trip_threshold",
+        "fem7_current_trip_threshold",
+        "fem8_current_trip_threshold",
+        "fem9_current_trip_threshold",
+        "fem10_current_trip_threshold",
+        "fem11_current_trip_threshold",
+        "fem12_current_trip_threshold",
+    )
+
+    # The warning and alarm flag attributes are the same for both FNDH and Smartboxes
+    # but are non-contiguous
+    WARNING_FLAGS_ATTRIBUTE: Final = "warning_flags"
+    ALARM_FLAGS_ATTRIBUTE: Final = "alarm_flags"
+
     def __init__(self, logger: logging.Logger) -> None:
         """
         Initialise a new instance.
@@ -165,7 +221,7 @@ class PasdBusRequestProvider:
             tuple[int, int], tuple[Literal[True], bool] | Literal[False]
         ] = {}
         self._port_breaker_resets: dict[tuple[int, int], bool] = {}
-        self._attribute_writes: dict[str, Any] = {}
+        self._attribute_writes: dict[tuple[int, str], list[Any]] = {}
         self._read_request_iterator = read_request_iterator()
 
     def desire_info(self) -> None:
@@ -231,29 +287,37 @@ class PasdBusRequestProvider:
         """
         self._led_pattern_writes[device_id] = pattern
 
-    def write_attribute(self, device_id: int, attribute_name: str, value: Any) -> None:
+    def write_attribute(
+        self, device_id: int, attribute_name: str, values: list[Any]
+    ) -> None:
         """
         Register a request to write a new value to an attribute.
 
         :param device_id: the device number.
             This is 0 for the FNDH, otherwise a smartbox number.
         :param attribute_name: the name of the attribute to set.
-        :param value: the new value to write.
+        :param values: the new value(s) to write.
         """
-        self._attribute_writes[attribute_name] = value
+        self._attribute_writes[(device_id, attribute_name)] = values
+
+    def _get_attribute_write_request(self) -> PasdBusRequest | None:
+        if not self._attribute_writes:
+            return None
+        (device_id, attribute_name), values = self._attribute_writes.popitem()
+        return PasdBusRequest(device_id, None, attribute_name, values)
 
     def _get_initialize_request(self) -> PasdBusRequest | None:
         if not self._initialize_requests:
             return None
         device_id, _ = self._initialize_requests.popitem()
-        return PasdBusRequest(device_id, "initialize", [])
+        return PasdBusRequest(device_id, "initialize", None, [])
 
     def _get_led_pattern_request(self) -> PasdBusRequest | None:
         if not self._led_pattern_writes:
             return None
 
         device_id, pattern = self._led_pattern_writes.popitem()
-        return PasdBusRequest(device_id, "set_led_pattern", [pattern])
+        return PasdBusRequest(device_id, "set_led_pattern", None, [pattern])
 
     def _get_port_breaker_reset_request(
         self,
@@ -262,7 +326,7 @@ class PasdBusRequestProvider:
             return None
 
         (device_id, port_number), _ = self._port_breaker_resets.popitem()
-        return PasdBusRequest(device_id, "reset_port_breaker", [port_number])
+        return PasdBusRequest(device_id, "reset_port_breaker", None, [port_number])
 
     def _get_port_power_request(self) -> PasdBusRequest | None:
         if not self._port_power_changes:
@@ -272,12 +336,10 @@ class PasdBusRequestProvider:
         match change:
             case (True, stay_on_when_offline):
                 return PasdBusRequest(
-                    device_id,
-                    "turn_port_on",
-                    [port_number, stay_on_when_offline],
+                    device_id, "turn_port_on", None, [port_number, stay_on_when_offline]
                 )
             case False:
-                return PasdBusRequest(device_id, "turn_port_off", [port_number])
+                return PasdBusRequest(device_id, "turn_port_off", None, [port_number])
             case _:
                 raise AssertionError("This should be unreachable.")
 
@@ -287,24 +349,55 @@ class PasdBusRequestProvider:
         match read_request:
             case (device_id, "INFO"):
                 request = PasdBusRequest(
-                    device_id, None, list(self.STATIC_INFO_ATTRIBUTES)
+                    device_id, None, None, list(self.STATIC_INFO_ATTRIBUTES)
                 )
             case (0, "STATUS"):
-                request = PasdBusRequest(0, None, list(self.FNDH_STATUS_ATTRIBUTES))
+                request = PasdBusRequest(
+                    0, None, None, list(self.FNDH_STATUS_ATTRIBUTES)
+                )
             case (0, "PORTS"):
                 request = PasdBusRequest(
-                    0, None, list(self.FNDH_PORTS_STATUS_ATTRIBUTES)
+                    0, None, None, list(self.FNDH_PORTS_STATUS_ATTRIBUTES)
                 )
+            case (0, "THRESHOLDS"):
+                request = PasdBusRequest(
+                    0, None, None, list(self.FNDH_THRESHOLD_ATTRIBUTES)
+                )
+            # case (0, "ALARM_FLAGS"):
+            #    request = PasdBusRequest(
+            #        0, None, None, list(self.ALARM_FLAGS_ATTRIBUTE)
+            #    )
+            # case (0, "WARNING_FLAGS"):
+            #    request = PasdBusRequest(
+            #        0, None, None, list(self.WARNING_FLAGS_ATTRIBUTE)
+            #    )
             case (smartbox_id, "STATUS"):
                 request = PasdBusRequest(
-                    smartbox_id, None, list(self.SMARTBOX_STATUS_ATTRIBUTES)
+                    smartbox_id, None, None, list(self.SMARTBOX_STATUS_ATTRIBUTES)
                 )
             case (smartbox_id, "PORTS"):
                 request = PasdBusRequest(
+                    smartbox_id, None, None, list(self.SMARTBOX_PORTS_STATUS_ATTRIBUTES)
+                )
+            case (smartbox_id, "THRESHOLDS"):
+                request = PasdBusRequest(
+                    smartbox_id, None, None, list(self.SMARTBOX_THRESHOLD_ATTRIBUTES)
+                )
+            case (smartbox_id, "CURRENT_TRIP_THRESHOLDS"):
+                request = PasdBusRequest(
                     smartbox_id,
                     None,
-                    list(self.SMARTBOX_PORTS_STATUS_ATTRIBUTES),
+                    None,
+                    list(self.SMARTBOX_CURRENT_TRIP_THRESHOLD_ATTRIBUTES),
                 )
+            # case (smartbox_id, "ALARM_FLAGS"):
+            #    request = PasdBusRequest(
+            #        smartbox_id, None, None, list(self.ALARM_FLAGS_ATTRIBUTE)
+            #    )
+            # case (smartbox_id, "WARNING_FLAGS"):
+            #    request = PasdBusRequest(
+            #        smartbox_id, None, None, list(self.WARNING_FLAGS_ATTRIBUTE)
+            #    )
             case _:
                 message = f"Unrecognised poll request {repr(read_request)}"
                 self._logger.error(message)
@@ -488,16 +581,23 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
 
         :return: responses to queries in this poll
         """
-        if poll_request.command is None:
-            response_data = self._pasd_bus_api_client.read_attributes(
-                poll_request.device_id, *poll_request.arguments
-            )
-        else:
+        if poll_request.command is not None:
             response_data = self._pasd_bus_api_client.execute_command(
                 poll_request.device_id,
                 poll_request.command,
                 *poll_request.arguments,
             )
+        elif poll_request.attribute_to_write is not None:
+            response_data = self._pasd_bus_api_client.write_attribute(
+                poll_request.device_id,
+                poll_request.attribute_to_write,
+                *poll_request.arguments,
+            )
+        else:
+            response_data = self._pasd_bus_api_client.read_attributes(
+                poll_request.device_id, *poll_request.arguments
+            )
+
         return PasdBusResponse(
             poll_request.device_id, poll_request.command, response_data
         )
