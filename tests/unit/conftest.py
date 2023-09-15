@@ -29,4 +29,5 @@ def mock_callbacks_fixture() -> MockCallableGroup:
         "attribute_update",
         "port_power_state",
         "task",
+        timeout=5.0,
     )

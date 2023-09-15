@@ -242,6 +242,28 @@ class TestPasdBusComponentManager:
             lookahead=75,
         )
 
+        pasd_bus_component_manager.turn_all_fndh_ports_on(True)
+        mock_callbacks.assert_call(
+            "pasd_device_state",
+            0,  # FNDH
+            port_forcings=expected_port_forcings,
+            ports_desired_power_when_online=[True] * 28,
+            ports_desired_power_when_offline=[True] * 28,
+            ports_power_sensed=[True] * 28,
+            lookahead=100,
+        )
+
+        pasd_bus_component_manager.turn_all_fndh_ports_off()
+        mock_callbacks.assert_call(
+            "pasd_device_state",
+            0,  # FNDH
+            port_forcings=expected_port_forcings,
+            ports_desired_power_when_online=[False] * 28,
+            ports_desired_power_when_offline=[False] * 28,
+            ports_power_sensed=[False] * 28,
+            lookahead=150,
+        )
+
     def test_smartbox_port_power_commands(
         self: TestPasdBusComponentManager,
         smartbox_simulator: SmartboxSimulator,
@@ -330,6 +352,37 @@ class TestPasdBusComponentManager:
             ports_power_sensed=expected_ports_power_sensed,
             ports_current_draw=expected_ports_current_draw,
             lookahead=75,
+        )
+
+        pasd_bus_component_manager.turn_all_smartbox_ports_on(smartbox_id, True)
+
+        expected_ports_current_draw = [
+            SmartboxSimulator.DEFAULT_PORT_CURRENT_DRAW * p for p in ports_connected
+        ]
+
+        mock_callbacks.assert_call(
+            "pasd_device_state",
+            smartbox_id,
+            port_forcings=expected_port_forcings,
+            port_breakers_tripped=expected_port_breakers_tripped,
+            ports_desired_power_when_online=[True] * 12,
+            ports_desired_power_when_offline=[True] * 12,
+            ports_power_sensed=[True] * 12,
+            ports_current_draw=expected_ports_current_draw,
+            lookahead=125,
+        )
+
+        pasd_bus_component_manager.turn_all_smartbox_ports_off(smartbox_id)
+        mock_callbacks.assert_call(
+            "pasd_device_state",
+            smartbox_id,
+            port_forcings=expected_port_forcings,
+            port_breakers_tripped=expected_port_breakers_tripped,
+            ports_desired_power_when_online=[False] * 12,
+            ports_desired_power_when_offline=[False] * 12,
+            ports_power_sensed=[False] * 12,
+            ports_current_draw=[0.0] * 12,
+            lookahead=175,
         )
 
     def test_led_pattern(
