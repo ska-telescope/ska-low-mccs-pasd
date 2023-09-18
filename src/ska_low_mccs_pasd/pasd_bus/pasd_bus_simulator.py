@@ -1022,8 +1022,8 @@ class SmartboxSimulator(PasdHardwareSimulator):
         :return: the current being drawn from each smartbox port.
         """
         return [
-            self.DEFAULT_PORT_CURRENT_DRAW if connected else 0
-            for connected in self.ports_connected
+            self.DEFAULT_PORT_CURRENT_DRAW if connected and powered else 0
+            for connected, powered in zip(self.ports_connected, self.ports_power_sensed)
         ]
 
     @property

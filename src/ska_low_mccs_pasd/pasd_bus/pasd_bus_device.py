@@ -68,7 +68,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             "power_module_temperature": "fndhPowerModuleTemperature",
             "outside_temperature": "fndhOutsideTemperature",
             "internal_ambient_temperature": "fndhInternalAmbientTemperature",
-            "ports_connected": "fndhPortsConnected",
             "port_forcings": "fndhPortForcings",
             "ports_desired_power_when_online": "fndhPortsDesiredPowerOnline",
             "ports_desired_power_when_offline": "fndhPortsDesiredPowerOffline",
@@ -104,7 +103,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 "fem_heatsink_temperatures": (
                     f"smartbox{smartbox_number}FemHeatsinkTemperatures"
                 ),
-                "ports_connected": f"smartbox{smartbox_number}PortsConnected",
                 "port_forcings": f"smartbox{smartbox_number}PortForcings",
                 "port_breakers_tripped": (
                     f"smartbox{smartbox_number}PortBreakersTripped"
@@ -182,7 +180,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("InternalAmbientTemperature", float, None),
             ("Status", str, None),
             ("LedPattern", str, None),
-            ("PortsConnected", (bool,), NUMBER_OF_FNDH_PORTS),
             ("PortForcings", (str,), NUMBER_OF_FNDH_PORTS),
             ("PortsDesiredPowerOnline", (bool,), NUMBER_OF_FNDH_PORTS),
             ("PortsDesiredPowerOffline", (bool,), NUMBER_OF_FNDH_PORTS),
@@ -212,7 +209,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("FemAmbientTemperature", float, None),
             ("FemCaseTemperatures", (float,), 2),
             ("FemHeatsinkTemperatures", (float,), 2),
-            ("PortsConnected", (bool,), NUMBER_OF_SMARTBOX_PORTS),
             ("PortForcings", (str,), NUMBER_OF_SMARTBOX_PORTS),
             ("PortBreakersTripped", (bool,), NUMBER_OF_SMARTBOX_PORTS),
             ("PortsDesiredPowerOnline", (bool,), NUMBER_OF_SMARTBOX_PORTS),

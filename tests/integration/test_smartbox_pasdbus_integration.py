@@ -236,20 +236,24 @@ class TestSmartBoxPasdBusIntegration:
         fndh_device.subscribe_event(
             f"Port{smartbox_id+1}PowerState",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["fndhportpowerstate"],
+            change_event_callbacks["fndhport1powerstate"],
         )
-        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.OFF)
-        change_event_callbacks["fndhportpowerstate"].assert_not_called()
+        change_event_callbacks["fndhport1powerstate"].assert_change_event(
+            PowerState.OFF
+        )
+        change_event_callbacks["fndhport1powerstate"].assert_not_called()
 
         fndh_device.PowerOnPort(smartbox_id + 1)
-        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.ON)
-        change_event_callbacks["fndhportpowerstate"].assert_not_called()
+        change_event_callbacks["fndhport1powerstate"].assert_change_event(PowerState.ON)
+        change_event_callbacks["fndhport1powerstate"].assert_not_called()
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
         assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
         change_event_callbacks["smartbox_state"].assert_not_called()
 
         fndh_device.PowerOffPort(smartbox_id + 1)
-        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.OFF)
+        change_event_callbacks["fndhport1powerstate"].assert_change_event(
+            PowerState.OFF
+        )
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
         assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
         change_event_callbacks["smartbox_state"].assert_not_called()
@@ -257,22 +261,26 @@ class TestSmartBoxPasdBusIntegration:
             {"port_number": smartbox_id + 1, "stay_on_when_offline": True}
         )
         pasd_bus_device.TurnFndhPortOn(json_argument)
-        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.ON)
+        change_event_callbacks["fndhport1powerstate"].assert_change_event(PowerState.ON)
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
         assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
 
         pasd_bus_device.TurnFndhPortOff(smartbox_id + 1)
-        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.OFF)
+        change_event_callbacks["fndhport1powerstate"].assert_change_event(
+            PowerState.OFF
+        )
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
         assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
 
         smartbox_device.On()
-        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.ON)
+        change_event_callbacks["fndhport1powerstate"].assert_change_event(PowerState.ON)
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
         assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
 
         smartbox_device.Off()
-        change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.OFF)
+        change_event_callbacks["fndhport1powerstate"].assert_change_event(
+            PowerState.OFF
+        )
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
         assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
 
@@ -571,10 +579,10 @@ class TestSmartBoxPasdBusIntegration:
         smartbox_device.subscribe_event(
             "PasdStatus",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartboxstatus"],
+            change_event_callbacks["smartbox1status"],
         )
         change_event_callbacks.assert_change_event(
-            "smartboxstatus", SmartboxSimulator.DEFAULT_STATUS
+            "smartbox1status", SmartboxSimulator.DEFAULT_STATUS
         )
 
         # ===
@@ -592,7 +600,7 @@ class TestSmartBoxPasdBusIntegration:
         # Check the FNDH and smartbox simulators' statuses.
         change_event_callbacks["fndhstatus"].assert_change_event("OK")
         assert fndh_device.PasdStatus == "OK"
-        change_event_callbacks["smartboxstatus"].assert_change_event("OK")
+        change_event_callbacks["smartbox1status"].assert_change_event("OK")
         assert smartbox_device.PasdStatus == "OK"
 
         # Check the MccsSmartbox device is turned on.
@@ -664,9 +672,9 @@ class TestSmartBoxPasdBusIntegration:
         smartbox_device.subscribe_event(
             "PortsPowerSensed",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartboxportpowersensed"],
+            change_event_callbacks["smartbox1portpowersensed"],
         )
-        change_event_callbacks["smartboxportpowersensed"].assert_change_event(Anything)
+        change_event_callbacks["smartbox1portpowersensed"].assert_change_event(Anything)
         # ===
         # ACT
         # ===
@@ -683,7 +691,7 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["smartbox_state"].assert_not_called()
         assert fndh_device.PortPowerState(smartbox_number) == PowerState.ON
 
-        change_event_callbacks["smartboxportpowersensed"].assert_change_event(Anything)
+        change_event_callbacks["smartbox1portpowersensed"].assert_change_event(Anything)
         for port in smartbox_ports_desired_on:
             # Check that the requested ports are powered on.
             assert smartbox_device.PortsPowerSensed[port - 1]
@@ -800,68 +808,69 @@ class TestSmartBoxPasdBusIntegration:
         smartbox_device.subscribe_event(
             "PasdStatus",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartboxstatus"],
+            change_event_callbacks["smartbox1status"],
         )
         change_event_callbacks.assert_change_event(
-            "smartboxstatus", SmartboxSimulator.DEFAULT_STATUS
+            "smartbox1status", SmartboxSimulator.DEFAULT_STATUS
         )
         smartbox_device.subscribe_event(
             "InputVoltage",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartboxinputvoltage"],
+            change_event_callbacks["smartbox1inputvoltage"],
         )
         change_event_callbacks.assert_change_event(
-            "smartboxinputvoltage", SmartboxSimulator.DEFAULT_INPUT_VOLTAGE
+            "smartbox1inputvoltage", SmartboxSimulator.DEFAULT_INPUT_VOLTAGE
         )
         smartbox_device.subscribe_event(
             "PowerSupplyOutputVoltage",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartboxpsuoutput"],
+            change_event_callbacks["smartbox1psuoutput"],
         )
         change_event_callbacks.assert_change_event(
-            "smartboxpsuoutput", SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
+            "smartbox1psuoutput", SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
         )
         smartbox_device.subscribe_event(
             "PowerSupplyTemperature",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartboxpsutemperature"],
+            change_event_callbacks["smartbox1psutemperature"],
         )
         change_event_callbacks.assert_change_event(
-            "smartboxpsutemperature", SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
+            "smartbox1psutemperature",
+            SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE,
         )
         smartbox_device.subscribe_event(
             "PcbTemperature",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartboxpcbtemperature"],
+            change_event_callbacks["smartbox1pcbtemperature"],
         )
         change_event_callbacks.assert_change_event(
-            "smartboxpcbtemperature", SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
+            "smartbox1pcbtemperature", SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
         )
         smartbox_device.subscribe_event(
             "FemAmbientTemperature",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartboxfemambienttemperature"],
+            change_event_callbacks["smartbox1femambienttemperature"],
         )
         change_event_callbacks.assert_change_event(
-            "smartboxfemambienttemperature",
+            "smartbox1femambienttemperature",
             SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE,
         )
         smartbox_device.subscribe_event(
             "FemCaseTemperatures",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartboxfemcasetemperatures"],
+            change_event_callbacks["smartbox1femcasetemperatures"],
         )
         change_event_callbacks.assert_change_event(
-            "smartboxfemcasetemperatures",
+            "smartbox1femcasetemperatures",
             SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES,
         )
         smartbox_device.subscribe_event(
             "FemHeatsinkTemperatures",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartboxfemheatsinktemperatures"],
+            change_event_callbacks["smartbox1femheatsinktemperatures"],
         )
         change_event_callbacks.assert_change_event(
-            "smartboxfemheatsinktemperatures",
+            "smartbox1femheatsinktemperatures",
             SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES,
         )
 
@@ -870,52 +879,52 @@ class TestSmartBoxPasdBusIntegration:
 
         # Initialize smartbox simulator status
         assert pasd_bus_device.InitializeSmartbox(1)[0] == ResultCode.OK
-        change_event_callbacks.assert_change_event("smartboxstatus", "OK")
+        change_event_callbacks.assert_change_event("smartbox1status", "OK")
         assert smartbox_device.PasdStatus == "OK"
 
         smartbox_simulator.input_voltage = 3000
-        change_event_callbacks.assert_change_event("smartboxinputvoltage", 3000)
-        change_event_callbacks.assert_change_event("smartboxstatus", "ALARM")
+        change_event_callbacks.assert_change_event("smartbox1inputvoltage", 3000)
+        change_event_callbacks.assert_change_event("smartbox1status", "ALARM")
         assert smartbox_device.InputVoltage == 3000
         smartbox_simulator.input_voltage = 4200
-        change_event_callbacks.assert_change_event("smartboxinputvoltage", 4200)
-        change_event_callbacks.assert_change_event("smartboxstatus", "RECOVERY")
+        change_event_callbacks.assert_change_event("smartbox1inputvoltage", 4200)
+        change_event_callbacks.assert_change_event("smartbox1status", "RECOVERY")
         assert smartbox_device.InputVoltage == 4200
         assert pasd_bus_device.InitializeSmartbox(1)[0] == ResultCode.OK
-        change_event_callbacks.assert_change_event("smartboxstatus", "WARNING")
+        change_event_callbacks.assert_change_event("smartbox1status", "WARNING")
         smartbox_simulator.input_voltage = 4800
-        change_event_callbacks.assert_change_event("smartboxinputvoltage", 4800)
-        change_event_callbacks.assert_change_event("smartboxstatus", "OK")
+        change_event_callbacks.assert_change_event("smartbox1inputvoltage", 4800)
+        change_event_callbacks.assert_change_event("smartbox1status", "OK")
         assert smartbox_device.InputVoltage == 4800
 
         smartbox_simulator.power_supply_output_voltage = 495
-        change_event_callbacks.assert_change_event("smartboxpsuoutput", 495)
-        change_event_callbacks.assert_change_event("smartboxstatus", "WARNING")
+        change_event_callbacks.assert_change_event("smartbox1psuoutput", 495)
+        change_event_callbacks.assert_change_event("smartbox1status", "WARNING")
         assert smartbox_device.PowerSupplyOutputVoltage == 495
 
         smartbox_simulator.power_supply_temperature = 5000
-        change_event_callbacks.assert_change_event("smartboxpsutemperature", 5000)
+        change_event_callbacks.assert_change_event("smartbox1psutemperature", 5000)
         assert smartbox_device.PowerSupplyTemperature == 5000
 
         smartbox_simulator.pcb_temperature = 5000
-        change_event_callbacks.assert_change_event("smartboxpcbtemperature", 5000)
+        change_event_callbacks.assert_change_event("smartbox1pcbtemperature", 5000)
         assert smartbox_device.PcbTemperature == 5000
 
         smartbox_simulator.fem_ambient_temperature = 5000
         change_event_callbacks.assert_change_event(
-            "smartboxfemambienttemperature", 5000
+            "smartbox1femambienttemperature", 5000
         )
         assert smartbox_device.FemAmbientTemperature == 5000
 
         smartbox_simulator.fem_case_temperatures = [5000, 4900]
         change_event_callbacks.assert_change_event(
-            "smartboxfemcasetemperatures", [5000, 4900]
+            "smartbox1femcasetemperatures", [5000, 4900]
         )
         assert (smartbox_device.FemCaseTemperatures == [5000, 4900]).all()
 
         smartbox_simulator.fem_heatsink_temperatures = [5100, 5000]
         change_event_callbacks.assert_change_event(
-            "smartboxfemheatsinktemperatures", [5100, 5000]
+            "smartbox1femheatsinktemperatures", [5100, 5000]
         )
         assert (smartbox_device.FemHeatsinkTemperatures == [5100, 5000]).all()
 
@@ -936,17 +945,17 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "fndhstatus",
         "smartbox24portscurrentdraw",
         "smartbox24portsconnected",
-        "smartboxportpowersensed",
-        "smartboxinputvoltage",
-        "smartboxpsuoutput",
-        "smartboxpsutemperature",
-        "smartboxpcbtemperature",
-        "smartboxfemambienttemperature",
-        "smartboxfemcasetemperatures",
-        "smartboxfemheatsinktemperatures",
-        "smartboxstatus",
+        "smartbox1portpowersensed",
+        "smartbox1inputvoltage",
+        "smartbox1psuoutput",
+        "smartbox1psutemperature",
+        "smartbox1pcbtemperature",
+        "smartbox1femambienttemperature",
+        "smartbox1femcasetemperatures",
+        "smartbox1femheatsinktemperatures",
+        "smartbox1status",
         "fndhport2powerstate",
-        "fndhportpowerstate",
+        "fndhport1powerstate",
         timeout=10.0,
         assert_no_error=False,
     )

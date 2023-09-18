@@ -56,7 +56,6 @@ class MccsSmartBox(SKABaseDevice):
         ("FemAmbientTemperature", float, None),
         ("FemCaseTemperatures", (float,), 2),
         ("FemHeatsinkTemperatures", (float,), 2),
-        ("PortsConnected", (bool,), PORT_COUNT),
         ("PortForcings", (str,), PORT_COUNT),
         ("PortBreakersTripped", (bool,), PORT_COUNT),
         ("PortsDesiredPowerOnline", (bool,), PORT_COUNT),

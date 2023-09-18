@@ -151,8 +151,8 @@ class _SmartBoxProxy(DeviceComponentManager):
         """
         # TODO: MCCS-1481: Update the MccsDeviceProxy to conserve attribute case.
 
-        # Are really receiving from a pasd smartbox device between 1-25
-        is_a_smartbox = re.search("^smartbox[1-2][1-5]|[1-9]", attr_name)
+        # Are really receiving from a pasd smartbox device between 1-24
+        is_a_smartbox = re.search("^smartbox([1-9]|1[0-9]|2[0-4])", attr_name)
 
         if is_a_smartbox:
             tango_attribute_name = attr_name[is_a_smartbox.end() :].lower()

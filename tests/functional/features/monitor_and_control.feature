@@ -39,7 +39,8 @@ Feature: Monitoring and control of PaSD
     Scenario: Turn on FNDH port
         Given A MCCS-for-PaSD which is ready
         And MCCS-for-PaSD is in ON state
-        And a connected FNDH port
+        And the FNDH is initialized
+        And a FNDH port
         And the FNDH port is off
         When I tell MCCS-for-PaSD to turn the FNDH port on
         Then the FNDH port turns on
@@ -48,7 +49,8 @@ Feature: Monitoring and control of PaSD
     Scenario: Turn off FNDH port
         Given A MCCS-for-PaSD which is ready
         And MCCS-for-PaSD is in ON state
-        And a connected FNDH port
+        And the FNDH is initialized
+        And a FNDH port
         And the FNDH port is on
         When I tell MCCS-for-PaSD to turn the FNDH port off
         Then the FNDH port turns off
@@ -58,7 +60,8 @@ Feature: Monitoring and control of PaSD
         Given A MCCS-for-PaSD which is ready
         And MCCS-for-PaSD is in ON state
         And a smartbox
-        And a connected smartbox port
+        And the smartbox is initialized
+        And a smartbox port
         And the smartbox port is off
         When I tell MCCS-for-PaSD to turn the smartbox port on
         Then the smartbox port turns on
@@ -68,7 +71,8 @@ Feature: Monitoring and control of PaSD
         Given A MCCS-for-PaSD which is ready
         And MCCS-for-PaSD is in ON state
         And a smartbox
-        And a connected smartbox port
+        And the smartbox is initialized
+        And a smartbox port
         And the smartbox port is on
         When I tell MCCS-for-PaSD to turn the smartbox port off
         Then the smartbox port turns off

@@ -654,8 +654,11 @@ class TestSmartboxSimulator:
         :param smartbox_simulator: the smartbox simulator under test.
         """
         assert smartbox_simulator.ports_current_draw == [
-            SmartboxSimulator.DEFAULT_PORT_CURRENT_DRAW if port_connected else 0
-            for port_connected in smartbox_simulator.ports_connected
+            SmartboxSimulator.DEFAULT_PORT_CURRENT_DRAW if connected and powered else 0
+            for connected, powered in zip(
+                smartbox_simulator.ports_connected,
+                smartbox_simulator.ports_power_sensed,
+            )
         ]
 
     @pytest.mark.parametrize(
