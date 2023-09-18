@@ -310,7 +310,7 @@ class PasdBusModbusApiClient:
             )  # TODO: What error code to use?
 
         return self._write_registers(
-            modbus_address, attribute.address, request["values"]
+            modbus_address, attribute.address, list(request["values"])
         )
 
     def _do_command_request(self, request: dict) -> dict:
@@ -326,8 +326,10 @@ class PasdBusModbusApiClient:
         if not command:
             return self._create_error_response(
                 "request",
-                f"Invalid command request: device: {request['device_id']}, "
-                f"command: {request['execute']}, args: {request['arguments']}",
+                (
+                    f"Invalid command request: device: {request['device_id']}, "
+                    f"command: {request['execute']}, args: {request['arguments']}"
+                ),
             )  # TODO: what error code to use?
 
         return self._write_registers(modbus_address, command.address, command.value)
@@ -349,7 +351,9 @@ class PasdBusModbusApiClient:
             return response["data"]["attributes"]
         return response
 
-    def write_attribute(self, device_id: int, name: str, values: Any) -> dict[str, Any]:
+    def write_attribute(
+        self, device_id: int, name: str, *values: Any
+    ) -> dict[str, Any]:
         """
         Write a new attribute value.
 

@@ -27,6 +27,7 @@ from ska_control_model import (
 )
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidator
+from tango.device_attribute import ExtractAs
 from tango.server import attribute, command
 
 from .pasd_bus_component_manager import PasdBusComponentManager
@@ -80,10 +81,16 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             "panel_temperature_thresholds": "fndhPanelTemperatureThresholds",
             "fncb_temperature_thresholds": "fndhFncbTemperatureThresholds",
             "humidity_thresholds": "fndhHumidityThresholds",
-            "comms_gateway_temperature_thresholds": "fndhCommsGatewayTemperatureThresholds",
-            "power_module_temperature_thresholds": "fndhPowerModuleTemperatureThresholds",
+            "comms_gateway_temperature_thresholds": (
+                "fndhCommsGatewayTemperatureThresholds"
+            ),
+            "power_module_temperature_thresholds": (
+                "fndhPowerModuleTemperatureThresholds"
+            ),
             "outside_temperature_thresholds": "fndhOutsideTemperatureThresholds",
-            "internal_ambient_temperature_thresholds": "fndhInternalAmbientTemperatureThresholds",
+            "internal_ambient_temperature_thresholds": (
+                "fndhInternalAmbientTemperatureThresholds"
+            ),
         },
         **{
             smartbox_number: {
@@ -127,29 +134,72 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 ),
                 "ports_power_sensed": f"smartbox{smartbox_number}PortsPowerSensed",
                 "ports_current_draw": f"smartbox{smartbox_number}PortsCurrentDraw",
-                "input_voltage_thresholds": f"smartbox{smartbox_number}InputVoltageThresholds",
-                "power_supply_output_voltage_thresholds": f"smartbox{smartbox_number}PowerSupplyOutputVoltageThresholds",
-                "power_supply_temperature_thresholds": f"smartbox{smartbox_number}PowerSupplyTemperatureThresholds",
-                "pcb_temperature_thresholds": f"smartbox{smartbox_number}PcbTemperatureThresholds",
-                "fem_ambient_temperature_thresholds": f"smartbox{smartbox_number}FemAbientTemperatureThresholds",
-                "fem_case_temperature_1_thresholds": f"smartbox{smartbox_number}FemCaseTemperature1Thresholds",
-                "fem_case_temperature_2_thresholds": f"smartbox{smartbox_number}FemCaseTemperature2Thresholds",
-                "fem_heatsink_temperature1_thresholds": f"smartbox{smartbox_number}FemHeatsinkTemperature1Thresholds",
-                "fem_heatsink_temperature2_thresholds": f"smartbox{smartbox_number}FemHeatsinkTemperature2Thresholds",
-                "fem1_current_trip_threshold": f"smartbox{smartbox_number}Fem1CurrentTripThreshold",
-                "fem2_current_trip_threshold": f"smartbox{smartbox_number}Fem2CurrentTripThreshold",
-                "fem3_current_trip_threshold": f"smartbox{smartbox_number}Fem3CurrentTripThreshold",
-                "fem4_current_trip_threshold": f"smartbox{smartbox_number}Fem4CurrentTripThreshold",
-                "fem5_current_trip_threshold": f"smartbox{smartbox_number}Fem5CurrentTripThreshold",
-                "fem6_current_trip_threshold": f"smartbox{smartbox_number}Fem6CurrentTripThreshold",
-                "fem7_current_trip_threshold": f"smartbox{smartbox_number}Fem7CurrentTripThreshold",
-                "fem8_current_trip_threshold": f"smartbox{smartbox_number}Fem8CurrentTripThreshold",
-                "fem9_current_trip_threshold": f"smartbox{smartbox_number}Fem9CurrentTripThreshold",
-                "fem10_current_trip_threshold": f"smartbox{smartbox_number}Fem10CurrentTripThreshold",
-                "fem11_current_trip_threshold": f"smartbox{smartbox_number}Fem11CurrentTripThreshold",
-                "fem12_current_trip_threshold": f"smartbox{smartbox_number}Fem12CurrentTripThreshold",
+                "input_voltage_thresholds": (
+                    f"smartbox{smartbox_number}InputVoltageThresholds"
+                ),
+                "power_supply_output_voltage_thresholds": (
+                    f"smartbox{smartbox_number}PowerSupplyOutputVoltageThresholds"
+                ),
+                "power_supply_temperature_thresholds": (
+                    f"smartbox{smartbox_number}PowerSupplyTemperatureThresholds"
+                ),
+                "pcb_temperature_thresholds": (
+                    f"smartbox{smartbox_number}PcbTemperatureThresholds"
+                ),
+                "fem_ambient_temperature_thresholds": (
+                    f"smartbox{smartbox_number}FemAbientTemperatureThresholds"
+                ),
+                "fem_case_temperature_1_thresholds": (
+                    f"smartbox{smartbox_number}FemCaseTemperature1Thresholds"
+                ),
+                "fem_case_temperature_2_thresholds": (
+                    f"smartbox{smartbox_number}FemCaseTemperature2Thresholds"
+                ),
+                "fem_heatsink_temperature1_thresholds": (
+                    f"smartbox{smartbox_number}FemHeatsinkTemperature1Thresholds"
+                ),
+                "fem_heatsink_temperature2_thresholds": (
+                    f"smartbox{smartbox_number}FemHeatsinkTemperature2Thresholds"
+                ),
+                "fem1_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem1CurrentTripThreshold"
+                ),
+                "fem2_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem2CurrentTripThreshold"
+                ),
+                "fem3_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem3CurrentTripThreshold"
+                ),
+                "fem4_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem4CurrentTripThreshold"
+                ),
+                "fem5_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem5CurrentTripThreshold"
+                ),
+                "fem6_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem6CurrentTripThreshold"
+                ),
+                "fem7_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem7CurrentTripThreshold"
+                ),
+                "fem8_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem8CurrentTripThreshold"
+                ),
+                "fem9_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem9CurrentTripThreshold"
+                ),
+                "fem10_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem10CurrentTripThreshold"
+                ),
+                "fem11_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem11CurrentTripThreshold"
+                ),
+                "fem12_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem12CurrentTripThreshold"
+                ),
             }
-            for smartbox_number in range(1, 25)
+            # for smartbox_number in range(1, 25)
+            for smartbox_number in range(2, 3)
         },
     }
     # ----------
@@ -175,7 +225,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         self._pasd_state: dict[str, Any] = {}
         self._setup_fndh_attributes()
-        for smartbox_number in range(1, 25):
+        # for smartbox_number in range(1, 25)
+        for smartbox_number in range(2, 3):
             self._setup_smartbox_attributes(smartbox_number)
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
@@ -206,7 +257,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("Psu48vTemperatures", (float,), 2, tango.AttrWriteType.READ),
             ("PanelTemperature", float, None, tango.AttrWriteType.READ),
             ("FncbTemperature", float, None, tango.AttrWriteType.READ),
-            ("FncbHumidity", float, None, tango.AttrWriteType.READ),
+            ("FncbHumidity", int, None, tango.AttrWriteType.READ),
             ("CommsGatewayTemperature", float, None, tango.AttrWriteType.READ),
             ("PowerModuleTemperature", float, None, tango.AttrWriteType.READ),
             ("OutsideTemperature", float, None, tango.AttrWriteType.READ),
@@ -274,7 +325,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 4,
                 tango.AttrWriteType.READ_WRITE,
             ),
-            ("HumidityThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
+            ("HumidityThresholds", (int,), 4, tango.AttrWriteType.READ_WRITE),
             (
                 "CommsGatewayTemperatureThresholds",
                 (float,),
@@ -405,18 +456,18 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 4,
                 tango.AttrWriteType.READ_WRITE,
             ),
-            ("Fem1CurrentTripThreshold", (float,), 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem2CurrentTripThreshold", (float,), 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem3CurrentTripThreshold", (float,), 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem4CurrentTripThreshold", (float,), 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem5CurrentTripThreshold", (float,), 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem6CurrentTripThreshold", (float,), 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem7CurrentTripThreshold", (float,), 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem8CurrentTripThreshold", (float,), 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem9CurrentTripThreshold", (float,), 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem10CurrentTripThreshold", (float,), 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem11CurrentTripThreshold", (float,), 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem12CurrentTripThreshold", (float,), 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem1CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem2CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem3CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem4CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem5CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem6CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem7CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem8CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem9CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem10CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem11CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem12CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
         ]:
             self._setup_pasd_attribute(
                 f"smartbox{smartbox_number}{slug}",
@@ -439,8 +490,20 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     def _write_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
         # Register the request with the component manager
         # TODO: How do we get the device id?
+        device_id = 0
+        logging.debug(
+            f"Attempting to write attribute: {pasd_attribute.get_name()} with value"
+            f" {pasd_attribute.get_write_value()}"
+        )
+        # Get the name of the attribute as understood by the Modbus API
+        attribute_dict = self._ATTRIBUTE_MAP[device_id]
+        attribute_name = [
+            key
+            for key, value in attribute_dict.items()
+            if value == pasd_attribute.get_name()
+        ][0]
         self.component_manager.write_attribute(
-            0, pasd_attribute.get_name(), pasd_attribute.get_write_value()
+            device_id, attribute_name, pasd_attribute.get_write_value(ExtractAs.List)
         )
 
     def _setup_pasd_attribute(
@@ -460,7 +523,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             fget=self._read_pasd_attribute,
             fset=self._write_pasd_attribute,
         ).to_attr()
-        self.add_attribute(attr, self._read_pasd_attribute, None, None)
+        self.add_attribute(
+            attr, self._read_pasd_attribute, self._write_pasd_attribute, None
+        )
         self.set_change_event(attribute_name, True, False)
         self.set_archive_event(attribute_name, True, False)
 

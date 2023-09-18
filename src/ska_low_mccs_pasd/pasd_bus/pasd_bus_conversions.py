@@ -163,7 +163,7 @@ class PasdConversionUtility:
         return [value / 100.0 for value in value_list]
 
     @classmethod
-    def scale_temps(
+    def scale_signed_16bit(
         cls, value_list: list[int | float], inverse: bool = False
     ) -> list[int | float]:
         """
@@ -323,7 +323,7 @@ class PasdConversionUtility:
             logger.error(f"Invalid status LED value received: {byte_list[1]}")
             status = LEDStatusMap.UNDEFINED.name
 
-        return f"service: {service}, " f"status: {status}"
+        return f"service: {service}, status: {status}"
 
     @classmethod
     def convert_fndh_alarm_status(cls, value_list: list[int]) -> str:
