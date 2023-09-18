@@ -153,6 +153,17 @@ class PasdBusAttribute:
         """
         return self._conversion_function(values)
 
+    def convert_write_value(self: PasdBusAttribute, values: List[Any]) -> Any:
+        """
+        Execute the attribute's conversion function on the supplied value.
+
+        Convert the desired user value into a raw register value
+
+        :param values: a list of the user values to convert
+        :return: the raw converted values
+        """
+        return self._conversion_function(values, inverse=True)
+
 
 class PasdBusPortAttribute(PasdBusAttribute):
     """Class representing a port status attribute."""
@@ -491,7 +502,7 @@ class PasdBusRegisterMap:
         return self._SMARTBOX_REGISTER_MAPS[self.revision_number]
 
     def get_writeable_attribute(
-        self, device_id: int, attribute_name: str
+        self, device_id: int, attribute_name: str, write_values: List[Any]
     ) -> PasdBusAttribute:
         """
         Return a PasdAttribute object for a writeable object.
@@ -500,6 +511,7 @@ class PasdBusRegisterMap:
 
         :param device_id: The ID (address) of the smartbox / FNDH device
         :param attribute_name: name of the attribute
+        :param write_values: the requested user values to write
 
         :return: A PasdAttribute object for this attribute
         """
@@ -508,6 +520,7 @@ class PasdBusRegisterMap:
         attribute = attribute_map.get(attribute_name)
         if attribute is None or not attribute._writeable:
             raise PasdWriteError(attribute_name)
+        attribute.value = attribute.convert_write_value(write_values)
         return attribute
 
     def get_attributes(

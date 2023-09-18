@@ -132,11 +132,12 @@ class PasdConversionUtility:
     # ##########################################################################
 
     @classmethod
-    def default_conversion(cls, values: list[Any]) -> list[Any]:
+    def default_conversion(cls, values: list[Any], inverse: bool = False) -> list[Any]:
         """
         Return the supplied raw value(s) with no conversion.
 
         :param values: raw value(s)
+        :param inverse: whether to invert the conversion
         :return: the value(s) unchanged
         """
         return values

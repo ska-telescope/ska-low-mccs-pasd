@@ -302,16 +302,14 @@ class PasdBusModbusApiClient:
         # Get a PasdBusAttribute object for this request
         try:
             attribute = self._register_map.get_writeable_attribute(
-                request["device_id"], request["write"]
+                request["device_id"], request["write"], list(request["values"])
             )
         except PasdWriteError as e:
             return self._create_error_response(
                 "request", f"Exception: {e}"
             )  # TODO: What error code to use?
 
-        return self._write_registers(
-            modbus_address, attribute.address, list(request["values"])
-        )
+        return self._write_registers(modbus_address, attribute.address, attribute.value)
 
     def _do_command_request(self, request: dict) -> dict:
         modbus_address = (
