@@ -19,16 +19,16 @@ from ska_ser_devices.client_server import (
     TcpServer,
 )
 
-from .pasd_bus_json_api import PasdBusJsonApi
+from .pasd_bus_modbus_api import PasdBusModbusApi
 from .pasd_bus_simulator import FndhSimulator, PasdBusSimulator, SmartboxSimulator
 
 
 # pylint: disable-next=too-few-public-methods
-class PasdBusSimulatorJsonServer(ApplicationServer):
-    """An application-layer server that provides JSON access to a PasdBusSimulator."""
+class PasdBusSimulatorModbusServer(ApplicationServer):
+    """An application-layer server that provides Modbus access to a PasdBusSimulator."""
 
     def __init__(
-        self: PasdBusSimulatorJsonServer,
+        self: PasdBusSimulatorModbusServer,
         fndh_simulator: FndhSimulator,
         smartbox_simulators: Dict[int, SmartboxSimulator],
     ) -> None:
@@ -42,7 +42,7 @@ class PasdBusSimulatorJsonServer(ApplicationServer):
         """
         simulators: Dict[int, FndhSimulator | SmartboxSimulator] = {0: fndh_simulator}
         simulators.update(smartbox_simulators)
-        simulator_api = PasdBusJsonApi(simulators)
+        simulator_api = PasdBusModbusApi(simulators)
         marshaller = SentinelBytesMarshaller(b"\n")
         super().__init__(marshaller.unmarshall, marshaller.marshall, simulator_api)
 
@@ -64,7 +64,7 @@ def main() -> None:
         raise ValueError("SIMULATOR_CONFIG_PATH environment variable must be set.")
 
     simulator = PasdBusSimulator(config_path, int(station_id), logging.DEBUG)
-    simulator_server = PasdBusSimulatorJsonServer(
+    simulator_server = PasdBusSimulatorModbusServer(
         simulator.get_fndh(), simulator.get_smartboxes()
     )
     server = TcpServer(host, port, simulator_server, logger=logger)

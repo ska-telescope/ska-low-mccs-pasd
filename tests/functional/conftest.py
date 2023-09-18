@@ -142,7 +142,7 @@ def pasd_address_context_manager_factory_fixture(
 
             from ska_low_mccs_pasd.pasd_bus import (
                 PasdBusSimulator,
-                PasdBusSimulatorJsonServer,
+                PasdBusSimulatorModbusServer,
             )
 
             pasd_simulator = PasdBusSimulator(pasd_config_path, 1, logging.DEBUG)
@@ -152,7 +152,7 @@ def pasd_address_context_manager_factory_fixture(
                 fndh_simulator.turn_port_on(port_nr)
             smartbox_simulators = pasd_simulator.get_smartboxes()
 
-            simulator_server = PasdBusSimulatorJsonServer(
+            simulator_server = PasdBusSimulatorModbusServer(
                 fndh_simulator, smartbox_simulators
             )
             server = TcpServer(

@@ -26,7 +26,7 @@ from ska_low_mccs_pasd.pasd_bus import (
     FndhSimulator,
     PasdBusComponentManager,
     PasdBusSimulator,
-    PasdBusSimulatorJsonServer,
+    PasdBusSimulatorModbusServer,
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
 
@@ -319,7 +319,7 @@ def pasd_bus_simulator_server_launcher_fixture(
 
     @contextmanager
     def launch_pasd_bus_simulator_server() -> Iterator[TcpServer]:
-        simulator_server = PasdBusSimulatorJsonServer(
+        simulator_server = PasdBusSimulatorModbusServer(
             mock_fndh_simulator, mock_smartbox_simulators
         )
         server = TcpServer(

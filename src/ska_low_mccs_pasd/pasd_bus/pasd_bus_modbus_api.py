@@ -83,6 +83,8 @@ class PasdBusModbusApi:
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
         # TODO (temporary placeholder code here only)
         response = None
+        print("!"*50)
+        print(modbus_request_str)
 
         def handle_request(message: Any) -> None:
             nonlocal response
