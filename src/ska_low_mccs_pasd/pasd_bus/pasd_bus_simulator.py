@@ -788,11 +788,11 @@ class FndhSimulator(PasdHardwareSimulator):
 
     CPU_ID: Final = "22"
     CHIP_ID: Final = "23"
-    MODBUS_REGISTER_MAP_REVISION: Final = 20
+    MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
     SYS_ADDRESS: Final = 101
 
-    DEFAULT_FIRMWARE_VERSION: Final = "1.2.3-fake"
+    DEFAULT_FIRMWARE_VERSION: Final = 1
     DEFAULT_PSU48V_VOLTAGES: Final = [4790, 4810]
     DEFAULT_PSU48V_CURRENT: Final = 1510
     DEFAULT_PSU48V_TEMPERATURES: Final = [4120, 4290]

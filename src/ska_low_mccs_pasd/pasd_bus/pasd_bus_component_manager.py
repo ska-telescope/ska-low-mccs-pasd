@@ -21,7 +21,7 @@ from ska_ser_devices.client_server import (
 from ska_tango_base.base import check_communicating
 from ska_tango_base.poller import PollingComponentManager
 
-from .pasd_bus_json_api import PasdBusJsonApiClient
+from .pasd_bus_modbus_api import PasdBusModbusApiClient
 
 
 @dataclass
@@ -357,12 +357,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             number), and keyword arguments representing the state
             changes.
         """
-        tcp_client = TcpClient(host, port, timeout, logger=logger)
-        marshaller = SentinelBytesMarshaller(b"\n", logger=logger)
-        application_client = ApplicationClient(
-            tcp_client, marshaller.marshall, marshaller.unmarshall
-        )
-        self._pasd_bus_api_client = PasdBusJsonApiClient(application_client)
+        self._pasd_bus_api_client = PasdBusModbusApiClient(host, port)
         self._pasd_bus_device_state_callback = pasd_device_state_callback
 
         self._poll_request_provider = PasdBusRequestProvider(logger)

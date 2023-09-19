@@ -69,7 +69,7 @@ class PasdBusModbusApi:
             except AttributeError:
                 # TODO
                 logger.error(f"Attribute not found: {name}")
-            values.append(value)
+            values.append(int(value))
         return values
 
     def _handle_command(self, device_id: int, name: str, args: tuple) -> dict:
@@ -84,6 +84,7 @@ class PasdBusModbusApi:
         # TODO (temporary placeholder code here only)
         response = None
         print("!"*50)
+        modbus_request_str+=b'\n'
         print(modbus_request_str)
 
         def handle_request(message: Any) -> None:
@@ -93,8 +94,9 @@ class PasdBusModbusApi:
                 case ReadHoldingRegistersRequest():
                     # TODO: Map register numbers from message.address and
                     # message.count to the corresponding attribute names
-                    attr_names = ["fncb_temperature"]
+                    attr_names = ["modbus_register_map_revision", "pcb_revision", "cpu_id", "chip_id", "firmware_version"]
                     values = self._handle_read_attributes(message.slave_id, attr_names)
+                    print(f"I've read values {values}")
                     response = ReadHoldingRegistersResponse(
                         slave=message.slave_id,
                         address=message.address,
@@ -106,8 +108,12 @@ class PasdBusModbusApi:
         self._decoder.processIncomingPacket(
             modbus_request_str, handle_request, slave=self.responder_ids
         )
+        response: ReadHoldingRegistersResponse
+        print(response.registers)
 
-        return self._framer.buildPacket(response)
+        packet = self._framer.buildPacket(response)
+        print(f"I love packet {packet}")
+        return packet
 
     def __call__(self, modbus_request_bytes: bytes) -> bytes:
         """
@@ -192,10 +198,13 @@ class PasdBusModbusApiClient:
             f"MODBUS read request: modbus address {modbus_address}, "
             f"start address {attributes[keys[0]].address}, count {count}"
         )
-
+        print("I do be trying to read to those register xdd")
         reply = self._client.read_holding_registers(
             attributes[keys[0]].address, count, modbus_address
         )
+        print(f"Thems registers {reply.registers}")
+
+        print(f"And I've acquired attributes {attributes}")
 
         match reply:
             case ReadHoldingRegistersResponse():
@@ -208,6 +217,7 @@ class PasdBusModbusApiClient:
                 # to the attributes dictionary to be returned
                 for key in keys:
                     current_attribute = attributes[key]
+                    print(f"Handling attribute {key} {current_attribute.value} {current_attribute.count} {current_attribute.address}")
 
                     # Check if we're moving on from reading a set of port attribute data
                     # as we'll need to increment the register index
@@ -236,6 +246,8 @@ class PasdBusModbusApiClient:
                     if not isinstance(current_attribute, PasdBusPortAttribute):
                         register_index += current_attribute.count
                     last_attribute = current_attribute
+                    print(f"Finished handling {key} {converted_values}")
+                print("Made it here at least")
                 response = {
                     "source": request["device_id"],
                     "data": {
@@ -254,6 +266,8 @@ class PasdBusModbusApiClient:
                 response = self._create_error_response(
                     "read", f"Unexpected response type: {type(reply)}"
                 )  # TODO: what error code to use?
+
+        print("WEll by gum I made it here")
 
         return response
 
