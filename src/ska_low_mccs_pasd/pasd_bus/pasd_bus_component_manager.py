@@ -13,12 +13,11 @@ from dataclasses import dataclass
 from typing import Any, Callable, Final, Iterable, Iterator, Literal, Optional
 
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
-
-# from ska_ser_devices.client_server import (
-#     ApplicationClient,
-#     SentinelBytesMarshaller,
-#     TcpClient,
-# )
+from ska_ser_devices.client_server import (
+    ApplicationClient,
+    SentinelBytesMarshaller,
+    TcpClient,
+)
 from ska_tango_base.base import check_communicating
 from ska_tango_base.poller import PollingComponentManager
 
@@ -594,19 +593,19 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
                 poll_request.command,
                 *poll_request.arguments,
             )
-        elif poll_request.attribute_to_write is not None:
-            if poll_request.arguments is list:
-                response_data = self._pasd_bus_api_client.write_attribute(
-                    poll_request.device_id,
-                    poll_request.attribute_to_write,
-                    *poll_request.arguments,
-                )
-            else:
-                response_data = self._pasd_bus_api_client.write_attribute(
-                    poll_request.device_id,
-                    poll_request.attribute_to_write,
-                    poll_request.arguments,
-                )
+        # elif poll_request.attribute_to_write is not None:
+        #     if poll_request.arguments is list:
+        #         response_data = self._pasd_bus_api_client.write_attribute(
+        #             poll_request.device_id,
+        #             poll_request.attribute_to_write,
+        #             *poll_request.arguments,
+        #         )
+        #     else:
+        #         response_data = self._pasd_bus_api_client.write_attribute(
+        #             poll_request.device_id,
+        #             poll_request.attribute_to_write,
+        #             poll_request.arguments,
+        #         )
         else:
             response_data = self._pasd_bus_api_client.read_attributes(
                 poll_request.device_id, *poll_request.arguments

@@ -198,8 +198,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     f"smartbox{smartbox_number}Fem12CurrentTripThreshold"
                 ),
             }
-            # for smartbox_number in range(1, 25)
-            for smartbox_number in range(2, 3)
+            for smartbox_number in range(1, 25)
+            # for smartbox_number in range(2, 3)
         },
     }
     # ----------
@@ -225,8 +225,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         self._pasd_state: dict[str, Any] = {}
         self._setup_fndh_attributes()
-        # for smartbox_number in range(1, 25)
-        for smartbox_number in range(2, 3):
+        for smartbox_number in range(1, 25):
+            # for smartbox_number in range(2, 3):
             self._setup_smartbox_attributes(smartbox_number)
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
