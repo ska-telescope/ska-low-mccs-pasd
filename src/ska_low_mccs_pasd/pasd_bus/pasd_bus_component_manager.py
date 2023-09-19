@@ -13,11 +13,12 @@ from dataclasses import dataclass
 from typing import Any, Callable, Final, Iterable, Iterator, Literal, Optional
 
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
-from ska_ser_devices.client_server import (
-    ApplicationClient,
-    SentinelBytesMarshaller,
-    TcpClient,
-)
+
+# from ska_ser_devices.client_server import (
+#     ApplicationClient,
+#     SentinelBytesMarshaller,
+#     TcpClient,
+# )
 from ska_tango_base.base import check_communicating
 from ska_tango_base.poller import PollingComponentManager
 
@@ -89,8 +90,11 @@ def read_request_iterator() -> Iterator[tuple[int, str]]:
             yield (device_id, "PORTS")
             yield (device_id, "ALARM_FLAGS")
             yield (device_id, "WARNING_FLAGS")
-            yield (device_id, "THRESHOLDS")  # Temporary for testing
-            yield (device_id, "CURRENT_TRIP_THRESHOLDS")  # Temporary for testing
+            # TODO: Only re-read these after setting them:
+            yield (device_id, "THRESHOLDS")
+            if device_id != 0:
+                # TODO: Only re-read these after setting them
+                yield (device_id, "CURRENT_TRIP_THRESHOLDS")
 
 
 class PasdBusRequestProvider:
@@ -298,6 +302,9 @@ class PasdBusRequestProvider:
         :param attribute_name: the name of the attribute to set.
         :param values: the new value(s) to write.
         """
+        logging.debug(
+            f"***************** Setting attribute_writes for {attribute_name}"
+        )
         self._attribute_writes[(device_id, attribute_name)] = values
 
     def _get_attribute_write_request(self) -> PasdBusRequest | None:
@@ -363,14 +370,10 @@ class PasdBusRequestProvider:
                 request = PasdBusRequest(
                     0, None, None, list(self.FNDH_THRESHOLD_ATTRIBUTES)
                 )
-            # case (0, "ALARM_FLAGS"):
-            #    request = PasdBusRequest(
-            #        0, None, None, list(self.ALARM_FLAGS_ATTRIBUTE)
-            #    )
-            # case (0, "WARNING_FLAGS"):
-            #    request = PasdBusRequest(
-            #        0, None, None, list(self.WARNING_FLAGS_ATTRIBUTE)
-            #    )
+            case (0, "ALARM_FLAGS"):
+                request = PasdBusRequest(0, None, None, [self.ALARM_FLAGS_ATTRIBUTE])
+            case (0, "WARNING_FLAGS"):
+                request = PasdBusRequest(0, None, None, [self.WARNING_FLAGS_ATTRIBUTE])
             case (smartbox_id, "STATUS"):
                 request = PasdBusRequest(
                     smartbox_id, None, None, list(self.SMARTBOX_STATUS_ATTRIBUTES)
@@ -390,14 +393,14 @@ class PasdBusRequestProvider:
                     None,
                     list(self.SMARTBOX_CURRENT_TRIP_THRESHOLD_ATTRIBUTES),
                 )
-            # case (smartbox_id, "ALARM_FLAGS"):
-            #    request = PasdBusRequest(
-            #        smartbox_id, None, None, list(self.ALARM_FLAGS_ATTRIBUTE)
-            #    )
-            # case (smartbox_id, "WARNING_FLAGS"):
-            #    request = PasdBusRequest(
-            #        smartbox_id, None, None, list(self.WARNING_FLAGS_ATTRIBUTE)
-            #    )
+            case (smartbox_id, "ALARM_FLAGS"):
+                request = PasdBusRequest(
+                    smartbox_id, None, None, [self.ALARM_FLAGS_ATTRIBUTE]
+                )
+            case (smartbox_id, "WARNING_FLAGS"):
+                request = PasdBusRequest(
+                    smartbox_id, None, None, [self.WARNING_FLAGS_ATTRIBUTE]
+                )
             case _:
                 message = f"Unrecognised poll request {repr(read_request)}"
                 self._logger.error(message)
@@ -424,6 +427,10 @@ class PasdBusRequestProvider:
             return request
 
         request = self._get_port_power_request()
+        if request is not None:
+            return request
+
+        request = self._get_attribute_write_request()
         if request is not None:
             return request
 
@@ -587,12 +594,19 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
                 poll_request.command,
                 *poll_request.arguments,
             )
-        # elif poll_request.attribute_to_write is not None:
-        #     response_data = self._pasd_bus_api_client.write_attribute(
-        #         poll_request.device_id,
-        #         poll_request.attribute_to_write,
-        #         *poll_request.arguments,
-        #     )
+        elif poll_request.attribute_to_write is not None:
+            if poll_request.arguments is list:
+                response_data = self._pasd_bus_api_client.write_attribute(
+                    poll_request.device_id,
+                    poll_request.attribute_to_write,
+                    *poll_request.arguments,
+                )
+            else:
+                response_data = self._pasd_bus_api_client.write_attribute(
+                    poll_request.device_id,
+                    poll_request.attribute_to_write,
+                    poll_request.arguments,
+                )
         else:
             response_data = self._pasd_bus_api_client.read_attributes(
                 poll_request.device_id, *poll_request.arguments
@@ -822,4 +836,8 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
         :param attribute_name: the name of the attribute to write
         :param value: the new value to write
         """
+        logging.debug(
+            f"*************** Requesting to write attribute {attribute_name} with value"
+            f" {value}"
+        )
         self._poll_request_provider.write_attribute(device_id, attribute_name, value)

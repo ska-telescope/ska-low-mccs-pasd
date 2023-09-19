@@ -456,18 +456,18 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 4,
                 tango.AttrWriteType.READ_WRITE,
             ),
-            ("Fem1CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem2CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem3CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem4CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem5CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem6CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem7CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem8CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem9CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem10CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem11CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
-            ("Fem12CurrentTripThreshold", int, 4, tango.AttrWriteType.READ_WRITE),
+            ("Fem1CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem2CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem3CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem4CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem5CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem6CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem7CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem8CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem9CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem10CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem11CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem12CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
         ]:
             self._setup_pasd_attribute(
                 f"smartbox{smartbox_number}{slug}",
@@ -489,11 +489,21 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
     def _write_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
         # Register the request with the component manager
-        # TODO: How do we get the device id?
-        device_id = 0
+        tango_attr_name = pasd_attribute.get_name()
+        if tango_attr_name.startswith("fndh"):
+            device_id = 0
+        else:
+            # Obtain smartbox number after 'smartbox' prefix
+            # This could be 1 or 2 digits
+            tango_attr_name = tango_attr_name.removeprefix("smartbox")
+            device_id = (
+                int(tango_attr_name[0:2])
+                if tango_attr_name[0:2].isdigit()
+                else int(tango_attr_name[0])
+            )
         logging.debug(
-            f"Attempting to write attribute: {pasd_attribute.get_name()} with value"
-            f" {pasd_attribute.get_write_value()}"
+            f"Requesting to write attribute: {pasd_attribute.get_name()} with value"
+            f" {pasd_attribute.get_write_value()} for device {device_id}"
         )
         # Get the name of the attribute as understood by the Modbus API
         attribute_dict = self._ATTRIBUTE_MAP[device_id]
@@ -502,6 +512,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             for key, value in attribute_dict.items()
             if value == pasd_attribute.get_name()
         ][0]
+
         self.component_manager.write_attribute(
             device_id, attribute_name, pasd_attribute.get_write_value(ExtractAs.List)
         )

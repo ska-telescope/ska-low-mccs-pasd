@@ -181,7 +181,8 @@ class PasdBusModbusApiClient:
 
         if len(attributes) == 0:
             logger.warning(
-                f"No attributes matching {request['read']} in PaSD register map"
+                f"No attributes matching {request['read']} in PaSD register map for"
+                f" device {request['device_id']}"
             )
             return {"data": {"attributes": {}}}
 
