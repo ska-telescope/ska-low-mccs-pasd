@@ -129,7 +129,7 @@ class PasdBusModbusApiClient:
         self: PasdBusModbusApiClient,
         host: str,
         port: int,
-        logging_level: int = logging.INFO,
+        logger_object: logging.Logger,
     ) -> None:
         """
         Initialise a new instance.
@@ -138,9 +138,9 @@ class PasdBusModbusApiClient:
         :param port: the PaSD port
         :param logging_level: the logging level to use
         """
-        logger.setLevel(logging_level)
         self._client = ModbusTcpClient(host, port, ModbusAsciiFramer)
-        logger.info(f"****Created Modbus TCP client for address {host}, port {port}")
+        logger_object.info(f"Created Modbus TCP client for address {host}, port {port}")
+        self._logger = logger_object
 
         # Initialise a default register map
         self._register_map = PasdBusRegisterMap()
@@ -154,7 +154,7 @@ class PasdBusModbusApiClient:
         self._client.close()
 
     def _create_error_response(self, error_code: str, message: str) -> dict:
-        logger.error(f"Returning error response: {message}")
+        self._logger.error(f"Returning error response: {message}")
         return {
             "error": {
                 "code": error_code,
@@ -180,7 +180,7 @@ class PasdBusModbusApiClient:
             )  # TODO: What error code to use?
 
         if len(attributes) == 0:
-            logger.warning(
+            self._logger.warning(
                 f"No attributes matching {request['read']} in PaSD register map for"
                 f" device {request['device_id']}"
             )
@@ -195,7 +195,7 @@ class PasdBusModbusApiClient:
             + attributes[keys[-1]].count
             - attributes[keys[0]].address
         )
-        logger.debug(
+        self._logger.debug(
             f"MODBUS read request: modbus address {modbus_address}, "
             f"start address {attributes[keys[0]].address}, count {count}"
         )
@@ -267,7 +267,7 @@ class PasdBusModbusApiClient:
     def _write_registers(
         self, modbus_address: int, start_address: int, values: int | List[int]
     ) -> dict:
-        logger.debug(
+        self._logger.debug(
             f"MODBUS write request: modbus address {modbus_address}, "
             f"register address {start_address}, values {values}"
         )
