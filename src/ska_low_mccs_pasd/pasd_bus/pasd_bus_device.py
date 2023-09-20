@@ -292,7 +292,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("TurnSmartboxPortOn", MccsPasdBus._TurnSmartboxPortOnCommand),
             ("TurnAllSmartboxPortsOn", MccsPasdBus._TurnAllSmartboxPortsOnCommand),
             ("TurnSmartboxPortOff", MccsPasdBus._TurnSmartboxPortOffCommand),
-            ("TurnSAllmartboxPortsOff", MccsPasdBus._TurnAllSmartboxPortsOffCommand),
+            ("TurnAllSmartboxPortsOff", MccsPasdBus._TurnAllSmartboxPortsOffCommand),
             (
                 "SetSmartboxLedPattern",
                 MccsPasdBus._SetSmartboxLedPatternCommand,
@@ -521,8 +521,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         Initialize an FNDH.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("InitializeFndh")
         success = handler()
@@ -582,8 +581,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             e.g. the port to be turned on,
             and whether it should remain on if MCCS goes offline.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("TurnFndhPortOn")
         success = handler(argin)
@@ -639,8 +637,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             e.g. whether the ports should remain on
             if communication with the MCCS is lost.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("TurnAllFndhPortsOn")
         success = handler(argin)
@@ -684,8 +681,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param argin: the FNDH port to turn off
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("TurnFndhPortOff")
         success = handler(argin)
@@ -724,8 +720,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         Turn off all FNDH ports.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("TurnAllFndhPortOff")
         success = handler()
@@ -769,8 +764,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param pattern: name of the new LED pattern.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("SetFndhLedPattern")
         success = handler(pattern)
@@ -818,8 +812,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         :param port_number: number of the port whose breaker is to be
             reset.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("ResetFndhPortBreaker")
         success = handler(port_number)
@@ -862,8 +855,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param argin: arguments encoded as a JSON string
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("InitializeSmartbox")
         success = handler(argin)
@@ -924,8 +916,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param argin: arguments encodes as a JSON string
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("TurnSmartboxPortOn")
         success = handler(argin)
@@ -986,8 +977,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param argin: arguments encodes as a JSON string
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("TurnAllSmartboxPortsOn")
         success = handler(argin)
@@ -1045,8 +1035,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param argin: arguments in JSON format
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("TurnSmartboxPortOff")
         success = handler(argin)
@@ -1102,8 +1091,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param argin: arguments in JSON format
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("TurnAllSmartboxPortsOff")
         success = handler(argin)
@@ -1153,8 +1141,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param argin: JSON encoded dictionary of arguments.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("SetSmartboxLedPattern")
         success = handler(argin)
@@ -1260,8 +1247,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param argin: arguments to the command in JSON format.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("ResetSmartboxPortBreaker")
         success = handler(argin)
