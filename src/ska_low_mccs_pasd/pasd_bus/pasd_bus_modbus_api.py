@@ -136,7 +136,7 @@ class PasdBusModbusApiClient:
 
         :param host: the host IP address for the PaSD
         :param port: the PaSD port
-        :param logging_level: the logging level to use
+        :param logger_object: the logger to use
         """
         self._client = ModbusTcpClient(host, port, ModbusAsciiFramer)
         logger_object.info(f"Created Modbus TCP client for address {host}, port {port}")

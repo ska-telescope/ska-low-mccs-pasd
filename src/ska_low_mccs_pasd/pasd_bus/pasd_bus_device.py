@@ -42,6 +42,7 @@ NUMBER_OF_SMARTBOX_PORTS = 12
 DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 
 
+# pylint: disable=too-many-public-methods
 class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     """An implementation of a PaSD bus Tango device for MCCS."""
 
@@ -1663,8 +1664,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             smartbox_number: int,
         ) -> Optional[bool]:
             """
-            Reset a Smartbox alarms register.
+            Reset a Smartbox's alarms register.
 
+            :param smartbox_number: number of the smartbox to be
+                addressed
             :return: whether successful, or None if there was nothing to
                 do.
             """
@@ -1706,8 +1709,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             smartbox_number: int,
         ) -> Optional[bool]:
             """
-            Reset a Smartbox warnings register.
+            Reset a Smartbox's warnings register.
 
+            :param smartbox_number: number of the smartbox to be
+                addressed
             :return: whether successful, or None if there was nothing to
                 do.
             """

@@ -98,6 +98,7 @@ def read_request_iterator() -> Iterator[tuple[int, str]]:
             #     yield (device_id, "CURRENT_TRIP_THRESHOLDS")
 
 
+# pylint: disable=too-many-instance-attributes
 class PasdBusRequestProvider:
     """
     A class that determines what should be done in the next poll.
@@ -440,6 +441,7 @@ class PasdBusRequestProvider:
 
         return request
 
+    # pylint: disable=too-many-return-statements
     def get_request(self) -> PasdBusRequest:
         """
         Return a description of what should be done on the next poll.
