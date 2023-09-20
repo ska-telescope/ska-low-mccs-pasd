@@ -73,14 +73,14 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             "ports_desired_power_when_online": "fndhPortsDesiredPowerOnline",
             "ports_desired_power_when_offline": "fndhPortsDesiredPowerOffline",
             "ports_power_sensed": "fndhPortsPowerSensed",
-            "psu48v_voltage1_thresholds": "fndhPsu48vVoltage1Thresholds",
+            "psu48v_voltage_1_thresholds": "fndhPsu48vVoltage1Thresholds",
             "psu48v_voltage_2_thresholds": "fndhPsu48vVoltage2Thresholds",
             "psu48v_current_thresholds": "fndhPsu48vCurrentThresholds",
             "psu48v_temperature_1_thresholds": "fndhPsu48vTemperature1Thresholds",
             "psu48v_temperature_2_thresholds": "fndhPsu48vTemperature2Thresholds",
             "panel_temperature_thresholds": "fndhPanelTemperatureThresholds",
             "fncb_temperature_thresholds": "fndhFncbTemperatureThresholds",
-            "humidity_thresholds": "fndhHumidityThresholds",
+            "fncb_humidity_thresholds": "fndhHumidityThresholds",
             "comms_gateway_temperature_thresholds": (
                 "fndhCommsGatewayTemperatureThresholds"
             ),
@@ -155,10 +155,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 "fem_case_temperature_2_thresholds": (
                     f"smartbox{smartbox_number}FemCaseTemperature2Thresholds"
                 ),
-                "fem_heatsink_temperature1_thresholds": (
+                "fem_heatsink_temperature_1_thresholds": (
                     f"smartbox{smartbox_number}FemHeatsinkTemperature1Thresholds"
                 ),
-                "fem_heatsink_temperature2_thresholds": (
+                "fem_heatsink_temperature_2_thresholds": (
                     f"smartbox{smartbox_number}FemHeatsinkTemperature2Thresholds"
                 ),
                 "fem1_current_trip_threshold": (
@@ -199,7 +199,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 ),
             }
             for smartbox_number in range(1, 25)
-            # for smartbox_number in range(2, 3)
         },
     }
     # ----------
@@ -226,7 +225,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         self._pasd_state: dict[str, Any] = {}
         self._setup_fndh_attributes()
         for smartbox_number in range(1, 25):
-            # for smartbox_number in range(2, 3):
             self._setup_smartbox_attributes(smartbox_number)
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__

@@ -87,13 +87,14 @@ def read_request_iterator() -> Iterator[tuple[int, str]]:
         for device_id in range(NUMBER_OF_SMARTBOXES + 1):
             yield (device_id, "STATUS")
             yield (device_id, "PORTS")
-            yield (device_id, "ALARM_FLAGS")
-            yield (device_id, "WARNING_FLAGS")
+            # TODO: Add these flags to simulator for tests
+            # yield (device_id, "ALARM_FLAGS")
+            # yield (device_id, "WARNING_FLAGS")
             # TODO: Only re-read these after setting them:
-            yield (device_id, "THRESHOLDS")
-            if device_id != 0:
-                # TODO: Only re-read these after setting them
-                yield (device_id, "CURRENT_TRIP_THRESHOLDS")
+            # yield (device_id, "THRESHOLDS")
+            # if device_id != 0:
+            #     # TODO: Only re-read these after setting them
+            #     yield (device_id, "CURRENT_TRIP_THRESHOLDS")
 
 
 class PasdBusRequestProvider:
@@ -142,14 +143,14 @@ class PasdBusRequestProvider:
     )
 
     FNDH_THRESHOLD_ATTRIBUTES: Final = (
-        "psu48v_voltage1_thresholds",
+        "psu48v_voltage_1_thresholds",
         "psu48v_voltage_2_thresholds",
         "psu48v_current_thresholds",
         "psu48v_temperature_1_thresholds",
         "psu48v_temperature_2_thresholds",
         "panel_temperature_thresholds",
         "fncb_temperature_thresholds",
-        "humidity_thresholds",
+        "fncb_humidity_thresholds",
         "comms_gateway_temperature_thresholds",
         "power_module_temperature_thresholds",
         "outside_temperature_thresholds",
@@ -187,8 +188,8 @@ class PasdBusRequestProvider:
         "fem_ambient_temperature_thresholds",
         "fem_case_temperature_1_thresholds",
         "fem_case_temperature_2_thresholds",
-        "fem_heatsink_temperature1_thresholds",
-        "fem_heatsink_temperature2_thresholds",
+        "fem_heatsink_temperature_1_thresholds",
+        "fem_heatsink_temperature_2_thresholds",
     )
 
     SMARTBOX_CURRENT_TRIP_THRESHOLD_ATTRIBUTES: Final = (

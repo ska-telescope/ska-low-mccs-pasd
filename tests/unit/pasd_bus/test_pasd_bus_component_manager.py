@@ -75,10 +75,13 @@ class TestPasdBusComponentManager:
     common commands.
     """
 
+    # pylint: disable=too-many-arguments
     def test_attribute_updates(
         self: TestPasdBusComponentManager,
         pasd_config: dict,
         pasd_bus_component_manager: PasdBusComponentManager,
+        fndh_simulator: FndhSimulator,
+        smartbox_simulator: SmartboxSimulator,
         mock_callbacks: MockCallableGroup,
     ) -> None:
         """
@@ -88,6 +91,8 @@ class TestPasdBusComponentManager:
             which the PaSD under test was configured.
         :param pasd_bus_component_manager: the PaSD bus component
             manager under test.
+        :param fndh_simulator: the FNDH simulator under test.
+        :param smartbox_simulator: the smartbox simulator under test.
         :param mock_callbacks: dictionary of driver callbacks.
         """
         mock_callbacks.assert_not_called()
@@ -113,6 +118,34 @@ class TestPasdBusComponentManager:
             chip_id=FndhSimulator.CHIP_ID,
             firmware_version=FndhSimulator.DEFAULT_FIRMWARE_VERSION,
         )
+        mock_callbacks.assert_call(
+            "pasd_device_state",
+            0,  # FNDH
+            psu48v_voltage_1_thresholds=fndh_simulator.psu48v_voltage_1_thresholds,
+            psu48v_voltage_2_thresholds=fndh_simulator.psu48v_voltage_2_thresholds,
+            psu48v_current_thresholds=fndh_simulator.psu48v_current_thresholds,
+            psu48v_temperature_1_thresholds=(
+                fndh_simulator.psu48v_temperature_1_thresholds
+            ),
+            psu48v_temperature_2_thresholds=(
+                fndh_simulator.psu48v_temperature_2_thresholds
+            ),
+            panel_temperature_thresholds=fndh_simulator.panel_temperature_thresholds,
+            fncb_temperature_thresholds=fndh_simulator.fncb_temperature_thresholds,
+            fncb_humidity_thresholds=fndh_simulator.fncb_humidity_thresholds,
+            comms_gateway_temperature_thresholds=(
+                fndh_simulator.comms_gateway_temperature_thresholds
+            ),
+            power_module_temperature_thresholds=(
+                fndh_simulator.power_module_temperature_thresholds
+            ),
+            outside_temperature_thresholds=(
+                fndh_simulator.outside_temperature_thresholds
+            ),
+            internal_ambient_temperature_thresholds=(
+                fndh_simulator.internal_ambient_temperature_thresholds
+            ),
+        )
 
         # Then static info about each of the smartboxes
         for smartbox_number in range(1, 25):
@@ -127,6 +160,75 @@ class TestPasdBusComponentManager:
                 cpu_id=SmartboxSimulator.CPU_ID,
                 chip_id=SmartboxSimulator.CHIP_ID,
                 firmware_version=SmartboxSimulator.DEFAULT_FIRMWARE_VERSION,
+            )
+            mock_callbacks.assert_call(
+                "pasd_device_state",
+                smartbox_number,
+                input_voltage_thresholds=smartbox_simulator.input_voltage_thresholds,
+                power_supply_output_voltage_thresholds=(
+                    smartbox_simulator.power_supply_output_voltage_thresholds
+                ),
+                power_supply_temperature_thresholds=(
+                    smartbox_simulator.power_supply_temperature_thresholds
+                ),
+                pcb_temperature_thresholds=(
+                    smartbox_simulator.pcb_temperature_thresholds
+                ),
+                fem_ambient_temperature_thresholds=(
+                    smartbox_simulator.fem_ambient_temperature_thresholds
+                ),
+                fem_case_temperature_1_thresholds=(
+                    smartbox_simulator.fem_case_temperature_1_thresholds
+                ),
+                fem_case_temperature_2_thresholds=(
+                    smartbox_simulator.fem_case_temperature_2_thresholds
+                ),
+                fem_heatsink_temperature_1_thresholds=(
+                    smartbox_simulator.fem_heatsink_temperature_1_thresholds
+                ),
+                fem_heatsink_temperature_2_thresholds=(
+                    smartbox_simulator.fem_heatsink_temperature_2_thresholds
+                ),
+            )
+            mock_callbacks.assert_call(
+                "pasd_device_state",
+                smartbox_number,
+                fem1_current_trip_threshold=(
+                    smartbox_simulator.fem1_current_trip_threshold
+                ),
+                fem2_current_trip_threshold=(
+                    smartbox_simulator.fem2_current_trip_threshold
+                ),
+                fem3_current_trip_threshold=(
+                    smartbox_simulator.fem3_current_trip_threshold
+                ),
+                fem4_current_trip_threshold=(
+                    smartbox_simulator.fem4_current_trip_threshold
+                ),
+                fem5_current_trip_threshold=(
+                    smartbox_simulator.fem5_current_trip_threshold
+                ),
+                fem6_current_trip_threshold=(
+                    smartbox_simulator.fem6_current_trip_threshold
+                ),
+                fem7_current_trip_threshold=(
+                    smartbox_simulator.fem7_current_trip_threshold
+                ),
+                fem8_current_trip_threshold=(
+                    smartbox_simulator.fem8_current_trip_threshold
+                ),
+                fem9_current_trip_threshold=(
+                    smartbox_simulator.fem9_current_trip_threshold
+                ),
+                fem10_current_trip_threshold=(
+                    smartbox_simulator.fem10_current_trip_threshold
+                ),
+                fem11_current_trip_threshold=(
+                    smartbox_simulator.fem11_current_trip_threshold
+                ),
+                fem12_current_trip_threshold=(
+                    smartbox_simulator.fem12_current_trip_threshold
+                ),
             )
 
         # Then FNDH status info

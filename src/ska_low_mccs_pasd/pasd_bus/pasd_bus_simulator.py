@@ -864,6 +864,11 @@ class FndhSimulator(PasdHardwareSimulator):
         self.power_module_temperature = self.DEFAULT_POWER_MODULE_TEMPERATURE
         self.outside_temperature = self.DEFAULT_OUTSIDE_TEMPERATURE
         self.internal_ambient_temperature = self.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+        # Aliases for some thresholds, which are separate sets in HW
+        self.psu48v_voltage_1_thresholds = self.psu48v_voltages_thresholds
+        self.psu48v_voltage_2_thresholds = self.psu48v_voltages_thresholds
+        self.psu48v_temperature_1_thresholds = self.psu48v_temperatures_thresholds
+        self.psu48v_temperature_2_thresholds = self.psu48v_temperatures_thresholds
 
     @property
     def sys_address(self: FndhSimulator) -> int:
@@ -943,6 +948,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_FEM_CASE_TEMPERATURES: Final = [4440, 4460]
     DEFAULT_FEM_HEATSINK_TEMPERATURES: Final = [4280, 4250]
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
+    DEFAULT_PORT_CURRENT_THRESHOLD: Final = 496
 
     # Instantiate sensor data descriptors
     input_voltage = _Sensor()
@@ -984,6 +990,28 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self.fem_ambient_temperature = self.DEFAULT_FEM_AMBIENT_TEMPERATURE
         self.fem_case_temperatures = self.DEFAULT_FEM_CASE_TEMPERATURES
         self.fem_heatsink_temperatures = self.DEFAULT_FEM_HEATSINK_TEMPERATURES
+        # Aliases for some thresholds, which are separate sets in HW
+        self.fem_case_temperature_1_thresholds = self.fem_case_temperatures_thresholds
+        self.fem_case_temperature_2_thresholds = self.fem_case_temperatures_thresholds
+        self.fem_heatsink_temperature_1_thresholds = (
+            self.fem_heatsink_temperatures_thresholds
+        )
+        self.fem_heatsink_temperature_2_thresholds = (
+            self.fem_heatsink_temperatures_thresholds
+        )
+        # TODO: Make each current trip threshold separate R/W property?
+        self.fem1_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem2_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem3_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem4_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem5_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem6_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem7_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem8_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem9_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem10_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem11_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem12_current_trip_threshold = self.ports_current_trip_threshold
 
     @property
     def sys_address(self: SmartboxSimulator) -> int:
@@ -1025,6 +1053,17 @@ class SmartboxSimulator(PasdHardwareSimulator):
             self.DEFAULT_PORT_CURRENT_DRAW if connected and powered else 0
             for connected, powered in zip(self.ports_connected, self.ports_power_sensed)
         ]
+
+    @property
+    def ports_current_trip_threshold(
+        self: SmartboxSimulator,
+    ) -> int:
+        """
+        Return the current trip threshold for each smartbox port.
+
+        :return: the current trip threshold for each smartbox port.
+        """
+        return self.DEFAULT_PORT_CURRENT_THRESHOLD
 
     @property
     def modbus_register_map_revision(self: SmartboxSimulator) -> int:

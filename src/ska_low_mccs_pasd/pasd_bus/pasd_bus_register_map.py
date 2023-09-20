@@ -333,7 +333,7 @@ class PasdBusRegisterMap:
             35, 28, PortStatusString.POWER_SENSED
         ),
         "ports_power_control": PasdBusPortAttribute(35, 28, PortStatusString.POWER),
-        "psu48v_voltage1_thresholds": PasdBusAttribute(
+        "psu48v_voltage_1_thresholds": PasdBusAttribute(
             1000, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
         ),
         "psu48v_voltage_2_thresholds": PasdBusAttribute(
@@ -354,7 +354,7 @@ class PasdBusRegisterMap:
         "fncb_temperature_thresholds": PasdBusAttribute(
             1024, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
         ),
-        "humidity_thresholds": PasdBusAttribute(1028, 4, writeable=True),
+        "fncb_humidity_thresholds": PasdBusAttribute(1028, 4, writeable=True),
         "comms_gateway_temperature_thresholds": PasdBusAttribute(
             1032, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
         ),
@@ -432,10 +432,10 @@ class PasdBusRegisterMap:
         "fem_case_temperature_2_thresholds": PasdBusAttribute(
             1024, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
         ),
-        "fem_heatsink_temperature1_thresholds": PasdBusAttribute(
+        "fem_heatsink_temperature_1_thresholds": PasdBusAttribute(
             1028, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
         ),
-        "fem_heatsink_temperature2_thresholds": PasdBusAttribute(
+        "fem_heatsink_temperature_2_thresholds": PasdBusAttribute(
             1032, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
         ),
         "fem1_current_trip_threshold": PasdBusAttribute(1068, 1, writeable=True),
