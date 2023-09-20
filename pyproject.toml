@@ -47,7 +47,7 @@ mypy = "^1.2.0"
 pep8-naming = "^0.13.1"
 types-PyYAML = "^6.0.11"
 isort = "^5.10.1"
-ska-tango-testing = "^0.5.3"
+ska-tango-testing = "^0.6.1"
 
 [tool.poetry.group.docs.dependencies]
 Sphinx = "^5.2"

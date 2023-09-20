@@ -11,19 +11,15 @@ from __future__ import annotations
 
 import gc
 import json
-from typing import Generator
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState, LoggingLevel
-from ska_tango_testing.context import (
-    TangoContextProtocol,
-    ThreadedTestTangoContextManager,
-)
+from ska_control_model import AdminMode, HealthState
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
+from tests.harness import PasdTangoTestHarness
 
 # TODO: Weird hang-at-garbage-collection bug
 gc.disable()
@@ -58,57 +54,28 @@ def change_event_callbacks_fixture(
     )
 
 
-@pytest.fixture(name="pasd_bus_name", scope="session")
-def pasd_bus_name_fixture() -> str:
-    """
-    Return the name of the pasd_bus Tango device.
-
-    :return: the name of the pasd_bus Tango device.
-    """
-    return "low-mccs/pasd_bus/001"
-
-
-@pytest.fixture(name="tango_harness")
-def tango_harness_fixture(
-    pasd_bus_name: str,
-    pasd_bus_info: dict,
-) -> Generator[TangoContextProtocol, None, None]:
-    """
-    Return a Tango harness against which to run tests of the deployment.
-
-    :param pasd_bus_name: the name of the pasd_bus Tango device
-    :param pasd_bus_info: information about the PaSD bus, such as its
-        IP address (host and port) and an appropriate timeout to use.
-
-    :yields: a tango context.
-    """
-    context_manager = ThreadedTestTangoContextManager()
-    context_manager.add_device(
-        pasd_bus_name,
-        "ska_low_mccs_pasd.pasd_bus.MccsPasdBus",
-        Host=pasd_bus_info["host"],
-        Port=pasd_bus_info["port"],
-        Timeout=pasd_bus_info["timeout"],
-        LoggingLevelDefault=int(LoggingLevel.DEBUG),
-    )
-    with context_manager as context:
-        yield context
-
-
 @pytest.fixture(name="pasd_bus_device")
 def pasd_bus_device_fixture(
-    tango_harness: TangoContextProtocol,
-    pasd_bus_name: str,
+    mock_fndh_simulator: FndhSimulator,
+    mock_smartbox_simulators: dict[int, SmartboxSimulator],
 ) -> tango.DeviceProxy:
     """
-    Fixture that returns the pasd_bus Tango device under test.
+    Fixture that returns a proxy to the PaSD bus Tango device under test.
 
-    :param tango_harness: a test harness for Tango devices.
-    :param pasd_bus_name: name of the pasd_bus Tango device.
+    :param mock_fndh_simulator:
+        the FNDH simulator backend that the TCP server will front,
+        wrapped with a mock so that we can assert calls.
+    :param mock_smartbox_simulators:
+        the smartbox simulator backends that the TCP server will front,
+        each wrapped with a mock so that we can assert calls.
 
-    :yield: the pasd_bus Tango device under test.
+    :yield: a proxy to the PaSD bus Tango device under test.
     """
-    yield tango_harness.get_device(pasd_bus_name)
+    harness = PasdTangoTestHarness()
+    harness.set_pasd_bus_simulator(mock_fndh_simulator, mock_smartbox_simulators)
+    harness.set_pasd_bus_device()  # using all defaults
+    with harness as context:
+        yield context.get_pasd_bus_device()
 
 
 def test_communication(  # pylint: disable=too-many-statements

@@ -848,8 +848,8 @@ class FndhSimulator(PasdHardwareSimulator):
         :param delete_smartbox: optional reference to PasdBusSimulator function.
         """
         ports: Sequence[_FndhPortSimulator] = [
-            _FndhPortSimulator(port_index + 1, instantiate_smartbox, delete_smartbox)
-            for port_index in range(self.NUMBER_OF_PORTS)
+            _FndhPortSimulator(port_index, instantiate_smartbox, delete_smartbox)
+            for port_index in range(1, self.NUMBER_OF_PORTS + 1)
         ]
         super().__init__(ports)
         # Sensors
@@ -1125,7 +1125,7 @@ class PasdBusSimulator:
     def __init__(
         self: PasdBusSimulator,
         pasd_configuration_path: str,
-        station_id: int,
+        station_label: str,
         logging_level: int = logging.INFO,
         smartboxes_depend_on_attached_ports: bool = False,
     ) -> None:
@@ -1133,12 +1133,12 @@ class PasdBusSimulator:
         Initialise a new instance.
 
         :param pasd_configuration_path: path to a PaSD configuration file.
-        :param station_id: id of the station to which this PaSD belongs.
+        :param station_label: name of the station to which this PaSD belongs.
         :param logging_level: the level to log at.
         :param smartboxes_depend_on_attached_ports: enable instantiation/deleting
             of smartboxes when FNDH ports are turned on and off.
         """
-        self._station_id = station_id
+        self._station_label = station_label
         logger.setLevel(logging_level)
         logger.info(
             f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}."
@@ -1154,17 +1154,18 @@ class PasdBusSimulator:
             )
         else:
             self._fndh_simulator = FndhSimulator()
-        logger.info(f"Initialised FNDH simulator for station {station_id}.")
+        logger.info(f"Initialised FNDH simulator for station {station_label}.")
 
         self._load_config(pasd_configuration_path)
         logger.info(
-            f"PaSD configuration data loaded into simulator for station {station_id}."
+            "PaSD configuration data loaded into simulator "
+            f"for station {station_label}."
         )
 
         if not smartboxes_depend_on_attached_ports:
             for port_number in self._smartbox_attached_ports:
                 self._instantiate_smartbox(port_number)
-        logger.info(f"Initialised PaSD bus simulator for station {station_id}.")
+        logger.info(f"Initialised PaSD bus simulator for station {station_label}.")
 
     def get_fndh(self: PasdBusSimulator) -> FndhSimulator:
         """

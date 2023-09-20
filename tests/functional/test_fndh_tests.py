@@ -14,7 +14,10 @@ from typing import Callable
 
 import tango
 from pytest_bdd import given, parsers, scenario, then, when
-from ska_control_model import AdminMode, PowerState
+from ska_control_model import AdminMode, PowerState, ResultCode
+from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
+
+from tests.harness import get_pasd_bus_name
 
 gc.disable()
 
@@ -29,16 +32,16 @@ def test_fndh() -> None:
     """
 
 
-@given(parsers.parse("A {device_name} which is ready"))
-def get_ready_device(device_name: str, set_device_state: Callable) -> None:
+@given(parsers.parse("A {device_ref} which is ready"))
+def get_ready_device(device_ref: str, set_device_state: Callable) -> None:
     """
     Get device in state ON and adminmode ONLINE.
 
-    :param device_name: FQDN of device under test.
+    :param device_ref: Gherkin reference to device under test.
     :param set_device_state: function to set device state.
     """
-    print(f"Setting device {device_name} ready...")
-    set_device_state(device=device_name, state=tango.DevState.ON, mode=AdminMode.ONLINE)
+    print(f"Setting device {device_ref} ready...")
+    set_device_state(device_ref, state=tango.DevState.ON, mode=AdminMode.ONLINE)
 
 
 @then(
@@ -65,6 +68,8 @@ def check_power_states(
     :param check_attribute: fixture for checking device attribute.
     :param check_fastcommand: fixture for checking fast command result.
     """
+    assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+
     power_map = {False: PowerState.OFF, True: PowerState.ON, None: PowerState.UNKNOWN}
     timeout = 10  # Seconds
     current_time = time.time()  # Seconds
@@ -92,23 +97,29 @@ def check_power_states(
     converters={"port_no": int},
 )
 def command_port_power_state(
+    pasd_bus_device: tango.DeviceProxy,
     fndh_device: tango.DeviceProxy,
     port_no: int,
-    queue_command: Callable,
     check_fastcommand: Callable,
+    clipboard: dict,
 ) -> None:
     """
     Power on port given by port no.
 
+    :param pasd_bus_device: a proxy to the PaSD bus device.
     :param fndh_device: a proxy to the FNDH device.
     :param port_no: the port number of the FNDH.
-    :param queue_command: fixture for queuing command on device.
     :param check_fastcommand: fixture for checking fast command result.
+    :param clipboard: a place to store information across BDD steps.
     """
+    clipboard["expected_power_sensed"] = list(pasd_bus_device.fndhPortsPowerSensed)
+
     if check_fastcommand(fndh_device, "PortPowerState", port_no) == PowerState.OFF:
-        queue_command(fndh_device, "PowerOnPort", port_no)
+        clipboard["expected_power_sensed"][port_no - 1] = True
+        assert fndh_device.PowerOnPort(port_no)[0] == ResultCode.QUEUED
     else:
-        queue_command(fndh_device, "PowerOffPort", port_no)
+        clipboard["expected_power_sensed"][port_no - 1] = False
+        assert fndh_device.PowerOffPort(port_no)[0] == ResultCode.QUEUED
 
 
 @then(
@@ -116,12 +127,20 @@ def command_port_power_state(
     converters={"port_no": int},
 )
 def check_pasd_port_power_changed(
-    pasd_bus_device: tango.DeviceProxy, check_change_event: Callable
+    change_event_callbacks: MockTangoEventCallbackGroup,
+    clipboard: dict,
 ) -> None:
     """
     Check the power state of port given by port no has/will change.
 
-    :param pasd_bus_device: a proxy to the PaSD bus device.
-    :param check_change_event: a fixture for checking if change event received.
+    :param change_event_callbacks: dictionary of Tango change event
+        callbacks with asynchrony support.
+    :param clipboard: a place to store information across BDD steps.
     """
-    check_change_event(pasd_bus_device, "fndhPortsPowerSensed")
+    change_event_callbacks[
+        f"{get_pasd_bus_name()}/fndhPortsPowerSensed"
+    ].assert_change_event(
+        clipboard["expected_power_sensed"],
+        lookahead=5,
+        consume_nonmatches=True,
+    )

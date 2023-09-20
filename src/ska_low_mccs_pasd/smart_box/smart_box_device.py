@@ -160,7 +160,6 @@ class MccsSmartBox(SKABaseDevice):
             self.FndhPort,
             self.PasdFQDN,
             self.FndhFQDN,
-            self.SmartBoxNumber,
         )
 
     def init_command_objects(self: MccsSmartBox) -> None:
