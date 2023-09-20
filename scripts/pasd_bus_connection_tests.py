@@ -18,7 +18,9 @@ class PasdBusConnectionTest:
         :param port: Port number
         """
         logging.basicConfig()
-        self._pasd_bus_api_client = PasdBusModbusApiClient(host, port, logging.DEBUG)
+        self._pasd_bus_api_client = PasdBusModbusApiClient(
+            host, port, logging.getLogger()
+        )
 
     def read(self: PasdBusConnectionTest, address: int, *attributes: str) -> None:
         """Read the requested attributes and print out the results.

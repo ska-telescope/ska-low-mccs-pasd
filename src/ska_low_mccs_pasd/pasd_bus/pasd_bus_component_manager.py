@@ -21,6 +21,7 @@ from ska_ser_devices.client_server import (
 from ska_tango_base.base import check_communicating
 from ska_tango_base.poller import PollingComponentManager
 
+# from .pasd_bus_modbus_api import PasdBusModbusApiClient
 from .pasd_bus_json_api import PasdBusJsonApiClient
 
 NUMBER_OF_FNDH_PORTS: Final = 28
@@ -225,6 +226,8 @@ class PasdBusRequestProvider:
             tuple[int, int], tuple[Literal[True], bool] | Literal[False]
         ] = {}
         self._port_breaker_resets: dict[tuple[int, int], bool] = {}
+        self._alarm_resets: dict[int, bool] = {}
+        self._warning_resets: dict[int, bool] = {}
         self._attribute_writes: dict[tuple[int, str], list[Any]] = {}
         self._read_request_iterator = read_request_iterator()
 
@@ -291,6 +294,24 @@ class PasdBusRequestProvider:
         """
         self._led_pattern_writes[device_id] = pattern
 
+    def reset_alarms(self, device_id: int) -> None:
+        """
+        Register a request to reset a device's alarms register.
+
+        :param device_id: the device number.
+            This is 0 for the FNDH, otherwise a smartbox number.
+        """
+        self._alarm_resets[device_id] = True
+
+    def reset_warnings(self, device_id: int) -> None:
+        """
+        Register a request to reset a device's warnings register.
+
+        :param device_id: the device number.
+            This is 0 for the FNDH, otherwise a smartbox number.
+        """
+        self._warning_resets[device_id] = True
+
     def write_attribute(
         self, device_id: int, attribute_name: str, values: list[Any]
     ) -> None:
@@ -302,9 +323,6 @@ class PasdBusRequestProvider:
         :param attribute_name: the name of the attribute to set.
         :param values: the new value(s) to write.
         """
-        logging.debug(
-            f"***************** Setting attribute_writes for {attribute_name}"
-        )
         self._attribute_writes[(device_id, attribute_name)] = values
 
     def _get_attribute_write_request(self) -> PasdBusRequest | None:
@@ -325,6 +343,20 @@ class PasdBusRequestProvider:
 
         device_id, pattern = self._led_pattern_writes.popitem()
         return PasdBusRequest(device_id, "set_led_pattern", None, [pattern])
+
+    def _get_alarms_reset_request(self) -> PasdBusRequest | None:
+        if not self._alarm_resets:
+            return None
+
+        device_id, _ = self._alarm_resets.popitem()
+        return PasdBusRequest(device_id, "reset_alarms", None, [])
+
+    def _get_warnings_reset_request(self) -> PasdBusRequest | None:
+        if not self._warning_resets:
+            return None
+
+        device_id, _ = self._warning_resets.popitem()
+        return PasdBusRequest(device_id, "reset_warnings", None, [])
 
     def _get_port_breaker_reset_request(
         self,
@@ -430,6 +462,14 @@ class PasdBusRequestProvider:
         if request is not None:
             return request
 
+        request = self._get_alarms_reset_request()
+        if request is not None:
+            return request
+
+        request = self._get_warnings_reset_request()
+        if request is not None:
+            return request
+
         request = self._get_attribute_write_request()
         if request is not None:
             return request
@@ -489,6 +529,7 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
             tcp_client, marshaller.marshall, marshaller.unmarshall
         )
         self._pasd_bus_api_client = PasdBusJsonApiClient(application_client)
+        # self._pasd_bus_api_client = PasdBusModbusApiClient(host, port, logger)
         self._pasd_bus_device_state_callback = pasd_device_state_callback
 
         self._poll_request_provider = PasdBusRequestProvider(logger)
@@ -595,17 +636,17 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
                 *poll_request.arguments,
             )
         # elif poll_request.attribute_to_write is not None:
-        #     if poll_request.arguments is list:
+        #     if poll_request.arguments is int:
         #         response_data = self._pasd_bus_api_client.write_attribute(
         #             poll_request.device_id,
         #             poll_request.attribute_to_write,
-        #             *poll_request.arguments,
+        #             poll_request.arguments,
         #         )
         #     else:
         #         response_data = self._pasd_bus_api_client.write_attribute(
         #             poll_request.device_id,
         #             poll_request.attribute_to_write,
-        #             poll_request.arguments,
+        #             *poll_request.arguments,
         #         )
         else:
             response_data = self._pasd_bus_api_client.read_attributes(
@@ -730,6 +771,16 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
         self._poll_request_provider.set_led_pattern(0, led_pattern)
 
     @check_communicating
+    def reset_fndh_alarms(self: PasdBusComponentManager) -> None:
+        """Reset the FNDH alarms register."""
+        self._poll_request_provider.reset_alarms(0)
+
+    @check_communicating
+    def reset_fndh_warnings(self: PasdBusComponentManager) -> None:
+        """Reset the FNDH warnings register."""
+        self._poll_request_provider.reset_warnings(0)
+
+    @check_communicating
     def reset_smartbox_port_breaker(
         self: PasdBusComponentManager,
         smartbox_id: int,
@@ -823,6 +874,24 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
         self._poll_request_provider.set_led_pattern(smartbox_id, led_pattern)
 
     @check_communicating
+    def reset_smartbox_alarms(self: PasdBusComponentManager, smartbox_id: int) -> None:
+        """Reset a smartbox alarms register.
+
+        :param smartbox_id: the smartbox to have its alarms reset
+        """
+        self._poll_request_provider.reset_alarms(smartbox_id)
+
+    @check_communicating
+    def reset_smartbox_warnings(
+        self: PasdBusComponentManager, smartbox_id: int
+    ) -> None:
+        """Reset a smartbox warnings register.
+
+        :param smartbox_id: the smartbox to have its warnings reset
+        """
+        self._poll_request_provider.reset_warnings(smartbox_id)
+
+    @check_communicating
     def write_attribute(
         self: PasdBusComponentManager,
         device_id: int,
@@ -836,8 +905,4 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
         :param attribute_name: the name of the attribute to write
         :param value: the new value to write
         """
-        logging.debug(
-            f"*************** Requesting to write attribute {attribute_name} with value"
-            f" {value}"
-        )
         self._poll_request_provider.write_attribute(device_id, attribute_name, value)

@@ -91,6 +91,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             "internal_ambient_temperature_thresholds": (
                 "fndhInternalAmbientTemperatureThresholds"
             ),
+            "warning_flags": "fndhWarningFlags",
+            "alarm_flags": "fndhAlarmFlags",
         },
         **{
             smartbox_number: {
@@ -147,7 +149,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     f"smartbox{smartbox_number}PcbTemperatureThresholds"
                 ),
                 "fem_ambient_temperature_thresholds": (
-                    f"smartbox{smartbox_number}FemAbientTemperatureThresholds"
+                    f"smartbox{smartbox_number}FemAmbientTemperatureThresholds"
                 ),
                 "fem_case_temperature_1_thresholds": (
                     f"smartbox{smartbox_number}FemCaseTemperature1Thresholds"
@@ -197,6 +199,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 "fem12_current_trip_threshold": (
                     f"smartbox{smartbox_number}Fem12CurrentTripThreshold"
                 ),
+                "warning_flags": f"smartbox{smartbox_number}WarningFlags",
+                "alarm_flags": f"smartbox{smartbox_number}AlarmFlags",
             }
             for smartbox_number in range(1, 25)
         },
@@ -263,6 +267,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("Status", str, None, tango.AttrWriteType.READ),
             ("LedPattern", str, None, tango.AttrWriteType.READ),
             ("PortForcings", (str,), NUMBER_OF_FNDH_PORTS, tango.AttrWriteType.READ),
+            ("WarningFlags", str, None, tango.AttrWriteType.READ),
+            ("AlarmFlags", str, None, tango.AttrWriteType.READ),
             (
                 "PortsDesiredPowerOnline",
                 (bool,),
@@ -374,6 +380,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("FemAmbientTemperature", float, None, tango.AttrWriteType.READ),
             ("FemCaseTemperatures", (float,), 2, tango.AttrWriteType.READ),
             ("FemHeatsinkTemperatures", (float,), 2, tango.AttrWriteType.READ),
+            ("WarningFlags", str, None, tango.AttrWriteType.READ),
+            ("AlarmFlags", str, None, tango.AttrWriteType.READ),
             (
                 "PortForcings",
                 (str,),
@@ -425,7 +433,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ),
             ("PcbTemperatureThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
             (
-                "FemAbientTemperatureThresholds",
+                "FemAmbientTemperatureThresholds",
                 (float,),
                 4,
                 tango.AttrWriteType.READ_WRITE,
@@ -587,6 +595,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 "ResetSmartboxPortBreaker",
                 MccsPasdBus._ResetSmartboxPortBreakerCommand,
             ),
+            ("ResetFndhAlarms", MccsPasdBus._ResetFndhAlarmsCommand),
+            ("ResetFndhWarnings", MccsPasdBus._ResetFndhWarningsCommand),
+            ("ResetSmartboxAlarms", MccsPasdBus._ResetSmartboxAlarmsCommand),
+            ("ResetSmartboxWarnings", MccsPasdBus._ResetSmartboxWarningsCommand),
         ]:
             self.register_command_object(
                 command_name,
@@ -1555,6 +1567,174 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 ["ResetSmartboxPortBreaker succeeded: nothing to do"],
             )
         return ([ResultCode.FAILED], ["ResetSmartboxPortBreaker failed"])
+
+    class _ResetFndhAlarmsCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetFndhAlarmsCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetFndhAlarmsCommand,
+        ) -> Optional[bool]:
+            """
+            Reset the FNDH alarms register.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.reset_fndh_alarms()
+
+    @command(dtype_out="DevVarLongStringArray")
+    def ResetFndhAlarms(self: MccsPasdBus) -> DevVarLongStringArrayType:
+        """
+        Reset the FNDH alarms register.
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetFndhAlarms")
+        success = handler()
+        if success:
+            return ([ResultCode.OK], ["ResetFndhAlarms succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetFndhAlarms succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetFndhAlarms failed"])
+
+    class _ResetFndhWarningsCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetFndhWarningsCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetFndhWarningsCommand,
+        ) -> Optional[bool]:
+            """
+            Reset the FNDH warnings register.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.reset_fndh_warnings()
+
+    @command(dtype_out="DevVarLongStringArray")
+    def ResetFndhWarnings(self: MccsPasdBus) -> DevVarLongStringArrayType:
+        """
+        Reset the FNDH warnings register.
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetFndhWarnings")
+        success = handler()
+        if success:
+            return ([ResultCode.OK], ["ResetFndhwarnings succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetFndhWarnings succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetFndhWarnings failed"])
+
+    class _ResetSmartboxAlarmsCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetSmartboxAlarmsCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetSmartboxAlarmsCommand,
+            smartbox_number: int,
+        ) -> Optional[bool]:
+            """
+            Reset a Smartbox alarms register.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.reset_smartbox_alarms(smartbox_number)
+
+    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
+    def ResetSmartboxAlarms(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
+        """
+        Reset a Smartbox alarms register.
+
+        :param argin: Smartbox number
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetSmartboxAlarms")
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], ["ResetSmartboxAlarms succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetSmartboxAlarms succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetSmartboxAlarms failed"])
+
+    class _ResetSmartboxWarningsCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetSmartboxWarningsCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetSmartboxWarningsCommand,
+            smartbox_number: int,
+        ) -> Optional[bool]:
+            """
+            Reset a Smartbox warnings register.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.reset_smartbox_warnings(smartbox_number)
+
+    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
+    def ResetSmartboxWarnings(
+        self: MccsPasdBus, argin: int
+    ) -> DevVarLongStringArrayType:
+        """
+        Reset a Smartbox warnings register.
+
+        :param argin: Smartbox number
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetSmartboxWarnings")
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], ["ResetSmartboxWarnings succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetSmartboxWarnings succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetSmartboxWarnings failed"])
 
 
 # ----------
