@@ -1,0 +1,16 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://skao.int/MccsPasdBus_TurnAllSmartboxPortsOff.json",
+    "title": "MccsPasdBus TurnAllSmartboxPortsOff schema",
+    "description": "Schema for MccsPasdBus's TurnAllSmartboxPortsOff command",
+    "type": "object",
+    "properties": {
+        "smartbox_number": {
+            "description": "Number of the smartbox being addressed",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 24
+        }
+    },
+    "required": ["smartbox_number"]
+}
