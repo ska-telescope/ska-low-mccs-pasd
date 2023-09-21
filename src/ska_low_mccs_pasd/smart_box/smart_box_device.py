@@ -289,8 +289,10 @@ class MccsSmartBox(SKABaseDevice):
         self: MccsSmartBox, communication_state: CommunicationStatus
     ) -> None:
         self.logger.debug(
-            "Device received callback from component manager that communication "
-            "with the component is %s.",
+            (
+                "Device received callback from component manager that communication "
+                "with the component is %s."
+            ),
             communication_state.name,
         )
 

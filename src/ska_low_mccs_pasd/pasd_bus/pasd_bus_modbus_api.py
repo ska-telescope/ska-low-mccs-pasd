@@ -359,7 +359,7 @@ class PasdBusModbusApiClient:
         :param device_id: id of the device to write to.
         :param: name: attribute name to write.
         :param: values: new value(s).
-        
+
         :return: dictionary mapping attribute name to new value.
         :raises: ModbusIOException if the h/w failed to respond.
         """

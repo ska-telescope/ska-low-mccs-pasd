@@ -86,7 +86,7 @@ class MccsFieldStation(SKABaseDevice):
             },
         }
 
-        for (command_name, method_name, schema) in [
+        for command_name, method_name, schema in [
             ("PowerOnAntenna", "turn_on_antenna", None),
             ("Configure", "configure", configure_schema),
         ]:

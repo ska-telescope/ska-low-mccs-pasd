@@ -414,8 +414,10 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
 
     @pytest.mark.xfail(
-        reason="Cannot unsubscribe from proxy so event received,"
-        "even though communication is not established"
+        reason=(
+            "Cannot unsubscribe from proxy so event received,"
+            "even though communication is not established"
+        )
     )
     def test_power_state_transitions(
         self: TestSmartBoxPasdBusIntegration,
