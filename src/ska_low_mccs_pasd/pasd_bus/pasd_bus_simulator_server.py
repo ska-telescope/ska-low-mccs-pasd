@@ -11,16 +11,36 @@ from __future__ import annotations
 import logging
 import os
 from socket import gethostname
-from typing import Dict
+from typing import Dict, Iterator, Optional
 
-from ska_ser_devices.client_server import (
-    ApplicationServer,
-    SentinelBytesMarshaller,
-    TcpServer,
-)
+from ska_ser_devices.client_server import (ApplicationServer,
+                                           SentinelBytesMarshaller, TcpServer)
 
 from .pasd_bus_modbus_api import PasdBusModbusApi
-from .pasd_bus_simulator import FndhSimulator, PasdBusSimulator, SmartboxSimulator
+from .pasd_bus_simulator import (FndhSimulator, PasdBusSimulator,
+                                 SmartboxSimulator)
+
+
+class CustomMarshall(SentinelBytesMarshaller):
+    def __init__(self, sentinel: bytes) -> None:
+        print(f"Creating marshall for {sentinel}")
+        super().__init__(sentinel)
+
+    def marshall(self, payload: bytes) -> bytes:
+        print(f"I am marshalling |{payload}|")
+        ma = super().marshall(payload)
+        print(f"I marshalled |{ma}|")
+        return ma
+
+    def unmarshall(self, bytes_iterator: Iterator[bytes]) -> bytes:
+        print(f"I am unmarshalling |{bytes_iterator}|")
+        payload = next(bytes_iterator)
+        print(f"Got next from iterator {payload}")  #
+        um = payload
+        if not um.endswith(self._sentinel):
+            um += self._sentinel
+        print(f"I unmarshalled |{um}|")
+        return um
 
 
 # pylint: disable-next=too-few-public-methods
@@ -43,8 +63,15 @@ class PasdBusSimulatorModbusServer(ApplicationServer):
         simulators: Dict[int, FndhSimulator | SmartboxSimulator] = {101: fndh_simulator}
         simulators.update(smartbox_simulators)
         simulator_api = PasdBusModbusApi(simulators)
-        marshaller = SentinelBytesMarshaller(b"\n")
+        marshaller = CustomMarshall(b"\r\n")
         super().__init__(marshaller.unmarshall, marshaller.marshall, simulator_api)
+
+    def __call__(self, bytes_iterator: Iterator[bytes]) -> bytes | None:
+        print("I've been called! I've been called!")
+        bytesss = super().__call__(bytes_iterator)
+        print(bytesss)
+        print("And I've finished being called!")
+        return bytesss
 
 
 def main() -> None:
@@ -67,6 +94,6 @@ def main() -> None:
     simulator_server = PasdBusSimulatorModbusServer(
         simulator.get_fndh(), simulator.get_smartboxes()
     )
-    server = TcpServer(host, port, simulator_server, logger=logger)
+    server = TcpServer(host, port, simulator_server)
     with server:
         server.serve_forever()

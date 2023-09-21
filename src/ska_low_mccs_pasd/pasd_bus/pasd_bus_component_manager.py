@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Final, Iterator, Literal, Optional
 
@@ -449,6 +450,10 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
         :return: responses to queries in this poll
         """
+        print("polling started...")
+        print(
+            f"poll request is {poll_request.device_id} {poll_request.arguments} {poll_request.command}"
+        )
         if poll_request.command is None:
             response_data = self._pasd_bus_api_client.read_attributes(
                 poll_request.device_id, *poll_request.arguments
@@ -459,6 +464,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 poll_request.command,
                 *poll_request.arguments,
             )
+        print(f"COmponent manager says {response_data}")
         return PasdBusResponse(
             poll_request.device_id, poll_request.command, response_data
         )
@@ -485,6 +491,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 poll_response.device_id,
                 **(poll_response.data),
             )
+        print("Finished successful poll")
 
     @check_communicating
     def initialize_fndh(self: PasdBusComponentManager) -> None:

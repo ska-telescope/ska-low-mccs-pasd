@@ -927,13 +927,13 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
     NUMBER_OF_PORTS: Final = 12
 
-    MODBUS_REGISTER_MAP_REVISION: Final = 20
+    MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
     CPU_ID: Final = "24"
     CHIP_ID: Final = "25"
 
     DEFAULT_SYS_ADDRESS: Final = 1
-    DEFAULT_FIRMWARE_VERSION = "0.1.2-fake"
+    DEFAULT_FIRMWARE_VERSION = "1"
     # Address
     DEFAULT_INPUT_VOLTAGE: Final = 4800
     DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE: Final = 480

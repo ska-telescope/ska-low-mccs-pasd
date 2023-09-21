@@ -400,7 +400,7 @@ class PasdBusRegisterMap:
 
         attributes = {
             name: attr
-            for name, attr in self._INFO_REGISTER_INVERSE_MAP.items()
+            for name, attr in self._INFO_REGISTER_MAP.items()
             if name in attribute_names
         }
         attributes.update(
