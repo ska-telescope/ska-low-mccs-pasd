@@ -359,12 +359,16 @@ class PasdBusModbusApiClient:
         :param device_id: id of the device to write to.
         :param: name: attribute name to write.
         :param: values: new value(s).
-        :returns: TBD
+        
+        :return: dictionary mapping attribute name to new value.
         :raises: ModbusIOException if the h/w failed to respond.
         """
-        return self._do_write_request(
+        response = self._do_write_request(
             {"device_id": device_id, "write": name, "values": values}
         )
+        if "data" in response and response["data"]["result"] is True:
+            response = {name: values}
+        return response
 
     def execute_command(self, device_id: int, name: str, *args: Any) -> dict[str, Any]:
         """
