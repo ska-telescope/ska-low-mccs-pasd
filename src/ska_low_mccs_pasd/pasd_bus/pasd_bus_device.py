@@ -330,7 +330,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 4,
                 tango.AttrWriteType.READ_WRITE,
             ),
-            ("HumidityThresholds", (int,), 4, tango.AttrWriteType.READ_WRITE),
+            ("HumidityThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
             (
                 "CommsGatewayTemperatureThresholds",
                 (float,),
