@@ -253,7 +253,7 @@ def check_state_becomes_on(
     """
     change_event_callbacks[f"{get_pasd_bus_name()}/state"].assert_change_event(
         tango.DevState.ON,
-        lookahead=20,
+        lookahead=10,  # TODO: We only need 3 in lightweight testing. Why?
         consume_nonmatches=True,
     )
     print("PaSD bus device is in ON state.")
@@ -327,7 +327,9 @@ def check_health_becomes_okay(
         callbacks with asynchrony support.
     """
     change_event_callbacks[f"{get_pasd_bus_name()}/healthState"].assert_change_event(
-        HealthState.OK, lookahead=20, consume_nonmatches=True
+        HealthState.OK,
+        lookahead=6,  # TODO: This isn't needed at all in lightweight testing. Why?
+        consume_nonmatches=True,
     )
 
 
@@ -491,7 +493,7 @@ def check_fndh_port_changes_power_state(
         f"{get_pasd_bus_name()}/fndhPortsPowerSensed"
     ].assert_change_event(
         expected_powered,
-        lookahead=5,
+        lookahead=5,  # TODO: This only needs 2 in lightweight testing. Why?
         consume_nonmatches=True,
     )
     powered = list(pasd_bus_device.fndhPortsPowerSensed)
@@ -699,7 +701,7 @@ def check_smartbox_port_changes_power_state(
         f"{get_pasd_bus_name()}/smartbox{smartbox_id}PortsPowerSensed"
     ].assert_change_event(
         expected_powered,
-        lookahead=5,
+        lookahead=5,  # TODO: This only needs 2 in lightweight testing. Why?
         consume_nonmatches=True,
     )
     powered = list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"))

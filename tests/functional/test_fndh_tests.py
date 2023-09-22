@@ -141,6 +141,6 @@ def check_pasd_port_power_changed(
         f"{get_pasd_bus_name()}/fndhPortsPowerSensed"
     ].assert_change_event(
         clipboard["expected_power_sensed"],
-        lookahead=5,
+        lookahead=3,  # TODO: This isn't needed at all in lightweight testing
         consume_nonmatches=True,
     )
