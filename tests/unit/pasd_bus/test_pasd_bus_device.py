@@ -132,7 +132,9 @@ def test_communication(  # pylint: disable=too-many-statements
     #     tango.EventType.CHANGE_EVENT,
     #     change_event_callbacks[f"smartbox{smartbox_id}AlarmFlags"],
     # )
-    # change_event_callbacks.assert_change_event(f"smartbox{smartbox_id}AlarmFlags", None)
+    # change_event_callbacks.assert_change_event(
+    #     f"smartbox{smartbox_id}AlarmFlags", None
+    # )
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
