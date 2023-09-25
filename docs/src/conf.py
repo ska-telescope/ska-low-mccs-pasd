@@ -265,4 +265,9 @@ intersphinx_mapping = {
         "https://developer.skao.int/projects/ska-low-mccs-common/en/0.9.1/",
         None,
     ),
+    "ska-ser-devices": (
+        "https://developer.skao.int/projects/ska-ser-devices/en/0.1.1/",
+        None,
+    ),
+
 }

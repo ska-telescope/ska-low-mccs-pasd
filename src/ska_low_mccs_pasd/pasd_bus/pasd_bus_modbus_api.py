@@ -140,10 +140,17 @@ class PasdBusModbusApiClient:
         logger.setLevel(logging_level)
         self._client = ModbusTcpClient(host, port, ModbusAsciiFramer)
         logger.info(f"****Created Modbus TCP client for address {host}, port {port}")
-        self._client.connect()
 
         # Initialise a default register map
         self._register_map = PasdBusRegisterMap()
+
+    def connect(self) -> None:
+        """Establish a connection to the remote API."""
+        self._client.connect()
+
+    def close(self) -> None:
+        """Close the connection to the remote API."""
+        self._client.close()
 
     def _create_error_response(self, error_code: str, message: str) -> dict:
         logger.error(f"Returning error response: {message}")

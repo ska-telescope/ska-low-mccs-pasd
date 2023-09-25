@@ -337,6 +337,16 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             """
             return (ResultCode.OK, "Init command completed OK")
 
+    def delete_device(self) -> None:
+        """
+        Prepare to delete the device.
+
+        Make sure the component manager doesn't have a socket open.
+        (The socket should be closed when it is deleted,
+        but it is good practice to close it explicitly anyhow.)
+        """
+        self.component_manager.stop_communicating()
+
     # ----------
     # Callbacks
     # ----------
