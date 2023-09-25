@@ -88,9 +88,9 @@ def read_request_iterator() -> Iterator[tuple[int, str]]:
         for device_id in range(NUMBER_OF_SMARTBOXES + 1):
             yield (device_id, "STATUS")
             yield (device_id, "PORTS")
-            # TODO: Add these flags to simulator for tests
-            # yield (device_id, "ALARM_FLAGS")
+            # TODO
             # yield (device_id, "WARNING_FLAGS")
+            # yield (device_id, "ALARM_FLAGS")
             # TODO: Only re-read these after setting them:
             # yield (device_id, "THRESHOLDS")
             # if device_id != 0:

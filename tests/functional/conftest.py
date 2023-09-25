@@ -297,7 +297,7 @@ def device_subscriptions_fixture() -> dict[str, list[str]]:
             "smartbox1FemCaseTemperatures",
             "smartbox1FemHeatsinkTemperatures",
             "smartbox1PortsPowerSensed",
-            "smartbox24PortsCurrentDraw",
+            "smartbox24AlarmFlags",
         ],
         get_fndh_name(): [
             "state",
