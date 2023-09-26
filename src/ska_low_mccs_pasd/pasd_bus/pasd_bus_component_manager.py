@@ -9,8 +9,9 @@
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass
-from typing import Any, Callable, Final, Iterable, Iterator, Literal, Optional
+from typing import Any, Callable, Final, Iterator, Optional, Sequence
 
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_ser_devices.client_server import (
@@ -158,12 +159,12 @@ class PasdBusRequestProvider:
 
         :param logger: a logger.
         """
+        self._lock = threading.Lock()
+
         self._logger = logger
         self._initialize_requests: dict[int, bool] = {}
         self._led_pattern_writes: dict[int, str] = {}
-        self._port_power_changes: dict[
-            tuple[int, int], tuple[Literal[True], bool] | Literal[False]
-        ] = {}
+        self._port_power_changes: dict[int, list[tuple[bool | None, bool]]] = {}
         self._port_breaker_resets: dict[tuple[int, int], bool] = {}
         self._read_request_iterator = read_request_iterator()
 
@@ -180,34 +181,40 @@ class PasdBusRequestProvider:
         """
         self._initialize_requests[device_id] = True
 
-    def desire_ports_on(
-        self, device_id: int, ports: Iterable[int], stay_on_when_offline: bool
+    def desire_port_powers(
+        self,
+        device_id: int,
+        port_powers: Sequence[bool | None],
+        stay_on_when_offline: bool,
     ) -> None:
         """
         Register a request to turn some of device's ports on.
 
         :param device_id: the device number.
             This is 0 for the FNDH, otherwise a smartbox number.
-        :param ports: the ports to turn on
+        :param port_powers: a desired port power state for each port.
+            True means the port is desired on,
+            False means it is desired off,
+            None means no desire to change the port.
         :param stay_on_when_offline: whether the ports should remain on
             if MCCS loses its connection with the PaSD.
         """
-        for port_number in ports:
-            self._port_power_changes[(device_id, port_number)] = (
-                True,
-                stay_on_when_offline,
-            )
+        with self._lock:
+            if device_id not in self._port_power_changes:
+                self._port_power_changes[device_id] = [
+                    (power, stay_on_when_offline) for power in port_powers
+                ]
+                # Yeah, this might be an array full of None.
+                # Things will still work so it's probably not worth checking
+                return
 
-    def desire_ports_off(self, device_id: int, ports: Iterable[int]) -> None:
-        """
-        Register a request to turn off some a device's ports.
-
-        :param device_id: the device number.
-            This is 0 for the FNDH, otherwise a smartbox number.
-        :param ports: the ports to turn off
-        """
-        for port_number in ports:
-            self._port_power_changes[(device_id, port_number)] = False
+            for index, power in enumerate(port_powers):
+                if power is None:
+                    continue
+                self._port_power_changes[device_id][index + 1] = (
+                    power,
+                    stay_on_when_offline,
+                )
 
     def desire_port_breaker_reset(self, device_id: int, port_number: int) -> None:
         """
@@ -253,21 +260,39 @@ class PasdBusRequestProvider:
         return PasdBusRequest(device_id, "reset_port_breaker", [port_number])
 
     def _get_port_power_request(self) -> PasdBusRequest | None:
-        if not self._port_power_changes:
-            return None
+        with self._lock:
+            if not self._port_power_changes:
+                return None
 
-        (device_id, port_number), change = self._port_power_changes.popitem()
-        match change:
-            case (True, stay_on_when_offline):
-                return PasdBusRequest(
-                    device_id,
-                    "turn_port_on",
-                    [port_number, stay_on_when_offline],
-                )
-            case False:
-                return PasdBusRequest(device_id, "turn_port_off", [port_number])
-            case _:
-                raise AssertionError("This should be unreachable.")
+            # TODO: [WOM-149] This method is a little messy,
+            # but that's only because the data structure is optimal for a happy future
+            # in which we can update port power for many ports at once.
+            # Once we can do that, all we need here is something
+            #   (device_id, port_powers) = self._port_power_changes.popitem()
+            #   return PasdBusRequest(device_id, "set_port_powers", port_powers)
+
+            for device_id in list(self._port_power_changes.keys()):
+                port_changes = self._port_power_changes[device_id]
+                for index, (power, stay_on_when_offline) in enumerate(port_changes):
+                    if power is None:
+                        continue
+
+                    # We're about to handle it so let's clear it
+                    self._port_power_changes[device_id][index] = (
+                        None,
+                        stay_on_when_offline,
+                    )
+                    port = index + 1
+
+                    if power:
+                        return PasdBusRequest(
+                            device_id,
+                            "turn_port_on",
+                            [port, stay_on_when_offline],
+                        )
+                    return PasdBusRequest(device_id, "turn_port_off", [port])
+                del self._port_power_changes[device_id]
+            return None
 
     def _get_read_request(self) -> PasdBusRequest:
         read_request = next(self._read_request_iterator)
@@ -552,8 +577,10 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
         :param stay_on_when_offline: whether the port should remain on
             if monitoring and control goes offline.
         """
-        self._poll_request_provider.desire_ports_on(
-            0, [port_number], stay_on_when_offline
+        port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+        port_powers[port_number - 1] = True
+        self._poll_request_provider.desire_port_powers(
+            0, port_powers, stay_on_when_offline
         )
 
     @check_communicating
@@ -567,8 +594,9 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
         :param stay_on_when_offline: whether the port should remain on
             if monitoring and control goes offline.
         """
-        self._poll_request_provider.desire_ports_on(
-            0, range(1, NUMBER_OF_FNDH_PORTS + 1), stay_on_when_offline
+        port_powers = [True] * NUMBER_OF_FNDH_PORTS
+        self._poll_request_provider.desire_port_powers(
+            0, port_powers, stay_on_when_offline
         )
 
     @check_communicating
@@ -581,13 +609,18 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
 
         :param port_number: the number of the port.
         """
-        self._poll_request_provider.desire_ports_off(0, [port_number])
+        port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+        port_powers[port_number - 1] = False
+        self._poll_request_provider.desire_port_powers(
+            0, port_powers, False  # irrelevant for off
+        )
 
     @check_communicating
     def turn_all_fndh_ports_off(self: PasdBusComponentManager) -> None:
         """Turn off all FNDH ports."""
-        self._poll_request_provider.desire_ports_off(
-            0, range(1, NUMBER_OF_FNDH_PORTS + 1)
+        port_powers = [False] * NUMBER_OF_FNDH_PORTS
+        self._poll_request_provider.desire_port_powers(
+            0, port_powers, False  # irrelevant for off
         )
 
     @check_communicating
@@ -632,8 +665,10 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
         :param stay_on_when_offline: whether the port should remain on
             if monitoring and control goes offline.
         """
-        self._poll_request_provider.desire_ports_on(
-            smartbox_id, [port_number], stay_on_when_offline
+        port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
+        port_powers[port_number - 1] = True
+        self._poll_request_provider.desire_port_powers(
+            smartbox_id, port_powers, stay_on_when_offline
         )
 
     @check_communicating
@@ -649,8 +684,9 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
         :param stay_on_when_offline: whether the port should remain on
             if monitoring and control goes offline.
         """
-        self._poll_request_provider.desire_ports_on(
-            smartbox_id, range(1, NUMBER_OF_SMARTBOX_PORTS + 1), stay_on_when_offline
+        port_powers = [True] * NUMBER_OF_SMARTBOX_PORTS
+        self._poll_request_provider.desire_port_powers(
+            smartbox_id, port_powers, stay_on_when_offline
         )
 
     @check_communicating
@@ -665,7 +701,11 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
         :param smartbox_id: id of the smartbox being addressed.
         :param port_number: the number of the port.
         """
-        self._poll_request_provider.desire_ports_off(smartbox_id, [port_number])
+        port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
+        port_powers[port_number - 1] = False
+        self._poll_request_provider.desire_port_powers(
+            smartbox_id, port_powers, False  # irrelevant for off
+        )
 
     @check_communicating
     def turn_all_smartbox_ports_off(
@@ -677,8 +717,9 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
 
         :param smartbox_id: id of the smartbox being addressed.
         """
-        self._poll_request_provider.desire_ports_off(
-            smartbox_id, range(1, NUMBER_OF_SMARTBOX_PORTS + 1)
+        port_powers = [False] * NUMBER_OF_SMARTBOX_PORTS
+        self._poll_request_provider.desire_port_powers(
+            smartbox_id, port_powers, False  # irrelevant of off
         )
 
     @check_communicating
