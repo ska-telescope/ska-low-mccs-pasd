@@ -13,18 +13,15 @@ import gc
 import json
 import unittest.mock
 from contextlib import nullcontext
-from typing import Any, ContextManager, Generator
+from typing import Any, ContextManager
 
 import pytest
 import tango
 from ska_control_model import AdminMode, LoggingLevel, PowerState, ResultCode
-from ska_tango_testing.context import (
-    TangoContextProtocol,
-    ThreadedTestTangoContextManager,
-)
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd import MccsFNDH
+from tests.harness import PasdTangoTestHarness
 
 # TODO: Weird hang-at-garbage-collection bug
 gc.disable()
@@ -97,57 +94,25 @@ def patched_fndh_device_class_fixture(
     return PatchedMccsFNDH
 
 
-@pytest.fixture(name="fndh_name", scope="session")
-def fndh_name_fixture() -> str:
-    """
-    Return the name of the fndh Tango device.
-
-    :return: the name of the fndh Tango device.
-    """
-    return "low-mccs/fndh/001"
-
-
-@pytest.fixture(name="tango_harness")
-def tango_harness_fixture(
-    fndh_name: str,
-    patched_fndh_device_class: type[MccsFNDH],
-) -> Generator[TangoContextProtocol, None, None]:
-    """
-    Return a Tango harness against which to run tests of the deployment.
-
-    :param fndh_name: the name of the fndh Tango device
-    :param patched_fndh_device_class: a subclass of MccsFNDH that
-        has been patched with extra commands that mock system under
-        control behaviours.
-
-    :yields: a tango context.
-    """
-    context_manager = ThreadedTestTangoContextManager()
-    context_manager.add_device(
-        fndh_name,
-        patched_fndh_device_class,
-        FndhPort=5,
-        PasdFQDN="low-mccs/pasdbus/001",
-        LoggingLevelDefault=int(LoggingLevel.DEBUG),
-    )
-    with context_manager as context:
-        yield context
-
-
 @pytest.fixture(name="fndh_device")
 def fndh_device_fixture(
-    tango_harness: TangoContextProtocol,
-    fndh_name: str,
+    patched_fndh_device_class: type[MccsFNDH],
 ) -> tango.DeviceProxy:
     """
-    Fixture that returns the fndh Tango device under test.
+    Fixture that returns a proxy to the FNDH Tango device under test.
 
-    :param tango_harness: a test harness for Tango devices.
-    :param fndh_name: name of the fndh Tango device.
+    :param patched_fndh_device_class: a patches class for use in testing
 
-    :yield: the fndh Tango device under test.
+    :yield: a proxy to the FNDH Tango device under test.
     """
-    yield tango_harness.get_device(fndh_name)
+    harness = PasdTangoTestHarness()
+    harness.set_fndh_device(
+        logging_level=int(LoggingLevel.DEBUG),
+        device_class=patched_fndh_device_class,
+    )
+
+    with harness as context:
+        yield context.get_fndh_device()
 
 
 @pytest.mark.parametrize(

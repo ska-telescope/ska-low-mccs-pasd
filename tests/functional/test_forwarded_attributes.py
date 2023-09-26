@@ -20,14 +20,14 @@ from ska_control_model import AdminMode
 scenarios("./features/forwarded_attributes.feature")
 
 
-@given(parsers.parse("A {device_name} which is ready"))
+@given(parsers.parse("A {device_ref} which is ready"))
 def get_ready_device(
-    is_true_context: bool, device_name: str, set_device_state: Callable
+    is_true_context: bool, device_ref: str, set_device_state: Callable
 ) -> None:
     """
     Get device in state ON and adminmode ONLINE.
 
-    :param device_name: FQDN of device under test.
+    :param device_ref: Gherkin reference to device under test.
     :param set_device_state: function to set device state.
     :param is_true_context: Are we using a true tango context.
     """
@@ -37,8 +37,8 @@ def get_ready_device(
             "Functionality under test uses a forwarded attribute, "
             "so cannot be run in a lightweight test context."
         )
-    print(f"Setting device {device_name} ready...")
-    set_device_state(device=device_name, state=tango.DevState.ON, mode=AdminMode.ONLINE)
+    print(f"Setting device {device_ref} ready...")
+    set_device_state(device_ref, state=tango.DevState.ON, mode=AdminMode.ONLINE)
 
 
 @when(

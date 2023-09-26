@@ -55,7 +55,7 @@ def main() -> None:
     """
     logger = logging.getLogger()
 
-    station_id = os.getenv("SIMULATOR_STATION", "1")
+    station_label = os.getenv("SIMULATOR_STATION", "ci-1")
     config_path = os.getenv("SIMULATOR_CONFIG_PATH")
     host = os.getenv("SIMULATOR_HOST", gethostname())
     port = int(os.getenv("SIMULATOR_PORT", "502"))
@@ -63,7 +63,7 @@ def main() -> None:
     if config_path is None:
         raise ValueError("SIMULATOR_CONFIG_PATH environment variable must be set.")
 
-    simulator = PasdBusSimulator(config_path, int(station_id), logging.DEBUG)
+    simulator = PasdBusSimulator(config_path, station_label, logging.DEBUG)
     simulator_server = PasdBusSimulatorJsonServer(
         simulator.get_fndh(), simulator.get_smartboxes()
     )

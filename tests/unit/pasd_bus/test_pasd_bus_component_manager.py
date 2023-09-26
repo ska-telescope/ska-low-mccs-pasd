@@ -8,15 +8,59 @@
 """This module contains the tests of the PaSD bus component manager."""
 from __future__ import annotations
 
+import logging
+from typing import Iterator
+
+import pytest
 from ska_control_model import CommunicationStatus, PowerState
 from ska_tango_testing.mock import MockCallableGroup
 from ska_tango_testing.mock.placeholders import Anything
 
-from ska_low_mccs_pasd.pasd_bus import PasdBusComponentManager
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
+from ska_low_mccs_pasd.pasd_bus import (
     FndhSimulator,
+    PasdBusComponentManager,
     SmartboxSimulator,
 )
+from tests.harness import PasdTangoTestHarness
+
+
+@pytest.fixture(name="pasd_bus_component_manager")
+def pasd_bus_component_manager_fixture(
+    mock_fndh_simulator: FndhSimulator,
+    mock_smartbox_simulators: dict[int, SmartboxSimulator],
+    logger: logging.Logger,
+    mock_callbacks: MockCallableGroup,
+) -> Iterator[PasdBusComponentManager]:
+    """
+    Return a PaSD bus component manager, running against a PaSD bus simulator.
+
+    :param mock_fndh_simulator:
+        the FNDH simulator backend that the TCP server will front,
+        wrapped with a mock so that we can assert calls.
+    :param mock_smartbox_simulators:
+        the smartbox simulator backends that the TCP server will front,
+        each wrapped with a mock so that we can assert calls.
+    :param logger: the logger to be used by this object.
+    :param mock_callbacks: a group of mock callables for the component
+        manager under test to use as callbacks
+
+    :yields: a PaSD bus component manager, running against a simulator.
+    """
+    harness = PasdTangoTestHarness()
+    harness.set_pasd_bus_simulator(mock_fndh_simulator, mock_smartbox_simulators)
+    with harness as context:
+        (host, port) = context.get_pasd_bus_address()
+
+        component_manager = PasdBusComponentManager(
+            host,
+            port,
+            3.0,
+            logger,
+            mock_callbacks["communication_state"],
+            mock_callbacks["component_state"],
+            mock_callbacks["pasd_device_state"],
+        )
+        yield component_manager
 
 
 class TestPasdBusComponentManager:

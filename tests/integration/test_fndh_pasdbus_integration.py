@@ -14,28 +14,11 @@ import gc
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
-from ska_tango_testing.context import TangoContextProtocol
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
 
 gc.disable()  # TODO: why is this needed?
-
-
-@pytest.fixture(name="fndh_device")
-def fndh_device_fixture(
-    tango_harness: TangoContextProtocol,
-    fndh_name: str,
-) -> tango.DeviceProxy:
-    """
-    Fixture that returns the fndh Tango device under test.
-
-    :param tango_harness: a test harness for Tango devices.
-    :param fndh_name: name of the fndh Tango device.
-
-    :yield: the fndh Tango device under test.
-    """
-    yield tango_harness.get_device(fndh_name)
 
 
 class TestfndhPasdBusIntegration:
