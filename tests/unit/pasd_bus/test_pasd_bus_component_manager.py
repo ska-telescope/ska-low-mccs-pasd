@@ -62,6 +62,9 @@ def pasd_bus_component_manager_fixture(
         )
         yield component_manager
 
+        # Ensure the component manager closes its socket during teardown
+        component_manager.stop_communicating()
+
 
 class TestPasdBusComponentManager:
     """

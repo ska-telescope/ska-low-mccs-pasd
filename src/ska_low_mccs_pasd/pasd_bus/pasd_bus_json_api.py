@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Callable, Dict, Final
+from typing import Any, Dict, Final
 
 import jsonschema
+from ska_ser_devices.client_server import ApplicationClient, ApplicationClientSession
 
 from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
 
@@ -240,24 +241,51 @@ class PasdBusJsonApiClient:
 
     def __init__(
         self: PasdBusJsonApiClient,
-        transport: Callable[[bytes], bytes],
+        application_client: ApplicationClient[bytes, bytes],
         encoding: str = "utf-8",
     ) -> None:
         """
         Initialise a new instance.
 
-        :param transport: the transport layer client; a callable that
-            accepts request bytes and returns response bytes.
+        :param application_client: the underlying application client,
+            used for communication with the server.
         :param encoding: encoding to use for conversion between string
             and bytes.
         """
-        self._transport = transport
+        self._application_client = application_client
         self._encoding = encoding
 
+        self._session: ApplicationClientSession[bytes, bytes] | None = None
+
+    def connect(self) -> None:
+        """
+        Establish a connection to the remote API.
+
+        This JSON-based API is connectionless:
+        a new connection is established for each request-response transaction.
+        Therefore this method does nothing.
+        """
+        self._session = self._application_client.connect()
+
+    def close(self) -> None:
+        """
+        Close the connection to the remote API.
+
+        This JSON-based API is connectionless:
+        a new connection is established for each request-response transaction.
+        Therefore this method does nothing.
+        """
+        if self._session is not None:
+            self._session.close()
+            self._session = None
+
     def _do_request(self, request: dict) -> dict:
+        if self._session is None:
+            raise ConnectionError("A session is not established.")
+
         request_str = json.dumps(request)
         request_bytes = request_str.encode(self._encoding)
-        response_bytes = self._transport(request_bytes)
+        response_bytes = self._session.send_receive(request_bytes)
         response_str = response_bytes.decode(self._encoding)
         response = json.loads(response_str)
         return response

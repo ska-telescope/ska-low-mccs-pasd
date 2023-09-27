@@ -365,9 +365,15 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
             number), and keyword arguments representing the state
             changes.
         """
-        tcp_client = TcpClient(host, port, timeout, logger=logger)
+        self._logger = logger
+        self._logger.debug(
+            f"Creating TCP client for ({host}, {port}) with timeout {timeout}..."
+        )
+        tcp_client = TcpClient((host, port), timeout, logger=logger)
+
+        self._logger.debug(r"Creating marshaller with sentinel '\n'...")
         marshaller = SentinelBytesMarshaller(b"\n", logger=logger)
-        application_client = ApplicationClient(
+        application_client = ApplicationClient[bytes, bytes](
             tcp_client, marshaller.marshall, marshaller.unmarshall
         )
         self._pasd_bus_api_client = PasdBusJsonApiClient(application_client)
@@ -436,7 +442,15 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
 
     def polling_started(self: PasdBusComponentManager) -> None:
         """Define actions to be taken when polling starts."""
+        self._logger.info("Connecting to server and commencing to poll...")
+        self._pasd_bus_api_client.connect()
         self._poll_request_provider.desire_info()
+
+    def polling_stopped(self: PasdBusComponentManager) -> None:
+        """Define actions to be taken when polling stops."""
+        self._logger.info("Stopping polling and closing connection to the server...")
+        self._pasd_bus_api_client.close()
+        super().polling_stopped()
 
     def get_request(
         self: PasdBusComponentManager,
