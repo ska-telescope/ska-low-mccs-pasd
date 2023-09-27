@@ -16,8 +16,7 @@ import threading
 from typing import Any, Callable, Optional
 
 import tango
-from ska_control_model import (CommunicationStatus, HealthState, PowerState,
-                               TaskStatus)
+from ska_control_model import CommunicationStatus, HealthState, PowerState, TaskStatus
 from ska_low_mccs_common import MccsDeviceProxy
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.base import check_communicating
@@ -25,63 +24,6 @@ from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
 
 __all__ = ["SmartBoxComponentManager"]
-
-
-class Port:
-    """A instance of a Smartbox Port."""
-
-    def __init__(
-        self,
-        power_on_callback: Callable[..., Any],
-        port_id: int,
-        logger: logging.Logger,
-    ) -> None:
-        """
-        Initialise a new instance.
-
-        :param port_id: the port id
-        :param power_on_callback: a callback hook to turn ON this port.
-        :param logger: a logger for this object to use
-        """
-        self.logger = logger
-        self._port_id = port_id
-        self._power_on_callback = power_on_callback
-
-        self.desire_on = False
-        self._task_callback = None
-
-    def set_desire_on(self, task_callback: Optional[Callable]) -> None:
-        """
-        Desire the port to be turned on when the smartbox becomes online.
-
-        :param task_callback: the command_tracker callback
-            for this command.
-        """
-        self.logger.info("Port desired on. To be turned on when smartbox is on.")
-        self.desire_on = True
-        self._task_callback = task_callback  # type: ignore[assignment]
-
-    def turn_on(self, task_callback: Optional[Callable] = None) -> None:
-        """
-        Turn the port on.
-
-        :param task_callback: the command_tracker callback
-            for this command.
-        """
-        self.logger.info(f"Turning on Power to port {self._port_id}.......")
-        assert self._task_callback or task_callback, (
-            "We need task callback inorder to " "keep track of command status"
-        )
-
-        command_tracker = next(
-            item for item in [task_callback, self._task_callback] if item is not None
-        )
-        self._power_on_callback(  # type: ignore[attr-defined]
-            self._port_id, command_tracker
-        )
-
-        self.desire_on = False
-        self._task_callback = None
 
 
 class _PasdBusProxy(DeviceComponentManager):
@@ -331,9 +273,6 @@ class SmartBoxComponentManager(
         self._fndh_fqdn = fndh_fqdn
         self._pasd_fqdn = pasd_fqdn
         self.logger = logger
-        self.ports = [
-            Port(self.turn_on_port, port, logger) for port in range(1, port_count + 1)
-        ]
         self._power_state = PowerState.UNKNOWN
         self._fndh_port = fndh_port
 
@@ -457,16 +396,19 @@ class SmartBoxComponentManager(
         :param attribute_value: The power state of the port.
         :param attribute_quality: The attribute_quality
         """
-        if attribute_name.lower() == f"port{self._fndh_port}powerstate":
-            self._power_state = attribute_value
-            # Turn on any pending ports
-            if self._power_state == PowerState.ON:
-                for port in self.ports:
-                    if port.desire_on:
-                        port.turn_on()
-            self._update_component_state(power=self._power_state)
-        else:
-            return
+        try:
+            if attribute_name.lower() != f"port{self._fndh_port}powerstate":
+                raise AttributeError(
+                    f"Unexpected attribute {attribute_name}",
+                    "attmpting to update device power state",
+                )
+            if attribute_name.lower() == f"port{self._fndh_port}powerstate":
+                self._power_state = attribute_value
+                self._update_component_state(power=self._power_state)
+        except AttributeError as error_message:
+            self.logger.error(f"Attribute Error: {error_message}")
+        except Exception as error_message:  # pylint: disable=broad-exception-caught
+            self.logger.error(f"Uncaught Exception: {error_message}")
 
     def stop_communicating(self: SmartBoxComponentManager) -> None:
         """Stop communication with components under control."""
@@ -704,15 +646,14 @@ class SmartBoxComponentManager(
                     "Unable to talk to system under control",
                     "proxy to pasdbus is None.",
                 )
-            port = self.ports[port_number - 1]
-            # Turn smartbox on if not already.
-            if self._power_state != PowerState.ON:
-                assert port._port_id == port_number
-                port.set_desire_on(task_callback)  # type: ignore[assignment]
-                self.on()
-                return (
-                    ResultCode.STARTED,
-                    "The command will continue when the smartbox turns on.",
+            if self._power_state in [
+                PowerState.UNKNOWN,
+                PowerState.NO_SUPPLY,
+                PowerState.OFF,
+            ]:
+                raise PermissionError(
+                    "turn on port not allowed when in state",
+                    f"{PowerState(self._power_state).name}",
                 )
             json_argument = json.dumps(
                 {
