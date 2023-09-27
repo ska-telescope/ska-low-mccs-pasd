@@ -346,22 +346,22 @@ class SmartBoxComponentManager(
         :return: none
         """
         # TODO: We may want a more complex evaluation of communication state.
-        for communication_state in [
-            CommunicationStatus.DISABLED,
-            CommunicationStatus.ESTABLISHED,
+        fndh_communication = self._fndh_communication_state
+        pasd_communication = self._pasd_communication_state
+
+        if CommunicationStatus.DISABLED in [
+            fndh_communication,
+            pasd_communication,
         ]:
-            if (
-                self._fndh_communication_state == communication_state
-                and self._pasd_communication_state == communication_state
-            ):
-                self._update_communication_state(communication_state)
-                return
-            if CommunicationStatus.DISABLED in [
-                self._fndh_communication_state,
-                self._pasd_communication_state,
-            ]:
-                self._update_communication_state(CommunicationStatus.DISABLED)
-                return
+            self._update_communication_state(CommunicationStatus.DISABLED)
+            return
+        if (
+            fndh_communication == CommunicationStatus.ESTABLISHED
+            and pasd_communication == CommunicationStatus.ESTABLISHED
+        ):
+            self._update_communication_state(CommunicationStatus.ESTABLISHED)
+            return
+
         self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
@@ -448,6 +448,13 @@ class SmartBoxComponentManager(
             if self._fndh_port:
                 if self._pasd_bus_proxy is None:
                     raise ValueError(f"Power on smartbox '{self._fndh_port} failed'")
+                if self._power_state in [
+                    PowerState.UNKNOWN,
+                ]:
+                    raise PermissionError(
+                        "turn on command not allowed when in state",
+                        f"{PowerState(self._power_state).name}",
+                    )
                 json_argument = json.dumps(
                     {
                         "port_number": self._fndh_port,
