@@ -196,8 +196,8 @@ class PasdBusRequestProvider:
             True means the port is desired on,
             False means it is desired off,
             None means no desire to change the port.
-        :param stay_on_when_offline: whether the ports should remain on
-            if MCCS loses its connection with the PaSD.
+        :param stay_on_when_offline: whether any ports being turned on
+            should remain on if MCCS loses its connection with the PaSD.
         """
         with self._lock:
             if device_id not in self._port_power_changes:
@@ -350,9 +350,7 @@ class PasdBusRequestProvider:
         return self._get_read_request()
 
 
-class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
-    PollingComponentManager[PasdBusRequest, PasdBusResponse]
-):
+class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusResponse]):
     """A component manager for a PaSD bus."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -565,62 +563,21 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
         self._poll_request_provider.desire_port_breaker_reset(0, port_number)
 
     @check_communicating
-    def turn_fndh_port_on(
+    def set_fndh_port_powers(
         self: PasdBusComponentManager,
-        port_number: int,
+        port_powers: list[bool | None],
         stay_on_when_offline: bool,
     ) -> None:
         """
-        Turn on a specified FNDH port.
+        Set the FNDH port powers.
 
-        :param port_number: the number of the port.
-        :param stay_on_when_offline: whether the port should remain on
-            if monitoring and control goes offline.
+        :param port_powers: specification of the desired power of each port.
+            True means on, False means off, None means no change desired.
+        :param stay_on_when_offline: whether any ports being turned on
+            should remain on if MCCS loses its connection with the PaSD.
         """
-        port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
-        port_powers[port_number - 1] = True
         self._poll_request_provider.desire_port_powers(
             0, port_powers, stay_on_when_offline
-        )
-
-    @check_communicating
-    def turn_all_fndh_ports_on(
-        self: PasdBusComponentManager,
-        stay_on_when_offline: bool,
-    ) -> None:
-        """
-        Turn on all FNDH ports.
-
-        :param stay_on_when_offline: whether the port should remain on
-            if monitoring and control goes offline.
-        """
-        port_powers = [True] * NUMBER_OF_FNDH_PORTS
-        self._poll_request_provider.desire_port_powers(
-            0, port_powers, stay_on_when_offline
-        )
-
-    @check_communicating
-    def turn_fndh_port_off(
-        self: PasdBusComponentManager,
-        port_number: int,
-    ) -> None:
-        """
-        Turn off a specified FNDH port.
-
-        :param port_number: the number of the port.
-        """
-        port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
-        port_powers[port_number - 1] = False
-        self._poll_request_provider.desire_port_powers(
-            0, port_powers, False  # irrelevant for off
-        )
-
-    @check_communicating
-    def turn_all_fndh_ports_off(self: PasdBusComponentManager) -> None:
-        """Turn off all FNDH ports."""
-        port_powers = [False] * NUMBER_OF_FNDH_PORTS
-        self._poll_request_provider.desire_port_powers(
-            0, port_powers, False  # irrelevant for off
         )
 
     @check_communicating
@@ -651,75 +608,23 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
         self._poll_request_provider.desire_port_breaker_reset(smartbox_id, port_number)
 
     @check_communicating
-    def turn_smartbox_port_on(
+    def set_smartbox_port_powers(
         self: PasdBusComponentManager,
         smartbox_id: int,
-        port_number: int,
+        port_powers: list[bool | None],
         stay_on_when_offline: bool,
     ) -> None:
         """
-        Turn on a specified smartbox port.
+        Set the FNDH port powers.
 
         :param smartbox_id: id of the smartbox being addressed.
-        :param port_number: the number of the port.
-        :param stay_on_when_offline: whether the port should remain on
-            if monitoring and control goes offline.
+        :param port_powers: specification of the desired power of each port.
+            True means on, False means off, None means no change desired.
+        :param stay_on_when_offline: whether any ports being turned on
+            should remain on if MCCS loses its connection with the PaSD.
         """
-        port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
-        port_powers[port_number - 1] = True
         self._poll_request_provider.desire_port_powers(
             smartbox_id, port_powers, stay_on_when_offline
-        )
-
-    @check_communicating
-    def turn_all_smartbox_ports_on(
-        self: PasdBusComponentManager,
-        smartbox_id: int,
-        stay_on_when_offline: bool,
-    ) -> None:
-        """
-        Turn on all of a smartbox's ports.
-
-        :param smartbox_id: id of the smartbox being addressed.
-        :param stay_on_when_offline: whether the port should remain on
-            if monitoring and control goes offline.
-        """
-        port_powers = [True] * NUMBER_OF_SMARTBOX_PORTS
-        self._poll_request_provider.desire_port_powers(
-            smartbox_id, port_powers, stay_on_when_offline
-        )
-
-    @check_communicating
-    def turn_smartbox_port_off(
-        self: PasdBusComponentManager,
-        smartbox_id: int,
-        port_number: int,
-    ) -> None:
-        """
-        Turn off a specified smartbox port.
-
-        :param smartbox_id: id of the smartbox being addressed.
-        :param port_number: the number of the port.
-        """
-        port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
-        port_powers[port_number - 1] = False
-        self._poll_request_provider.desire_port_powers(
-            smartbox_id, port_powers, False  # irrelevant for off
-        )
-
-    @check_communicating
-    def turn_all_smartbox_ports_off(
-        self: PasdBusComponentManager,
-        smartbox_id: int,
-    ) -> None:
-        """
-        Turn off all ports of a specified smartbox.
-
-        :param smartbox_id: id of the smartbox being addressed.
-        """
-        port_powers = [False] * NUMBER_OF_SMARTBOX_PORTS
-        self._poll_request_provider.desire_port_powers(
-            smartbox_id, port_powers, False  # irrelevant of off
         )
 
     @check_communicating

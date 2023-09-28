@@ -26,6 +26,9 @@ from ska_tango_base.executor import TaskExecutorComponentManager
 __all__ = ["FndhComponentManager", "_PasdBusProxy"]
 
 
+NUMBER_OF_FNDH_PORTS = 28
+
+
 class _PasdBusProxy(DeviceComponentManager):
     """This is a proxy to the pasdbus bus."""
 
@@ -224,18 +227,27 @@ class FndhComponentManager(TaskExecutorComponentManager):
 
     def _power_off_port(
         self: FndhComponentManager,
-        port_number: str,
+        port_number: int,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
+
+        desired_port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+        desired_port_powers[port_number - 1] = False
+        json_args = json.dumps(
+            {
+                "port_powers": desired_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
         try:
             assert self._pasd_bus_proxy._proxy
             (
                 [result_code],
                 [return_message],
-            ) = self._pasd_bus_proxy._proxy.TurnFndhPortOff(port_number)
+            ) = self._pasd_bus_proxy._proxy.SetFndhPortPowers(json_args)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {repr(ex)}")
@@ -281,20 +293,28 @@ class FndhComponentManager(TaskExecutorComponentManager):
 
     def _power_on_port(
         self: FndhComponentManager,
-        port_number: str,
+        port_number: int,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
+
+        desired_port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+        desired_port_powers[port_number - 1] = True
+        json_argument = json.dumps(
+            {
+                "port_powers": desired_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
+
         try:
             assert self._pasd_bus_proxy._proxy
-            json_argument = json.dumps(
-                {"port_number": port_number, "stay_on_when_offline": True}
-            )
-            ([result_code], [unique_id]) = self._pasd_bus_proxy._proxy.TurnFndhPortOn(
-                json_argument
-            )
+            (
+                [result_code],
+                [unique_id],
+            ) = self._pasd_bus_proxy._proxy.SetFndhPortPowers(json_argument)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {repr(ex)}")

@@ -26,6 +26,10 @@ from ska_tango_base.executor import TaskExecutorComponentManager
 __all__ = ["SmartBoxComponentManager"]
 
 
+NUMBER_OF_FNDH_PORTS = 28
+NUMBER_OF_SMARTBOX_PORTS = 12
+
+
 class Port:
     """A instance of a Smartbox Port."""
 
@@ -170,11 +174,11 @@ class _PasdBusProxy(DeviceComponentManager):
         )
         return
 
-    def turn_smartbox_port_on(
+    def set_smartbox_port_powers(
         self: _PasdBusProxy, json_argument: str
     ) -> tuple[ResultCode, str]:
         """
-        Proxy for the TurnSmartboxPortOn command.
+        Proxy for the SetSmartboxPortPowers command.
 
         :param json_argument: the json formatted string.
 
@@ -182,13 +186,13 @@ class _PasdBusProxy(DeviceComponentManager):
             unique id to identify the command in the queue.
         """
         assert self._proxy
-        return self._proxy.TurnSmartboxPortOn(json_argument)
+        return self._proxy.SetSmartboxPortPowers(json_argument)
 
-    def turn_smartbox_port_off(
+    def set_fndh_port_powers(
         self: _PasdBusProxy, json_argument: str
     ) -> tuple[ResultCode, str]:
         """
-        Proxy for the TurnSmartboxPortOff command.
+        Proxy for the SetFndhPortPowers command.
 
         :param json_argument: the json formatted string.
 
@@ -196,35 +200,7 @@ class _PasdBusProxy(DeviceComponentManager):
             unique id to identify the command in the queue.
         """
         assert self._proxy
-        return self._proxy.TurnSmartboxPortOff(json_argument)
-
-    def turn_fndh_port_off(
-        self: _PasdBusProxy, port_number: int
-    ) -> tuple[ResultCode, str]:
-        """
-        Proxy for the TurnFndhPortOff command.
-
-        :param port_number: the port_number formatted to turn off.
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        assert self._proxy
-        return self._proxy.TurnFndhPortOff(port_number)
-
-    def turn_fndh_port_on(
-        self: _PasdBusProxy, json_argument: str
-    ) -> tuple[ResultCode, str]:
-        """
-        Proxy for the TurnFndhPortOn command.
-
-        :param json_argument: the json formatted string.
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        assert self._proxy
-        return self._proxy.TurnFndhPortOn(json_argument)
+        return self._proxy.SetFndhPortPowers(json_argument)
 
 
 class _FndhProxy(DeviceComponentManager):
@@ -488,16 +464,18 @@ class SmartBoxComponentManager(
             if self._fndh_port:
                 if self._pasd_bus_proxy is None:
                     raise ValueError(f"Power on smartbox '{self._fndh_port} failed'")
+                desired_port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+                desired_port_powers[self._fndh_port - 1] = True
                 json_argument = json.dumps(
                     {
-                        "port_number": self._fndh_port,
+                        "port_powers": desired_port_powers,
                         "stay_on_when_offline": True,
                     }
                 )
                 (
                     result_code,
                     return_message,
-                ) = self._pasd_bus_proxy.turn_fndh_port_on(json_argument)
+                ) = self._pasd_bus_proxy.set_fndh_port_powers(json_argument)
             else:
                 self.logger.info(
                     "Cannot turn off SmartBox, we do not yet know what port it is on"
@@ -551,10 +529,19 @@ class SmartBoxComponentManager(
                 if self._pasd_bus_proxy is None:
                     raise ValueError(f"Power off smartbox '{self._fndh_port} failed'")
 
+                desired_port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+                desired_port_powers[self._fndh_port - 1] = False
+                json_argument = json.dumps(
+                    {
+                        "port_powers": desired_port_powers,
+                        "stay_on_when_offline": True,
+                    }
+                )
+
                 (
                     result_code,
                     return_message,
-                ) = self._pasd_bus_proxy.turn_fndh_port_off(self._fndh_port)
+                ) = self._pasd_bus_proxy.set_fndh_port_powers(json_argument)
             else:
                 self.logger.info(
                     "Cannot turn off SmartBox, we do not yet know what port it is on"
@@ -603,7 +590,7 @@ class SmartBoxComponentManager(
 
     def _turn_off_port(
         self: SmartBoxComponentManager,
-        port_number: str,
+        port_number: int,
         task_callback: Optional[Callable],
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
@@ -612,16 +599,19 @@ class SmartBoxComponentManager(
         try:
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
+            desired_port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
+            desired_port_powers[port_number - 1] = True
             json_argument = json.dumps(
                 {
                     "smartbox_number": self._fndh_port,
-                    "port_number": port_number,
+                    "port_powers": desired_port_powers,
+                    "stay_on_when_offline": True,
                 }
             )
             (
                 result_code,
                 return_message,
-            ) = self._pasd_bus_proxy.turn_smartbox_port_off(json_argument)
+            ) = self._pasd_bus_proxy.set_smartbox_port_powers(json_argument)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
@@ -686,18 +676,19 @@ class SmartBoxComponentManager(
                     ResultCode.STARTED,
                     "The command will continue when the smartbox turns on.",
                 )
+            desired_port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
+            desired_port_powers[port_number - 1] = True
             json_argument = json.dumps(
                 {
                     "smartbox_number": self._fndh_port,
-                    "port_number": port_number,
+                    "port_powers": desired_port_powers,
                     "stay_on_when_offline": True,
                 }
             )
-
             (
                 result_code,
                 return_message,
-            ) = self._pasd_bus_proxy.turn_smartbox_port_on(json_argument)
+            ) = self._pasd_bus_proxy.set_smartbox_port_powers(json_argument)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")

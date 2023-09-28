@@ -23,6 +23,10 @@ from tests.harness import get_pasd_bus_name
 gc.disable()
 
 
+NUMBER_OF_FNDH_PORTS = 28
+NUMBER_OF_SMARTBOX_PORTS = 12
+
+
 @scenario(
     "features/monitor_and_control.feature",
     "Monitor PaSD",
@@ -448,10 +452,12 @@ def turn_fndh_port_on(
     :param pasd_bus_device: a proxy to the PaSD bus device.
     :param fndh_port_no: an FNDH port.
     """
+    desired_port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+    desired_port_powers[fndh_port_no - 1] = True
     json_argument = json.dumps(
-        {"port_number": fndh_port_no, "stay_on_when_offline": True}
+        {"port_powers": desired_port_powers, "stay_on_when_offline": True}
     )
-    pasd_bus_device.TurnFndhPortOn(json_argument)
+    pasd_bus_device.SetFndhPortPowers(json_argument)
 
 
 @when("I tell MCCS-for-PaSD to turn the FNDH port off")
@@ -465,7 +471,12 @@ def turn_fndh_port_off(
     :param pasd_bus_device: a proxy to the PaSD bus device.
     :param fndh_port_no: an FNDH port.
     """
-    pasd_bus_device.TurnFndhPortOff(fndh_port_no)
+    desired_port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+    desired_port_powers[fndh_port_no - 1] = False
+    json_argument = json.dumps(
+        {"port_powers": desired_port_powers, "stay_on_when_offline": True}
+    )
+    pasd_bus_device.SetFndhPortPowers(json_argument)
 
 
 @then(parsers.parse("the FNDH port turns {state_name}"))
@@ -518,15 +529,20 @@ def find_connected_smartbox_port(
         This will be a port that has an antenna connected, so that the
         port can be turned on and power will be sensed.
     """
+    smartbox_port_number = 1
+    desired_port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
+    desired_port_powers[smartbox_port_number - 1] = True
+
+    json_argument = json.dumps(
+        {
+            "smartbox_number": smartbox_id,
+            "port_powers": desired_port_powers,
+            "stay_on_when_offline": True,
+        }
+    )
+
     try:
-        json_argument = json.dumps(
-            {
-                "smartbox_number": smartbox_id,
-                "port_number": 1,
-                "stay_on_when_offline": True,
-            }
-        )
-        pasd_bus_device.TurnSmartboxPortOn(json_argument)
+        pasd_bus_device.SetSmartboxPortPowers(json_argument)
         smartbox_connected_ports = list(
             getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed")
         )
@@ -640,14 +656,16 @@ def turn_smartbox_port_on(
     :param smartbox_id: number of the smartbox under test.
     :param smartbox_port_no: a smartbox port.
     """
+    desired_port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
+    desired_port_powers[smartbox_port_no - 1] = True
     json_argument = json.dumps(
         {
             "smartbox_number": smartbox_id,
-            "port_number": smartbox_port_no,
+            "port_powers": desired_port_powers,
             "stay_on_when_offline": True,
         }
     )
-    pasd_bus_device.TurnSmartboxPortOn(json_argument)
+    pasd_bus_device.SetSmartboxPortPowers(json_argument)
 
 
 @when("I tell MCCS-for-PaSD to turn the smartbox port off")
@@ -663,13 +681,16 @@ def turn_smartbox_port_off(
     :param smartbox_id: number of the smartbox under test.
     :param smartbox_port_no: a smartbox port.
     """
+    desired_port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
+    desired_port_powers[smartbox_port_no - 1] = False
     json_argument = json.dumps(
         {
             "smartbox_number": smartbox_id,
-            "port_number": smartbox_port_no,
+            "port_powers": desired_port_powers,
+            "stay_on_when_offline": True,
         }
     )
-    pasd_bus_device.TurnSmartboxPortOff(json_argument)
+    pasd_bus_device.SetSmartboxPortPowers(json_argument)
 
 
 @then(parsers.parse("the smartbox port turns {state_name}"))
