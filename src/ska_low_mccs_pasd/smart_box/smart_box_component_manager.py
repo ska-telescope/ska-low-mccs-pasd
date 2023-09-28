@@ -70,7 +70,7 @@ class Port:
         self.logger.info(f"Turning on Power to port {self._port_id}.......")
         assert (
             self._task_callback or task_callback
-        ), "We need task callback inorder to keep track of command status"
+        ), "We need task callback in order to keep track of command status"
 
         command_tracker = next(
             item for item in [task_callback, self._task_callback] if item is not None

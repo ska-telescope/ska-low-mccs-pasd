@@ -80,6 +80,7 @@ def read_request_iterator() -> Iterator[tuple[int, str]]:
     """
     for device_id in range(NUMBER_OF_SMARTBOXES + 1):
         yield (device_id, "INFO")
+    for device_id in range(NUMBER_OF_SMARTBOXES + 1):
         yield (device_id, "THRESHOLDS")
         if device_id != 0:
             # Current trip thresholds only for smartboxes

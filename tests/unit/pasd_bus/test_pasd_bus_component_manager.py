@@ -120,7 +120,7 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
 
         pasd_bus_component_manager.initialize_fndh()
-        # First we'll receive static info about the FNDH
+        # First we'll receive basic static info about the FNDH and smartboxes
         mock_callbacks.assert_call(
             "pasd_device_state",
             0,  # FNDH
@@ -130,7 +130,20 @@ class TestPasdBusComponentManager:
             chip_id=FndhSimulator.CHIP_ID,
             firmware_version=FndhSimulator.DEFAULT_FIRMWARE_VERSION,
         )
-        # and FNDH sensor thresholds
+        for smartbox_number in range(1, 25):
+            pasd_bus_component_manager.initialize_smartbox(smartbox_number)
+            mock_callbacks.assert_call(
+                "pasd_device_state",
+                smartbox_number,
+                modbus_register_map_revision=(
+                    SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
+                ),
+                pcb_revision=SmartboxSimulator.PCB_REVISION,
+                cpu_id=SmartboxSimulator.CPU_ID,
+                chip_id=SmartboxSimulator.CHIP_ID,
+                firmware_version=SmartboxSimulator.DEFAULT_FIRMWARE_VERSION,
+            )
+        # and then the FNDH sensor thresholds
         mock_callbacks.assert_call(
             "pasd_device_state",
             0,  # FNDH
@@ -160,20 +173,8 @@ class TestPasdBusComponentManager:
             ),
         )
 
-        # Then static info about each of the smartboxes
+        # Other static info about each of the smartboxes
         for smartbox_number in range(1, 25):
-            pasd_bus_component_manager.initialize_smartbox(smartbox_number)
-            mock_callbacks.assert_call(
-                "pasd_device_state",
-                smartbox_number,
-                modbus_register_map_revision=(
-                    SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
-                ),
-                pcb_revision=SmartboxSimulator.PCB_REVISION,
-                cpu_id=SmartboxSimulator.CPU_ID,
-                chip_id=SmartboxSimulator.CHIP_ID,
-                firmware_version=SmartboxSimulator.DEFAULT_FIRMWARE_VERSION,
-            )
             # smartbox sensor thresholds
             mock_callbacks.assert_call(
                 "pasd_device_state",
