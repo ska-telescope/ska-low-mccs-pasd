@@ -578,13 +578,20 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
     def SetFndhPortPowers(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
+        # pylint: disable=line-too-long
         """
         Set FNDH port powers.
+
+        This command takes as input a JSON string that conforms to the
+        following schema:
+
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetFndhPortPowers.json
+           :language: json
 
         :param argin: a JSON string specifying the request.
 
         :return: A tuple containing a result code and a human-readable status message.
-        """
+        """  # noqa: E501
         handler = self.get_command_object("SetFndhPortPowers")
         success = handler(argin)
         if success:
@@ -778,13 +785,20 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     def SetSmartboxPortPowers(
         self: MccsPasdBus, argin: str
     ) -> DevVarLongStringArrayType:
+        # pylint: disable=line-too-long
         """
         Set a smartbox's port powers.
+
+        This command takes as input a JSON string that conforms to the
+        following schema:
+
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetSmartboxPortPowers.json
+           :language: json
 
         :param argin: arguments encoded as a JSON string
 
         :return: A tuple containing a result code and a human-readable status message.
-        """
+        """  # noqa: E501
         handler = self.get_command_object("SetSmartboxPortPowers")
         success = handler(argin)
         if success:
