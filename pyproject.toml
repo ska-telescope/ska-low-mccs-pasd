@@ -21,6 +21,7 @@ ska-control-model = "0.3.1"
 ska-low-mccs-common = "^0.9.1"
 ska-ser-devices = "^0.1.1"
 pymodbus = "^3.2.2"
+watchdog = "3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.20.0"
@@ -63,6 +64,7 @@ typing-extensions = "^4.6.1"       # undeclared dependency-dependency
 [tool.poetry.scripts]
 MccsPasdBus = "ska_low_mccs_pasd.pasd_bus.pasd_bus_device:main"
 PasdBusSimulatorServer = "ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator_server:main"
+MccsConfigurator = "ska_low_mccs_pasd.configurator.mccs_configurator:main"
 MccsSmartBox = "ska_low_mccs_pasd.smart_box.smart_box_device:main"
 MccsFNDH = "ska_low_mccs_pasd.fndh.fndh_device:main"
 MccsFieldStation = "ska_low_mccs_pasd.field_station.field_station_device:main"

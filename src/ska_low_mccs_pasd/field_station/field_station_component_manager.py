@@ -98,6 +98,42 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         self.logger = logger
 
+
+    def update_configuration(
+        self: FieldStationComponentManager,
+        configuration: str,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Turn on an antenna.
+
+        The Field station knows what ports need to be
+        turned on and what fndh and smartboxes it is connected to.
+
+        Note: Not implemented yet
+
+        :param antenna_number: (one-based) number of the TPM to turn on.
+        :param task_callback: callback to be called when the status of
+            the command changes
+
+        :return: the task status and a human-readable status message
+        """
+        return self.submit_task(
+            self._update_configuration,  # type: ignore[arg-type]
+            args=[
+                configuration
+            ],
+            task_callback=task_callback,
+        )
+
+    def _update_configuration(
+        self: FieldStationComponentManager,
+        configuration: str,
+        task_callback: Optional[Callable],
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[ResultCode, str]:
+        self.logger.info(f"my configuration has been updated with: {configuration}")
+
     @check_communicating
     def turn_on_antenna(
         self: FieldStationComponentManager,

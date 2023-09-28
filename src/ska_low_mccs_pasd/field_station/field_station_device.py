@@ -89,6 +89,7 @@ class MccsFieldStation(SKABaseDevice):
         for (command_name, method_name, schema) in [
             ("PowerOnAntenna", "turn_on_antenna", None),
             ("Configure", "configure", configure_schema),
+            ("UpdateConfiguration", "update_configuration", None),
         ]:
             validator = (
                 None
@@ -158,6 +159,22 @@ class MccsFieldStation(SKABaseDevice):
         (return_code, message) = handler(argin)
         return ([return_code], [message])
 
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def UpdateConfiguration(self: MccsFieldStation, argin: str) -> DevVarLongStringArrayType:
+        """
+        Configure the field station.
+
+        Currently this only configures FNDH device attributes.
+
+        :param argin: the configuration for the device in stringified json format
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("UpdateConfiguration")
+        (result_code, message) = handler(argin)
+        return ([result_code], [message])
 
 # ----------
 # Run server

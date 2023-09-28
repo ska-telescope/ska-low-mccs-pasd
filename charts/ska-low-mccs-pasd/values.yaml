@@ -45,7 +45,7 @@ resources:
 image:
   registry: artefact.skao.int
   name: ska-low-mccs-pasd
-  tag: 0.4.0
+  tag: 0.4.0-dirty
   pullPolicy: IfNotPresent
 
 deviceServers: {}  # e.g.:
