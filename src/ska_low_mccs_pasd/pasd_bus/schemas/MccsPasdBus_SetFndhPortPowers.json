@@ -1,0 +1,29 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://skao.int/MccsPasdBus_SetFndhPortPowers.json",
+    "title": "MccsPasdBus SetFndhPortPowers schema",
+    "description": "Schema for MccsPasdBus's SetFndhPortPowers command",
+    "type": "object",
+    "properties": {
+        "port_powers": {
+            "description": "The desired power of each port",
+            "type": "array",
+            "minItems": 28,
+            "maxItems": 28,
+            "items": {
+                "type": [
+                    "boolean",
+                    "null"
+                ]
+            }
+        },
+        "stay_on_when_offline": {
+            "description": "Whether to stay on when M&C is offline",
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "port_powers",
+        "stay_on_when_offline"
+    ]
+}

@@ -1,0 +1,36 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://skao.int/SetSmartboxPortPowers.json",
+    "title": "MccsPasdBus SetSmartboxPortPowers schema",
+    "description": "Schema for MccsPasdBus's SetSmartboxPortPowers command",
+    "type": "object",
+    "properties": {
+        "smartbox_number": {
+            "description": "Number of the smartbox being addressed",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 24
+        },
+        "port_powers": {
+            "description": "The desired power of each port",
+            "type": "array",
+            "minItems": 12,
+            "maxItems": 12,
+            "items": {
+                "type": [
+                    "boolean",
+                    "null"
+                ]
+            }
+        },
+        "stay_on_when_offline": {
+            "description": "Whether to stay on when M&C is offline",
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "smartbox_number",
+        "port_powers",
+        "stay_on_when_offline"
+    ]
+}

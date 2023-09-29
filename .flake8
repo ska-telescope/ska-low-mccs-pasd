@@ -9,7 +9,7 @@ max-complexity = 10
 
 docstring-style = sphinx
 rst-roles = py:attr, py:class, py:const, py:exc, py:func, py:meth, py:mod
-rst-directives = uml
+rst-directives = literalinclude, uml
 
 per-file-ignores =
     # N802 = PEP8 lowercase function name -- conflicts with Tango conventions

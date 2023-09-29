@@ -6,7 +6,6 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module implements the MCCS PaSD bus device."""
-# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -42,7 +41,7 @@ NUMBER_OF_SMARTBOX_PORTS = 12
 DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-lines
 class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     """An implementation of a PaSD bus Tango device for MCCS."""
 
@@ -578,16 +577,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         for command_name, command_class in [
             ("InitializeFndh", MccsPasdBus._InitializeFndhCommand),
             ("InitializeSmartbox", MccsPasdBus._InitializeSmartboxCommand),
-            ("TurnFndhPortOn", MccsPasdBus._TurnFndhPortOnCommand),
-            ("TurnAllFndhPortsOn", MccsPasdBus._TurnAllFndhPortsOnCommand),
-            ("TurnFndhPortOff", MccsPasdBus._TurnFndhPortOffCommand),
-            ("TurnAllFndhPortsOff", MccsPasdBus._TurnAllFndhPortsOffCommand),
+            ("SetFndhPortPowers", MccsPasdBus._SetFndhPortPowersCommand),
             ("SetFndhLedPattern", MccsPasdBus._SetFndhLedPatternCommand),
             ("ResetFndhPortBreaker", MccsPasdBus._ResetFndhPortBreakerCommand),
-            ("TurnSmartboxPortOn", MccsPasdBus._TurnSmartboxPortOnCommand),
-            ("TurnAllSmartboxPortsOn", MccsPasdBus._TurnAllSmartboxPortsOnCommand),
-            ("TurnSmartboxPortOff", MccsPasdBus._TurnSmartboxPortOffCommand),
-            ("TurnAllSmartboxPortsOff", MccsPasdBus._TurnAllSmartboxPortsOffCommand),
+            ("SetSmartboxPortPowers", MccsPasdBus._SetSmartboxPortPowersCommand),
             (
                 "SetSmartboxLedPattern",
                 MccsPasdBus._SetSmartboxLedPatternCommand,
@@ -843,204 +836,71 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             )
         return ([ResultCode.FAILED], ["InitializeFndh failed"])
 
-    class _TurnFndhPortOnCommand(FastCommand):
+    class _SetFndhPortPowersCommand(FastCommand):
         SCHEMA: Final = json.loads(
             importlib.resources.read_text(
                 "ska_low_mccs_pasd.pasd_bus.schemas",
-                "MccsPasdBus_TurnFndhPortOn.json",
+                "MccsPasdBus_SetFndhPortPowers.json",
             )
         )
 
         def __init__(
-            self: MccsPasdBus._TurnFndhPortOnCommand,
+            self: MccsPasdBus._SetFndhPortPowersCommand,
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
         ):
             self._component_manager = component_manager
 
-            validator = JsonValidator("TurnFndhPortOn", self.SCHEMA, logger)
+            validator = JsonValidator("SetFndhPortPowers", self.SCHEMA, logger)
             super().__init__(logger, validator)
 
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnFndhPortOnCommand,
-            port_number: int,
+            self: MccsPasdBus._SetFndhPortPowersCommand,
+            port_powers: list[bool | None],
             stay_on_when_offline: bool,
         ) -> Optional[bool]:
             """
             Turn on an FNDH port.
 
-            :param port_number: number of the port to turn on.
-            :param stay_on_when_offline: whether the port should remain
-                on if communication with the MCCS is lost.
+            :param port_powers: desired power of each port.
+                False means off, True means on, None means no desired change.
+            :param stay_on_when_offline: whether any ports being turned on
+                should remain on if communication with the MCCS is lost.
 
             :return: whether successful, or None if there was nothing to
                 do.
             """
-            return self._component_manager.turn_fndh_port_on(
-                port_number, stay_on_when_offline
+            return self._component_manager.set_fndh_port_powers(
+                port_powers, stay_on_when_offline
             )
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def TurnFndhPortOn(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
+    def SetFndhPortPowers(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
+        # pylint: disable=line-too-long
         """
-        Turn on an FNDH port.
+        Set FNDH port powers.
 
-        :param argin: a JSON string specifying the request
-            e.g. the port to be turned on,
-            and whether it should remain on if MCCS goes offline.
+        This command takes as input a JSON string that conforms to the
+        following schema:
+
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetFndhPortPowers.json
+           :language: json
+
+        :param argin: a JSON string specifying the request.
 
         :return: A tuple containing a result code and a human-readable status message.
-        """
-        handler = self.get_command_object("TurnFndhPortOn")
+        """  # noqa: E501
+        handler = self.get_command_object("SetFndhPortPowers")
         success = handler(argin)
         if success:
-            return ([ResultCode.OK], ["TurnFndhPortOn succeeded"])
+            return ([ResultCode.OK], ["SetFndhPortPowers succeeded"])
         if success is None:
             return (
                 [ResultCode.OK],
-                ["TurnFndhPortOn succeeded: nothing to do"],
+                ["SetFndhPortPowers succeeded: nothing to do"],
             )
-        return ([ResultCode.FAILED], ["TurnFndhPortOn failed"])
-
-    class _TurnAllFndhPortsOnCommand(FastCommand):
-        SCHEMA: Final = json.loads(
-            importlib.resources.read_text(
-                "ska_low_mccs_pasd.pasd_bus.schemas",
-                "MccsPasdBus_TurnAllFndhPortsOn.json",
-            )
-        )
-
-        def __init__(
-            self: MccsPasdBus._TurnAllFndhPortsOnCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-
-            validator = JsonValidator("TurnAllFndhPortsOn", self.SCHEMA, logger)
-            super().__init__(logger, validator)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnAllFndhPortsOnCommand,
-            stay_on_when_offline: bool,
-        ) -> Optional[bool]:
-            """
-            Turn on all FNDH ports.
-
-            :param stay_on_when_offline: whether the ports should remain
-                on if communication with the MCCS is lost.
-
-            :return: whether successful, or None if there was nothing to
-                do.
-            """
-            return self._component_manager.turn_all_fndh_ports_on(stay_on_when_offline)
-
-    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def TurnAllFndhPortsOn(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
-        """
-        Turn on all FNDH ports.
-
-        :param argin: a JSON string specifying the request
-            e.g. whether the ports should remain on
-            if communication with the MCCS is lost.
-
-        :return: A tuple containing a result code and a human-readable status message.
-        """
-        handler = self.get_command_object("TurnAllFndhPortsOn")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], ["TurnAllFndhPortsOn succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                ["TurnAllFndhPortsOn succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], ["TurnAllFndhPortsOn failed"])
-
-    class _TurnFndhPortOffCommand(FastCommand):
-        def __init__(
-            self: MccsPasdBus._TurnFndhPortOffCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-            super().__init__(logger)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnFndhPortOffCommand,
-            port_number: int,
-        ) -> Optional[bool]:
-            """
-            Turn off an FNDH port.
-
-            :param port_number: number of the port to turn off.
-
-            :return: whether successful, or None if there was nothing to
-                do.
-            """
-            return self._component_manager.turn_fndh_port_off(port_number)
-
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def TurnFndhPortOff(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
-        """
-        Turn off an FNDH port.
-
-        :param argin: the FNDH port to turn off
-
-        :return: A tuple containing a result code and a human-readable status message.
-        """
-        handler = self.get_command_object("TurnFndhPortOff")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], [f"TurnFndhPortOff {argin} succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                [f"TurnFndhPortOff {argin} succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], [f"TurnFndhPortOff {argin} failed"])
-
-    class _TurnAllFndhPortsOffCommand(FastCommand):
-        def __init__(
-            self: MccsPasdBus._TurnAllFndhPortsOffCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-            super().__init__(logger)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnAllFndhPortsOffCommand,
-        ) -> Optional[bool]:
-            """
-            Turn off all FNDH ports.
-
-            :return: whether successful, or None if there was nothing to
-                do.
-            """
-            return self._component_manager.turn_all_fndh_ports_off()
-
-    @command(dtype_out="DevVarLongStringArray")
-    def TurnAllFndhPortsOff(self: MccsPasdBus) -> DevVarLongStringArrayType:
-        """
-        Turn off all FNDH ports.
-
-        :return: A tuple containing a result code and a human-readable status message.
-        """
-        handler = self.get_command_object("TurnAllFndhPortOff")
-        success = handler()
-        if success:
-            return ([ResultCode.OK], ["TurnAllFndhPortsOff succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                ["TurnAllFndhPortsOff succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], ["TurnAllFndhPortsOff failed"])
+        return ([ResultCode.FAILED], ["SetFndhPortPowers failed"])
 
     class _SetFndhLedPatternCommand(FastCommand):
         def __init__(
@@ -1177,241 +1037,77 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             )
         return ([ResultCode.FAILED], ["InitializeSmartbox failed"])
 
-    class _TurnSmartboxPortOnCommand(FastCommand):
+    class _SetSmartboxPortPowersCommand(FastCommand):
         SCHEMA: Final = json.loads(
             importlib.resources.read_text(
                 "ska_low_mccs_pasd.pasd_bus.schemas",
-                "MccsPasdBus_TurnSmartboxPortOn.json",
+                "MccsPasdBus_SetSmartboxPortPowers.json",
             )
         )
 
         def __init__(
-            self: MccsPasdBus._TurnSmartboxPortOnCommand,
+            self: MccsPasdBus._SetSmartboxPortPowersCommand,
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
         ):
             self._component_manager = component_manager
 
-            validator = JsonValidator("TurnSmartboxPortOn", self.SCHEMA, logger)
+            validator = JsonValidator("SetSmartboxPortPowers", self.SCHEMA, logger)
             super().__init__(logger, validator)
 
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnSmartboxPortOnCommand,
+            self: MccsPasdBus._SetSmartboxPortPowersCommand,
             smartbox_number: int,
-            port_number: int,
+            port_powers: list[bool | None],
             stay_on_when_offline: bool,
         ) -> Optional[bool]:
             """
-            Turn on a smartbox port.
+            Set a smartbox's port powers.
 
             :param smartbox_number: number of the smartbox to be
                 addressed
-            :param port_number: name of the port to be turned on.
-            :param stay_on_when_offline: whether the port should remain
-                on if communication with the MCCS is lost.
+            :param port_powers: the desired power for each port.
+                True means powered on, False means off,
+                None means no desired change
+            :param stay_on_when_offline: whether any ports being turned on
+                should remain on if communication with the MCCS is lost.
 
             :return: whether successful, or None if there was nothing to
                 do.
             """
-            return self._component_manager.turn_smartbox_port_on(
-                smartbox_number, port_number, stay_on_when_offline
+            return self._component_manager.set_smartbox_port_powers(
+                smartbox_number, port_powers, stay_on_when_offline
             )
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def TurnSmartboxPortOn(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
-        """
-        Turn on a smartbox port.
-
-        :param argin: arguments encodes as a JSON string
-
-        :return: A tuple containing a result code and a human-readable status message.
-        """
-        handler = self.get_command_object("TurnSmartboxPortOn")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], ["TurnSmartboxPortOn succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                ["TurnSmartboxPortOn succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], ["TurnSmartboxPortOn failed"])
-
-    class _TurnAllSmartboxPortsOnCommand(FastCommand):
-        SCHEMA: Final = json.loads(
-            importlib.resources.read_text(
-                "ska_low_mccs_pasd.pasd_bus.schemas",
-                "MccsPasdBus_TurnAllSmartboxPortsOn.json",
-            )
-        )
-
-        def __init__(
-            self: MccsPasdBus._TurnAllSmartboxPortsOnCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-
-            validator = JsonValidator("TurnAllSmartboxPortsOn", self.SCHEMA, logger)
-            super().__init__(logger, validator)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnAllSmartboxPortsOnCommand,
-            smartbox_number: int,
-            stay_on_when_offline: bool,
-        ) -> Optional[bool]:
-            """
-            Turn on all ports of a specified smartbox.
-
-            :param smartbox_number: number of the smartbox to be
-                addressed
-            :param stay_on_when_offline: whether the port should remain
-                on if communication with the MCCS is lost.
-
-            :return: whether successful, or None if there was nothing to
-                do.
-            """
-            return self._component_manager.turn_all_smartbox_ports_on(
-                smartbox_number, stay_on_when_offline
-            )
-
-    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def TurnAllSmartboxPortsOn(
+    def SetSmartboxPortPowers(
         self: MccsPasdBus, argin: str
     ) -> DevVarLongStringArrayType:
+        # pylint: disable=line-too-long
         """
-        Turn on all ports of a specified smartbox.
+        Set a smartbox's port powers.
 
-        :param argin: arguments encodes as a JSON string
+        This command takes as input a JSON string that conforms to the
+        following schema:
+
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetSmartboxPortPowers.json
+           :language: json
+
+        :param argin: arguments encoded as a JSON string
 
         :return: A tuple containing a result code and a human-readable status message.
-        """
-        handler = self.get_command_object("TurnAllSmartboxPortsOn")
+        """  # noqa: E501
+        handler = self.get_command_object("SetSmartboxPortPowers")
         success = handler(argin)
         if success:
-            return ([ResultCode.OK], ["TurnAllSmartboxPortsOn succeeded"])
+            return ([ResultCode.OK], ["SetSmartboxPortPowers succeeded"])
         if success is None:
             return (
                 [ResultCode.OK],
-                ["TurnAllSmartboxPortsOn succeeded: nothing to do"],
+                ["SetSmartboxPortPowers succeeded: nothing to do"],
             )
-        return ([ResultCode.FAILED], ["TurnAllSmartboxPortsOn failed"])
-
-    class _TurnSmartboxPortOffCommand(FastCommand):
-        SCHEMA: Final = json.loads(
-            importlib.resources.read_text(
-                "ska_low_mccs_pasd.pasd_bus.schemas",
-                "MccsPasdBus_TurnSmartboxPortOff.json",
-            )
-        )
-
-        def __init__(
-            self: MccsPasdBus._TurnSmartboxPortOffCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-
-            validator = JsonValidator("TurnSmartboxPortOff", self.SCHEMA, logger)
-            super().__init__(logger, validator)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnSmartboxPortOffCommand,
-            smartbox_number: int,
-            port_number: int,
-        ) -> Optional[bool]:
-            """
-            Turn off a smartbox port.
-
-            :param smartbox_number: number of the smartbox to be
-                addressed
-            :param port_number: name of the port to be turned off.
-
-            :return: whether successful, or None if there was nothing to
-                do.
-            """
-            return self._component_manager.turn_smartbox_port_off(
-                smartbox_number, port_number
-            )
-
-    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def TurnSmartboxPortOff(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
-        """
-        Turn off a smartbox port.
-
-        :param argin: arguments in JSON format
-
-        :return: A tuple containing a result code and a human-readable status message.
-        """
-        handler = self.get_command_object("TurnSmartboxPortOff")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], ["TurnSmartboxPortOff succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                ["TurnSmartboxPortOff succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], ["TurnSmartboxPortOff failed"])
-
-    class _TurnAllSmartboxPortsOffCommand(FastCommand):
-        SCHEMA: Final = json.loads(
-            importlib.resources.read_text(
-                "ska_low_mccs_pasd.pasd_bus.schemas",
-                "MccsPasdBus_TurnAllSmartboxPortsOff.json",
-            )
-        )
-
-        def __init__(
-            self: MccsPasdBus._TurnAllSmartboxPortsOffCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-
-            validator = JsonValidator("TurnAllSmartboxPortsOff", self.SCHEMA, logger)
-            super().__init__(logger, validator)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnAllSmartboxPortsOffCommand,
-            smartbox_number: int,
-        ) -> Optional[bool]:
-            """
-            Turn off all ports of a specified smartbox.
-
-            :param smartbox_number: number of the smartbox to be
-                addressed
-
-            :return: whether successful, or None if there was nothing to
-                do.
-            """
-            return self._component_manager.turn_all_smartbox_ports_off(smartbox_number)
-
-    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def TurnAllSmartboxPortsOff(
-        self: MccsPasdBus, argin: str
-    ) -> DevVarLongStringArrayType:
-        """
-        Turn off all ports of a specified smartbox.
-
-        :param argin: arguments in JSON format
-
-        :return: A tuple containing a result code and a human-readable status message.
-        """
-        handler = self.get_command_object("TurnAllSmartboxPortsOff")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], ["TurnAllSmartboxPortsOff succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                ["TurnAllSmartboxPortsOff succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], ["TurnAllSmartboxPortsOff failed"])
+        return ([ResultCode.FAILED], ["SetSmartboxPortPowers failed"])
 
     class _SetSmartboxLedPatternCommand(FastCommand):
         SCHEMA: Final = json.loads(
