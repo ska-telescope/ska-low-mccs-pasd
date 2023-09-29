@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import gc
 import json
+import random
 
 import pytest
 import tango
@@ -289,7 +290,7 @@ def test_communication(  # pylint: disable=too-many-statements
     )
 
 
-def test_turn_fndh_port_on_off(
+def test_set_fndh_port_powers(
     pasd_bus_device: tango.DeviceProxy,
     fndh_simulator: FndhSimulator,
     change_event_callbacks: MockTangoEventCallbackGroup,
@@ -328,32 +329,27 @@ def test_turn_fndh_port_on_off(
         "fndhPortsPowerSensed", fndh_simulator.ports_power_sensed
     )
 
-    connected_fndh_port = fndh_simulator.ports_connected.index(True) + 1
+    for i in range(1, 5):
+        print(f"\nTest iteration {i}")
+        fndh_ports_power_sensed = list(pasd_bus_device.fndhPortsPowerSensed)
 
-    fndh_ports_power_sensed = list(pasd_bus_device.fndhPortsPowerSensed)
-    is_on = fndh_ports_power_sensed[connected_fndh_port - 1]
-
-    if is_on:
-        pasd_bus_device.TurnFndhPortOff(connected_fndh_port)
-        fndh_ports_power_sensed[connected_fndh_port - 1] = False
-        change_event_callbacks.assert_change_event(
-            "fndhPortsPowerSensed", fndh_ports_power_sensed
+        desired_port_powers: list[bool | None] = random.choices(
+            [True, False, None], k=len(fndh_ports_power_sensed)
         )
 
-    json_argument = json.dumps(
-        {"port_number": connected_fndh_port, "stay_on_when_offline": True}
-    )
-    pasd_bus_device.TurnFndhPortOn(json_argument)
-    fndh_ports_power_sensed[connected_fndh_port - 1] = True
-    change_event_callbacks.assert_change_event(
-        "fndhPortsPowerSensed", fndh_ports_power_sensed
-    )
+        expected_fndh_ports_power_sensed = list(fndh_ports_power_sensed)
+        for i, desired in enumerate(desired_port_powers):
+            if desired is not None:
+                expected_fndh_ports_power_sensed[i] = desired
 
-    pasd_bus_device.TurnFndhPortOff(connected_fndh_port)
-    fndh_ports_power_sensed[connected_fndh_port - 1] = False
-    change_event_callbacks.assert_change_event(
-        "fndhPortsPowerSensed", fndh_ports_power_sensed
-    )
+        json_arg = {
+            "port_powers": desired_port_powers,
+            "stay_on_when_offline": False,
+        }
+        pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
+        change_event_callbacks.assert_change_event(
+            "fndhPortsPowerSensed", expected_fndh_ports_power_sensed
+        )
 
 
 def test_fndh_led_pattern(
@@ -394,7 +390,7 @@ def test_fndh_led_pattern(
     change_event_callbacks.assert_change_event("fndhLedPattern", "SERVICE")
 
 
-def test_turning_smartbox_port_on_off(
+def test_set_smartbox_port_powers(
     pasd_bus_device: tango.DeviceProxy,
     smartbox_simulator: SmartboxSimulator,
     smartbox_id: int,
@@ -438,51 +434,30 @@ def test_turning_smartbox_port_on_off(
         smartbox_simulator.ports_power_sensed,
     )
 
-    connected_smartbox_port = smartbox_simulator.ports_connected.index(True) + 1
-
-    smartbox_ports_power_sensed = list(
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed")
-    )
-    is_on = smartbox_ports_power_sensed[connected_smartbox_port - 1]
-
-    if is_on:
-        json_argument = json.dumps(
-            {
-                "smartbox_number": smartbox_id,
-                "port_number": connected_smartbox_port,
-            }
+    for i in range(1, 5):
+        print(f"\nTest iteration {i}")
+        ports_power_sensed = list(
+            getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed")
         )
-        pasd_bus_device.TurnSmartboxPortOff(json_argument)
-        smartbox_ports_power_sensed[connected_smartbox_port - 1] = False
+
+        desired_port_powers: list[bool | None] = random.choices(
+            [True, False, None], k=len(ports_power_sensed)
+        )
+
+        expected_ports_power_sensed = list(ports_power_sensed)
+        for i, desired in enumerate(desired_port_powers):
+            if desired is not None:
+                expected_ports_power_sensed[i] = desired
+
+        json_arg = {
+            "smartbox_number": smartbox_id,
+            "port_powers": desired_port_powers,
+            "stay_on_when_offline": False,
+        }
+        pasd_bus_device.SetSmartboxPortPowers(json.dumps(json_arg))
         change_event_callbacks.assert_change_event(
-            f"smartbox{smartbox_id}PortsPowerSensed",
-            smartbox_ports_power_sensed,
+            f"smartbox{smartbox_id}PortsPowerSensed", expected_ports_power_sensed
         )
-
-    json_argument = json.dumps(
-        {
-            "smartbox_number": smartbox_id,
-            "port_number": connected_smartbox_port,
-            "stay_on_when_offline": True,
-        }
-    )
-    pasd_bus_device.TurnSmartboxPortOn(json_argument)
-    smartbox_ports_power_sensed[connected_smartbox_port - 1] = True
-    change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}PortsPowerSensed", smartbox_ports_power_sensed
-    )
-
-    json_argument = json.dumps(
-        {
-            "smartbox_number": smartbox_id,
-            "port_number": connected_smartbox_port,
-        }
-    )
-    pasd_bus_device.TurnSmartboxPortOff(json_argument)
-    smartbox_ports_power_sensed[connected_smartbox_port - 1] = False
-    change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}PortsPowerSensed", smartbox_ports_power_sensed
-    )
 
 
 def test_reset_smartbox_port_breaker(

@@ -37,10 +37,8 @@ def mock_pasdbus_fixture() -> unittest.mock.Mock:
     builder = MockDeviceBuilder()
     builder.set_state(tango.DevState.ON)
     builder.add_command("GetPasdDeviceSubscriptions", {})
-    builder.add_result_command("TurnSmartboxPortOn", ResultCode.OK)
-    builder.add_result_command("TurnSmartboxPortOff", ResultCode.OK)
-    builder.add_result_command("TurnFndhPortOff", ResultCode.OK)
-    builder.add_result_command("TurnFndhPortOn", ResultCode.OK)
+    builder.add_result_command("SetSmartboxPortPowers", ResultCode.OK)
+    builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
     return builder()
 
 
