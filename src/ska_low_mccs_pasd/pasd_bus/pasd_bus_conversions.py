@@ -72,6 +72,39 @@ class LEDStatusMap(Enum):
     GREENRED = 50  # Alternating green and red at 1.25 Hz - used for 'POWERDOWN'
 
 
+class FNDHAlarmFlags(Enum):
+    """Enum type for the FNDH alarm/warning flags."""
+
+    NONE = -1
+    SYS_48V1_V = 0  # Bit 0 is set
+    SYS_48V2_V = 1  # Bit 1 is set
+    SYS_48V_I = 2
+    SYS_48V1_TEMP = 3
+    SYS_48V2_TEMP = 4
+    SYS_PANELTEMP = 5
+    SYS_FNCBTEMP = 6
+    SYS_HUMIDITY = 7
+    SYS_SENSE01_COMMS_GATEWAY = 8
+    SYS_SENSE02_POWER_MODULE_TEMP = 9
+    SYS_SENSE03_OUTSIDE_TEMP = 10
+    SYS_SENSE04_INTERNAL_TEMP = 11  # Bit 11 is set
+
+
+class SmartboxAlarmFlags(Enum):
+    """Enum type for the Smartbox alarm/warning flags."""
+
+    NONE = -1
+    SYS_48V_V = 0
+    SYS_PSU_V = 1
+    SYS_PSU_TEMP = 2
+    SYS_PCB_TEMP = 3
+    SYS_AMB_TEMP = 4
+    SYS_SENSE01_FEM_CASE1_TEMP = 5
+    SYS_SENSE02_FEM_CASE2_TEMP = 6
+    SYS_SENSE03_FEM_HEATSINK_TEMP1 = 7
+    SYS_SENSE04_FEM_HEATSINK_TEMP2 = 8
+
+
 class PasdConversionUtility:
     """Conversion utility to provide scaling functions for PaSD registers."""
 
@@ -132,11 +165,12 @@ class PasdConversionUtility:
     # ##########################################################################
 
     @classmethod
-    def default_conversion(cls, values: list[Any]) -> list[Any]:
+    def default_conversion(cls, values: list[Any], inverse: bool = False) -> list[Any]:
         """
         Return the supplied raw value(s) with no conversion.
 
         :param values: raw value(s)
+        :param inverse: whether to invert the conversion
         :return: the value(s) unchanged
         """
         return values
@@ -163,7 +197,7 @@ class PasdConversionUtility:
         return [value / 100.0 for value in value_list]
 
     @classmethod
-    def scale_temps(
+    def scale_signed_16bit(
         cls, value_list: list[int | float], inverse: bool = False
     ) -> list[int | float]:
         """
@@ -323,4 +357,44 @@ class PasdConversionUtility:
             logger.error(f"Invalid status LED value received: {byte_list[1]}")
             status = LEDStatusMap.UNDEFINED.name
 
-        return f"service: {service}, " f"status: {status}"
+        return f"service: {service}, status: {status}"
+
+    @classmethod
+    def convert_fndh_alarm_status(cls, value_list: list[int]) -> str:
+        """
+        Convert the alarm and warning flag registers to strings.
+
+        :param value_list: raw register contents
+            (each of the 16 bits represents a potential alarm cause)
+        :return: string describing the parameters that have triggered
+            the alarm or warning.
+        """
+        raw_value = value_list[0]
+        status = FNDHAlarmFlags.NONE.name
+        for bit in range(0, 12):
+            if (raw_value >> bit) & 1:
+                if status == FNDHAlarmFlags.NONE.name:
+                    status = FNDHAlarmFlags(bit).name
+                else:
+                    status += f", {FNDHAlarmFlags(bit).name}"
+        return status
+
+    @classmethod
+    def convert_smartbox_alarm_status(cls, value_list: list[int]) -> str:
+        """
+        Convert the alarm and warning flag registers to strings.
+
+        :param value_list: raw register contents
+            (each of the 16 bits represents a potential alarm cause)
+        :return: string describing the parameters that have triggered
+            the alarm or warning.
+        """
+        raw_value = value_list[0]
+        status = SmartboxAlarmFlags.NONE.name
+        for bit in range(0, 9):
+            if (raw_value >> bit) & 1:
+                if status == SmartboxAlarmFlags.NONE.name:
+                    status = SmartboxAlarmFlags(bit).name
+                else:
+                    status += f", {SmartboxAlarmFlags(bit).name}"
+        return status

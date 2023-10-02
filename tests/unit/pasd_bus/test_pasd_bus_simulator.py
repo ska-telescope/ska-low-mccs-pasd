@@ -414,6 +414,40 @@ class TestFndhSimulator:
             setattr(fndh_simulator, sensor_name + "_thresholds", [0, 0, 0, 0])
             assert fndh_simulator.status == "ALARM"
 
+    def test_warning_and_alarm_flags(
+        self: TestFndhSimulator,
+        fndh_simulator: FndhSimulator,
+    ) -> None:
+        """
+        Test the warning and alarm flags register.
+
+        :param fndh_simulator: the FNDH simulator under test
+        """
+        assert fndh_simulator.warning_flags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_simulator.reset_warnings() is None
+        assert fndh_simulator.alarm_flags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_simulator.reset_alarms() is None
+        # Setup warnings
+        assert fndh_simulator.initialize()
+        assert fndh_simulator.status == "OK"
+        fndh_simulator.fncb_temperature = 7500
+        assert fndh_simulator.status == "WARNING"
+        assert fndh_simulator.warning_flags == "fncb_temperature"
+        fndh_simulator.psu48v_voltages = [5100, 5100]
+        assert (
+            fndh_simulator.warning_flags
+            == "fncb_temperature, psu48v_voltage_1, psu48v_voltage_2"
+        )
+        # Setup alarms
+        fndh_simulator.fncb_temperature = 9000
+        fndh_simulator.psu48v_temperatures = [6000, -600]
+        assert fndh_simulator.alarm_flags == "fncb_temperature, psu48v_temperature_2"
+        # Clear all flags
+        assert fndh_simulator.reset_warnings()
+        assert fndh_simulator.warning_flags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_simulator.reset_alarms()
+        assert fndh_simulator.alarm_flags == FndhSimulator.DEFAULT_FLAGS
+
 
 class TestSmartboxSimulator:
     """Tests of the SmartboxSimulator."""
@@ -805,3 +839,40 @@ class TestSmartboxSimulator:
         if expected_status == "OK":
             setattr(smartbox_simulator, sensor_name + "_thresholds", [0, 0, 0, 0])
             assert smartbox_simulator.status == "ALARM"
+
+    def test_warning_and_alarm_flags(
+        self: TestSmartboxSimulator,
+        smartbox_simulator: SmartboxSimulator,
+    ) -> None:
+        """
+        Test the warning and alarm flags register.
+
+        :param smartbox_simulator: the smartbox simulator under test
+        """
+        assert smartbox_simulator.warning_flags == FndhSimulator.DEFAULT_FLAGS
+        assert smartbox_simulator.reset_warnings() is None
+        assert smartbox_simulator.alarm_flags == FndhSimulator.DEFAULT_FLAGS
+        assert smartbox_simulator.reset_alarms() is None
+        # Setup warnings
+        assert smartbox_simulator.initialize()
+        assert smartbox_simulator.status == "OK"
+        smartbox_simulator.input_voltage = 4950
+        assert smartbox_simulator.status == "WARNING"
+        assert smartbox_simulator.warning_flags == "input_voltage"
+        smartbox_simulator.fem_case_temperatures = [5000, 5000]
+        assert (
+            smartbox_simulator.warning_flags
+            == "input_voltage, fem_case_temperature_1, fem_case_temperature_2"
+        )
+        # Setup alarms
+        smartbox_simulator.input_voltage = 5100
+        smartbox_simulator.fem_heatsink_temperatures = [3000, -600]
+        assert (
+            smartbox_simulator.alarm_flags
+            == "input_voltage, fem_heatsink_temperature_2"
+        )
+        # Clear all flags
+        assert smartbox_simulator.reset_warnings()
+        assert smartbox_simulator.warning_flags == FndhSimulator.DEFAULT_FLAGS
+        assert smartbox_simulator.reset_alarms()
+        assert smartbox_simulator.alarm_flags == FndhSimulator.DEFAULT_FLAGS

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Final
+from typing import Any, Dict, Final, List
 
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
@@ -21,12 +21,13 @@ from pymodbus.register_read_message import (
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
 )
-from pymodbus.register_write_message import WriteSingleRegisterResponse
+from pymodbus.register_write_message import WriteMultipleRegistersResponse
 
 from .pasd_bus_register_map import (
     PasdBusPortAttribute,
     PasdBusRegisterMap,
     PasdReadError,
+    PasdWriteError,
 )
 from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
 
@@ -128,18 +129,18 @@ class PasdBusModbusApiClient:
         self: PasdBusModbusApiClient,
         host: str,
         port: int,
-        logging_level: int = logging.INFO,
+        logger_object: logging.Logger,
     ) -> None:
         """
         Initialise a new instance.
 
         :param host: the host IP address for the PaSD
         :param port: the PaSD port
-        :param logging_level: the logging level to use
+        :param logger_object: the logger to use
         """
-        logger.setLevel(logging_level)
         self._client = ModbusTcpClient(host, port, ModbusAsciiFramer)
-        logger.info(f"****Created Modbus TCP client for address {host}, port {port}")
+        logger_object.info(f"Created Modbus TCP client for address {host}, port {port}")
+        self._logger = logger_object
 
         # Initialise a default register map
         self._register_map = PasdBusRegisterMap()
@@ -153,7 +154,7 @@ class PasdBusModbusApiClient:
         self._client.close()
 
     def _create_error_response(self, error_code: str, message: str) -> dict:
-        logger.error(f"Returning error response: {message}")
+        self._logger.error(f"Returning error response: {message}")
         return {
             "error": {
                 "code": error_code,
@@ -179,8 +180,9 @@ class PasdBusModbusApiClient:
             )  # TODO: What error code to use?
 
         if len(attributes) == 0:
-            logger.warning(
-                f"No attributes matching {request['read']} in PaSD register map"
+            self._logger.warning(
+                f"No attributes matching {request['read']} in PaSD register map for"
+                f" device {request['device_id']}"
             )
             return {"data": {"attributes": {}}}
 
@@ -193,7 +195,7 @@ class PasdBusModbusApiClient:
             + attributes[keys[-1]].count
             - attributes[keys[0]].address
         )
-        logger.debug(
+        self._logger.debug(
             f"MODBUS read request: modbus address {modbus_address}, "
             f"start address {attributes[keys[0]].address}, count {count}"
         )
@@ -262,37 +264,21 @@ class PasdBusModbusApiClient:
 
         return response
 
-    def _do_write_request(self, request: dict) -> dict:
-        modbus_address = (
-            self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
-        )
-
-        # Get a PasdBusCommand object for this command
-        command = self._register_map.get_command(
-            request["device_id"], request["execute"], request["arguments"]
-        )
-
-        if not command:
-            return self._create_error_response(
-                "request",
-                f"Invalid command request: device: {request['device_id']}, "
-                f"command: {request['execute']}, args: {request['arguments']}",
-            )  # TODO: what error code to use?
-
-        logger.debug(
+    def _write_registers(
+        self, modbus_address: int, start_address: int, values: int | List[int]
+    ) -> dict:
+        self._logger.debug(
             f"MODBUS write request: modbus address {modbus_address}, "
-            f"register address {command.address}, value {command.value}"
+            f"register address {start_address}, values {values}"
         )
 
-        reply = self._client.write_register(
-            command.address, command.value, modbus_address
-        )
+        reply = self._client.write_registers(start_address, values, modbus_address)
 
         match reply:
-            case WriteSingleRegisterResponse():
+            case WriteMultipleRegistersResponse():
                 # A normal echo response has been received
                 response = {
-                    "source": request["device_id"],
+                    "source": modbus_address,
                     "data": {"type": "command_result", "result": True},
                 }
             case ModbusIOException():
@@ -308,6 +294,44 @@ class PasdBusModbusApiClient:
                 )  # TODO: what error code to use?
 
         return response
+
+    def _do_write_request(self, request: dict) -> dict:
+        modbus_address = (
+            self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
+        )
+
+        # Get a PasdBusAttribute object for this request
+        try:
+            attribute = self._register_map.get_writeable_attribute(
+                request["device_id"], request["write"], list(request["values"])
+            )
+        except PasdWriteError as e:
+            return self._create_error_response(
+                "request", f"Exception: {e}"
+            )  # TODO: What error code to use?
+
+        return self._write_registers(modbus_address, attribute.address, attribute.value)
+
+    def _do_command_request(self, request: dict) -> dict:
+        modbus_address = (
+            self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
+        )
+
+        # Get a PasdBusCommand object for this command
+        command = self._register_map.get_command(
+            request["device_id"], request["execute"], request["arguments"]
+        )
+
+        if not command:
+            return self._create_error_response(
+                "request",
+                (
+                    f"Invalid command request: device: {request['device_id']}, "
+                    f"command: {request['execute']}, args: {request['arguments']}"
+                ),
+            )  # TODO: what error code to use?
+
+        return self._write_registers(modbus_address, command.address, command.value)
 
     def read_attributes(self, device_id: int, *names: str) -> dict[str, Any]:
         """
@@ -326,6 +350,26 @@ class PasdBusModbusApiClient:
             return response["data"]["attributes"]
         return response
 
+    def write_attribute(
+        self, device_id: int, name: str, *values: Any
+    ) -> dict[str, Any]:
+        """
+        Write a new attribute value.
+
+        :param device_id: id of the device to write to.
+        :param: name: attribute name to write.
+        :param: values: new value(s).
+
+        :return: dictionary mapping attribute name to new value.
+        :raises: ModbusIOException if the h/w failed to respond.
+        """
+        response = self._do_write_request(
+            {"device_id": device_id, "write": name, "values": values}
+        )
+        if "data" in response and response["data"]["result"] is True:
+            response = {name: values}
+        return response
+
     def execute_command(self, device_id: int, name: str, *args: Any) -> dict[str, Any]:
         """
         Execute a command and return the results.
@@ -336,7 +380,7 @@ class PasdBusModbusApiClient:
 
         :return: the results of the command execution.
         """
-        response = self._do_write_request(
+        response = self._do_command_request(
             {"device_id": device_id, "execute": name, "arguments": args}
         )
         if "data" in response:

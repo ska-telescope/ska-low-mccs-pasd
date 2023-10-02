@@ -44,6 +44,15 @@ from typing import Callable, Dict, Final, Optional, Sequence
 
 import yaml
 
+# from .pasd_bus_conversions import (
+#     FNDHAlarmFlags,
+#     FndhStatusMap,
+#     LEDServiceMap,
+#     LEDStatusMap,
+#     SmartboxAlarmFlags,
+#     SmartBoxStatusMap,
+# )
+
 logger = logging.getLogger()
 
 
@@ -385,9 +394,11 @@ class PasdHardwareSimulator:
     which can be switched on and off, locally forced, etc.
     """
 
-    DEFAULT_LED_PATTERN: Final = "OFF"
-    DEFAULT_STATUS: Final = "UNINITIALISED"
+    # TODO: Change to enum int values when Modbus server is used
+    DEFAULT_LED_PATTERN: Final = "OFF"  # LEDStatusMap.OFF
+    DEFAULT_STATUS: Final = "UNINITIALISED"  # FndhStatusMap.UNINITIALISED
     DEFAULT_UPTIME: Final = 0
+    DEFAULT_FLAGS: Final = "NONE"  # FNDHAlarmFlags.NONE
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
     def __init__(
@@ -402,8 +413,10 @@ class PasdHardwareSimulator:
         self._ports = ports
         self._boot_on_time: datetime | None = datetime.now()
         self._sensors_status: dict = {}
+        self._warning_flags = self.DEFAULT_FLAGS
+        self._alarm_flags = self.DEFAULT_FLAGS
         self._status = self.DEFAULT_STATUS
-        self._led_pattern = str(self.DEFAULT_LED_PATTERN)
+        self._led_pattern = self.DEFAULT_LED_PATTERN
 
     def _load_thresholds(
         self: PasdHardwareSimulator, file_path: str, device: str
@@ -459,27 +472,58 @@ class PasdHardwareSimulator:
             high_warning = thresholds[1]
             low_warning = thresholds[2]
             low_alarm = thresholds[3]
-            value_list = getattr(self, sensor_name)
-            if value_list is None:
-                return
-            if not isinstance(value_list, list):
-                value_list = [value_list]
-            for i, value in enumerate(value_list, 1):
-                if value >= high_alarm:
-                    self._sensors_status[sensor_name + str(i)] = "ALARM"
-                elif value <= low_alarm:
-                    self._sensors_status[sensor_name + str(i)] = "ALARM"
-                elif value >= high_warning:
-                    self._sensors_status[sensor_name + str(i)] = "WARNING"
-                elif value <= low_warning:
-                    self._sensors_status[sensor_name + str(i)] = "WARNING"
-                else:
-                    self._sensors_status[sensor_name + str(i)] = "OK"
         except TypeError:
             logger.error(
                 f"PaSD bus simulator: {sensor_name} has no thresholds defined!"
             )
             return
+        sensor_value = getattr(self, sensor_name)
+        # Return if default value has not been set yet in instance's __init__()
+        if sensor_value is None:
+            return
+
+        def _check_thresholds_and_set_status(sensor: str, value: int) -> None:
+            if value >= high_alarm or value <= low_alarm:
+                self._set_sensor_alarm(sensor)
+            elif value >= high_warning or value <= low_warning:
+                self._set_sensor_warning(sensor)
+            else:
+                self._sensors_status[sensor] = "OK"
+
+        # Check single sensor value or
+        if not isinstance(sensor_value, list):
+            _check_thresholds_and_set_status(sensor_name, sensor_value)
+            return
+        # loop through multiple sensor values
+        for i, value in enumerate(sensor_value, 1):
+            numbered_name = sensor_name[:-1] + "_" + str(i)
+            _check_thresholds_and_set_status(numbered_name, value)
+
+    def _set_sensor_alarm(self: PasdHardwareSimulator, sensor_name: str) -> None:
+        """
+        Set alarm flag and status of sensor.
+
+        :param sensor_name: to use as the dict key and flag description.
+        """
+        self._sensors_status[sensor_name] = "ALARM"
+        # TODO: Change this to a bits representation for Modbus server
+        if self._alarm_flags == self.DEFAULT_FLAGS:
+            self._alarm_flags = sensor_name
+        else:
+            self._alarm_flags += f", {sensor_name}"
+
+    def _set_sensor_warning(self: PasdHardwareSimulator, sensor_name: str) -> None:
+        """
+        Set warning flag and status of sensor.
+
+        :param sensor_name: to use as the dict key and flag description.
+        """
+        self._sensors_status[sensor_name] = "WARNING"
+        # TODO: Change this to a bits representation for Modbus server
+        if self._warning_flags == self.DEFAULT_FLAGS:
+            self._warning_flags = sensor_name
+        else:
+            self._warning_flags += f", {sensor_name}"
 
     def _update_system_status(
         self: PasdHardwareSimulator, request_ok: bool = False
@@ -535,6 +579,46 @@ class PasdHardwareSimulator:
             raise ValueError("Configuration must match the number of ports.")
         for port, is_connected in zip(self._ports, ports_connected):
             port.connected = is_connected
+
+    @property
+    def warning_flags(self: PasdHardwareSimulator) -> str | None:
+        """
+        Return the sensor warning flags.
+
+        :return: the sensor warning flags.
+        """
+        return self._warning_flags
+
+    def reset_warnings(self: PasdHardwareSimulator) -> bool | None:
+        """
+        Reset the sensor warning flags.
+
+        :return: whether successful, or None if there was nothing to do.
+        """
+        if self._warning_flags != self.DEFAULT_FLAGS:
+            self._warning_flags = self.DEFAULT_FLAGS
+            return True
+        return None
+
+    @property
+    def alarm_flags(self: PasdHardwareSimulator) -> str | None:
+        """
+        Return the sensor alarm flags.
+
+        :return: the sensor alarm flags.
+        """
+        return self._alarm_flags
+
+    def reset_alarms(self: PasdHardwareSimulator) -> bool | None:
+        """
+        Reset the sensor alarm flags.
+
+        :return: whether successful, or None if there was nothing to do.
+        """
+        if self._alarm_flags != self.DEFAULT_FLAGS:
+            self._alarm_flags = self.DEFAULT_FLAGS
+            return True
+        return None
 
     @property
     def ports_connected(self: PasdHardwareSimulator) -> list[bool]:
@@ -786,13 +870,15 @@ class FndhSimulator(PasdHardwareSimulator):
 
     NUMBER_OF_PORTS: Final = 28
 
-    CPU_ID: Final = "22"
-    CHIP_ID: Final = "23"
-    MODBUS_REGISTER_MAP_REVISION: Final = 20
+    MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
+    # TODO: Change to list of integer values when Modbus server is used
+    CPU_ID: Final = "22"  # [1,2]
+    CHIP_ID: Final = "12345678"  # [1,2,3,4,5,6,7,8]
     SYS_ADDRESS: Final = 101
 
-    DEFAULT_FIRMWARE_VERSION: Final = "1.2.3-fake"
+    # TODO: Change to integer when Modbus server is used
+    DEFAULT_FIRMWARE_VERSION: Final = "257"
     DEFAULT_PSU48V_VOLTAGES: Final = [4790, 4810]
     DEFAULT_PSU48V_CURRENT: Final = 1510
     DEFAULT_PSU48V_TEMPERATURES: Final = [4120, 4290]
@@ -864,6 +950,11 @@ class FndhSimulator(PasdHardwareSimulator):
         self.power_module_temperature = self.DEFAULT_POWER_MODULE_TEMPERATURE
         self.outside_temperature = self.DEFAULT_OUTSIDE_TEMPERATURE
         self.internal_ambient_temperature = self.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+        # Aliases for some thresholds, which are separate sets in HW
+        self.psu48v_voltage_1_thresholds = self.psu48v_voltages_thresholds
+        self.psu48v_voltage_2_thresholds = self.psu48v_voltages_thresholds
+        self.psu48v_temperature_1_thresholds = self.psu48v_temperatures_thresholds
+        self.psu48v_temperature_2_thresholds = self.psu48v_temperatures_thresholds
 
     @property
     def sys_address(self: FndhSimulator) -> int:
@@ -927,13 +1018,15 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
     NUMBER_OF_PORTS: Final = 12
 
-    MODBUS_REGISTER_MAP_REVISION: Final = 20
+    MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
+    # TODO: Change to list of integer values when Modbus server is used
     CPU_ID: Final = "24"
-    CHIP_ID: Final = "25"
+    CHIP_ID: Final = "87654321"
 
     DEFAULT_SYS_ADDRESS: Final = 1
-    DEFAULT_FIRMWARE_VERSION = "0.1.2-fake"
+    # TODO: Change to integer when Modbus server is used
+    DEFAULT_FIRMWARE_VERSION: Final = "258"
     # Address
     DEFAULT_INPUT_VOLTAGE: Final = 4800
     DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE: Final = 480
@@ -943,6 +1036,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_FEM_CASE_TEMPERATURES: Final = [4440, 4460]
     DEFAULT_FEM_HEATSINK_TEMPERATURES: Final = [4280, 4250]
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
+    DEFAULT_PORT_CURRENT_THRESHOLD: Final = 496
 
     # Instantiate sensor data descriptors
     input_voltage = _Sensor()
@@ -967,14 +1061,18 @@ class SmartboxSimulator(PasdHardwareSimulator):
     """Public attribute as _Sensor() data descriptor: *int*"""
     fem_heatsink_temperatures_thresholds = _Sensor()
 
-    def __init__(self: SmartboxSimulator) -> None:
-        """Initialise a new instance."""
+    def __init__(self: SmartboxSimulator, address: int = DEFAULT_SYS_ADDRESS) -> None:
+        """
+        Initialise a new instance.
+
+        :param address: to set as default system address.
+        """
         ports: Sequence[_SmartboxPortSimulator] = [
             _SmartboxPortSimulator(port_index + 1)
             for port_index in range(self.NUMBER_OF_PORTS)
         ]
         super().__init__(ports)
-        self._sys_address = self.DEFAULT_SYS_ADDRESS
+        self._sys_address = address
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
         self.input_voltage = self.DEFAULT_INPUT_VOLTAGE
@@ -984,6 +1082,28 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self.fem_ambient_temperature = self.DEFAULT_FEM_AMBIENT_TEMPERATURE
         self.fem_case_temperatures = self.DEFAULT_FEM_CASE_TEMPERATURES
         self.fem_heatsink_temperatures = self.DEFAULT_FEM_HEATSINK_TEMPERATURES
+        # Aliases for some thresholds, which are separate sets in HW
+        self.fem_case_temperature_1_thresholds = self.fem_case_temperatures_thresholds
+        self.fem_case_temperature_2_thresholds = self.fem_case_temperatures_thresholds
+        self.fem_heatsink_temperature_1_thresholds = (
+            self.fem_heatsink_temperatures_thresholds
+        )
+        self.fem_heatsink_temperature_2_thresholds = (
+            self.fem_heatsink_temperatures_thresholds
+        )
+        # TODO: Make each current trip threshold separate R/W property?
+        self.fem1_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem2_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem3_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem4_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem5_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem6_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem7_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem8_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem9_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem10_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem11_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem12_current_trip_threshold = self.ports_current_trip_threshold
 
     @property
     def sys_address(self: SmartboxSimulator) -> int:
@@ -1025,6 +1145,17 @@ class SmartboxSimulator(PasdHardwareSimulator):
             self.DEFAULT_PORT_CURRENT_DRAW if connected and powered else 0
             for connected, powered in zip(self.ports_connected, self.ports_power_sensed)
         ]
+
+    @property
+    def ports_current_trip_threshold(
+        self: SmartboxSimulator,
+    ) -> int:
+        """
+        Return the current trip threshold for each smartbox port.
+
+        :return: the current trip threshold for each smartbox port.
+        """
+        return self.DEFAULT_PORT_CURRENT_THRESHOLD
 
     @property
     def modbus_register_map_revision(self: SmartboxSimulator) -> int:
@@ -1202,7 +1333,7 @@ class PasdBusSimulator:
         """
         try:
             smartbox_id = self._smartbox_attached_ports.index(port_number) + 1
-            self._smartbox_simulators[smartbox_id] = SmartboxSimulator()
+            self._smartbox_simulators[smartbox_id] = SmartboxSimulator(smartbox_id)
             self._smartbox_simulators[smartbox_id].configure(
                 self._smartboxes_ports_connected[smartbox_id - 1]
             )

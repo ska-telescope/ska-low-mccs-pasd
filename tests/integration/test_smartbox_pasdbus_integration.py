@@ -7,6 +7,7 @@
 # See LICENSE for more info.
 """This module contains the integration tests for MccsPasdBus with MccsSmartBox."""
 
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import gc
@@ -51,11 +52,11 @@ def turn_pasd_devices_online(
     # once we have an updated value for this attribute,
     # we have an updated value for all of them.
     pasd_bus_device.subscribe_event(
-        "smartbox24portscurrentdraw",
+        "smartbox24AlarmFlags",
         tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["smartbox24portscurrentdraw"],
+        change_event_callbacks["smartbox24AlarmFlags"],
     )
-    change_event_callbacks.assert_change_event("smartbox24portscurrentdraw", None)
+    change_event_callbacks.assert_change_event("smartbox24AlarmFlags", None)
 
     pasd_bus_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.UNKNOWN)
@@ -64,8 +65,6 @@ def turn_pasd_devices_online(
     change_event_callbacks["pasd_bus_state"].assert_not_called()
     change_event_callbacks.assert_change_event("healthState", HealthState.OK)
     assert pasd_bus_device.healthState == HealthState.OK
-
-    change_event_callbacks.assert_against_call("smartbox24portscurrentdraw")
 
     # ---------------------
     # FNDH adminMode online
@@ -208,8 +207,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["pasd_bus_state"].assert_not_called()
         assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
         assert pasd_bus_device.InitializeSmartbox(smartbox_number)[0] == ResultCode.OK
-
-        # change_event_callbacks.assert_against_call("smartbox24portscurrentdraw")
 
         # ---------------------
         # FNDH adminMode online
@@ -422,8 +419,10 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
 
     @pytest.mark.xfail(
-        reason="Cannot unsubscribe from proxy so event received,"
-        "even though communication is not established"
+        reason=(
+            "Cannot unsubscribe from proxy so event received,"
+            "even though communication is not established"
+        )
     )
     def test_power_state_transitions(
         self: TestSmartBoxPasdBusIntegration,
@@ -783,6 +782,35 @@ class TestSmartBoxPasdBusIntegration:
             "FemAmbientTemperature",
             "FemCaseTemperatures",
             "FemHeatsinkTemperatures",
+            "PortForcings",
+            "PortBreakersTripped",
+            "PortsDesiredPowerOnline",
+            "PortsDesiredPowerOffline",
+            "PortsPowerSensed",
+            "PortsCurrentDraw",
+            "InputVoltageThresholds",
+            "PowerSupplyOutputVoltageThresholds",
+            "PowerSupplyTemperatureThresholds",
+            "PcbTemperatureThresholds",
+            "FemAmbientTemperatureThresholds",
+            "FemCaseTemperature1Thresholds",
+            "FemCaseTemperature2Thresholds",
+            "FemHeatsinkTemperature1Thresholds",
+            "FemHeatsinkTemperature2Thresholds",
+            "Fem1CurrentTripThreshold",
+            "Fem2CurrentTripThreshold",
+            "Fem3CurrentTripThreshold",
+            "Fem4CurrentTripThreshold",
+            "Fem5CurrentTripThreshold",
+            "Fem6CurrentTripThreshold",
+            "Fem7CurrentTripThreshold",
+            "Fem8CurrentTripThreshold",
+            "Fem9CurrentTripThreshold",
+            "Fem10CurrentTripThreshold",
+            "Fem11CurrentTripThreshold",
+            "Fem12CurrentTripThreshold",
+            "WarningFlags",
+            "AlarmFlags",
         ]:
             with pytest.raises(tango.DevFailed):
                 getattr(smartbox_device, i)
@@ -832,6 +860,93 @@ class TestSmartBoxPasdBusIntegration:
             list(smartbox_device.FemHeatsinkTemperatures)
             == SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
         )
+        assert (
+            list(smartbox_device.InputVoltageThresholds)
+            == smartbox_simulator.input_voltage_thresholds
+        )
+        assert (
+            list(smartbox_device.PowerSupplyOutputVoltageThresholds)
+            == smartbox_simulator.power_supply_output_voltage_thresholds
+        )
+        assert (
+            list(smartbox_device.PowerSupplyTemperatureThresholds)
+            == smartbox_simulator.power_supply_temperature_thresholds
+        )
+        assert (
+            list(smartbox_device.PcbTemperatureThresholds)
+            == smartbox_simulator.pcb_temperature_thresholds
+        )
+        assert (
+            list(smartbox_device.FemAmbientTemperatureThresholds)
+            == smartbox_simulator.fem_ambient_temperature_thresholds
+        )
+        assert (
+            list(smartbox_device.FemCaseTemperature1Thresholds)
+            == smartbox_simulator.fem_case_temperature_1_thresholds
+        )
+        assert (
+            list(smartbox_device.FemCaseTemperature2Thresholds)
+            == smartbox_simulator.fem_case_temperature_2_thresholds
+        )
+        assert (
+            list(smartbox_device.FemHeatsinkTemperature1Thresholds)
+            == smartbox_simulator.fem_heatsink_temperature_1_thresholds
+        )
+        assert (
+            list(smartbox_device.FemHeatsinkTemperature2Thresholds)
+            == smartbox_simulator.fem_heatsink_temperature_2_thresholds
+        )
+        assert (
+            smartbox_device.Fem1CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem2CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem3CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem4CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem5CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem6CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem7CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem8CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem9CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem10CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem11CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem12CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        # TODO
+        # assert smartbox_device.WarningFlags == SmartboxSimulator.DEFAULT_FLAGS
+        # assert smartbox_device.AlarmFlags == SmartboxSimulator.DEFAULT_FLAGS
 
         # Subscribe to attribute change events
         smartbox_device.subscribe_event(
@@ -975,8 +1090,7 @@ def change_event_callbacks_fixture(smartbox_number: int) -> MockTangoEventCallba
         "healthState",
         "fndhstatus",
         "fndhportspowersensed",
-        "smartbox24portscurrentdraw",
-        "smartbox24portsconnected",
+        "smartbox24AlarmFlags",
         "smartbox1portpowersensed",
         "smartbox1inputvoltage",
         "smartbox1psuoutput",

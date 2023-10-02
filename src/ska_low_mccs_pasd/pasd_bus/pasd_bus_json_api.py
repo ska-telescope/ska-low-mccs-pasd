@@ -306,6 +306,23 @@ class PasdBusJsonApiClient:
             return response["data"]["attributes"]
         return response
 
+    # pylint: disable=unused-argument
+    def write_attribute(
+        self, device_id: int, name: str, *values: Any
+    ) -> dict[str, Any]:
+        """
+        Write a new attribute value.
+
+        :param device_id: id of the device to write to.
+        :param: name: attribute name to write.
+        :param: values: new value(s).
+
+        :return: dictionary mapping attribute name to new value.
+        """
+        # Placeholder function until tests have moved over to
+        # Modbus API
+        return {}
+
     def execute_command(self, device_id: int, name: str, *args: Any) -> dict[str, Any]:
         """
         Execute a command and return the results.

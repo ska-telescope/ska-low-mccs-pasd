@@ -50,6 +50,7 @@ def change_event_callbacks_fixture(
         f"smartbox{smartbox_id}LedPattern",
         f"smartbox{smartbox_id}PortBreakersTripped",
         f"smartbox{smartbox_id}PortsPowerSensed",
+        f"smartbox{smartbox_id}AlarmFlags",
         timeout=15.0,
         assert_no_error=False,
     )
@@ -126,6 +127,15 @@ def test_communication(  # pylint: disable=too-many-statements
         change_event_callbacks["smartbox1PortsPowerSensed"],
     )
     change_event_callbacks.assert_change_event("smartbox1PortsPowerSensed", None)
+    # TODO
+    # pasd_bus_device.subscribe_event(
+    #     f"smartbox{smartbox_id}AlarmFlags",
+    #     tango.EventType.CHANGE_EVENT,
+    #     change_event_callbacks[f"smartbox{smartbox_id}AlarmFlags"],
+    # )
+    # change_event_callbacks.assert_change_event(
+    #     f"smartbox{smartbox_id}AlarmFlags", None
+    # )
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
@@ -135,6 +145,10 @@ def test_communication(  # pylint: disable=too-many-statements
     assert pasd_bus_device.healthState == HealthState.OK
 
     change_event_callbacks.assert_against_call("smartbox1PortsPowerSensed", lookahead=5)
+    # TODO
+    # change_event_callbacks.assert_against_call(
+    #     f"smartbox{smartbox_id}AlarmFlags", lookahead=5
+    # )
 
     assert (
         pasd_bus_device.fndhModbusRegisterMapRevisionNumber
@@ -190,7 +204,57 @@ def test_communication(  # pylint: disable=too-many-statements
     assert (
         list(pasd_bus_device.fndhPortsPowerSensed) == fndh_simulator.ports_power_sensed
     )
-
+    assert (
+        list(pasd_bus_device.fndhPsu48vVoltage1Thresholds)
+        == fndh_simulator.psu48v_voltage_1_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhPsu48vVoltage2Thresholds)
+        == fndh_simulator.psu48v_voltage_2_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhPsu48vCurrentThresholds)
+        == fndh_simulator.psu48v_current_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhPsu48vTemperature1Thresholds)
+        == fndh_simulator.psu48v_temperature_1_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhPsu48vTemperature2Thresholds)
+        == fndh_simulator.psu48v_temperature_2_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhPanelTemperatureThresholds)
+        == fndh_simulator.panel_temperature_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhFncbTemperatureThresholds)
+        == fndh_simulator.fncb_temperature_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhHumidityThresholds)
+        == fndh_simulator.fncb_humidity_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhCommsGatewayTemperatureThresholds)
+        == fndh_simulator.comms_gateway_temperature_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhPowerModuleTemperatureThresholds)
+        == fndh_simulator.power_module_temperature_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhOutsideTemperatureThresholds)
+        == fndh_simulator.outside_temperature_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhInternalAmbientTemperatureThresholds)
+        == fndh_simulator.internal_ambient_temperature_thresholds
+    )
+    # TODO
+    # assert pasd_bus_device.fndhWarningFlags == FndhSimulator.DEFAULT_FLAGS
+    # assert pasd_bus_device.fndhAlarmFlags == FndhSimulator.DEFAULT_FLAGS
     assert (
         getattr(
             pasd_bus_device,
@@ -288,6 +352,134 @@ def test_communication(  # pylint: disable=too-many-statements
         list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsCurrentDraw"))
         == smartbox_simulator.ports_current_draw
     )
+    assert (
+        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltageThresholds"))
+        == smartbox_simulator.input_voltage_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}PowerSupplyOutputVoltageThresholds",
+            )
+        )
+        == smartbox_simulator.power_supply_output_voltage_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}PowerSupplyTemperatureThresholds",
+            )
+        )
+        == smartbox_simulator.power_supply_temperature_thresholds
+    )
+    assert (
+        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PcbTemperatureThresholds"))
+        == smartbox_simulator.pcb_temperature_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}FemAmbientTemperatureThresholds",
+            )
+        )
+        == smartbox_simulator.fem_ambient_temperature_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}FemCaseTemperature1Thresholds",
+            )
+        )
+        == smartbox_simulator.fem_case_temperature_1_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}FemCaseTemperature2Thresholds",
+            )
+        )
+        == smartbox_simulator.fem_case_temperature_2_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}FemHeatsinkTemperature1Thresholds",
+            )
+        )
+        == smartbox_simulator.fem_heatsink_temperature_1_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}FemHeatsinkTemperature2Thresholds",
+            )
+        )
+        == smartbox_simulator.fem_heatsink_temperature_2_thresholds
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem1CurrentTripThreshold")
+        == smartbox_simulator.fem1_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem2CurrentTripThreshold")
+        == smartbox_simulator.fem2_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem3CurrentTripThreshold")
+        == smartbox_simulator.fem3_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem4CurrentTripThreshold")
+        == smartbox_simulator.fem4_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem5CurrentTripThreshold")
+        == smartbox_simulator.fem5_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem6CurrentTripThreshold")
+        == smartbox_simulator.fem6_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem7CurrentTripThreshold")
+        == smartbox_simulator.fem7_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem8CurrentTripThreshold")
+        == smartbox_simulator.fem8_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem9CurrentTripThreshold")
+        == smartbox_simulator.fem9_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem10CurrentTripThreshold")
+        == smartbox_simulator.fem10_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem11CurrentTripThreshold")
+        == smartbox_simulator.fem11_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem12CurrentTripThreshold")
+        == smartbox_simulator.fem12_current_trip_threshold
+    )
+    # TODO
+    # assert (
+    #     getattr(pasd_bus_device, f"smartbox{smartbox_id}WarningFlags")
+    #     == SmartboxSimulator.DEFAULT_FLAGS
+    # )
+    # assert (
+    #     getattr(pasd_bus_device, f"smartbox{smartbox_id}AlarmFlags")
+    #     == SmartboxSimulator.DEFAULT_FLAGS
+    # )
 
 
 def test_set_fndh_port_powers(
