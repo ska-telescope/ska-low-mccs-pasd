@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import Final, Iterator
+from typing import Any, Iterator
 
 import pytest
 from ska_control_model import CommunicationStatus, PowerState
@@ -24,17 +24,29 @@ from ska_low_mccs_pasd.pasd_bus import (
 )
 from tests.harness import PasdTangoTestHarness
 
-# Calls must match the yields in read_request_iterator() of PasdBusRequestProvider
-CALLS_ONCE_FNDH: Final = 2
-CALLS_CONT_FNDH: Final = 4
-CALLS_ONCE_SMARTBOX: Final = 3
-CALLS_CONT_SMARTBOX: Final = 4
-NUMBER_OF_SMARTBOXES: Final = 24
-TOTAL_CALLS: Final = (
-    CALLS_ONCE_FNDH
-    + CALLS_CONT_FNDH
-    + (CALLS_ONCE_SMARTBOX + CALLS_CONT_SMARTBOX) * NUMBER_OF_SMARTBOXES
-)
+
+@pytest.fixture(name="mock_callbacks")
+def mock_callbacks_fixture() -> MockCallableGroup:
+    """
+    Return a group of callables with asynchrony support.
+
+    These can be used in tests as callbacks. When the production code
+    expects to be passed a callback, we pass it a member of this group,
+    and we can then assert on the order and timing of calls.
+
+    :return: a group of callables ith asynchrony support.
+    """
+    smartbox_callback_names = [
+        f"pasd_device_state_for_smartbox{i}" for i in range(1, 25)
+    ]
+
+    return MockCallableGroup(
+        "communication_state",
+        "component_state",
+        "pasd_device_state_for_fndh",
+        *smartbox_callback_names,
+        timeout=10.0,
+    )
 
 
 @pytest.fixture(name="pasd_bus_component_manager")
@@ -59,6 +71,11 @@ def pasd_bus_component_manager_fixture(
 
     :yields: a PaSD bus component manager, running against a simulator.
     """
+
+    def _pasd_device_state_splitter(device_id: int, **kwargs: Any) -> None:
+        device_name = "fndh" if device_id == 0 else f"smartbox{device_id}"
+        mock_callbacks[f"pasd_device_state_for_{device_name}"](**kwargs)
+
     harness = PasdTangoTestHarness()
     harness.set_pasd_bus_simulator(mock_fndh_simulator, mock_smartbox_simulators)
     with harness as context:
@@ -71,7 +88,7 @@ def pasd_bus_component_manager_fixture(
             logger,
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
-            mock_callbacks["pasd_device_state"],
+            _pasd_device_state_splitter,
         )
         yield component_manager
 
@@ -106,7 +123,8 @@ class TestPasdBusComponentManager:
             manager under test.
         :param fndh_simulator: the FNDH simulator under test.
         :param smartbox_simulator: the smartbox simulator under test.
-        :param mock_callbacks: dictionary of driver callbacks.
+        :param mock_callbacks: a group of mock callables for the component
+            manager under test to use as callbacks
         """
         mock_callbacks.assert_not_called()
 
@@ -123,8 +141,7 @@ class TestPasdBusComponentManager:
         pasd_bus_component_manager.initialize_fndh()
         # First we'll receive basic static info about the FNDH and smartboxes
         mock_callbacks.assert_call(
-            "pasd_device_state",
-            0,  # FNDH
+            "pasd_device_state_for_fndh",
             modbus_register_map_revision=FndhSimulator.MODBUS_REGISTER_MAP_REVISION,
             pcb_revision=FndhSimulator.PCB_REVISION,
             cpu_id=FndhSimulator.CPU_ID,
@@ -134,8 +151,7 @@ class TestPasdBusComponentManager:
         for smartbox_number in range(1, 25):
             pasd_bus_component_manager.initialize_smartbox(smartbox_number)
             mock_callbacks.assert_call(
-                "pasd_device_state",
-                smartbox_number,
+                f"pasd_device_state_for_smartbox{smartbox_number}",
                 modbus_register_map_revision=(
                     SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
                 ),
@@ -146,8 +162,7 @@ class TestPasdBusComponentManager:
             )
         # and then the FNDH sensor thresholds
         mock_callbacks.assert_call(
-            "pasd_device_state",
-            0,  # FNDH
+            "pasd_device_state_for_fndh",
             psu48v_voltage_1_thresholds=fndh_simulator.psu48v_voltage_1_thresholds,
             psu48v_voltage_2_thresholds=fndh_simulator.psu48v_voltage_2_thresholds,
             psu48v_current_thresholds=fndh_simulator.psu48v_current_thresholds,
@@ -178,8 +193,7 @@ class TestPasdBusComponentManager:
         for smartbox_number in range(1, 25):
             # smartbox sensor thresholds
             mock_callbacks.assert_call(
-                "pasd_device_state",
-                smartbox_number,
+                f"pasd_device_state_for_smartbox{smartbox_number}",
                 input_voltage_thresholds=smartbox_simulator.input_voltage_thresholds,
                 power_supply_output_voltage_thresholds=(
                     smartbox_simulator.power_supply_output_voltage_thresholds
@@ -208,8 +222,7 @@ class TestPasdBusComponentManager:
             )
             # smartbox ports current trip thresholds
             mock_callbacks.assert_call(
-                "pasd_device_state",
-                smartbox_number,
+                f"pasd_device_state_for_smartbox{smartbox_number}",
                 fem1_current_trip_threshold=(
                     smartbox_simulator.fem1_current_trip_threshold
                 ),
@@ -250,8 +263,7 @@ class TestPasdBusComponentManager:
 
         # Then FNDH status info
         mock_callbacks.assert_call(
-            "pasd_device_state",
-            0,  # FNDH
+            "pasd_device_state_for_fndh",
             uptime=Anything,
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="OK",
@@ -276,8 +288,7 @@ class TestPasdBusComponentManager:
 
         # Then FNDH port info
         mock_callbacks.assert_call(
-            "pasd_device_state",
-            0,  # FNDH
+            "pasd_device_state_for_fndh",
             port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
             ports_desired_power_when_online=expected_fndh_ports_powered,
             ports_desired_power_when_offline=expected_fndh_ports_powered,
@@ -299,8 +310,7 @@ class TestPasdBusComponentManager:
         for smartbox_number in range(1, 25):
             # Then the smartbox status info
             mock_callbacks.assert_call(
-                "pasd_device_state",
-                smartbox_number,
+                f"pasd_device_state_for_smartbox{smartbox_number}",
                 uptime=Anything,
                 sys_address=smartbox_number,
                 status="OK",
@@ -323,8 +333,7 @@ class TestPasdBusComponentManager:
             )
             # and smartbox port info
             mock_callbacks.assert_call(
-                "pasd_device_state",
-                smartbox_number,
+                f"pasd_device_state_for_smartbox{smartbox_number}",
                 port_forcings=["NONE"] * SmartboxSimulator.NUMBER_OF_PORTS,
                 port_breakers_tripped=[False] * SmartboxSimulator.NUMBER_OF_PORTS,
                 ports_desired_power_when_online=[False]
@@ -369,7 +378,8 @@ class TestPasdBusComponentManager:
         :param fndh_simulator: the FNDH simulator under test
         :param pasd_bus_component_manager: the PaSD bus component
             manager under test.
-        :param mock_callbacks: dictionary of driver callbacks.
+        :param mock_callbacks: a group of mock callables for the component
+            manager under test to use as callbacks
         """
         mock_callbacks.assert_not_called()
         pasd_bus_component_manager.start_communicating()
@@ -381,11 +391,12 @@ class TestPasdBusComponentManager:
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
 
-        # Multiple calls per device (1 FNDH and 24 smartboxes).
-        # These are fully unpacked in the above test.
-        # There's no need for us to unpack them again
-        for _ in range(TOTAL_CALLS):
-            mock_callbacks.assert_against_call("pasd_device_state")
+        # FNDH reads comprise two initial reads, then a cycle of four.
+        # Let's wait for six calls before proceeding.
+        # These are fully unpacked in test_attribute_updates,
+        # so there's no need for us to unpack them again
+        for _ in range(6):
+            mock_callbacks["pasd_device_state_for_fndh"].assert_against_call()
 
         pasd_bus_component_manager.initialize_fndh()
 
@@ -431,15 +442,12 @@ class TestPasdBusComponentManager:
                 desired_port_powers, desired_stay_on_when_offline
             )
 
-            mock_callbacks.assert_call(
-                "pasd_device_state",
-                0,  # FNDH
+            mock_callbacks["pasd_device_state_for_fndh"].assert_call(
                 port_forcings=port_forcings,
                 ports_desired_power_when_online=expected_desired_power_when_online,
                 ports_desired_power_when_offline=expected_desired_power_when_offline,
                 ports_power_sensed=expected_ports_power_sensed,
-                lookahead=CALLS_ONCE_FNDH + CALLS_ONCE_SMARTBOX * NUMBER_OF_SMARTBOXES,
-                consume_nonmatches=True,
+                lookahead=5,  # Full cycle plus one to cover off on race conditions
             )
 
     def test_smartbox_port_power_commands(  # pylint: disable=too-many-locals
@@ -456,7 +464,8 @@ class TestPasdBusComponentManager:
         :param smartbox_id: id of the smartbox being addressed.
         :param pasd_bus_component_manager: the PaSD bus component
             manager under test.
-        :param mock_callbacks: dictionary of driver callbacks.
+        :param mock_callbacks: a group of mock callables for the component
+            manager under test to use as callbacks
         """
         mock_callbacks.assert_not_called()
         pasd_bus_component_manager.start_communicating()
@@ -468,11 +477,14 @@ class TestPasdBusComponentManager:
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
 
-        # Multiple calls per device (1 FNDH and 24 smartboxes).
-        # These are fully unpacked in the above test.
-        # There's no need for us to unpack them again
-        for _ in range(TOTAL_CALLS):
-            mock_callbacks.assert_against_call("pasd_device_state")
+        # Smartbox reads comprise three initial reads, then a cycle of four.
+        # Let's wait for seven calls before proceeding.
+        # These are fully unpacked in test_attribute_updates,
+        # so there's no need for us to unpack them again
+        for _ in range(7):
+            mock_callbacks[
+                f"pasd_device_state_for_smartbox{smartbox_id}"
+            ].assert_against_call()
 
         pasd_bus_component_manager.initialize_smartbox(smartbox_id)
 
@@ -524,17 +536,14 @@ class TestPasdBusComponentManager:
                 smartbox_id, desired_port_powers, desired_stay_on_when_offline
             )
 
-            mock_callbacks.assert_call(
-                "pasd_device_state",
-                smartbox_id,
+            mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_id}"].assert_call(
                 port_forcings=port_forcings,
                 port_breakers_tripped=port_breakers_tripped,
                 ports_desired_power_when_online=expected_desired_power_when_online,
                 ports_desired_power_when_offline=expected_desired_power_when_offline,
                 ports_power_sensed=expected_desired_power_when_online,
                 ports_current_draw=expected_ports_current_draw,
-                lookahead=CALLS_ONCE_FNDH + CALLS_ONCE_SMARTBOX * NUMBER_OF_SMARTBOXES,
-                consume_nonmatches=True,
+                lookahead=5,  # Full cycle plus one to cover off on race conditions
             )
 
     def test_led_pattern(
@@ -547,7 +556,8 @@ class TestPasdBusComponentManager:
 
         :param pasd_bus_component_manager: the PaSD bus component
             manager under test.
-        :param mock_callbacks: dictionary of driver callbacks.
+        :param mock_callbacks: a group of mock callables for the component
+            manager under test to use as callbacks
         """
         mock_callbacks.assert_not_called()
         pasd_bus_component_manager.start_communicating()
@@ -559,17 +569,16 @@ class TestPasdBusComponentManager:
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
 
-        # Multiple calls per device (1 FNDH and 24 smartboxes).
-        # These are fully unpacked in the above test.
-        # There's no need for us to unpack them again
-        for _ in range(TOTAL_CALLS):
-            mock_callbacks.assert_against_call("pasd_device_state")
+        # FNDH reads comprise two initial reads, then a cycle of four.
+        # Let's wait for six calls before proceeding.
+        # These are fully unpacked in test_attribute_updates,
+        # so there's no need for us to unpack them again
+        for _ in range(6):
+            mock_callbacks["pasd_device_state_for_fndh"].assert_against_call()
 
         pasd_bus_component_manager.set_fndh_led_pattern("SERVICE")
 
-        mock_callbacks.assert_call(
-            "pasd_device_state",
-            0,  # FNDH
+        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
             uptime=Anything,
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="OK",
@@ -586,15 +595,23 @@ class TestPasdBusComponentManager:
             internal_ambient_temperature=(
                 FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
             ),
-            lookahead=CALLS_ONCE_FNDH + CALLS_ONCE_SMARTBOX * NUMBER_OF_SMARTBOXES,
+            lookahead=5,  # Full cycle plus one to cover off on race conditions
         )
 
-        pasd_bus_component_manager.set_smartbox_led_pattern(4, "SERVICE")
-
         smartbox_number = 4
-        mock_callbacks.assert_call(
-            "pasd_device_state",
-            smartbox_number,
+
+        # Smartbox reads comprise three initial reads, then a cycle of four.
+        # Let's wait for seven calls before proceeding.
+        # These are fully unpacked in test_attribute_updates,
+        # so there's no need for us to unpack them again
+        for _ in range(7):
+            mock_callbacks[
+                f"pasd_device_state_for_smartbox{smartbox_number}"
+            ].assert_against_call()
+
+        pasd_bus_component_manager.set_smartbox_led_pattern(smartbox_number, "SERVICE")
+
+        mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_number}"].assert_call(
             uptime=Anything,
             sys_address=smartbox_number,
             status=SmartboxSimulator.DEFAULT_STATUS,
@@ -610,5 +627,5 @@ class TestPasdBusComponentManager:
             fem_heatsink_temperatures=(
                 SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
             ),
-            lookahead=CALLS_CONT_SMARTBOX * smartbox_number,
+            lookahead=5,  # Full cycle plus one to cover off on race conditions
         )
