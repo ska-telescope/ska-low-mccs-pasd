@@ -25,6 +25,10 @@
                 "[python]": {
                     "editor.defaultFormatter": "ms-python.black-formatter"
                 },
+                "isort.args": [
+                    "--profile",
+                    "black"
+                ],
                 "coverage-gutters.manualCoverageFilePaths": [
                     "/workspaces/ska-low-mccs-pasd/build/reports/code-coverage.xml"
                 ],

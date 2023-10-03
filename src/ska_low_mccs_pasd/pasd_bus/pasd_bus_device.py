@@ -6,7 +6,6 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module implements the MCCS PaSD bus device."""
-# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -27,6 +26,7 @@ from ska_control_model import (
 )
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidator
+from tango.device_attribute import ExtractAs
 from tango.server import attribute, command
 
 from .pasd_bus_component_manager import PasdBusComponentManager
@@ -41,6 +41,7 @@ NUMBER_OF_SMARTBOX_PORTS = 12
 DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 
 
+# pylint: disable=too-many-lines
 class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     """An implementation of a PaSD bus Tango device for MCCS."""
 
@@ -72,6 +73,26 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             "ports_desired_power_when_online": "fndhPortsDesiredPowerOnline",
             "ports_desired_power_when_offline": "fndhPortsDesiredPowerOffline",
             "ports_power_sensed": "fndhPortsPowerSensed",
+            "psu48v_voltage_1_thresholds": "fndhPsu48vVoltage1Thresholds",
+            "psu48v_voltage_2_thresholds": "fndhPsu48vVoltage2Thresholds",
+            "psu48v_current_thresholds": "fndhPsu48vCurrentThresholds",
+            "psu48v_temperature_1_thresholds": "fndhPsu48vTemperature1Thresholds",
+            "psu48v_temperature_2_thresholds": "fndhPsu48vTemperature2Thresholds",
+            "panel_temperature_thresholds": "fndhPanelTemperatureThresholds",
+            "fncb_temperature_thresholds": "fndhFncbTemperatureThresholds",
+            "fncb_humidity_thresholds": "fndhHumidityThresholds",
+            "comms_gateway_temperature_thresholds": (
+                "fndhCommsGatewayTemperatureThresholds"
+            ),
+            "power_module_temperature_thresholds": (
+                "fndhPowerModuleTemperatureThresholds"
+            ),
+            "outside_temperature_thresholds": "fndhOutsideTemperatureThresholds",
+            "internal_ambient_temperature_thresholds": (
+                "fndhInternalAmbientTemperatureThresholds"
+            ),
+            "warning_flags": "fndhWarningFlags",
+            "alarm_flags": "fndhAlarmFlags",
         },
         **{
             smartbox_number: {
@@ -115,6 +136,71 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 ),
                 "ports_power_sensed": f"smartbox{smartbox_number}PortsPowerSensed",
                 "ports_current_draw": f"smartbox{smartbox_number}PortsCurrentDraw",
+                "input_voltage_thresholds": (
+                    f"smartbox{smartbox_number}InputVoltageThresholds"
+                ),
+                "power_supply_output_voltage_thresholds": (
+                    f"smartbox{smartbox_number}PowerSupplyOutputVoltageThresholds"
+                ),
+                "power_supply_temperature_thresholds": (
+                    f"smartbox{smartbox_number}PowerSupplyTemperatureThresholds"
+                ),
+                "pcb_temperature_thresholds": (
+                    f"smartbox{smartbox_number}PcbTemperatureThresholds"
+                ),
+                "fem_ambient_temperature_thresholds": (
+                    f"smartbox{smartbox_number}FemAmbientTemperatureThresholds"
+                ),
+                "fem_case_temperature_1_thresholds": (
+                    f"smartbox{smartbox_number}FemCaseTemperature1Thresholds"
+                ),
+                "fem_case_temperature_2_thresholds": (
+                    f"smartbox{smartbox_number}FemCaseTemperature2Thresholds"
+                ),
+                "fem_heatsink_temperature_1_thresholds": (
+                    f"smartbox{smartbox_number}FemHeatsinkTemperature1Thresholds"
+                ),
+                "fem_heatsink_temperature_2_thresholds": (
+                    f"smartbox{smartbox_number}FemHeatsinkTemperature2Thresholds"
+                ),
+                "fem1_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem1CurrentTripThreshold"
+                ),
+                "fem2_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem2CurrentTripThreshold"
+                ),
+                "fem3_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem3CurrentTripThreshold"
+                ),
+                "fem4_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem4CurrentTripThreshold"
+                ),
+                "fem5_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem5CurrentTripThreshold"
+                ),
+                "fem6_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem6CurrentTripThreshold"
+                ),
+                "fem7_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem7CurrentTripThreshold"
+                ),
+                "fem8_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem8CurrentTripThreshold"
+                ),
+                "fem9_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem9CurrentTripThreshold"
+                ),
+                "fem10_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem10CurrentTripThreshold"
+                ),
+                "fem11_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem11CurrentTripThreshold"
+                ),
+                "fem12_current_trip_threshold": (
+                    f"smartbox{smartbox_number}Fem12CurrentTripThreshold"
+                ),
+                "warning_flags": f"smartbox{smartbox_number}WarningFlags",
+                "alarm_flags": f"smartbox{smartbox_number}AlarmFlags",
             }
             for smartbox_number in range(1, 25)
         },
@@ -160,86 +246,241 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         )
 
     def _setup_fndh_attributes(self: MccsPasdBus) -> None:
-        for slug, data_type, length in [
-            ("ModbusRegisterMapRevisionNumber", int, None),
-            ("PcbRevisionNumber", int, None),
-            ("CpuId", str, None),
-            ("ChipId", str, None),
-            ("FirmwareVersion", str, None),
-            ("Uptime", int, None),
-            ("SysAddress", int, None),
-            ("Psu48vVoltages", (float,), 2),
-            ("Psu48vCurrent", float, None),
-            ("Psu48vTemperatures", (float,), 2),
-            ("PanelTemperature", float, None),
-            ("FncbTemperature", float, None),
-            ("FncbHumidity", float, None),
-            ("CommsGatewayTemperature", float, None),
-            ("PowerModuleTemperature", float, None),
-            ("OutsideTemperature", float, None),
-            ("InternalAmbientTemperature", float, None),
-            ("Status", str, None),
-            ("LedPattern", str, None),
-            ("PortForcings", (str,), NUMBER_OF_FNDH_PORTS),
-            ("PortsDesiredPowerOnline", (bool,), NUMBER_OF_FNDH_PORTS),
-            ("PortsDesiredPowerOffline", (bool,), NUMBER_OF_FNDH_PORTS),
-            ("PortsPowerSensed", (bool,), NUMBER_OF_FNDH_PORTS),
+        for slug, data_type, length, access in [
+            ("ModbusRegisterMapRevisionNumber", int, None, tango.AttrWriteType.READ),
+            ("PcbRevisionNumber", int, None, tango.AttrWriteType.READ),
+            ("CpuId", str, None, tango.AttrWriteType.READ),
+            ("ChipId", str, None, tango.AttrWriteType.READ),
+            ("FirmwareVersion", str, None, tango.AttrWriteType.READ),
+            ("Uptime", int, None, tango.AttrWriteType.READ),
+            ("SysAddress", int, None, tango.AttrWriteType.READ),
+            ("Psu48vVoltages", (float,), 2, tango.AttrWriteType.READ),
+            ("Psu48vCurrent", float, None, tango.AttrWriteType.READ),
+            ("Psu48vTemperatures", (float,), 2, tango.AttrWriteType.READ),
+            ("PanelTemperature", float, None, tango.AttrWriteType.READ),
+            ("FncbTemperature", float, None, tango.AttrWriteType.READ),
+            ("FncbHumidity", int, None, tango.AttrWriteType.READ),
+            ("CommsGatewayTemperature", float, None, tango.AttrWriteType.READ),
+            ("PowerModuleTemperature", float, None, tango.AttrWriteType.READ),
+            ("OutsideTemperature", float, None, tango.AttrWriteType.READ),
+            ("InternalAmbientTemperature", float, None, tango.AttrWriteType.READ),
+            ("Status", str, None, tango.AttrWriteType.READ),
+            ("LedPattern", str, None, tango.AttrWriteType.READ),
+            ("PortForcings", (str,), NUMBER_OF_FNDH_PORTS, tango.AttrWriteType.READ),
+            ("WarningFlags", str, None, tango.AttrWriteType.READ),
+            ("AlarmFlags", str, None, tango.AttrWriteType.READ),
+            (
+                "PortsDesiredPowerOnline",
+                (bool,),
+                NUMBER_OF_FNDH_PORTS,
+                tango.AttrWriteType.READ,
+            ),
+            (
+                "PortsDesiredPowerOffline",
+                (bool,),
+                NUMBER_OF_FNDH_PORTS,
+                tango.AttrWriteType.READ,
+            ),
+            (
+                "PortsPowerSensed",
+                (bool,),
+                NUMBER_OF_FNDH_PORTS,
+                tango.AttrWriteType.READ,
+            ),
+            (
+                "Psu48vVoltage1Thresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "Psu48vVoltage2Thresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "Psu48vCurrentThresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "Psu48vTemperature1Thresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "Psu48vTemperature2Thresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "PanelTemperatureThresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "FncbTemperatureThresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            ("HumidityThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
+            (
+                "CommsGatewayTemperatureThresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "PowerModuleTemperatureThresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "OutsideTemperatureThresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "InternalAmbientTemperatureThresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
         ]:
             self._setup_pasd_attribute(
                 f"fndh{slug}",
                 cast(type | tuple[type], data_type),
                 max_dim_x=length,
+                access=access,
             )
 
     def _setup_smartbox_attributes(self: MccsPasdBus, smartbox_number: int) -> None:
-        for slug, data_type, length in [
-            ("ModbusRegisterMapRevisionNumber", int, None),
-            ("PcbRevisionNumber", int, None),
-            ("CpuId", str, None),
-            ("ChipId", str, None),
-            ("FirmwareVersion", str, None),
-            ("Uptime", int, None),
-            ("Status", str, None),
-            ("SysAddress", int, None),
-            ("LedPattern", str, None),
-            ("InputVoltage", float, None),
-            ("PowerSupplyOutputVoltage", float, None),
-            ("PowerSupplyTemperature", float, None),
-            ("PcbTemperature", float, None),
-            ("FemAmbientTemperature", float, None),
-            ("FemCaseTemperatures", (float,), 2),
-            ("FemHeatsinkTemperatures", (float,), 2),
-            ("PortForcings", (str,), NUMBER_OF_SMARTBOX_PORTS),
-            ("PortBreakersTripped", (bool,), NUMBER_OF_SMARTBOX_PORTS),
-            ("PortsDesiredPowerOnline", (bool,), NUMBER_OF_SMARTBOX_PORTS),
-            ("PortsDesiredPowerOffline", (bool,), NUMBER_OF_SMARTBOX_PORTS),
-            ("PortsPowerSensed", (bool,), NUMBER_OF_SMARTBOX_PORTS),
-            ("PortsCurrentDraw", (float,), NUMBER_OF_SMARTBOX_PORTS),
+        for slug, data_type, length, access in [
+            ("ModbusRegisterMapRevisionNumber", int, None, tango.AttrWriteType.READ),
+            ("PcbRevisionNumber", int, None, tango.AttrWriteType.READ),
+            ("CpuId", str, None, tango.AttrWriteType.READ),
+            ("ChipId", str, None, tango.AttrWriteType.READ),
+            ("FirmwareVersion", str, None, tango.AttrWriteType.READ),
+            ("Uptime", int, None, tango.AttrWriteType.READ),
+            ("Status", str, None, tango.AttrWriteType.READ),
+            ("SysAddress", int, None, tango.AttrWriteType.READ),
+            ("LedPattern", str, None, tango.AttrWriteType.READ),
+            ("InputVoltage", float, None, tango.AttrWriteType.READ),
+            ("PowerSupplyOutputVoltage", float, None, tango.AttrWriteType.READ),
+            ("PowerSupplyTemperature", float, None, tango.AttrWriteType.READ),
+            ("PcbTemperature", float, None, tango.AttrWriteType.READ),
+            ("FemAmbientTemperature", float, None, tango.AttrWriteType.READ),
+            ("FemCaseTemperatures", (float,), 2, tango.AttrWriteType.READ),
+            ("FemHeatsinkTemperatures", (float,), 2, tango.AttrWriteType.READ),
+            ("WarningFlags", str, None, tango.AttrWriteType.READ),
+            ("AlarmFlags", str, None, tango.AttrWriteType.READ),
+            (
+                "PortForcings",
+                (str,),
+                NUMBER_OF_SMARTBOX_PORTS,
+                tango.AttrWriteType.READ,
+            ),
+            (
+                "PortBreakersTripped",
+                (bool,),
+                NUMBER_OF_SMARTBOX_PORTS,
+                tango.AttrWriteType.READ,
+            ),
+            (
+                "PortsDesiredPowerOnline",
+                (bool,),
+                NUMBER_OF_SMARTBOX_PORTS,
+                tango.AttrWriteType.READ,
+            ),
+            (
+                "PortsDesiredPowerOffline",
+                (bool,),
+                NUMBER_OF_SMARTBOX_PORTS,
+                tango.AttrWriteType.READ,
+            ),
+            (
+                "PortsPowerSensed",
+                (bool,),
+                NUMBER_OF_SMARTBOX_PORTS,
+                tango.AttrWriteType.READ,
+            ),
+            (
+                "PortsCurrentDraw",
+                (float,),
+                NUMBER_OF_SMARTBOX_PORTS,
+                tango.AttrWriteType.READ,
+            ),
+            ("InputVoltageThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
+            (
+                "PowerSupplyOutputVoltageThresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "PowerSupplyTemperatureThresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            ("PcbTemperatureThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
+            (
+                "FemAmbientTemperatureThresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "FemCaseTemperature1Thresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "FemCaseTemperature2Thresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "FemHeatsinkTemperature1Thresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            (
+                "FemHeatsinkTemperature2Thresholds",
+                (float,),
+                4,
+                tango.AttrWriteType.READ_WRITE,
+            ),
+            ("Fem1CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem2CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem3CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem4CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem5CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem6CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem7CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem8CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem9CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem10CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem11CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+            ("Fem12CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
         ]:
             self._setup_pasd_attribute(
                 f"smartbox{smartbox_number}{slug}",
                 cast(type | tuple[type], data_type),
                 max_dim_x=length,
+                access=access,
             )
-
-    def _setup_pasd_attribute(
-        self: MccsPasdBus,
-        attribute_name: str,
-        data_type: type | tuple[type],
-        max_dim_x: Optional[int] = None,
-    ) -> None:
-        self._pasd_state[attribute_name] = None
-        attr = tango.server.attribute(
-            name=attribute_name,
-            dtype=data_type,
-            access=tango.AttrWriteType.READ,
-            label=attribute_name,
-            max_dim_x=max_dim_x,
-            fread="_read_pasd_attribute",
-        ).to_attr()
-        self.add_attribute(attr, self._read_pasd_attribute, None, None)
-        self.set_change_event(attribute_name, True, False)
-        self.set_archive_event(attribute_name, True, False)
 
     def _read_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
         attr_name = pasd_attribute.get_name()
@@ -251,6 +492,59 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 f"Error: {attr_name} is None", msg, "".join(traceback.format_stack())
             )
         pasd_attribute.set_value(attr_value)
+
+    def _write_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
+        # Register the request with the component manager
+        tango_attr_name = pasd_attribute.get_name()
+        if tango_attr_name.startswith("fndh"):
+            device_id = 0
+        else:
+            # Obtain smartbox number after 'smartbox' prefix
+            # This could be 1 or 2 digits
+            tango_attr_name = tango_attr_name.removeprefix("smartbox")
+            device_id = (
+                int(tango_attr_name[0:2])
+                if tango_attr_name[0:2].isdigit()
+                else int(tango_attr_name[0])
+            )
+        logging.debug(
+            f"Requesting to write attribute: {pasd_attribute.get_name()} with value"
+            f" {pasd_attribute.get_write_value()} for device {device_id}"
+        )
+        # Get the name of the attribute as understood by the Modbus API
+        attribute_dict = self._ATTRIBUTE_MAP[device_id]
+        attribute_name = [
+            key
+            for key, value in attribute_dict.items()
+            if value == pasd_attribute.get_name()
+        ][0]
+
+        self.component_manager.write_attribute(
+            device_id, attribute_name, pasd_attribute.get_write_value(ExtractAs.List)
+        )
+
+    def _setup_pasd_attribute(
+        self: MccsPasdBus,
+        attribute_name: str,
+        data_type: type | tuple[type],
+        max_dim_x: Optional[int] = None,
+        access: tango.AttrWriteType = tango.AttrWriteType.READ,
+    ) -> None:
+        self._pasd_state[attribute_name] = None
+        attr = tango.server.attribute(
+            name=attribute_name,
+            dtype=data_type,
+            access=access,
+            label=attribute_name,
+            max_dim_x=max_dim_x,
+            fget=self._read_pasd_attribute,
+            fset=self._write_pasd_attribute,
+        ).to_attr()
+        self.add_attribute(
+            attr, self._read_pasd_attribute, self._write_pasd_attribute, None
+        )
+        self.set_change_event(attribute_name, True, False)
+        self.set_archive_event(attribute_name, True, False)
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()
@@ -283,12 +577,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         for command_name, command_class in [
             ("InitializeFndh", MccsPasdBus._InitializeFndhCommand),
             ("InitializeSmartbox", MccsPasdBus._InitializeSmartboxCommand),
-            ("TurnFndhPortOn", MccsPasdBus._TurnFndhPortOnCommand),
-            ("TurnFndhPortOff", MccsPasdBus._TurnFndhPortOffCommand),
+            ("SetFndhPortPowers", MccsPasdBus._SetFndhPortPowersCommand),
             ("SetFndhLedPattern", MccsPasdBus._SetFndhLedPatternCommand),
             ("ResetFndhPortBreaker", MccsPasdBus._ResetFndhPortBreakerCommand),
-            ("TurnSmartboxPortOn", MccsPasdBus._TurnSmartboxPortOnCommand),
-            ("TurnSmartboxPortOff", MccsPasdBus._TurnSmartboxPortOffCommand),
+            ("SetSmartboxPortPowers", MccsPasdBus._SetSmartboxPortPowersCommand),
             (
                 "SetSmartboxLedPattern",
                 MccsPasdBus._SetSmartboxLedPatternCommand,
@@ -297,6 +589,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 "ResetSmartboxPortBreaker",
                 MccsPasdBus._ResetSmartboxPortBreakerCommand,
             ),
+            ("ResetFndhAlarms", MccsPasdBus._ResetFndhAlarmsCommand),
+            ("ResetFndhWarnings", MccsPasdBus._ResetFndhWarningsCommand),
+            ("ResetSmartboxAlarms", MccsPasdBus._ResetSmartboxAlarmsCommand),
+            ("ResetSmartboxWarnings", MccsPasdBus._ResetSmartboxWarningsCommand),
         ]:
             self.register_command_object(
                 command_name,
@@ -332,6 +628,16 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 information purpose only.
             """
             return (ResultCode.OK, "Init command completed OK")
+
+    def delete_device(self) -> None:
+        """
+        Prepare to delete the device.
+
+        Make sure the component manager doesn't have a socket open.
+        (The socket should be closed when it is deleted,
+        but it is good practice to close it explicitly anyhow.)
+        """
+        self.component_manager.stop_communicating()
 
     # ----------
     # Callbacks
@@ -517,8 +823,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         Initialize an FNDH.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("InitializeFndh")
         success = handler()
@@ -531,109 +836,71 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             )
         return ([ResultCode.FAILED], ["InitializeFndh failed"])
 
-    class _TurnFndhPortOnCommand(FastCommand):
+    class _SetFndhPortPowersCommand(FastCommand):
         SCHEMA: Final = json.loads(
             importlib.resources.read_text(
                 "ska_low_mccs_pasd.pasd_bus.schemas",
-                "MccsPasdBus_TurnFndhPortOn.json",
+                "MccsPasdBus_SetFndhPortPowers.json",
             )
         )
 
         def __init__(
-            self: MccsPasdBus._TurnFndhPortOnCommand,
+            self: MccsPasdBus._SetFndhPortPowersCommand,
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
         ):
             self._component_manager = component_manager
 
-            validator = JsonValidator("TurnFndhPortOn", self.SCHEMA, logger)
+            validator = JsonValidator("SetFndhPortPowers", self.SCHEMA, logger)
             super().__init__(logger, validator)
 
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnFndhPortOnCommand,
-            port_number: int,
+            self: MccsPasdBus._SetFndhPortPowersCommand,
+            port_powers: list[bool | None],
             stay_on_when_offline: bool,
         ) -> Optional[bool]:
             """
             Turn on an FNDH port.
 
-            :param port_number: number of the port to turn on.
-            :param stay_on_when_offline: whether the port should remain
-                on if communication with the MCCS is lost.
+            :param port_powers: desired power of each port.
+                False means off, True means on, None means no desired change.
+            :param stay_on_when_offline: whether any ports being turned on
+                should remain on if communication with the MCCS is lost.
 
             :return: whether successful, or None if there was nothing to
                 do.
             """
-            return self._component_manager.turn_fndh_port_on(
-                port_number, stay_on_when_offline
+            return self._component_manager.set_fndh_port_powers(
+                port_powers, stay_on_when_offline
             )
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def TurnFndhPortOn(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
+    def SetFndhPortPowers(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
+        # pylint: disable=line-too-long
         """
-        Turn on an FNDH port.
+        Set FNDH port powers.
 
-        :param argin: the FNDH port to turn on
+        This command takes as input a JSON string that conforms to the
+        following schema:
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("TurnFndhPortOn")
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetFndhPortPowers.json
+           :language: json
+
+        :param argin: a JSON string specifying the request.
+
+        :return: A tuple containing a result code and a human-readable status message.
+        """  # noqa: E501
+        handler = self.get_command_object("SetFndhPortPowers")
         success = handler(argin)
         if success:
-            return ([ResultCode.OK], ["TurnFndhPortOn succeeded"])
+            return ([ResultCode.OK], ["SetFndhPortPowers succeeded"])
         if success is None:
             return (
                 [ResultCode.OK],
-                ["TurnFndhPortOn succeeded: nothing to do"],
+                ["SetFndhPortPowers succeeded: nothing to do"],
             )
-        return ([ResultCode.FAILED], ["TurnFndhPortOn failed"])
-
-    class _TurnFndhPortOffCommand(FastCommand):
-        def __init__(
-            self: MccsPasdBus._TurnFndhPortOffCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-            super().__init__(logger)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnFndhPortOffCommand,
-            port_number: int,
-        ) -> Optional[bool]:
-            """
-            Turn off an FNDH port.
-
-            :param port_number: number of the port to turn off.
-
-            :return: whether successful, or None if there was nothing to
-                do.
-            """
-            return self._component_manager.turn_fndh_port_off(port_number)
-
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def TurnFndhPortOff(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
-        """
-        Turn off an FNDH port.
-
-        :param argin: the FNDH port to turn off
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("TurnFndhPortOff")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], [f"TurnFndhPortOff {argin} succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                [f"TurnFndhPortOff {argin} succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], [f"TurnFndhPortOff {argin} failed"])
+        return ([ResultCode.FAILED], ["SetFndhPortPowers failed"])
 
     class _SetFndhLedPatternCommand(FastCommand):
         def __init__(
@@ -666,8 +933,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param pattern: name of the new LED pattern.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("SetFndhLedPattern")
         success = handler(pattern)
@@ -715,8 +981,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         :param port_number: number of the port whose breaker is to be
             reset.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("ResetFndhPortBreaker")
         success = handler(port_number)
@@ -759,8 +1024,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param argin: arguments encoded as a JSON string
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("InitializeSmartbox")
         success = handler(argin)
@@ -773,126 +1037,77 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             )
         return ([ResultCode.FAILED], ["InitializeSmartbox failed"])
 
-    class _TurnSmartboxPortOnCommand(FastCommand):
+    class _SetSmartboxPortPowersCommand(FastCommand):
         SCHEMA: Final = json.loads(
             importlib.resources.read_text(
                 "ska_low_mccs_pasd.pasd_bus.schemas",
-                "MccsPasdBus_TurnSmartboxPortOn.json",
+                "MccsPasdBus_SetSmartboxPortPowers.json",
             )
         )
 
         def __init__(
-            self: MccsPasdBus._TurnSmartboxPortOnCommand,
+            self: MccsPasdBus._SetSmartboxPortPowersCommand,
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
         ):
             self._component_manager = component_manager
 
-            validator = JsonValidator("TurnSmartboxPortOn", self.SCHEMA, logger)
+            validator = JsonValidator("SetSmartboxPortPowers", self.SCHEMA, logger)
             super().__init__(logger, validator)
 
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnSmartboxPortOnCommand,
+            self: MccsPasdBus._SetSmartboxPortPowersCommand,
             smartbox_number: int,
-            port_number: int,
+            port_powers: list[bool | None],
             stay_on_when_offline: bool,
         ) -> Optional[bool]:
             """
-            Turn on a smartbox port.
+            Set a smartbox's port powers.
 
             :param smartbox_number: number of the smartbox to be
                 addressed
-            :param port_number: name of the port to be turned on.
-            :param stay_on_when_offline: whether the port should remain
-                on if communication with the MCCS is lost.
+            :param port_powers: the desired power for each port.
+                True means powered on, False means off,
+                None means no desired change
+            :param stay_on_when_offline: whether any ports being turned on
+                should remain on if communication with the MCCS is lost.
 
             :return: whether successful, or None if there was nothing to
                 do.
             """
-            return self._component_manager.turn_smartbox_port_on(
-                smartbox_number, port_number, stay_on_when_offline
+            return self._component_manager.set_smartbox_port_powers(
+                smartbox_number, port_powers, stay_on_when_offline
             )
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def TurnSmartboxPortOn(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
+    def SetSmartboxPortPowers(
+        self: MccsPasdBus, argin: str
+    ) -> DevVarLongStringArrayType:
+        # pylint: disable=line-too-long
         """
-        Turn on a smartbox port.
+        Set a smartbox's port powers.
 
-        :param argin: arguments encodes as a JSON string
+        This command takes as input a JSON string that conforms to the
+        following schema:
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("TurnSmartboxPortOn")
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetSmartboxPortPowers.json
+           :language: json
+
+        :param argin: arguments encoded as a JSON string
+
+        :return: A tuple containing a result code and a human-readable status message.
+        """  # noqa: E501
+        handler = self.get_command_object("SetSmartboxPortPowers")
         success = handler(argin)
         if success:
-            return ([ResultCode.OK], ["TurnSmartboxPortOn succeeded"])
+            return ([ResultCode.OK], ["SetSmartboxPortPowers succeeded"])
         if success is None:
             return (
                 [ResultCode.OK],
-                ["TurnSmartboxPortOn succeeded: nothing to do"],
+                ["SetSmartboxPortPowers succeeded: nothing to do"],
             )
-        return ([ResultCode.FAILED], ["TurnSmartboxPortOn failed"])
-
-    class _TurnSmartboxPortOffCommand(FastCommand):
-        SCHEMA: Final = json.loads(
-            importlib.resources.read_text(
-                "ska_low_mccs_pasd.pasd_bus.schemas",
-                "MccsPasdBus_TurnSmartboxPortOff.json",
-            )
-        )
-
-        def __init__(
-            self: MccsPasdBus._TurnSmartboxPortOffCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-
-            validator = JsonValidator("TurnSmartboxPortOff", self.SCHEMA, logger)
-            super().__init__(logger, validator)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._TurnSmartboxPortOffCommand,
-            smartbox_number: int,
-            port_number: int,
-        ) -> Optional[bool]:
-            """
-            Turn off a smartbox port.
-
-            :param smartbox_number: number of the smartbox to be
-                addressed
-            :param port_number: name of the port to be turned off.
-
-            :return: whether successful, or None if there was nothing to
-                do.
-            """
-            return self._component_manager.turn_smartbox_port_off(
-                smartbox_number, port_number
-            )
-
-    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def TurnSmartboxPortOff(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
-        """
-        Turn off a smartbox port.
-
-        :param argin: arguments in JSON format
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("TurnSmartboxPortOff")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], ["TurnSmartboxPortOff succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                ["TurnSmartboxPortOff succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], ["TurnSmartboxPortOff failed"])
+        return ([ResultCode.FAILED], ["SetSmartboxPortPowers failed"])
 
     class _SetSmartboxLedPatternCommand(FastCommand):
         SCHEMA: Final = json.loads(
@@ -931,8 +1146,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param argin: JSON encoded dictionary of arguments.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("SetSmartboxLedPattern")
         success = handler(argin)
@@ -1038,8 +1252,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param argin: arguments to the command in JSON format.
 
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
+        :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("ResetSmartboxPortBreaker")
         success = handler(argin)
@@ -1051,6 +1264,178 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 ["ResetSmartboxPortBreaker succeeded: nothing to do"],
             )
         return ([ResultCode.FAILED], ["ResetSmartboxPortBreaker failed"])
+
+    class _ResetFndhAlarmsCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetFndhAlarmsCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetFndhAlarmsCommand,
+        ) -> Optional[bool]:
+            """
+            Reset the FNDH alarms register.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.reset_fndh_alarms()
+
+    @command(dtype_out="DevVarLongStringArray")
+    def ResetFndhAlarms(self: MccsPasdBus) -> DevVarLongStringArrayType:
+        """
+        Reset the FNDH alarms register.
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetFndhAlarms")
+        success = handler()
+        if success:
+            return ([ResultCode.OK], ["ResetFndhAlarms succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetFndhAlarms succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetFndhAlarms failed"])
+
+    class _ResetFndhWarningsCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetFndhWarningsCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetFndhWarningsCommand,
+        ) -> Optional[bool]:
+            """
+            Reset the FNDH warnings register.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.reset_fndh_warnings()
+
+    @command(dtype_out="DevVarLongStringArray")
+    def ResetFndhWarnings(self: MccsPasdBus) -> DevVarLongStringArrayType:
+        """
+        Reset the FNDH warnings register.
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetFndhWarnings")
+        success = handler()
+        if success:
+            return ([ResultCode.OK], ["ResetFndhwarnings succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetFndhWarnings succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetFndhWarnings failed"])
+
+    class _ResetSmartboxAlarmsCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetSmartboxAlarmsCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetSmartboxAlarmsCommand,
+            smartbox_number: int,
+        ) -> Optional[bool]:
+            """
+            Reset a Smartbox's alarms register.
+
+            :param smartbox_number: number of the smartbox to be
+                addressed
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.reset_smartbox_alarms(smartbox_number)
+
+    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
+    def ResetSmartboxAlarms(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
+        """
+        Reset a Smartbox alarms register.
+
+        :param argin: Smartbox number
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetSmartboxAlarms")
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], ["ResetSmartboxAlarms succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetSmartboxAlarms succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetSmartboxAlarms failed"])
+
+    class _ResetSmartboxWarningsCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetSmartboxWarningsCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetSmartboxWarningsCommand,
+            smartbox_number: int,
+        ) -> Optional[bool]:
+            """
+            Reset a Smartbox's warnings register.
+
+            :param smartbox_number: number of the smartbox to be
+                addressed
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.reset_smartbox_warnings(smartbox_number)
+
+    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
+    def ResetSmartboxWarnings(
+        self: MccsPasdBus, argin: int
+    ) -> DevVarLongStringArrayType:
+        """
+        Reset a Smartbox warnings register.
+
+        :param argin: Smartbox number
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetSmartboxWarnings")
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], ["ResetSmartboxWarnings succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetSmartboxWarnings succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetSmartboxWarnings failed"])
 
 
 # ----------

@@ -62,6 +62,29 @@ class MccsSmartBox(SKABaseDevice):
         ("PortsDesiredPowerOffline", (bool,), PORT_COUNT),
         ("PortsPowerSensed", (bool,), PORT_COUNT),
         ("PortsCurrentDraw", (float,), PORT_COUNT),
+        ("InputVoltageThresholds", (float,), 4),
+        ("PowerSupplyOutputVoltageThresholds", (float,), 4),
+        ("PowerSupplyTemperatureThresholds", (float,), 4),
+        ("PcbTemperatureThresholds", (float,), 4),
+        ("FemAmbientTemperatureThresholds", (float,), 4),
+        ("FemCaseTemperature1Thresholds", (float,), 4),
+        ("FemCaseTemperature2Thresholds", (float,), 4),
+        ("FemHeatsinkTemperature1Thresholds", (float,), 4),
+        ("FemHeatsinkTemperature2Thresholds", (float,), 4),
+        ("Fem1CurrentTripThreshold", int, None),
+        ("Fem2CurrentTripThreshold", int, None),
+        ("Fem3CurrentTripThreshold", int, None),
+        ("Fem4CurrentTripThreshold", int, None),
+        ("Fem5CurrentTripThreshold", int, None),
+        ("Fem6CurrentTripThreshold", int, None),
+        ("Fem7CurrentTripThreshold", int, None),
+        ("Fem8CurrentTripThreshold", int, None),
+        ("Fem9CurrentTripThreshold", int, None),
+        ("Fem10CurrentTripThreshold", int, None),
+        ("Fem11CurrentTripThreshold", int, None),
+        ("Fem12CurrentTripThreshold", int, None),
+        ("WarningFlags", str, None),
+        ("AlarmFlags", str, None),
     ]
 
     # ---------------
@@ -160,7 +183,6 @@ class MccsSmartBox(SKABaseDevice):
             self.FndhPort,
             self.PasdFQDN,
             self.FndhFQDN,
-            self.SmartBoxNumber,
         )
 
     def init_command_objects(self: MccsSmartBox) -> None:
@@ -267,8 +289,10 @@ class MccsSmartBox(SKABaseDevice):
         self: MccsSmartBox, communication_state: CommunicationStatus
     ) -> None:
         self.logger.debug(
-            "Device received callback from component manager that communication "
-            "with the component is %s.",
+            (
+                "Device received callback from component manager that communication "
+                "with the component is %s."
+            ),
             communication_state.name,
         )
 

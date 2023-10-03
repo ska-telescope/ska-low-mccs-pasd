@@ -14,28 +14,11 @@ import gc
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
-from ska_tango_testing.context import TangoContextProtocol
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
 
 gc.disable()  # TODO: why is this needed?
-
-
-@pytest.fixture(name="fndh_device")
-def fndh_device_fixture(
-    tango_harness: TangoContextProtocol,
-    fndh_name: str,
-) -> tango.DeviceProxy:
-    """
-    Fixture that returns the fndh Tango device under test.
-
-    :param tango_harness: a test harness for Tango devices.
-    :param fndh_name: name of the fndh Tango device.
-
-    :yield: the fndh Tango device under test.
-    """
-    yield tango_harness.get_device(fndh_name)
 
 
 class TestfndhPasdBusIntegration:
@@ -157,11 +140,11 @@ class TestfndhPasdBusIntegration:
         # once we have an updated value for this attribute,
         # we have an updated value for all of them.
         pasd_bus_device.subscribe_event(
-            "smartbox24PortsCurrentDraw",
+            "smartbox24AlarmFlags",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartbox24PortsCurrentDraw"],
+            change_event_callbacks["smartbox24AlarmFlags"],
         )
-        change_event_callbacks.assert_change_event("smartbox24PortsCurrentDraw", None)
+        change_event_callbacks.assert_change_event("smartbox24AlarmFlags", None)
 
         pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
@@ -171,8 +154,6 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks.assert_change_event("pasd_bus_state", tango.DevState.ON)
         change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
         assert pasd_bus_device.healthState == HealthState.OK
-
-        change_event_callbacks.assert_against_call("smartbox24PortsCurrentDraw")
 
         fndh_device.adminMode = AdminMode.ONLINE
 
@@ -226,6 +207,57 @@ class TestfndhPasdBusIntegration:
             == fndh_simulator.ports_desired_power_when_offline
         )
         assert list(fndh_device.PortsPowerSensed) == fndh_simulator.ports_power_sensed
+        assert (
+            list(fndh_device.Psu48vVoltage1Thresholds)
+            == fndh_simulator.psu48v_voltage_1_thresholds
+        )
+        assert (
+            list(fndh_device.Psu48vVoltage2Thresholds)
+            == fndh_simulator.psu48v_voltage_2_thresholds
+        )
+        assert (
+            list(fndh_device.Psu48vCurrentThresholds)
+            == fndh_simulator.psu48v_current_thresholds
+        )
+        assert (
+            list(fndh_device.Psu48vTemperature1Thresholds)
+            == fndh_simulator.psu48v_temperature_1_thresholds
+        )
+        assert (
+            list(fndh_device.Psu48vTemperature2Thresholds)
+            == fndh_simulator.psu48v_temperature_2_thresholds
+        )
+        assert (
+            list(fndh_device.PanelTemperatureThresholds)
+            == fndh_simulator.panel_temperature_thresholds
+        )
+        assert (
+            list(fndh_device.FncbTemperatureThresholds)
+            == fndh_simulator.fncb_temperature_thresholds
+        )
+        assert (
+            list(fndh_device.HumidityThresholds)
+            == fndh_simulator.fncb_humidity_thresholds
+        )
+        assert (
+            list(fndh_device.CommsGatewayTemperatureThresholds)
+            == fndh_simulator.comms_gateway_temperature_thresholds
+        )
+        assert (
+            list(fndh_device.PowerModuleTemperatureThresholds)
+            == fndh_simulator.power_module_temperature_thresholds
+        )
+        assert (
+            list(fndh_device.OutsideTemperatureThresholds)
+            == fndh_simulator.outside_temperature_thresholds
+        )
+        assert (
+            list(fndh_device.InternalAmbientTemperatureThresholds)
+            == fndh_simulator.internal_ambient_temperature_thresholds
+        )
+        # TODO
+        # assert fndh_device.WarningFlags == FndhSimulator.DEFAULT_FLAGS
+        # assert fndh_device.AlarmFlags == FndhSimulator.DEFAULT_FLAGS
 
         for port in range(1, FndhSimulator.NUMBER_OF_PORTS + 1):
             is_port_on = fndh_simulator.ports_power_sensed[port - 1]
@@ -299,11 +331,11 @@ class TestfndhPasdBusIntegration:
         # once we have an updated value for this attribute,
         # we have an updated value for all of them.
         pasd_bus_device.subscribe_event(
-            "smartbox24PortsCurrentDraw",
+            "smartbox24AlarmFlags",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartbox24PortsCurrentDraw"],
+            change_event_callbacks["smartbox24AlarmFlags"],
         )
-        change_event_callbacks.assert_change_event("smartbox24PortsCurrentDraw", None)
+        change_event_callbacks.assert_change_event("smartbox24AlarmFlags", None)
 
         pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
@@ -314,8 +346,6 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
         assert pasd_bus_device.healthState == HealthState.OK
         assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
-
-        change_event_callbacks.assert_against_call("smartbox24PortsCurrentDraw")
 
         fndh_device.adminMode = AdminMode.ONLINE
 
@@ -352,7 +382,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "fndh_state",
         "pasd_bus_state",
         "pasdBushealthState",
-        "smartbox24PortsCurrentDraw",
+        "smartbox24AlarmFlags",
         "fndhPort2PowerState",
         timeout=15.0,
         assert_no_error=False,

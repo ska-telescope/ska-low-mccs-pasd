@@ -10,56 +10,42 @@
 
 from __future__ import annotations
 
-import functools
 import logging
-import threading
-import unittest.mock
-from contextlib import contextmanager
-from typing import Any, Callable, ContextManager, Dict, Generator, Iterator
+from typing import Dict, Iterator
 
 import pytest
 import tango
-from ska_control_model import LoggingLevel
-from ska_ser_devices.client_server import TcpServer
-from ska_tango_testing.context import (
-    TangoContextProtocol,
-    ThreadedTestTangoContextManager,
-)
 
-from ska_low_mccs_pasd import MccsFieldStation, MccsFNDH, MccsPasdBus, MccsSmartBox
-from ska_low_mccs_pasd.pasd_bus import (
-    FndhSimulator,
-    PasdBusSimulator,
-    PasdBusSimulatorModbusServer,
-    SmartboxSimulator,
-)
+from ska_low_mccs_pasd.pasd_bus import (FndhSimulator, PasdBusSimulator,
+                                        SmartboxSimulator)
+from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 
-@pytest.fixture(name="station_id")
-def station_id_fixture() -> int:
+@pytest.fixture(name="station_label")
+def station_label_fixture() -> str:
     """
-    Return the id of the station whose configuration will be used in testing.
+    Return the name of the station whose configuration will be used in testing.
 
-    :return: the id of the station whose configuration will be used in
+    :return: the name of the station whose configuration will be used in
         testing.
     """
-    return 1
+    return "ci-1"
 
 
 @pytest.fixture(name="pasd_bus_simulator")
 def pasd_bus_simulator_fixture(
-    pasd_config_path: str, station_id: int
+    pasd_config_path: str, station_label: str
 ) -> PasdBusSimulator:
     """
     Fixture that returns a PaSD bus simulator.
 
     :param pasd_config_path: path to the PaSD configuration file
-    :param station_id: the id of the station whose PaSD bus we are
+    :param station_label: the name of the station whose PaSD bus we are
         simulating.
 
     :return: a PaSD bus simulator
     """
-    return PasdBusSimulator(pasd_config_path, station_id, logging.DEBUG)
+    return PasdBusSimulator(pasd_config_path, station_label, logging.DEBUG)
 
 
 @pytest.fixture(name="fndh_simulator")
@@ -75,60 +61,6 @@ def fndh_simulator_fixture(
     :return: an FNDH simulator
     """
     return pasd_bus_simulator.get_fndh()
-
-
-@pytest.fixture(name="mock_fndh_simulator")
-def mock_fndh_simulator_fixture(
-    fndh_simulator: PasdBusSimulator,
-) -> unittest.mock.Mock:
-    """
-    Return a mock FNDH simulator.
-
-    The returned mock wraps a real simulator instance, so it will behave
-    like a real one, but we can access it as a mock too, for example
-    assert calls.
-
-    :param fndh_simulator: an FNDH simulator to be wrapped in a mock.
-
-    :return: a mock FNDH simulator
-    """
-    mock_simulator = unittest.mock.Mock(wraps=fndh_simulator)
-
-    # "wraps" doesn't handle properties -- we have to add them manually
-    for property_name in [
-        "port_forcings",
-        "ports_desired_power_when_online",
-        "ports_desired_power_when_offline",
-        "ports_power_sensed",
-        "psu48v_voltages",
-        "psu48v_current",
-        "psu48v_temperatures",
-        "panel_temperature",
-        "fncb_temperature",
-        "fncb_humidity",
-        "comms_gateway_temperature",
-        "power_module_temperature",
-        "outside_temperature",
-        "internal_ambient_temperature",
-        "modbus_register_map_revision",
-        "pcb_revision",
-        "cpu_id",
-        "chip_id",
-        "firmware_version",
-        "uptime",
-        "sys_address",
-        "status",
-        "led_pattern",
-    ]:
-        setattr(
-            type(mock_simulator),
-            property_name,
-            unittest.mock.PropertyMock(
-                side_effect=functools.partial(getattr, fndh_simulator, property_name)
-            ),
-        )
-
-    return mock_simulator
 
 
 @pytest.fixture(name="smartbox_attached_ports")
@@ -165,140 +97,18 @@ def smartbox_simulators_fixture(
 @pytest.fixture(name="smartbox_simulator")
 def smartbox_simulator_fixture(
     smartbox_simulators: Dict[int, SmartboxSimulator],
-    smartbox_id: int,
+    smartbox_number: int,
 ) -> SmartboxSimulator:
     """
     Return a smartbox simulator for testing.
 
     :param smartbox_simulators:
         the smartbox simulator backends that the TCP server will front.
-    :param smartbox_id: id of the smartbox being addressed.
+    :param smartbox_number: id of the smartbox being addressed.
 
     :return: a smartbox simulator, wrapped in a mock.
     """
-    return smartbox_simulators[smartbox_id]
-
-
-@pytest.fixture(name="smartbox_id")
-def smartbox_id_fixture() -> int:
-    """
-    Return the id of the smartbox to be used in testing.
-
-    :return: the id of the smartbox to be used in testing.
-    """
-    return 1
-
-
-@pytest.fixture(name="mock_smartbox_simulators")
-def mock_smartbox_simulators_fixture(
-    smartbox_simulators: Dict[int, SmartboxSimulator],
-) -> Dict[int, unittest.mock.Mock]:
-    """
-    Return the mock smartbox simulators.
-
-    Each mock wraps a real simulator instance,
-    so it will behave like a real one,
-    but we can access it as a mock too, for example assert calls.
-
-    :param smartbox_simulators:
-        the smartbox simulator backends that the TCP server will front.
-
-    :return: a sequence of mock smartbox simulators
-    """
-    mock_simulators: Dict[int, unittest.mock.Mock] = {}
-
-    for smartbox_id, smartbox_simulator in smartbox_simulators.items():
-        mock_simulator = unittest.mock.Mock(wraps=smartbox_simulator)
-
-        # "wraps" doesn't handle properties -- we have to add them manually
-        property_name: str
-        for property_name in [
-            "modbus_register_map_revision",
-            "pcb_revision",
-            "cpu_id",
-            "chip_id",
-            "firmware_version",
-            "uptime",
-            "sys_address",
-            "input_voltage",
-            "power_supply_output_voltage",
-            "power_supply_temperature",
-            "pcb_temperature",
-            "fem_ambient_temperature",
-            "status",
-            "led_pattern",
-            "fem_case_temperatures",
-            "fem_heatsink_temperatures",
-            "port_forcings",
-            "port_breakers_tripped",
-            "ports_desired_power_when_online",
-            "ports_desired_power_when_offline",
-            "ports_power_sensed",
-            "ports_current_draw",
-        ]:
-            setattr(
-                type(mock_simulator),
-                property_name,
-                unittest.mock.PropertyMock(
-                    side_effect=functools.partial(
-                        getattr, smartbox_simulator, property_name
-                    )
-                ),
-            )
-
-        mock_simulators[smartbox_id] = mock_simulator
-
-    return mock_simulators
-
-
-@pytest.fixture(name="pasd_bus_simulator_server_launcher")
-def pasd_bus_simulator_server_launcher_fixture(
-    mock_fndh_simulator: FndhSimulator,
-    mock_smartbox_simulators: Dict[int, SmartboxSimulator],
-    logger: logging.Logger,
-) -> Callable[[], ContextManager[TcpServer]]:
-    """
-    Return a context manager factory for a PaSD bus simulator server.
-
-    That is, a callable that, when called,
-    returns a context manager that spins up a simulator server,
-    yields it for use in testing,
-    and then shuts its down afterwards.
-
-    :param mock_fndh_simulator:
-        the FNDH simulator backend that the TCP server will front,
-        wrapped with a mock so that we can assert calls.
-    :param mock_smartbox_simulators:
-        the smartbox simulator backends that the TCP server will front,
-        each wrapped with a mock so that we can assert calls.
-    :param logger: a python standard logger
-
-    :return: a PaSD bus simulator server context manager factory
-    """
-
-    @contextmanager
-    def launch_pasd_bus_simulator_server() -> Iterator[TcpServer]:
-        simulator_server = PasdBusSimulatorModbusServer(
-            mock_fndh_simulator, mock_smartbox_simulators
-        )
-        server = TcpServer(
-            "localhost",
-            0,  # let the kernel give us a port
-            simulator_server,
-            logger=logger,
-        )
-
-        with server:
-            server_thread = threading.Thread(
-                name="PaSD bus simulator thread",
-                target=server.serve_forever,
-            )
-            server_thread.daemon = True  # don't hang on exit
-            server_thread.start()
-            yield server
-            server.shutdown()
-
-    return launch_pasd_bus_simulator_server
+    return smartbox_simulators[smartbox_number]
 
 
 @pytest.fixture(name="smartbox_number")
@@ -312,224 +122,87 @@ def smartbox_number_fixture() -> int:
     return 1
 
 
-@pytest.fixture(name="pasd_bus_simulator_server")
-def pasd_bus_simulator_server_fixture(
-    pasd_bus_simulator_server_launcher: Callable[[], ContextManager[TcpServer]],
-) -> Generator[TcpServer, None, None]:
+@pytest.fixture(name="test_context")
+def test_context_fixture(
+    fndh_simulator: FndhSimulator,
+    smartbox_simulators: dict[int, SmartboxSimulator],
+) -> Iterator[PasdTangoTestHarnessContext]:
     """
-    Return a running PaSD bus simulator server for use in testing.
+    Fixture that returns a proxy to the PaSD bus Tango device under test.
 
-    :param pasd_bus_simulator_server_launcher: a callable that, when called,
-        returns a context manager that spins up a simulator server,
-        yields it for use in testing,
-        and then shuts its down afterwards.
+    :param fndh_simulator: the FNDH simulator against which to test
+    :param smartbox_simulators: the smartbox simulators against which to test
 
-    :yields: a PaSD bus simulator server
+    :yield: a test context in which to run the integration tests.
     """
-    with pasd_bus_simulator_server_launcher() as server:
-        yield server
+    harness = PasdTangoTestHarness()
 
+    harness.set_pasd_bus_simulator(fndh_simulator, smartbox_simulators)
+    harness.set_pasd_bus_device()  # using all defaults
+    harness.set_fndh_device()
 
-@pytest.fixture(name="pasd_bus_info")
-def pasd_bus_info_fixture(
-    pasd_bus_simulator_server: TcpServer,
-) -> dict[str, Any]:
-    """
-    Return the host and port of the PaSD bus.
+    for smartbox_number in range(1, 25):
+        harness.add_smartbox_device(smartbox_number)
 
-    :param pasd_bus_simulator_server:
-        a TCP server front end to a PaSD bus simulator.
+    harness.set_field_station_device()
 
-    :return: the host and port of the AWG.
-    """
-    host, port = pasd_bus_simulator_server.server_address
-    return {
-        "host": host,
-        "port": port,
-        "timeout": 3.0,
-    }
+    with harness as context:
+        yield context
 
 
 @pytest.fixture(name="pasd_bus_device")
 def pasd_bus_device_fixture(
-    tango_harness: TangoContextProtocol,
-    pasd_bus_name: str,
+    test_context: PasdTangoTestHarnessContext,
 ) -> tango.DeviceProxy:
     """
     Fixture that returns the pasd_bus Tango device under test.
 
-    :param tango_harness: a test harness for Tango devices.
-    :param pasd_bus_name: name of the pasd_bus Tango device.
+    :param test_context: context in which the integration tests will run.
 
     :yield: the pasd_bus Tango device under test.
     """
-    yield tango_harness.get_device(pasd_bus_name)
-
-
-@pytest.fixture(name="smartbox_devices")
-def smartbox_devices_fixture(
-    tango_harness: TangoContextProtocol,
-    smartbox_names: str,
-) -> list[tango.DeviceProxy]:
-    """
-    Fixture that returns the pasd_bus Tango device under test.
-
-    :param tango_harness: a test harness for Tango devices.
-    :param smartbox_names: the name of the smartbox_bus Tango device
-
-    :return: the pasd_bus Tango device under test.
-    """
-    smartbox_proxies = []
-    for smartbox_no in range(2):
-        smartbox_proxies.append(tango_harness.get_device(smartbox_names[smartbox_no]))
-    return smartbox_proxies
-
-
-@pytest.fixture(name="smartbox_device")
-def smartbox_device_fixture(
-    smartbox_devices: list[tango.DeviceProxy], smartbox_id: int
-) -> list[tango.DeviceProxy]:
-    """
-    Fixture that returns a smartbox Tango device.
-
-    :param smartbox_devices: a list of smartboxes.
-    :param smartbox_id: the smartbox of interest.
-
-    :return: the smartbox Tango device.
-    """
-    return smartbox_devices[smartbox_id]
-
-
-@pytest.fixture(name="smartbox_names", scope="session")
-def smartbox_names_fixture() -> list[str]:
-    """
-    Return the names of the smartbox Tango devices.
-
-    :return: the names of the smartbox Tango devices.
-    """
-    smartboxes = []
-    for i in range(1, 25):
-        smartboxes.append(f"low-mccs/smartbox/{i:05}")
-
-    return smartboxes
-
-
-@pytest.fixture(name="pasd_bus_name", scope="session")
-def pasd_bus_name_fixture() -> str:
-    """
-    Return the name of the pasd_bus Tango device.
-
-    :return: the name of the pasd_bus Tango device.
-    """
-    return "low-mccs/pasdbus/001"
-
-
-@pytest.fixture(name="fndh_name", scope="session")
-def fndh_name_fixture() -> str:
-    """
-    Return the name of the fndh Tango device.
-
-    :return: the name of the fndh Tango device.
-    """
-    return "low-mccs/fndh/001"
-
-
-@pytest.fixture(name="field_station_name", scope="session")
-def field_station_name_fixture() -> str:
-    """
-    Return the name of the field station Tango device.
-
-    :return: the name of the field station Tango device.
-    """
-    return "low-mccs/field_station/001"
-
-
-@pytest.fixture(name="tango_harness")
-def tango_harness_fixture(
-    field_station_name: str,
-    smartbox_names: list[str],
-    pasd_bus_name: str,
-    fndh_name: str,
-    pasd_bus_info: dict,
-) -> Generator[TangoContextProtocol, None, None]:
-    """
-    Return a Tango harness against which to run tests of the deployment.
-
-    :param field_station_name: the name of the field station device
-    :param smartbox_names: the name of the smartbox_bus Tango device
-    :param pasd_bus_name: the fqdn of the pasdbus
-    :param fndh_name: the fqdn of the fndh
-    :param pasd_bus_info: the information for pasd setup
-
-    :yields: a tango context.
-    """
-    context_manager = ThreadedTestTangoContextManager()
-    # Add the pasdbus.
-    context_manager.add_device(
-        field_station_name,
-        MccsFieldStation,
-        FndhFQDN=fndh_name,
-        SmartBoxFQDNs=smartbox_names,
-        LoggingLevelDefault=int(LoggingLevel.DEBUG),
-    )
-    context_manager.add_device(
-        pasd_bus_name,
-        MccsPasdBus,
-        Host=pasd_bus_info["host"],
-        Port=pasd_bus_info["port"],
-        Timeout=pasd_bus_info["timeout"],
-        LoggingLevelDefault=int(LoggingLevel.OFF),
-    )
-    # add the FNDH.
-    context_manager.add_device(
-        fndh_name,
-        MccsFNDH,
-        PasdFQDN=pasd_bus_name,
-        LoggingLevelDefault=int(LoggingLevel.OFF),
-    )
-    # Add the 24 Smartboxes.
-    for smartbox_no in range(24):
-        context_manager.add_device(
-            smartbox_names[smartbox_no],
-            MccsSmartBox,
-            PasdFQDN=pasd_bus_name,
-            FndhFQDN=fndh_name,
-            FndhPort=smartbox_no + 1,
-            SmartBoxNumber=smartbox_no + 1,
-            LoggingLevelDefault=int(LoggingLevel.OFF),
-        )
-
-    with context_manager as context:
-        yield context
+    yield test_context.get_pasd_bus_device()
 
 
 @pytest.fixture(name="fndh_device")
 def fndh_device_fixture(
-    tango_harness: TangoContextProtocol,
-    fndh_name: str,
+    test_context: PasdTangoTestHarnessContext,
 ) -> tango.DeviceProxy:
     """
-    Fixture that returns the fndh Tango device under test.
+    Fixture that returns the FNDH Tango device under test.
 
-    :param tango_harness: a test harness for Tango devices.
-    :param fndh_name: name of the fndh_bus Tango device.
+    :param test_context: context in which the integration tests will run.
 
-    :yield: the fndh Tango device under test.
+    :yield: the FNDH Tango device under test.
     """
-    yield tango_harness.get_device(fndh_name)
+    yield test_context.get_fndh_device()
 
 
 @pytest.fixture(name="field_station_device")
 def field_station_device_fixture(
-    tango_harness: TangoContextProtocol,
-    field_station_name: str,
+    test_context: PasdTangoTestHarnessContext,
 ) -> tango.DeviceProxy:
     """
     Fixture that returns the field station Tango device under test.
 
-    :param tango_harness: a test harness for Tango devices.
-    :param field_station_name: name of the field station Tango device.
+    :param test_context: context in which the integration tests will run.
 
-    :yield: the field station Tango device under test.
+    :yield: the FNDH Tango device under test.
     """
-    yield tango_harness.get_device(field_station_name)
+    yield test_context.get_field_station_device()
+
+
+@pytest.fixture(name="smartbox_device")
+def smartbox_device_fixture(
+    test_context: PasdTangoTestHarnessContext,
+    smartbox_number: int,
+) -> list[tango.DeviceProxy]:
+    """
+    Fixture that returns a smartbox Tango device.
+
+    :param test_context: context in which the integration tests will run.
+    :param smartbox_number: number of the smartbox under test
+
+    :return: the smartbox Tango device.
+    """
+    return test_context.get_smartbox_device(smartbox_number)

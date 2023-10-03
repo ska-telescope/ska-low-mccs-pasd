@@ -7,6 +7,7 @@
 # See LICENSE for more info.
 """This module contains the integration tests for MccsPasdBus with MccsSmartBox."""
 
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import gc
@@ -16,7 +17,6 @@ import time
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
-from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator, SmartboxSimulator
@@ -52,11 +52,11 @@ def turn_pasd_devices_online(
     # once we have an updated value for this attribute,
     # we have an updated value for all of them.
     pasd_bus_device.subscribe_event(
-        "smartbox24portscurrentdraw",
+        "smartbox24AlarmFlags",
         tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["smartbox24portscurrentdraw"],
+        change_event_callbacks["smartbox24AlarmFlags"],
     )
-    change_event_callbacks.assert_change_event("smartbox24portscurrentdraw", None)
+    change_event_callbacks.assert_change_event("smartbox24AlarmFlags", None)
 
     pasd_bus_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.UNKNOWN)
@@ -65,8 +65,6 @@ def turn_pasd_devices_online(
     change_event_callbacks["pasd_bus_state"].assert_not_called()
     change_event_callbacks.assert_change_event("healthState", HealthState.OK)
     assert pasd_bus_device.healthState == HealthState.OK
-
-    change_event_callbacks.assert_against_call("smartbox24portscurrentdraw")
 
     # ---------------------
     # FNDH adminMode online
@@ -151,7 +149,7 @@ class TestSmartBoxPasdBusIntegration:
         pasd_bus_device: tango.DeviceProxy,
         smartbox_device: tango.DeviceProxy,
         change_event_callbacks: MockTangoEventCallbackGroup,
-        smartbox_id: int,
+        smartbox_number: int,
     ) -> None:
         """
         Test power interplay between TANGO devices.
@@ -167,7 +165,7 @@ class TestSmartBoxPasdBusIntegration:
             :py:class:`tango.test_context.DeviceTestContext`.
         :param change_event_callbacks: group of Tango change event
             callback with asynchrony support
-        :param smartbox_id: the smartbox number
+        :param smartbox_number: the smartbox number
         """
         assert fndh_device.adminMode == AdminMode.OFFLINE
         assert pasd_bus_device.adminMode == AdminMode.OFFLINE
@@ -208,9 +206,7 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["pasd_bus_state"].assert_not_called()
         assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
-        assert pasd_bus_device.InitializeSmartbox(smartbox_id)[0] == ResultCode.OK
-
-        # change_event_callbacks.assert_against_call("smartbox24portscurrentdraw")
+        assert pasd_bus_device.InitializeSmartbox(smartbox_number)[0] == ResultCode.OK
 
         # ---------------------
         # FNDH adminMode online
@@ -234,55 +230,74 @@ class TestSmartBoxPasdBusIntegration:
 
         # Subscribe
         fndh_device.subscribe_event(
-            f"Port{smartbox_id+1}PowerState",
+            f"Port{smartbox_number}PowerState",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["fndhport1powerstate"],
+            change_event_callbacks[f"fndhport{smartbox_number}powerstate"],
         )
-        change_event_callbacks["fndhport1powerstate"].assert_change_event(
-            PowerState.OFF
-        )
-        change_event_callbacks["fndhport1powerstate"].assert_not_called()
+        change_event_callbacks[
+            f"fndhport{smartbox_number}powerstate"
+        ].assert_change_event(PowerState.OFF)
+        change_event_callbacks[
+            f"fndhport{smartbox_number}powerstate"
+        ].assert_not_called()
 
-        fndh_device.PowerOnPort(smartbox_id + 1)
-        change_event_callbacks["fndhport1powerstate"].assert_change_event(PowerState.ON)
-        change_event_callbacks["fndhport1powerstate"].assert_not_called()
+        fndh_device.PowerOnPort(smartbox_number)
+        change_event_callbacks[
+            f"fndhport{smartbox_number}powerstate"
+        ].assert_change_event(PowerState.ON)
+        change_event_callbacks[
+            f"fndhport{smartbox_number}powerstate"
+        ].assert_not_called()
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
-        assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
+        assert pasd_bus_device.fndhPortsPowerSensed[smartbox_number - 1]
         change_event_callbacks["smartbox_state"].assert_not_called()
 
-        fndh_device.PowerOffPort(smartbox_id + 1)
-        change_event_callbacks["fndhport1powerstate"].assert_change_event(
-            PowerState.OFF
-        )
+        fndh_device.PowerOffPort(smartbox_number)
+        change_event_callbacks[
+            f"fndhport{smartbox_number}powerstate"
+        ].assert_change_event(PowerState.OFF)
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
-        assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
+
+        fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
+        assert not fndh_ports_power_sensed[smartbox_number - 1]
         change_event_callbacks["smartbox_state"].assert_not_called()
+
+        desired_port_powers: list[bool | None] = [None for _ in fndh_ports_power_sensed]
+        desired_port_powers[smartbox_number - 1] = True
         json_argument = json.dumps(
-            {"port_number": smartbox_id + 1, "stay_on_when_offline": True}
+            {"port_powers": desired_port_powers, "stay_on_when_offline": True}
         )
-        pasd_bus_device.TurnFndhPortOn(json_argument)
-        change_event_callbacks["fndhport1powerstate"].assert_change_event(PowerState.ON)
+        pasd_bus_device.SetFndhPortPowers(json_argument)
+        change_event_callbacks[
+            f"fndhport{smartbox_number}powerstate"
+        ].assert_change_event(PowerState.ON)
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
-        assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
+        assert pasd_bus_device.fndhPortsPowerSensed[smartbox_number - 1]
 
-        pasd_bus_device.TurnFndhPortOff(smartbox_id + 1)
-        change_event_callbacks["fndhport1powerstate"].assert_change_event(
-            PowerState.OFF
+        desired_port_powers[smartbox_number - 1] = False
+        json_argument = json.dumps(
+            {"port_powers": desired_port_powers, "stay_on_when_offline": True}
         )
+        pasd_bus_device.SetFndhPortPowers(json_argument)
+        change_event_callbacks[
+            f"fndhport{smartbox_number}powerstate"
+        ].assert_change_event(PowerState.OFF)
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
-        assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
+        assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_number - 1]
 
         smartbox_device.On()
-        change_event_callbacks["fndhport1powerstate"].assert_change_event(PowerState.ON)
+        change_event_callbacks[
+            f"fndhport{smartbox_number}powerstate"
+        ].assert_change_event(PowerState.ON)
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
-        assert pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
+        assert pasd_bus_device.fndhPortsPowerSensed[smartbox_number - 1]
 
         smartbox_device.Off()
-        change_event_callbacks["fndhport1powerstate"].assert_change_event(
-            PowerState.OFF
-        )
+        change_event_callbacks[
+            f"fndhport{smartbox_number}powerstate"
+        ].assert_change_event(PowerState.OFF)
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
-        assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_id]
+        assert not pasd_bus_device.fndhPortsPowerSensed[smartbox_number - 1]
 
     def test_component_state_callbacks(
         self: TestSmartBoxPasdBusIntegration,
@@ -404,12 +419,14 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
 
     @pytest.mark.xfail(
-        reason="Cannot unsubscribe from proxy so event received,"
-        "even though communication is not established"
+        reason=(
+            "Cannot unsubscribe from proxy so event received,"
+            "even though communication is not established"
+        )
     )
     def test_power_state_transitions(
         self: TestSmartBoxPasdBusIntegration,
-        smartbox_devices: tango.DeviceProxy,
+        smartbox_device: tango.DeviceProxy,
         pasd_bus_device: tango.DeviceProxy,
         fndh_device: tango.DeviceProxy,
         change_event_callbacks: MockTangoEventCallbackGroup,
@@ -419,7 +436,7 @@ class TestSmartBoxPasdBusIntegration:
 
         This test looks at the simple power state transitions.
 
-        :param smartbox_devices: fixture that provides a
+        :param smartbox_device: fixture that provides a
             :py:class:`tango.DeviceProxy` to the device under test, in a
             :py:class:`tango.test_context.DeviceTestContext`.
         :param pasd_bus_device: fixture that provides a
@@ -435,7 +452,6 @@ class TestSmartBoxPasdBusIntegration:
         # PaSD SETUP
         # ==========
         this_smartbox_port = 2
-        smartbox_device = smartbox_devices[1]
 
         setup_devices_with_subscriptions(
             smartbox_device,
@@ -502,7 +518,7 @@ class TestSmartBoxPasdBusIntegration:
     # pylint: disable=too-many-arguments
     def test_turn_on_mccs_smartbox_antenna_port_when_smartbox_under_test_is_off(
         self: TestSmartBoxPasdBusIntegration,
-        smartbox_devices: tango.DeviceProxy,
+        smartbox_device: tango.DeviceProxy,
         pasd_bus_device: tango.DeviceProxy,
         fndh_device: tango.DeviceProxy,
         smartbox_number: int,
@@ -523,7 +539,7 @@ class TestSmartBoxPasdBusIntegration:
         AND the MCCSSmartbox will get a callback when the "Smartbox-under-test"
         antenna port has turned on.
 
-        :param smartbox_devices: fixture that provides a
+        :param smartbox_device: fixture that provides a
             :py:class:`tango.DeviceProxy` to the device under test, in a
             :py:class:`tango.test_context.DeviceTestContext`.
         :param pasd_bus_device: fixture that provides a
@@ -541,7 +557,6 @@ class TestSmartBoxPasdBusIntegration:
         # ==========
         smartbox_port_desired_on = 6
 
-        smartbox_device = smartbox_devices[smartbox_number - 1]
         setup_devices_with_subscriptions(
             smartbox_device,
             pasd_bus_device,
@@ -615,7 +630,7 @@ class TestSmartBoxPasdBusIntegration:
     # pylint: disable=too-many-arguments
     def test_turn_on_multiple_mccs_smartbox_antenna_ports(
         self: TestSmartBoxPasdBusIntegration,
-        smartbox_devices: tango.DeviceProxy,
+        smartbox_device: tango.DeviceProxy,
         pasd_bus_device: tango.DeviceProxy,
         fndh_device: tango.DeviceProxy,
         smartbox_number: int,
@@ -624,7 +639,7 @@ class TestSmartBoxPasdBusIntegration:
         """
         Test we can turn on multiple smartbox antennas when smartbox-under-test is off.
 
-        :param smartbox_devices: fixture that provides a
+        :param smartbox_device: fixture that provides a
             :py:class:`tango.DeviceProxy` to the device under test, in a
             :py:class:`tango.test_context.DeviceTestContext`.
         :param pasd_bus_device: fixture that provides a
@@ -637,12 +652,8 @@ class TestSmartBoxPasdBusIntegration:
         :param change_event_callbacks: group of Tango change event
             callback with asynchrony support
         """
-        # ==========
-        # PaSD SETUP
-        # ==========
         smartbox_ports_desired_on = [6, 7, 8]
 
-        smartbox_device = smartbox_devices[smartbox_number - 1]
         setup_devices_with_subscriptions(
             smartbox_device,
             pasd_bus_device,
@@ -658,48 +669,66 @@ class TestSmartBoxPasdBusIntegration:
 
         # Check that both the PaSD and FNDH say
         # the smartbox under investigation Is OFF.
-        assert fndh_device.PortPowerState(smartbox_number) == PowerState.OFF
-        pasd_claimed_port_states = getattr(
-            pasd_bus_device, f"smartbox{smartbox_number}portspowersensed"
+        pasd_bus_device.InitializeFndh()
+
+        fndh_ports_power_sensed = list(pasd_bus_device.fndhportspowersensed)
+        fndh_device.subscribe_event(
+            "PortsPowerSensed",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndhportspowersensed"],
         )
-        smartbox_claimed_port_states = smartbox_device.PortsPowerSensed
-        assert all(smartbox_claimed_port_states == pasd_claimed_port_states)
+        change_event_callbacks["fndhportspowersensed"].assert_change_event(
+            fndh_ports_power_sensed
+        )
+
+        assert fndh_device.PortPowerState(smartbox_number) == PowerState.OFF
+        assert not fndh_ports_power_sensed[smartbox_number - 1]
+
+        fndh_device.PowerOnPort(smartbox_number)
+        fndh_ports_power_sensed[smartbox_number - 1] = True
+        change_event_callbacks["fndhportspowersensed"].assert_change_event(
+            fndh_ports_power_sensed
+        )
+        assert fndh_device.PortPowerState(smartbox_number) == PowerState.ON
+        assert fndh_ports_power_sensed[smartbox_number - 1]
+
+        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["smartbox_state"].assert_not_called()
+        pasd_bus_device.InitializeSmartbox(smartbox_number)
+
+        pasd_claimed_port_states = list(
+            getattr(pasd_bus_device, f"smartbox{smartbox_number}portspowersensed")
+        )
+        smartbox_claimed_port_states = list(smartbox_device.PortsPowerSensed)
+        assert smartbox_claimed_port_states == pasd_claimed_port_states
 
         # Check that the Port is not ON
         for port in smartbox_ports_desired_on:
-            assert not smartbox_device.PortsPowerSensed[port - 1]
+            assert not smartbox_claimed_port_states[port - 1]
 
         smartbox_device.subscribe_event(
             "PortsPowerSensed",
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["smartbox1portpowersensed"],
         )
-        change_event_callbacks["smartbox1portpowersensed"].assert_change_event(Anything)
-        # ===
-        # ACT
-        # ===
-        pasd_bus_device.InitializeFndh()
+        change_event_callbacks["smartbox1portpowersensed"].assert_change_event(
+            smartbox_claimed_port_states
+        )
+
         for port in smartbox_ports_desired_on:
             smartbox_device.PowerOnPort(port)
-        pasd_bus_device.InitializeSmartbox(smartbox_number)
-
-        # ======
-        # ASSERT
-        # ======
-        # Check the MccsSmartbox device is turned on.
-        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
-        change_event_callbacks["smartbox_state"].assert_not_called()
-        assert fndh_device.PortPowerState(smartbox_number) == PowerState.ON
-
-        change_event_callbacks["smartbox1portpowersensed"].assert_change_event(Anything)
-        for port in smartbox_ports_desired_on:
-            # Check that the requested ports are powered on.
-            assert smartbox_device.PortsPowerSensed[port - 1]
+            smartbox_claimed_port_states[port - 1] = True
+            change_event_callbacks["smartbox1portpowersensed"].assert_change_event(
+                smartbox_claimed_port_states
+            )
+            assert (
+                list(smartbox_device.PortsPowerSensed) == smartbox_claimed_port_states
+            )
 
     # pylint: disable-next=too-many-arguments,too-many-statements
     def test_smartbox_pasd_integration(
         self: TestSmartBoxPasdBusIntegration,
-        smartbox_devices: tango.DeviceProxy,
+        smartbox_device: tango.DeviceProxy,
         pasd_bus_device: tango.DeviceProxy,
         fndh_device: tango.DeviceProxy,
         smartbox_simulator: SmartboxSimulator,
@@ -714,7 +743,7 @@ class TestSmartBoxPasdBusIntegration:
         - Can MccsSmartBox handle a changing attribute event pushed from the
         MccsPasdBus.
 
-        :param smartbox_devices: fixture that provides a
+        :param smartbox_device: fixture that provides a
             :py:class:`tango.DeviceProxy` to the device under test, in a
             :py:class:`tango.test_context.DeviceTestContext`.
         :param pasd_bus_device: fixture that provides a
@@ -730,7 +759,6 @@ class TestSmartBoxPasdBusIntegration:
         # ==========
         # PaSD SETUP
         # ==========
-        smartbox_device = smartbox_devices[0]
         setup_devices_with_subscriptions(
             smartbox_device,
             pasd_bus_device,
@@ -754,6 +782,35 @@ class TestSmartBoxPasdBusIntegration:
             "FemAmbientTemperature",
             "FemCaseTemperatures",
             "FemHeatsinkTemperatures",
+            "PortForcings",
+            "PortBreakersTripped",
+            "PortsDesiredPowerOnline",
+            "PortsDesiredPowerOffline",
+            "PortsPowerSensed",
+            "PortsCurrentDraw",
+            "InputVoltageThresholds",
+            "PowerSupplyOutputVoltageThresholds",
+            "PowerSupplyTemperatureThresholds",
+            "PcbTemperatureThresholds",
+            "FemAmbientTemperatureThresholds",
+            "FemCaseTemperature1Thresholds",
+            "FemCaseTemperature2Thresholds",
+            "FemHeatsinkTemperature1Thresholds",
+            "FemHeatsinkTemperature2Thresholds",
+            "Fem1CurrentTripThreshold",
+            "Fem2CurrentTripThreshold",
+            "Fem3CurrentTripThreshold",
+            "Fem4CurrentTripThreshold",
+            "Fem5CurrentTripThreshold",
+            "Fem6CurrentTripThreshold",
+            "Fem7CurrentTripThreshold",
+            "Fem8CurrentTripThreshold",
+            "Fem9CurrentTripThreshold",
+            "Fem10CurrentTripThreshold",
+            "Fem11CurrentTripThreshold",
+            "Fem12CurrentTripThreshold",
+            "WarningFlags",
+            "AlarmFlags",
         ]:
             with pytest.raises(tango.DevFailed):
                 getattr(smartbox_device, i)
@@ -803,6 +860,93 @@ class TestSmartBoxPasdBusIntegration:
             list(smartbox_device.FemHeatsinkTemperatures)
             == SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
         )
+        assert (
+            list(smartbox_device.InputVoltageThresholds)
+            == smartbox_simulator.input_voltage_thresholds
+        )
+        assert (
+            list(smartbox_device.PowerSupplyOutputVoltageThresholds)
+            == smartbox_simulator.power_supply_output_voltage_thresholds
+        )
+        assert (
+            list(smartbox_device.PowerSupplyTemperatureThresholds)
+            == smartbox_simulator.power_supply_temperature_thresholds
+        )
+        assert (
+            list(smartbox_device.PcbTemperatureThresholds)
+            == smartbox_simulator.pcb_temperature_thresholds
+        )
+        assert (
+            list(smartbox_device.FemAmbientTemperatureThresholds)
+            == smartbox_simulator.fem_ambient_temperature_thresholds
+        )
+        assert (
+            list(smartbox_device.FemCaseTemperature1Thresholds)
+            == smartbox_simulator.fem_case_temperature_1_thresholds
+        )
+        assert (
+            list(smartbox_device.FemCaseTemperature2Thresholds)
+            == smartbox_simulator.fem_case_temperature_2_thresholds
+        )
+        assert (
+            list(smartbox_device.FemHeatsinkTemperature1Thresholds)
+            == smartbox_simulator.fem_heatsink_temperature_1_thresholds
+        )
+        assert (
+            list(smartbox_device.FemHeatsinkTemperature2Thresholds)
+            == smartbox_simulator.fem_heatsink_temperature_2_thresholds
+        )
+        assert (
+            smartbox_device.Fem1CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem2CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem3CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem4CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem5CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem6CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem7CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem8CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem9CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem10CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem11CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        assert (
+            smartbox_device.Fem12CurrentTripThreshold
+            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+        )
+        # TODO
+        # assert smartbox_device.WarningFlags == SmartboxSimulator.DEFAULT_FLAGS
+        # assert smartbox_device.AlarmFlags == SmartboxSimulator.DEFAULT_FLAGS
 
         # Subscribe to attribute change events
         smartbox_device.subscribe_event(
@@ -930,9 +1074,11 @@ class TestSmartBoxPasdBusIntegration:
 
 
 @pytest.fixture(name="change_event_callbacks")
-def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
+def change_event_callbacks_fixture(smartbox_number: int) -> MockTangoEventCallbackGroup:
     """
     Return a dictionary of callables to be used as Tango change event callbacks.
+
+    :param smartbox_number: the number of the smartbox under test
 
     :return: a dictionary of callables to be used as tango change event
         callbacks.
@@ -943,8 +1089,8 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "fndh_state",
         "healthState",
         "fndhstatus",
-        "smartbox24portscurrentdraw",
-        "smartbox24portsconnected",
+        "fndhportspowersensed",
+        "smartbox24AlarmFlags",
         "smartbox1portpowersensed",
         "smartbox1inputvoltage",
         "smartbox1psuoutput",
@@ -954,8 +1100,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "smartbox1femcasetemperatures",
         "smartbox1femheatsinktemperatures",
         "smartbox1status",
-        "fndhport2powerstate",
-        "fndhport1powerstate",
+        f"fndhport{smartbox_number}powerstate",
         timeout=10.0,
         assert_no_error=False,
     )

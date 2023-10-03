@@ -8,21 +8,89 @@
 """This module contains the tests of the FNDH component manager."""
 from __future__ import annotations
 
+import functools
+import logging
 import unittest.mock
-from typing import Any
+from typing import Any, Iterator
 
 import pytest
-from ska_control_model import CommunicationStatus, TaskStatus
+import tango
+from ska_control_model import CommunicationStatus, ResultCode, TaskStatus
+from ska_low_mccs_common.testing.mock import MockDeviceBuilder
 from ska_tango_testing.mock import MockCallableGroup
 
 from ska_low_mccs_pasd.fndh import FndhComponentManager, _PasdBusProxy
+from tests.harness import (
+    PasdTangoTestHarness,
+    PasdTangoTestHarnessContext,
+    get_pasd_bus_name,
+)
 
 
-class TestFndhComponentManager:
-    """Tests for the FNDH component manager."""
+@pytest.fixture(name="mock_pasdbus")
+def mock_pasdbus_fixture() -> unittest.mock.Mock:
+    """
+    Fixture that provides a mock MccsPaSDBus device.
+
+    :return: a mock MccsPaSDBus device.
+    """
+    builder = MockDeviceBuilder()
+    builder.set_state(tango.DevState.ON)
+    builder.add_command("GetPasdDeviceSubscriptions", {})
+    builder.add_result_command("SetSmartboxPortPowers", ResultCode.OK)
+    builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
+    return builder()
+
+
+@pytest.fixture(name="test_context")
+def test_context_fixture(
+    mock_pasdbus: unittest.mock.Mock,
+) -> Iterator[PasdTangoTestHarnessContext]:
+    """
+    Create a test context containing a single mock PaSD bus device.
+
+    :param mock_pasdbus: A mock PaSD bus device.
+
+    :yield: the test context
+    """
+    harness = PasdTangoTestHarness()
+    harness.set_mock_pasd_bus_device(mock_pasdbus)
+    with harness as context:
+        yield context
+
+
+class TestPasdBusProxy:
+    """Tests of the PaSD bus proxy used by the FNDH component manager."""
+
+    @pytest.fixture(name="pasd_bus_proxy")
+    def pasd_bus_proxy_fixture(
+        self: TestPasdBusProxy,
+        test_context: str,
+        logger: logging.Logger,
+        mock_callbacks: MockCallableGroup,
+    ) -> _PasdBusProxy:
+        """
+        Return a proxy to the PasdBus for testing.
+
+        This is a pytest fixture.
+
+        :param test_context: a test context containing the Tango devices.
+        :param logger: a logger for the PaSD bus proxy to use
+        :param mock_callbacks: A group of callables.
+
+        :return: a proxy to the PaSD bus device.
+        """
+        return _PasdBusProxy(
+            get_pasd_bus_name(),
+            logger,
+            mock_callbacks["communication_state"],
+            mock_callbacks["component_state"],
+            mock_callbacks["attribute_update"],
+            mock_callbacks["port_power_state"],
+        )
 
     def test_pasd_proxy_communication(
-        self: TestFndhComponentManager,
+        self: TestPasdBusProxy,
         pasd_bus_proxy: _PasdBusProxy,
         mock_callbacks: MockCallableGroup,
     ) -> None:
@@ -45,6 +113,43 @@ class TestFndhComponentManager:
 
         pasd_bus_proxy.stop_communicating()
         mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
+
+
+class TestFndhComponentManager:
+    """Tests of the FNDH component manager."""
+
+    @pytest.fixture(name="fndh_component_manager")
+    def fndh_component_manager_fixture(
+        self: TestFndhComponentManager,
+        test_context: str,
+        logger: logging.Logger,
+        mock_callbacks: MockCallableGroup,
+    ) -> FndhComponentManager:
+        """
+        Return an FNDH component manager.
+
+        :param test_context: a test context containing the Tango devices.
+        :param logger: a logger for this command to use.
+        :param mock_callbacks: mock callables.
+
+        :return: an FNDH component manager.
+        """
+        component_manager = FndhComponentManager(
+            logger,
+            mock_callbacks["communication_state"],
+            mock_callbacks["component_state"],
+            mock_callbacks["attribute_update"],
+            mock_callbacks["port_power_state"],
+            get_pasd_bus_name(),
+        )
+        component_manager._pasd_bus_proxy._communication_state_callback = (
+            component_manager._pasdbus_communication_state_changed
+        )
+        component_manager._pasd_bus_proxy._component_state_callback = functools.partial(
+            mock_callbacks["component_state"], fqdn=get_pasd_bus_name()
+        )
+
+        return component_manager
 
     def test_communication(
         self: TestFndhComponentManager,
@@ -174,7 +279,7 @@ class TestFndhComponentManager:
         expected_manager_result: Any,
         command_tracked_response: Any,
         mock_callbacks: MockCallableGroup,
-        pasd_bus_proxy: _PasdBusProxy,
+        mock_pasdbus: unittest.mock.Mock,
     ) -> None:
         """
         Test how the FNDH object handles the incorrect return type.
@@ -191,7 +296,7 @@ class TestFndhComponentManager:
         :param expected_manager_result: expected response from the call
         :param command_tracked_response: The result of the command.
         :param mock_callbacks: mock callables.
-        :param pasd_bus_proxy: a proxy to the PaSDBusdevice.
+        :param mock_pasdbus: the mock PaSD bus in the test harness.
         """
         fndh_component_manager._update_communication_state(
             CommunicationStatus.ESTABLISHED
@@ -200,7 +305,7 @@ class TestFndhComponentManager:
         mock_response = unittest.mock.MagicMock(
             side_effect=Exception("Mocked exception")
         )
-        setattr(pasd_bus_proxy, pasd_proxy_command, mock_response)
+        setattr(mock_pasdbus, pasd_proxy_command, mock_response)
         # check component manager can issue a command and it returns as expected
         assert (
             getattr(fndh_component_manager, component_manager_command)(

@@ -12,44 +12,32 @@ from __future__ import annotations
 
 import functools
 import logging
-import threading
 import unittest.mock
-from contextlib import contextmanager
-from typing import Any, Callable, ContextManager, Dict, Generator, Iterator
 
 import pytest
 import yaml
-from ska_ser_devices.client_server import TcpServer
-from ska_tango_testing.mock import MockCallableGroup
 
-from ska_low_mccs_pasd.pasd_bus import (
-    FndhSimulator,
-    PasdBusComponentManager,
-    PasdBusSimulator,
-    PasdBusSimulatorModbusServer,
-)
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
+from ska_low_mccs_pasd.pasd_bus import (FndhSimulator, PasdBusSimulator,
+                                        SmartboxSimulator)
 
 
-@pytest.fixture(name="station_id")
-def station_id_fixture() -> int:
+@pytest.fixture(name="station_label")
+def station_label_fixture() -> str:
     """
-    Return the id of the station whose configuration will be used in testing.
+    Return the name of the station whose configuration will be used in testing.
 
-    :return: the id of the station whose configuration will be used in
+    :return: the name of the station whose configuration will be used in
         testing.
     """
-    return 1
+    return "ci-1"
 
 
 @pytest.fixture(name="pasd_config")
-def pasd_config_fixture(pasd_config_path: str, station_id: int) -> dict:
+def pasd_config_fixture(pasd_config_path: str) -> dict:
     """
     Return the PaSD config that the pasd bus device uses.
 
     :param pasd_config_path: path to the PaSD configuration file
-    :param station_id: id of the staion whose configuration will be used
-        in testing.
 
     :return: the PaSD config that the PaSD bus object under test uses.
     """
@@ -59,20 +47,20 @@ def pasd_config_fixture(pasd_config_path: str, station_id: int) -> dict:
 
 @pytest.fixture(name="pasd_bus_simulator")
 def pasd_bus_simulator_fixture(
-    pasd_config_path: str, station_id: int
+    pasd_config_path: str, station_label: str
 ) -> PasdBusSimulator:
     """
     Fixture that returns a PaSD bus simulator.
 
     :param pasd_config_path: path to the PaSD configuration file
-    :param station_id: the id of the station whose PaSD bus we are
+    :param station_label: the name of the station whose PaSD bus we are
         simulating.
 
     :return: a PaSD bus simulator
     """
     return PasdBusSimulator(
         pasd_config_path,
-        station_id,
+        station_label,
         logging.DEBUG,
         smartboxes_depend_on_attached_ports=True,
     )
@@ -128,6 +116,20 @@ def mock_fndh_simulator_fixture(
         "power_module_temperature",
         "outside_temperature",
         "internal_ambient_temperature",
+        "psu48v_voltage_1_thresholds",
+        "psu48v_voltage_2_thresholds",
+        "psu48v_current_thresholds",
+        "psu48v_temperature_1_thresholds",
+        "psu48v_temperature_2_thresholds",
+        "panel_temperature_thresholds",
+        "fncb_temperature_thresholds",
+        "fncb_humidity_thresholds",
+        "comms_gateway_temperature_thresholds",
+        "power_module_temperature_thresholds",
+        "outside_temperature_thresholds",
+        "internal_ambient_temperature_thresholds",
+        "warning_flags",
+        "alarm_flags",
         "modbus_register_map_revision",
         "pcb_revision",
         "cpu_id",
@@ -165,7 +167,7 @@ def smartbox_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
     fndh_simulator: FndhSimulator,
     smartbox_attached_ports: list[int],
-) -> Dict[int, SmartboxSimulator]:
+) -> dict[int, SmartboxSimulator]:
     """
     Return the smartbox simulators.
 
@@ -184,8 +186,8 @@ def smartbox_simulators_fixture(
 
 @pytest.fixture(name="mock_smartbox_simulators")
 def mock_smartbox_simulators_fixture(
-    smartbox_simulators: Dict[int, SmartboxSimulator],
-) -> Dict[int, unittest.mock.Mock]:
+    smartbox_simulators: dict[int, SmartboxSimulator],
+) -> dict[int, unittest.mock.Mock]:
     """
     Return the mock smartbox simulators.
 
@@ -198,7 +200,7 @@ def mock_smartbox_simulators_fixture(
 
     :return: a sequence of mock smartbox simulators
     """
-    mock_simulators: Dict[int, unittest.mock.Mock] = {}
+    mock_simulators: dict[int, unittest.mock.Mock] = {}
 
     for smartbox_id, smartbox_simulator in smartbox_simulators.items():
         mock_simulator = unittest.mock.Mock(wraps=smartbox_simulator)
@@ -222,6 +224,30 @@ def mock_smartbox_simulators_fixture(
             "led_pattern",
             "fem_case_temperatures",
             "fem_heatsink_temperatures",
+            "input_voltage_thresholds",
+            "power_supply_output_voltage_thresholds",
+            "power_supply_temperature_thresholds",
+            "pcb_temperature_thresholds",
+            "fem_ambient_temperature_thresholds",
+            "fem_case_temperature_1_thresholds",
+            "fem_case_temperature_2_thresholds",
+            "fem_heatsink_temperature_1_thresholds",
+            "fem_heatsink_temperature_2_thresholds",
+            "warning_flags",
+            "alarm_flags",
+            "fem1_current_trip_threshold",
+            "fem2_current_trip_threshold",
+            "fem3_current_trip_threshold",
+            "fem4_current_trip_threshold",
+            "fem5_current_trip_threshold",
+            "fem6_current_trip_threshold",
+            "fem7_current_trip_threshold",
+            "fem8_current_trip_threshold",
+            "fem9_current_trip_threshold",
+            "fem10_current_trip_threshold",
+            "fem11_current_trip_threshold",
+            "fem12_current_trip_threshold",
+            "ports_connected",
             "port_forcings",
             "port_breakers_tripped",
             "ports_desired_power_when_online",
@@ -256,7 +282,7 @@ def smartbox_id_fixture() -> int:
 
 @pytest.fixture(name="smartbox_simulator")
 def smartbox_simulator_fixture(
-    smartbox_simulators: Dict[int, SmartboxSimulator],
+    smartbox_simulators: dict[int, SmartboxSimulator],
     smartbox_id: int,
 ) -> SmartboxSimulator:
     """
@@ -290,122 +316,3 @@ def mock_smartbox_simulator(
     :return: a smartbox simulator, wrapped in a mock.
     """
     return mock_smartbox_simulators[smartbox_id - 1]
-
-
-@pytest.fixture(name="pasd_bus_simulator_server_launcher")
-def pasd_bus_simulator_server_launcher_fixture(
-    mock_fndh_simulator: FndhSimulator,
-    mock_smartbox_simulators: Dict[int, SmartboxSimulator],
-    logger: logging.Logger,
-) -> Callable[[], ContextManager[TcpServer]]:
-    """
-    Return a context manager factory for a PaSD bus simulator server.
-
-    That is, a callable that, when called,
-    returns a context manager that spins up a simulator server,
-    yields it for use in testing,
-    and then shuts its down afterwards.
-
-    :param mock_fndh_simulator:
-        the FNDH simulator backend that the TCP server will front,
-        wrapped with a mock so that we can assert calls.
-    :param mock_smartbox_simulators:
-        the smartbox simulator backends that the TCP server will front,
-        each wrapped with a mock so that we can assert calls.
-    :param logger: a python standard logger
-
-    :return: a PaSD bus simulator server context manager factory
-    """
-
-    @contextmanager
-    def launch_pasd_bus_simulator_server() -> Iterator[TcpServer]:
-        simulator_server = PasdBusSimulatorModbusServer(
-            mock_fndh_simulator, mock_smartbox_simulators
-        )
-        server = TcpServer(
-            "localhost",
-            0,  # let the kernel give us a port
-            simulator_server,
-            logger=logger,
-        )
-
-        with server:
-            server_thread = threading.Thread(
-                name="PaSD bus simulator thread",
-                target=server.serve_forever,
-            )
-            server_thread.daemon = True  # don't hang on exit
-            server_thread.start()
-            yield server
-            server.shutdown()
-
-    return launch_pasd_bus_simulator_server
-
-
-@pytest.fixture(name="pasd_bus_simulator_server")
-def pasd_bus_simulator_server_fixture(
-    pasd_bus_simulator_server_launcher: Callable[[], ContextManager[TcpServer]],
-) -> Generator[TcpServer, None, None]:
-    """
-    Return a running PaSD bus simulator server for use in testing.
-
-    :param pasd_bus_simulator_server_launcher: a callable that, when called,
-        returns a context manager that spins up a simulator server,
-        yields it for use in testing,
-        and then shuts its down afterwards.
-
-    :yields: a PaSD bus simulator server
-    """
-    with pasd_bus_simulator_server_launcher() as server:
-        yield server
-
-
-@pytest.fixture(name="pasd_bus_info")
-def pasd_bus_info_fixture(
-    pasd_bus_simulator_server: TcpServer,
-) -> dict[str, Any]:
-    """
-    Return the host and port of the PaSD bus.
-
-    :param pasd_bus_simulator_server:
-        a TCP server front end to a PaSD bus simulator.
-
-    :return: the host and port of the AWG.
-    """
-    host, port = pasd_bus_simulator_server.server_address
-    return {
-        "host": host,
-        "port": port,
-        "timeout": 3.0,
-    }
-
-
-@pytest.fixture(name="pasd_bus_component_manager")
-def pasd_bus_component_manager_fixture(
-    pasd_bus_info: dict[str, Any],
-    logger: logging.Logger,
-    mock_callbacks: MockCallableGroup,
-) -> PasdBusComponentManager:
-    """
-    Return a PaSD bus simulator component manager.
-
-    (This is a pytest fixture.)
-
-    :param pasd_bus_info: information about the PaSD bus, such as its
-        IP address (host and port) and an appropriate timeout to use.
-    :param logger: the logger to be used by this object.
-    :param mock_callbacks: a group of mock callables for the component
-        manager under test to use as callbacks
-
-    :return: a PaSD bus simulator component manager.
-    """
-    component_manager = PasdBusComponentManager(
-        pasd_bus_info["host"],
-        pasd_bus_info["port"],
-        pasd_bus_info["timeout"],
-        logger,
-        mock_callbacks["communication_state"],
-        mock_callbacks["component_state"],
-        mock_callbacks["pasd_device_state"],
-    )
-    return component_manager

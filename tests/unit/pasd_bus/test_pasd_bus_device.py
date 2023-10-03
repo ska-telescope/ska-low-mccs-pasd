@@ -11,19 +11,16 @@ from __future__ import annotations
 
 import gc
 import json
-from typing import Generator
+import random
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState, LoggingLevel
-from ska_tango_testing.context import (
-    TangoContextProtocol,
-    ThreadedTestTangoContextManager,
-)
+from ska_control_model import AdminMode, HealthState
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
+from tests.harness import PasdTangoTestHarness
 
 # TODO: Weird hang-at-garbage-collection bug
 gc.disable()
@@ -53,62 +50,34 @@ def change_event_callbacks_fixture(
         f"smartbox{smartbox_id}LedPattern",
         f"smartbox{smartbox_id}PortBreakersTripped",
         f"smartbox{smartbox_id}PortsPowerSensed",
+        f"smartbox{smartbox_id}AlarmFlags",
         timeout=15.0,
         assert_no_error=False,
     )
 
 
-@pytest.fixture(name="pasd_bus_name", scope="session")
-def pasd_bus_name_fixture() -> str:
-    """
-    Return the name of the pasd_bus Tango device.
-
-    :return: the name of the pasd_bus Tango device.
-    """
-    return "low-mccs/pasd_bus/001"
-
-
-@pytest.fixture(name="tango_harness")
-def tango_harness_fixture(
-    pasd_bus_name: str,
-    pasd_bus_info: dict,
-) -> Generator[TangoContextProtocol, None, None]:
-    """
-    Return a Tango harness against which to run tests of the deployment.
-
-    :param pasd_bus_name: the name of the pasd_bus Tango device
-    :param pasd_bus_info: information about the PaSD bus, such as its
-        IP address (host and port) and an appropriate timeout to use.
-
-    :yields: a tango context.
-    """
-    context_manager = ThreadedTestTangoContextManager()
-    context_manager.add_device(
-        pasd_bus_name,
-        "ska_low_mccs_pasd.pasd_bus.MccsPasdBus",
-        Host=pasd_bus_info["host"],
-        Port=pasd_bus_info["port"],
-        Timeout=pasd_bus_info["timeout"],
-        LoggingLevelDefault=int(LoggingLevel.DEBUG),
-    )
-    with context_manager as context:
-        yield context
-
-
 @pytest.fixture(name="pasd_bus_device")
 def pasd_bus_device_fixture(
-    tango_harness: TangoContextProtocol,
-    pasd_bus_name: str,
+    mock_fndh_simulator: FndhSimulator,
+    mock_smartbox_simulators: dict[int, SmartboxSimulator],
 ) -> tango.DeviceProxy:
     """
-    Fixture that returns the pasd_bus Tango device under test.
+    Fixture that returns a proxy to the PaSD bus Tango device under test.
 
-    :param tango_harness: a test harness for Tango devices.
-    :param pasd_bus_name: name of the pasd_bus Tango device.
+    :param mock_fndh_simulator:
+        the FNDH simulator backend that the TCP server will front,
+        wrapped with a mock so that we can assert calls.
+    :param mock_smartbox_simulators:
+        the smartbox simulator backends that the TCP server will front,
+        each wrapped with a mock so that we can assert calls.
 
-    :yield: the pasd_bus Tango device under test.
+    :yield: a proxy to the PaSD bus Tango device under test.
     """
-    yield tango_harness.get_device(pasd_bus_name)
+    harness = PasdTangoTestHarness()
+    harness.set_pasd_bus_simulator(mock_fndh_simulator, mock_smartbox_simulators)
+    harness.set_pasd_bus_device()  # using all defaults
+    with harness as context:
+        yield context.get_pasd_bus_device()
 
 
 def test_communication(  # pylint: disable=too-many-statements
@@ -158,6 +127,15 @@ def test_communication(  # pylint: disable=too-many-statements
         change_event_callbacks["smartbox1PortsPowerSensed"],
     )
     change_event_callbacks.assert_change_event("smartbox1PortsPowerSensed", None)
+    # TODO
+    # pasd_bus_device.subscribe_event(
+    #     f"smartbox{smartbox_id}AlarmFlags",
+    #     tango.EventType.CHANGE_EVENT,
+    #     change_event_callbacks[f"smartbox{smartbox_id}AlarmFlags"],
+    # )
+    # change_event_callbacks.assert_change_event(
+    #     f"smartbox{smartbox_id}AlarmFlags", None
+    # )
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
@@ -167,6 +145,10 @@ def test_communication(  # pylint: disable=too-many-statements
     assert pasd_bus_device.healthState == HealthState.OK
 
     change_event_callbacks.assert_against_call("smartbox1PortsPowerSensed", lookahead=5)
+    # TODO
+    # change_event_callbacks.assert_against_call(
+    #     f"smartbox{smartbox_id}AlarmFlags", lookahead=5
+    # )
 
     assert (
         pasd_bus_device.fndhModbusRegisterMapRevisionNumber
@@ -222,7 +204,57 @@ def test_communication(  # pylint: disable=too-many-statements
     assert (
         list(pasd_bus_device.fndhPortsPowerSensed) == fndh_simulator.ports_power_sensed
     )
-
+    assert (
+        list(pasd_bus_device.fndhPsu48vVoltage1Thresholds)
+        == fndh_simulator.psu48v_voltage_1_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhPsu48vVoltage2Thresholds)
+        == fndh_simulator.psu48v_voltage_2_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhPsu48vCurrentThresholds)
+        == fndh_simulator.psu48v_current_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhPsu48vTemperature1Thresholds)
+        == fndh_simulator.psu48v_temperature_1_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhPsu48vTemperature2Thresholds)
+        == fndh_simulator.psu48v_temperature_2_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhPanelTemperatureThresholds)
+        == fndh_simulator.panel_temperature_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhFncbTemperatureThresholds)
+        == fndh_simulator.fncb_temperature_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhHumidityThresholds)
+        == fndh_simulator.fncb_humidity_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhCommsGatewayTemperatureThresholds)
+        == fndh_simulator.comms_gateway_temperature_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhPowerModuleTemperatureThresholds)
+        == fndh_simulator.power_module_temperature_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhOutsideTemperatureThresholds)
+        == fndh_simulator.outside_temperature_thresholds
+    )
+    assert (
+        list(pasd_bus_device.fndhInternalAmbientTemperatureThresholds)
+        == fndh_simulator.internal_ambient_temperature_thresholds
+    )
+    # TODO
+    # assert pasd_bus_device.fndhWarningFlags == FndhSimulator.DEFAULT_FLAGS
+    # assert pasd_bus_device.fndhAlarmFlags == FndhSimulator.DEFAULT_FLAGS
     assert (
         getattr(
             pasd_bus_device,
@@ -320,9 +352,137 @@ def test_communication(  # pylint: disable=too-many-statements
         list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsCurrentDraw"))
         == smartbox_simulator.ports_current_draw
     )
+    assert (
+        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltageThresholds"))
+        == smartbox_simulator.input_voltage_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}PowerSupplyOutputVoltageThresholds",
+            )
+        )
+        == smartbox_simulator.power_supply_output_voltage_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}PowerSupplyTemperatureThresholds",
+            )
+        )
+        == smartbox_simulator.power_supply_temperature_thresholds
+    )
+    assert (
+        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PcbTemperatureThresholds"))
+        == smartbox_simulator.pcb_temperature_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}FemAmbientTemperatureThresholds",
+            )
+        )
+        == smartbox_simulator.fem_ambient_temperature_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}FemCaseTemperature1Thresholds",
+            )
+        )
+        == smartbox_simulator.fem_case_temperature_1_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}FemCaseTemperature2Thresholds",
+            )
+        )
+        == smartbox_simulator.fem_case_temperature_2_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}FemHeatsinkTemperature1Thresholds",
+            )
+        )
+        == smartbox_simulator.fem_heatsink_temperature_1_thresholds
+    )
+    assert (
+        list(
+            getattr(
+                pasd_bus_device,
+                f"smartbox{smartbox_id}FemHeatsinkTemperature2Thresholds",
+            )
+        )
+        == smartbox_simulator.fem_heatsink_temperature_2_thresholds
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem1CurrentTripThreshold")
+        == smartbox_simulator.fem1_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem2CurrentTripThreshold")
+        == smartbox_simulator.fem2_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem3CurrentTripThreshold")
+        == smartbox_simulator.fem3_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem4CurrentTripThreshold")
+        == smartbox_simulator.fem4_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem5CurrentTripThreshold")
+        == smartbox_simulator.fem5_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem6CurrentTripThreshold")
+        == smartbox_simulator.fem6_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem7CurrentTripThreshold")
+        == smartbox_simulator.fem7_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem8CurrentTripThreshold")
+        == smartbox_simulator.fem8_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem9CurrentTripThreshold")
+        == smartbox_simulator.fem9_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem10CurrentTripThreshold")
+        == smartbox_simulator.fem10_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem11CurrentTripThreshold")
+        == smartbox_simulator.fem11_current_trip_threshold
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem12CurrentTripThreshold")
+        == smartbox_simulator.fem12_current_trip_threshold
+    )
+    # TODO
+    # assert (
+    #     getattr(pasd_bus_device, f"smartbox{smartbox_id}WarningFlags")
+    #     == SmartboxSimulator.DEFAULT_FLAGS
+    # )
+    # assert (
+    #     getattr(pasd_bus_device, f"smartbox{smartbox_id}AlarmFlags")
+    #     == SmartboxSimulator.DEFAULT_FLAGS
+    # )
 
 
-def test_turn_fndh_port_on_off(
+def test_set_fndh_port_powers(
     pasd_bus_device: tango.DeviceProxy,
     fndh_simulator: FndhSimulator,
     change_event_callbacks: MockTangoEventCallbackGroup,
@@ -361,32 +521,27 @@ def test_turn_fndh_port_on_off(
         "fndhPortsPowerSensed", fndh_simulator.ports_power_sensed
     )
 
-    connected_fndh_port = fndh_simulator.ports_connected.index(True) + 1
+    for i in range(1, 5):
+        print(f"\nTest iteration {i}")
+        fndh_ports_power_sensed = list(pasd_bus_device.fndhPortsPowerSensed)
 
-    fndh_ports_power_sensed = list(pasd_bus_device.fndhPortsPowerSensed)
-    is_on = fndh_ports_power_sensed[connected_fndh_port - 1]
-
-    if is_on:
-        pasd_bus_device.TurnFndhPortOff(connected_fndh_port)
-        fndh_ports_power_sensed[connected_fndh_port - 1] = False
-        change_event_callbacks.assert_change_event(
-            "fndhPortsPowerSensed", fndh_ports_power_sensed
+        desired_port_powers: list[bool | None] = random.choices(
+            [True, False, None], k=len(fndh_ports_power_sensed)
         )
 
-    json_argument = json.dumps(
-        {"port_number": connected_fndh_port, "stay_on_when_offline": True}
-    )
-    pasd_bus_device.TurnFndhPortOn(json_argument)
-    fndh_ports_power_sensed[connected_fndh_port - 1] = True
-    change_event_callbacks.assert_change_event(
-        "fndhPortsPowerSensed", fndh_ports_power_sensed
-    )
+        expected_fndh_ports_power_sensed = list(fndh_ports_power_sensed)
+        for i, desired in enumerate(desired_port_powers):
+            if desired is not None:
+                expected_fndh_ports_power_sensed[i] = desired
 
-    pasd_bus_device.TurnFndhPortOff(connected_fndh_port)
-    fndh_ports_power_sensed[connected_fndh_port - 1] = False
-    change_event_callbacks.assert_change_event(
-        "fndhPortsPowerSensed", fndh_ports_power_sensed
-    )
+        json_arg = {
+            "port_powers": desired_port_powers,
+            "stay_on_when_offline": False,
+        }
+        pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
+        change_event_callbacks.assert_change_event(
+            "fndhPortsPowerSensed", expected_fndh_ports_power_sensed
+        )
 
 
 def test_fndh_led_pattern(
@@ -427,7 +582,7 @@ def test_fndh_led_pattern(
     change_event_callbacks.assert_change_event("fndhLedPattern", "SERVICE")
 
 
-def test_turning_smartbox_port_on_off(
+def test_set_smartbox_port_powers(
     pasd_bus_device: tango.DeviceProxy,
     smartbox_simulator: SmartboxSimulator,
     smartbox_id: int,
@@ -471,51 +626,30 @@ def test_turning_smartbox_port_on_off(
         smartbox_simulator.ports_power_sensed,
     )
 
-    connected_smartbox_port = smartbox_simulator.ports_connected.index(True) + 1
-
-    smartbox_ports_power_sensed = list(
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed")
-    )
-    is_on = smartbox_ports_power_sensed[connected_smartbox_port - 1]
-
-    if is_on:
-        json_argument = json.dumps(
-            {
-                "smartbox_number": smartbox_id,
-                "port_number": connected_smartbox_port,
-            }
+    for i in range(1, 5):
+        print(f"\nTest iteration {i}")
+        ports_power_sensed = list(
+            getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed")
         )
-        pasd_bus_device.TurnSmartboxPortOff(json_argument)
-        smartbox_ports_power_sensed[connected_smartbox_port - 1] = False
+
+        desired_port_powers: list[bool | None] = random.choices(
+            [True, False, None], k=len(ports_power_sensed)
+        )
+
+        expected_ports_power_sensed = list(ports_power_sensed)
+        for i, desired in enumerate(desired_port_powers):
+            if desired is not None:
+                expected_ports_power_sensed[i] = desired
+
+        json_arg = {
+            "smartbox_number": smartbox_id,
+            "port_powers": desired_port_powers,
+            "stay_on_when_offline": False,
+        }
+        pasd_bus_device.SetSmartboxPortPowers(json.dumps(json_arg))
         change_event_callbacks.assert_change_event(
-            f"smartbox{smartbox_id}PortsPowerSensed",
-            smartbox_ports_power_sensed,
+            f"smartbox{smartbox_id}PortsPowerSensed", expected_ports_power_sensed
         )
-
-    json_argument = json.dumps(
-        {
-            "smartbox_number": smartbox_id,
-            "port_number": connected_smartbox_port,
-            "stay_on_when_offline": True,
-        }
-    )
-    pasd_bus_device.TurnSmartboxPortOn(json_argument)
-    smartbox_ports_power_sensed[connected_smartbox_port - 1] = True
-    change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}PortsPowerSensed", smartbox_ports_power_sensed
-    )
-
-    json_argument = json.dumps(
-        {
-            "smartbox_number": smartbox_id,
-            "port_number": connected_smartbox_port,
-        }
-    )
-    pasd_bus_device.TurnSmartboxPortOff(json_argument)
-    smartbox_ports_power_sensed[connected_smartbox_port - 1] = False
-    change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}PortsPowerSensed", smartbox_ports_power_sensed
-    )
 
 
 def test_reset_smartbox_port_breaker(

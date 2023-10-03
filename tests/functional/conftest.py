@@ -6,34 +6,21 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module contains pytest-specific test harness for PaSD functional tests."""
-import logging
 import os
-import threading
 import time
-from contextlib import contextmanager
 from functools import lru_cache
-from typing import (
-    Any,
-    Callable,
-    ContextManager,
-    Generator,
-    Iterator,
-    Optional,
-    Union,
-    cast,
-)
+from typing import Callable, Iterator, Optional
 
 import _pytest
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel, ResultCode
-from ska_tango_testing.context import (
-    TangoContextProtocol,
-    ThreadedTestTangoContextManager,
-    TrueTangoContextManager,
-)
+from ska_control_model import AdminMode, ResultCode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
+
+from tests.harness import (PasdTangoTestHarness, PasdTangoTestHarnessContext,
+                           get_field_station_name, get_fndh_name,
+                           get_pasd_bus_name)
 
 
 # TODO: https://github.com/pytest-dev/pytest-forked/issues/67
@@ -86,139 +73,35 @@ def is_true_context_fixture(request: pytest.FixtureRequest) -> bool:
     return False
 
 
-@pytest.fixture(name="pasd_address_context_manager_factory", scope="session")
-def pasd_address_context_manager_factory_fixture(
-    pasd_config_path: str,
-    logger: logging.Logger,
-) -> Callable[[], ContextManager[tuple[str | bytes | bytearray, int]]]:
+@pytest.fixture(name="pasd_address", scope="module")
+def pasd_address_fixture() -> tuple[str, int] | None:
     """
-    Return a PaSD address context manager factory.
+    Return the address of the PaSD.
 
-    That is, return a callable that, when called, provides a context
-    manager that, when entered, returns a PaSD host and port, while
-    at the same time ensuring the validity of that host and port.
+    If a real hardware PaSD is present, or there is a pre-existing
+    simulator, then this fixture returns the PaSD address as a
+    (hostname, port) tuple. If there is no pre-existing PaSD,
+    then this fixture returns None, indicating that the test harness
+    should stand up a PaSD simulator server itself.
 
-    This fixture obtains the PaSD address in one of two ways:
-
-    Firstly it checks for a `PASD_ADDRESS` environment variable, of
-    the form "localhost:8502". If found, it is expected that a PaSD is
-    already available at this host and port, so there is nothing more
-    for this fixture to do. The callable that it returns will itself
-    return an empty context manager that, when entered, simply yields
-    the specified host and port.
-
-    Otherwise, the callable that this factory returns will be a context
-    manager for a PaSD simulator server instance. When entered, that
-    context manager will launch the PaSD simulator server, and then
-    yield the host and port on which it is running.
-
-    :param pasd_config_path: path to the PaSD configuration file
-    :param logger: a python standard logger
-
-    :return: a callable that returns a context manager that, when
-        entered, yields the host and port of a PaSD server.
+    :return: the address of the PaSD,
+        or None if no PaSD (genuine or simulated) is available.
     """
     address_var = "PASD_ADDRESS"
     if address_var in os.environ:
         [host, port_str] = os.environ[address_var].split(":")
-
-        @contextmanager
-        def _yield_address() -> Generator[tuple[str, int], None, None]:
-            yield host, int(port_str)
-
-        return _yield_address
-    else:
-
-        @contextmanager
-        def launch_simulator_server() -> Iterator[tuple[str | bytes | bytearray, int]]:
-            # Imports are deferred until now,
-            # so that we do not try to import from ska_low_mccs_pasd
-            # until we know that we need to.
-            # This allows us to run our functional tests
-            # against a real cluster
-            # from within a test runner pod
-            # that does not have ska_low_mccs_pasd installed.
-            from ska_ser_devices.client_server import TcpServer
-
-            from ska_low_mccs_pasd.pasd_bus import (
-                PasdBusSimulator,
-                PasdBusSimulatorModbusServer,
-            )
-
-            pasd_simulator = PasdBusSimulator(pasd_config_path, 1, logging.DEBUG)
-            fndh_simulator = pasd_simulator.get_fndh()
-            fndh_simulator.initialize()
-            for port_nr in pasd_simulator.get_smartbox_attached_ports():
-                fndh_simulator.turn_port_on(port_nr)
-            smartbox_simulators = pasd_simulator.get_smartboxes()
-
-            simulator_server = PasdBusSimulatorModbusServer(
-                fndh_simulator, smartbox_simulators
-            )
-            server = TcpServer(
-                "127.0.0.1",
-                0,
-                simulator_server,  # let the kernel give us a port
-                logger=logger,
-            )
-            with server:
-                server_thread = threading.Thread(
-                    name="Signal generator simulator thread",
-                    target=server.serve_forever,
-                )
-                server_thread.daemon = True  # don't hang on exit
-                server_thread.start()
-                yield server.server_address
-                server.shutdown()
-                server_thread.join()
-
-        return launch_simulator_server
+        return host, int(port_str)
+    return None
 
 
-@pytest.fixture(name="station_name", scope="session")
-def station_name_fixture() -> str:
+@pytest.fixture(name="station_label", scope="session")
+def station_label_fixture() -> str | None:
     """
     Return the name of the station under test.
 
     :return: the name of the station under test.
     """
-    return "ci-1"
-
-
-@pytest.fixture(name="pasd_bus_name", scope="session")
-def pasd_bus_name_fixture(station_name: str) -> str:
-    """
-    Return the name of the PaSD bus device under test.
-
-    :param station_name: the name of the station under test.
-
-    :return: the name of the PaSD bus device under test.
-    """
-    return f"low-mccs/pasdbus/{station_name}"
-
-
-@pytest.fixture(name="field_station_name", scope="session")
-def field_station_name_fixture(station_name: str) -> str:
-    """
-    Return the name of the PaSD bus device under test.
-
-    :param station_name: the name of the station under test.
-
-    :return: the name of the PaSD bus device under test.
-    """
-    return f"low-mccs/fieldstation/{station_name}"
-
-
-@pytest.fixture(name="fndh_name", scope="session")
-def fndh_name_fixture(station_name: str) -> str:
-    """
-    Return the name of the PaSD bus device under test.
-
-    :param station_name: the name of the station under test.
-
-    :return: the name of the PaSD bus device under test.
-    """
-    return f"low-mccs/fndh/{station_name}"
+    return os.environ.get("STATION_LABEL")
 
 
 @pytest.fixture(name="pasd_timeout", scope="session")
@@ -231,56 +114,50 @@ def pasd_timeout_fixture() -> Optional[float]:
     return 5.0
 
 
-@pytest.fixture(name="tango_harness", scope="session")
-def tango_harness_fixture(
+@pytest.fixture(name="functional_test_context", scope="module")
+def functional_test_context_fixture(
     is_true_context: bool,
-    pasd_bus_name: str,
-    fndh_name: str,
-    pasd_address_context_manager_factory: Callable[[], ContextManager[tuple[str, int]]],
-    pasd_timeout: Optional[float],
-) -> Generator[TangoContextProtocol, None, None]:
+    station_label: str,
+    pasd_address: tuple[str, int] | None,
+    pasd_config_path: str,
+    pasd_timeout: float,
+) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Yield a Tango context containing the device/s under test.
 
     :param is_true_context: whether to test against an existing Tango
         deployment
-    :param pasd_bus_name: name of the PaSD bus Tango device.
-    :param fndh_name: the name of the FNDH Tango device.
-    :param pasd_address_context_manager_factory: a callable that returns
-        a context manager that, when entered, yields the host and port
-        of a PaSD bus.
-    :param pasd_timeout: timeout to use when communicating with the
-        PaSD, in seconds. If None, communications will block
-        indefinitely.
+    :param station_label: name of the station under test.
+    :param pasd_address: address of the PaSD, if already present
+    :param pasd_config_path: configuration file from which to configure
+        a simulator if necessary
+    :param pasd_timeout: timeout to use with the PaSD
 
     :yields: a Tango context containing the devices under test
     """
-    tango_context_manager: Union[
-        TrueTangoContextManager, ThreadedTestTangoContextManager
-    ]  # for the type checker
-    if is_true_context:
-        tango_context_manager = TrueTangoContextManager()
-        with tango_context_manager as context:
-            yield context
-    else:
-        with pasd_address_context_manager_factory() as (pasd_host, pasd_port):
-            tango_context_manager = ThreadedTestTangoContextManager()
-            cast(ThreadedTestTangoContextManager, tango_context_manager).add_device(
-                pasd_bus_name,
-                "ska_low_mccs_pasd.MccsPasdBus",
-                Host=pasd_host,
-                Port=pasd_port,
-                Timeout=pasd_timeout,
-                LoggingLevelDefault=int(LoggingLevel.DEBUG),
+    harness = PasdTangoTestHarness(station_label)
+
+    if not is_true_context:
+        if pasd_address is None:
+            # Defer importing from ska_low_mccs_pasd
+            # until we know we need to launch a PaSD bus simulator to test against.
+            # This ensures that we can use this harness
+            # to run tests against a real cluster,
+            # from within a pod that does not have ska_low_mccs_pasd installed.
+            # pylint: disable-next=import-outside-toplevel
+            from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import \
+                PasdBusSimulator
+
+            pasd_bus_simulator = PasdBusSimulator(pasd_config_path, station_label)
+            harness.set_pasd_bus_simulator(
+                pasd_bus_simulator.get_fndh(), pasd_bus_simulator.get_smartboxes()
             )
-            cast(ThreadedTestTangoContextManager, tango_context_manager).add_device(
-                fndh_name,
-                "ska_low_mccs_pasd.MccsFNDH",
-                PasdFQDN=pasd_bus_name,
-                LoggingLevelDefault=int(LoggingLevel.DEBUG),
-            )
-            with tango_context_manager as context:
-                yield context
+            harness.set_pasd_bus_device(timeout=pasd_timeout)
+            harness.set_fndh_device()
+            harness.set_field_station_device()
+
+    with harness as context:
+        yield context
 
 
 @pytest.fixture(name="change_event_callbacks", scope="session")
@@ -309,89 +186,83 @@ def change_event_callbacks_fixture(
 
 @pytest.fixture(name="field_station_device", scope="session")
 def field_station_device_fixture(
-    field_station_name: str,
-    get_device_proxy: Callable,
-) -> tango.DeviceProxy:
+    functional_test_context: PasdTangoTestHarnessContext,
+    subscribe_device_proxy: Callable,
+) -> Iterator[tango.DeviceProxy]:
     """
     Return a DeviceProxy to an instance of MccsFieldStation.
 
-    :param field_station_name: the name of the field station device under test.
-    :param get_device_proxy: cached fixture for setting up device proxy.
+    :param functional_test_context: context in which the functional tests run.
+    :param subscribe_device_proxy: cached fixture for setting up device proxy.
 
-    :return: A proxy to an instance of MccsFieldStation.
+    :yields: A proxy to an instance of MccsFieldStation.
     """
-    return get_device_proxy(field_station_name)
+    proxy = functional_test_context.get_field_station_device()
+    yield subscribe_device_proxy(proxy)
 
 
-@pytest.fixture(name="pasd_bus_device", scope="session")
+@pytest.fixture(name="pasd_bus_device", scope="module")
 def pasd_bus_device_fixture(
-    pasd_bus_name: str,
-    get_device_proxy: Callable,
-) -> tango.DeviceProxy:
+    functional_test_context: PasdTangoTestHarnessContext,
+    subscribe_device_proxy: Callable,
+) -> Iterator[tango.DeviceProxy]:
     """
     Return a DeviceProxy to an instance of MccsPasdBus.
 
-    :param pasd_bus_name: the name of the PaSD bus device under test.
-    :param get_device_proxy: cached fixture for setting up device proxy.
+    :param functional_test_context: context in which the functional tests run.
+    :param subscribe_device_proxy: cached fixture for setting up device proxy.
 
-    :return: A proxy to an instance of MccsPasdBus.
+    :yields: A proxy to an instance of MccsPasdBus.
     """
-    return get_device_proxy(pasd_bus_name)
+    proxy = functional_test_context.get_pasd_bus_device()
+    yield subscribe_device_proxy(proxy)
 
 
-@pytest.fixture(name="fndh_device", scope="session")
+@pytest.fixture(name="fndh_device", scope="module")
 def fndh_device_fixture(
-    fndh_name: str, get_device_proxy: Callable
-) -> tango.DeviceProxy:
+    functional_test_context: PasdTangoTestHarnessContext,
+    subscribe_device_proxy: Callable,
+) -> Iterator[tango.DeviceProxy]:
     """
     Return a DeviceProxy to an instance of MccsFNDH.
 
-    :param fndh_name: the name of the FNDH device under test.
-    :param get_device_proxy: cached fixture for setting up device proxy.
+    :param functional_test_context: context in which the functional tests run.
+    :param subscribe_device_proxy: cached fixture for setting up device proxy.
 
-    :return: A proxy to an instance of MccsFNDH.
+    :yields: A proxy to an instance of MccsFNDH.
     """
-    return get_device_proxy(fndh_name)
+    proxy = functional_test_context.get_fndh_device()
+    yield subscribe_device_proxy(proxy)
 
 
-@pytest.fixture(name="device_mapping", scope="session")
+@pytest.fixture(name="device_mapping", scope="module")
 def device_mapping_fixture(
-    fndh_name: str,
-    pasd_bus_name: str,
-    field_station_name: str,
-) -> dict[str, str]:
+    functional_test_context: PasdTangoTestHarnessContext,
+) -> dict[str, tango.DeviceProxy]:
     """
-    Return a dictionary mapping short name to FQDN for devices under test.
+    Return a dictionary mapping Gherkin reference to device proxy.
 
-    :param fndh_name: the name of the FNDH device under test.
-    :param pasd_bus_name: the name of the pasd bus device under test.
-    :param field_station_name: the name of the field station device under test.
+    :param functional_test_context: context in which the functional tests run.
 
-    :return: A dictionary mapping short name to FQDN for devices under test.
+    :return: A dictionary mapping Gherkin reference to device proxy.
     """
     device_dict = {
-        "MccsFndh": fndh_name,
-        "MCCS-for-PaSD": pasd_bus_name,
-        "MccsFieldStation": field_station_name,
+        "MccsFndh": functional_test_context.get_fndh_device(),
+        "MCCS-for-PaSD": functional_test_context.get_pasd_bus_device(),
+        "MccsFieldStation": functional_test_context.get_field_station_device(),
     }
     return device_dict
 
 
 @pytest.fixture(name="device_subscriptions", scope="session")
-def device_subscriptions_fixture(
-    fndh_name: str, pasd_bus_name: str, field_station_name: str
-) -> dict[str, list[str]]:
+def device_subscriptions_fixture() -> dict[str, list[str]]:
     """
     Return a dictionary mapping device name to list of subscriptions to make.
-
-    :param fndh_name: the name of the FNDH device under test.
-    :param pasd_bus_name: the name of the pasd bus device under test.
-    :param field_station_name: the name of the field station device under test.
 
     :return: A dictionary mapping device name to list of subscriptions to make.
     """
     device_subscriptions = {
-        pasd_bus_name: [
+        get_pasd_bus_name(): [
             "state",
             "healthState",
             "adminMode",
@@ -423,14 +294,14 @@ def device_subscriptions_fixture(
             "smartbox1FemCaseTemperatures",
             "smartbox1FemHeatsinkTemperatures",
             "smartbox1PortsPowerSensed",
-            "smartbox24PortsCurrentDraw",
+            "smartbox24AlarmFlags",
         ],
-        fndh_name: [
+        get_fndh_name(): [
             "state",
             "healthState",
             "adminMode",
         ],
-        field_station_name: [
+        get_field_station_name(): [
             "state",
             "healthState",
             "adminMode",
@@ -440,17 +311,15 @@ def device_subscriptions_fixture(
     return device_subscriptions
 
 
-@pytest.fixture(name="get_device_proxy", scope="session")
-def get_device_proxy_fixture(
+@pytest.fixture(name="subscribe_device_proxy", scope="session")
+def subscribe_device_proxy_fixture(
     device_subscriptions: dict[str, list[str]],
-    tango_harness: TangoContextProtocol,
     change_event_callbacks: MockTangoEventCallbackGroup,
-) -> tango.DeviceProxy:
+) -> Callable[[tango.DeviceProxy], tango.DeviceProxy]:
     """
     Return a cached device proxy with subscriptions set up.
 
     :param device_subscriptions: list of subscriptions to make.
-    :param tango_harness: a Tango context containing the devices under test.
     :param change_event_callbacks: a dictionary of callables to be used as
         tango change event callbacks.
 
@@ -458,8 +327,8 @@ def get_device_proxy_fixture(
     """
 
     @lru_cache
-    def _get_device_proxy(device_name: str) -> tango.DeviceProxy:
-        proxy = tango_harness.get_device(device_name)
+    def _subscribe_device_proxy(proxy: tango.DeviceProxy) -> tango.DeviceProxy:
+        device_name = proxy.dev_name()
         print(f"Creating proxy for {device_name}")
         for attribute_name in device_subscriptions[device_name]:
             print(f"Subscribing proxy to {device_name}/{attribute_name}...")
@@ -473,13 +342,13 @@ def get_device_proxy_fixture(
             ].assert_change_event(Anything)
         return proxy
 
-    return _get_device_proxy
+    return _subscribe_device_proxy
 
 
-@pytest.fixture(name="set_device_state", scope="session")
+@pytest.fixture(name="set_device_state", scope="module")
 def set_device_state_fixture(
-    device_mapping: dict[str, str],
-    get_device_proxy: Callable,
+    device_mapping: dict[str, tango.DeviceProxy],
+    subscribe_device_proxy: Callable,
     change_event_callbacks: MockTangoEventCallbackGroup,
 ) -> Callable:
     """
@@ -487,7 +356,7 @@ def set_device_state_fixture(
 
     :param device_mapping: A dictionary mapping short name to FQDN for devices
         under test.
-    :param get_device_proxy: A cached device proxy with subscriptions set up.
+    :param subscribe_device_proxy: A cached device proxy with subscriptions set up.
     :param change_event_callbacks: a dictionary of callables to be used as
         tango change event callbacks.
 
@@ -495,11 +364,11 @@ def set_device_state_fixture(
     """
 
     def _set_device_state(
-        device: tango.DeviceProxy, state: tango.DevState, mode: AdminMode
+        device_ref: str, state: tango.DevState, mode: AdminMode
     ) -> None:
-        device_name = device_mapping[device]
-
-        device_proxy = get_device_proxy(device_name)
+        device_proxy = device_mapping[device_ref]
+        subscribe_device_proxy(device_proxy)
+        device_name = device_proxy.dev_name()
 
         admin_mode_callback = change_event_callbacks[f"{device_name}/adminMode"]
         state_callback = change_event_callbacks[f"{device_name}/state"]
@@ -513,7 +382,7 @@ def set_device_state_fixture(
         if device_proxy.read_attribute("state").value != state:
             print(f"Turning {device_proxy.dev_name()} {state}")
             set_tango_device_state(
-                change_event_callbacks, get_device_proxy, device_name, state
+                change_event_callbacks, subscribe_device_proxy, device_proxy, state
             )
             state_callback.assert_change_event(mode)
 
@@ -522,8 +391,8 @@ def set_device_state_fixture(
 
 def set_tango_device_state(
     change_event_callbacks: MockTangoEventCallbackGroup,
-    get_device_proxy: Callable[[str], tango.DeviceProxy],
-    device_name: str,
+    subscribe_device_proxy: Callable[[tango.DeviceProxy], tango.DeviceProxy],
+    dev: tango.DeviceProxy,
     desired_state: tango.DevState,
 ) -> None:
     """
@@ -531,13 +400,13 @@ def set_tango_device_state(
 
     :param change_event_callbacks: dictionary of mock change event
         callbacks with asynchrony support.
-    :param get_device_proxy: a caching Tango device factory.
-    :param device_name: the FQDN of the device.
+    :param subscribe_device_proxy: a caching Tango device factory.
+    :param dev: proxy to the device.
     :param desired_state: the desired power state, either "on" or "off" or "standby"
 
     :raises ValueError: if input desired_state is not valid.
     """
-    dev = get_device_proxy(device_name)
+    subscribe_device_proxy(dev)
     # Issue the command
     if desired_state != dev.state():
         if desired_state == tango.DevState.ON:
@@ -553,22 +422,6 @@ def set_tango_device_state(
     print(f"Command queued on {dev.dev_name()}: {command_id}")
 
     change_event_callbacks[f"{dev.dev_name()}/state"].assert_change_event(desired_state)
-
-
-@pytest.fixture(name="queue_command", scope="session")
-def queue_command_fixture() -> Callable:
-    """
-    Queue command on device, check it is queued.
-
-    :returns: A callable which queues command on device, check it is queued.
-    """
-
-    def _queue_command(
-        device_proxy: tango.DeviceProxy, command: str, args: Any
-    ) -> None:
-        assert device_proxy.command_inout(command, args)[0] == ResultCode.QUEUED
-
-    return _queue_command
 
 
 @pytest.fixture(name="check_change_event", scope="session")
@@ -649,3 +502,13 @@ def check_fastcommand_fixture() -> Callable:
         return value
 
     return _check_fastcommand
+
+
+@pytest.fixture(scope="module")
+def clipboard() -> dict:
+    """
+    Return a dictionary to be used to store contextual information across steps.
+
+    :return: a dictionary to be used to store contextual information across steps.
+    """
+    return {}

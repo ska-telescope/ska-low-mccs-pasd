@@ -73,6 +73,20 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         ("PortsDesiredPowerOnline", (bool,), PORT_COUNT),
         ("PortsDesiredPowerOffline", (bool,), PORT_COUNT),
         ("PortsPowerSensed", (bool,), PORT_COUNT),
+        ("WarningFlags", str, None),
+        ("AlarmFlags", str, None),
+        ("Psu48vVoltage1Thresholds", (float,), 4),
+        ("Psu48vVoltage2Thresholds", (float,), 4),
+        ("Psu48vCurrentThresholds", (float,), 4),
+        ("Psu48vTemperature1Thresholds", (float,), 4),
+        ("Psu48vTemperature2Thresholds", (float,), 4),
+        ("PanelTemperatureThresholds", (float,), 4),
+        ("FncbTemperatureThresholds", (float,), 4),
+        ("HumidityThresholds", (float,), 4),
+        ("OutsideTemperatureThresholds", (float,), 4),
+        ("CommsGatewayTemperatureThresholds", (float,), 4),
+        ("PowerModuleTemperatureThresholds", (float,), 4),
+        ("InternalAmbientTemperatureThresholds", (float,), 4),
     ]
 
     # ---------------
@@ -494,8 +508,10 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self: MccsFNDH, communication_state: CommunicationStatus
     ) -> None:
         self.logger.debug(
-            "Device received callback from component manager that communication "
-            "with the component is %s.",
+            (
+                "Device received callback from component manager that communication "
+                "with the component is %s."
+            ),
             communication_state.name,
         )
         if communication_state != CommunicationStatus.ESTABLISHED:
