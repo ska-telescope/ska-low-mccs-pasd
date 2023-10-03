@@ -197,9 +197,9 @@ class PasdTangoTestHarness:
         # This ensures that we can use this harness to run tests against a real cluster,
         # from within a pod that does not have ska_low_mccs_pasd installed.
         # pylint: disable-next=import-outside-toplevel
-        from ska_low_mccs_pasd.pasd_bus import PasdBusSimulatorJsonServer
+        from ska_low_mccs_pasd.pasd_bus import PasdBusSimulatorModbusServer
 
-        pasd_bus_simulator_server = PasdBusSimulatorJsonServer(
+        pasd_bus_simulator_server = PasdBusSimulatorModbusServer(
             fndh_simulator, smartbox_simulators
         )
 

@@ -60,6 +60,8 @@ class PasdBusModbusApi:
 
         :return: List of attribute values
         """
+        if device_id == 101:
+            device_id = 0
         values = []
         for name, attr in names.items():
             try:
@@ -69,7 +71,14 @@ class PasdBusModbusApi:
                 logger.error(f"Attribute not found: {name}")
             for i in range(attr.count - 1):
                 values.append(0)
-            values.append(int(value))
+            # TODO: Tidy up
+            if isinstance(value, str):
+                for _ in range(attr.count - len(value)):
+                    values.append(0)
+                for char in value:
+                    values.append(int(char))
+            else:
+                values.append(int(value))
         return values
 
     def _handle_command(self, device_id: int, name: str, args: tuple) -> dict:
@@ -112,6 +121,8 @@ class PasdBusModbusApi:
             modbus_request_str, handle_request, slave=self.responder_ids
         )
         response: ReadHoldingRegistersResponse
+        if response == b"" or response is None:
+            return b""
         print(response.registers)
 
         packet = self._framer.buildPacket(response)
@@ -218,7 +229,7 @@ class PasdBusModbusApiClient:
             + attributes[keys[-1]].count
             - attributes[keys[0]].address
         )
-        self._logger.debug(
+        print(
             f"MODBUS read request: modbus address {modbus_address}, "
             f"start address {attributes[keys[0]].address}, count {count}"
         )
@@ -233,7 +244,7 @@ class PasdBusModbusApiClient:
         #    attributes[keys[0]].address, count, modbus_address
         # )
         # print(reply)
-        # print(f"Thems registers {reply.registers}")
+        print(f"Thems registers {reply.registers}")
 
         print(f"And I've acquired attributes {attributes}")
 
@@ -248,6 +259,8 @@ class PasdBusModbusApiClient:
                 # to the attributes dictionary to be returned
                 for key in keys:
                     current_attribute = attributes[key]
+                    if not hasattr(current_attribute, "_value"):
+                        current_attribute._value = 0
                     print(
                         f"Handling attribute {key} {current_attribute.value} {current_attribute.count} {current_attribute.address}"
                     )

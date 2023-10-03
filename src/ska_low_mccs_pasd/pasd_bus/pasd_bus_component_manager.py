@@ -695,7 +695,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param poll_response: response to the pool, including any values
             read.
         """
-        self.logger.info("Handing results of successful poll.")
+        self.logger.info("Handling results of successful poll.")
         super().poll_succeeded(poll_response)
 
         self._update_component_state(power=PowerState.ON, fault=False)

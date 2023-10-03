@@ -60,7 +60,7 @@ class PasdBusSimulatorModbusServer(ApplicationServer):
         :param smartbox_simulators: the smartbox simulator backends to
             which this server provides access.
         """
-        simulators: Dict[int, FndhSimulator | SmartboxSimulator] = {101: fndh_simulator}
+        simulators: Dict[int, FndhSimulator | SmartboxSimulator] = {0: fndh_simulator}
         simulators.update(smartbox_simulators)
         simulator_api = PasdBusModbusApi(simulators)
         marshaller = CustomMarshall(b"\r\n")
