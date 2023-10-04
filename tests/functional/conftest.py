@@ -182,7 +182,7 @@ def change_event_callbacks_fixture(
     ]
     return MockTangoEventCallbackGroup(
         *keys,
-        timeout=10.0,
+        timeout=90.0,
         assert_no_error=False,
     )
 
@@ -460,7 +460,7 @@ def check_attribute_fixture() -> Callable:
     """
 
     def _check_attribute(
-        device_proxy: tango.DeviceProxy, attribute_name: str, timeout: float = 3
+        device_proxy: tango.DeviceProxy, attribute_name: str, timeout: float = 60
     ) -> None:
         current_time = time.time()
         value = None

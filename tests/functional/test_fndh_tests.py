@@ -71,7 +71,7 @@ def check_power_states(
     assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
 
     power_map = {False: PowerState.OFF, True: PowerState.ON, None: PowerState.UNKNOWN}
-    timeout = 10  # Seconds
+    timeout = 120  # Seconds
     current_time = time.time()  # Seconds
     while time.time() < current_time + timeout:
         try:
