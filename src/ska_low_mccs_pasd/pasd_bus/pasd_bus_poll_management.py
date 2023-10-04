@@ -32,6 +32,8 @@ def fndh_read_request_iterator() -> Iterator[str]:
     while True:
         yield "STATUS"
         yield "PORTS"
+        yield "WARNING_FLAGS"
+        yield "ALARM_FLAGS"
 
 
 def smartbox_read_request_iterator() -> Iterator[str]:
@@ -50,9 +52,8 @@ def smartbox_read_request_iterator() -> Iterator[str]:
     while True:
         yield "STATUS"
         yield "PORTS"
-        # TODO
-        # yield "WARNING_FLAGS"
-        # yield "ALARM_FLAGS"
+        yield "WARNING_FLAGS"
+        yield "ALARM_FLAGS"
 
 
 class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes

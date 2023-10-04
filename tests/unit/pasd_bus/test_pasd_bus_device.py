@@ -51,7 +51,7 @@ def change_event_callbacks_fixture(
         f"smartbox{smartbox_id}PortBreakersTripped",
         f"smartbox{smartbox_id}PortsPowerSensed",
         f"smartbox{smartbox_id}AlarmFlags",
-        timeout=15.0,
+        timeout=20.0,
         assert_no_error=False,
     )
 
@@ -122,20 +122,11 @@ def test_communication(  # pylint: disable=too-many-statements
     # once we have an updated value for this attribute,
     # we have an updated value for all of them.
     pasd_bus_device.subscribe_event(
-        "smartbox1PortsPowerSensed",
+        f"smartbox{smartbox_id}AlarmFlags",
         tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["smartbox1PortsPowerSensed"],
+        change_event_callbacks[f"smartbox{smartbox_id}AlarmFlags"],
     )
-    change_event_callbacks.assert_change_event("smartbox1PortsPowerSensed", None)
-    # TODO
-    # pasd_bus_device.subscribe_event(
-    #     f"smartbox{smartbox_id}AlarmFlags",
-    #     tango.EventType.CHANGE_EVENT,
-    #     change_event_callbacks[f"smartbox{smartbox_id}AlarmFlags"],
-    # )
-    # change_event_callbacks.assert_change_event(
-    #     f"smartbox{smartbox_id}AlarmFlags", None
-    # )
+    change_event_callbacks.assert_change_event(f"smartbox{smartbox_id}AlarmFlags", None)
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
@@ -144,11 +135,9 @@ def test_communication(  # pylint: disable=too-many-statements
     change_event_callbacks.assert_change_event("healthState", HealthState.OK)
     assert pasd_bus_device.healthState == HealthState.OK
 
-    change_event_callbacks.assert_against_call("smartbox1PortsPowerSensed", lookahead=5)
-    # TODO
-    # change_event_callbacks.assert_against_call(
-    #     f"smartbox{smartbox_id}AlarmFlags", lookahead=5
-    # )
+    change_event_callbacks.assert_against_call(
+        f"smartbox{smartbox_id}AlarmFlags", lookahead=5
+    )
 
     assert (
         pasd_bus_device.fndhModbusRegisterMapRevisionNumber
@@ -252,9 +241,8 @@ def test_communication(  # pylint: disable=too-many-statements
         list(pasd_bus_device.fndhInternalAmbientTemperatureThresholds)
         == fndh_simulator.internal_ambient_temperature_thresholds
     )
-    # TODO
-    # assert pasd_bus_device.fndhWarningFlags == FndhSimulator.DEFAULT_FLAGS
-    # assert pasd_bus_device.fndhAlarmFlags == FndhSimulator.DEFAULT_FLAGS
+    assert pasd_bus_device.fndhWarningFlags == FndhSimulator.DEFAULT_FLAGS
+    assert pasd_bus_device.fndhAlarmFlags == FndhSimulator.DEFAULT_FLAGS
     assert (
         getattr(
             pasd_bus_device,
@@ -471,15 +459,14 @@ def test_communication(  # pylint: disable=too-many-statements
         getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem12CurrentTripThreshold")
         == smartbox_simulator.fem12_current_trip_threshold
     )
-    # TODO
-    # assert (
-    #     getattr(pasd_bus_device, f"smartbox{smartbox_id}WarningFlags")
-    #     == SmartboxSimulator.DEFAULT_FLAGS
-    # )
-    # assert (
-    #     getattr(pasd_bus_device, f"smartbox{smartbox_id}AlarmFlags")
-    #     == SmartboxSimulator.DEFAULT_FLAGS
-    # )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}WarningFlags")
+        == SmartboxSimulator.DEFAULT_FLAGS
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}AlarmFlags")
+        == SmartboxSimulator.DEFAULT_FLAGS
+    )
 
 
 def test_set_fndh_port_powers(

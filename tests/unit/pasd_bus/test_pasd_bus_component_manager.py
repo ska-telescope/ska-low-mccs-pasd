@@ -287,17 +287,6 @@ class TestPasdBusComponentManager:
                 ),
             )
 
-        # and FNDH warning and alarm flags
-        # TODO
-        # mock_callbacks.assert_call(
-        #     "pasd_device_state_for_fndh",
-        #     warning_flags=FndhSimulator.DEFAULT_FLAGS,
-        # )
-        # mock_callbacks.assert_call(
-        #     "pasd_device_state_for_fndh",
-        #     alarm_flags=FndhSimulator.DEFAULT_FLAGS,
-        # )
-
         for smartbox_number in range(1, 25):
             # Then the smartbox status info
             mock_callbacks.assert_call(
@@ -337,6 +326,17 @@ class TestPasdBusComponentManager:
             ports_power_sensed=expected_fndh_ports_powered,
             lookahead=25,
         )
+        # and FNDH warning and alarm flags
+        mock_callbacks.assert_call(
+            "pasd_device_state_for_fndh",
+            warning_flags=FndhSimulator.DEFAULT_FLAGS,
+            lookahead=25,
+        )
+        mock_callbacks.assert_call(
+            "pasd_device_state_for_fndh",
+            alarm_flags=FndhSimulator.DEFAULT_FLAGS,
+            lookahead=25,
+        )
 
         for smartbox_number in range(1, 25):
             mock_callbacks.assert_call(
@@ -352,15 +352,16 @@ class TestPasdBusComponentManager:
                 lookahead=25,
             )
             # and smartbox warning and alarm flags
-            # TODO
-            # mock_callbacks.assert_call(
-            #     f"pasd_device_state_for_smartbox{smartbox_number}",
-            #     warning_flags=SmartboxSimulator.DEFAULT_FLAGS,
-            # )
-            # mock_callbacks.assert_call(
-            #     f"pasd_device_state_for_smartbox{smartbox_number}",
-            #     alarm_flags=SmartboxSimulator.DEFAULT_FLAGS,
-            # )
+            mock_callbacks.assert_call(
+                f"pasd_device_state_for_smartbox{smartbox_number}",
+                warning_flags=SmartboxSimulator.DEFAULT_FLAGS,
+                lookahead=25,
+            )
+            mock_callbacks.assert_call(
+                f"pasd_device_state_for_smartbox{smartbox_number}",
+                alarm_flags=SmartboxSimulator.DEFAULT_FLAGS,
+                lookahead=50,
+            )
 
         # TODO: Once we have a poller, extend this test to cover spontaneous changes
         # in the simulator
@@ -453,7 +454,7 @@ class TestPasdBusComponentManager:
                 ports_desired_power_when_online=expected_desired_power_when_online,
                 ports_desired_power_when_offline=expected_desired_power_when_offline,
                 ports_power_sensed=expected_ports_power_sensed,
-                lookahead=5,  # Full cycle plus one to cover off on race conditions
+                lookahead=11,  # Full cycle plus one to cover off on race conditions
             )
 
     def test_smartbox_port_power_commands(  # pylint: disable=too-many-locals
@@ -549,7 +550,7 @@ class TestPasdBusComponentManager:
                 ports_desired_power_when_offline=expected_desired_power_when_offline,
                 ports_power_sensed=expected_desired_power_when_online,
                 ports_current_draw=expected_ports_current_draw,
-                lookahead=5,  # Full cycle plus one to cover off on race conditions
+                lookahead=11,  # Full cycle plus one to cover off on race conditions
             )
 
     def test_led_pattern(
