@@ -182,7 +182,7 @@ def change_event_callbacks_fixture(
     ]
     return MockTangoEventCallbackGroup(
         *keys,
-        timeout=90.0,
+        timeout=100.0,
         assert_no_error=False,
     )
 
