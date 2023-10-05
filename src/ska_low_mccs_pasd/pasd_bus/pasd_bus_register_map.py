@@ -581,6 +581,27 @@ class PasdBusRegisterMap:
         names.extend([inverse_map[address] for address in addresses])
         return names
 
+    def get_attributes_from_address_and_count(
+        self, device_id: int, first_address: int, count: int
+    ) -> dict[str, PasdBusAttribute]:
+        names = [
+            n
+            for _, n in self._INFO_REGISTER_INVERSE_MAP.items()
+            if first_address
+            <= self._INFO_REGISTER_MAP[n].address
+            < first_address + count
+        ]
+        register_map = self._get_register_info(device_id).register_map
+        inverse_map = {v.address: k for k, v in register_map.items()}
+        names.extend(
+            [
+                n
+                for _, n in inverse_map.items()
+                if first_address <= register_map[n].address < first_address + count
+            ]
+        )
+        return self.get_attributes(device_id, names)
+
     def _create_led_pattern_command(
         self, device_id: int, arguments: Sequence[Any]
     ) -> Optional[PasdBusAttribute]:

@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import traceback
 from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, Final, List
 
 from pymodbus.client import ModbusTcpClient
@@ -54,6 +55,7 @@ class PasdBusModbusApi:
         self._framer = ModbusAsciiFramer(None)
         self._decoder = ModbusAsciiFramer(ServerDecoder(), client=None)
         self.responder_ids = list(range(len(simulators)))
+        self._register_map = PasdBusRegisterMap()
 
     def _handle_read_attributes(
         self, device_id: int, names: dict[str, PasdBusAttribute]
@@ -76,13 +78,25 @@ class PasdBusModbusApi:
                 # TODO
                 logger.error(f"Attribute not found: {name}")
             # TODO: Tidy up
-            if isinstance(value, str):
+            value = attr.convert_write_value([value])[0]
+            if isinstance(value, str) or isinstance(value, list):
                 for _ in range(attr.count - len(value)):
                     values.append(0)
                 for char in value:
                     values.append(int(char))
+            elif isinstance(value, Enum):
+                values.append(value.value)
             else:
-                values.append(int(value))
+                try:
+                    if value > 65535 or value < 0:
+                        print(f"Bad value encountered {value}")
+                    values.append(int(value))
+                except TypeError as e:
+                    print(f"Type error {e} on {value}")
+                    raise e
+                except ValueError as e:
+                    print(f"Value error {e} on {value}")
+                    raise e
         return values
 
     def _handle_command(self, device_id: int, name: str, args: tuple) -> dict:
@@ -97,8 +111,6 @@ class PasdBusModbusApi:
         # TODO (temporary placeholder code here only)
         response = None
         print("!" * 50)
-        if not modbus_request_str.endswith(b"\r\n"):
-            modbus_request_str += b"\r\n"
         print(modbus_request_str)
 
         def handle_request(message: Any) -> None:
@@ -109,8 +121,13 @@ class PasdBusModbusApi:
                     # TODO: Map register numbers from message.address and
                     # message.count to the corresponding attribute names
                     print(f"I'm reading for id {message.slave_id} {message.address}")
+                    filtered_register_map = (
+                        self._register_map.get_attributes_from_address_and_count(
+                            message.slave_id, message.address, message.count
+                        )
+                    )
                     values = self._handle_read_attributes(
-                        message.slave_id, PasdBusRegisterMap._INFO_REGISTER_MAP
+                        message.slave_id, filtered_register_map
                     )
                     print(f"I've read values {values}")
                     response = ReadHoldingRegistersResponse(
@@ -156,7 +173,7 @@ class CustomClient(ModbusTcpClient):
 
     def _handle_abrupt_socket_close(self, size, data, duration):
         print(f"Abrupt socket close {size} {data} ")
-        traceback.print_stack()
+        # traceback.print_stack()
         return super()._handle_abrupt_socket_close(size, data, duration)
 
 

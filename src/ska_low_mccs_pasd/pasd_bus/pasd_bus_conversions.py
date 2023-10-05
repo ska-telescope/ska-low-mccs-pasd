@@ -7,6 +7,7 @@
 # See LICENSE for more info.
 """This module provides scaling and other conversion functions for the PaSD."""
 
+import itertools
 import logging
 from enum import Enum
 from typing import Any
@@ -254,43 +255,66 @@ class PasdConversionUtility:
         return [value / 100.0 for value in value_list]
 
     @classmethod
-    def convert_cpu_id(cls, value_list: list[int]) -> list[str]:
+    def convert_cpu_id(
+        cls, value_list: list[int | str], inverse: bool = False
+    ) -> list[str | int]:
         """
         Convert a number of raw register values to a CPU ID.
 
         :param value_list: list of raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string ID
         """
         try:
+            if inverse:
+                return cls.n_to_bytes(int(value_list[0], base=16))
             return [hex(cls.bytes_to_n(value_list))]
         except ValueError:
             logger.error(f"Invalid CPU ID value received: {value_list}")
             return []
 
     @classmethod
-    def convert_uptime(cls, value_list: list[int]) -> list[int]:
+    def convert_uptime(cls, value_list: list[int], inverse: bool = False) -> list[int]:
         """
         Convert the raw register values to an uptime in seconds.
 
         :param value_list: list of raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: integer number of seconds
         """
         try:
+            if inverse:
+                return cls.n_to_bytes(value_list[0])
             return [cls.bytes_to_n(value_list)]
         except ValueError:
             logger.error(f"Invalid uptime value received: {value_list}")
             return []
 
     @classmethod
-    def convert_chip_id(cls, value_list: list[int]) -> list[str]:
+    def convert_chip_id(cls, value_list: list[int], inverse: bool = False) -> list[str]:
         """
         Convert the raw register values to a string chip id.
 
         :param value_list: list of raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string chip identification
         """
         bytelist = []
         try:
+            if inverse:
+                reglist = []
+                for i in range(0, len(value_list[0]), 2):
+                    reglist.append(int(value_list[0][i : i + 2]))
+                return reglist
             for raw_value in value_list:
                 bytelist += cls.n_to_bytes(raw_value)
             return ["".join([f"{v:02X}" for v in bytelist])]
@@ -299,28 +323,44 @@ class PasdConversionUtility:
             return []
 
     @classmethod
-    def convert_fndh_status(cls, value_list: list[int]) -> list[str]:
+    def convert_fndh_status(
+        cls, value_list: list[int | str], inverse: bool = False
+    ) -> list[str, int]:
         """
         Convert the raw register value to a string status.
 
         :param value_list: raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string status representation
         """
         try:
+            if inverse:
+                return [FndhStatusMap[value_list[0]].value]
             return [FndhStatusMap(value_list[0]).name]
         except ValueError:
             logger.error(f"Invalid FNDH status value received: {value_list[0]}")
             return [FndhStatusMap.UNDEFINED.name]
 
     @classmethod
-    def convert_smartbox_status(cls, value_list: list[int]) -> list[str]:
+    def convert_smartbox_status(
+        cls, value_list: list[int], inverse: bool = False
+    ) -> list[str]:
         """
         Convert the raw register value to a string status.
 
         :param value_list: raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string status representation
         """
         try:
+            if inverse:
+                return [SmartBoxStatusMap[value_list[0]].value]
             return [SmartBoxStatusMap(value_list[0]).name]
         except ValueError:
             logger.error(f"Invalid Smartbox status value received: {value_list[0]}")

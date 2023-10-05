@@ -44,14 +44,14 @@ from typing import Callable, Dict, Final, Optional, Sequence
 
 import yaml
 
-# from .pasd_bus_conversions import (
-#     FNDHAlarmFlags,
-#     FndhStatusMap,
-#     LEDServiceMap,
-#     LEDStatusMap,
-#     SmartboxAlarmFlags,
-#     SmartBoxStatusMap,
-# )
+from .pasd_bus_conversions import (
+    FNDHAlarmFlags,
+    FndhStatusMap,
+    LEDServiceMap,
+    LEDStatusMap,
+    SmartboxAlarmFlags,
+    SmartBoxStatusMap,
+)
 
 logger = logging.getLogger()
 
@@ -395,10 +395,10 @@ class PasdHardwareSimulator:
     """
 
     # TODO: Change to enum int values when Modbus server is used
-    DEFAULT_LED_PATTERN: Final = "OFF"  # LEDStatusMap.OFF
-    DEFAULT_STATUS: Final = "UNINITIALISED"  # FndhStatusMap.UNINITIALISED
+    DEFAULT_LED_PATTERN: Final = LEDStatusMap.OFF
+    DEFAULT_STATUS: Final = FndhStatusMap.UNINITIALISED
     DEFAULT_UPTIME: Final = 0
-    DEFAULT_FLAGS: Final = "NONE"  # FNDHAlarmFlags.NONE
+    DEFAULT_FLAGS: Final = FNDHAlarmFlags.NONE
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
     def __init__(
@@ -1021,12 +1021,12 @@ class SmartboxSimulator(PasdHardwareSimulator):
     MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
     # TODO: Change to list of integer values when Modbus server is used
-    CPU_ID: Final = "24"
-    CHIP_ID: Final = "87654321"
+    CPU_ID: Final = [2, 4]
+    CHIP_ID: Final = [8, 7, 6, 5, 4, 3, 2, 1]
 
     DEFAULT_SYS_ADDRESS: Final = 1
     # TODO: Change to integer when Modbus server is used
-    DEFAULT_FIRMWARE_VERSION: Final = "258"
+    DEFAULT_FIRMWARE_VERSION: Final = 258
     # Address
     DEFAULT_INPUT_VOLTAGE: Final = 4800
     DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE: Final = 480

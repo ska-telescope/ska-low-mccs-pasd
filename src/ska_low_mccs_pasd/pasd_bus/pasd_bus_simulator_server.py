@@ -29,16 +29,19 @@ class CustomMarshall(SentinelBytesMarshaller):
         super().__init__(sentinel)
 
     def marshall(self, payload: bytes) -> bytes:
-        print(f"I am marshalling |{payload}|")
-        ma = super().marshall(payload)
-        print(f"I marshalled |{ma}|")
-        return ma
+        if not payload.endswith(self._sentinel):
+            payload += self._sentinel
+        return payload
 
     def unmarshall(self, bytes_iterator: Iterator[bytes]) -> bytes:
-        print(f"I am unmarshalling |{bytes_iterator}|")
-        result = super().unmarshall(bytes_iterator=bytes_iterator)
-        print(f"Umarshall reesult is {result}")
-        return result
+        payload = b""
+        more_bytes = next(bytes_iterator)
+        payload = payload + more_bytes
+
+        while not more_bytes.endswith(self._sentinel):
+            more_bytes = next(bytes_iterator)
+            payload = payload + more_bytes
+        return payload
 
 
 # pylint: disable-next=too-few-public-methods
