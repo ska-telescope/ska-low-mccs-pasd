@@ -878,7 +878,7 @@ class FndhSimulator(PasdHardwareSimulator):
     SYS_ADDRESS: Final = 101
 
     # TODO: Change to integer when Modbus server is used
-    DEFAULT_FIRMWARE_VERSION: Final = "257"
+    DEFAULT_FIRMWARE_VERSION: Final = 257
     DEFAULT_PSU48V_VOLTAGES: Final = [4790, 4810]
     DEFAULT_PSU48V_CURRENT: Final = 1510
     DEFAULT_PSU48V_TEMPERATURES: Final = [4120, 4290]

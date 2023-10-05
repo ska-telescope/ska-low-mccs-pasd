@@ -13,12 +13,14 @@ import os
 from socket import gethostname
 from typing import Dict, Iterator, Optional
 
-from ska_ser_devices.client_server import (ApplicationServer,
-                                           SentinelBytesMarshaller, TcpServer)
+from ska_ser_devices.client_server import (
+    ApplicationServer,
+    SentinelBytesMarshaller,
+    TcpServer,
+)
 
 from .pasd_bus_modbus_api import PasdBusModbusApi
-from .pasd_bus_simulator import (FndhSimulator, PasdBusSimulator,
-                                 SmartboxSimulator)
+from .pasd_bus_simulator import FndhSimulator, PasdBusSimulator, SmartboxSimulator
 
 
 class CustomMarshall(SentinelBytesMarshaller):
@@ -34,13 +36,9 @@ class CustomMarshall(SentinelBytesMarshaller):
 
     def unmarshall(self, bytes_iterator: Iterator[bytes]) -> bytes:
         print(f"I am unmarshalling |{bytes_iterator}|")
-        payload = next(bytes_iterator)
-        print(f"Got next from iterator {payload}")  #
-        um = payload
-        if not um.endswith(self._sentinel):
-            um += self._sentinel
-        print(f"I unmarshalled |{um}|")
-        return um
+        result = super().unmarshall(bytes_iterator=bytes_iterator)
+        print(f"Umarshall reesult is {result}")
+        return result
 
 
 # pylint: disable-next=too-few-public-methods
@@ -69,7 +67,7 @@ class PasdBusSimulatorModbusServer(ApplicationServer):
     def __call__(self, bytes_iterator: Iterator[bytes]) -> bytes | None:
         print("I've been called! I've been called!")
         bytesss = super().__call__(bytes_iterator)
-        print(bytesss)
+        print(f"My result is {bytesss}")
         print("And I've finished being called!")
         return bytesss
 

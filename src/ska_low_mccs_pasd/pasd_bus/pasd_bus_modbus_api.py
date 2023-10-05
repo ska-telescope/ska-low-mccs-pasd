@@ -18,13 +18,19 @@ from pymodbus.exceptions import ModbusIOException
 from pymodbus.factory import ServerDecoder
 from pymodbus.framer.ascii_framer import ModbusAsciiFramer
 from pymodbus.pdu import ExceptionResponse
-from pymodbus.register_read_message import (ReadHoldingRegistersRequest,
-                                            ReadHoldingRegistersResponse)
+from pymodbus.register_read_message import (
+    ReadHoldingRegistersRequest,
+    ReadHoldingRegistersResponse,
+)
 from pymodbus.register_write_message import WriteMultipleRegistersResponse
 
-from .pasd_bus_register_map import (PasdBusAttribute, PasdBusPortAttribute,
-                                    PasdBusRegisterMap, PasdReadError,
-                                    PasdWriteError)
+from .pasd_bus_register_map import (
+    PasdBusAttribute,
+    PasdBusPortAttribute,
+    PasdBusRegisterMap,
+    PasdReadError,
+    PasdWriteError,
+)
 from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
 
 logger = logging.getLogger()
@@ -69,8 +75,6 @@ class PasdBusModbusApi:
             except AttributeError:
                 # TODO
                 logger.error(f"Attribute not found: {name}")
-            for i in range(attr.count - 1):
-                values.append(0)
             # TODO: Tidy up
             if isinstance(value, str):
                 for _ in range(attr.count - len(value)):
@@ -145,14 +149,16 @@ class PasdBusModbusApi:
 
 class CustomClient(ModbusTcpClient):
     def recv(self, size):
-        print(self.socket.getsockname())
-        print(f"{self.comm_params} {self.socket} {self.params} {self.slaves}")
-        print(f"Receiving in custom client size {size}")
-        return super().recv(size)
+        print(f"Receiving in custom client size {size}.")
+        output = super().recv(size)
+        print(f"I've received {output}")
+        return output
+
     def _handle_abrupt_socket_close(self, size, data, duration):
         print(f"Abrupt socket close {size} {data} ")
         traceback.print_stack()
         return super()._handle_abrupt_socket_close(size, data, duration)
+
 
 class PasdBusModbusApiClient:
     """A client class for a PaSD (simulator or h/w) with a Modbus API."""
@@ -235,6 +241,10 @@ class PasdBusModbusApiClient:
         )
         print(f"I do be trying to read to those register xdd {self._client.use_sync}")
         print(self._client.transaction.transactions)
+        request = ReadHoldingRegistersRequest(
+            attributes[keys[0]].address, count, modbus_address
+        )
+        print(f"pdu size = {request.get_response_pdu_size()}")
         reply = self._client.read_holding_registers(
             attributes[keys[0]].address, count, modbus_address
         )
