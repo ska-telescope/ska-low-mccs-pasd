@@ -8,7 +8,6 @@
 """This module contains the tests of the FNDH component manager."""
 from __future__ import annotations
 
-import functools
 import logging
 import unittest.mock
 from typing import Any, Iterator
@@ -134,7 +133,7 @@ class TestFndhComponentManager:
 
         :return: an FNDH component manager.
         """
-        component_manager = FndhComponentManager(
+        return FndhComponentManager(
             logger,
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
@@ -142,14 +141,6 @@ class TestFndhComponentManager:
             mock_callbacks["port_power_state"],
             get_pasd_bus_name(),
         )
-        component_manager._pasd_bus_proxy._communication_state_callback = (
-            component_manager._pasdbus_communication_state_changed
-        )
-        component_manager._pasd_bus_proxy._component_state_callback = functools.partial(
-            mock_callbacks["component_state"], fqdn=get_pasd_bus_name()
-        )
-
-        return component_manager
 
     def test_communication(
         self: TestFndhComponentManager,
