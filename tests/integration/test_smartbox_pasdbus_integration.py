@@ -17,6 +17,7 @@ import time
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
+from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator, SmartboxSimulator
@@ -65,6 +66,7 @@ def turn_pasd_devices_online(
     change_event_callbacks["pasd_bus_state"].assert_not_called()
     change_event_callbacks.assert_change_event("healthState", HealthState.OK)
     assert pasd_bus_device.healthState == HealthState.OK
+    change_event_callbacks.assert_change_event("smartbox24AlarmFlags", Anything)
 
     # ---------------------
     # FNDH adminMode online
@@ -879,9 +881,8 @@ class TestSmartBoxPasdBusIntegration:
             smartbox_device.Fem12CurrentTripThreshold
             == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
         )
-        # TODO
-        # assert smartbox_device.WarningFlags == SmartboxSimulator.DEFAULT_FLAGS
-        # assert smartbox_device.AlarmFlags == SmartboxSimulator.DEFAULT_FLAGS
+        assert smartbox_device.WarningFlags == SmartboxSimulator.DEFAULT_FLAGS
+        assert smartbox_device.AlarmFlags == SmartboxSimulator.DEFAULT_FLAGS
 
         # Subscribe to attribute change events
         smartbox_device.subscribe_event(
@@ -1036,6 +1037,6 @@ def change_event_callbacks_fixture(smartbox_number: int) -> MockTangoEventCallba
         "smartbox1femheatsinktemperatures",
         "smartbox1status",
         f"fndhport{smartbox_number}powerstate",
-        timeout=10.0,
+        timeout=20.0,
         assert_no_error=False,
     )
