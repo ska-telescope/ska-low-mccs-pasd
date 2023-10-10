@@ -73,30 +73,27 @@ class PasdBusModbusApi:
         values = []
         for name, attr in names.items():
             try:
-                value = getattr(self._simulators[device_id], name)
+                unconverted_value = getattr(self._simulators[device_id], name)
             except AttributeError:
                 # TODO
                 logger.error(f"Attribute not found: {name}")
             # TODO: Tidy up
-            value = attr.convert_write_value([value])[0]
-            if isinstance(value, str) or isinstance(value, list):
-                for _ in range(attr.count - len(value)):
-                    values.append(0)
-                for char in value:
-                    values.append(int(char))
-            elif isinstance(value, Enum):
-                values.append(value.value)
+            try:
+                value = attr.convert_write_value([unconverted_value])
+            except KeyError as e:
+                print(
+                    f"Key error {e} for device {device_id} for name {name}, value {unconverted_value}"
+                )
+                raise e
+            if isinstance(value, list):
+                if isinstance(value[0], list):
+                    for char in value[0]:
+                        values.append(int(char))
+                else:
+                    for char in value:
+                        values.append(int(char))
             else:
-                try:
-                    if value > 65535 or value < 0:
-                        print(f"Bad value encountered {value}")
-                    values.append(int(value))
-                except TypeError as e:
-                    print(f"Type error {e} on {value}")
-                    raise e
-                except ValueError as e:
-                    print(f"Value error {e} on {value}")
-                    raise e
+                raise ValueError(f"Uh oh {name} {value}")
         return values
 
     def _handle_command(self, device_id: int, name: str, args: tuple) -> dict:
@@ -173,7 +170,6 @@ class CustomClient(ModbusTcpClient):
 
     def _handle_abrupt_socket_close(self, size, data, duration):
         print(f"Abrupt socket close {size} {data} ")
-        # traceback.print_stack()
         return super()._handle_abrupt_socket_close(size, data, duration)
 
 
@@ -258,10 +254,6 @@ class PasdBusModbusApiClient:
         )
         print(f"I do be trying to read to those register xdd {self._client.use_sync}")
         print(self._client.transaction.transactions)
-        request = ReadHoldingRegistersRequest(
-            attributes[keys[0]].address, count, modbus_address
-        )
-        print(f"pdu size = {request.get_response_pdu_size()}")
         reply = self._client.read_holding_registers(
             attributes[keys[0]].address, count, modbus_address
         )

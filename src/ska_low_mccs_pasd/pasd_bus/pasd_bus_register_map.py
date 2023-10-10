@@ -185,8 +185,10 @@ class PasdBusPortAttribute(PasdBusAttribute):
         self.desired_info = desired_info
 
     def _parse_port_bitmaps(
-        self: PasdBusPortAttribute, values: List[int]
-    ) -> List[bool | str | None]:
+        self: PasdBusPortAttribute,
+        values: List[int | bool | str | None],
+        inverse: bool = False,
+    ) -> List[bool | str | None, int]:
         """
         Parse the port register bitmap data into the desired port information.
 
@@ -198,9 +200,51 @@ class PasdBusPortAttribute(PasdBusAttribute):
             False: "OFF",
             None: "NONE",
         }
+        if inverse:
+            results: List[int] = []
+            for value in values:
+                bitstring = "00"
+
+                if self.desired_info == PortStatusString.DSON:
+                    bitstring += "11" if value else "10"
+                else:
+                    bitstring += "00"
+
+                if self.desired_info == PortStatusString.DSOFF:
+                    bitstring += "11" if value else "10"
+                else:
+                    bitstring += "00"
+
+                if self.desired_info == PortStatusString.PORT_FORCINGS:
+                    if value == forcing_map[True]:
+                        bitstring += "11"
+                    elif value == forcing_map[False]:
+                        bitstring += "10"
+                    else:
+                        bitstring += "00"
+                else:
+                    bitstring += "00"
+
+                if self.desired_info == PortStatusString.BREAKERS_TRIPPED:
+                    bitstring += "1" if value else "0"
+                elif self.desired_info == PortStatusString.POWER_SENSED:
+                    bitstring += "1" if value else "0"
+                else:
+                    bitstring += "0"
+
+                if self.desired_info == PortStatusString.POWER:
+                    bitstring += "1" if value else "0"
+                else:
+                    bitstring += "0"
+
+                bitstring += "000000"  # pad to 16 bits
+                print(bitstring)
+                results.append(int(bitstring, 2))
+            return results
         results: List[bool | str | None] = []
         for status_bitmap in values:
             bitstring = f"{status_bitmap:016b}"
+            print(bitstring)
             match (self.desired_info):
                 case PortStatusString.DSON:
                     if bitstring[2:4] == "11":
@@ -280,7 +324,9 @@ class PasdBusRegisterMap:
         "pcb_revision": PasdBusAttribute(1, 1),
         "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
         "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_chip_id),
-        "firmware_version": PasdBusAttribute(12, 1, lambda x: str(x[0])),
+        "firmware_version": PasdBusAttribute(
+            12, 1, PasdConversionUtility.convert_firmware_version
+        ),
     }
 
     # Inverse dictionary mapping register number (address) to
@@ -497,7 +543,7 @@ class PasdBusRegisterMap:
         self._revision_number = value
 
     def _get_register_info(self, device_id: int) -> PasdBusRegisterInfo:
-        if device_id == 0:
+        if device_id == 0 or device_id == 101:
             return self._FNDH_REGISTER_MAPS[self.revision_number]
         return self._SMARTBOX_REGISTER_MAPS[self.revision_number]
 

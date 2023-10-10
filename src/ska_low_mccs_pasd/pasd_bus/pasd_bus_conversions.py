@@ -6,9 +6,9 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module provides scaling and other conversion functions for the PaSD."""
-
 import itertools
 import logging
+import traceback
 from enum import Enum
 from typing import Any
 
@@ -194,6 +194,8 @@ class PasdConversionUtility:
         :return: output_values in Volts
         """
         if inverse:
+            if isinstance(value_list[0], list):
+                value_list = value_list[0]
             return [int(value * 100) & 0xFFFF for value in value_list]
         return [value / 100.0 for value in value_list]
 
@@ -229,7 +231,11 @@ class PasdConversionUtility:
             return int(value * 100) & 0xFFFF
 
         if inverse:
-            return [deg_to_raw(value) for value in value_list]
+            if isinstance(value_list[0], list):
+                it = value_list[0]
+            else:
+                it = value_list
+            return [deg_to_raw(value) for value in it]
 
         return [raw_to_deg(int(value)) for value in value_list]
 
@@ -270,6 +276,8 @@ class PasdConversionUtility:
         """
         try:
             if inverse:
+                print("+" * 50)
+                print(value_list)
                 return cls.n_to_bytes(int(value_list[0], base=16))
             return [hex(cls.bytes_to_n(value_list))]
         except ValueError:
@@ -293,7 +301,8 @@ class PasdConversionUtility:
                 return cls.n_to_bytes(value_list[0])
             return [cls.bytes_to_n(value_list)]
         except ValueError:
-            logger.error(f"Invalid uptime value received: {value_list}")
+            traceback.print_stack()
+            logger.error(f"Invalid uptime value received: {value_list} {inverse}")
             return []
 
     @classmethod
@@ -312,8 +321,8 @@ class PasdConversionUtility:
         try:
             if inverse:
                 reglist = []
-                for i in range(0, len(value_list[0]), 2):
-                    reglist.append(int(value_list[0][i : i + 2]))
+                for i in range(0, len(value_list[0]), 4):
+                    reglist.append(int(value_list[0][i : i + 4]))
                 return reglist
             for raw_value in value_list:
                 bytelist += cls.n_to_bytes(raw_value)
@@ -323,8 +332,30 @@ class PasdConversionUtility:
             return []
 
     @classmethod
-    def convert_fndh_status(
+    def convert_firmware_version(
         cls, value_list: list[int | str], inverse: bool = False
+    ) -> list[str | int]:
+        """
+        Convert the raw register values to a string firmware version.
+
+        :param value_list: list of raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
+        :return: string firmware version
+        """
+        print("_" * 100)
+        print(value_list)
+        if len(value_list) == 0:
+            assert False
+        if inverse:
+            return [int(value_list[0])]
+        return [str(value_list[0])]
+
+    @classmethod
+    def convert_fndh_status(
+        cls, value_list: list[int | FndhStatusMap], inverse: bool = False
     ) -> list[str, int]:
         """
         Convert the raw register value to a string status.
@@ -338,7 +369,9 @@ class PasdConversionUtility:
         """
         try:
             if inverse:
-                return [FndhStatusMap[value_list[0]].value]
+                if isinstance(value_list[0], str):
+                    return [FndhStatusMap[value_list[0]].value]
+                return [value_list[0].value]
             return [FndhStatusMap(value_list[0]).name]
         except ValueError:
             logger.error(f"Invalid FNDH status value received: {value_list[0]}")
@@ -360,14 +393,18 @@ class PasdConversionUtility:
         """
         try:
             if inverse:
-                return [SmartBoxStatusMap[value_list[0]].value]
+                if isinstance(value_list[0], str):
+                    return [SmartBoxStatusMap[value_list[0]].value]
+                return [value_list[0].value]
             return [SmartBoxStatusMap(value_list[0]).name]
         except ValueError:
             logger.error(f"Invalid Smartbox status value received: {value_list[0]}")
             return [SmartBoxStatusMap.UNDEFINED.name]
 
     @classmethod
-    def convert_led_status(cls, value_list: list[int]) -> str:
+    def convert_led_status(
+        cls, value_list: list[int | LEDStatusMap | LEDServiceMap], inverse: bool = False
+    ) -> str | int:
         """
         Convert the raw register value to LED status strings.
 
@@ -375,6 +412,9 @@ class PasdConversionUtility:
             (MSB represents service LED and LSB represents status LED)
         :return: string describing LED patterns
         """
+        if inverse:
+            reg_val = cls.bytes_to_n([v.value for v in value_list])
+            return [reg_val]
         raw_value = value_list[0]
         try:
             byte_list = cls.n_to_bytes(raw_value)
@@ -400,7 +440,9 @@ class PasdConversionUtility:
         return f"service: {service}, status: {status}"
 
     @classmethod
-    def convert_fndh_alarm_status(cls, value_list: list[int]) -> str:
+    def convert_fndh_alarm_status(
+        cls, value_list: list[int | FNDHAlarmFlags], inverse: bool = False
+    ) -> str | int:
         """
         Convert the alarm and warning flag registers to strings.
 
@@ -410,6 +452,11 @@ class PasdConversionUtility:
             the alarm or warning.
         """
         raw_value = value_list[0]
+        if inverse:
+            result = 0
+            for status in value_list:
+                result += 2**status.value
+            return [result]
         status = FNDHAlarmFlags.NONE.name
         for bit in range(0, 12):
             if (raw_value >> bit) & 1:
@@ -420,7 +467,9 @@ class PasdConversionUtility:
         return status
 
     @classmethod
-    def convert_smartbox_alarm_status(cls, value_list: list[int]) -> str:
+    def convert_smartbox_alarm_status(
+        cls, value_list: list[int | SmartboxAlarmFlags], inverse: bool = False
+    ) -> str | int:
         """
         Convert the alarm and warning flag registers to strings.
 
@@ -430,6 +479,11 @@ class PasdConversionUtility:
             the alarm or warning.
         """
         raw_value = value_list[0]
+        if inverse:
+            result = 0
+            for status in value_list:
+                result += 2**status.value
+            return [result]
         status = SmartboxAlarmFlags.NONE.name
         for bit in range(0, 9):
             if (raw_value >> bit) & 1:

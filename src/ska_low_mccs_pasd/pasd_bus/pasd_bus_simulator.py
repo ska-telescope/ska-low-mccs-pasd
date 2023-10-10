@@ -743,9 +743,7 @@ class PasdHardwareSimulator:
         """
         if self._boot_on_time is None:
             return self.DEFAULT_UPTIME
-        return int(
-            (datetime.now().timestamp() - self._boot_on_time.timestamp()) * 100000
-        )
+        return int((datetime.now().timestamp() - self._boot_on_time.timestamp()) * 1000)
 
     @property
     def status(self: PasdHardwareSimulator) -> str:
@@ -873,8 +871,8 @@ class FndhSimulator(PasdHardwareSimulator):
     MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
     # TODO: Change to list of integer values when Modbus server is used
-    CPU_ID: Final = "22"  # [1,2]
-    CHIP_ID: Final = "12345678"  # [1,2,3,4,5,6,7,8]
+    CPU_ID: Final = hex(12)
+    CHIP_ID: Final = "00010002000300040005000600070008"
     SYS_ADDRESS: Final = 101
 
     # TODO: Change to integer when Modbus server is used
@@ -1020,12 +1018,10 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
     MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
-    # TODO: Change to list of integer values when Modbus server is used
-    CPU_ID: Final = [2, 4]
-    CHIP_ID: Final = [8, 7, 6, 5, 4, 3, 2, 1]
+    CPU_ID: Final = hex(24)
+    CHIP_ID: Final = "00080007000600050004000300020001"
 
     DEFAULT_SYS_ADDRESS: Final = 1
-    # TODO: Change to integer when Modbus server is used
     DEFAULT_FIRMWARE_VERSION: Final = 258
     # Address
     DEFAULT_INPUT_VOLTAGE: Final = 4800
@@ -1072,6 +1068,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
             for port_index in range(self.NUMBER_OF_PORTS)
         ]
         super().__init__(ports)
+        self._status = SmartBoxStatusMap.UNINITIALISED
         self._sys_address = address
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
