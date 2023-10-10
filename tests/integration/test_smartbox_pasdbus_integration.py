@@ -17,6 +17,7 @@ import time
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
+from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator, SmartboxSimulator
@@ -65,6 +66,7 @@ def turn_pasd_devices_online(
     change_event_callbacks["pasd_bus_state"].assert_not_called()
     change_event_callbacks.assert_change_event("healthState", HealthState.OK)
     assert pasd_bus_device.healthState == HealthState.OK
+    change_event_callbacks.assert_change_event("smartbox24AlarmFlags", Anything)
 
     # ---------------------
     # FNDH adminMode online
@@ -589,7 +591,7 @@ class TestSmartBoxPasdBusIntegration:
             change_event_callbacks["fndhstatus"],
         )
         change_event_callbacks.assert_change_event(
-            "fndhstatus", FndhSimulator.DEFAULT_STATUS, lookahead=2
+            "fndhstatus", FndhSimulator.DEFAULT_STATUS
         )
         smartbox_device.subscribe_event(
             "PasdStatus",
@@ -597,7 +599,7 @@ class TestSmartBoxPasdBusIntegration:
             change_event_callbacks["smartbox1status"],
         )
         change_event_callbacks.assert_change_event(
-            "smartbox1status", SmartboxSimulator.DEFAULT_STATUS, lookahead=2
+            "smartbox1status", SmartboxSimulator.DEFAULT_STATUS
         )
 
         # ===
@@ -954,9 +956,7 @@ class TestSmartBoxPasdBusIntegration:
             change_event_callbacks["smartbox1status"],
         )
         change_event_callbacks.assert_change_event(
-            "smartbox1status",
-            SmartboxSimulator.DEFAULT_STATUS,
-            lookahead=2,
+            "smartbox1status", SmartboxSimulator.DEFAULT_STATUS
         )
         smartbox_device.subscribe_event(
             "InputVoltage",
@@ -964,9 +964,7 @@ class TestSmartBoxPasdBusIntegration:
             change_event_callbacks["smartbox1inputvoltage"],
         )
         change_event_callbacks.assert_change_event(
-            "smartbox1inputvoltage",
-            SmartboxSimulator.DEFAULT_INPUT_VOLTAGE,
-            lookahead=2,
+            "smartbox1inputvoltage", SmartboxSimulator.DEFAULT_INPUT_VOLTAGE
         )
         smartbox_device.subscribe_event(
             "PowerSupplyOutputVoltage",
@@ -974,9 +972,7 @@ class TestSmartBoxPasdBusIntegration:
             change_event_callbacks["smartbox1psuoutput"],
         )
         change_event_callbacks.assert_change_event(
-            "smartbox1psuoutput",
-            SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE,
-            lookahead=2,
+            "smartbox1psuoutput", SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
         )
         smartbox_device.subscribe_event(
             "PowerSupplyTemperature",
@@ -986,7 +982,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             "smartbox1psutemperature",
             SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE,
-            lookahead=2,
         )
         smartbox_device.subscribe_event(
             "PcbTemperature",
@@ -994,9 +989,7 @@ class TestSmartBoxPasdBusIntegration:
             change_event_callbacks["smartbox1pcbtemperature"],
         )
         change_event_callbacks.assert_change_event(
-            "smartbox1pcbtemperature",
-            SmartboxSimulator.DEFAULT_PCB_TEMPERATURE,
-            lookahead=2,
+            "smartbox1pcbtemperature", SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
         )
         smartbox_device.subscribe_event(
             "FemAmbientTemperature",
@@ -1006,7 +999,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             "smartbox1femambienttemperature",
             SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE,
-            lookahead=2,
         )
         smartbox_device.subscribe_event(
             "FemCaseTemperatures",
@@ -1016,7 +1008,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             "smartbox1femcasetemperatures",
             SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES,
-            lookahead=2,
         )
         smartbox_device.subscribe_event(
             "FemHeatsinkTemperatures",
@@ -1026,7 +1017,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             "smartbox1femheatsinktemperatures",
             SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES,
-            lookahead=2,
         )
 
         # When we mock a change in an attribute at the simulator level.
@@ -1034,52 +1024,52 @@ class TestSmartBoxPasdBusIntegration:
 
         # Initialize smartbox simulator status
         assert pasd_bus_device.InitializeSmartbox(1)[0] == ResultCode.OK
-        change_event_callbacks.assert_change_event("smartbox1status", "OK", 2)
+        change_event_callbacks.assert_change_event("smartbox1status", "OK")
         assert smartbox_device.PasdStatus == "OK"
 
         smartbox_simulator.input_voltage = 3000
-        change_event_callbacks.assert_change_event("smartbox1inputvoltage", 3000, 2)
-        change_event_callbacks.assert_change_event("smartbox1status", "ALARM", 2)
+        change_event_callbacks.assert_change_event("smartbox1inputvoltage", 3000)
+        change_event_callbacks.assert_change_event("smartbox1status", "ALARM")
         assert smartbox_device.InputVoltage == 3000
         smartbox_simulator.input_voltage = 4200
-        change_event_callbacks.assert_change_event("smartbox1inputvoltage", 4200, 2)
-        change_event_callbacks.assert_change_event("smartbox1status", "RECOVERY", 2)
+        change_event_callbacks.assert_change_event("smartbox1inputvoltage", 4200)
+        change_event_callbacks.assert_change_event("smartbox1status", "RECOVERY")
         assert smartbox_device.InputVoltage == 4200
         assert pasd_bus_device.InitializeSmartbox(1)[0] == ResultCode.OK
-        change_event_callbacks.assert_change_event("smartbox1status", "WARNING", 2)
+        change_event_callbacks.assert_change_event("smartbox1status", "WARNING")
         smartbox_simulator.input_voltage = 4800
-        change_event_callbacks.assert_change_event("smartbox1inputvoltage", 4800, 2)
-        change_event_callbacks.assert_change_event("smartbox1status", "OK", 2)
+        change_event_callbacks.assert_change_event("smartbox1inputvoltage", 4800)
+        change_event_callbacks.assert_change_event("smartbox1status", "OK")
         assert smartbox_device.InputVoltage == 4800
 
         smartbox_simulator.power_supply_output_voltage = 495
-        change_event_callbacks.assert_change_event("smartbox1psuoutput", 495, 2)
-        change_event_callbacks.assert_change_event("smartbox1status", "WARNING", 2)
+        change_event_callbacks.assert_change_event("smartbox1psuoutput", 495)
+        change_event_callbacks.assert_change_event("smartbox1status", "WARNING")
         assert smartbox_device.PowerSupplyOutputVoltage == 495
 
         smartbox_simulator.power_supply_temperature = 5000
-        change_event_callbacks.assert_change_event("smartbox1psutemperature", 5000, 2)
+        change_event_callbacks.assert_change_event("smartbox1psutemperature", 5000)
         assert smartbox_device.PowerSupplyTemperature == 5000
 
         smartbox_simulator.pcb_temperature = 5000
-        change_event_callbacks.assert_change_event("smartbox1pcbtemperature", 5000, 2)
+        change_event_callbacks.assert_change_event("smartbox1pcbtemperature", 5000)
         assert smartbox_device.PcbTemperature == 5000
 
         smartbox_simulator.fem_ambient_temperature = 5000
         change_event_callbacks.assert_change_event(
-            "smartbox1femambienttemperature", 5000, 2
+            "smartbox1femambienttemperature", 5000
         )
         assert smartbox_device.FemAmbientTemperature == 5000
 
         smartbox_simulator.fem_case_temperatures = [5000, 4900]
         change_event_callbacks.assert_change_event(
-            "smartbox1femcasetemperatures", [5000, 4900], 2
+            "smartbox1femcasetemperatures", [5000, 4900]
         )
         assert (smartbox_device.FemCaseTemperatures == [5000, 4900]).all()
 
         smartbox_simulator.fem_heatsink_temperatures = [5100, 5000]
         change_event_callbacks.assert_change_event(
-            "smartbox1femheatsinktemperatures", [5100, 5000], 2
+            "smartbox1femheatsinktemperatures", [5100, 5000]
         )
         assert (smartbox_device.FemHeatsinkTemperatures == [5100, 5000]).all()
 
