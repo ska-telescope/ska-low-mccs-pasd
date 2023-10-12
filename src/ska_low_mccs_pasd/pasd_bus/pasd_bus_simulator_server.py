@@ -67,13 +67,6 @@ class PasdBusSimulatorModbusServer(ApplicationServer):
         marshaller = CustomMarshall(b"\r\n")
         super().__init__(marshaller.unmarshall, marshaller.marshall, simulator_api)
 
-    def __call__(self, bytes_iterator: Iterator[bytes]) -> bytes | None:
-        print("I've been called! I've been called!")
-        bytesss = super().__call__(bytes_iterator)
-        print(f"My result is {bytesss}")
-        print("And I've finished being called!")
-        return bytesss
-
 
 def main() -> None:
     """

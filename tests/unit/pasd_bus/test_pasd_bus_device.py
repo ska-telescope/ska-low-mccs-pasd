@@ -19,6 +19,7 @@ from ska_control_model import AdminMode, HealthState
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
 from tests.harness import PasdTangoTestHarness
 
@@ -155,13 +156,27 @@ def test_communication(  # pylint: disable=too-many-statements
         == FndhSimulator.MODBUS_REGISTER_MAP_REVISION
     )
     assert pasd_bus_device.fndhPcbRevisionNumber == FndhSimulator.PCB_REVISION
-    assert pasd_bus_device.fndhCpuId == FndhSimulator.CPU_ID
-    assert pasd_bus_device.fndhChipId == FndhSimulator.CHIP_ID
-    assert pasd_bus_device.fndhFirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
-    assert pasd_bus_device.fndhUptime <= fndh_simulator.uptime
+    assert (
+        pasd_bus_device.fndhCpuId
+        == PasdConversionUtility.convert_cpu_id(FndhSimulator.CPU_ID)[0]
+    )
+    assert (
+        pasd_bus_device.fndhChipId
+        == PasdConversionUtility.convert_chip_id(FndhSimulator.CHIP_ID)[0]
+    )
+    assert (
+        pasd_bus_device.fndhFirmwareVersion
+        == PasdConversionUtility.convert_firmware_version(
+            FndhSimulator.DEFAULT_FIRMWARE_VERSION
+        )
+    )
+    assert (
+        pasd_bus_device.fndhUptime
+        <= PasdConversionUtility.convert_uptime(fndh_simulator.uptime)[0]
+    )
     assert pasd_bus_device.fndhSysAddress == FndhSimulator.SYS_ADDRESS
     assert pasd_bus_device.fndhStatus == "OK"
-    assert pasd_bus_device.fndhLedPattern == FndhSimulator.DEFAULT_LED_PATTERN
+    assert pasd_bus_device.fndhLedPattern[-3:] == FndhSimulator.DEFAULT_LED_PATTERN.name
     assert (
         list(pasd_bus_device.fndhPsu48vVoltages)
         == FndhSimulator.DEFAULT_PSU48V_VOLTAGES
@@ -274,9 +289,8 @@ def test_communication(  # pylint: disable=too-many-statements
         getattr(pasd_bus_device, f"smartbox{smartbox_id}ChipId")
         == SmartboxSimulator.CHIP_ID
     )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}FirmwareVersion")
-        == SmartboxSimulator.DEFAULT_FIRMWARE_VERSION
+    assert getattr(pasd_bus_device, f"smartbox{smartbox_id}FirmwareVersion") == str(
+        SmartboxSimulator.DEFAULT_FIRMWARE_VERSION
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}Uptime")
@@ -284,11 +298,11 @@ def test_communication(  # pylint: disable=too-many-statements
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}Status")
-        == SmartboxSimulator.DEFAULT_STATUS
+        == "OK"  # SmartboxSimulator.DEFAULT_STATUS
     )
     assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}LedPattern")
-        == SmartboxSimulator.DEFAULT_LED_PATTERN
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}LedPattern")[-3:]
+        == SmartboxSimulator.DEFAULT_LED_PATTERN.name
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltage")
@@ -425,52 +439,41 @@ def test_communication(  # pylint: disable=too-many-statements
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem1CurrentTripThreshold")
-        == smartbox_simulator.fem1_current_trip_threshold
+        == smartbox_simulator.fem1_current_trip_threshold * 100
     )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem2CurrentTripThreshold")
-        == smartbox_simulator.fem2_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem3CurrentTripThreshold")
-        == smartbox_simulator.fem3_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem4CurrentTripThreshold")
-        == smartbox_simulator.fem4_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem5CurrentTripThreshold")
-        == smartbox_simulator.fem5_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem6CurrentTripThreshold")
-        == smartbox_simulator.fem6_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem7CurrentTripThreshold")
-        == smartbox_simulator.fem7_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem8CurrentTripThreshold")
-        == smartbox_simulator.fem8_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem9CurrentTripThreshold")
-        == smartbox_simulator.fem9_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem10CurrentTripThreshold")
-        == smartbox_simulator.fem10_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem11CurrentTripThreshold")
-        == smartbox_simulator.fem11_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem12CurrentTripThreshold")
-        == smartbox_simulator.fem12_current_trip_threshold
-    )
+    assert getattr(
+        pasd_bus_device, f"smartbox{smartbox_id}Fem2CurrentTripThreshold"
+    ) == round(smartbox_simulator.fem2_current_trip_threshold * 100)
+    assert getattr(
+        pasd_bus_device, f"smartbox{smartbox_id}Fem3CurrentTripThreshold"
+    ) == round(smartbox_simulator.fem3_current_trip_threshold * 100)
+    assert getattr(
+        pasd_bus_device, f"smartbox{smartbox_id}Fem4CurrentTripThreshold"
+    ) == round(smartbox_simulator.fem4_current_trip_threshold * 100)
+    assert getattr(
+        pasd_bus_device, f"smartbox{smartbox_id}Fem5CurrentTripThreshold"
+    ) == round(smartbox_simulator.fem5_current_trip_threshold * 100)
+    assert getattr(
+        pasd_bus_device, f"smartbox{smartbox_id}Fem6CurrentTripThreshold"
+    ) == round(smartbox_simulator.fem6_current_trip_threshold * 100)
+    assert getattr(
+        pasd_bus_device, f"smartbox{smartbox_id}Fem7CurrentTripThreshold"
+    ) == round(smartbox_simulator.fem7_current_trip_threshold * 100)
+    assert getattr(
+        pasd_bus_device, f"smartbox{smartbox_id}Fem8CurrentTripThreshold"
+    ) == round(smartbox_simulator.fem8_current_trip_threshold * 100)
+    assert getattr(
+        pasd_bus_device, f"smartbox{smartbox_id}Fem9CurrentTripThreshold"
+    ) == round(smartbox_simulator.fem9_current_trip_threshold * 100)
+    assert getattr(
+        pasd_bus_device, f"smartbox{smartbox_id}Fem10CurrentTripThreshold"
+    ) == round(smartbox_simulator.fem10_current_trip_threshold * 100)
+    assert getattr(
+        pasd_bus_device, f"smartbox{smartbox_id}Fem11CurrentTripThreshold"
+    ) == round(smartbox_simulator.fem11_current_trip_threshold * 100)
+    assert getattr(
+        pasd_bus_device, f"smartbox{smartbox_id}Fem12CurrentTripThreshold"
+    ) == round(smartbox_simulator.fem12_current_trip_threshold * 100)
     # TODO
     # assert (
     #     getattr(pasd_bus_device, f"smartbox{smartbox_id}WarningFlags")

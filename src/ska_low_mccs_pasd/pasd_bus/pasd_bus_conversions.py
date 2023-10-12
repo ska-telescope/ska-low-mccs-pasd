@@ -177,6 +177,22 @@ class PasdConversionUtility:
         return values
 
     @classmethod
+    def default_conversion_2(
+        cls, values: list[Any], inverse: bool = False
+    ) -> list[Any]:
+        """
+        Return the supplied raw value(s) with no conversion.
+
+        :param values: raw value(s)
+        :param inverse: whether to invert the conversion
+        :return: the value(s) unchanged
+        """
+        if inverse:
+            print(f"I'm inversting {values}")
+            return [round(value * 100) for value in values]
+        return values
+
+    @classmethod
     def scale_volts(
         cls, value_list: list[int | float], inverse: bool = False
     ) -> list[int | float]:
@@ -196,7 +212,7 @@ class PasdConversionUtility:
         if inverse:
             if isinstance(value_list[0], list):
                 value_list = value_list[0]
-            return [int(value * 100) & 0xFFFF for value in value_list]
+            return [round(value * 100) & 0xFFFF for value in value_list]
         return [value / 100.0 for value in value_list]
 
     @classmethod
@@ -227,8 +243,8 @@ class PasdConversionUtility:
 
         def deg_to_raw(value: float) -> int:
             if value < 0:
-                return (int(value * 100) + 65536) & 0xFFFF
-            return int(value * 100) & 0xFFFF
+                return (round(value * 100) + 65536) & 0xFFFF
+            return round(value * 100) & 0xFFFF
 
         if inverse:
             if isinstance(value_list[0], list):
@@ -257,7 +273,7 @@ class PasdConversionUtility:
         :return: list of output_values
         """
         if inverse:
-            return [int(value * 100) & 0xFFFF for value in value_list]
+            return [round(value * 100) & 0xFFFF for value in value_list]
         return [value / 100.0 for value in value_list]
 
     @classmethod
@@ -276,8 +292,6 @@ class PasdConversionUtility:
         """
         try:
             if inverse:
-                print("+" * 50)
-                print(value_list)
                 return cls.n_to_bytes(int(value_list[0], base=16))
             return [hex(cls.bytes_to_n(value_list))]
         except ValueError:
@@ -301,7 +315,6 @@ class PasdConversionUtility:
                 return cls.n_to_bytes(value_list[0])
             return [cls.bytes_to_n(value_list)]
         except ValueError:
-            traceback.print_stack()
             logger.error(f"Invalid uptime value received: {value_list} {inverse}")
             return []
 
@@ -345,12 +358,10 @@ class PasdConversionUtility:
 
         :return: string firmware version
         """
-        print("_" * 100)
-        print(value_list)
-        if len(value_list) == 0:
-            assert False
         if inverse:
+            print(value_list)
             return [int(value_list[0])]
+        print(value_list)
         return [str(value_list[0])]
 
     @classmethod
@@ -369,9 +380,7 @@ class PasdConversionUtility:
         """
         try:
             if inverse:
-                if isinstance(value_list[0], str):
-                    return [FndhStatusMap[value_list[0]].value]
-                return [value_list[0].value]
+                return [FndhStatusMap[v].value for v in value_list]
             return [FndhStatusMap(value_list[0]).name]
         except ValueError:
             logger.error(f"Invalid FNDH status value received: {value_list[0]}")
@@ -393,9 +402,7 @@ class PasdConversionUtility:
         """
         try:
             if inverse:
-                if isinstance(value_list[0], str):
-                    return [SmartBoxStatusMap[value_list[0]].value]
-                return [value_list[0].value]
+                return [SmartBoxStatusMap[v].value for v in value_list]
             return [SmartBoxStatusMap(value_list[0]).name]
         except ValueError:
             logger.error(f"Invalid Smartbox status value received: {value_list[0]}")
@@ -413,6 +420,8 @@ class PasdConversionUtility:
         :return: string describing LED patterns
         """
         if inverse:
+            if len(value_list) == 1:
+                return [value_list[0].value]
             reg_val = cls.bytes_to_n([v.value for v in value_list])
             return [reg_val]
         raw_value = value_list[0]

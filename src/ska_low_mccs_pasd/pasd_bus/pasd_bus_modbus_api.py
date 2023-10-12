@@ -12,7 +12,7 @@ import logging
 import traceback
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Final, List
+from typing import Any, Callable, Dict, Final, List
 
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
@@ -57,6 +57,24 @@ class PasdBusModbusApi:
         self.responder_ids = list(range(len(simulators)))
         self._register_map = PasdBusRegisterMap()
 
+    def _convert_value(self, value: Any, conversion_function: Callable) -> list[int]:
+        if isinstance(value, list):
+            try:
+                return [(v + 65536) & 0xFFFF if v < 0 else v for v in value]
+            except TypeError as e:
+                return conversion_function(value, inverse=True)
+        elif isinstance(value, int):
+            if value < 0:
+                value = (value + 65536) & 0xFFFF
+            return [value]
+        elif isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError as e:
+                return conversion_function([value], inverse=True)
+        else:
+            return conversion_function([value], inverse=True)
+
     def _handle_read_attributes(
         self, device_id: int, names: dict[str, PasdBusAttribute]
     ) -> list[Any]:
@@ -71,29 +89,28 @@ class PasdBusModbusApi:
         if device_id == 101:
             device_id = 0
         values = []
+        last_address = -1
+        last_count = -1
         for name, attr in names.items():
             try:
                 unconverted_value = getattr(self._simulators[device_id], name)
             except AttributeError:
                 # TODO
                 logger.error(f"Attribute not found: {name}")
-            # TODO: Tidy up
-            try:
-                value = attr.convert_write_value([unconverted_value])
-            except KeyError as e:
-                print(
-                    f"Key error {e} for device {device_id} for name {name}, value {unconverted_value}"
-                )
-                raise e
+            value = self._convert_value(unconverted_value, attr._conversion_function)
+            print(f"Converted {unconverted_value} to {value}")
             if isinstance(value, list):
                 if isinstance(value[0], list):
-                    for char in value[0]:
-                        values.append(int(char))
-                else:
-                    for char in value:
+                    value = value[0]
+                for index, char in enumerate(value):
+                    if attr.address == last_address:
+                        values[index - last_count] |= char
+                    else:
                         values.append(int(char))
             else:
                 raise ValueError(f"Uh oh {name} {value}")
+            last_address = attr.address
+            last_count = attr.count
         return values
 
     def _handle_command(self, device_id: int, name: str, args: tuple) -> dict:
@@ -107,17 +124,13 @@ class PasdBusModbusApi:
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
         # TODO (temporary placeholder code here only)
         response = None
-        print("!" * 50)
-        print(modbus_request_str)
 
         def handle_request(message: Any) -> None:
             nonlocal response
-            print(f"handling request message {message}")
             match message:
                 case ReadHoldingRegistersRequest():
                     # TODO: Map register numbers from message.address and
                     # message.count to the corresponding attribute names
-                    print(f"I'm reading for id {message.slave_id} {message.address}")
                     filtered_register_map = (
                         self._register_map.get_attributes_from_address_and_count(
                             message.slave_id, message.address, message.count
@@ -126,7 +139,6 @@ class PasdBusModbusApi:
                     values = self._handle_read_attributes(
                         message.slave_id, filtered_register_map
                     )
-                    print(f"I've read values {values}")
                     response = ReadHoldingRegistersResponse(
                         slave=message.slave_id,
                         address=message.address,
@@ -138,14 +150,7 @@ class PasdBusModbusApi:
         self._decoder.processIncomingPacket(
             modbus_request_str, handle_request, slave=self.responder_ids
         )
-        response: ReadHoldingRegistersResponse
-        if response == b"" or response is None:
-            return b""
-        print(response.registers)
-
         packet = self._framer.buildPacket(response)
-        print(f"I love packet {packet}")
-        self._decoder.resetFrame()
         return packet
 
     def __call__(self, modbus_request_bytes: bytes) -> bytes:
@@ -157,20 +162,7 @@ class PasdBusModbusApi:
 
         :return: a Modbus-encoded response string, encoded as bytes.
         """
-        print(f"API called {modbus_request_bytes}")
         return self._handle_modbus(modbus_request_bytes)
-
-
-class CustomClient(ModbusTcpClient):
-    def recv(self, size):
-        print(f"Receiving in custom client size {size}.")
-        output = super().recv(size)
-        print(f"I've received {output}")
-        return output
-
-    def _handle_abrupt_socket_close(self, size, data, duration):
-        print(f"Abrupt socket close {size} {data} ")
-        return super()._handle_abrupt_socket_close(size, data, duration)
 
 
 class PasdBusModbusApiClient:
@@ -191,7 +183,7 @@ class PasdBusModbusApiClient:
         :param port: the PaSD port
         :param logger_object: the logger to use
         """
-        self._client = CustomClient(host, port, ModbusAsciiFramer)
+        self._client = ModbusTcpClient(host, port, ModbusAsciiFramer)
         logger_object.info(f"Created Modbus TCP client for address {host}, port {port}")
         self._logger = logger_object
 
@@ -231,7 +223,6 @@ class PasdBusModbusApiClient:
             return self._create_error_response(
                 "request", f"Exception: {e}"
             )  # TODO: What error code to use?
-
         if len(attributes) == 0:
             self._logger.warning(
                 f"No attributes matching {request['read']} in PaSD register map for"
@@ -248,24 +239,14 @@ class PasdBusModbusApiClient:
             + attributes[keys[-1]].count
             - attributes[keys[0]].address
         )
-        print(
+        logger.debug(
             f"MODBUS read request: modbus address {modbus_address}, "
             f"start address {attributes[keys[0]].address}, count {count}"
         )
-        print(f"I do be trying to read to those register xdd {self._client.use_sync}")
-        print(self._client.transaction.transactions)
         reply = self._client.read_holding_registers(
             attributes[keys[0]].address, count, modbus_address
         )
-        print(reply)
-
-        # reply = self._client.read_holding_registers(
-        #    attributes[keys[0]].address, count, modbus_address
-        # )
-        # print(reply)
-        print(f"Thems registers {reply.registers}")
-
-        print(f"And I've acquired attributes {attributes}")
+        print(f"Got register values {reply.registers} for keys {keys}")
 
         match reply:
             case ReadHoldingRegistersResponse():
@@ -280,9 +261,6 @@ class PasdBusModbusApiClient:
                     current_attribute = attributes[key]
                     if not hasattr(current_attribute, "_value"):
                         current_attribute._value = 0
-                    print(
-                        f"Handling attribute {key} {current_attribute.value} {current_attribute.count} {current_attribute.address}"
-                    )
 
                     # Check if we're moving on from reading a set of port attribute data
                     # as we'll need to increment the register index
@@ -290,12 +268,12 @@ class PasdBusModbusApiClient:
                         last_attribute, PasdBusPortAttribute
                     ) and not isinstance(current_attribute, PasdBusPortAttribute):
                         register_index += last_attribute.count
-
                     converted_values = current_attribute.convert_value(
                         reply.registers[
                             register_index : register_index + current_attribute.count
                         ]
                     )
+                    print(f"Converting values for {key} conv vals {converted_values}")
                     results[key] = (
                         converted_values[0]
                         if len(converted_values) == 1
@@ -311,8 +289,6 @@ class PasdBusModbusApiClient:
                     if not isinstance(current_attribute, PasdBusPortAttribute):
                         register_index += current_attribute.count
                     last_attribute = current_attribute
-                    print(f"Finished handling {key} {converted_values}")
-                print("Made it here at least")
                 response = {
                     "source": request["device_id"],
                     "data": {
@@ -322,7 +298,6 @@ class PasdBusModbusApiClient:
                 }
             case ModbusIOException():
                 # No reply: pass this exception on up to the caller
-                print("Modbus exception")
                 raise reply
             case ExceptionResponse():
                 response = self._create_error_response(
@@ -333,8 +308,6 @@ class PasdBusModbusApiClient:
                     "read", f"Unexpected response type: {type(reply)}"
                 )  # TODO: what error code to use?
 
-        print("WEll by gum I made it here")
-        print(response)
         return response
 
     def _write_registers(

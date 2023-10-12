@@ -14,8 +14,11 @@ from dataclasses import dataclass
 from typing import Any, Callable, Final, Iterator, Optional, Sequence
 
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
-from ska_ser_devices.client_server import (ApplicationClient,
-                                           SentinelBytesMarshaller, TcpClient)
+from ska_ser_devices.client_server import (
+    ApplicationClient,
+    SentinelBytesMarshaller,
+    TcpClient,
+)
 from ska_tango_base.base import check_communicating
 from ska_tango_base.poller import PollingComponentManager
 
@@ -705,7 +708,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 poll_response.device_id,
                 **(poll_response.data),
             )
-        print("Finished successful poll")
 
     @check_communicating
     def initialize_fndh(self: PasdBusComponentManager) -> None:

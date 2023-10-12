@@ -49,6 +49,7 @@ from .pasd_bus_conversions import (
     FndhStatusMap,
     LEDServiceMap,
     LEDStatusMap,
+    PasdConversionUtility,
     SmartboxAlarmFlags,
     SmartBoxStatusMap,
 )
@@ -662,6 +663,7 @@ class PasdHardwareSimulator:
             False: "OFF",
             None: "NONE",
         }
+        print("Reading port forcings from simulator : value ")
         return [forcing_map[port.forcing] for port in self._ports]
 
     def turn_port_on(
@@ -735,7 +737,7 @@ class PasdHardwareSimulator:
         return [port.power_sensed for port in self._ports]
 
     @property
-    def uptime(self: PasdHardwareSimulator) -> int:
+    def uptime(self: PasdHardwareSimulator) -> list[int]:
         """
         Return the uptime, as an integer, in microseconds.
 
@@ -743,7 +745,10 @@ class PasdHardwareSimulator:
         """
         if self._boot_on_time is None:
             return self.DEFAULT_UPTIME
-        return int((datetime.now().timestamp() - self._boot_on_time.timestamp()) * 1000)
+        uptime_val = int(
+            (datetime.now().timestamp() - self._boot_on_time.timestamp()) * 1000
+        )
+        return PasdConversionUtility.n_to_bytes(uptime_val)
 
     @property
     def status(self: PasdHardwareSimulator) -> str:
@@ -847,10 +852,7 @@ class _Sensor:
         :param obj: The instance of the class where the descriptor is being used.
         :param value: The value to be set for the sensor attribute.
         """
-        if isinstance(value, list):
-            obj.__dict__[self.name] = [int(val) for val in value]
-        else:
-            obj.__dict__[self.name] = int(value)
+        obj.__dict__[self.name] = value
         obj._update_sensor_status(self.name.removesuffix("_thresholds"))
         obj._update_system_status()
         obj._update_ports_state()
@@ -870,9 +872,8 @@ class FndhSimulator(PasdHardwareSimulator):
 
     MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
-    # TODO: Change to list of integer values when Modbus server is used
-    CPU_ID: Final = hex(12)
-    CHIP_ID: Final = "00010002000300040005000600070008"
+    CPU_ID: Final = [1, 2]
+    CHIP_ID: Final = [1, 2, 3, 4, 5, 6, 7, 8]
     SYS_ADDRESS: Final = 101
 
     # TODO: Change to integer when Modbus server is used
@@ -1008,6 +1009,17 @@ class FndhSimulator(PasdHardwareSimulator):
         """
         return self.DEFAULT_FIRMWARE_VERSION
 
+    @property
+    def ports_power_control(
+        self: FndhSimulator,
+    ) -> list[int]:
+        """
+        Return the current being drawn from each smartbox port.
+
+        :return: the current being drawn from each smartbox port.
+        """
+        return [1 if port._on else 0 for port in self._ports]
+
 
 class SmartboxSimulator(PasdHardwareSimulator):
     """A simulator for a PaSD smartbox."""
@@ -1018,8 +1030,8 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
     MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
-    CPU_ID: Final = hex(24)
-    CHIP_ID: Final = "00080007000600050004000300020001"
+    CPU_ID: Final = [2, 4]
+    CHIP_ID: Final = [8, 7, 6, 5, 4, 3, 2, 1]
 
     DEFAULT_SYS_ADDRESS: Final = 1
     DEFAULT_FIRMWARE_VERSION: Final = 258

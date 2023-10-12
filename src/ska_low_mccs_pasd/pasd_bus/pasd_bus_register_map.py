@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+import traceback
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Final, List, Optional, Sequence
@@ -200,6 +201,8 @@ class PasdBusPortAttribute(PasdBusAttribute):
             False: "OFF",
             None: "NONE",
         }
+        if isinstance(values[0], list):
+            values = values[0]
         if inverse:
             results: List[int] = []
             for value in values:
@@ -238,13 +241,11 @@ class PasdBusPortAttribute(PasdBusAttribute):
                     bitstring += "0"
 
                 bitstring += "000000"  # pad to 16 bits
-                print(bitstring)
                 results.append(int(bitstring, 2))
             return results
         results: List[bool | str | None] = []
         for status_bitmap in values:
             bitstring = f"{status_bitmap:016b}"
-            print(bitstring)
             match (self.desired_info):
                 case PortStatusString.DSON:
                     if bitstring[2:4] == "11":
@@ -484,18 +485,42 @@ class PasdBusRegisterMap:
         "fem_heatsink_temperature_2_thresholds": PasdBusAttribute(
             1032, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
         ),
-        "fem1_current_trip_threshold": PasdBusAttribute(1068, 1, writeable=True),
-        "fem2_current_trip_threshold": PasdBusAttribute(1069, 1, writeable=True),
-        "fem3_current_trip_threshold": PasdBusAttribute(1070, 1, writeable=True),
-        "fem4_current_trip_threshold": PasdBusAttribute(1071, 1, writeable=True),
-        "fem5_current_trip_threshold": PasdBusAttribute(1072, 1, writeable=True),
-        "fem6_current_trip_threshold": PasdBusAttribute(1073, 1, writeable=True),
-        "fem7_current_trip_threshold": PasdBusAttribute(1074, 1, writeable=True),
-        "fem8_current_trip_threshold": PasdBusAttribute(1075, 1, writeable=True),
-        "fem9_current_trip_threshold": PasdBusAttribute(1076, 1, writeable=True),
-        "fem10_current_trip_threshold": PasdBusAttribute(1077, 1, writeable=True),
-        "fem11_current_trip_threshold": PasdBusAttribute(1078, 1, writeable=True),
-        "fem12_current_trip_threshold": PasdBusAttribute(1079, 1, writeable=True),
+        "fem1_current_trip_threshold": PasdBusAttribute(
+            1068, 1, PasdConversionUtility.default_conversion_2, writeable=True
+        ),
+        "fem2_current_trip_threshold": PasdBusAttribute(
+            1069, 1, PasdConversionUtility.default_conversion_2, writeable=True
+        ),
+        "fem3_current_trip_threshold": PasdBusAttribute(
+            1070, 1, PasdConversionUtility.default_conversion_2, writeable=True
+        ),
+        "fem4_current_trip_threshold": PasdBusAttribute(
+            1071, 1, PasdConversionUtility.default_conversion_2, writeable=True
+        ),
+        "fem5_current_trip_threshold": PasdBusAttribute(
+            1072, 1, PasdConversionUtility.default_conversion_2, writeable=True
+        ),
+        "fem6_current_trip_threshold": PasdBusAttribute(
+            1073, 1, PasdConversionUtility.default_conversion_2, writeable=True
+        ),
+        "fem7_current_trip_threshold": PasdBusAttribute(
+            1074, 1, PasdConversionUtility.default_conversion_2, writeable=True
+        ),
+        "fem8_current_trip_threshold": PasdBusAttribute(
+            1075, 1, PasdConversionUtility.default_conversion_2, writeable=True
+        ),
+        "fem9_current_trip_threshold": PasdBusAttribute(
+            1076, 1, PasdConversionUtility.default_conversion_2, writeable=True
+        ),
+        "fem10_current_trip_threshold": PasdBusAttribute(
+            1077, 1, PasdConversionUtility.default_conversion_2, writeable=True
+        ),
+        "fem11_current_trip_threshold": PasdBusAttribute(
+            1078, 1, PasdConversionUtility.default_conversion_2, writeable=True
+        ),
+        "fem12_current_trip_threshold": PasdBusAttribute(
+            1079, 1, PasdConversionUtility.default_conversion_2, writeable=True
+        ),
         WARNING_FLAGS: PasdBusAttribute(
             10129, 1, PasdConversionUtility.convert_smartbox_alarm_status
         ),
@@ -623,30 +648,31 @@ class PasdBusRegisterMap:
         """
         names = [self._INFO_REGISTER_INVERSE_MAP[address] for address in addresses]
         register_map = self._get_register_info(device_id).register_map
-        inverse_map = {v.address: k for k, v in register_map.items()}
-        names.extend([inverse_map[address] for address in addresses])
+        names.extend(
+            [
+                name
+                for name, attribute in register_map.items()
+                if attribute.address in addresses
+            ]
+        )
         return names
 
     def get_attributes_from_address_and_count(
         self, device_id: int, first_address: int, count: int
     ) -> dict[str, PasdBusAttribute]:
-        names = [
-            n
-            for _, n in self._INFO_REGISTER_INVERSE_MAP.items()
-            if first_address
-            <= self._INFO_REGISTER_MAP[n].address
-            < first_address + count
-        ]
+        attributes = {
+            name: attribute
+            for name, attribute in self._INFO_REGISTER_MAP.items()
+            if first_address <= attribute.address < first_address + count
+        }
         register_map = self._get_register_info(device_id).register_map
-        inverse_map = {v.address: k for k, v in register_map.items()}
-        names.extend(
-            [
-                n
-                for _, n in inverse_map.items()
-                if first_address <= register_map[n].address < first_address + count
-            ]
-        )
-        return self.get_attributes(device_id, names)
+        attributes |= {
+            name: attribute
+            for name, attribute in register_map.items()
+            if first_address <= attribute.address < first_address + count
+        }
+
+        return attributes
 
     def _create_led_pattern_command(
         self, device_id: int, arguments: Sequence[Any]
