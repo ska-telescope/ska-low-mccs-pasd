@@ -56,13 +56,50 @@ deviceServers: {}  # e.g.:
   #       smartbox_names:
   #         - low-mccs/smartbox/s8-1-01
   #         - low-mccs/smartbox/s8-1-02
-  #       outside_temperature_attribute_name: low-mccs/fndh/s8-1/OutsideTemperature
+  #       outsideTemperature_root_attribute: low-mccs/fndh/s8-1/OutsideTemperature
   #       logging_level_default: 5
   # fndhs:
   #   s8-1:
   #     low-mccs/fndh/s8-1:
   #       pasdbus_name: low-mccs/pasdbus/s8-1
   #       logging_level_default: 5
+  #       modbusRegisterMapRevisionNumber_root_attribute: low-mccs/pasdbus/s8-1/fndhModbusRegisterMapRevisionNumber
+  #       pcbRevisionNumber_root_attribute: low-mccs/pasdbus/s8-1/fndhPcbRevisionNumber
+  #       cpuId_root_attribute: low-mccs/pasdbus/s8-1/fndhCpuId
+  #       chipId_root_attribute: low-mccs/pasdbus/s8-1/fndhChipId
+  #       firmwareVersion_root_attribute: low-mccs/pasdbus/s8-1/fndhFirmwareVersion
+  #       uptime_root_attribute: low-mccs/pasdbus/s8-1/fndhUptime
+  #       sysAddress_root_attribute: low-mccs/pasdbus/s8-1/fndhSysAddress
+  #       fndhStatus_root_attribute: low-mccs/pasdbus/s8-1/fndhFndhStatus
+  #       ledPattern_root_attribute: low-mccs/pasdbus/s8-1/fndhLedPattern
+  #       psu48vVoltages_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vVoltages
+  #       psu48vCurrent_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vCurrent
+  #       psu48vTemperatures_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vTemperatures
+  #       panelTemperature_root_attribute: low-mccs/pasdbus/s8-1/fndhPanelTemperature
+  #       fncbTemperature_root_attribute: low-mccs/pasdbus/s8-1/fndhFncbTemperature
+  #       fncbHumidity_root_attribute: low-mccs/pasdbus/s8-1/fndhFncbHumidity
+  #       commsGatewayTemperature_root_attribute: low-mccs/pasdbus/s8-1/fndhCommsGatewayTemperature
+  #       powerModuleTemperature_root_attribute: low-mccs/pasdbus/s8-1/fndhPowerModuleTemperature
+  #       outsideTemperature_root_attribute: low-mccs/pasdbus/s8-1/fndhOutsideTemperature
+  #       internalAmbientTemperature_root_attribute: low-mccs/pasdbus/s8-1/fndhInternalAmbientTemperature
+  #       # portForcings_root_attribute: low-mccs/pasdbus/s8-1/fndhPortForcings
+  #       portsDesiredPowerOnline_root_attribute: low-mccs/pasdbus/s8-1/fndhPortsDesiredPowerOnline
+  #       portsDesiredPowerOffline_root_attribute: low-mccs/pasdbus/s8-1/fndhPortsDesiredPowerOffline
+  #       portsPowerSensed_root_attribute: low-mccs/pasdbus/s8-1/fndhPortsPowerSensed
+  #       warningFlags_root_attribute: low-mccs/pasdbus/s8-1/fndhWarningFlags
+  #       alarmFlags_root_attribute: low-mccs/pasdbus/s8-1/fndhAlarmFlags
+  #       psu48vVoltage1Thresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vVoltage1Thresholds
+  #       psu48vVoltage2Thresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vVoltage2Thresholds
+  #       psu48vCurrentThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vCurrentThresholds
+  #       psu48vTemperature1Thresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vTemperature1Thresholds
+  #       psu48vTemperature2Thresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vTemperature2Thresholds
+  #       panelTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPanelTemperatureThresholds
+  #       fncbTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhFncbTemperatureThresholds
+  #       humidityThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhHumidityThresholds
+  #       outsideTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhOutsideTemperatureThresholds
+  #       commsGatewayTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhCommsGatewayTemperatureThresholds
+  #       powerModuleTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPowerModuleTemperatureThresholds
+  #       internalAmbientTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhInternalAmbientTemperatureThresholds
   # smartboxes:
   #   s8-1-01:
   #     low-mccs/smartbox/s8-1-01:
@@ -71,6 +108,51 @@ deviceServers: {}  # e.g.:
   #       fndh_port: 1
   #       pasdbus_name: "low-mccs/pasdbus/s8-1"
   #       logging_level_default: 5
+  #       alarmFlags_root_attribute: low-mccs/pasdbus/aavs3/smartbox1alarmFlags
+  #       chipId_root_attribute: low-mccs/pasdbus/aavs3/smartbox1chipId
+  #       cpuId_root_attribute: low-mccs/pasdbus/aavs3/smartbox1cpuId
+  #       fem1CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox1fem1CurrentTripThreshold
+  #       fem2CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox1fem2CurrentTripThreshold
+  #       fem3CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox1fem3CurrentTripThreshold
+  #       fem4CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox1fem4CurrentTripThreshold
+  #       fem5CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox1fem5CurrentTripThreshold
+  #       fem6CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox1fem6CurrentTripThreshold
+  #       fem7CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox1fem7CurrentTripThreshold
+  #       fem8CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox1fem8CurrentTripThreshold
+  #       fem9CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox1fem9CurrentTripThreshold
+  #       fem10CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox1fem10CurrentTripThreshold
+  #       fem11CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox1fem11CurrentTripThreshold
+  #       fem12CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox1fem12CurrentTripThreshold
+  #       femAmbientTemperature_root_attribute: low-mccs/pasdbus/aavs3/smartbox1femAmbientTemperature
+  #       femAmbientTemperatureThresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox1femAmbientTemperatureThresholds
+  #       femCaseTemperature1Thresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox1femCaseTemperature1Thresholds
+  #       femCaseTemperature2Thresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox1femCaseTemperature2Thresholds
+  #       femCaseTemperatures_root_attribute: low-mccs/pasdbus/aavs3/smartbox1femCaseTemperatures
+  #       femHeatsinkTemperature1Thresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox1femHeatsinkTemperature1Thresholds
+  #       femHeatsinkTemperature2Thresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox1femHeatsinkTemperature2Thresholds
+  #       femHeatsinkTemperatures_root_attribute: low-mccs/pasdbus/aavs3/smartbox1femHeatsinkTemperatures
+  #       firmwareVersion_root_attribute: low-mccs/pasdbus/aavs3/smartbox1firmwareVersion
+  #       inputVoltage_root_attribute: low-mccs/pasdbus/aavs3/smartbox1inputVoltage
+  #       inputVoltageThresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox1inputVoltageThresholds
+  #       ledPattern_root_attribute: low-mccs/pasdbus/aavs3/smartbox1ledPattern
+  #       modbusRegisterMapRevisionNumber_root_attribute: low-mccs/pasdbus/aavs3/smartbox1modbusRegisterMapRevisionNumber
+  #       pcbRevisionNumber_root_attribute: low-mccs/pasdbus/aavs3/smartbox1pcbRevisionNumber
+  #       pcbTemperature_root_attribute: low-mccs/pasdbus/aavs3/smartbox1pcbTemperature
+  #       pcbTemperatureThresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox1pcbTemperatureThresholds
+  #       portBreakersTripped_root_attribute: low-mccs/pasdbus/aavs3/smartbox1portBreakersTripped
+  #       # portForcings_root_attribute: low-mccs/pasdbus/aavs3/smartbox1portForcings
+  #       portsCurrentDraw_root_attribute: low-mccs/pasdbus/aavs3/smartbox1portsCurrentDraw
+  #       portsDesiredPowerOffline_root_attribute: low-mccs/pasdbus/aavs3/smartbox1portsDesiredPowerOffline
+  #       portsDesiredPowerOnline_root_attribute: low-mccs/pasdbus/aavs3/smartbox1portsDesiredPowerOnline
+  #       portsPowerSensed_root_attribute: low-mccs/pasdbus/aavs3/smartbox1portsPowerSensed
+  #       powerSupplyOutputVoltage_root_attribute: low-mccs/pasdbus/aavs3/smartbox1powerSupplyOutputVoltage
+  #       powerSupplyOutputVoltageThresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox1powerSupplyOutputVoltageThresholds
+  #       powerSupplyTemperature_root_attribute: low-mccs/pasdbus/aavs3/smartbox1powerSupplyTemperature
+  #       powerSupplyTemperatureThresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox1powerSupplyTemperatureThresholds
+  #       smartboxStatus_root_attribute: low-mccs/pasdbus/aavs3/smartbox1Status
+  #       sysAddress_root_attribute: low-mccs/pasdbus/aavs3/smartbox1sysAddress
+  #       uptime_root_attribute: low-mccs/pasdbus/aavs3/smartbox1uptime
+  #       warningFlags_root_attribute: low-mccs/pasdbus/aavs3/smartbox1warningFlags
   #   s8-1-02:
   #     low-mccs/smartbox/s8-1-01:
   #       pasdbus_name: "low-mccs/pasdbus/s8-1"
@@ -78,6 +160,51 @@ deviceServers: {}  # e.g.:
   #       smartbox_number: 1
   #       fndh_port: 1
   #       logging_level_default: 5
+  #       alarmFlags_root_attribute: low-mccs/pasdbus/aavs3/smartbox2alarmFlags
+  #       chipId_root_attribute: low-mccs/pasdbus/aavs3/smartbox2chipId
+  #       cpuId_root_attribute: low-mccs/pasdbus/aavs3/smartbox2cpuId
+  #       fem1CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox2fem1CurrentTripThreshold
+  #       fem2CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox2fem2CurrentTripThreshold
+  #       fem3CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox2fem3CurrentTripThreshold
+  #       fem4CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox2fem4CurrentTripThreshold
+  #       fem5CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox2fem5CurrentTripThreshold
+  #       fem6CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox2fem6CurrentTripThreshold
+  #       fem7CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox2fem7CurrentTripThreshold
+  #       fem8CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox2fem8CurrentTripThreshold
+  #       fem9CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox2fem9CurrentTripThreshold
+  #       fem10CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox2fem10CurrentTripThreshold
+  #       fem11CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox2fem11CurrentTripThreshold
+  #       fem12CurrentTripThreshold_root_attribute: low-mccs/pasdbus/aavs3/smartbox2fem12CurrentTripThreshold
+  #       femAmbientTemperature_root_attribute: low-mccs/pasdbus/aavs3/smartbox2femAmbientTemperature
+  #       femAmbientTemperatureThresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox2femAmbientTemperatureThresholds
+  #       femCaseTemperature1Thresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox2femCaseTemperature1Thresholds
+  #       femCaseTemperature2Thresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox2femCaseTemperature2Thresholds
+  #       femCaseTemperatures_root_attribute: low-mccs/pasdbus/aavs3/smartbox2femCaseTemperatures
+  #       femHeatsinkTemperature1Thresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox2femHeatsinkTemperature1Thresholds
+  #       femHeatsinkTemperature2Thresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox2femHeatsinkTemperature2Thresholds
+  #       femHeatsinkTemperatures_root_attribute: low-mccs/pasdbus/aavs3/smartbox2femHeatsinkTemperatures
+  #       firmwareVersion_root_attribute: low-mccs/pasdbus/aavs3/smartbox2firmwareVersion
+  #       inputVoltage_root_attribute: low-mccs/pasdbus/aavs3/smartbox2inputVoltage
+  #       inputVoltageThresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox2inputVoltageThresholds
+  #       ledPattern_root_attribute: low-mccs/pasdbus/aavs3/smartbox2ledPattern
+  #       modbusRegisterMapRevisionNumber_root_attribute: low-mccs/pasdbus/aavs3/smartbox2modbusRegisterMapRevisionNumber
+  #       pcbRevisionNumber_root_attribute: low-mccs/pasdbus/aavs3/smartbox2pcbRevisionNumber
+  #       pcbTemperature_root_attribute: low-mccs/pasdbus/aavs3/smartbox2pcbTemperature
+  #       pcbTemperatureThresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox2pcbTemperatureThresholds
+  #       portBreakersTripped_root_attribute: low-mccs/pasdbus/aavs3/smartbox2portBreakersTripped
+  #       # portForcings_root_attribute: low-mccs/pasdbus/aavs3/smartbox2portForcings
+  #       portsCurrentDraw_root_attribute: low-mccs/pasdbus/aavs3/smartbox2portsCurrentDraw
+  #       portsDesiredPowerOffline_root_attribute: low-mccs/pasdbus/aavs3/smartbox2portsDesiredPowerOffline
+  #       portsDesiredPowerOnline_root_attribute: low-mccs/pasdbus/aavs3/smartbox2portsDesiredPowerOnline
+  #       portsPowerSensed_root_attribute: low-mccs/pasdbus/aavs3/smartbox2portsPowerSensed
+  #       powerSupplyOutputVoltage_root_attribute: low-mccs/pasdbus/aavs3/smartbox2powerSupplyOutputVoltage
+  #       powerSupplyOutputVoltageThresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox2powerSupplyOutputVoltageThresholds
+  #       powerSupplyTemperature_root_attribute: low-mccs/pasdbus/aavs3/smartbox2powerSupplyTemperature
+  #       powerSupplyTemperatureThresholds_root_attribute: low-mccs/pasdbus/aavs3/smartbox2powerSupplyTemperatureThresholds
+  #       smartboxStatus_root_attribute: low-mccs/pasdbus/aavs3/smartbox2Status
+  #       sysAddress_root_attribute: low-mccs/pasdbus/aavs3/smartbox2sysAddress
+  #       uptime_root_attribute: low-mccs/pasdbus/aavs3/smartbox2uptime
+  #       warningFlags_root_attribute: low-mccs/pasdbus/aavs3/smartbox2warningFlags
   # pasdbuses:
   #   s8-1:
   #     low-mccs/pasdbus/s8-1:

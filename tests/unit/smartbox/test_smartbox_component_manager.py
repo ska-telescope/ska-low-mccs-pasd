@@ -8,7 +8,6 @@
 """This module contains the tests of the SmartBox component manager."""
 from __future__ import annotations
 
-import functools
 import logging
 import unittest.mock
 from typing import Any, Iterator
@@ -18,11 +17,9 @@ from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_tango_testing.mock import MockCallableGroup
 
 from ska_low_mccs_pasd.smart_box import SmartBoxComponentManager, _PasdBusProxy
-from ska_low_mccs_pasd.smart_box.smart_box_component_manager import _FndhProxy
 from tests.harness import (
     PasdTangoTestHarness,
     PasdTangoTestHarnessContext,
-    get_fndh_name,
     get_pasd_bus_name,
 )
 
@@ -75,7 +72,7 @@ class TestPasdBusProxy:
             1,
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
-            mock_callbacks["attribute_update"],
+            mock_callbacks["smartbox_power_state"],
         )
 
     def test_pasd_proxy_communication(
@@ -99,61 +96,6 @@ class TestPasdBusProxy:
         )
 
         pasd_bus_proxy.stop_communicating()
-        mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
-
-
-class TestFndhProxy:
-    """Tests of the FNDH proxy used by the smartbox component manager."""
-
-    @pytest.fixture(name="fndh_proxy")
-    def fndh_proxy_fixture(
-        self: TestFndhProxy,
-        test_context: str,
-        fndh_port: int,
-        logger: logging.Logger,
-        mock_callbacks: MockCallableGroup,
-    ) -> _FndhProxy:
-        """
-        Return the FNDH proxy used by the smartbox component manager.
-
-        :param test_context: a test context containing the Tango devices.
-        :param fndh_port: the FNDH port into which the smartbox is plugged
-        :param logger: a logger for the PaSD bus proxy to use
-        :param mock_callbacks: A group of callables.
-
-        :return: a proxy to the PaSD bus device.
-        """
-        return _FndhProxy(
-            get_fndh_name(),
-            fndh_port,
-            logger,
-            1,
-            mock_callbacks["communication_state"],
-            mock_callbacks["component_state"],
-            mock_callbacks["port_power_state"],
-        )
-
-    def test_fndh_proxy_communication(
-        self: TestFndhProxy,
-        fndh_proxy: _PasdBusProxy,
-        mock_callbacks: MockCallableGroup,
-    ) -> None:
-        """
-        Test fndh proxy used by the smartbox component manager.
-
-        :param fndh_proxy: the smartbox fndh_proxy
-        :param mock_callbacks: A group of callables.
-        """
-        assert fndh_proxy.communication_state == CommunicationStatus.DISABLED
-        fndh_proxy.start_communicating()
-        mock_callbacks["communication_state"].assert_call(
-            CommunicationStatus.NOT_ESTABLISHED
-        )
-        mock_callbacks["communication_state"].assert_call(
-            CommunicationStatus.ESTABLISHED
-        )
-
-        fndh_proxy.stop_communicating()
         mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
 
 
@@ -182,23 +124,9 @@ class TestSmartBoxComponentManager:
             logger,
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
-            mock_callbacks["attribute_update"],
             12,
             fndh_port,
             get_pasd_bus_name(),
-            get_fndh_name(),
-        )
-        component_manager._pasd_bus_proxy._communication_state_callback = (
-            component_manager._smartbox_communication_state_changed
-        )
-        component_manager._pasd_bus_proxy._component_state_callback = functools.partial(
-            mock_callbacks["component_state"], fqdn=get_pasd_bus_name()
-        )
-        component_manager._fndh_proxy._communication_state_callback = (
-            component_manager._fndh_communication_state_changed
-        )
-        component_manager._fndh_proxy._component_state_callback = functools.partial(
-            mock_callbacks["component_state"], fqdn=get_fndh_name()
         )
         return component_manager
 
@@ -232,24 +160,6 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
         mock_callbacks["communication_state"].assert_not_called()
 
-    def test_communication_with_proxy_none(
-        self: TestSmartBoxComponentManager,
-        smartbox_component_manager: SmartBoxComponentManager,
-        mock_callbacks: MockCallableGroup,
-    ) -> None:
-        """
-        Test that communication state does not change if proxy is None.
-
-        :param smartbox_component_manager: A SmartBox component manager
-            with communication established.
-        :param mock_callbacks: A group of callables.
-        """
-        smartbox_component_manager._pasd_bus_proxy = None  # type: ignore[assignment]
-        with pytest.raises(AttributeError):
-            smartbox_component_manager.start_communicating()
-
-        mock_callbacks["communication_state"].assert_not_called()
-
     def test_component_state(
         self: TestSmartBoxComponentManager,
         smartbox_component_manager: SmartBoxComponentManager,
@@ -269,13 +179,7 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        # Lookahead 2 needed since we do not know what callback will be called first.
-        mock_callbacks["component_state"].assert_call(
-            fqdn=get_pasd_bus_name(), power=PowerState.ON, lookahead=3
-        )
-        mock_callbacks["component_state"].assert_call(
-            fqdn=get_fndh_name(), power=PowerState.ON, lookahead=3
-        )
+        mock_callbacks["component_state"].assert_call(power=PowerState.ON)
 
     @pytest.mark.parametrize(
         (

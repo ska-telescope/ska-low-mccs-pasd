@@ -25,11 +25,14 @@
 
 {{- $pasdbus_name := printf "low-mccs/pasdbus/%s" $station_name}}
 {{- $fndh_name := printf "low-mccs/fndh/%s" $station_name}}
+{{- $fndh_port := $smartbox_spec.fndh_port}}
+{{- $smartbox_number := int $smartbox_spec.modbus_id}}
+{{- $smartbox_instance := dict "fndh_port" $fndh_port "smartbox_number" $smartbox_number "pasdbus_name" $pasdbus_name "fndh_name" $fndh_name}}
 
-{{- $smartbox_instance := pick $smartbox_spec "fndh_port"}}
-{{- $_ := set $smartbox_instance "smartbox_number" $smartbox_spec.modbus_id}}
-{{- $_ := set $smartbox_instance "pasdbus_name" $pasdbus_name}}
-{{- $_ := set $smartbox_instance "fndh_name" $fndh_name}}
+{{- range $attribute := list "modbusRegisterMapRevisionNumber" "pcbRevisionNumber" "cpuId" "chipId" "firmwareVersion" "uptime" "sysAddress" "ledPattern" "inputVoltage" "powerSupplyOutputVoltage" "powerSupplyTemperature" "pcbTemperature" "femAmbientTemperature" "femCaseTemperatures" "femHeatsinkTemperatures" "portBreakersTripped" "portsDesiredPowerOnline" "portsDesiredPowerOffline" "portsPowerSensed" "portsCurrentDraw" "inputVoltageThresholds" "powerSupplyOutputVoltageThresholds" "powerSupplyTemperatureThresholds" "pcbTemperatureThresholds" "femAmbientTemperatureThresholds" "femCaseTemperature1Thresholds" "femCaseTemperature2Thresholds" "femHeatsinkTemperature1Thresholds" "femHeatsinkTemperature2Thresholds" "fem1CurrentTripThreshold" "fem2CurrentTripThreshold" "fem3CurrentTripThreshold" "fem4CurrentTripThreshold" "fem5CurrentTripThreshold" "fem6CurrentTripThreshold" "fem7CurrentTripThreshold" "fem8CurrentTripThreshold" "fem9CurrentTripThreshold" "fem10CurrentTripThreshold" "fem11CurrentTripThreshold" "fem12CurrentTripThreshold" "warningFlags" "alarmFlags"}}
+{{- $_ := set $smartbox_instance (printf "%s_root_attribute" $attribute) (printf "%s/smartbox%d%s" $pasdbus_name $smartbox_number $attribute)}}
+{{- end}}
+{{- $_ := set $smartbox_instance "smartboxStatus_root_attribute" (printf "%s/smartbox%dStatus" $pasdbus_name $smartbox_number)}}
 
 {{- $smartbox_logging_level_defaults := pluck "logging_level_default" $smartbox_spec $defaults}}
 {{- if $smartbox_logging_level_defaults}}

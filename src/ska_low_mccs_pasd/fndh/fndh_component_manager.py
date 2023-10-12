@@ -8,10 +8,8 @@
 """This module implements the component management for fndh."""
 from __future__ import annotations
 
-import functools
 import json
 import logging
-import re
 import threading
 from typing import Any, Callable, Optional
 
@@ -38,8 +36,7 @@ class _PasdBusProxy(DeviceComponentManager):
         fqdn: str,
         logger: logging.Logger,
         communication_state_callback: Callable[[CommunicationStatus], None],
-        state_change_callback: Callable[..., None],
-        attribute_change_callback: Callable[..., None],
+        component_state_callback: Callable[..., None],
         update_port_power_states: Callable[..., None],
     ) -> None:
         """
@@ -49,15 +46,12 @@ class _PasdBusProxy(DeviceComponentManager):
         :param logger: the logger to be used by this object.
         :param communication_state_callback: callback to be
             called when communication state changes.
-        :param state_change_callback: callback to be called when the
+        :param component_state_callback: callback to be called when the
             component state changes
-        :param attribute_change_callback: callback for when a subscribed attribute
-            on the pasdbus changes.
         :param update_port_power_states: callback to be called when the port
             power states changes.
         """
         self._update_port_power_states = update_port_power_states
-        self._attribute_change_callback = attribute_change_callback
         self._pasd_device = 0
         max_workers = 1
 
@@ -66,21 +60,20 @@ class _PasdBusProxy(DeviceComponentManager):
             logger,
             max_workers,
             communication_state_callback,
-            state_change_callback,
+            component_state_callback,
         )
 
     def subscribe_to_attributes(self: _PasdBusProxy) -> None:
         """Subscribe to attributes relating to this FNDH."""
         assert self._proxy is not None
-        subscriptions = self._proxy.GetPasdDeviceSubscriptions(self._pasd_device)
-        for attribute in subscriptions:
-            if attribute not in self._proxy._change_event_subscription_ids.keys():
-                self.logger.info(f"subscribing to attribute {attribute}.....")
-                self._proxy.add_change_event_callback(
-                    attribute, self._on_attribute_change
-                )
+        attribute = "fndhPortsPowerSensed"
+        if attribute not in self._proxy._change_event_subscription_ids.keys():
+            self.logger.info(f"subscribing to attribute {attribute}.....")
+            self._proxy.add_change_event_callback(
+                attribute, self._fndh_ports_power_sensed_changed
+            )
 
-    def _on_attribute_change(
+    def _fndh_ports_power_sensed_changed(
         self: _PasdBusProxy,
         attr_name: str,
         attr_value: Any,
@@ -93,31 +86,8 @@ class _PasdBusProxy(DeviceComponentManager):
         :param attr_value: The value of the attribute that is changing.
         :param attr_quality: The quality of the attribute.
         """
-        is_a_fndh = re.search("^fndh", attr_name)
-
-        if is_a_fndh:
-            tango_attribute_name = attr_name[is_a_fndh.end() :].lower()
-            if tango_attribute_name.lower() == "portspowersensed":
-
-                def get_power_state(powerstate: bool) -> PowerState:
-                    if powerstate:
-                        return PowerState.ON
-                    return PowerState.OFF
-
-                port_power_states = map(get_power_state, attr_value)
-
-                self._update_port_power_states(list(port_power_states))
-
-            # Status is a bad name since it conflicts with TANGO status.
-            if tango_attribute_name.lower() == "status":
-                tango_attribute_name = "pasdstatus"
-
-            self._attribute_change_callback(tango_attribute_name, attr_value)
-            return
-
-        self.logger.info(
-            f"Attribute subscription {attr_name} does not seem to begin"
-            "with 'fndh' string so it is assumed it is a incorrect subscription"
+        self._update_port_power_states(
+            [PowerState.ON if p else PowerState.OFF for p in attr_value]
         )
 
 
@@ -135,7 +105,6 @@ class FndhComponentManager(TaskExecutorComponentManager):
         logger: logging.Logger,
         communication_state_callback: Callable[[CommunicationStatus], None],
         component_state_callback: Callable[..., None],
-        attribute_change_callback: Callable[..., None],
         update_port_power_states: Callable[..., None],
         pasd_fqdn: str,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
@@ -149,25 +118,21 @@ class FndhComponentManager(TaskExecutorComponentManager):
             the component manager and its component changes
         :param component_state_callback: callback to be
             called when the component state changes
-        :param attribute_change_callback: callback to be
-            called when a attribute changes
         :param update_port_power_states: callback to be
             called when the power state changes.
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
             purposes only. defaults to None
         """
-        self._component_state_callback = component_state_callback
-        self._attribute_change_callback = attribute_change_callback
+        # self._component_state_callback = component_state_callback
         self._update_port_power_states = update_port_power_states
         self._pasd_fqdn = pasd_fqdn
 
         self._pasd_bus_proxy = _pasd_bus_proxy or _PasdBusProxy(
             pasd_fqdn,
             logger,
-            self._pasdbus_communication_state_changed,
-            functools.partial(component_state_callback, fqdn=self._pasd_fqdn),
-            attribute_change_callback,
+            self._pasd_bus_communication_state_changed,
+            self._pasd_bus_component_state_changed,
             update_port_power_states,
         )
         self.logger = logger
@@ -182,7 +147,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
             pasdbus_status=None,
         )
 
-    def _pasdbus_communication_state_changed(
+    def _pasd_bus_communication_state_changed(
         self: FndhComponentManager,
         communication_state: CommunicationStatus,
     ) -> None:
@@ -190,6 +155,17 @@ class FndhComponentManager(TaskExecutorComponentManager):
             self._pasd_bus_proxy.subscribe_to_attributes()
 
         self._update_communication_state(communication_state)
+
+    def _pasd_bus_component_state_changed(
+        self: FndhComponentManager,
+        power: PowerState | None = None,
+        **kwargs: Any,
+    ) -> None:
+        if power == PowerState.UNKNOWN:
+            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+        elif power == PowerState.ON:
+            self._update_communication_state(CommunicationStatus.ESTABLISHED)
+            self._update_component_state(power=PowerState.ON)
 
     def start_communicating(self: FndhComponentManager) -> None:  # noqa: C901
         """Establish communication with the pasdBus via a proxy."""

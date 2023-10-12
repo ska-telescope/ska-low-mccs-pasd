@@ -36,21 +36,6 @@ def mocked_initial_port_power_state_fixture() -> PowerState:
     return PowerState.ON
 
 
-@pytest.fixture(name="mock_pasdbus")
-def mock_pasdbus_fixture() -> unittest.mock.Mock:
-    """
-    Fixture that provides a mock MccsPaSDBus device.
-
-    :return: a mock MccsPaSDBus device.
-    """
-    builder = MockDeviceBuilder()
-    builder.set_state(tango.DevState.ON)
-    builder.add_command("GetPasdDeviceSubscriptions", {})
-    builder.add_result_command("SetSmartboxPortPowers", ResultCode.OK)
-    builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
-    return builder()
-
-
 @pytest.fixture(name="fndh_port")
 def fndh_port_fixture() -> int:
     """
@@ -61,20 +46,37 @@ def fndh_port_fixture() -> int:
     return 2
 
 
-@pytest.fixture(name="mock_fndh")
-def mock_fndh_fixture(
+@pytest.fixture(name="mock_pasdbus")
+def mock_pasdbus_fixture(
     fndh_port: int, mocked_initial_port_power_state: PowerState
 ) -> unittest.mock.Mock:
     """
-    Fixture that provides a mock MccsFNDH device.
+    Fixture that provides a mock MccsPaSDBus device.
 
-    :param fndh_port: the port that this smartbox is attached to
+    :param fndh_port: the FNDH port this smartbox is attached to.
     :param mocked_initial_port_power_state: the initial power state of
         the port the smartbox is attached to.
+
+    :return: a mock MccsPaSDBus device.
+    """
+    builder = MockDeviceBuilder()
+    builder.set_state(tango.DevState.ON)
+
+    initial_port_power_sensed = [PowerState.OFF] * 28
+    initial_port_power_sensed[fndh_port - 1] = mocked_initial_port_power_state
+    builder.add_attribute("fndhPortsPowerSensed", initial_port_power_sensed)
+    builder.add_result_command("SetSmartboxPortPowers", ResultCode.OK)
+    builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
+    return builder()
+
+
+@pytest.fixture(name="mock_fndh")
+def mock_fndh_fixture() -> unittest.mock.Mock:
+    """
+    Fixture that provides a mock MccsFNDH device.
 
     :return: a mock MccsFNDH device.
     """
     builder = MockDeviceBuilder()
     builder.set_state(tango.DevState.ON)
-    builder.add_attribute(f"Port{fndh_port}PowerState", mocked_initial_port_power_state)
     return builder()

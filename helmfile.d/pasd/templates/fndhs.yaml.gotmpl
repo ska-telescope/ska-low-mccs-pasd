@@ -22,7 +22,13 @@
 {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
 
 {{- $fndh_name := printf "low-mccs/fndh/%s" $station_name}}
-{{- $fndh_instance := dict "pasdbus_name" (printf "low-mccs/pasdbus/%s" $station_name)}}
+{{- $pasdbus_name := printf "low-mccs/pasdbus/%s" $station_name}}
+{{- $fndh_instance := dict "pasdbus_name" $pasdbus_name}}
+
+{{- range $attribute := list "modbusRegisterMapRevisionNumber" "pcbRevisionNumber" "cpuId" "chipId" "firmwareVersion" "uptime" "sysAddress" "ledPattern" "psu48vVoltages" "psu48vCurrent" "psu48vTemperatures" "panelTemperature" "fncbTemperature" "fncbHumidity" "commsGatewayTemperature" "powerModuleTemperature" "outsideTemperature" "internalAmbientTemperature" "portsDesiredPowerOnline" "portsDesiredPowerOffline" "portsPowerSensed" "warningFlags" "alarmFlags" "psu48vVoltage1Thresholds" "psu48vVoltage2Thresholds" "psu48vCurrentThresholds" "psu48vTemperature1Thresholds" "psu48vTemperature2Thresholds" "panelTemperatureThresholds" "fncbTemperatureThresholds" "humidityThresholds" "outsideTemperatureThresholds" "commsGatewayTemperatureThresholds" "powerModuleTemperatureThresholds" "internalAmbientTemperatureThresholds"}}
+{{- $_ := set $fndh_instance (printf "%s_root_attribute" $attribute) (printf "%s/fndh%s" $pasdbus_name $attribute)}}
+{{- end}}
+{{- $_ := set $fndh_instance "fndhStatus_root_attribute" (printf "%s/fndhStatus" $pasdbus_name)}}
 
 {{- $fndh_logging_level_defaults := pluck "logging_level_default" $fndh_spec $defaults}}
 {{- if $fndh_logging_level_defaults}}

@@ -7,6 +7,43 @@ Define the deployment for MccsFndh devices.
         low-mccs/fndh/s8-1:
           pasdbus_name: low-mccs/pasdbus/s8-1
           logging_level_default: 5
+          modbusRegisterMapRevisionNumber_root_attribute: low-mccs/pasdbus/s8-1/fndhModbusRegisterMapRevisionNumber
+          pcbRevisionNumber_root_attribute: low-mccs/pasdbus/s8-1/fndhPcbRevisionNumber
+          cpuId_root_attribute: low-mccs/pasdbus/s8-1/fndhCpuId
+          chipId_root_attribute: low-mccs/pasdbus/s8-1/fndhChipId
+          firmwareVersion_root_attribute: low-mccs/pasdbus/s8-1/fndhFirmwareVersion
+          uptime_root_attribute: low-mccs/pasdbus/s8-1/fndhUptime
+          sysAddress_root_attribute: low-mccs/pasdbus/s8-1/fndhSysAddress
+          fndhStatus_root_attribute: low-mccs/pasdbus/s8-1/fndhStatus
+          ledPattern_root_attribute: low-mccs/pasdbus/s8-1/fndhLedPattern
+          psu48vVoltages_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vVoltages
+          psu48vCurrent_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vCurrent
+          psu48vTemperatures_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vTemperatures
+          panelTemperature_root_attribute: low-mccs/pasdbus/s8-1/fndhPanelTemperature
+          fncbTemperature_root_attribute: low-mccs/pasdbus/s8-1/fndhFncbTemperature
+          fncbHumidity_root_attribute: low-mccs/pasdbus/s8-1/fndhFncbHumidity
+          commsGatewayTemperature_root_attribute: low-mccs/pasdbus/s8-1/fndhCommsGatewayTemperature
+          powerModuleTemperature_root_attribute: low-mccs/pasdbus/s8-1/fndhPowerModuleTemperature
+          outsideTemperature_root_attribute: low-mccs/pasdbus/s8-1/fndhOutsideTemperature
+          internalAmbientTemperature_root_attribute: low-mccs/pasdbus/s8-1/fndhInternalAmbientTemperature
+          # portForcings_root_attribute: low-mccs/pasdbus/s8-1/fndhPortForcings
+          portsDesiredPowerOnline_root_attribute: low-mccs/pasdbus/s8-1/fndhPortsDesiredPowerOnline
+          portsDesiredPowerOffline_root_attribute: low-mccs/pasdbus/s8-1/fndhPortsDesiredPowerOffline
+          portsPowerSensed_root_attribute: low-mccs/pasdbus/s8-1/fndhPortsPowerSensed
+          warningFlags_root_attribute: low-mccs/pasdbus/s8-1/fndhWarningFlags
+          alarmFlags_root_attribute: low-mccs/pasdbus/s8-1/fndhAlarmFlags
+          psu48vVoltage1Thresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vVoltage1Thresholds
+          psu48vVoltage2Thresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vVoltage2Thresholds
+          psu48vCurrentThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vCurrentThresholds
+          psu48vTemperature1Thresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vTemperature1Thresholds
+          psu48vTemperature2Thresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPsu48vTemperature2Thresholds
+          panelTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPanelTemperatureThresholds
+          fncbTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhFncbTemperatureThresholds
+          humidityThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhHumidityThresholds
+          outsideTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhOutsideTemperatureThresholds
+          commsGatewayTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhCommsGatewayTemperatureThresholds
+          powerModuleTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhPowerModuleTemperatureThresholds
+          internalAmbientTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/fndhInternalAmbientTemperatureThresholds
 
 */}}
 {{- $fndhs := dig "fndhs" dict .Values.deviceServers}}
@@ -29,6 +66,193 @@ server:
           devices:
 {{- range $fndh_name, $this_fndh := $this_server}}
             - name: {{$fndh_name}}
+              attribute_properties:
+                - attribute: modbusRegisterMapRevisionNumber
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.modbusRegisterMapRevisionNumber_root_attribute}}
+                - attribute: pcbRevisionNumber
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.pcbRevisionNumber_root_attribute}}
+                - attribute: cpuId
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.cpuId_root_attribute}}
+                - attribute: chipId
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.chipId_root_attribute}}
+                - attribute: firmwareVersion
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.firmwareVersion_root_attribute}}
+                - attribute: uptime
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.uptime_root_attribute}}
+                - attribute: sysAddress
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.sysAddress_root_attribute}}
+                - attribute: fndhStatus
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.fndhStatus_root_attribute}}
+                - attribute: ledPattern
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.ledPattern_root_attribute}}
+                - attribute: psu48vVoltages
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.psu48vVoltages_root_attribute}}
+                - attribute: psu48vCurrent
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.psu48vCurrent_root_attribute}}
+                - attribute: psu48vTemperatures
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.psu48vTemperatures_root_attribute}}
+                - attribute: panelTemperature
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.panelTemperature_root_attribute}}
+                - attribute: fncbTemperature
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.fncbTemperature_root_attribute}}
+                - attribute: fncbHumidity
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.fncbHumidity_root_attribute}}
+                - attribute: commsGatewayTemperature
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.commsGatewayTemperature_root_attribute}}
+                - attribute: powerModuleTemperature
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.powerModuleTemperature_root_attribute}}
+                - attribute: outsideTemperature
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.outsideTemperature_root_attribute}}
+                - attribute: internalAmbientTemperature
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.internalAmbientTemperature_root_attribute}}
+{{- /*          - attribute: portForcings
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.portForcings_root_attribute}}
+*/}}
+                - attribute: portsDesiredPowerOnline
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.portsDesiredPowerOnline_root_attribute}}
+                - attribute: portsDesiredPowerOffline
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.portsDesiredPowerOffline_root_attribute}}
+                - attribute: portsPowerSensed
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.portsPowerSensed_root_attribute}}
+                - attribute: warningFlags
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.warningFlags_root_attribute}}
+                - attribute: alarmFlags
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.alarmFlags_root_attribute}}
+                - attribute: psu48vVoltage1Thresholds
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.psu48vVoltage1Thresholds_root_attribute}}
+                - attribute: psu48vVoltage2Thresholds
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.psu48vVoltage2Thresholds_root_attribute}}
+                - attribute: psu48vCurrentThresholds
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.psu48vCurrentThresholds_root_attribute}}
+                - attribute: psu48vTemperature1Thresholds
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.psu48vTemperature1Thresholds_root_attribute}}
+                - attribute: psu48vTemperature2Thresholds
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.psu48vTemperature2Thresholds_root_attribute}}
+                - attribute: panelTemperatureThresholds
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.panelTemperatureThresholds_root_attribute}}
+                - attribute: fncbTemperatureThresholds
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.fncbTemperatureThresholds_root_attribute}}
+                - attribute: humidityThresholds
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.humidityThresholds_root_attribute}}
+                - attribute: outsideTemperatureThresholds
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.outsideTemperatureThresholds_root_attribute}}
+                - attribute: commsGatewayTemperatureThresholds
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.commsGatewayTemperatureThresholds_root_attribute}}
+                - attribute: powerModuleTemperatureThresholds
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.powerModuleTemperatureThresholds_root_attribute}}
+                - attribute: internalAmbientTemperatureThresholds
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_fndh.internalAmbientTemperatureThresholds_root_attribute}}
               properties:
                 - name: PasdFQDN
                   values: 

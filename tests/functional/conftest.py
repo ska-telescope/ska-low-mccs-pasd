@@ -382,12 +382,15 @@ def set_device_state_fixture(
                 state_callback.assert_change_event(tango.DevState.UNKNOWN)
             state_callback.assert_change_event(Anything)
 
-        if device_proxy.read_attribute("state").value != state:
+        current_state = device_proxy.state()
+        if current_state == tango.DevState.ALARM:
+            current_state = tango.DevState.ON
+        if current_state != state:
             print(f"Turning {device_proxy.dev_name()} {state}")
             set_tango_device_state(
                 change_event_callbacks, subscribe_device_proxy, device_proxy, state
             )
-            state_callback.assert_change_event(mode)
+            state_callback.assert_change_event(state)
 
     return _set_device_state
 
@@ -411,17 +414,29 @@ def set_tango_device_state(
     """
     subscribe_device_proxy(dev)
     # Issue the command
-    if desired_state != dev.state():
-        if desired_state == tango.DevState.ON:
-            [result_code], [command_id] = dev.On()
-        elif desired_state == tango.DevState.OFF:
-            [result_code], [command_id] = dev.Off()
-        elif desired_state == tango.DevState.STANDBY:
-            [result_code], [command_id] = dev.Standby()
-        else:
-            raise ValueError(f"State {desired_state} is not a valid state.")
+    current_state = dev.state()
+    if current_state == tango.DevState.ALARM:
+        current_state = tango.DevState.ON
 
-    assert result_code == ResultCode.QUEUED
+    if desired_state == current_state:
+        return
+
+    print("Current state: {current_state}")
+    print("Desired state: {desired_state}")
+    if desired_state == tango.DevState.ON:
+        [result_code], [command_id] = dev.On()
+    elif desired_state == tango.DevState.OFF:
+        [result_code], [command_id] = dev.Off()
+    elif desired_state == tango.DevState.STANDBY:
+        [result_code], [command_id] = dev.Standby()
+    else:
+        raise ValueError(f"State {desired_state} is not a valid state.")
+
+    assert result_code == ResultCode.QUEUED, (
+        f"Result code not QUEUED: ({result_code}, {command_id})\n"
+        f"\tDesired state: {desired_state}\n",
+        f"\tActual state: {dev.state()}",
+    )
     print(f"Command queued on {dev.dev_name()}: {command_id}")
 
     change_event_callbacks[f"{dev.dev_name()}/state"].assert_change_event(desired_state)

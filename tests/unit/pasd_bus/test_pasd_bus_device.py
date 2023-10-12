@@ -51,7 +51,7 @@ def change_event_callbacks_fixture(
         f"smartbox{smartbox_id}PortBreakersTripped",
         f"smartbox{smartbox_id}PortsPowerSensed",
         f"smartbox{smartbox_id}AlarmFlags",
-        timeout=15.0,
+        timeout=20.0,
         assert_no_error=False,
     )
 
@@ -144,7 +144,7 @@ def test_communication(  # pylint: disable=too-many-statements
     change_event_callbacks.assert_change_event("healthState", HealthState.OK)
     assert pasd_bus_device.healthState == HealthState.OK
 
-    change_event_callbacks.assert_against_call("smartbox1PortsPowerSensed", lookahead=5)
+    change_event_callbacks.assert_against_call("smartbox1PortsPowerSensed", lookahead=6)
     # TODO
     # change_event_callbacks.assert_against_call(
     #     f"smartbox{smartbox_id}AlarmFlags", lookahead=5

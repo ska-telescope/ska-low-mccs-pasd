@@ -10,6 +10,51 @@ Define the deployment for MccsSmartbox devices.
           smartbox_number: 1
           fndh_port: 1
           logging_level_default: 5
+          alarmFlags_root_attribute: low-mccs/pasdbus/s8-1/smartbox1alarmFlags
+          chipId_root_attribute: low-mccs/pasdbus/s8-1/smartbox1chipId
+          cpuId_root_attribute: low-mccs/pasdbus/s8-1/smartbox1cpuId
+          fem1CurrentTripThreshold_root_attribute: low-mccs/pasdbus/s8-1/smartbox1fem1CurrentTripThreshold
+          fem2CurrentTripThreshold_root_attribute: low-mccs/pasdbus/s8-1/smartbox1fem2CurrentTripThreshold
+          fem3CurrentTripThreshold_root_attribute: low-mccs/pasdbus/s8-1/smartbox1fem3CurrentTripThreshold
+          fem4CurrentTripThreshold_root_attribute: low-mccs/pasdbus/s8-1/smartbox1fem4CurrentTripThreshold
+          fem5CurrentTripThreshold_root_attribute: low-mccs/pasdbus/s8-1/smartbox1fem5CurrentTripThreshold
+          fem6CurrentTripThreshold_root_attribute: low-mccs/pasdbus/s8-1/smartbox1fem6CurrentTripThreshold
+          fem7CurrentTripThreshold_root_attribute: low-mccs/pasdbus/s8-1/smartbox1fem7CurrentTripThreshold
+          fem8CurrentTripThreshold_root_attribute: low-mccs/pasdbus/s8-1/smartbox1fem8CurrentTripThreshold
+          fem9CurrentTripThreshold_root_attribute: low-mccs/pasdbus/s8-1/smartbox1fem9CurrentTripThreshold
+          fem10CurrentTripThreshold_root_attribute: low-mccs/pasdbus/s8-1/smartbox1fem10CurrentTripThreshold
+          fem11CurrentTripThreshold_root_attribute: low-mccs/pasdbus/s8-1/smartbox1fem11CurrentTripThreshold
+          fem12CurrentTripThreshold_root_attribute: low-mccs/pasdbus/s8-1/smartbox1fem12CurrentTripThreshold
+          femAmbientTemperature_root_attribute: low-mccs/pasdbus/s8-1/smartbox1femAmbientTemperature
+          femAmbientTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/smartbox1femAmbientTemperatureThresholds
+          femCaseTemperature1Thresholds_root_attribute: low-mccs/pasdbus/s8-1/smartbox1femCaseTemperature1Thresholds
+          femCaseTemperature2Thresholds_root_attribute: low-mccs/pasdbus/s8-1/smartbox1femCaseTemperature2Thresholds
+          femCaseTemperatures_root_attribute: low-mccs/pasdbus/s8-1/smartbox1femCaseTemperatures
+          femHeatsinkTemperature1Thresholds_root_attribute: low-mccs/pasdbus/s8-1/smartbox1femHeatsinkTemperature1Thresholds
+          femHeatsinkTemperature2Thresholds_root_attribute: low-mccs/pasdbus/s8-1/smartbox1femHeatsinkTemperature2Thresholds
+          femHeatsinkTemperatures_root_attribute: low-mccs/pasdbus/s8-1/smartbox1femHeatsinkTemperatures
+          firmwareVersion_root_attribute: low-mccs/pasdbus/s8-1/smartbox1firmwareVersion
+          inputVoltage_root_attribute: low-mccs/pasdbus/s8-1/smartbox1inputVoltage
+          inputVoltageThresholds_root_attribute: low-mccs/pasdbus/s8-1/smartbox1inputVoltageThresholds
+          ledPattern_root_attribute: low-mccs/pasdbus/s8-1/smartbox1ledPattern
+          modbusRegisterMapRevisionNumber_root_attribute: low-mccs/pasdbus/s8-1/smartbox1modbusRegisterMapRevisionNumber
+          pcbRevisionNumber_root_attribute: low-mccs/pasdbus/s8-1/smartbox1pcbRevisionNumber
+          pcbTemperature_root_attribute: low-mccs/pasdbus/s8-1/smartbox1pcbTemperature
+          pcbTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/smartbox1pcbTemperatureThresholds
+          portBreakersTripped_root_attribute: low-mccs/pasdbus/s8-1/smartbox1portBreakersTripped
+          # portForcings_root_attribute: low-mccs/pasdbus/s8-1/smartbox1portForcings
+          portsCurrentDraw_root_attribute: low-mccs/pasdbus/s8-1/smartbox1portsCurrentDraw
+          portsDesiredPowerOffline_root_attribute: low-mccs/pasdbus/s8-1/smartbox1portsDesiredPowerOffline
+          portsDesiredPowerOnline_root_attribute: low-mccs/pasdbus/s8-1/smartbox1portsDesiredPowerOnline
+          portsPowerSensed_root_attribute: low-mccs/pasdbus/s8-1/smartbox1portsPowerSensed
+          powerSupplyOutputVoltage_root_attribute: low-mccs/pasdbus/s8-1/smartbox1powerSupplyOutputVoltage
+          powerSupplyOutputVoltageThresholds_root_attribute: low-mccs/pasdbus/s8-1/smartbox1powerSupplyOutputVoltageThresholds
+          powerSupplyTemperature_root_attribute: low-mccs/pasdbus/s8-1/smartbox1powerSupplyTemperature
+          powerSupplyTemperatureThresholds_root_attribute: low-mccs/pasdbus/s8-1/smartbox1powerSupplyTemperatureThresholds
+          smartboxStatus_root_attribute: low-mccs/pasdbus/s8-1/smartbox1Status
+          sysAddress_root_attribute: low-mccs/pasdbus/s8-1/smartbox1sysAddress
+          uptime_root_attribute: low-mccs/pasdbus/s8-1/smartbox1uptime
+          warningFlags_root_attribute: low-mccs/pasdbus/s8-1/smartbox1warningFlags
 
 */}}
 {{- $smartboxes := dig "smartboxes" dict .Values.deviceServers}}
@@ -32,6 +77,233 @@ server:
           devices:
 {{- range $smartbox_name, $this_smartbox := $this_server}}
             - name: {{$smartbox_name}}
+              attribute_properties:
+                - attribute: "modbusRegisterMapRevisionNumber"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.modbusRegisterMapRevisionNumber_root_attribute}}
+                - attribute: "pcbRevisionNumber"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.pcbRevisionNumber_root_attribute}}
+                - attribute: "cpuId"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.cpuId_root_attribute}}
+                - attribute: "chipId"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.chipId_root_attribute}}
+                - attribute: "firmwareVersion"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.firmwareVersion_root_attribute}}
+                - attribute: "uptime"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.uptime_root_attribute}}
+                - attribute: "smartboxStatus"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.smartboxStatus_root_attribute}}
+                - attribute: "sysAddress"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.sysAddress_root_attribute}}
+                - attribute: "ledPattern"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.ledPattern_root_attribute}}
+                - attribute: "inputVoltage"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.inputVoltage_root_attribute}}
+                - attribute: "powerSupplyOutputVoltage"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.powerSupplyOutputVoltage_root_attribute}}
+                - attribute: "powerSupplyTemperature"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.powerSupplyTemperature_root_attribute}}
+                - attribute: "pcbTemperature"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.pcbTemperature_root_attribute}}
+                - attribute: "femAmbientTemperature"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.femAmbientTemperature_root_attribute}}
+                - attribute: "femCaseTemperatures"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.femCaseTemperatures_root_attribute}}
+                - attribute: "femHeatsinkTemperatures"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.femHeatsinkTemperatures_root_attribute}}
+{{- /*          - attribute: "portForcings"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.portForcings_root_attribute}}
+*/}}
+                - attribute: "portBreakersTripped"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.portBreakersTripped_root_attribute}}
+                - attribute: "portsDesiredPowerOnline"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.portsDesiredPowerOnline_root_attribute}}
+                - attribute: "portsDesiredPowerOffline"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.portsDesiredPowerOffline_root_attribute}}
+                - attribute: "portsPowerSensed"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.portsPowerSensed_root_attribute}}
+                - attribute: "portsCurrentDraw"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.portsCurrentDraw_root_attribute}}
+                - attribute: "inputVoltageThresholds"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.inputVoltageThresholds_root_attribute}}
+                - attribute: "powerSupplyOutputVoltageThresholds"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.powerSupplyOutputVoltageThresholds_root_attribute}}
+                - attribute: "powerSupplyTemperatureThresholds"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.powerSupplyTemperatureThresholds_root_attribute}}
+                - attribute: "pcbTemperatureThresholds"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.pcbTemperatureThresholds_root_attribute}}
+                - attribute: "femAmbientTemperatureThresholds"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.femAmbientTemperatureThresholds_root_attribute}}
+                - attribute: "femCaseTemperature1Thresholds"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.femCaseTemperature1Thresholds_root_attribute}}
+                - attribute: "femCaseTemperature2Thresholds"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.femCaseTemperature2Thresholds_root_attribute}}
+                - attribute: "femHeatsinkTemperature1Thresholds"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.femHeatsinkTemperature1Thresholds_root_attribute}}
+                - attribute: "femHeatsinkTemperature2Thresholds"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.femHeatsinkTemperature2Thresholds_root_attribute}}
+                - attribute: "fem1CurrentTripThreshold"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.fem1CurrentTripThreshold_root_attribute}}
+                - attribute: "fem2CurrentTripThreshold"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.fem2CurrentTripThreshold_root_attribute}}
+                - attribute: "fem3CurrentTripThreshold"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.fem3CurrentTripThreshold_root_attribute}}
+                - attribute: "fem4CurrentTripThreshold"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.fem4CurrentTripThreshold_root_attribute}}
+                - attribute: "fem5CurrentTripThreshold"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.fem5CurrentTripThreshold_root_attribute}}
+                - attribute: "fem6CurrentTripThreshold"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.fem6CurrentTripThreshold_root_attribute}}
+                - attribute: "fem7CurrentTripThreshold"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.fem7CurrentTripThreshold_root_attribute}}
+                - attribute: "fem8CurrentTripThreshold"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.fem8CurrentTripThreshold_root_attribute}}
+                - attribute: "fem9CurrentTripThreshold"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.fem9CurrentTripThreshold_root_attribute}}
+                - attribute: "fem10CurrentTripThreshold"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.fem10CurrentTripThreshold_root_attribute}}
+                - attribute: "fem11CurrentTripThreshold"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.fem11CurrentTripThreshold_root_attribute}}
+                - attribute: "fem12CurrentTripThreshold"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.fem12CurrentTripThreshold_root_attribute}}
+                - attribute: "warningFlags"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.warningFlags_root_attribute}}
+                - attribute: "alarmFlags"
+                  properties:
+                    - name: "__root_att"
+                      values:
+                        - {{$this_smartbox.alarmFlags_root_attribute}}
               properties:
                 - name: SmartBoxNumber
                   values: 

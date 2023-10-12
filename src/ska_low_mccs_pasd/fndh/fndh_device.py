@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import Any, Final, Optional, cast
+from typing import Any, Final, Optional
 
 import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
@@ -33,61 +33,207 @@ __all__ = ["MccsFNDH", "main"]
 DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
 
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable-next=too-many-instance-attributes
 class MccsFNDH(SKABaseDevice[FndhComponentManager]):
     """An implementation of the FNDH device for MCCS."""
+
+    PORT_COUNT: Final = 28
 
     # -----------------
     # Device Properties
     # -----------------
     PasdFQDN = device_property(dtype=(str), mandatory=True)
 
-    PORT_COUNT: Final = 28
-
-    # TODO: create a single YAML file with the fndh attributes.
-    # We want attributes on Mccsfndh to match the MccsPasdBus.
-    # Therefore, the proposed solution is for both to read from
-    # a 'YAML' file.
-    ATTRIBUTES = [
-        ("ModbusRegisterMapRevisionNumber", int, None),
-        ("PcbRevisionNumber", int, None),
-        ("CpuId", str, None),
-        ("ChipId", str, None),
-        ("FirmwareVersion", str, None),
-        ("Uptime", int, None),
-        ("SysAddress", int, None),
-        ("PasdStatus", str, None),
-        ("LedPattern", str, None),
-        ("Psu48vVoltages", (float,), 2),
-        ("Psu48vCurrent", float, None),
-        ("Psu48vTemperatures", (float,), 2),
-        ("PanelTemperature", float, None),
-        ("FncbTemperature", float, None),
-        ("FncbHumidity", float, None),
-        ("CommsGatewayTemperature", float, None),
-        ("PowerModuleTemperature", float, None),
-        ("OutsideTemperature", float, None),
-        ("InternalAmbientTemperature", float, None),
-        ("FncbHumidity", float, None),
-        ("PortForcings", (str,), PORT_COUNT),
-        ("PortsDesiredPowerOnline", (bool,), PORT_COUNT),
-        ("PortsDesiredPowerOffline", (bool,), PORT_COUNT),
-        ("PortsPowerSensed", (bool,), PORT_COUNT),
-        ("WarningFlags", str, None),
-        ("AlarmFlags", str, None),
-        ("Psu48vVoltage1Thresholds", (float,), 4),
-        ("Psu48vVoltage2Thresholds", (float,), 4),
-        ("Psu48vCurrentThresholds", (float,), 4),
-        ("Psu48vTemperature1Thresholds", (float,), 4),
-        ("Psu48vTemperature2Thresholds", (float,), 4),
-        ("PanelTemperatureThresholds", (float,), 4),
-        ("FncbTemperatureThresholds", (float,), 4),
-        ("HumidityThresholds", (float,), 4),
-        ("OutsideTemperatureThresholds", (float,), 4),
-        ("CommsGatewayTemperatureThresholds", (float,), 4),
-        ("PowerModuleTemperatureThresholds", (float,), 4),
-        ("InternalAmbientTemperatureThresholds", (float,), 4),
-    ]
+    # --------------------
+    # Forwarded attributes
+    # --------------------
+    modbusRegisterMapRevisionNumber = attribute(
+        name="modbusRegisterMapRevisionNumber",
+        label="Modbus register map revision number",
+        forwarded=True,
+    )
+    pcbRevisionNumber = attribute(
+        name="pcbRevisionNumber",
+        label="PCB revision number",
+        forwarded=True,
+    )
+    cpuId = attribute(
+        name="cpuId",
+        label="CPU id",
+        forwarded=True,
+    )
+    chipId = attribute(
+        name="chipId",
+        label="Chip ID",
+        forwarded=True,
+    )
+    firmwareVersion = attribute(
+        name="firmwareVersion",
+        label="Firmware version",
+        forwarded=True,
+    )
+    uptime = attribute(
+        name="uptime",
+        label="Update",
+        forwarded=True,
+    )
+    sysAddress = attribute(
+        name="sysAddress",
+        label="System address",
+        forwarded=True,
+    )
+    fndhStatus = attribute(
+        name="fndhStatus",
+        label="FNDH status",
+        forwarded=True,
+    )
+    ledPattern = attribute(
+        name="ledPattern",
+        label="LED pattern",
+        forwarded=True,
+    )
+    psu48vVoltages = attribute(
+        name="psu48vVoltages",
+        label="PSU 48v voltages",
+        forwarded=True,
+    )
+    psu48vCurrent = attribute(
+        name="psu48vCurrent",
+        label="PSU 48v current",
+        forwarded=True,
+    )
+    psu48vTemperatures = attribute(
+        name="psu48vTemperatures",
+        label="PSU 48v temperatures",
+        forwarded=True,
+    )
+    panelTemperature = attribute(
+        name="panelTemperature",
+        label="Panel temperature",
+        forwarded=True,
+    )
+    fncbTemperature = attribute(
+        name="fncbTemperature",
+        label="FNCB temperature",
+        forwarded=True,
+    )
+    fncbHumidity = attribute(
+        name="fncbHumidity",
+        label="FNCB humidity",
+        forwarded=True,
+    )
+    commsGatewayTemperature = attribute(
+        name="commsGatewayTemperature",
+        label="Communications gateway temperature",
+        forwarded=True,
+    )
+    powerModuleTemperature = attribute(
+        name="powerModuleTemperature",
+        label="Power module temperature",
+        forwarded=True,
+    )
+    outsideTemperature = attribute(
+        name="outsideTemperature",
+        label="Outside temperature",
+        forwarded=True,
+    )
+    internalAmbientTemperature = attribute(
+        name="internalAmbientTemperature",
+        label="Internal ambient temperature",
+        forwarded=True,
+    )
+    # TODO: https://gitlab.com/tango-controls/cppTango/-/issues/1018
+    # Cannot forward this attribute right now:
+    # portForcings = attribute(
+    #     name="portForcings",
+    #     label="Port forcings",
+    #     forwarded=True,
+    # )
+    portsDesiredPowerOnline = attribute(
+        name="portsDesiredPowerOnline",
+        label="Ports desired power when online",
+        forwarded=True,
+    )
+    portsDesiredPowerOffline = attribute(
+        name="portsDesiredPowerOffline",
+        label="Ports desired power when offline",
+        forwarded=True,
+    )
+    portsPowerSensed = attribute(
+        name="portsPowerSensed",
+        label="Ports power sensed",
+        forwarded=True,
+    )
+    warningFlags = attribute(
+        name="warningFlags",
+        label="Warning flags",
+        forwarded=True,
+    )
+    alarmFlags = attribute(
+        name="alarmFlags",
+        label="Alarm flags",
+        forwarded=True,
+    )
+    psu48vVoltage1Thresholds = attribute(
+        name="psu48vVoltage1Thresholds",
+        label="PSU 48v voltage 1 thresholds",
+        forwarded=True,
+    )
+    psu48vVoltage2Thresholds = attribute(
+        name="psu48vVoltage2Thresholds",
+        label="PSU 48v voltage 2 thresholds",
+        forwarded=True,
+    )
+    psu48vCurrentThresholds = attribute(
+        name="psu48vCurrentThresholds",
+        label="PSU 48v current thresholds",
+        forwarded=True,
+    )
+    psu48vTemperature1Thresholds = attribute(
+        name="psu48vTemperature1Thresholds",
+        label="PSU 48v temperature 1 thresholds",
+        forwarded=True,
+    )
+    psu48vTemperature2Thresholds = attribute(
+        name="psu48vTemperature2Thresholds",
+        label="PSU 48v temperature 2 thresholds",
+        forwarded=True,
+    )
+    panelTemperatureThresholds = attribute(
+        name="panelTemperatureThresholds",
+        label="Panel temperature thresholds",
+        forwarded=True,
+    )
+    fncbTemperatureThresholds = attribute(
+        name="fncbTemperatureThresholds",
+        label="FNCB temperature thresholds",
+        forwarded=True,
+    )
+    humidityThresholds = attribute(
+        name="humidityThresholds",
+        label="Humidity thresholds",
+        forwarded=True,
+    )
+    outsideTemperatureThresholds = attribute(
+        name="outsideTemperatureThresholds",
+        label="Outside temperature thresholds",
+        forwarded=True,
+    )
+    commsGatewayTemperatureThresholds = attribute(
+        name="commsGatewayTemperatureThresholds",
+        label="Communications gateway temperature thresholds",
+        forwarded=True,
+    )
+    powerModuleTemperatureThresholds = attribute(
+        name="powerModuleTemperatureThresholds",
+        label="Power module temperature thresholds",
+        forwarded=True,
+    )
+    internalAmbientTemperatureThresholds = attribute(
+        name="internalAmbientTemperatureThresholds",
+        label="Internal ambient temperature thresholds",
+        forwarded=True,
+    )
 
     # ---------------
     # Initialisation
@@ -125,11 +271,10 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
 
         # Setup attributes shared with the MccsPasdBus.
         self._fndh_attributes: dict[str, Any] = {}
-        self._setup_fndh_attributes()
 
         # Attributes for specific ports on the FNDH.
         # These attributes are a breakdown of the portPowerSensed
-        # attribute. The reason is to allow smartbox's to subscribe to
+        # attribute. The reason is to allow smartboxes to subscribe to
         # their power state.
         for port in range(1, self.PORT_COUNT + 1):
             attr_name = f"Port{port}PowerState"
@@ -191,7 +336,6 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             self.logger,
             self._communication_state_changed,
             self._component_state_changed_callback,
-            self._attribute_changed_callback,
             self._update_port_power_states,
             self.PasdFQDN,
         )
@@ -411,17 +555,6 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         result_code, message = handler(argin)
         return ([result_code], [message])
 
-    # -----------
-    # ATTRIBUTES
-    # -----------
-    def _setup_fndh_attributes(self: MccsFNDH) -> None:
-        for slug, data_type, length in self.ATTRIBUTES:
-            self._setup_fndh_attribute(
-                f"{slug}",
-                cast(type | tuple[type], data_type),
-                max_dim_x=length,
-            )
-
     def _setup_fndh_attribute(
         self: MccsFNDH,
         attribute_name: str,
@@ -430,7 +563,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         default_value: Optional[Any] = None,
     ) -> None:
         self._fndh_attributes[attribute_name.lower()] = default_value
-        attr = tango.server.attribute(
+        attr = attribute(
             name=attribute_name,
             dtype=data_type,
             access=tango.AttrWriteType.READ,
@@ -514,16 +647,17 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             ),
             communication_state.name,
         )
-        if communication_state != CommunicationStatus.ESTABLISHED:
-            self._update_port_power_states([PowerState.UNKNOWN] * self.PORT_COUNT)
-            self._component_state_changed_callback(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._component_state_changed_callback(power=PowerState.ON)
             self._update_port_power_states(self._port_power_states)
+        else:
+            self._update_port_power_states([PowerState.UNKNOWN] * self.PORT_COUNT)
+            self._component_state_changed_callback(power=PowerState.UNKNOWN)
 
         super()._communication_state_changed(communication_state)
-
-        self._health_model.update_state(communicating=True)
+        self._health_model.update_state(
+            communicating=(communication_state == CommunicationStatus.ESTABLISHED)
+        )
 
     def _update_port_power_states(
         self: MccsFNDH, power_states: list[PowerState]
@@ -543,8 +677,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self: MccsFNDH,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,
-        fqdn: Optional[str] = None,
-        pasdbus_status: Optional[str] = None,
+        status: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -555,25 +688,12 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
 
         :param fault: whether the component is in fault.
         :param power: the power state of the component
-        :param fqdn: the fqdn of the device calling.
-        :param pasdbus_status: the status of the pasd_bus
+        :param status: the status of the FNDH
         :param kwargs: additional keyword arguments defining component
             state.
         """
-        if fqdn is not None:
-            # TODO: The information passed here could factor into the FNDH health
-            if power == PowerState.UNKNOWN:
-                # If a proxy calls back with a unknown power. As a precaution it is
-                # assumed that communication is NOT_ESTABLISHED.
-                self._communication_state_changed(CommunicationStatus.NOT_ESTABLISHED)
-                return
-            if power == PowerState.ON:
-                self._update_port_power_states(self._port_power_states)
-
         super()._component_state_changed(fault=fault, power=power)
-        self._health_model.update_state(
-            fault=fault, power=power, pasdbus_status=pasdbus_status
-        )
+        self._health_model.update_state(fault=fault, power=power, pasdbus_status=status)
 
     def _health_changed_callback(self: MccsFNDH, health: HealthState) -> None:
         """
@@ -590,45 +710,6 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             self._health_state = health
             self.push_change_event("healthState", health)
             self.push_archive_event("healthState", health)
-
-    def _attribute_changed_callback(
-        self: MccsFNDH, attr_name: str, attr_value: HealthState
-    ) -> None:
-        """
-        Handle changes to subscribed attributes.
-
-        This is a callback hook we pass to the component manager,
-        It is called when a subscribed attribute changes.
-        It is responsible for:
-        - updating this device attribute
-        - pushing a change event to any listeners.
-
-        :param attr_name: the name of the attribute that needs updating
-        :param attr_value: the value to update with.
-        """
-        try:
-            assert (
-                len(
-                    [
-                        attr
-                        for (attr, _, _) in self.ATTRIBUTES
-                        if attr == attr_name or attr.lower() == attr_name
-                    ]
-                )
-                > 0
-            )
-            # TODO: These attributes may factor into the FNDH health.
-            # we should notify the health model of any relevant changes.
-
-            self._fndh_attributes[attr_name] = attr_value
-            self.push_change_event(attr_name, attr_value)
-            self.push_archive_event(attr_name, attr_value)
-
-        except AssertionError:
-            self.logger.debug(
-                f"""The attribute {attr_name} pushed from MccsPasdBus
-                device does not exist in MccsSmartBox"""
-            )
 
 
 # ----------

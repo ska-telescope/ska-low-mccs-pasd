@@ -62,7 +62,15 @@ class TestFieldStationIntegration:  # pylint: disable=too-few-public-methods
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["fndh_state"],
         )
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
+
+        # TODO: https://gitlab.com/tango-controls/pytango/-/issues/533
+        # Device is in alarm state because
+        # we haven't defined root attributes for its forwarded attributes,
+        # because tango.test_context.MultiDeviceTestContext does not yet support this.
+        # Forwarded attributes will be supported in a future pytango version.
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.ALARM,  # DISABLE
+        )
 
         fndh_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)

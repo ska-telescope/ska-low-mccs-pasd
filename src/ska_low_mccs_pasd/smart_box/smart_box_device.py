@@ -10,13 +10,12 @@
 from __future__ import annotations
 
 import sys
-from typing import Any, Final, Optional, cast
+from typing import Any, Final, Optional
 
-import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
-from tango.server import command, device_property
+from tango.server import attribute, command, device_property
 
 from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
@@ -27,65 +26,187 @@ __all__ = ["MccsSmartBox", "main"]
 class MccsSmartBox(SKABaseDevice):
     """An implementation of the SmartBox device for MCCS."""
 
+    PORT_COUNT: Final = 12
+
     # -----------------
     # Device Properties
     # -----------------
     FndhPort = device_property(dtype=int, mandatory=True)
     PasdFQDN = device_property(dtype=(str), mandatory=True)
-    FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxNumber = device_property(dtype=int, mandatory=True)
 
-    PORT_COUNT: Final = 12
-
-    # TODO: MCCS-1480: create a yaml file containing
-    # coupled MccsSmartBox MccsPasdBus attributes.
-    ATTRIBUTES = [
-        ("ModbusRegisterMapRevisionNumber", int, None),
-        ("PcbRevisionNumber", int, None),
-        ("CpuId", str, None),
-        ("ChipId", str, None),
-        ("FirmwareVersion", str, None),
-        ("Uptime", int, None),
-        ("PasdStatus", str, None),
-        ("SysAddress", int, None),
-        ("LedPattern", str, None),
-        ("InputVoltage", float, None),
-        ("PowerSupplyOutputVoltage", float, None),
-        ("PowerSupplyTemperature", float, None),
-        ("PcbTemperature", float, None),
-        ("FemAmbientTemperature", float, None),
-        ("FemCaseTemperatures", (float,), 2),
-        ("FemHeatsinkTemperatures", (float,), 2),
-        ("PortForcings", (str,), PORT_COUNT),
-        ("PortBreakersTripped", (bool,), PORT_COUNT),
-        ("PortsDesiredPowerOnline", (bool,), PORT_COUNT),
-        ("PortsDesiredPowerOffline", (bool,), PORT_COUNT),
-        ("PortsPowerSensed", (bool,), PORT_COUNT),
-        ("PortsCurrentDraw", (float,), PORT_COUNT),
-        ("InputVoltageThresholds", (float,), 4),
-        ("PowerSupplyOutputVoltageThresholds", (float,), 4),
-        ("PowerSupplyTemperatureThresholds", (float,), 4),
-        ("PcbTemperatureThresholds", (float,), 4),
-        ("FemAmbientTemperatureThresholds", (float,), 4),
-        ("FemCaseTemperature1Thresholds", (float,), 4),
-        ("FemCaseTemperature2Thresholds", (float,), 4),
-        ("FemHeatsinkTemperature1Thresholds", (float,), 4),
-        ("FemHeatsinkTemperature2Thresholds", (float,), 4),
-        ("Fem1CurrentTripThreshold", int, None),
-        ("Fem2CurrentTripThreshold", int, None),
-        ("Fem3CurrentTripThreshold", int, None),
-        ("Fem4CurrentTripThreshold", int, None),
-        ("Fem5CurrentTripThreshold", int, None),
-        ("Fem6CurrentTripThreshold", int, None),
-        ("Fem7CurrentTripThreshold", int, None),
-        ("Fem8CurrentTripThreshold", int, None),
-        ("Fem9CurrentTripThreshold", int, None),
-        ("Fem10CurrentTripThreshold", int, None),
-        ("Fem11CurrentTripThreshold", int, None),
-        ("Fem12CurrentTripThreshold", int, None),
-        ("WarningFlags", str, None),
-        ("AlarmFlags", str, None),
-    ]
+    # --------------------
+    # Forwarded attributes
+    # --------------------
+    modbusRegisterMapRevisionNumber = attribute(
+        name="modbusRegisterMapRevisionNumber",
+        label="Modbus register map revision number",
+        forwarded=True,
+    )
+    pcbRevisionNumber = attribute(
+        name="pcbRevisionNumber", label="PCB revision number", forwarded=True
+    )
+    cpuId = attribute(name="cpuId", label="CPU ID", forwarded=True)
+    chipId = attribute(name="chipId", label="Chip ID", forwarded=True)
+    firmwareVersion = attribute(
+        name="firmwareVersion", label="Firmware version", forwarded=True
+    )
+    uptime = attribute(name="uptime", label="Uptime", forwarded=True)
+    smartboxStatus = attribute(
+        name="smartboxStatus", label="smartbox status", forwarded=True
+    )
+    sysAddress = attribute(name="sysAddress", label="System address", forwarded=True)
+    ledPattern = attribute(name="ledPattern", label="LED pattern", forwarded=True)
+    inputVoltage = attribute(name="inputVoltage", label="Input voltage", forwarded=True)
+    powerSupplyOutputVoltage = attribute(
+        name="powerSupplyOutputVoltage",
+        label="Power supply output voltage",
+        forwarded=True,
+    )
+    powerSupplyTemperature = attribute(
+        name="powerSupplyTemperature", label="Power supply temperature", forwarded=True
+    )
+    pcbTemperature = attribute(
+        name="pcbTemperature", label="PCB temperature", forwarded=True
+    )
+    femAmbientTemperature = attribute(
+        name="femAmbientTemperature", label="FEM ambient temperature", forwarded=True
+    )
+    femCaseTemperatures = attribute(
+        name="femCaseTemperatures", label="FEM case temperatures", forwarded=True
+    )
+    femHeatsinkTemperatures = attribute(
+        name="femHeatsinkTemperatures",
+        label="FEM heatsink temperatures",
+        forwarded=True,
+    )
+    # TODO: https://gitlab.com/tango-controls/cppTango/-/issues/1018
+    # Cannot forward this attribute right now:
+    # portForcings = attribute(name="portForcings", label="Port forcings", forwarded=True)
+    portBreakersTripped = attribute(
+        name="portBreakersTripped", label="Port breakers tripped", forwarded=True
+    )
+    portsDesiredPowerOnline = attribute(
+        name="portsDesiredPowerOnline",
+        label="Ports desired power when online",
+        forwarded=True,
+    )
+    portsDesiredPowerOffline = attribute(
+        name="portsDesiredPowerOffline",
+        label="Ports desired power when offline",
+        forwarded=True,
+    )
+    portsPowerSensed = attribute(
+        name="portsPowerSensed", label="Ports power sensed", forwarded=True
+    )
+    portsCurrentDraw = attribute(
+        name="portsCurrentDraw", label="Ports current draw", forwarded=True
+    )
+    inputVoltageThresholds = attribute(
+        name="inputVoltageThresholds", label="Input voltage thresholds", forwarded=True
+    )
+    powerSupplyOutputVoltageThresholds = attribute(
+        name="powerSupplyOutputVoltageThresholds",
+        label="Power supply output voltage thresholds",
+        forwarded=True,
+    )
+    powerSupplyTemperatureThresholds = attribute(
+        name="powerSupplyTemperatureThresholds",
+        label="Power supply temperature thresholds",
+        forwarded=True,
+    )
+    pcbTemperatureThresholds = attribute(
+        name="pcbTemperatureThresholds",
+        label="PCB temperature thresholds",
+        forwarded=True,
+    )
+    femAmbientTemperatureThresholds = attribute(
+        name="femAmbientTemperatureThresholds",
+        label="FEM ambient temperature thresholds",
+        forwarded=True,
+    )
+    femCaseTemperature1Thresholds = attribute(
+        name="femCaseTemperature1Thresholds",
+        label="FEM case temperature 1 thresholds",
+        forwarded=True,
+    )
+    femCaseTemperature2Thresholds = attribute(
+        name="femCaseTemperature2Thresholds",
+        label="FEM case temperature 2 thresholds",
+        forwarded=True,
+    )
+    femHeatsinkTemperature1Thresholds = attribute(
+        name="femHeatsinkTemperature1Thresholds",
+        label="FEM heatsink temperature 1 thresholds",
+        forwarded=True,
+    )
+    femHeatsinkTemperature2Thresholds = attribute(
+        name="femHeatsinkTemperature2Thresholds",
+        label="FEM heatsink temperature 2 thresholds",
+        forwarded=True,
+    )
+    fem1CurrentTripThreshold = attribute(
+        name="fem1CurrentTripThreshold",
+        label="FEM 1 current trip threshold",
+        forwarded=True,
+    )
+    fem2CurrentTripThreshold = attribute(
+        name="fem2CurrentTripThreshold",
+        label="FEM 2 current trip threshold",
+        forwarded=True,
+    )
+    fem3CurrentTripThreshold = attribute(
+        name="fem3CurrentTripThreshold",
+        label="FEM 3 current trip threshold",
+        forwarded=True,
+    )
+    fem4CurrentTripThreshold = attribute(
+        name="fem4CurrentTripThreshold",
+        label="FEM 4 current trip threshold",
+        forwarded=True,
+    )
+    fem5CurrentTripThreshold = attribute(
+        name="fem5CurrentTripThreshold",
+        label="FEM 5 current trip threshold",
+        forwarded=True,
+    )
+    fem6CurrentTripThreshold = attribute(
+        name="fem6CurrentTripThreshold",
+        label="FEM 6 current trip threshold",
+        forwarded=True,
+    )
+    fem7CurrentTripThreshold = attribute(
+        name="fem7CurrentTripThreshold",
+        label="FEM 7 current trip threshold",
+        forwarded=True,
+    )
+    fem8CurrentTripThreshold = attribute(
+        name="fem8CurrentTripThreshold",
+        label="FEM 8 current trip threshold",
+        forwarded=True,
+    )
+    fem9CurrentTripThreshold = attribute(
+        name="fem9CurrentTripThreshold",
+        label="FEM 9 current trip threshold",
+        forwarded=True,
+    )
+    fem10CurrentTripThreshold = attribute(
+        name="fem10CurrentTripThreshold",
+        label="FEM 10 current trip threshold",
+        forwarded=True,
+    )
+    fem11CurrentTripThreshold = attribute(
+        name="fem11CurrentTripThreshold",
+        label="FEM 11 current trip threshold",
+        forwarded=True,
+    )
+    fem12CurrentTripThreshold = attribute(
+        name="fem12CurrentTripThreshold",
+        label="FEM 12 current trip threshold",
+        forwarded=True,
+    )
+    warningFlags = attribute(name="warningFlags", label="Warning flags", forwarded=True)
+    alarmFlags = attribute(name="alarmFlags", label="Alarm flags", forwarded=True)
 
     # ---------------
     # Initialisation
@@ -117,8 +238,8 @@ class MccsSmartBox(SKABaseDevice):
         This is overridden here to change the Tango serialisation model.
         """
         super().init_device()
-        self._smartbox_state: dict[str, Any] = {}
-        self._setup_smartbox_attributes()
+
+        self._port_forcings: list[str] = []
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
@@ -128,7 +249,6 @@ class MccsSmartBox(SKABaseDevice):
             f"Initialised {device_name} device with properties:\n"
             f"\tFndhPort: {self.FndhPort}\n"
             f"\tPasdFQDN: {self.PasdFQDN}\n"
-            f"\tFndhFQDN: {self.FndhFQDN}\n"
             f"\tSmartBoxNumber: {self.SmartBoxNumber}\n"
         )
         self.logger.info(
@@ -143,9 +263,15 @@ class MccsSmartBox(SKABaseDevice):
         self.set_archive_event("healthState", True, False)
 
     # ----------
-    # Properties
+    # Attributes
     # ----------
+    @attribute(dtype=(str,))
+    def portForcings(self) -> list[str]:
+        return self._port_forcings
 
+    # --------------
+    # Initialization
+    # --------------
     class InitCommand(DeviceInitCommand):
         """Initialisation command class for this base device."""
 
@@ -163,9 +289,6 @@ class MccsSmartBox(SKABaseDevice):
             self._completed()
             return (ResultCode.OK, "Init command completed OK")
 
-    # --------------
-    # Initialization
-    # --------------
     def create_component_manager(
         self: MccsSmartBox,
     ) -> SmartBoxComponentManager:
@@ -177,12 +300,10 @@ class MccsSmartBox(SKABaseDevice):
         return SmartBoxComponentManager(
             self.logger,
             self._communication_state_changed,
-            self._component_state_callback,
-            self._attribute_changed_callback,
+            self._component_state_changed,
             self.PORT_COUNT,
             self.FndhPort,
             self.PasdFQDN,
-            self.FndhFQDN,
         )
 
     def init_command_objects(self: MccsSmartBox) -> None:
@@ -248,41 +369,6 @@ class MccsSmartBox(SKABaseDevice):
         return ([result_code], [message])
 
     # ----------
-    # Attributes
-    # ----------
-    def _setup_smartbox_attributes(self: MccsSmartBox) -> None:
-        for slug, data_type, length in self.ATTRIBUTES:
-            self._setup_smartbox_attribute(
-                f"{slug}",
-                cast(type | tuple[type], data_type),
-                max_dim_x=length,
-            )
-
-    def _setup_smartbox_attribute(
-        self: MccsSmartBox,
-        attribute_name: str,
-        data_type: type | tuple[type],
-        max_dim_x: Optional[int] = None,
-    ) -> None:
-        self._smartbox_state[attribute_name.lower()] = None
-        attr = tango.server.attribute(
-            name=attribute_name,
-            dtype=data_type,
-            access=tango.AttrWriteType.READ,
-            label=attribute_name,
-            max_dim_x=max_dim_x,
-            fread="_read_smartbox_attribute",
-        ).to_attr()
-        self.add_attribute(attr, self._read_smartbox_attribute, None, None)
-        self.set_change_event(attribute_name, True, False)
-        self.set_archive_event(attribute_name, True, False)
-
-    def _read_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
-        smartbox_attribute.set_value(
-            self._smartbox_state[smartbox_attribute.get_name().lower()]
-        )
-
-    # ----------
     # Callbacks
     # ----------
     def _communication_state_changed(
@@ -296,22 +382,22 @@ class MccsSmartBox(SKABaseDevice):
             communication_state.name,
         )
 
-        if communication_state != CommunicationStatus.ESTABLISHED:
-            self._component_state_callback(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self._component_state_callback(power=self.component_manager._power_state)
+            self._component_state_changed(power=self.component_manager._power_state)
+        else:
+            self._component_state_changed(power=PowerState.UNKNOWN)
 
         super()._communication_state_changed(communication_state)
+        self._health_model.update_state(
+            communicating=(communication_state == CommunicationStatus.ESTABLISHED)
+        )
 
-        self._health_model.update_state(communicating=True)
-
-    def _component_state_callback(  # pylint: disable=too-many-arguments
+    def _component_state_changed(
         self: MccsSmartBox,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,
-        pasdbus_status: Optional[str] = None,
-        fqdn: Optional[str] = None,
-        power_state: Optional[PowerState] = None,
+        status: Optional[str] = None,
+        port_forcings: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -322,23 +408,16 @@ class MccsSmartBox(SKABaseDevice):
 
         :param fault: whether the component is in fault.
         :param power: the power state of the component
-        :param pasdbus_status: the status of the pasd_bus
-        :param fqdn: the fqdn of the device passing calling.
-        :param power_state: the power_state change.
+        :param status: the status of the smartbox
         :param kwargs: additional keyword arguments defining component
             state.
         """
-        if fqdn is not None:
-            # TODO: use this in the health model.
-            if power == PowerState.UNKNOWN:
-                # If a proxy calls back with a unknown power. As a precaution it is
-                # assumed that communication is NOT_ESTABLISHED.
-                self._communication_state_changed(CommunicationStatus.NOT_ESTABLISHED)
-            return
+        if port_forcings is not None:
+            self._port_forcings = port_forcings
+            self.push_change_event("portForcings", port_forcings)
+
         super()._component_state_changed(fault=fault, power=power)
-        self._health_model.update_state(
-            fault=fault, power=power, pasdbus_status=pasdbus_status
-        )
+        self._health_model.update_state(fault=fault, power=power, pasdbus_status=status)
 
     def _health_changed_callback(self: MccsSmartBox, health: HealthState) -> None:
         """
@@ -355,43 +434,6 @@ class MccsSmartBox(SKABaseDevice):
             self._health_state = health
             self.push_change_event("healthState", health)
             self.push_archive_event("healthState", health)
-
-    def _attribute_changed_callback(
-        self: MccsSmartBox, attr_name: str, attr_value: HealthState
-    ) -> None:
-        """
-        Handle changes to subscribed attributes.
-
-        This is a callback hook we pass to the component manager,
-        It is called when a subscribed attribute changes.
-        It is responsible for:
-        - updating this device attribute
-        - pushing a change event to any listeners.
-
-        :param attr_name: the name of the attribute that needs updating
-        :param attr_value: the value to update with.
-        """
-        try:
-            assert (
-                len(
-                    [
-                        attr
-                        for (attr, _, _) in self.ATTRIBUTES
-                        if attr == attr_name or attr.lower() == attr_name
-                    ]
-                )
-                > 0
-            )
-
-            self._smartbox_state[attr_name] = attr_value
-            self.push_change_event(attr_name, attr_value)
-            self.push_archive_event(attr_name, attr_value)
-
-        except AssertionError:
-            self.logger.debug(
-                f"""The attribute {attr_name} pushed from MccsPasdBus
-                device does not exist in MccsSmartBox"""
-            )
 
 
 # ----------

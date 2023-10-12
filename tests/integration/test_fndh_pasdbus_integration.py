@@ -7,6 +7,16 @@
 # See LICENSE for more info.
 """This module contains the integration tests for MccsPasdBus with MccsFNDH."""
 
+# TODO: https://gitlab.com/tango-controls/pytango/-/issues/533
+# At several points in this test module,
+# one or more devices under test will be in ALARM state,
+# because we haven't defined root attributes for their forwarded attributes,
+# because this is not yet supported in tango.test_context.MultiDeviceTestContext.
+# Those attributes will end up not existing on the device, so we can't read them:
+# we have to read their root attributes directly.
+# Forwarded attributes will be supported in a future pytango version.
+
+
 from __future__ import annotations
 
 import gc
@@ -52,7 +62,10 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["fndh_state"],
         )
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
+        # TODO: See note at top of file.
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.ALARM,  # DISABLE,
+        )
         pasd_bus_device.subscribe_event(
             "state",
             tango.EventType.CHANGE_EVENT,
@@ -99,7 +112,6 @@ class TestfndhPasdBusIntegration:
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         """
-        # pylint: disable=too-many-statements
         # adminMode offline and in DISABLE state
         # ----------------------------------------------------------------
         assert fndh_device.adminMode == AdminMode.OFFLINE
@@ -119,7 +131,10 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["fndh_state"],
         )
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
+        # TODO: See note at top of file.
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.ALARM,  # DISABLE,
+        )
 
         pasd_bus_device.subscribe_event(
             "healthState",
@@ -161,103 +176,108 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["fndh_state"].assert_not_called()
 
-        assert (
-            fndh_device.ModbusRegisterMapRevisionNumber
-            == FndhSimulator.MODBUS_REGISTER_MAP_REVISION
-        )
-        assert fndh_device.SysAddress == FndhSimulator.SYS_ADDRESS
-        assert fndh_device.PcbRevisionNumber == FndhSimulator.PCB_REVISION
-        assert fndh_device.CpuId == FndhSimulator.CPU_ID
-        assert fndh_device.ChipId == FndhSimulator.CHIP_ID
-        assert fndh_device.FirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
-        assert fndh_device.Uptime <= fndh_simulator.uptime
-        assert fndh_device.PasdStatus == FndhSimulator.DEFAULT_STATUS
-        assert fndh_device.LedPattern == FndhSimulator.DEFAULT_LED_PATTERN
-        assert list(fndh_device.Psu48vVoltages) == FndhSimulator.DEFAULT_PSU48V_VOLTAGES
-        assert fndh_device.Psu48vCurrent == FndhSimulator.DEFAULT_PSU48V_CURRENT
-        assert (
-            list(fndh_device.Psu48vTemperatures)
-            == FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
-        )
-        assert fndh_device.PanelTemperature == FndhSimulator.DEFAULT_PANEL_TEMPERATURE
-        assert fndh_device.FncbTemperature == FndhSimulator.DEFAULT_FNCB_TEMPERATURE
-        assert fndh_device.FncbHumidity == FndhSimulator.DEFAULT_FNCB_HUMIDITY
-        assert (
-            fndh_device.CommsGatewayTemperature
-            == FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE
-        )
-        assert (
-            fndh_device.PowerModuleTemperature
-            == FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE
-        )
-        assert (
-            fndh_device.OutsideTemperature == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
-        )
-        assert (
-            fndh_device.InternalAmbientTemperature
-            == FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
-        )
-        assert list(fndh_device.PortForcings) == fndh_simulator.port_forcings
-        assert (
-            list(fndh_device.PortsDesiredPowerOnline)
-            == fndh_simulator.ports_desired_power_when_online
-        )
-        assert (
-            list(fndh_device.PortsDesiredPowerOffline)
-            == fndh_simulator.ports_desired_power_when_offline
-        )
-        assert list(fndh_device.PortsPowerSensed) == fndh_simulator.ports_power_sensed
-        assert (
-            list(fndh_device.Psu48vVoltage1Thresholds)
-            == fndh_simulator.psu48v_voltage_1_thresholds
-        )
-        assert (
-            list(fndh_device.Psu48vVoltage2Thresholds)
-            == fndh_simulator.psu48v_voltage_2_thresholds
-        )
-        assert (
-            list(fndh_device.Psu48vCurrentThresholds)
-            == fndh_simulator.psu48v_current_thresholds
-        )
-        assert (
-            list(fndh_device.Psu48vTemperature1Thresholds)
-            == fndh_simulator.psu48v_temperature_1_thresholds
-        )
-        assert (
-            list(fndh_device.Psu48vTemperature2Thresholds)
-            == fndh_simulator.psu48v_temperature_2_thresholds
-        )
-        assert (
-            list(fndh_device.PanelTemperatureThresholds)
-            == fndh_simulator.panel_temperature_thresholds
-        )
-        assert (
-            list(fndh_device.FncbTemperatureThresholds)
-            == fndh_simulator.fncb_temperature_thresholds
-        )
-        assert (
-            list(fndh_device.HumidityThresholds)
-            == fndh_simulator.fncb_humidity_thresholds
-        )
-        assert (
-            list(fndh_device.CommsGatewayTemperatureThresholds)
-            == fndh_simulator.comms_gateway_temperature_thresholds
-        )
-        assert (
-            list(fndh_device.PowerModuleTemperatureThresholds)
-            == fndh_simulator.power_module_temperature_thresholds
-        )
-        assert (
-            list(fndh_device.OutsideTemperatureThresholds)
-            == fndh_simulator.outside_temperature_thresholds
-        )
-        assert (
-            list(fndh_device.InternalAmbientTemperatureThresholds)
-            == fndh_simulator.internal_ambient_temperature_thresholds
-        )
-        # TODO
-        # assert fndh_device.WarningFlags == FndhSimulator.DEFAULT_FLAGS
-        # assert fndh_device.AlarmFlags == FndhSimulator.DEFAULT_FLAGS
+        # TODO: See command at top of file.
+        # assert (
+        #     fndh_device.ModbusRegisterMapRevisionNumber
+        #     == FndhSimulator.MODBUS_REGISTER_MAP_REVISION
+        # )
+        # assert fndh_device.SysAddress == FndhSimulator.SYS_ADDRESS
+        # assert fndh_device.PcbRevisionNumber == FndhSimulator.PCB_REVISION
+        # assert fndh_device.CpuId == FndhSimulator.CPU_ID
+        # assert fndh_device.ChipId == FndhSimulator.CHIP_ID
+        # assert fndh_device.FirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
+        # assert fndh_device.Uptime <= fndh_simulator.uptime
+        # assert fndh_device.FndhStatus == FndhSimulator.DEFAULT_STATUS
+        # assert fndh_device.LedPattern == FndhSimulator.DEFAULT_LED_PATTERN
+        # assert list(fndh_device.Psu48vVoltages) == (
+        #     FndhSimulator.DEFAULT_PSU48V_VOLTAGES
+        # )
+        # assert fndh_device.Psu48vCurrent == FndhSimulator.DEFAULT_PSU48V_CURRENT
+        # assert (
+        #     list(fndh_device.Psu48vTemperatures)
+        #     == FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
+        # )
+        # assert fndh_device.PanelTemperature == FndhSimulator.DEFAULT_PANEL_TEMPERATURE
+        # assert fndh_device.FncbTemperature == FndhSimulator.DEFAULT_FNCB_TEMPERATURE
+        # assert fndh_device.FncbHumidity == FndhSimulator.DEFAULT_FNCB_HUMIDITY
+        # assert (
+        #     fndh_device.CommsGatewayTemperature
+        #     == FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE
+        # )
+        # assert (
+        #     fndh_device.PowerModuleTemperature
+        #     == FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE
+        # )
+        # assert (
+        #     fndh_device.OutsideTemperature == (
+        #         FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+        #     )
+        # )
+        # assert (
+        #     fndh_device.InternalAmbientTemperature
+        #     == FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+        # )
+        # assert list(fndh_device.PortForcings) == fndh_simulator.port_forcings
+        # assert (
+        #     list(fndh_device.PortsDesiredPowerOnline)
+        #     == fndh_simulator.ports_desired_power_when_online
+        # )
+        # assert (
+        #     list(fndh_device.PortsDesiredPowerOffline)
+        #     == fndh_simulator.ports_desired_power_when_offline
+        # )
+        # assert list(fndh_device.PortsPowerSensed) == fndh_simulator.ports_power_sensed
+        # assert (
+        #     list(fndh_device.Psu48vVoltage1Thresholds)
+        #     == fndh_simulator.psu48v_voltage_1_thresholds
+        # )
+        # assert (
+        #     list(fndh_device.Psu48vVoltage2Thresholds)
+        #     == fndh_simulator.psu48v_voltage_2_thresholds
+        # )
+        # assert (
+        #     list(fndh_device.Psu48vCurrentThresholds)
+        #     == fndh_simulator.psu48v_current_thresholds
+        # )
+        # assert (
+        #     list(fndh_device.Psu48vTemperature1Thresholds)
+        #     == fndh_simulator.psu48v_temperature_1_thresholds
+        # )
+        # assert (
+        #     list(fndh_device.Psu48vTemperature2Thresholds)
+        #     == fndh_simulator.psu48v_temperature_2_thresholds
+        # )
+        # assert (
+        #     list(fndh_device.PanelTemperatureThresholds)
+        #     == fndh_simulator.panel_temperature_thresholds
+        # )
+        # assert (
+        #     list(fndh_device.FncbTemperatureThresholds)
+        #     == fndh_simulator.fncb_temperature_thresholds
+        # )
+        # assert (
+        #     list(fndh_device.HumidityThresholds)
+        #     == fndh_simulator.fncb_humidity_thresholds
+        # )
+        # assert (
+        #     list(fndh_device.CommsGatewayTemperatureThresholds)
+        #     == fndh_simulator.comms_gateway_temperature_thresholds
+        # )
+        # assert (
+        #     list(fndh_device.PowerModuleTemperatureThresholds)
+        #     == fndh_simulator.power_module_temperature_thresholds
+        # )
+        # assert (
+        #     list(fndh_device.OutsideTemperatureThresholds)
+        #     == fndh_simulator.outside_temperature_thresholds
+        # )
+        # assert (
+        #     list(fndh_device.InternalAmbientTemperatureThresholds)
+        #     == fndh_simulator.internal_ambient_temperature_thresholds
+        # )
+        # # TODO
+        # # assert fndh_device.WarningFlags == FndhSimulator.DEFAULT_FLAGS
+        # # assert fndh_device.AlarmFlags == FndhSimulator.DEFAULT_FLAGS
 
         for port in range(1, FndhSimulator.NUMBER_OF_PORTS + 1):
             is_port_on = fndh_simulator.ports_power_sensed[port - 1]
@@ -311,7 +331,10 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["fndh_state"],
         )
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
+        # TODO: See note at top of file
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.ALARM,  # DISABLE,
+        )
 
         pasd_bus_device.subscribe_event(
             "healthState",

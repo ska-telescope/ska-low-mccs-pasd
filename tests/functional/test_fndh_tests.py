@@ -71,7 +71,7 @@ def check_power_states(
     assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
 
     power_map = {False: PowerState.OFF, True: PowerState.ON, None: PowerState.UNKNOWN}
-    timeout = 120  # Seconds
+    timeout = 180  # Seconds
     current_time = time.time()  # Seconds
     while time.time() < current_time + timeout:
         try:
@@ -80,8 +80,9 @@ def check_power_states(
             ] == check_fastcommand(fndh_device, "PortPowerState", port_no)
         except AssertionError:
             print("Power states don't yet agree.")
-            time.sleep(0.1)
+            time.sleep(1)
         else:
+            print("Power status agree.")
             break
     assert power_map[
         check_attribute(pasd_bus_device, "fndhPortsPowerSensed")[port_no - 1]

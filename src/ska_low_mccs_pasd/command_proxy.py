@@ -10,11 +10,66 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any, Callable
+from typing import Any, Callable, Generic, TypeVar
 
 import tango
 from ska_control_model import ResultCode, TaskStatus
 from ska_tango_testing.context import DeviceProxy
+
+AttributeTypeT = TypeVar("AttributeTypeT")
+
+
+class MccsAttributeProxy(Generic[AttributeTypeT]):
+    """A local proxy to a single remote device attribute."""
+
+    def __init__(
+        self: MccsAttributeProxy,
+        device_name: str,
+        attribute_name: str,
+        callback: Callable[[AttributeTypeT | None, tango.AttrQuality], None] | None,
+        device_proxy_factory: Callable[[str], tango.DeviceProxy] | None = None,
+    ) -> None:
+        """
+        Initialise a new instance.
+
+        :param device_name: name of the device
+        :param attribute_name: name of the attribute
+        :param logger: the logger to use
+        :param device_proxy_factory: optional override for device proxy factory
+        """
+        self._attribute_name = attribute_name
+        self._attribute_value: AttributeTypeT | None = None
+        self._attribute_quality = tango.AttrQuality.ATTR_INVALID
+        self._callback: Callable[
+            [AttributeTypeT | None, tango.AttrQuality], None
+        ] | None = callback
+
+        _device_proxy_factory = device_proxy_factory or DeviceProxy
+        self._device_proxy = _device_proxy_factory(device_name)
+        self._subscription_id = self._device_proxy.subscribe_event(
+            attribute_name,
+            tango.EventType.CHANGE_EVENT,
+            self._handle_attribute_changed,
+        )
+
+    def _handle_attribute_changed(self, *args, **kwargs):
+        assert print(
+            "IN _handle_attribute_changed(\n" f"\t{args}\n" f"\t{kwargs}\n" ")"
+        )
+
+    @property
+    def value(self) -> tango.AttrQuality:
+        return self._attribute_value
+
+    @property
+    def quality(self) -> tango.AttrQuality:
+        return self._attribute_quality
+
+    def __get__(self, obj: Any, obj_type: type | None = None) -> AttributeTypeT | None:
+        return self._attribute_value
+
+    def __set__(self, obj: Any, value: AttributeTypeT) -> None:
+        setattr(self._device_proxy, self._attribute_name, self._attribute_value)
 
 
 class MccsCommandProxy:  # pylint: disable=too-few-public-methods

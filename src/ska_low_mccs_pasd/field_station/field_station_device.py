@@ -39,9 +39,13 @@ class MccsFieldStation(SKABaseDevice):
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), mandatory=True)
 
-    OutsideTemperature = attribute(
+    # -----------------
+    # Attributes
+    # -----------------
+    outsideTemperature = attribute(
         name="outsideTemperature", label="outsideTemperature", forwarded=True
     )
+
     # --------------
     # Initialisation
     # --------------

@@ -7,6 +7,14 @@
 # See LICENSE for more info.
 """This module contains the tests for MccsSmartBox."""
 
+# TODO: https://gitlab.com/tango-controls/pytango/-/issues/533
+# At several points in this test module,
+# the smartbox device under test will be in ALARM state
+# because we haven't defined root attributes for its forwarded attributes,
+# because this is not yet supported in tango.test_context.MultiDeviceTestContext.
+# This will be supported in a future pytango version.
+
+
 from __future__ import annotations
 
 import gc
@@ -75,7 +83,12 @@ def test_device_transitions_to_power_state_of_fndh_port(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+
+    # TODO: See note at top of file.
+    change_event_callbacks.assert_change_event(
+        "state",
+        tango.DevState.ALARM,  # DISABLE,
+    )
 
     # When the smartbox starts communicating it will start enter a unknown state until
     # Its communication with the FNDH has been established. Once this occurs the device
@@ -131,7 +144,12 @@ def test_command_queued(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+
+    # TODO: See note at top of file.
+    change_event_callbacks.assert_change_event(
+        "state",
+        tango.DevState.ALARM,  # DISABLE,
+    )
 
     smartbox_device.adminMode = AdminMode.ONLINE
     change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
