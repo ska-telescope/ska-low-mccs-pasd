@@ -13,6 +13,10 @@ import time
 import logging
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler
+import sys
+from kubernetes import client, config
+from kubernetes import config, dynamic
+from kubernetes.client import api_client
 import yaml
 import json
 import tango
@@ -25,16 +29,16 @@ class MccsConfigurator:
     # Should this be a TANGO device?
     """
 
-    def __init__(self, file_to_watch="/config/pasd_configuration.yaml"):
+    def __init__(self, file_to_watch="/config/pasd_configuration.yaml", simulated_file_to_watch="/config/pasd_configuration_sim.yaml"):
         self.observer = Observer()
-
         # TODO: there could be 2 config files to watch, One updated by TelModel one updated by PaSDSimulators.
         # When the PaSDBus goes into simulation mode it can simulate a configuration, this allows us to test
         # how high up devices will respond. i.e does the fieldstation change its mapping in response? 
 
         self.directory_to_watch, self.config_file = os.path.split(os.path.normpath(file_to_watch))
         self.file_to_watch = file_to_watch
-        self.change_handler = FileChangeHandle(self.file_to_watch)
+        self.simulated_file_to_watch = simulated_file_to_watch
+        self.change_handler = FileChangeHandle(self.file_to_watch, self.simulated_file_to_watch)
 
 
     def run(self):
@@ -57,9 +61,10 @@ class FileChangeHandle(LoggingEventHandler):
     # Code is in no way ready or designed.
     """
 
-    def __init__(self, file_to_watch: str):
+    def __init__(self, file_to_watch: str, simulated_file_to_watch: str,):
 
         self.file_to_watch = file_to_watch
+        self.simulated_file_to_watch = simulated_file_to_watch
 
         super().__init__()
 
@@ -85,9 +90,10 @@ class FileChangeHandle(LoggingEventHandler):
 
             # check changed file is the one under interest
             if event.src_path == self.file_to_watch:
+                # TODO: file locking
                 with open(event.src_path, 'r') as file:
                     configuration = yaml.safe_load(file)
-
+                logging.error(f"configuration real is -> {configuration}")
                 # TODO: Assumptions about parsing need to be removed! Versioned configuration validators?
                 for cluster_name in configuration["station_clusters"]:
                     for station_name in configuration["station_clusters"][cluster_name]["stations"]: # TODO: Yuck!! 
@@ -103,7 +109,35 @@ class FileChangeHandle(LoggingEventHandler):
 
                         except Exception as e:
                             logging.error(f"Did not manage to update device: {e}")
+                return
 
+            if event.src_path == self.simulated_file_to_watch:
+                # TODO: file locking
+                with open(event.src_path, 'r') as file:
+                    configuration = yaml.safe_load(file)
+
+                logging.error(f"configuration is -> {configuration}")
+
+                # TODO: Assumptions about parsing need to be removed! Versioned configuration validators?
+                for antenna_config in configuration["antennas"]:
+                    smartbox = configuration["antennas"][antenna_config]["smartbox"]
+                    smartbox_port = configuration["antennas"][antenna_config]["smartbox_port"]
+                    try:
+                        # TODO: if station not in TANGO database, WHY?, What should we do?
+                        # "low-mccs/fieldstation/" should be parameterised, may change.
+
+                        # TODO; This should be deducable from config
+                        logging.error(f"name forming proxy : low-mccs/fieldstation/ci-1")
+                        _fieldStationProxy = tango.DeviceProxy(f"low-mccs/fieldstation/ci-1")
+
+                        # TODO: We don't want to be updating every station with everything
+                        _fieldStationProxy.UpdateConfiguration(json.dumps(configuration))
+
+                    except Exception as e:
+                        logging.error(f"Did not manage to update device: {e}")
+                return
+            
+            logger.error(f"a config map changed but no one cared {event.src_path}")
 
 def main(*path_to_configuration_file):
     w = MccsConfigurator(*path_to_configuration_file)

@@ -166,6 +166,8 @@ class PasdBusRequestProvider:
         ] = {}
         self._port_breaker_resets: dict[tuple[int, int], bool] = {}
         self._read_request_iterator = read_request_iterator()
+        self._simulate_config = {}
+        self._update_telmodel = False
 
     def desire_info(self) -> None:
         """Register a desire to obtain static info about the PaSD devices."""
@@ -179,6 +181,25 @@ class PasdBusRequestProvider:
             This is 0 for the FNDH, otherwise a smartbox number.
         """
         self._initialize_requests[device_id] = True
+
+    def simulate_config(self, conf) -> None:
+        """
+        Register a request to initialize a device.
+
+        :param device_id: the device number.
+            This is 0 for the FNDH, otherwise a smartbox number.
+        """
+        self._simulate_config[1] = conf
+
+    def update_telmodel(self) -> None:
+        """
+        Register a request to initialize a device.
+
+        :param device_id: the device number.
+            This is 0 for the FNDH, otherwise a smartbox number.
+        """
+        self._update_telmodel = True
+
 
     def desire_ports_on(
         self, device_id: int, ports: Iterable[int], stay_on_when_offline: bool
@@ -229,6 +250,21 @@ class PasdBusRequestProvider:
         :param pattern: the name of the LED pattern.
         """
         self._led_pattern_writes[device_id] = pattern
+
+    def _get_configuration_request(self) -> PasdBusRequest | None:
+        if not self._simulate_config:
+            return None
+        #device_id, config = self._simulated_config.popitem()
+        self._logger.error("get_configure_request")
+        device_id, conf = self._simulate_config.popitem()
+        return PasdBusRequest(device_id, "configure", [conf])
+
+    def _get_telmodel_request(self) -> PasdBusRequest | None:
+        if not self._update_telmodel:
+            return None
+        self._update_telmodel = False
+        return PasdBusRequest(0, "update_telmodel", [])
+
 
     def _get_initialize_request(self) -> PasdBusRequest | None:
         if not self._initialize_requests:
@@ -319,6 +355,14 @@ class PasdBusRequestProvider:
             return request
 
         request = self._get_port_power_request()
+        if request is not None:
+            return request
+
+        request = self._get_configuration_request()
+        if request is not None:
+            return request
+
+        request = self._get_telmodel_request()
         if request is not None:
             return request
 
@@ -512,6 +556,14 @@ class PasdBusComponentManager(  # pylint: disable=too-many-public-methods
         :param: smartbox_id: id of the smartbox being addressed
         """
         self._poll_request_provider.desire_initialize(smartbox_id)
+
+    def simulate_configuration(self, conf):
+        # TODO iterate over the 
+        self._poll_request_provider.simulate_config(conf)
+
+    def update_telmodel(self):
+        # TODO iterate over the 
+        self._poll_request_provider.update_telmodel()
 
     @check_communicating
     def reset_fndh_port_breaker(

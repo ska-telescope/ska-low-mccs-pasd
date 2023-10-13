@@ -36,11 +36,16 @@ PasdBusSimulator class should be considered public.
 
 from __future__ import annotations
 
+import os
 import importlib.resources
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Callable, Dict, Final, Optional, Sequence
+import sys
+from kubernetes import client, config
+from kubernetes import config, dynamic
+from kubernetes.client import api_client
 
 import yaml
 
@@ -392,6 +397,7 @@ class PasdHardwareSimulator:
 
     def __init__(
         self: PasdHardwareSimulator,
+        config_path: str,
         ports: Sequence[_FndhPortSimulator | _SmartboxPortSimulator],
     ) -> None:
         """
@@ -404,6 +410,7 @@ class PasdHardwareSimulator:
         self._sensors_status: dict = {}
         self._status = self.DEFAULT_STATUS
         self._led_pattern = str(self.DEFAULT_LED_PATTERN)
+        self.config_path = config_path
 
     def _load_thresholds(
         self: PasdHardwareSimulator, file_path: str, device: str
@@ -518,6 +525,47 @@ class PasdHardwareSimulator:
             for port in self._ports:
                 port.enabled = False
 
+    def update_telmodel(self: PasdHardwareSimulator):
+        """
+        Update Telmodel with the current simulator configuration.
+        
+        Note: this will update a ConfigMap directly.
+        In the real case scenario with the real TelModel adn hardware.
+        The TelModel will be updated and MCCS will have a polling
+        device that will monitor for change events and update the 
+        ConfigMap upon change.
+        """
+        client = dynamic.DynamicClient(
+            api_client.ApiClient(configuration=config.load_incluster_config())
+        )
+
+        # fetching the configmap api
+        api = client.resources.get(api_version="v1", kind="ConfigMap")
+
+        with open(self.config_path, 'r') as file:
+            configuration_dict = yaml.safe_load(file)
+
+        configmap_manifest = {
+            "kind": "ConfigMap",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "pasd-configuration-sim",
+                "labels": {
+                    "findme": "yea",
+                },
+            },
+            "data": {
+                "pasd_configuration_sim.yaml": yaml.dump(configuration_dict),
+            },
+        }
+        try:
+            configmap_list = api.get(name="pasd-configuration-sim", namespace="ska-low-mccs", label_selector="findme=yea")
+            logger.error("WARNING: ConfigMap " + "pasd-configuration-sim" + " found in namespace " + "ska-low-mccs" + ". We will patch it.")
+            configmap_patched = api.patch(name="pasd-configuration-sim", namespace="ska-low-mccs", body=configmap_manifest)
+        except Exception:
+            logger.error("WARNING: ConfigMap " + "pasd-configuration-sim" + " not found in namespace " + "ska-low-mccs" + ". We will create it.")
+            configmap = api.create(body=configmap_manifest, namespace="ska-low-mccs")
+
     def configure(
         self: PasdHardwareSimulator,
         ports_connected: list[bool],
@@ -535,6 +583,29 @@ class PasdHardwareSimulator:
             raise ValueError("Configuration must match the number of ports.")
         for port, is_connected in zip(self._ports, ports_connected):
             port.connected = is_connected
+
+        # TODO: this is made up and not meaningful currently
+        # Do some complex mapping logic.
+        data = {
+            "antennas":{
+                "100": {
+                    "smartbox": '1',
+                    "smartbox_port": ports_connected,
+                }
+            }
+        }
+
+        # Update a yaml file with configuration.
+        try:
+            with open(self.config_path, 'x') as outfile:
+                yaml.dump(data, outfile)
+        except FileExistsError:
+            with open(self.config_path, 'r') as file:
+                configuration_dict = yaml.safe_load(file)
+            with open(self.config_path, 'w') as outfile:
+                # Now simply merge them.
+                merged_dict = {**configuration_dict, **data}
+                yaml.dump(merged_dict, outfile)
 
     @property
     def ports_connected(self: PasdHardwareSimulator) -> list[bool]:
@@ -838,6 +909,7 @@ class FndhSimulator(PasdHardwareSimulator):
 
     def __init__(
         self: FndhSimulator,
+        config_path: str, 
         instantiate_smartbox: Callable[[int], Optional[bool]] | None = None,
         delete_smartbox: Callable[[int], Optional[bool]] | None = None,
     ) -> None:
@@ -851,7 +923,7 @@ class FndhSimulator(PasdHardwareSimulator):
             _FndhPortSimulator(port_index + 1, instantiate_smartbox, delete_smartbox)
             for port_index in range(self.NUMBER_OF_PORTS)
         ]
-        super().__init__(ports)
+        super().__init__(config_path, ports)
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "fndh")
         self.psu48v_voltages = self.DEFAULT_PSU48V_VOLTAGES
@@ -919,7 +991,6 @@ class FndhSimulator(PasdHardwareSimulator):
         """
         return self.DEFAULT_FIRMWARE_VERSION
 
-
 class SmartboxSimulator(PasdHardwareSimulator):
     """A simulator for a PaSD smartbox."""
 
@@ -967,13 +1038,13 @@ class SmartboxSimulator(PasdHardwareSimulator):
     """Public attribute as _Sensor() data descriptor: *int*"""
     fem_heatsink_temperatures_thresholds = _Sensor()
 
-    def __init__(self: SmartboxSimulator) -> None:
+    def __init__(self: SmartboxSimulator, config_path) -> None:
         """Initialise a new instance."""
         ports: Sequence[_SmartboxPortSimulator] = [
             _SmartboxPortSimulator(port_index + 1)
             for port_index in range(self.NUMBER_OF_PORTS)
         ]
-        super().__init__(ports)
+        super().__init__(config_path, ports)
         self._sys_address = self.DEFAULT_SYS_ADDRESS
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
@@ -1108,7 +1179,6 @@ class SmartboxSimulator(PasdHardwareSimulator):
         """
         return self._ports[port_number - 1].reset_breaker()
 
-
 class PasdBusSimulator:
     """
     A stub class that provides similar functionality to a PaSD bus.
@@ -1143,17 +1213,17 @@ class PasdBusSimulator:
         logger.info(
             f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}."
         )
-
+        self.config_path = "/etc/active-configuration/current-configuration.yaml"
         self._smartbox_simulators: Dict[int, SmartboxSimulator] = {}
         self._smartboxes_ports_connected: list[list[bool]] = []
         self._smartbox_attached_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
 
         if smartboxes_depend_on_attached_ports:
             self._fndh_simulator = FndhSimulator(
-                self._instantiate_smartbox, self._delete_smartbox
+                self.config_path, self._instantiate_smartbox, self._delete_smartbox, 
             )
         else:
-            self._fndh_simulator = FndhSimulator()
+            self._fndh_simulator = FndhSimulator(self.config_path)
         logger.info(f"Initialised FNDH simulator for station {station_id}.")
 
         self._load_config(pasd_configuration_path)
@@ -1201,7 +1271,7 @@ class PasdBusSimulator:
         """
         try:
             smartbox_id = self._smartbox_attached_ports.index(port_number) + 1
-            self._smartbox_simulators[smartbox_id] = SmartboxSimulator()
+            self._smartbox_simulators[smartbox_id] = SmartboxSimulator(self.config_path)
             self._smartbox_simulators[smartbox_id].configure(
                 self._smartboxes_ports_connected[smartbox_id - 1]
             )
@@ -1243,6 +1313,9 @@ class PasdBusSimulator:
                     f"PaSD Bus simulator could not load configuration: {exception}."
                 )
                 raise
+
+        with open(self.config_path, 'w') as outfile:
+            yaml.dump(config, outfile)
 
         pasd_config = config["pasd"]
 

@@ -13,6 +13,7 @@ url = 'https://artefact.skao.int/repository/pypi-internal/simple'
 
 [tool.poetry.dependencies]
 python = "~3.10"
+kubernetes = "28.1.0"
 numpy = "1.25.2"
 pytango = "9.4.2"
 PyYAML = "^6.0"

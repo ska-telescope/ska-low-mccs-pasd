@@ -293,6 +293,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("TurnAllSmartboxPortsOn", MccsPasdBus._TurnAllSmartboxPortsOnCommand),
             ("TurnSmartboxPortOff", MccsPasdBus._TurnSmartboxPortOffCommand),
             ("TurnAllSmartboxPortsOff", MccsPasdBus._TurnAllSmartboxPortsOffCommand),
+            ("SimulateConfiguration", MccsPasdBus._SimulateConfigurationCommand),
+            ("UpdateTelModel", MccsPasdBus._UpdateTelModelCommand),
             (
                 "SetSmartboxLedPattern",
                 MccsPasdBus._SetSmartboxLedPatternCommand,
@@ -1047,6 +1049,89 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 ["TurnSmartboxPortOff succeeded: nothing to do"],
             )
         return ([ResultCode.FAILED], ["TurnSmartboxPortOff failed"])
+
+
+    class _SimulateConfigurationCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._SimulateConfigurationCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._SimulateConfigurationCommand,
+            argin: list[bool],
+        ) -> Optional[bool]:
+            """
+            Initialize an FNDH.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            ff = json.loads(argin)
+            return self._component_manager.simulate_configuration(ff)
+
+    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
+    def SimulateConfiguration(self: MccsPasdBus, argin) -> DevVarLongStringArrayType:
+        """
+        Initialize an FNDH.
+
+        :return: A tuple containing a result code and a human-readable status message.
+        """
+        handler = self.get_command_object("SimulateConfiguration")
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], ["SimulateConfiguration succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["SimulateConfiguration succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["SimulateConfiguration failed"])
+
+
+    class _UpdateTelModelCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._UpdateTelModelCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._UpdateTelModelCommand,
+        ) -> Optional[bool]:
+            """
+            Initialize an FNDH.
+
+            :return: whether successful, or None if there was nothing to
+                do.
+            """
+            return self._component_manager.update_telmodel()
+
+    @command(dtype_out="DevVarLongStringArray")
+    def UpdateTelModel(self: MccsPasdBus) -> DevVarLongStringArrayType:
+        """
+        Initialize an FNDH.
+
+        :return: A tuple containing a result code and a human-readable status message.
+        """
+        handler = self.get_command_object("UpdateTelModel")
+        success = handler()
+        if success:
+            return ([ResultCode.OK], ["UpdateTelModel succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["UpdateTelModel succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["UpdateTelModel failed"])
+
 
     class _TurnAllSmartboxPortsOffCommand(FastCommand):
         SCHEMA: Final = json.loads(
