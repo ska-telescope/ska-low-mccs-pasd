@@ -40,6 +40,7 @@ import importlib.resources
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
+import traceback
 from typing import Callable, Dict, Final, Optional, Sequence
 
 import yaml
@@ -397,7 +398,7 @@ class PasdHardwareSimulator:
 
     # TODO: Change to enum int values when Modbus server is used
     DEFAULT_LED_PATTERN: Final = LEDStatusMap.OFF
-    DEFAULT_STATUS: Final = FndhStatusMap.UNINITIALISED
+    DEFAULT_STATUS = FndhStatusMap.UNINITIALISED
     DEFAULT_UPTIME: Final = 0
     DEFAULT_FLAGS: Final = FNDHAlarmFlags.NONE
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
@@ -663,7 +664,6 @@ class PasdHardwareSimulator:
             False: "OFF",
             None: "NONE",
         }
-        print("Reading port forcings from simulator : value ")
         return [forcing_map[port.forcing] for port in self._ports]
 
     def turn_port_on(
@@ -784,7 +784,7 @@ class PasdHardwareSimulator:
         return None
 
     @property
-    def led_pattern(self: PasdHardwareSimulator) -> str:
+    def led_pattern(self: PasdHardwareSimulator) -> LEDStatusMap | str:
         """
         Return the LED pattern name.
 
@@ -1033,6 +1033,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
     CPU_ID: Final = [2, 4]
     CHIP_ID: Final = [8, 7, 6, 5, 4, 3, 2, 1]
 
+    DEFAULT_STATUS = SmartBoxStatusMap.UNINITIALISED
     DEFAULT_SYS_ADDRESS: Final = 1
     DEFAULT_FIRMWARE_VERSION: Final = 258
     # Address

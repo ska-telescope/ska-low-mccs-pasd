@@ -16,6 +16,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
     FndhSimulator,
     SmartboxSimulator,
 )
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
 
 
 @pytest.fixture(name="fndh_config")
@@ -87,15 +88,16 @@ class TestPasdBusSimulator:
         :param fndh_simulator: the FNDH simulator under test
         :param smartbox_simulators: list of smartbox simulators under test
         """
-        fndh_uptime = fndh_simulator.uptime
+        fndh_uptime = PasdConversionUtility.convert_uptime(fndh_simulator.uptime)[0]
         assert fndh_uptime > 0
         previous_smartbox_uptime = 0
         for smartbox_simulator in list(smartbox_simulators.values()):
-            assert smartbox_simulator.uptime > 0
-            assert fndh_uptime > smartbox_simulator.uptime
+            smartbox_uptime = PasdConversionUtility.convert_uptime(smartbox_simulator.uptime)[0]
+            assert smartbox_uptime > 0
+            assert fndh_uptime > smartbox_uptime
             if previous_smartbox_uptime != 0:
-                assert smartbox_simulator.uptime < previous_smartbox_uptime
-            previous_smartbox_uptime = smartbox_simulator.uptime
+                assert smartbox_uptime < previous_smartbox_uptime
+            previous_smartbox_uptime = smartbox_uptime
 
 
 class TestFndhSimulator:
@@ -321,7 +323,7 @@ class TestFndhSimulator:
 
         :param fndh_simulator: the FNDH simulator under test
         """
-        assert fndh_simulator.led_pattern == "OFF"
+        assert fndh_simulator.led_pattern.name == "OFF"
         assert fndh_simulator.set_led_pattern("SERVICE")
         assert fndh_simulator.led_pattern == "SERVICE"
 
@@ -734,7 +736,7 @@ class TestSmartboxSimulator:
 
         :param smartbox_simulator: the smartbox simulator under test.
         """
-        assert smartbox_simulator.led_pattern == "OFF"
+        assert smartbox_simulator.led_pattern.name == "OFF"
         assert smartbox_simulator.set_led_pattern("SERVICE")
         assert smartbox_simulator.led_pattern == "SERVICE"
         assert smartbox_simulator.set_led_pattern("SERVICE") is None

@@ -57,12 +57,14 @@ class PasdBusModbusApi:
         self.responder_ids = list(range(len(simulators)))
         self._register_map = PasdBusRegisterMap()
 
-    def _convert_value(self, value: Any, conversion_function: Callable) -> list[int]:
-        if isinstance(value, list):
+    def _convert_value(self, value: Any, attribute: PasdBusAttribute) -> list[int]:
+        if isinstance(attribute, PasdBusPortAttribute):
+            return attribute.convert_write_value([value]) 
+        elif isinstance(value, list):
             try:
                 return [(v + 65536) & 0xFFFF if v < 0 else v for v in value]
             except TypeError as e:
-                return conversion_function(value, inverse=True)
+                return attribute.convert_write_value(value)
         elif isinstance(value, int):
             if value < 0:
                 value = (value + 65536) & 0xFFFF
@@ -71,9 +73,9 @@ class PasdBusModbusApi:
             try:
                 return int(value)
             except ValueError as e:
-                return conversion_function([value], inverse=True)
+                return attribute.convert_write_value([value])
         else:
-            return conversion_function([value], inverse=True)
+            return attribute.convert_write_value([value]) 
 
     def _handle_read_attributes(
         self, device_id: int, names: dict[str, PasdBusAttribute]
@@ -97,8 +99,7 @@ class PasdBusModbusApi:
             except AttributeError:
                 # TODO
                 logger.error(f"Attribute not found: {name}")
-            value = self._convert_value(unconverted_value, attr._conversion_function)
-            print(f"Converted {unconverted_value} to {value}")
+            value = self._convert_value(unconverted_value, attr)
             if isinstance(value, list):
                 if isinstance(value[0], list):
                     value = value[0]
@@ -118,8 +119,7 @@ class PasdBusModbusApi:
         raise NotImplementedError
 
     def _handle_no_match(self, request: dict) -> bytes:
-        # TODO
-        raise NotImplementedError
+        return ExceptionResponse(function_code=1)
 
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
         # TODO (temporary placeholder code here only)
@@ -246,7 +246,6 @@ class PasdBusModbusApiClient:
         reply = self._client.read_holding_registers(
             attributes[keys[0]].address, count, modbus_address
         )
-        print(f"Got register values {reply.registers} for keys {keys}")
 
         match reply:
             case ReadHoldingRegistersResponse():
@@ -273,7 +272,6 @@ class PasdBusModbusApiClient:
                             register_index : register_index + current_attribute.count
                         ]
                     )
-                    print(f"Converting values for {key} conv vals {converted_values}")
                     results[key] = (
                         converted_values[0]
                         if len(converted_values) == 1

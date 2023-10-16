@@ -188,7 +188,6 @@ class PasdConversionUtility:
         :return: the value(s) unchanged
         """
         if inverse:
-            print(f"I'm inversting {values}")
             return [round(value * 100) for value in values]
         return values
 
@@ -359,14 +358,12 @@ class PasdConversionUtility:
         :return: string firmware version
         """
         if inverse:
-            print(value_list)
             return [int(value_list[0])]
-        print(value_list)
         return [str(value_list[0])]
 
     @classmethod
     def convert_fndh_status(
-        cls, value_list: list[int | FndhStatusMap], inverse: bool = False
+        cls, value_list: list[int | FndhStatusMap | str], inverse: bool = False
     ) -> list[str, int]:
         """
         Convert the raw register value to a string status.
@@ -380,7 +377,7 @@ class PasdConversionUtility:
         """
         try:
             if inverse:
-                return [FndhStatusMap[v].value for v in value_list]
+                return [FndhStatusMap[v].value if isinstance(v, str) else v.value for v in value_list]
             return [FndhStatusMap(value_list[0]).name]
         except ValueError:
             logger.error(f"Invalid FNDH status value received: {value_list[0]}")
@@ -388,7 +385,7 @@ class PasdConversionUtility:
 
     @classmethod
     def convert_smartbox_status(
-        cls, value_list: list[int], inverse: bool = False
+        cls, value_list: list[int | SmartBoxStatusMap | str], inverse: bool = False
     ) -> list[str]:
         """
         Convert the raw register value to a string status.
@@ -402,7 +399,7 @@ class PasdConversionUtility:
         """
         try:
             if inverse:
-                return [SmartBoxStatusMap[v].value for v in value_list]
+                return [SmartBoxStatusMap[v].value if isinstance(v, str) else v.value for v in value_list]
             return [SmartBoxStatusMap(value_list[0]).name]
         except ValueError:
             logger.error(f"Invalid Smartbox status value received: {value_list[0]}")
