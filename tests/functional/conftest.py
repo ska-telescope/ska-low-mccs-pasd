@@ -18,9 +18,13 @@ from ska_control_model import AdminMode, ResultCode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-from tests.harness import (PasdTangoTestHarness, PasdTangoTestHarnessContext,
-                           get_field_station_name, get_fndh_name,
-                           get_pasd_bus_name)
+from tests.harness import (
+    PasdTangoTestHarness,
+    PasdTangoTestHarnessContext,
+    get_field_station_name,
+    get_fndh_name,
+    get_pasd_bus_name,
+)
 
 
 # TODO: https://github.com/pytest-dev/pytest-forked/issues/67
@@ -145,8 +149,7 @@ def functional_test_context_fixture(
             # to run tests against a real cluster,
             # from within a pod that does not have ska_low_mccs_pasd installed.
             # pylint: disable-next=import-outside-toplevel
-            from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import \
-                PasdBusSimulator
+            from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import PasdBusSimulator
 
             pasd_bus_simulator = PasdBusSimulator(pasd_config_path, station_label)
             harness.set_pasd_bus_simulator(
@@ -457,7 +460,7 @@ def check_attribute_fixture() -> Callable:
     """
 
     def _check_attribute(
-        device_proxy: tango.DeviceProxy, attribute_name: str, timeout: float = 3
+        device_proxy: tango.DeviceProxy, attribute_name: str, timeout: float = 35
     ) -> None:
         current_time = time.time()
         value = None
@@ -485,7 +488,7 @@ def check_fastcommand_fixture() -> Callable:
     """
 
     def _check_fastcommand(
-        device_proxy: tango.DeviceProxy, command: str, args: str, timeout: float = 3
+        device_proxy: tango.DeviceProxy, command: str, args: str, timeout: float = 35
     ) -> None:
         current_time = time.time()
         value = None

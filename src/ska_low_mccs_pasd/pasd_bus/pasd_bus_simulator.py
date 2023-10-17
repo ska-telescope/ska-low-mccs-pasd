@@ -38,9 +38,9 @@ from __future__ import annotations
 
 import importlib.resources
 import logging
+import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
-import traceback
 from typing import Callable, Dict, Final, Optional, Sequence
 
 import yaml
@@ -241,6 +241,16 @@ class _PasdPortSimulator(ABC):
         """
         return self._desired_on_when_online
 
+    @desired_power_when_online.setter
+    def desired_power_when_online(self: _PasdPortSimulator, val: bool) -> None:
+        """
+        Return the desired power mode of the port when the control system is online.
+
+        :return: the desired power mode of the port when the control
+            system is online.
+        """
+        self._desired_on_when_online = val
+
     @property
     def desired_power_when_offline(self: _PasdPortSimulator) -> bool:
         """
@@ -251,6 +261,16 @@ class _PasdPortSimulator(ABC):
         """
         return self._desired_on_when_offline
 
+    @desired_power_when_offline.setter
+    def desired_power_when_offline(self: _PasdPortSimulator, val: bool) -> None:
+        """
+        Return the desired power mode of the port when the control system is offline.
+
+        :return: the desired power mode of the port when the control
+            system is offline.
+        """
+        self._desired_on_when_offline = val
+
     @property
     def power_sensed(self: _PasdPortSimulator) -> bool:
         """
@@ -259,6 +279,15 @@ class _PasdPortSimulator(ABC):
         :return: whether power is sensed on the port.
         """
         return self._on
+
+    @power_sensed.setter
+    def power_sensed(self: _PasdPortSimulator, val: bool) -> None:
+        """
+        Return whether power is sensed on the port.
+
+        :return: whether power is sensed on the port.
+        """
+        self._on = val
 
 
 class _FndhPortSimulator(_PasdPortSimulator):
@@ -666,6 +695,24 @@ class PasdHardwareSimulator:
         }
         return [forcing_map[port.forcing] for port in self._ports]
 
+    @port_forcings.setter
+    def port_forcings(self: PasdHardwareSimulator, forcing: tuple[str, int]) -> None:
+        """
+        Return the forcing statuses of all ports.
+
+        :return: the forcing statuses of each port.
+            "ON" means the port has been forced on.
+            "OFF" means it has been forced off.
+            "NONE" means it has not been forced.
+        """
+        forcing_map = {
+            "ON": True,
+            "OFF": False,
+            "NONE": None,
+        }
+        print(f"forcings {forcing}")
+        self._ports[forcing[1]].simulate_forcing(forcing_map[forcing[0]])
+
     def turn_port_on(
         self: PasdHardwareSimulator,
         port_number: int,
@@ -712,6 +759,23 @@ class PasdHardwareSimulator:
         """
         return [port.desired_power_when_online for port in self._ports]
 
+    @ports_desired_power_when_online.setter
+    def ports_desired_power_when_online(
+        self: PasdHardwareSimulator,
+        desire: tuple[bool, int],
+    ) -> None:
+        """
+        Return the desired power of each port when the device is online.
+
+        That is, for each port, should it be powered if the control
+        system is online?
+
+        :return: the desired power of each port when the device is
+            online
+        """
+        print("Here here here !!!!")
+        self._ports[desire[1]].desired_power_when_online = desire[0]
+
     @property
     def ports_desired_power_when_offline(
         self: PasdHardwareSimulator,
@@ -727,6 +791,22 @@ class PasdHardwareSimulator:
         """
         return [port.desired_power_when_offline for port in self._ports]
 
+    @ports_desired_power_when_offline.setter
+    def ports_desired_power_when_offline(
+        self: PasdHardwareSimulator,
+        desire: tuple[bool, int],
+    ) -> None:
+        """
+        Return the desired power of each port when the device is offline.
+
+        That is, for each port, should it be powered if the control
+        system is offline?
+
+        :return: the desired power of each port when the device is
+            offline
+        """
+        self._ports[desire[1]].desired_power_when_offline = desire[0]
+
     @property
     def ports_power_sensed(self: PasdHardwareSimulator) -> list[bool]:
         """
@@ -735,6 +815,17 @@ class PasdHardwareSimulator:
         :return: the actual sensed power state of each port.
         """
         return [port.power_sensed for port in self._ports]
+
+    @ports_power_sensed.setter
+    def ports_power_sensed(
+        self: PasdHardwareSimulator, power_sensed: tuple[bool, int]
+    ) -> None:
+        """
+        Return the actual sensed power state of each port.
+
+        :return: the actual sensed power state of each port.
+        """
+        self._ports[power_sensed[1]].power_sensed = power_sensed[0]
 
     @property
     def uptime(self: PasdHardwareSimulator) -> list[int]:
@@ -764,6 +855,10 @@ class PasdHardwareSimulator:
         """
         return self._status
 
+    @status.setter
+    def status(self: PasdHardwareSimulator, status: int) -> None:
+        self._status = status
+
     def initialize(self: PasdHardwareSimulator) -> bool | None:
         """
         Initialize a FNDH/smartbox.
@@ -790,7 +885,13 @@ class PasdHardwareSimulator:
 
         :return: the name of the LED pattern.
         """
+        print(f"Getting led_pattern {self._led_pattern}")
         return self._led_pattern
+
+    @led_pattern.setter
+    def led_pattern(self: PasdHardwareSimulator, pattern: str) -> None:
+        print("In the led pattern setter")
+        self.set_led_pattern(pattern)
 
     def set_led_pattern(
         self: PasdHardwareSimulator,
@@ -804,6 +905,7 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do.
         """
+        print(f"Setting led pattern to {led_pattern}")
         if self._led_pattern == led_pattern:
             return None
         self._led_pattern = led_pattern
@@ -1220,6 +1322,18 @@ class SmartboxSimulator(PasdHardwareSimulator):
         :return: whether each port has had its breaker tripped
         """
         return [port.breaker_tripped for port in self._ports]
+
+    @port_breakers_tripped.setter
+    def port_breakers_tripped(self: SmartboxSimulator, trip: tuple[bool, int]) -> None:
+        """
+        Return whether each port has had its breaker tripped.
+
+        :return: whether each port has had its breaker tripped
+        """
+        if trip[0]:
+            self.simulate_port_breaker_trip(trip[1] + 1)
+        else:
+            self.reset_port_breaker(trip[1] + 1)
 
     def simulate_port_breaker_trip(
         self: SmartboxSimulator,

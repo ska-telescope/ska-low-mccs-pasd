@@ -17,8 +17,11 @@ import unittest.mock
 import pytest
 import yaml
 
-from ska_low_mccs_pasd.pasd_bus import (FndhSimulator, PasdBusSimulator,
-                                        SmartboxSimulator)
+from ska_low_mccs_pasd.pasd_bus import (
+    FndhSimulator,
+    PasdBusSimulator,
+    SmartboxSimulator,
+)
 
 
 @pytest.fixture(name="station_label")
@@ -138,12 +141,20 @@ def mock_fndh_simulator_fixture(
         "uptime",
         "status",
     ]:
+
+        def side_effect(sim, prop, val=None):
+            if val:
+                setattr(sim, prop, val)
+            else:
+                return getattr(sim, prop)
+
+        side_effect_partial = functools.partial(
+            side_effect, fndh_simulator, property_name
+        )
         setattr(
             type(mock_simulator),
             property_name,
-            unittest.mock.PropertyMock(
-                side_effect=functools.partial(getattr, fndh_simulator, property_name)
-            ),
+            unittest.mock.PropertyMock(side_effect=side_effect_partial),
         )
 
     return mock_simulator
@@ -255,14 +266,21 @@ def mock_smartbox_simulators_fixture(
             "ports_power_sensed",
             "ports_current_draw",
         ]:
+
+            def side_effect(sim, prop, val=None):
+                print(f"Side effecting {sim} {prop} {val}")
+                if val:
+                    setattr(sim, prop, val)
+                else:
+                    return getattr(sim, prop)
+
+            side_effect_partial = functools.partial(
+                side_effect, smartbox_simulator, property_name
+            )
             setattr(
                 type(mock_simulator),
                 property_name,
-                unittest.mock.PropertyMock(
-                    side_effect=functools.partial(
-                        getattr, smartbox_simulator, property_name
-                    )
-                ),
+                unittest.mock.PropertyMock(side_effect=side_effect_partial),
             )
 
         mock_simulators[smartbox_id] = mock_simulator

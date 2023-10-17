@@ -14,11 +14,17 @@ from unittest import mock
 import pytest
 from pymodbus.factory import ClientDecoder
 from pymodbus.framer.ascii_framer import ModbusAsciiFramer
-from pymodbus.register_read_message import (ReadHoldingRegistersRequest,
-                                            ReadHoldingRegistersResponse)
+from pymodbus.register_read_message import (
+    ReadHoldingRegistersRequest,
+    ReadHoldingRegistersResponse,
+)
 
-from ska_low_mccs_pasd.pasd_bus import (FndhSimulator, PasdBusModbusApi,
-                                        PasdBusSimulator, SmartboxSimulator)
+from ska_low_mccs_pasd.pasd_bus import (
+    FndhSimulator,
+    PasdBusModbusApi,
+    PasdBusSimulator,
+    SmartboxSimulator,
+)
 
 
 class TestPasdBusModbusApi:
@@ -124,7 +130,7 @@ class TestPasdBusModbusApi:
             against.
         """
         framer = ModbusAsciiFramer(None)
-        request = ReadHoldingRegistersRequest(address=23, slave=0, count=1)
+        request = ReadHoldingRegistersRequest(address=22, slave=0, count=1)
         request_bytes = framer.buildPacket(request)
         response_bytes = api(request_bytes)
         reply_handled = False
