@@ -135,6 +135,18 @@ def fndh_device_fixture(
             4,
             [True, True],
         ),
+        (
+            "PowerOnAllPorts",
+            "power_on_all_ports",
+            None,
+            [True, True],
+        ),
+        (
+            "PowerOffAllPorts",
+            "power_off_all_ports",
+            None,
+            [True, True],
+        ),
     ],
 )
 def test_command(  # pylint: disable=too-many-arguments

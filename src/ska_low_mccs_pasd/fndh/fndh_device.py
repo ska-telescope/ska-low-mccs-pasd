@@ -203,6 +203,8 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         for command_name, method_name in [
             ("PowerOnPort", "power_on_port"),
             ("PowerOffPort", "power_off_port"),
+            ("PowerOnAllPorts", "power_on_all_ports"),
+            ("PowerOffAllPorts", "power_off_all_ports"),
         ]:
             self.register_command_object(
                 command_name,
@@ -409,6 +411,42 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         """
         handler = self.get_command_object("PowerOffPort")
         result_code, message = handler(argin)
+        return ([result_code], [message])
+
+    @command(dtype_out="DevVarLongStringArray")
+    def PowerOnAllPorts(self: MccsFNDH) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Power down a port.
+
+        This may or may not have a Antenna attached.
+
+        :param argin: the port to power down.
+
+        :return: A tuple containing a return code and a string message
+            indicating status. The message is for information purposes
+            only.
+        """
+        handler = self.get_command_object("PowerOnAllPorts")
+        result_code, message = handler()
+        return ([result_code], [message])
+
+    @command(dtype_out="DevVarLongStringArray")
+    def PowerOffAllPorts(
+        self: MccsFNDH,
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Power down a port.
+
+        This may or may not have a Antenna attached.
+
+        :param argin: the port to power down.
+
+        :return: A tuple containing a return code and a string message
+            indicating status. The message is for information purposes
+            only.
+        """
+        handler = self.get_command_object("PowerOffAllPorts")
+        result_code, message = handler()
         return ([result_code], [message])
 
     # -----------

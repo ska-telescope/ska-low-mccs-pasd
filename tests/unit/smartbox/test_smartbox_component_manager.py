@@ -8,6 +8,7 @@
 """This module contains the tests of the SmartBox component manager."""
 from __future__ import annotations
 
+import json
 import logging
 import unittest.mock
 from typing import Any, Iterator
@@ -22,6 +23,8 @@ from tests.harness import (
     PasdTangoTestHarnessContext,
     get_pasd_bus_name,
 )
+
+SMARTBOX_PORTS = 12
 
 
 @pytest.fixture(name="test_context")
@@ -242,6 +245,96 @@ class TestSmartBoxComponentManager:
             )
             == expected_manager_result
         )
+        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
+        mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
+        mock_callbacks["task"].assert_call(
+            status=command_tracked_response[0],
+            result=command_tracked_response[1].format(fndh_port=fndh_port),
+        )
+
+    @pytest.mark.parametrize(
+        (
+            "component_manager_command",
+            "masked_ports",
+            "expected_manager_result",
+            "command_tracked_response",
+        ),
+        [
+            (
+                "power_on_all_ports",
+                [1, 4, 5],
+                (TaskStatus.QUEUED, "Task queued"),
+                (
+                    TaskStatus.COMPLETED,
+                    "Power on all ports success",
+                ),
+            ),
+            (
+                "power_off_all_ports",
+                [1, 4, 5],
+                (TaskStatus.QUEUED, "Task queued"),
+                (
+                    TaskStatus.COMPLETED,
+                    "Power off all ports success",
+                ),
+            ),
+        ],
+    )
+    def test_all_port_commands(  # pylint: disable=too-many-arguments
+        self: TestSmartBoxComponentManager,
+        smartbox_component_manager: SmartBoxComponentManager,
+        component_manager_command: Any,
+        masked_ports: list,
+        expected_manager_result: Any,
+        command_tracked_response: Any,
+        fndh_port: int,
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test the SmartBox On/Off Commands.
+
+        :param smartbox_component_manager: A SmartBox component manager
+            with communication established.
+        :param component_manager_command: command to issue to the component manager
+        :param expected_manager_result: expected response from the call
+        :param command_tracked_response: The result of the command.
+        :param fndh_port: the fndh port the smartbox is attached to.
+        :param mock_callbacks: the mock_callbacks.
+        """
+        smartbox_component_manager.start_communicating()
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.ESTABLISHED
+        )
+
+        assert (
+            getattr(smartbox_component_manager, component_manager_command)(
+                masked_ports=masked_ports, task_callback=mock_callbacks["task"]
+            )
+            == expected_manager_result
+        )
+
+        if component_manager_command == "power_on_all_ports":
+            desired_port_powers = [True] * SMARTBOX_PORTS
+            for masked_port in masked_ports:
+                desired_port_powers[masked_port] = None
+        else:
+            desired_port_powers = [False] * SMARTBOX_PORTS
+            for masked_port in masked_ports:
+                desired_port_powers[masked_port] = None
+
+        json_argument = json.dumps(
+            {
+                "port_powers": desired_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
+
+        pasd_bus_proxy = smartbox_component_manager._pasd_bus_proxy._proxy
+        pasd_bus_proxy.SetSmartboxPortPowers.assert_next_call(json_argument)
+
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(

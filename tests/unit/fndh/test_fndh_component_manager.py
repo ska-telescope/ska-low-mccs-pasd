@@ -193,6 +193,18 @@ class TestFndhComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 f"Power off port '{3} success'",
             ),
+            (
+                "power_on_all_ports",
+                None,
+                (TaskStatus.QUEUED, "Task queued"),
+                "Power on all ports success",
+            ),
+            (
+                "power_off_all_ports",
+                None,
+                (TaskStatus.QUEUED, "Task queued"),
+                "Power off all ports success",
+            ),
         ],
     )
     def test_command(  # pylint: disable=too-many-arguments
@@ -223,13 +235,21 @@ class TestFndhComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        assert (
-            getattr(fndh_component_manager, component_manager_command)(
-                component_manager_command_argument,
-                mock_callbacks["task"],
+        if component_manager_command_argument:
+            assert (
+                getattr(fndh_component_manager, component_manager_command)(
+                    component_manager_command_argument,
+                    mock_callbacks["task"],
+                )
+                == expected_manager_result
             )
-            == expected_manager_result
-        )
+        else:
+            assert (
+                getattr(fndh_component_manager, component_manager_command)(
+                    mock_callbacks["task"],
+                )
+                == expected_manager_result
+            )
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(

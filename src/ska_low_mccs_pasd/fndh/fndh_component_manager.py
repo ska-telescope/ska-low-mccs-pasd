@@ -332,3 +332,127 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 result=f"Power on port '{port_number} success'",
             )
         return result_code, unique_id
+
+    @check_communicating
+    def power_on_all_ports(
+        self: FndhComponentManager,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Turn a port on.
+
+        This port may or may not have a smartbox attached.
+
+        :param port_number: port we want to power on.
+        :param task_callback: callback to be called when the status of
+            the command changes
+
+        :return: the task status and a human-readable status message
+        """
+        return self.submit_task(
+            self._power_on_all_ports,  # type: ignore[arg-type]
+            args=[],
+            task_callback=task_callback,
+        )
+
+    def _power_on_all_ports(
+        self: FndhComponentManager,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[ResultCode, str]:
+        if task_callback:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+
+        desired_port_powers: list[bool] = [True] * NUMBER_OF_FNDH_PORTS
+        json_argument = json.dumps(
+            {
+                "port_powers": desired_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
+
+        try:
+            assert self._pasd_bus_proxy._proxy
+            (
+                [result_code],
+                [unique_id],
+            ) = self._pasd_bus_proxy._proxy.SetFndhPortPowers(json_argument)
+
+        except Exception as ex:  # pylint: disable=broad-except
+            self.logger.error(f"error {repr(ex)}")
+            if task_callback:
+                task_callback(
+                    status=TaskStatus.FAILED,
+                    result="Power on all ports failed",
+                )
+
+            return ResultCode.FAILED, "0"
+
+        if task_callback:
+            task_callback(
+                status=TaskStatus.COMPLETED,
+                result="Power on all ports success",
+            )
+        return result_code, unique_id
+
+    @check_communicating
+    def power_off_all_ports(
+        self: FndhComponentManager,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Turn a port on.
+
+        This port may or may not have a smartbox attached.
+
+        :param port_number: port we want to power on.
+        :param task_callback: callback to be called when the status of
+            the command changes
+
+        :return: the task status and a human-readable status message
+        """
+        return self.submit_task(
+            self._power_off_all_ports,  # type: ignore[arg-type]
+            args=[],
+            task_callback=task_callback,
+        )
+
+    def _power_off_all_ports(
+        self: FndhComponentManager,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[ResultCode, str]:
+        if task_callback:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+
+        desired_port_powers: list[bool] = [False] * NUMBER_OF_FNDH_PORTS
+        json_argument = json.dumps(
+            {
+                "port_powers": desired_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
+
+        try:
+            assert self._pasd_bus_proxy._proxy
+            (
+                [result_code],
+                [unique_id],
+            ) = self._pasd_bus_proxy._proxy.SetFndhPortPowers(json_argument)
+
+        except Exception as ex:  # pylint: disable=broad-except
+            self.logger.error(f"error {repr(ex)}")
+            if task_callback:
+                task_callback(
+                    status=TaskStatus.FAILED,
+                    result="Power off all ports failed",
+                )
+
+            return ResultCode.FAILED, "0"
+
+        if task_callback:
+            task_callback(
+                status=TaskStatus.COMPLETED,
+                result="Power off all ports success",
+            )
+        return result_code, unique_id

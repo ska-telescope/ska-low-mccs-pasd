@@ -104,6 +104,14 @@ def test_device_transitions_to_power_state_of_fndh_port(
             "PowerOffPort",
             4,
         ),
+        (
+            "PowerOnAllPorts",
+            None,
+        ),
+        (
+            "PowerOffAllPorts",
+            None,
+        ),
     ],
 )
 def test_command_queued(

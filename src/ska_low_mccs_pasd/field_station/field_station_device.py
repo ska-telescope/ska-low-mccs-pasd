@@ -23,6 +23,9 @@ __all__ = ["MccsFieldStation", "main"]
 
 DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
 
+SMARTBOX_NUMBER = 24
+SMARTBOX_PORTS = 12
+
 
 class MccsFieldStation(SKABaseDevice):
     """
@@ -48,6 +51,18 @@ class MccsFieldStation(SKABaseDevice):
 
     def init_device(self: MccsFieldStation) -> None:
         """Initialise the device."""
+        self._antenna_mask = [False for _ in range(256 + 1)]
+        self._antenna_mapping = {
+            smartbox_no * SMARTBOX_PORTS
+            + smartbox_port
+            + 1: [smartbox_no + 1, smartbox_port + 1]
+            for smartbox_no in range(0, SMARTBOX_NUMBER)
+            for smartbox_port in range(0, SMARTBOX_PORTS)
+            if smartbox_no * SMARTBOX_PORTS + smartbox_port < 256
+        }
+        self._smartbox_mapping = {
+            port + 1: port + 1 for port in range(0, SMARTBOX_NUMBER)
+        }
         super().init_device()
 
         message = (
@@ -69,6 +84,9 @@ class MccsFieldStation(SKABaseDevice):
             self.logger,
             self.FndhFQDN,
             self.SmartBoxFQDNs,
+            self._antenna_mask,
+            self._antenna_mapping,
+            self._smartbox_mapping,
             self._communication_state_callback,
             self._component_state_callback,
         )
@@ -88,6 +106,7 @@ class MccsFieldStation(SKABaseDevice):
 
         for command_name, method_name, schema in [
             ("PowerOnAntenna", "turn_on_antenna", None),
+            ("PowerOffAntenna", "turn_off_antenna", None),
             ("Configure", "configure", configure_schema),
         ]:
             validator = (
@@ -115,7 +134,7 @@ class MccsFieldStation(SKABaseDevice):
     def _communication_state_callback(
         self: MccsFieldStation,
         communication_state: CommunicationStatus,
-        device_name: str,
+        device_name: Optional[str] = None,
     ) -> None:
         super()._communication_state_changed(communication_state)
 
@@ -156,6 +175,40 @@ class MccsFieldStation(SKABaseDevice):
         """
         handler = self.get_command_object("Configure")
         (return_code, message) = handler(argin)
+        return ([return_code], [message])
+
+    @command(dtype_in="DevShort", dtype_out="DevVarLongStringArray")
+    def PowerOnAntenna(
+        self: MccsFieldStation, antenna_no: int
+    ) -> DevVarLongStringArrayType:
+        """
+        Turn on an antenna.
+
+        :param argin: the configuration for the device in stringified json format
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("PowerOnAntenna")
+        (return_code, message) = handler(antenna_no)
+        return ([return_code], [message])
+
+    @command(dtype_in="DevShort", dtype_out="DevVarLongStringArray")
+    def PowerOffAntenna(
+        self: MccsFieldStation, antenna_no: int
+    ) -> DevVarLongStringArrayType:
+        """
+        Turn off an antenna.
+
+        :param argin: the configuration for the device in stringified json format
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("PowerOffAntenna")
+        (return_code, message) = handler(antenna_no)
         return ([return_code], [message])
 
 
