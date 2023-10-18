@@ -14,7 +14,7 @@ import json
 import logging
 import sys
 import traceback
-from typing import Any, Final, Optional, cast
+from typing import Any, Final, List, Optional, cast
 
 import tango.server
 from ska_control_model import (
@@ -574,6 +574,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self._communication_state_callback,
             self._component_state_callback,
             self._pasd_device_state_callback,
+            self._get_unpowered_smartboxes,
         )
 
     def init_command_objects(self: MccsPasdBus) -> None:
@@ -765,6 +766,24 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self._health_state = health
             self.push_change_event("healthState", health)
             self.push_archive_event("healthState", health)
+
+    def _get_unpowered_smartboxes(
+        self: MccsPasdBus,
+    ) -> List[int]:
+        """Return a list of unpowered Smartboxes.
+
+        :return: a list of device ids for Smartboxes which we know to be
+            unpowered.
+        """
+        if self._pasd_state["fndhPortsPowerSensed"] is not None:
+            return [
+                index + 1
+                for index, powered in enumerate(
+                    self._pasd_state["fndhPortsPowerSensed"]
+                )
+                if not powered
+            ]
+        return []
 
     # ----------
     # Attributes

@@ -180,6 +180,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         communication_state_callback: Callable[[CommunicationStatus], None],
         component_state_callback: Callable[..., None],
         pasd_device_state_callback: Callable[..., None],
+        get_unpowered_smartboxes: Callable[..., list[int]],
     ) -> None:
         """
         Initialise a new instance.
@@ -209,6 +210,9 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             the device number (0 for FNDH, otherwise the smartbox
             number), and keyword arguments representing the state
             changes.
+        :param get_unpowered_smartboxes: helper function to obtain a list
+            of unpowered smartboxes so that we don't poll devices
+            unnecessarily.
         """
         self._logger = logger
         self._logger.debug(
@@ -227,6 +231,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
         self._min_ticks = int(device_polling_rate / polling_rate)
         self._request_provider: PasdBusRequestProvider | None = None
+
+        self._get_unpowered_smartboxes = get_unpowered_smartboxes
 
         super().__init__(
             logger,
@@ -322,8 +328,17 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         is_on: bool  # for the type checker
 
         request_spec = self._request_provider.get_request()
+
+        # Omit polls for umpowered smartboxes
+        while (
+            request_spec is not None
+            and (device_id := request_spec[0]) in self._get_unpowered_smartboxes()
+        ):
+            request_spec = self._request_provider.get_request()
+
         if request_spec is None:
             return None
+
         match request_spec:
             case (device_id, "INITIALIZE", None):
                 request = PasdBusRequest(device_id, "initialize", None, [])

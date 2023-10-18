@@ -44,6 +44,7 @@ def mock_callbacks_fixture() -> MockCallableGroup:
         "communication_state",
         "component_state",
         "pasd_device_state_for_fndh",
+        "get_unpowered_smartboxes",
         *smartbox_callback_names,
         timeout=10.0,
     )
@@ -91,6 +92,7 @@ def pasd_bus_component_manager_fixture(
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
             _pasd_device_state_splitter,
+            mock_callbacks["get_unpowered_smartboxes"],
         )
         yield component_manager
 
@@ -398,11 +400,11 @@ class TestPasdBusComponentManager:
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
 
-        # FNDH reads comprise two initial reads, then a cycle of four.
-        # Let's wait for six calls before proceeding.
+        # FNDH reads comprise three initial reads, then a cycle of four.
+        # Let's wait for seven calls before proceeding.
         # These are fully unpacked in test_attribute_updates,
         # so there's no need for us to unpack them again
-        for _ in range(6):
+        for _ in range(7):
             mock_callbacks["pasd_device_state_for_fndh"].assert_against_call()
 
         pasd_bus_component_manager.initialize_fndh()

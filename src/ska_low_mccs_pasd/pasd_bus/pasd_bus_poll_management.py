@@ -15,6 +15,7 @@ from typing import Any, Callable, Final, Iterator, Sequence
 NUMBER_OF_FNDH_PORTS: Final = 28
 NUMBER_OF_SMARTBOXES: Final = 24
 NUMBER_OF_SMARTBOX_PORTS: Final = 12
+NUMBER_OF_FNDH_INITIAL_READS: Final = 2
 
 
 def fndh_read_request_iterator() -> Iterator[str]:
@@ -28,6 +29,7 @@ def fndh_read_request_iterator() -> Iterator[str]:
     :yields: the name of an attribute group to be read from the device.
     """
     yield "INFO"
+    yield "PORTS"
     yield "THRESHOLDS"
     while True:
         yield "STATUS"
@@ -244,6 +246,8 @@ class PasdBusRequestProvider:
             fndh_request_provider
         ] + smartbox_request_providers
 
+        self._fndh_initial_read_count = 0
+
     def desire_initialize(self, device_id: int) -> None:
         """
         Register a request to initialize a device.
@@ -334,6 +338,14 @@ class PasdBusRequestProvider:
         :return: a tuple consisting of the name of the communication
             and any arguments or extra information.
         """
+        if self._fndh_initial_read_count != NUMBER_OF_FNDH_INITIAL_READS:
+            # First read the FNDH status to get the Modbus map revision number
+            # and so we know which SmartBoxes are connected. This requires
+            # two reads.
+            read_request = self._device_request_providers[0].get_read()
+            self._fndh_initial_read_count += 1
+            return 0, read_request, None
+
         for device_id, tick in self._ticks.items():
             self._ticks[device_id] = tick + 1
 
