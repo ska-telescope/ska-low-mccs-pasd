@@ -27,6 +27,7 @@ from pymodbus.register_write_message import (
     WriteMultipleRegistersRequest,
     WriteMultipleRegistersResponse,
 )
+import numpy as np
 
 from .pasd_bus_register_map import (
     PasdBusAttribute,
@@ -133,12 +134,17 @@ class PasdBusModbusApi:
             try:
                 print("!" * 50)
                 print(f"Trying attribute {name} add {attr.address} count {attr.count}")
-                list_index = attr.address - starting_address
+                if attr.address < starting_address:
+                    list_index = 0
+                else:
+                    list_index = attr.address - starting_address
                 reg_vals = values[list_index : list_index + attr.count]
                 print(f"Starting reg vals {reg_vals} selected from {values}")
                 if isinstance(attr, PasdBusPortAttribute):
-                    print("modifying regs")
-                    reg_vals = (attr.convert_value(reg_vals)[0], list_index)
+                    port = starting_address - attr.address
+                    print(f"Port computed to be {port}")
+                    reg_vals = (attr.convert_value(reg_vals)[0], port)
+
                 print(
                     f"Have reg vals {reg_vals} will write to {name} on {self._simulators[device_id]}"
                 )
@@ -176,7 +182,6 @@ class PasdBusModbusApi:
                         address=message.address,
                         values=values,
                     )
-                    print("Created response")
                 case WriteMultipleRegistersRequest():
                     filtered_register_map = (
                         self._register_map.get_attributes_from_address_and_count(
@@ -330,6 +335,8 @@ class PasdBusModbusApiClient:
                             register_index : register_index + current_attribute.count
                         ]
                     )
+                    if isinstance(converted_values, np.ndarray):
+                        converted_values = list(converted_values)
                     results[key] = (
                         converted_values[0]
                         if len(converted_values) == 1
@@ -420,7 +427,7 @@ class PasdBusModbusApiClient:
         modbus_address = (
             self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
         )
-
+        print(f"Doing modbu command {request}")
         # Get a PasdBusCommand object for this command
         command = self._register_map.get_command(
             request["device_id"], request["execute"], request["arguments"]

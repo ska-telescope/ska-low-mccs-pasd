@@ -825,6 +825,7 @@ class PasdHardwareSimulator:
 
         :return: the actual sensed power state of each port.
         """
+        print(f"Setting port {power_sensed[1]} to {power_sensed[0]}")
         self._ports[power_sensed[1]].power_sensed = power_sensed[0]
 
     @property
@@ -1330,7 +1331,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
         :return: whether each port has had its breaker tripped
         """
-        if trip[0]:
+        if not trip[0]:
             self.simulate_port_breaker_trip(trip[1] + 1)
         else:
             self.reset_port_breaker(trip[1] + 1)

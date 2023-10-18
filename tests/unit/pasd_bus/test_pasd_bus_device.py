@@ -16,6 +16,7 @@ import time
 
 import pytest
 import tango
+import numpy as np
 from ska_control_model import AdminMode, HealthState
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -698,6 +699,9 @@ def test_set_smartbox_port_powers(
             "stay_on_when_offline": False,
         }
         pasd_bus_device.SetSmartboxPortPowers(json.dumps(json_arg))
+        time.sleep(5)
+        print(f"Expecting {expected_ports_power_sensed}")
+        print(f"Actually got {pasd_bus_device.smartbox1PortsPowerSensed}")
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}PortsPowerSensed", expected_ports_power_sensed
         )
@@ -763,7 +767,9 @@ def test_reset_smartbox_port_breaker(
             "port_number": connected_smartbox_port,
         }
     )
+    print("Reset breaker command sending")
     pasd_bus_device.ResetSmartboxPortBreaker(json_argument)
+    print("Reset breaker command sent")
     smartbox_port_breakers_tripped[connected_smartbox_port - 1] = False
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}PortBreakersTripped",

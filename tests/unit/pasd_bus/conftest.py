@@ -268,7 +268,6 @@ def mock_smartbox_simulators_fixture(
         ]:
 
             def side_effect(sim, prop, val=None):
-                print(f"Side effecting {sim} {prop} {val}")
                 if val:
                     setattr(sim, prop, val)
                 else:
