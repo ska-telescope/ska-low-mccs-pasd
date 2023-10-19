@@ -425,7 +425,6 @@ class PasdHardwareSimulator:
     which can be switched on and off, locally forced, etc.
     """
 
-    # TODO: Change to enum int values when Modbus server is used
     DEFAULT_LED_PATTERN: Final = LEDStatusMap.OFF
     DEFAULT_STATUS = FndhStatusMap.UNINITIALISED
     DEFAULT_UPTIME: Final = 0
@@ -710,7 +709,6 @@ class PasdHardwareSimulator:
             "OFF": False,
             "NONE": None,
         }
-        print(f"forcings {forcing}")
         self._ports[forcing[1]].simulate_forcing(forcing_map[forcing[0]])
 
     def turn_port_on(
@@ -773,8 +771,8 @@ class PasdHardwareSimulator:
         :return: the desired power of each port when the device is
             online
         """
-        print("Here here here !!!!")
         self._ports[desire[1]].desired_power_when_online = desire[0]
+        self._ports[desire[1]]._update_port_power()
 
     @property
     def ports_desired_power_when_offline(
@@ -806,6 +804,7 @@ class PasdHardwareSimulator:
             offline
         """
         self._ports[desire[1]].desired_power_when_offline = desire[0]
+        self._ports[desire[1]]._update_port_power()
 
     @property
     def ports_power_sensed(self: PasdHardwareSimulator) -> list[bool]:
@@ -815,18 +814,6 @@ class PasdHardwareSimulator:
         :return: the actual sensed power state of each port.
         """
         return [port.power_sensed for port in self._ports]
-
-    @ports_power_sensed.setter
-    def ports_power_sensed(
-        self: PasdHardwareSimulator, power_sensed: tuple[bool, int]
-    ) -> None:
-        """
-        Return the actual sensed power state of each port.
-
-        :return: the actual sensed power state of each port.
-        """
-        print(f"Setting port {power_sensed[1]} to {power_sensed[0]}")
-        self._ports[power_sensed[1]].power_sensed = power_sensed[0]
 
     @property
     def uptime(self: PasdHardwareSimulator) -> list[int]:
@@ -838,7 +825,7 @@ class PasdHardwareSimulator:
         if self._boot_on_time is None:
             return self.DEFAULT_UPTIME
         uptime_val = int(
-            (datetime.now().timestamp() - self._boot_on_time.timestamp()) * 1000
+            (datetime.now().timestamp() - self._boot_on_time.timestamp()) * 100
         )
         return PasdConversionUtility.n_to_bytes(uptime_val)
 
@@ -858,7 +845,7 @@ class PasdHardwareSimulator:
 
     @status.setter
     def status(self: PasdHardwareSimulator, status: int) -> None:
-        self._status = status
+        self.initialize()
 
     def initialize(self: PasdHardwareSimulator) -> bool | None:
         """
@@ -886,12 +873,10 @@ class PasdHardwareSimulator:
 
         :return: the name of the LED pattern.
         """
-        print(f"Getting led_pattern {self._led_pattern}")
         return self._led_pattern
 
     @led_pattern.setter
     def led_pattern(self: PasdHardwareSimulator, pattern: str) -> None:
-        print("In the led pattern setter")
         self.set_led_pattern(pattern)
 
     def set_led_pattern(
@@ -906,7 +891,6 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do.
         """
-        print(f"Setting led pattern to {led_pattern}")
         if self._led_pattern == led_pattern:
             return None
         self._led_pattern = led_pattern
@@ -1331,9 +1315,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
         :return: whether each port has had its breaker tripped
         """
-        if not trip[0]:
-            self.simulate_port_breaker_trip(trip[1] + 1)
-        else:
+        if trip[0]:
             self.reset_port_breaker(trip[1] + 1)
 
     def simulate_port_breaker_trip(

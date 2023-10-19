@@ -17,11 +17,10 @@ from ska_control_model import CommunicationStatus, PowerState
 from ska_tango_testing.mock import MockCallableGroup
 from ska_tango_testing.mock.placeholders import Anything
 
-from ska_low_mccs_pasd.pasd_bus import (
-    FndhSimulator,
-    PasdBusComponentManager,
-    SmartboxSimulator,
-)
+from ska_low_mccs_pasd.pasd_bus import (FndhSimulator, PasdBusComponentManager,
+                                        SmartboxSimulator)
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import \
+    PasdConversionUtility
 from tests.harness import PasdTangoTestHarness
 
 
@@ -45,7 +44,7 @@ def mock_callbacks_fixture() -> MockCallableGroup:
         "component_state",
         "pasd_device_state_for_fndh",
         *smartbox_callback_names,
-        timeout=10.0,
+        timeout=20.0,
     )
 
 
@@ -144,9 +143,11 @@ class TestPasdBusComponentManager:
             "pasd_device_state_for_fndh",
             modbus_register_map_revision=FndhSimulator.MODBUS_REGISTER_MAP_REVISION,
             pcb_revision=FndhSimulator.PCB_REVISION,
-            cpu_id=FndhSimulator.CPU_ID,
-            chip_id=FndhSimulator.CHIP_ID,
-            firmware_version=FndhSimulator.DEFAULT_FIRMWARE_VERSION,
+            cpu_id=PasdConversionUtility.convert_cpu_id(FndhSimulator.CPU_ID)[0],
+            chip_id=PasdConversionUtility.convert_chip_id(FndhSimulator.CHIP_ID)[0],
+            firmware_version=PasdConversionUtility.convert_firmware_version(
+                [FndhSimulator.DEFAULT_FIRMWARE_VERSION]
+            )[0],
         )
         for smartbox_number in range(1, 25):
             pasd_bus_component_manager.initialize_smartbox(smartbox_number)
@@ -156,36 +157,64 @@ class TestPasdBusComponentManager:
                     SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
                 ),
                 pcb_revision=SmartboxSimulator.PCB_REVISION,
-                cpu_id=SmartboxSimulator.CPU_ID,
-                chip_id=SmartboxSimulator.CHIP_ID,
-                firmware_version=SmartboxSimulator.DEFAULT_FIRMWARE_VERSION,
+                cpu_id=PasdConversionUtility.convert_cpu_id(SmartboxSimulator.CPU_ID)[
+                    0
+                ],
+                chip_id=PasdConversionUtility.convert_chip_id(
+                    SmartboxSimulator.CHIP_ID
+                )[0],
+                firmware_version=PasdConversionUtility.convert_firmware_version(
+                    [SmartboxSimulator.DEFAULT_FIRMWARE_VERSION]
+                )[0],
             )
         # and then the FNDH sensor thresholds
         mock_callbacks.assert_call(
             "pasd_device_state_for_fndh",
-            psu48v_voltage_1_thresholds=fndh_simulator.psu48v_voltage_1_thresholds,
-            psu48v_voltage_2_thresholds=fndh_simulator.psu48v_voltage_2_thresholds,
-            psu48v_current_thresholds=fndh_simulator.psu48v_current_thresholds,
+            psu48v_voltage_1_thresholds=PasdConversionUtility.scale_volts(
+                fndh_simulator.psu48v_voltage_1_thresholds
+            ),
+            psu48v_voltage_2_thresholds=PasdConversionUtility.scale_volts(
+                fndh_simulator.psu48v_voltage_2_thresholds
+            ),
+            psu48v_current_thresholds=PasdConversionUtility.scale_48vcurrents(
+                fndh_simulator.psu48v_current_thresholds
+            ),
             psu48v_temperature_1_thresholds=(
-                fndh_simulator.psu48v_temperature_1_thresholds
+                PasdConversionUtility.scale_signed_16bit(
+                    fndh_simulator.psu48v_temperature_1_thresholds
+                )
             ),
             psu48v_temperature_2_thresholds=(
-                fndh_simulator.psu48v_temperature_2_thresholds
+                PasdConversionUtility.scale_signed_16bit(
+                    fndh_simulator.psu48v_temperature_2_thresholds
+                )
             ),
-            panel_temperature_thresholds=fndh_simulator.panel_temperature_thresholds,
-            fncb_temperature_thresholds=fndh_simulator.fncb_temperature_thresholds,
+            panel_temperature_thresholds=PasdConversionUtility.scale_signed_16bit(
+                fndh_simulator.panel_temperature_thresholds
+            ),
+            fncb_temperature_thresholds=PasdConversionUtility.scale_signed_16bit(
+                fndh_simulator.fncb_temperature_thresholds
+            ),
             fncb_humidity_thresholds=fndh_simulator.fncb_humidity_thresholds,
             comms_gateway_temperature_thresholds=(
-                fndh_simulator.comms_gateway_temperature_thresholds
+                PasdConversionUtility.scale_signed_16bit(
+                    fndh_simulator.comms_gateway_temperature_thresholds
+                )
             ),
             power_module_temperature_thresholds=(
-                fndh_simulator.power_module_temperature_thresholds
+                PasdConversionUtility.scale_signed_16bit(
+                    fndh_simulator.power_module_temperature_thresholds
+                )
             ),
             outside_temperature_thresholds=(
-                fndh_simulator.outside_temperature_thresholds
+                PasdConversionUtility.scale_signed_16bit(
+                    fndh_simulator.outside_temperature_thresholds
+                )
             ),
             internal_ambient_temperature_thresholds=(
-                fndh_simulator.internal_ambient_temperature_thresholds
+                PasdConversionUtility.scale_signed_16bit(
+                    fndh_simulator.internal_ambient_temperature_thresholds
+                )
             ),
         )
 
@@ -194,30 +223,48 @@ class TestPasdBusComponentManager:
             # smartbox sensor thresholds
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
-                input_voltage_thresholds=smartbox_simulator.input_voltage_thresholds,
+                input_voltage_thresholds=PasdConversionUtility.scale_volts(
+                    smartbox_simulator.input_voltage_thresholds
+                ),
                 power_supply_output_voltage_thresholds=(
-                    smartbox_simulator.power_supply_output_voltage_thresholds
+                    PasdConversionUtility.scale_volts(
+                        smartbox_simulator.power_supply_output_voltage_thresholds
+                    )
                 ),
                 power_supply_temperature_thresholds=(
-                    smartbox_simulator.power_supply_temperature_thresholds
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.power_supply_temperature_thresholds
+                    )
                 ),
                 pcb_temperature_thresholds=(
-                    smartbox_simulator.pcb_temperature_thresholds
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.pcb_temperature_thresholds
+                    )
                 ),
                 fem_ambient_temperature_thresholds=(
-                    smartbox_simulator.fem_ambient_temperature_thresholds
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.fem_ambient_temperature_thresholds
+                    )
                 ),
                 fem_case_temperature_1_thresholds=(
-                    smartbox_simulator.fem_case_temperature_1_thresholds
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.fem_case_temperature_1_thresholds
+                    )
                 ),
                 fem_case_temperature_2_thresholds=(
-                    smartbox_simulator.fem_case_temperature_2_thresholds
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.fem_case_temperature_2_thresholds
+                    )
                 ),
                 fem_heatsink_temperature_1_thresholds=(
-                    smartbox_simulator.fem_heatsink_temperature_1_thresholds
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.fem_heatsink_temperature_1_thresholds
+                    )
                 ),
                 fem_heatsink_temperature_2_thresholds=(
-                    smartbox_simulator.fem_heatsink_temperature_2_thresholds
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.fem_heatsink_temperature_2_thresholds
+                    )
                 ),
             )
             # smartbox ports current trip thresholds
@@ -262,24 +309,42 @@ class TestPasdBusComponentManager:
             )
 
         # Then FNDH status info
-        mock_callbacks.assert_call(
-            "pasd_device_state_for_fndh",
+        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
             uptime=Anything,
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="OK",
-            led_pattern=FndhSimulator.DEFAULT_LED_PATTERN,
-            psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
-            psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
-            psu48v_temperatures=FndhSimulator.DEFAULT_PSU48V_TEMPERATURES,
-            panel_temperature=FndhSimulator.DEFAULT_PANEL_TEMPERATURE,
-            fncb_temperature=FndhSimulator.DEFAULT_FNCB_TEMPERATURE,
-            fncb_humidity=FndhSimulator.DEFAULT_FNCB_HUMIDITY,
-            comms_gateway_temperature=FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE,
-            power_module_temperature=FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE,
-            outside_temperature=FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
-            internal_ambient_temperature=(
-                FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+            led_pattern="service: OFF, status: OFF",
+            psu48v_voltages=PasdConversionUtility.scale_volts(
+                FndhSimulator.DEFAULT_PSU48V_VOLTAGES
             ),
+            psu48v_current=PasdConversionUtility.scale_48vcurrents(
+                [FndhSimulator.DEFAULT_PSU48V_CURRENT]
+            )[0],
+            psu48v_temperatures=PasdConversionUtility.scale_signed_16bit(
+                FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
+            ),
+            panel_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_PANEL_TEMPERATURE]
+            )[0],
+            fncb_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_FNCB_TEMPERATURE]
+            )[0],
+            fncb_humidity=FndhSimulator.DEFAULT_FNCB_HUMIDITY,
+            comms_gateway_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE]
+            )[0],
+            power_module_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE]
+            )[0],
+            outside_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
+            )[0],
+            internal_ambient_temperature=(
+                PasdConversionUtility.scale_signed_16bit(
+                    [FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE]
+                )[0]
+            ),
+            lookahead=5,  # Full cycle plus one to cover off on race conditions
         )
 
         expected_fndh_ports_powered = [False] * FndhSimulator.NUMBER_OF_PORTS
@@ -309,27 +374,41 @@ class TestPasdBusComponentManager:
 
         for smartbox_number in range(1, 25):
             # Then the smartbox status info
-            mock_callbacks.assert_call(
-                f"pasd_device_state_for_smartbox{smartbox_number}",
+            mock_callbacks[
+                f"pasd_device_state_for_smartbox{smartbox_number}"
+            ].assert_call(
                 uptime=Anything,
                 sys_address=smartbox_number,
                 status="OK",
-                led_pattern=SmartboxSimulator.DEFAULT_LED_PATTERN,
-                input_voltage=SmartboxSimulator.DEFAULT_INPUT_VOLTAGE,
+                led_pattern="service: OFF, status: OFF",
+                input_voltage=PasdConversionUtility.scale_volts(
+                    [SmartboxSimulator.DEFAULT_INPUT_VOLTAGE]
+                )[0],
                 power_supply_output_voltage=(
-                    SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
+                    PasdConversionUtility.scale_volts(
+                        [SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE]
+                    )[0]
                 ),
-                power_supply_temperature=(
-                    SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
+                power_supply_temperature=PasdConversionUtility.scale_signed_16bit(
+                    [SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE]
+                )[0],
+                pcb_temperature=PasdConversionUtility.scale_signed_16bit(
+                    [SmartboxSimulator.DEFAULT_PCB_TEMPERATURE]
+                )[0],
+                fem_ambient_temperature=PasdConversionUtility.scale_signed_16bit(
+                    [SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE]
+                )[0],
+                fem_case_temperatures=(
+                    PasdConversionUtility.scale_signed_16bit(
+                        SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+                    )
                 ),
-                pcb_temperature=SmartboxSimulator.DEFAULT_PCB_TEMPERATURE,
-                fem_ambient_temperature=(
-                    SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
-                ),
-                fem_case_temperatures=(SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES),
                 fem_heatsink_temperatures=(
-                    SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+                    PasdConversionUtility.scale_signed_16bit(
+                        SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+                    )
                 ),
+                lookahead=5,  # Full cycle plus one to cover off on race conditions
             )
             # and smartbox port info
             mock_callbacks.assert_call(
@@ -582,18 +661,36 @@ class TestPasdBusComponentManager:
             uptime=Anything,
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="OK",
-            led_pattern="SERVICE",
-            psu48v_voltages=FndhSimulator.DEFAULT_PSU48V_VOLTAGES,
-            psu48v_current=FndhSimulator.DEFAULT_PSU48V_CURRENT,
-            psu48v_temperatures=FndhSimulator.DEFAULT_PSU48V_TEMPERATURES,
-            panel_temperature=FndhSimulator.DEFAULT_PANEL_TEMPERATURE,
-            fncb_temperature=FndhSimulator.DEFAULT_FNCB_TEMPERATURE,
+            led_pattern="service: ON, status: OFF",
+            psu48v_voltages=PasdConversionUtility.scale_volts(
+                FndhSimulator.DEFAULT_PSU48V_VOLTAGES
+            ),
+            psu48v_current=PasdConversionUtility.scale_48vcurrents(
+                [FndhSimulator.DEFAULT_PSU48V_CURRENT]
+            )[0],
+            psu48v_temperatures=PasdConversionUtility.scale_signed_16bit(
+                FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
+            ),
+            panel_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_PANEL_TEMPERATURE]
+            )[0],
+            fncb_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_FNCB_TEMPERATURE]
+            )[0],
             fncb_humidity=FndhSimulator.DEFAULT_FNCB_HUMIDITY,
-            comms_gateway_temperature=FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE,
-            power_module_temperature=FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE,
-            outside_temperature=FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE,
+            comms_gateway_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE]
+            )[0],
+            power_module_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE]
+            )[0],
+            outside_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
+            )[0],
             internal_ambient_temperature=(
-                FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+                PasdConversionUtility.scale_signed_16bit(
+                    [FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE]
+                )[0]
             ),
             lookahead=5,  # Full cycle plus one to cover off on race conditions
         )
@@ -614,18 +711,34 @@ class TestPasdBusComponentManager:
         mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_number}"].assert_call(
             uptime=Anything,
             sys_address=smartbox_number,
-            status=SmartboxSimulator.DEFAULT_STATUS,
-            led_pattern="SERVICE",
-            input_voltage=SmartboxSimulator.DEFAULT_INPUT_VOLTAGE,
+            status=SmartboxSimulator.DEFAULT_STATUS.name,
+            led_pattern="service: ON, status: OFF",
+            input_voltage=PasdConversionUtility.scale_volts(
+                [SmartboxSimulator.DEFAULT_INPUT_VOLTAGE]
+            )[0],
             power_supply_output_voltage=(
-                SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
+                PasdConversionUtility.scale_volts(
+                    [SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE]
+                )[0]
             ),
-            power_supply_temperature=SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE,
-            pcb_temperature=SmartboxSimulator.DEFAULT_PCB_TEMPERATURE,
-            fem_ambient_temperature=SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE,
-            fem_case_temperatures=(SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES),
+            power_supply_temperature=PasdConversionUtility.scale_signed_16bit(
+                [SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE]
+            )[0],
+            pcb_temperature=PasdConversionUtility.scale_signed_16bit(
+                [SmartboxSimulator.DEFAULT_PCB_TEMPERATURE]
+            )[0],
+            fem_ambient_temperature=PasdConversionUtility.scale_signed_16bit(
+                [SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE]
+            )[0],
+            fem_case_temperatures=(
+                PasdConversionUtility.scale_signed_16bit(
+                    SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+                )
+            ),
             fem_heatsink_temperatures=(
-                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+                PasdConversionUtility.scale_signed_16bit(
+                    SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+                )
             ),
             lookahead=5,  # Full cycle plus one to cover off on race conditions
         )

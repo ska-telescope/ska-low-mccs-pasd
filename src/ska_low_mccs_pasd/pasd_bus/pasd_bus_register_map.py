@@ -660,21 +660,25 @@ class PasdBusRegisterMap:
     def get_attributes_from_address_and_count(
         self, device_id: int, first_address: int, count: int
     ) -> dict[str, PasdBusAttribute]:
-        print(f"Getting attributes add {first_address} count {count}")
         attributes = {
             name: attribute
             for name, attribute in self._INFO_REGISTER_MAP.items()
             if first_address <= attribute.address < first_address + count
-            or (attribute.address <= first_address and first_address + count <= attribute.address + attribute.count)
+            or (
+                attribute.address <= first_address
+                and first_address + count <= attribute.address + attribute.count
+            )
         }
         register_map = self._get_register_info(device_id).register_map
         attributes |= {
             name: attribute
             for name, attribute in register_map.items()
             if first_address <= attribute.address < first_address + count
-            or (attribute.address <= first_address and first_address + count <= attribute.address + attribute.count)
+            or (
+                attribute.address <= first_address
+                and first_address + count <= attribute.address + attribute.count
+            )
         }
-        print(f"Got {attributes}")
         return attributes
 
     def _create_led_pattern_command(

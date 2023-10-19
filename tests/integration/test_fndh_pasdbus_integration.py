@@ -17,6 +17,7 @@ from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
 
 gc.disable()  # TODO: why is this needed?
 
@@ -167,35 +168,76 @@ class TestfndhPasdBusIntegration:
         )
         assert fndh_device.SysAddress == FndhSimulator.SYS_ADDRESS
         assert fndh_device.PcbRevisionNumber == FndhSimulator.PCB_REVISION
-        assert fndh_device.CpuId == FndhSimulator.CPU_ID
-        assert fndh_device.ChipId == FndhSimulator.CHIP_ID
-        assert fndh_device.FirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
-        assert fndh_device.Uptime <= fndh_simulator.uptime
-        assert fndh_device.PasdStatus == FndhSimulator.DEFAULT_STATUS
-        assert fndh_device.LedPattern == FndhSimulator.DEFAULT_LED_PATTERN
-        assert list(fndh_device.Psu48vVoltages) == FndhSimulator.DEFAULT_PSU48V_VOLTAGES
-        assert fndh_device.Psu48vCurrent == FndhSimulator.DEFAULT_PSU48V_CURRENT
         assert (
-            list(fndh_device.Psu48vTemperatures)
-            == FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
+            fndh_device.CpuId
+            == PasdConversionUtility.convert_cpu_id(FndhSimulator.CPU_ID)[0]
         )
-        assert fndh_device.PanelTemperature == FndhSimulator.DEFAULT_PANEL_TEMPERATURE
-        assert fndh_device.FncbTemperature == FndhSimulator.DEFAULT_FNCB_TEMPERATURE
+        assert (
+            fndh_device.ChipId
+            == PasdConversionUtility.convert_chip_id(FndhSimulator.CHIP_ID)[0]
+        )
+        assert (
+            fndh_device.FirmwareVersion
+            == PasdConversionUtility.convert_firmware_version(
+                [FndhSimulator.DEFAULT_FIRMWARE_VERSION]
+            )[0]
+        )
+        assert (
+            fndh_device.Uptime
+            <= PasdConversionUtility.convert_uptime(fndh_simulator.uptime)[0]
+        )
+        assert fndh_device.PasdStatus == FndhSimulator.DEFAULT_STATUS.name
+        assert fndh_device.LedPattern == "service: OFF, status: OFF"
+        assert list(fndh_device.Psu48vVoltages) == PasdConversionUtility.scale_volts(
+            FndhSimulator.DEFAULT_PSU48V_VOLTAGES
+        )
+        assert (
+            fndh_device.Psu48vCurrent
+            == PasdConversionUtility.scale_48vcurrents(
+                [FndhSimulator.DEFAULT_PSU48V_CURRENT]
+            )[0]
+        )
+        assert list(
+            fndh_device.Psu48vTemperatures
+        ) == PasdConversionUtility.scale_signed_16bit(
+            FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
+        )
+        assert (
+            fndh_device.PanelTemperature
+            == PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_PANEL_TEMPERATURE]
+            )[0]
+        )
+        assert (
+            fndh_device.FncbTemperature
+            == PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_FNCB_TEMPERATURE]
+            )[0]
+        )
         assert fndh_device.FncbHumidity == FndhSimulator.DEFAULT_FNCB_HUMIDITY
         assert (
             fndh_device.CommsGatewayTemperature
-            == FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE
+            == PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE]
+            )[0]
         )
         assert (
             fndh_device.PowerModuleTemperature
-            == FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE
+            == PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE]
+            )[0]
         )
         assert (
-            fndh_device.OutsideTemperature == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+            fndh_device.OutsideTemperature
+            == PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
+            )[0]
         )
         assert (
             fndh_device.InternalAmbientTemperature
-            == FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+            == PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE]
+            )[0]
         )
         assert list(fndh_device.PortForcings) == fndh_simulator.port_forcings
         assert (
@@ -207,53 +249,64 @@ class TestfndhPasdBusIntegration:
             == fndh_simulator.ports_desired_power_when_offline
         )
         assert list(fndh_device.PortsPowerSensed) == fndh_simulator.ports_power_sensed
-        assert (
-            list(fndh_device.Psu48vVoltage1Thresholds)
-            == fndh_simulator.psu48v_voltage_1_thresholds
+        assert list(
+            fndh_device.Psu48vVoltage1Thresholds
+        ) == PasdConversionUtility.scale_volts(
+            fndh_simulator.psu48v_voltage_1_thresholds
         )
-        assert (
-            list(fndh_device.Psu48vVoltage2Thresholds)
-            == fndh_simulator.psu48v_voltage_2_thresholds
+        assert list(
+            fndh_device.Psu48vVoltage2Thresholds
+        ) == PasdConversionUtility.scale_volts(
+            fndh_simulator.psu48v_voltage_2_thresholds
         )
-        assert (
-            list(fndh_device.Psu48vCurrentThresholds)
-            == fndh_simulator.psu48v_current_thresholds
+        assert list(
+            fndh_device.Psu48vCurrentThresholds
+        ) == PasdConversionUtility.scale_48vcurrents(
+            fndh_simulator.psu48v_current_thresholds
         )
-        assert (
-            list(fndh_device.Psu48vTemperature1Thresholds)
-            == fndh_simulator.psu48v_temperature_1_thresholds
+        assert list(
+            fndh_device.Psu48vTemperature1Thresholds
+        ) == PasdConversionUtility.scale_signed_16bit(
+            fndh_simulator.psu48v_temperature_1_thresholds
         )
-        assert (
-            list(fndh_device.Psu48vTemperature2Thresholds)
-            == fndh_simulator.psu48v_temperature_2_thresholds
+        assert list(
+            fndh_device.Psu48vTemperature2Thresholds
+        ) == PasdConversionUtility.scale_signed_16bit(
+            fndh_simulator.psu48v_temperature_2_thresholds
         )
-        assert (
-            list(fndh_device.PanelTemperatureThresholds)
-            == fndh_simulator.panel_temperature_thresholds
+        assert list(
+            fndh_device.PanelTemperatureThresholds
+        ) == PasdConversionUtility.scale_signed_16bit(
+            fndh_simulator.panel_temperature_thresholds
         )
-        assert (
-            list(fndh_device.FncbTemperatureThresholds)
-            == fndh_simulator.fncb_temperature_thresholds
+        assert list(
+            fndh_device.FncbTemperatureThresholds
+        ) == PasdConversionUtility.scale_signed_16bit(
+            fndh_simulator.fncb_temperature_thresholds
         )
         assert (
             list(fndh_device.HumidityThresholds)
             == fndh_simulator.fncb_humidity_thresholds
         )
-        assert (
-            list(fndh_device.CommsGatewayTemperatureThresholds)
-            == fndh_simulator.comms_gateway_temperature_thresholds
+        assert list(
+            fndh_device.CommsGatewayTemperatureThresholds
+        ) == PasdConversionUtility.scale_signed_16bit(
+            fndh_simulator.comms_gateway_temperature_thresholds
         )
-        assert (
-            list(fndh_device.PowerModuleTemperatureThresholds)
-            == fndh_simulator.power_module_temperature_thresholds
+        assert list(
+            fndh_device.PowerModuleTemperatureThresholds
+        ) == PasdConversionUtility.scale_signed_16bit(
+            fndh_simulator.power_module_temperature_thresholds
         )
-        assert (
-            list(fndh_device.OutsideTemperatureThresholds)
-            == fndh_simulator.outside_temperature_thresholds
+        assert list(
+            fndh_device.OutsideTemperatureThresholds
+        ) == PasdConversionUtility.scale_signed_16bit(
+            fndh_simulator.outside_temperature_thresholds
         )
-        assert (
-            list(fndh_device.InternalAmbientTemperatureThresholds)
-            == fndh_simulator.internal_ambient_temperature_thresholds
+        assert list(
+            fndh_device.InternalAmbientTemperatureThresholds
+        ) == PasdConversionUtility.scale_signed_16bit(
+            fndh_simulator.internal_ambient_temperature_thresholds
         )
         # TODO
         # assert fndh_device.WarningFlags == FndhSimulator.DEFAULT_FLAGS

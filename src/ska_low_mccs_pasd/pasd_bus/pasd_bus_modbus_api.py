@@ -14,6 +14,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, Final, List
 
+import numpy as np
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
 from pymodbus.factory import ServerDecoder
@@ -27,7 +28,6 @@ from pymodbus.register_write_message import (
     WriteMultipleRegistersRequest,
     WriteMultipleRegistersResponse,
 )
-import numpy as np
 
 from .pasd_bus_register_map import (
     PasdBusAttribute,
@@ -125,38 +125,22 @@ class PasdBusModbusApi:
         starting_address: int,
         values: list,
     ) -> bool:
-        print(
-            f"Writing did {device_id} names {names} sad {starting_address} vals {values}"
-        )
         if device_id == 101:
             device_id = 0
         for name, attr in names.items():
             try:
-                print("!" * 50)
-                print(f"Trying attribute {name} add {attr.address} count {attr.count}")
                 if attr.address < starting_address:
                     list_index = 0
                 else:
                     list_index = attr.address - starting_address
                 reg_vals = values[list_index : list_index + attr.count]
-                print(f"Starting reg vals {reg_vals} selected from {values}")
                 if isinstance(attr, PasdBusPortAttribute):
                     port = starting_address - attr.address
-                    print(f"Port computed to be {port}")
                     reg_vals = (attr.convert_value(reg_vals)[0], port)
-
-                print(
-                    f"Have reg vals {reg_vals} will write to {name} on {self._simulators[device_id]}"
-                )
-                print(
-                    f"Does {device_id} {self._simulators[device_id]} have {name} : {hasattr(self._simulators[device_id], name)}"
-                )
                 setattr(self._simulators[device_id], name, reg_vals)
             except AttributeError:
-                print("Write failed")
                 logger.error(f"Attribute not found: {name}")
                 return False
-        print("Write succeeded")
         return True
 
     def _handle_no_match(self, request: dict) -> bytes:
@@ -183,11 +167,19 @@ class PasdBusModbusApi:
                         values=values,
                     )
                 case WriteMultipleRegistersRequest():
-                    filtered_register_map = (
-                        self._register_map.get_attributes_from_address_and_count(
+                    writable_port_attrs = [
+                        "ports_desired_power_when_online",
+                        "ports_desired_power_when_offline",
+                        "port_breakers_tripped",
+                    ]
+                    filtered_register_map = {
+                        k: v
+                        for k, v in self._register_map.get_attributes_from_address_and_count(
                             message.slave_id, message.address, message.count
-                        )
-                    )
+                        ).items()
+                        if k in writable_port_attrs
+                        or not isinstance(v, PasdBusPortAttribute)
+                    }
                     result = self._handle_write_attributes(
                         message.slave_id,
                         filtered_register_map,
@@ -200,19 +192,14 @@ class PasdBusModbusApi:
                             address=message.address,
                             count=message.count,
                         )
-                        print("Created write response")
                     else:
                         raise ModbusIOException("Failed to write attributes")
                 case _:
-                    print("!" * 50)
-                    print(f"No match on message {message}")
                     self._handle_no_match(message)
 
         self._decoder.processIncomingPacket(
             modbus_request_str, handle_request, slave=self.responder_ids
         )
-        if response is None:
-            print("Issue now")
         packet = self._framer.buildPacket(response)
         return packet
 
@@ -386,14 +373,12 @@ class PasdBusModbusApiClient:
         match reply:
             case WriteMultipleRegistersResponse():
                 # A normal echo response has been received
-                print("Write response received")
                 response = {
                     "source": modbus_address,
                     "data": {"type": "command_result", "result": True},
                 }
             case ModbusIOException():
                 # No reply: pass this exception on up to the caller
-                print("Bad write response")
                 raise reply
             case ExceptionResponse():
                 response = self._create_error_response(
@@ -427,7 +412,6 @@ class PasdBusModbusApiClient:
         modbus_address = (
             self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
         )
-        print(f"Doing modbu command {request}")
         # Get a PasdBusCommand object for this command
         command = self._register_map.get_command(
             request["device_id"], request["execute"], request["arguments"]
@@ -474,7 +458,6 @@ class PasdBusModbusApiClient:
         :return: dictionary mapping attribute name to new value.
         :raises: ModbusIOException if the h/w failed to respond.
         """
-        print(f"Client write attribute {name} {values}")
         response = self._do_write_request(
             {"device_id": device_id, "write": name, "values": values}
         )
@@ -492,7 +475,6 @@ class PasdBusModbusApiClient:
 
         :return: the results of the command execution.
         """
-        print(f"Client command dev {device_id} name {name} args {args}")
         response = self._do_command_request(
             {"device_id": device_id, "execute": name, "arguments": args}
         )

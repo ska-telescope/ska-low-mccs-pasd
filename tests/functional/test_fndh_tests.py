@@ -71,20 +71,15 @@ def check_power_states(
     assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
 
     power_map = {False: PowerState.OFF, True: PowerState.ON, None: PowerState.UNKNOWN}
-    timeout = 60  # Seconds
+    timeout = 10  # Seconds
     current_time = time.time()  # Seconds
     while time.time() < current_time + timeout:
-        psd = power_map[
-            check_attribute(pasd_bus_device, "fndhPortsPowerSensed")[port_no - 1]
-        ]
-        fnd = check_fastcommand(fndh_device, "PortPowerState", port_no)
         try:
-            assert psd == fnd
+            assert power_map[
+                check_attribute(pasd_bus_device, "fndhPortsPowerSensed")[port_no - 1]
+            ] == check_fastcommand(fndh_device, "PortPowerState", port_no)
         except AssertionError:
-            print("|" * 100)
             print("Power states don't yet agree.")
-            print(f"pasd bus has {psd}")
-            print(f"fndh has {fnd}")
             time.sleep(0.1)
         else:
             break
@@ -142,19 +137,10 @@ def check_pasd_port_power_changed(
         callbacks with asynchrony support.
     :param clipboard: a place to store information across BDD steps.
     """
-    print("M&%" * 1000)
-    print(f"Clipboard {clipboard}")
-    for i in range(10):
-        print(
-            change_event_callbacks[
-                f"{get_pasd_bus_name()}/fndhPortsPowerSensed"
-            ]._callable._call_queue.get()
-        )
     change_event_callbacks[
         f"{get_pasd_bus_name()}/fndhPortsPowerSensed"
     ].assert_change_event(
         clipboard["expected_power_sensed"],
-        lookahead=2,  # TODO: This isn't needed at all in lightweight testing
+        lookahead=3,  # TODO: This isn't needed at all in lightweight testing
         consume_nonmatches=True,
     )
-    print("#Success#" * 500)

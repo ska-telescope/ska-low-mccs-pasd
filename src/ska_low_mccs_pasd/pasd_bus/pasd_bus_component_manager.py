@@ -702,7 +702,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         super().poll_succeeded(poll_response)
 
         self._update_component_state(power=PowerState.ON, fault=False)
-
         if poll_response.command is None:
             self._pasd_bus_device_state_callback(
                 poll_response.device_id,

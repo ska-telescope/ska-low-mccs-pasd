@@ -423,16 +423,13 @@ class PasdConversionUtility:
         :return: string describing LED patterns
         """
         if inverse:
-            print(f"Invconverting led map {value_list}")
             if len(value_list) == 1:
                 return [value_list[0].value]
             reg_val = cls.bytes_to_n([v.value for v in value_list])
             return [reg_val]
         raw_value = value_list[0]
         try:
-            print(f"Converting led map {value_list}")
             byte_list = cls.n_to_bytes(raw_value)
-            print(f"Converted to {byte_list}")
         except ValueError:
             logger.error(f"Invalid LED register value received: {raw_value}")
             return (
