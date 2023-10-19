@@ -6,9 +6,7 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module provides scaling and other conversion functions for the PaSD."""
-import itertools
 import logging
-import traceback
 from enum import Enum
 from typing import Any
 
@@ -193,8 +191,8 @@ class PasdConversionUtility:
 
     @classmethod
     def scale_volts(
-        cls, value_list: list[int | float], inverse: bool = False
-    ) -> list[int | float]:
+        cls, value_list: int | list[int] | list[float] | None, inverse: bool = False
+    ) -> list[int] | list[float]:
         """
         Convert raw register value(s) to Volts.
 
@@ -206,8 +204,14 @@ class PasdConversionUtility:
         :param inverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
 
+        :raises ValueError: if value_list is None
+
         :return: output_values in Volts
         """
+        if not value_list:
+            raise ValueError()
+        if isinstance(value_list, int):
+            value_list = [value_list]
         if inverse:
             if isinstance(value_list[0], list):
                 value_list = value_list[0]
@@ -216,8 +220,8 @@ class PasdConversionUtility:
 
     @classmethod
     def scale_signed_16bit(
-        cls, value_list: list[int | float], inverse: bool = False
-    ) -> list[int | float]:
+        cls, value_list: int | list[int] | list[float] | None, inverse: bool = False
+    ) -> list[int] | list[float]:
         """
         Convert raw register value(s) to deg C.
 
@@ -229,6 +233,8 @@ class PasdConversionUtility:
 
         :param inverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
+
+        :raises ValueError: if value_list is None
 
         :return: value in deg C (if inverse=False), or raw value as an
             unsigned 16 bit integer
@@ -245,6 +251,10 @@ class PasdConversionUtility:
                 return (round(value * 100) + 65536) & 0xFFFF
             return round(value * 100) & 0xFFFF
 
+        if not value_list:
+            raise ValueError()
+        if isinstance(value_list, int):
+            value_list = [value_list]
         if inverse:
             if isinstance(value_list[0], list):
                 it = value_list[0]
@@ -256,8 +266,8 @@ class PasdConversionUtility:
 
     @classmethod
     def scale_48vcurrents(
-        cls, value_list: list[int | float], inverse: bool = False
-    ) -> list[int | float]:
+        cls, value_list: int | list[int] | list[float] | None, inverse: bool = False
+    ) -> list[int] | list[float]:
         """
         Convert raw register value(s) to Amps.
 
@@ -269,16 +279,22 @@ class PasdConversionUtility:
         :param inverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
 
+        :raises ValueError: if value_list is None
+
         :return: list of output_values
         """
+        if not value_list:
+            raise ValueError()
+        if isinstance(value_list, int):
+            value_list = [value_list]
         if inverse:
             return [round(value * 100) & 0xFFFF for value in value_list]
         return [value / 100.0 for value in value_list]
 
     @classmethod
     def convert_cpu_id(
-        cls, value_list: list[int | str], inverse: bool = False
-    ) -> list[str | int]:
+        cls, value_list: list[int] | list[str], inverse: bool = False
+    ) -> list[str] | list[int]:
         """
         Convert a number of raw register values to a CPU ID.
 
@@ -318,7 +334,9 @@ class PasdConversionUtility:
             return []
 
     @classmethod
-    def convert_chip_id(cls, value_list: list[int], inverse: bool = False) -> list[str]:
+    def convert_chip_id(
+        cls, value_list: list[int] | list[str], inverse: bool = False
+    ) -> list[str] | list[int]:
         """
         Convert the raw register values to a string chip id.
 
@@ -345,8 +363,8 @@ class PasdConversionUtility:
 
     @classmethod
     def convert_firmware_version(
-        cls, value_list: list[int | str], inverse: bool = False
-    ) -> list[str | int]:
+        cls, value_list: list[int] | list[str], inverse: bool = False
+    ) -> list[str] | list[int]:
         """
         Convert the raw register values to a string firmware version.
 
@@ -363,8 +381,10 @@ class PasdConversionUtility:
 
     @classmethod
     def convert_fndh_status(
-        cls, value_list: list[int | FndhStatusMap | str], inverse: bool = False
-    ) -> list[str, int]:
+        cls,
+        value_list: list[int] | list[FndhStatusMap] | list[str],
+        inverse: bool = False,
+    ) -> list[str] | list[int]:
         """
         Convert the raw register value to a string status.
 
@@ -388,8 +408,10 @@ class PasdConversionUtility:
 
     @classmethod
     def convert_smartbox_status(
-        cls, value_list: list[int | SmartBoxStatusMap | str], inverse: bool = False
-    ) -> list[str]:
+        cls,
+        value_list: list[int] | list[SmartBoxStatusMap] | list[str],
+        inverse: bool = False,
+    ) -> list[str] | list[int]:
         """
         Convert the raw register value to a string status.
 
@@ -413,13 +435,19 @@ class PasdConversionUtility:
 
     @classmethod
     def convert_led_status(
-        cls, value_list: list[int | LEDStatusMap | LEDServiceMap], inverse: bool = False
-    ) -> str | int:
+        cls,
+        value_list: list[int] | list[LEDStatusMap] | list[LEDServiceMap],
+        inverse: bool = False,
+    ) -> str | list[int]:
         """
         Convert the raw register value to LED status strings.
 
         :param value_list: raw register contents
             (MSB represents service LED and LSB represents status LED)
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string describing LED patterns
         """
         if inverse:
@@ -453,13 +481,19 @@ class PasdConversionUtility:
 
     @classmethod
     def convert_fndh_alarm_status(
-        cls, value_list: list[int | FNDHAlarmFlags], inverse: bool = False
-    ) -> str | int:
+        cls,
+        value_list: list[int] | list[FNDHAlarmFlags] | list[str],
+        inverse: bool = False,
+    ) -> str | list[int]:
         """
         Convert the alarm and warning flag registers to strings.
 
         :param value_list: raw register contents
             (each of the 16 bits represents a potential alarm cause)
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string describing the parameters that have triggered
             the alarm or warning.
         """
@@ -480,13 +514,19 @@ class PasdConversionUtility:
 
     @classmethod
     def convert_smartbox_alarm_status(
-        cls, value_list: list[int | SmartboxAlarmFlags], inverse: bool = False
-    ) -> str | int:
+        cls,
+        value_list: list[int] | list[SmartboxAlarmFlags] | list[str],
+        inverse: bool = False,
+    ) -> str | list[int]:
         """
         Convert the alarm and warning flag registers to strings.
 
         :param value_list: raw register contents
             (each of the 16 bits represents a potential alarm cause)
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string describing the parameters that have triggered
             the alarm or warning.
         """

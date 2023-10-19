@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 import logging
-import traceback
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Final, List, Optional, Sequence
@@ -185,7 +184,8 @@ class PasdBusPortAttribute(PasdBusAttribute):
         super().__init__(address, count, self._parse_port_bitmaps)
         self.desired_info = desired_info
 
-    def _parse_port_bitmaps(
+    # pylint: disable=too-many-branches, too-many-statements
+    def _parse_port_bitmaps(  # noqa: C901
         self: PasdBusPortAttribute,
         values: List[int | bool | str | None],
         inverse: bool = False,
@@ -193,7 +193,8 @@ class PasdBusPortAttribute(PasdBusAttribute):
         """
         Parse the port register bitmap data into the desired port information.
 
-        :param: values: list of raw port bitmaps (one per port)
+        :param values: list of raw port bitmaps (one per port)
+        :param inverse: convert port information into bitmap instead
         :return: list of flags representing the desired port information
         """
         forcing_map = {
@@ -568,7 +569,7 @@ class PasdBusRegisterMap:
         self._revision_number = value
 
     def _get_register_info(self, device_id: int) -> PasdBusRegisterInfo:
-        if device_id == 0 or device_id == 101:
+        if device_id in [0, 101]:
             return self._FNDH_REGISTER_MAPS[self.revision_number]
         return self._SMARTBOX_REGISTER_MAPS[self.revision_number]
 
@@ -660,6 +661,16 @@ class PasdBusRegisterMap:
     def get_attributes_from_address_and_count(
         self, device_id: int, first_address: int, count: int
     ) -> dict[str, PasdBusAttribute]:
+        """
+        Map initial register address and count to attributes.
+
+        :param device_id: The ID of the smartbox / FNDH device
+        :param first_address: Starting address of the desired Modbus registers
+        :param count: number of registers
+
+        :return: A dictionary of the corresponding string attribute names and attribute
+            instances
+        """
         attributes = {
             name: attribute
             for name, attribute in self._INFO_REGISTER_MAP.items()

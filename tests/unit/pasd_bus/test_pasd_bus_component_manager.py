@@ -17,10 +17,12 @@ from ska_control_model import CommunicationStatus, PowerState
 from ska_tango_testing.mock import MockCallableGroup
 from ska_tango_testing.mock.placeholders import Anything
 
-from ska_low_mccs_pasd.pasd_bus import (FndhSimulator, PasdBusComponentManager,
-                                        SmartboxSimulator)
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import \
-    PasdConversionUtility
+from ska_low_mccs_pasd.pasd_bus import (
+    FndhSimulator,
+    PasdBusComponentManager,
+    SmartboxSimulator,
+)
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
 from tests.harness import PasdTangoTestHarness
 
 

@@ -145,8 +145,8 @@ def mock_fndh_simulator_fixture(
         def side_effect(sim, prop, val=None):
             if val:
                 setattr(sim, prop, val)
-            else:
-                return getattr(sim, prop)
+                return None
+            return getattr(sim, prop)
 
         side_effect_partial = functools.partial(
             side_effect, fndh_simulator, property_name
@@ -270,8 +270,8 @@ def mock_smartbox_simulators_fixture(
             def side_effect(sim, prop, val=None):
                 if val:
                     setattr(sim, prop, val)
-                else:
-                    return getattr(sim, prop)
+                    return None
+                return getattr(sim, prop)
 
             side_effect_partial = functools.partial(
                 side_effect, smartbox_simulator, property_name

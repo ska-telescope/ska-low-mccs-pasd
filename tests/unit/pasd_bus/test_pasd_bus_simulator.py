@@ -12,11 +12,11 @@ from typing import Any, Dict
 
 import pytest
 
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
     FndhSimulator,
     SmartboxSimulator,
 )
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
 
 
 @pytest.fixture(name="fndh_config")
@@ -92,7 +92,9 @@ class TestPasdBusSimulator:
         assert fndh_uptime > 0
         previous_smartbox_uptime = 0
         for smartbox_simulator in list(smartbox_simulators.values()):
-            smartbox_uptime = PasdConversionUtility.convert_uptime(smartbox_simulator.uptime)[0]
+            smartbox_uptime = PasdConversionUtility.convert_uptime(
+                smartbox_simulator.uptime
+            )[0]
             assert smartbox_uptime > 0
             assert fndh_uptime > smartbox_uptime
             if previous_smartbox_uptime != 0:

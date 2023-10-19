@@ -16,8 +16,11 @@ from typing import Dict, Iterator
 import pytest
 import tango
 
-from ska_low_mccs_pasd.pasd_bus import (FndhSimulator, PasdBusSimulator,
-                                        SmartboxSimulator)
+from ska_low_mccs_pasd.pasd_bus import (
+    FndhSimulator,
+    PasdBusSimulator,
+    SmartboxSimulator,
+)
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 

@@ -38,7 +38,6 @@ from __future__ import annotations
 
 import importlib.resources
 import logging
-import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Callable, Dict, Final, Optional, Sequence
@@ -48,10 +47,8 @@ import yaml
 from .pasd_bus_conversions import (
     FNDHAlarmFlags,
     FndhStatusMap,
-    LEDServiceMap,
     LEDStatusMap,
     PasdConversionUtility,
-    SmartboxAlarmFlags,
     SmartBoxStatusMap,
 )
 
@@ -242,14 +239,13 @@ class _PasdPortSimulator(ABC):
         return self._desired_on_when_online
 
     @desired_power_when_online.setter
-    def desired_power_when_online(self: _PasdPortSimulator, val: bool) -> None:
+    def desired_power_when_online(self: _PasdPortSimulator, power_on: bool) -> None:
         """
-        Return the desired power mode of the port when the control system is online.
+        Set the desired power mode of the port when the control system is online.
 
-        :return: the desired power mode of the port when the control
-            system is online.
+        :param power_on: whether power is on
         """
-        self._desired_on_when_online = val
+        self._desired_on_when_online = power_on
 
     @property
     def desired_power_when_offline(self: _PasdPortSimulator) -> bool:
@@ -262,14 +258,13 @@ class _PasdPortSimulator(ABC):
         return self._desired_on_when_offline
 
     @desired_power_when_offline.setter
-    def desired_power_when_offline(self: _PasdPortSimulator, val: bool) -> None:
+    def desired_power_when_offline(self: _PasdPortSimulator, power_on: bool) -> None:
         """
-        Return the desired power mode of the port when the control system is offline.
+        Set the desired power mode of the port when the control system is offline.
 
-        :return: the desired power mode of the port when the control
-            system is offline.
+        :param power_on: whether power is on
         """
-        self._desired_on_when_offline = val
+        self._desired_on_when_offline = power_on
 
     @property
     def power_sensed(self: _PasdPortSimulator) -> bool:
@@ -279,15 +274,6 @@ class _PasdPortSimulator(ABC):
         :return: whether power is sensed on the port.
         """
         return self._on
-
-    @power_sensed.setter
-    def power_sensed(self: _PasdPortSimulator, val: bool) -> None:
-        """
-        Return whether power is sensed on the port.
-
-        :return: whether power is sensed on the port.
-        """
-        self._on = val
 
 
 class _FndhPortSimulator(_PasdPortSimulator):
@@ -426,7 +412,7 @@ class PasdHardwareSimulator:
     """
 
     DEFAULT_LED_PATTERN: Final = LEDStatusMap.OFF
-    DEFAULT_STATUS = FndhStatusMap.UNINITIALISED
+    DEFAULT_STATUS: SmartBoxStatusMap | FndhStatusMap = FndhStatusMap.UNINITIALISED
     DEFAULT_UPTIME: Final = 0
     DEFAULT_FLAGS: Final = FNDHAlarmFlags.NONE
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
@@ -697,12 +683,9 @@ class PasdHardwareSimulator:
     @port_forcings.setter
     def port_forcings(self: PasdHardwareSimulator, forcing: tuple[str, int]) -> None:
         """
-        Return the forcing statuses of all ports.
+        Set the forcing status of a port.
 
-        :return: the forcing statuses of each port.
-            "ON" means the port has been forced on.
-            "OFF" means it has been forced off.
-            "NONE" means it has not been forced.
+        :param forcing: tuple of (forcing, port)
         """
         forcing_map = {
             "ON": True,
@@ -763,13 +746,9 @@ class PasdHardwareSimulator:
         desire: tuple[bool, int],
     ) -> None:
         """
-        Return the desired power of each port when the device is online.
+        Set the desired power of a port when the device is online.
 
-        That is, for each port, should it be powered if the control
-        system is online?
-
-        :return: the desired power of each port when the device is
-            online
+        :param desire: tuple of (desire power when online, port)
         """
         self._ports[desire[1]].desired_power_when_online = desire[0]
         self._ports[desire[1]]._update_port_power()
@@ -795,13 +774,9 @@ class PasdHardwareSimulator:
         desire: tuple[bool, int],
     ) -> None:
         """
-        Return the desired power of each port when the device is offline.
+        Set the desired power of a port when the device is offline.
 
-        That is, for each port, should it be powered if the control
-        system is offline?
-
-        :return: the desired power of each port when the device is
-            offline
+        :param desire: tuple of (desire power when offline, port)
         """
         self._ports[desire[1]].desired_power_when_offline = desire[0]
         self._ports[desire[1]]._update_port_power()
@@ -844,7 +819,12 @@ class PasdHardwareSimulator:
         return self._status
 
     @status.setter
-    def status(self: PasdHardwareSimulator, status: int) -> None:
+    def status(self: PasdHardwareSimulator, _: int) -> None:
+        """
+        Set the status of the FNDH/smartbox.
+
+        This indicates the smartbox should be initialised, no matter the input value.
+        """
         self.initialize()
 
     def initialize(self: PasdHardwareSimulator) -> bool | None:
@@ -876,8 +856,14 @@ class PasdHardwareSimulator:
         return self._led_pattern
 
     @led_pattern.setter
-    def led_pattern(self: PasdHardwareSimulator, pattern: str) -> None:
-        self.set_led_pattern(pattern)
+    def led_pattern(self: PasdHardwareSimulator, led_pattern: str) -> None:
+        """
+        Set the LED pattern.
+
+        :param led_pattern: the LED pattern to be set.
+            Options are "OFF" and "SERVICE".
+        """
+        self.set_led_pattern(led_pattern)
 
     def set_led_pattern(
         self: PasdHardwareSimulator,
@@ -1120,7 +1106,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
     CPU_ID: Final = [2, 4]
     CHIP_ID: Final = [8, 7, 6, 5, 4, 3, 2, 1]
 
-    DEFAULT_STATUS = SmartBoxStatusMap.UNINITIALISED
+    DEFAULT_STATUS: SmartBoxStatusMap = SmartBoxStatusMap.UNINITIALISED
     DEFAULT_SYS_ADDRESS: Final = 1
     DEFAULT_FIRMWARE_VERSION: Final = 258
     # Address
@@ -1311,9 +1297,12 @@ class SmartboxSimulator(PasdHardwareSimulator):
     @port_breakers_tripped.setter
     def port_breakers_tripped(self: SmartboxSimulator, trip: tuple[bool, int]) -> None:
         """
-        Return whether each port has had its breaker tripped.
+        Set a port trip status.
 
-        :return: whether each port has had its breaker tripped
+        This can only be used to reset a port breaker, it cannot simulate a port
+        breaker trip.
+
+        :param trip: tuple of (breaker status (True to reset breaker), port)
         """
         if trip[0]:
             self.reset_port_breaker(trip[1] + 1)

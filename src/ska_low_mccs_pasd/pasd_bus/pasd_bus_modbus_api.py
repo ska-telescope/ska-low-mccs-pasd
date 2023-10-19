@@ -9,10 +9,8 @@
 from __future__ import annotations
 
 import logging
-import traceback
 from datetime import datetime
-from enum import Enum
-from typing import Any, Callable, Dict, Final, List
+from typing import Any, Dict, Final, List
 
 import numpy as np
 from pymodbus.client import ModbusTcpClient
@@ -61,25 +59,25 @@ class PasdBusModbusApi:
         self.responder_ids = list(range(len(simulators)))
         self._register_map = PasdBusRegisterMap()
 
+    # pylint: disable=too-many-return-statements
     def _convert_value(self, value: Any, attribute: PasdBusAttribute) -> list[int]:
         if isinstance(attribute, PasdBusPortAttribute):
             return attribute.convert_write_value([value])
-        elif isinstance(value, list):
+        if isinstance(value, list):
             try:
                 return [(v + 65536) & 0xFFFF if v < 0 else v for v in value]
-            except TypeError as e:
+            except TypeError:
                 return attribute.convert_write_value(value)
-        elif isinstance(value, int):
+        if isinstance(value, int):
             if value < 0:
                 value = (value + 65536) & 0xFFFF
             return [value]
-        elif isinstance(value, str):
+        if isinstance(value, str):
             try:
                 return int(value)
-            except ValueError as e:
+            except ValueError:
                 return attribute.convert_write_value([value])
-        else:
-            return attribute.convert_write_value([value])
+        return attribute.convert_write_value([value])
 
     def _handle_read_attributes(
         self, device_id: int, names: dict[str, PasdBusAttribute]
@@ -89,6 +87,8 @@ class PasdBusModbusApi:
 
         :param device_id: The responder ID
         :param names: dict of string attribute names to read, with register counts
+
+        :raises ValueError: if value read is invalid
 
         :return: List of attribute values
         """
@@ -113,7 +113,7 @@ class PasdBusModbusApi:
                     else:
                         values.append(int(char))
             else:
-                raise ValueError(f"Uh oh {name} {value}")
+                raise ValueError(f"Expected a list from {value}")
             last_address = attr.address
             last_count = attr.count
         return values
@@ -174,9 +174,11 @@ class PasdBusModbusApi:
                     ]
                     filtered_register_map = {
                         k: v
-                        for k, v in self._register_map.get_attributes_from_address_and_count(
-                            message.slave_id, message.address, message.count
-                        ).items()
+                        for k, v in (
+                            self._register_map.get_attributes_from_address_and_count(
+                                message.slave_id, message.address, message.count
+                            ).items()
+                        )
                         if k in writable_port_attrs
                         or not isinstance(v, PasdBusPortAttribute)
                     }

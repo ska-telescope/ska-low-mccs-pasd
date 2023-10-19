@@ -12,9 +12,7 @@ from __future__ import annotations
 import gc
 import json
 import random
-import time
 
-import numpy as np
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState
