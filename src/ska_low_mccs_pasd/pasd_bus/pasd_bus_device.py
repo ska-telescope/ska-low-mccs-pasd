@@ -210,8 +210,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     # ----------
     Host = tango.server.device_property(dtype=str)
     Port = tango.server.device_property(dtype=int)
-    PollingRate = tango.server.device_property(dtype=float, default_value=0.5)
-    DevicePollingRate = tango.server.device_property(dtype=float, default_value=15.0)
+    PollingRate = tango.server.device_property(dtype=float, default_value=0.5 / 10)
+    DevicePollingRate = tango.server.device_property(
+        dtype=float, default_value=15.0 / 10
+    )
     Timeout = tango.server.device_property(dtype=float)
 
     # ---------------

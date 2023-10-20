@@ -12,7 +12,6 @@ import unittest.mock
 
 import pytest
 import tango
-from ska_control_model import PowerState, ResultCode
 from ska_low_mccs_common.testing.mock import MockDeviceBuilder
 
 

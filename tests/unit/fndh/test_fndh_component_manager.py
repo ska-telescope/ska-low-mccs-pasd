@@ -239,14 +239,14 @@ class TestFndhComponentManager:
             assert (
                 getattr(fndh_component_manager, component_manager_command)(
                     component_manager_command_argument,
-                    mock_callbacks["task"],
+                    task_callback=mock_callbacks["task"],
                 )
                 == expected_manager_result
             )
         else:
             assert (
                 getattr(fndh_component_manager, component_manager_command)(
-                    mock_callbacks["task"],
+                    task_callback=mock_callbacks["task"],
                 )
                 == expected_manager_result
             )

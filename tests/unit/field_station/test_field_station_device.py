@@ -10,20 +10,12 @@
 from __future__ import annotations
 
 import gc
-import json
 import unittest.mock
-from contextlib import nullcontext
-from typing import Any, ContextManager
+from typing import Any
 
 import pytest
 import tango
-from ska_control_model import (
-    AdminMode,
-    LoggingLevel,
-    PowerState,
-    ResultCode,
-    TaskStatus,
-)
+from ska_control_model import AdminMode, LoggingLevel, ResultCode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd import MccsFieldStation
@@ -80,9 +72,6 @@ def patched_field_station_device_class_fixture(
     class PatchedMccsFieldStation(MccsFieldStation):
         """A field station bus device patched with a mock component manager."""
 
-        def __init__(self: PatchedMccsFieldStation, *args: Any, **kwargs: Any):
-            super().__init__(*args, **kwargs)
-
         def create_component_manager(
             self: PatchedMccsFieldStation,
         ) -> unittest.mock.Mock:
@@ -109,7 +98,9 @@ def field_station_device_fixture(
     """
     Fixture that returns a proxy to the FieldStation Tango device under test.
 
-    :param patched_field_station_device_class: a patches class for use in testing
+    :param patched_field_station_device_class: a patches class for use in testing.
+    :param mock_fndh: a mock FNDH for use in testing.
+    :param mock_smartbox: a mock Smartbox for use in testing.
 
     :yield: a proxy to the FieldStation Tango device under test.
     """
@@ -155,7 +146,6 @@ def test_command(  # pylint: disable=too-many-arguments
     component_manager_method: str,
     device_command_argin: Any,
     component_manager_method_return: Any,
-    change_event_callbacks,
 ) -> None:
     """
     Test tango command with mocked response from component manager.

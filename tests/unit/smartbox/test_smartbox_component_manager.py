@@ -296,6 +296,7 @@ class TestSmartBoxComponentManager:
         :param smartbox_component_manager: A SmartBox component manager
             with communication established.
         :param component_manager_command: command to issue to the component manager
+        :param masked_ports: the ports to mask in this test.
         :param expected_manager_result: expected response from the call
         :param command_tracked_response: The result of the command.
         :param fndh_port: the fndh port the smartbox is attached to.
@@ -316,23 +317,27 @@ class TestSmartBoxComponentManager:
             == expected_manager_result
         )
 
+        desired_port_powers: list[bool | None]
+
         if component_manager_command == "power_on_all_ports":
             desired_port_powers = [True] * SMARTBOX_PORTS
             for masked_port in masked_ports:
-                desired_port_powers[masked_port] = None
+                desired_port_powers[masked_port - 1] = None
         else:
             desired_port_powers = [False] * SMARTBOX_PORTS
             for masked_port in masked_ports:
-                desired_port_powers[masked_port] = None
+                desired_port_powers[masked_port - 1] = None
 
         json_argument = json.dumps(
             {
+                "smartbox_number": smartbox_component_manager._fndh_port,
                 "port_powers": desired_port_powers,
                 "stay_on_when_offline": True,
             }
         )
 
         pasd_bus_proxy = smartbox_component_manager._pasd_bus_proxy._proxy
+        assert pasd_bus_proxy
         pasd_bus_proxy.SetSmartboxPortPowers.assert_next_call(json_argument)
 
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)

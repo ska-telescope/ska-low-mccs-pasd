@@ -72,7 +72,8 @@ def test_context_fixture(
     """
     Create a test context containing a single mock PaSD bus device.
 
-    :param mock_pasdbus: A mock PaSD bus device.
+    :param mock_fndh: A mock FNDH device.
+    :param mock_smartbox: A mock Smartbox device.
 
     :yield: the test context
     """
@@ -85,12 +86,24 @@ def test_context_fixture(
 
 
 @pytest.fixture(name="mock_antenna_mask")
-def mock_antenna_mask_fixture():
+def mock_antenna_mask_fixture() -> list[bool]:
+    """
+    Generate a default set of maskings for testing, all unmasked.
+
+    :returns: a default set of maskings for testing, all unmasked.
+    """
     return [False for _ in range(256 + 1)]
 
 
 @pytest.fixture(name="mock_antenna_mapping")
-def mock_antenna_mapping_fixture():
+def mock_antenna_mapping_fixture() -> dict[int, list]:
+    """
+    Generate a default set of antenna mappings for testing.
+
+    Antennas are assigned in ascending order of smartbox port and smartbox id.
+
+    :returns: a default set of antenna mappings for testing.
+    """
     return {
         smartbox_no * SMARTBOX_PORTS
         + smartbox_port
@@ -102,7 +115,14 @@ def mock_antenna_mapping_fixture():
 
 
 @pytest.fixture(name="mock_smartbox_mapping")
-def mock_smartbox_mapping_fixture():
+def mock_smartbox_mapping_fixture() -> dict[int, int]:
+    """
+    Generate a default set of fndh port mappings.
+
+    It is assumed smartbox id is the same as FNDH port no.
+
+    :returns: a default set of fndh port mappings
+    """
     return {port: port for port in range(1, SMARTBOX_NUMBER + 1)}
 
 
@@ -110,14 +130,14 @@ class TestFieldStationComponentManager:
     """Tests of the FieldStation component manager."""
 
     @pytest.fixture(name="field_station_component_manager")
-    def field_station_component_manager_fixture(
+    def field_station_component_manager_fixture(  # pylint: disable=too-many-arguments
         self: TestFieldStationComponentManager,
         test_context: str,
         logger: logging.Logger,
         mock_callbacks: MockCallableGroup,
-        mock_antenna_mask,
-        mock_antenna_mapping,
-        mock_smartbox_mapping,
+        mock_antenna_mask: list[bool],
+        mock_antenna_mapping: dict[int, list],
+        mock_smartbox_mapping: dict[int, int],
     ) -> FieldStationComponentManager:
         """
         Return an FieldStation component manager.
@@ -125,6 +145,9 @@ class TestFieldStationComponentManager:
         :param test_context: a test context containing the Tango devices.
         :param logger: a logger for this command to use.
         :param mock_callbacks: mock callables.
+        :param mock_antenna_mask: a default set of maskings for testing, all unmasked.
+        :param mock_antenna_mapping: a default set of antenna mappings for testing.
+        :param mock_smartbox_mapping: a default set of fndh port mappings
 
         :return: an FieldStation component manager.
         """
@@ -194,7 +217,10 @@ class TestFieldStationComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.REJECTED,
-                    "Antenna number 255 is masked, call with ignore_mask=True to ignore",
+                    (
+                        "Antenna number 255 is masked, call with"
+                        " ignore_mask=True to ignore"
+                    ),
                 ),
             ),
             (
@@ -221,7 +247,10 @@ class TestFieldStationComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.REJECTED,
-                    "Antenna number 255 is masked, call with ignore_mask=True to ignore",
+                    (
+                        "Antenna number 255 is masked, call with "
+                        "ignore_mask=True to ignore"
+                    ),
                 ),
             ),
         ],
@@ -243,8 +272,9 @@ class TestFieldStationComponentManager:
             with communication established.
         :param component_manager_command: command to issue to the component manager
         :param component_manager_command_argument: argument to call on component manager
+        :param antenna_masking_state: whether the antenna is masked.
         :param expected_manager_result: expected response from the call
-        :param command_tracked_response: The result of the command.
+        :param command_tracked_result: The result of the command.
         :param mock_callbacks: mock callables.
         """
         field_station_component_manager.start_communicating()
@@ -304,7 +334,10 @@ class TestFieldStationComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.REJECTED,
-                    "Antennas in this station are masked, call with ignore_mask=True to ignore",
+                    (
+                        "Antennas in this station are masked, call with"
+                        " ignore_mask=True to ignore"
+                    ),
                 ),
                 id="Try to turn on all antennas when they are all masked",
             ),
@@ -340,7 +373,10 @@ class TestFieldStationComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.REJECTED,
-                    "Antennas in this station are masked, call with ignore_mask=True to ignore",
+                    (
+                        "Antennas in this station are masked, call with"
+                        " ignore_mask=True to ignore"
+                    ),
                 ),
                 id="Try to turn off all antennas when they are all masked",
             ),
@@ -358,7 +394,7 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
-    def test_on_off_commands(
+    def test_on_off_commands(  # pylint: disable=too-many-arguments
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         component_manager_command: Any,
@@ -375,9 +411,11 @@ class TestFieldStationComponentManager:
         :param field_station_component_manager: A FieldStation component manager
             with communication established.
         :param component_manager_command: command to issue to the component manager
-        :param component_manager_command_argument: argument to call on component manager
+        :param proxy_command: command we expect to be called on the proxies.
+        :param antenna_no: antenna to mask (if any).
+        :param antenna_masking_state: masking state of antenna.
         :param expected_manager_result: expected response from the call
-        :param command_tracked_response: The result of the command.
+        :param command_tracked_result: The result of the command.
         :param mock_callbacks: mock callables.
         """
         field_station_component_manager.start_communicating()
@@ -429,7 +467,7 @@ class TestFieldStationComponentManager:
                 if smartbox_no == smartbox_id - 1:
                     smartbox_proxy_command.assert_next_call([smartbox_port])
                 else:
-                    smartbox_proxy_command.assert_next_call(None)
+                    smartbox_proxy_command.assert_next_call([])
 
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         if command_tracked_result[0] in [TaskStatus.COMPLETED, TaskStatus.FAILED]:

@@ -120,6 +120,21 @@ class _PasdBusProxy(DeviceComponentManager):
             "with 'fndh' string so it is assumed it is a incorrect subscription"
         )
 
+    def set_fndh_port_powers(
+        self: _PasdBusProxy, json_argument: str
+    ) -> tuple[ResultCode, str]:
+        """
+        Proxy for the SetFndhPortPowers command.
+
+        :param json_argument: the json formatted string.
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        assert self._proxy
+        self._proxy.InitializeFndh()
+        return self._proxy.SetFndhPortPowers(json_argument)
+
 
 # pylint: disable-next=abstract-method
 class FndhComponentManager(TaskExecutorComponentManager):
@@ -336,14 +351,16 @@ class FndhComponentManager(TaskExecutorComponentManager):
     @check_communicating
     def power_on_all_ports(
         self: FndhComponentManager,
+        masked_ports: Optional[list] = None,
         task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
-        Turn a port on.
+        Turn on all ports.
 
-        This port may or may not have a smartbox attached.
+        These ports may or may not have a smartbox attached.
 
-        :param port_number: port we want to power on.
+        :param masked_ports: list of masked ports, these ports are masked
+            if all smartbox ports on that port are masked.
         :param task_callback: callback to be called when the status of
             the command changes
 
@@ -351,19 +368,25 @@ class FndhComponentManager(TaskExecutorComponentManager):
         """
         return self.submit_task(
             self._power_on_all_ports,  # type: ignore[arg-type]
-            args=[],
+            args=[masked_ports],
             task_callback=task_callback,
         )
 
     def _power_on_all_ports(
         self: FndhComponentManager,
+        masked_ports: Optional[list],
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
+        self.logger.error("PowerOnAllPorts called")
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
-        desired_port_powers: list[bool] = [True] * NUMBER_OF_FNDH_PORTS
+        desired_port_powers: list[bool | None] = [True] * NUMBER_OF_FNDH_PORTS
+        if masked_ports is not None:
+            for masked_port in masked_ports:
+                desired_port_powers[masked_port - 1] = None
+
         json_argument = json.dumps(
             {
                 "port_powers": desired_port_powers,
@@ -374,9 +397,9 @@ class FndhComponentManager(TaskExecutorComponentManager):
         try:
             assert self._pasd_bus_proxy._proxy
             (
-                [result_code],
-                [unique_id],
-            ) = self._pasd_bus_proxy._proxy.SetFndhPortPowers(json_argument)
+                result_code,
+                unique_id,
+            ) = self._pasd_bus_proxy.set_fndh_port_powers(json_argument)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {repr(ex)}")
@@ -393,19 +416,22 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 status=TaskStatus.COMPLETED,
                 result="Power on all ports success",
             )
+        self.logger.error("PowerOnAllPorts finished")
         return result_code, unique_id
 
     @check_communicating
     def power_off_all_ports(
         self: FndhComponentManager,
+        masked_ports: Optional[list] = None,
         task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
-        Turn a port on.
+        Turn off all ports.
 
-        This port may or may not have a smartbox attached.
+        These ports may or may not have a smartbox attached.
 
-        :param port_number: port we want to power on.
+        :param masked_ports: list of masked ports, these ports are masked
+            if all smartbox ports on that port are masked.
         :param task_callback: callback to be called when the status of
             the command changes
 
@@ -413,19 +439,24 @@ class FndhComponentManager(TaskExecutorComponentManager):
         """
         return self.submit_task(
             self._power_off_all_ports,  # type: ignore[arg-type]
-            args=[],
+            args=[masked_ports],
             task_callback=task_callback,
         )
 
     def _power_off_all_ports(
         self: FndhComponentManager,
+        masked_ports: Optional[list] = None,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
-        desired_port_powers: list[bool] = [False] * NUMBER_OF_FNDH_PORTS
+        desired_port_powers: list[bool | None] = [False] * NUMBER_OF_FNDH_PORTS
+        if masked_ports is not None:
+            for masked_port in masked_ports:
+                desired_port_powers[masked_port - 1] = None
+
         json_argument = json.dumps(
             {
                 "port_powers": desired_port_powers,
@@ -436,9 +467,9 @@ class FndhComponentManager(TaskExecutorComponentManager):
         try:
             assert self._pasd_bus_proxy._proxy
             (
-                [result_code],
-                [unique_id],
-            ) = self._pasd_bus_proxy._proxy.SetFndhPortPowers(json_argument)
+                result_code,
+                unique_id,
+            ) = self._pasd_bus_proxy.set_fndh_port_powers(json_argument)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {repr(ex)}")

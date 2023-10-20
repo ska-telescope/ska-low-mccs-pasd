@@ -344,6 +344,7 @@ class PasdTangoTestHarness:
         Add a mock FNDH Tango device to this test harness.
 
         :param mock: the proxy or mock to be used as a mock FNDH device.
+        :param smartbox_id: the id of the smartbox.
         """
         self._tango_test_harness.add_mock_device(
             get_smartbox_name(smartbox_id, self._station_label), mock

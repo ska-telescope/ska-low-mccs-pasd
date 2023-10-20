@@ -179,7 +179,7 @@ def test_command(  # pylint: disable=too-many-arguments
 
     command = getattr(fndh_device, device_command)
     if device_command_argin is None:
-        command_return = command()
+        command_return = command([])
     else:
         command_return = command(device_command_argin)
 

@@ -413,40 +413,46 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         result_code, message = handler(argin)
         return ([result_code], [message])
 
-    @command(dtype_out="DevVarLongStringArray")
-    def PowerOnAllPorts(self: MccsFNDH) -> tuple[list[ResultCode], list[Optional[str]]]:
+    @command(dtype_in="DevVarShortArray", dtype_out="DevVarLongStringArray")
+    def PowerOnAllPorts(
+        self: MccsFNDH,
+        masked_ports: list,
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
         """
-        Power down a port.
+        Power on all ports.
 
-        This may or may not have a Antenna attached.
+        These may or may not have a smartbox attached.
 
-        :param argin: the port to power down.
+        :param masked_ports: list of masked ports, these ports are masked
+            if all smartbox ports on that port are masked.
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
             only.
         """
         handler = self.get_command_object("PowerOnAllPorts")
-        result_code, message = handler()
+        result_code, message = handler(masked_ports)
         return ([result_code], [message])
 
-    @command(dtype_out="DevVarLongStringArray")
+    @command(dtype_in="DevVarShortArray", dtype_out="DevVarLongStringArray")
     def PowerOffAllPorts(
         self: MccsFNDH,
+        masked_ports: list,
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
         """
-        Power down a port.
+        Power off all ports.
 
-        This may or may not have a Antenna attached.
+        These may or may not have a smartbox attached.
 
-        :param argin: the port to power down.
+        :param masked_ports: list of masked ports, these ports are masked
+            if all smartbox ports on that port are masked.
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
             only.
         """
         handler = self.get_command_object("PowerOffAllPorts")
-        result_code, message = handler()
+        result_code, message = handler(masked_ports)
         return ([result_code], [message])
 
     # -----------
