@@ -17,12 +17,11 @@ from ska_tango_base.base import check_communicating
 from ska_tango_base.poller import PollingComponentManager
 
 from .pasd_bus_modbus_api import PasdBusModbusApiClient
+from .pasd_bus_poll_management import PasdBusRequestProvider
 
 NUMBER_OF_FNDH_PORTS: Final = 28
 NUMBER_OF_SMARTBOXES: Final = 24
 NUMBER_OF_SMARTBOX_PORTS: Final = 12
-
-from .pasd_bus_poll_management import PasdBusRequestProvider
 
 
 @dataclass
