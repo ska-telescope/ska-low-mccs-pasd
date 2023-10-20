@@ -19,7 +19,7 @@ from ska_control_model import AdminMode, HealthState
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility, FNDHAlarmFlags, SmartboxAlarmFlags
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
 from tests.harness import PasdTangoTestHarness
 
@@ -284,8 +284,8 @@ def test_communication(  # pylint: disable=too-many-statements
     ) == PasdConversionUtility.scale_signed_16bit(
         fndh_simulator.internal_ambient_temperature_thresholds
     )
-    assert pasd_bus_device.fndhWarningFlags == FndhSimulator.DEFAULT_FLAGS
-    assert pasd_bus_device.fndhAlarmFlags == FndhSimulator.DEFAULT_FLAGS
+    assert pasd_bus_device.fndhWarningFlags == FNDHAlarmFlags.NONE.name
+    assert pasd_bus_device.fndhAlarmFlags == FNDHAlarmFlags.NONE.name
     assert (
         getattr(
             pasd_bus_device,
@@ -511,11 +511,11 @@ def test_communication(  # pylint: disable=too-many-statements
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}WarningFlags")
-        == SmartboxSimulator.DEFAULT_FLAGS
+        == SmartboxAlarmFlags.NONE.name
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}AlarmFlags")
-        == SmartboxSimulator.DEFAULT_FLAGS
+        == SmartboxAlarmFlags.NONE.name
     )
 
 

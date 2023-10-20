@@ -12,7 +12,7 @@ from typing import Any, Dict
 
 import pytest
 
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility, FNDHAlarmFlags, SmartboxAlarmFlags
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
     FndhSimulator,
     SmartboxSimulator,
@@ -427,30 +427,30 @@ class TestFndhSimulator:
 
         :param fndh_simulator: the FNDH simulator under test
         """
-        assert fndh_simulator.warning_flags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_simulator.warning_flags == 0
         assert fndh_simulator.reset_warnings() is None
-        assert fndh_simulator.alarm_flags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_simulator.alarm_flags == 0
         assert fndh_simulator.reset_alarms() is None
         # Setup warnings
         assert fndh_simulator.initialize()
         assert fndh_simulator.status == "OK"
         fndh_simulator.fncb_temperature = 7500
         assert fndh_simulator.status == "WARNING"
-        assert fndh_simulator.warning_flags == "fncb_temperature"
+        assert fndh_simulator.warning_flags == 2**FNDHAlarmFlags.SYS_FNCBTEMP.value
         fndh_simulator.psu48v_voltages = [5100, 5100]
         assert (
             fndh_simulator.warning_flags
-            == "fncb_temperature, psu48v_voltage_1, psu48v_voltage_2"
+            == 2**FNDHAlarmFlags.SYS_FNCBTEMP.value + 2**FNDHAlarmFlags.SYS_48V1_V.value + 2**FNDHAlarmFlags.SYS_48V2_V.value
         )
         # Setup alarms
         fndh_simulator.fncb_temperature = 9000
         fndh_simulator.psu48v_temperatures = [6000, -600]
-        assert fndh_simulator.alarm_flags == "fncb_temperature, psu48v_temperature_2"
+        assert fndh_simulator.alarm_flags == 2**FNDHAlarmFlags.SYS_FNCBTEMP.value + 2**FNDHAlarmFlags.SYS_48V2_TEMP.value
         # Clear all flags
         assert fndh_simulator.reset_warnings()
-        assert fndh_simulator.warning_flags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_simulator.warning_flags == 0
         assert fndh_simulator.reset_alarms()
-        assert fndh_simulator.alarm_flags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_simulator.alarm_flags == 0
 
 
 class TestSmartboxSimulator:
@@ -853,30 +853,30 @@ class TestSmartboxSimulator:
 
         :param smartbox_simulator: the smartbox simulator under test
         """
-        assert smartbox_simulator.warning_flags == FndhSimulator.DEFAULT_FLAGS
+        assert smartbox_simulator.warning_flags == 0
         assert smartbox_simulator.reset_warnings() is None
-        assert smartbox_simulator.alarm_flags == FndhSimulator.DEFAULT_FLAGS
+        assert smartbox_simulator.alarm_flags == 0
         assert smartbox_simulator.reset_alarms() is None
         # Setup warnings
         assert smartbox_simulator.initialize()
         assert smartbox_simulator.status == "OK"
         smartbox_simulator.input_voltage = 4950
         assert smartbox_simulator.status == "WARNING"
-        assert smartbox_simulator.warning_flags == "input_voltage"
+        assert smartbox_simulator.warning_flags == 2**SmartboxAlarmFlags.SYS_48V_V.value
         smartbox_simulator.fem_case_temperatures = [5000, 5000]
         assert (
             smartbox_simulator.warning_flags
-            == "input_voltage, fem_case_temperature_1, fem_case_temperature_2"
+            == 2**SmartboxAlarmFlags.SYS_48V_V.value + 2**SmartboxAlarmFlags.SYS_SENSE01_FEM_CASE1_TEMP.value + 2**SmartboxAlarmFlags.SYS_SENSE02_FEM_CASE2_TEMP.value
         )
         # Setup alarms
         smartbox_simulator.input_voltage = 5100
         smartbox_simulator.fem_heatsink_temperatures = [3000, -600]
         assert (
             smartbox_simulator.alarm_flags
-            == "input_voltage, fem_heatsink_temperature_2"
+            == 2**SmartboxAlarmFlags.SYS_48V_V.value + 2**SmartboxAlarmFlags.SYS_SENSE04_FEM_HEATSINK_TEMP2.value
         )
         # Clear all flags
         assert smartbox_simulator.reset_warnings()
-        assert smartbox_simulator.warning_flags == FndhSimulator.DEFAULT_FLAGS
+        assert smartbox_simulator.warning_flags == 0
         assert smartbox_simulator.reset_alarms()
-        assert smartbox_simulator.alarm_flags == FndhSimulator.DEFAULT_FLAGS
+        assert smartbox_simulator.alarm_flags == 0

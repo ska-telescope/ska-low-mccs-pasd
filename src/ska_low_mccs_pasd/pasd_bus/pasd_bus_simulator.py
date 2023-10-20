@@ -49,6 +49,7 @@ from .pasd_bus_conversions import (
     FndhStatusMap,
     LEDStatusMap,
     PasdConversionUtility,
+    SmartboxAlarmFlags,
     SmartBoxStatusMap,
 )
 
@@ -414,8 +415,23 @@ class PasdHardwareSimulator:
     DEFAULT_LED_PATTERN: Final = LEDStatusMap.OFF
     DEFAULT_STATUS: SmartBoxStatusMap | FndhStatusMap = FndhStatusMap.UNINITIALISED
     DEFAULT_UPTIME: Final = 0
-    DEFAULT_FLAGS: Final = FNDHAlarmFlags.NONE
+    DEFAULT_FLAGS: Final = 0
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
+
+    ALARM_MAPPING = { # These are the FNDH alarm mapping, overriden in the smarbox
+        "psu48v_voltage_1": FNDHAlarmFlags.SYS_48V1_V,
+        "psu48v_voltage_2": FNDHAlarmFlags.SYS_48V2_V,
+        "psu48v_current": FNDHAlarmFlags.SYS_48V_I,
+        "psu48v_temperature_1": FNDHAlarmFlags.SYS_48V1_TEMP,
+        "psu48v_temperature_2": FNDHAlarmFlags.SYS_48V2_TEMP,
+        "panel_temperature": FNDHAlarmFlags.SYS_PANELTEMP,
+        "fncb_temperature": FNDHAlarmFlags.SYS_FNCBTEMP,
+        "fncb_humidity": FNDHAlarmFlags.SYS_HUMIDITY,
+        "comms_gateway_temperature": FNDHAlarmFlags.SYS_SENSE01_COMMS_GATEWAY,
+        "power_module_temperature": FNDHAlarmFlags.SYS_SENSE02_POWER_MODULE_TEMP,
+        "outside_temperature": FNDHAlarmFlags.SYS_SENSE03_OUTSIDE_TEMP,
+        "internal_ambient_temperature": FNDHAlarmFlags.SYS_SENSE04_INTERNAL_TEMP,
+    }
 
     def __init__(
         self: PasdHardwareSimulator,
@@ -515,18 +531,14 @@ class PasdHardwareSimulator:
             numbered_name = sensor_name[:-1] + "_" + str(i)
             _check_thresholds_and_set_status(numbered_name, value)
 
-    def _set_sensor_alarm(self: PasdHardwareSimulator, sensor_name: str) -> None:
+    def _set_sensor_alarm(self: FndhSimulator, sensor_name: str) -> None:
         """
         Set alarm flag and status of sensor.
 
         :param sensor_name: to use as the dict key and flag description.
         """
         self._sensors_status[sensor_name] = "ALARM"
-        # TODO: Change this to a bits representation for Modbus server
-        if self._alarm_flags == self.DEFAULT_FLAGS:
-            self._alarm_flags = sensor_name
-        else:
-            self._alarm_flags += f", {sensor_name}"
+        self._alarm_flags |= 2**self.ALARM_MAPPING[sensor_name].value
 
     def _set_sensor_warning(self: PasdHardwareSimulator, sensor_name: str) -> None:
         """
@@ -535,11 +547,8 @@ class PasdHardwareSimulator:
         :param sensor_name: to use as the dict key and flag description.
         """
         self._sensors_status[sensor_name] = "WARNING"
-        # TODO: Change this to a bits representation for Modbus server
-        if self._warning_flags == self.DEFAULT_FLAGS:
-            self._warning_flags = sensor_name
-        else:
-            self._warning_flags += f", {sensor_name}"
+        self._warning_flags |= 2**self.ALARM_MAPPING[sensor_name].value
+
 
     def _update_system_status(
         self: PasdHardwareSimulator, request_ok: bool = False
@@ -949,7 +958,6 @@ class FndhSimulator(PasdHardwareSimulator):
     CHIP_ID: Final = [1, 2, 3, 4, 5, 6, 7, 8]
     SYS_ADDRESS: Final = 101
 
-    # TODO: Change to integer when Modbus server is used
     DEFAULT_FIRMWARE_VERSION: Final = 257
     DEFAULT_PSU48V_VOLTAGES: Final = [4790, 4810]
     DEFAULT_PSU48V_CURRENT: Final = 1510
@@ -1093,7 +1101,6 @@ class FndhSimulator(PasdHardwareSimulator):
         """
         return [1 if port._on else 0 for port in self._ports]
 
-
 class SmartboxSimulator(PasdHardwareSimulator):
     """A simulator for a PaSD smartbox."""
 
@@ -1119,6 +1126,18 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_FEM_HEATSINK_TEMPERATURES: Final = [4280, 4250]
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
     DEFAULT_PORT_CURRENT_THRESHOLD: Final = 496
+
+    ALARM_MAPPING = {
+        "input_voltage": SmartboxAlarmFlags.SYS_48V_V,
+        "power_supply_output_voltage": SmartboxAlarmFlags.SYS_PSU_V,
+        "power_supply_temperature": SmartboxAlarmFlags.SYS_PSU_TEMP,
+        "pcb_temperature": SmartboxAlarmFlags.SYS_PCB_TEMP,
+        "fem_ambient_temperature": SmartboxAlarmFlags.SYS_AMB_TEMP,
+        "fem_case_temperature_1": SmartboxAlarmFlags.SYS_SENSE01_FEM_CASE1_TEMP,
+        "fem_case_temperature_2": SmartboxAlarmFlags.SYS_SENSE02_FEM_CASE2_TEMP,
+        "fem_heatsink_temperature_1": SmartboxAlarmFlags.SYS_SENSE03_FEM_HEATSINK_TEMP1,
+        "fem_heatsink_temperature_2": SmartboxAlarmFlags.SYS_SENSE04_FEM_HEATSINK_TEMP2,
+    }
 
     # Instantiate sensor data descriptors
     input_voltage = _Sensor()
@@ -1334,6 +1353,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         :return: whether successful, or None if there was nothing to do
         """
         return self._ports[port_number - 1].reset_breaker()
+
 
 
 class PasdBusSimulator:

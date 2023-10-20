@@ -100,6 +100,8 @@ class PasdBusModbusApi:
         for name, attr in names.items():
             try:
                 unconverted_value = getattr(self._simulators[device_id], name)
+                if unconverted_value == "input_voltage":
+                    print(f"Wungusa {name} {attr.address} {attr.count}")
             except AttributeError:
                 # TODO
                 logger.error(f"Attribute not found: {name}")

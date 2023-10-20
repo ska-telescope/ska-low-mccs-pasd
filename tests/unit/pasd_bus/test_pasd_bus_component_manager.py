@@ -22,7 +22,7 @@ from ska_low_mccs_pasd.pasd_bus import (
     PasdBusComponentManager,
     SmartboxSimulator,
 )
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility, FNDHAlarmFlags, SmartboxAlarmFlags
 from tests.harness import PasdTangoTestHarness
 
 
@@ -408,12 +408,12 @@ class TestPasdBusComponentManager:
         # and FNDH warning and alarm flags
         mock_callbacks.assert_call(
             "pasd_device_state_for_fndh",
-            warning_flags=FndhSimulator.DEFAULT_FLAGS.name,
+            warning_flags=FNDHAlarmFlags.NONE.name,
             lookahead=25,
         )
         mock_callbacks.assert_call(
             "pasd_device_state_for_fndh",
-            alarm_flags=FndhSimulator.DEFAULT_FLAGS.name,
+            alarm_flags=FNDHAlarmFlags.NONE.name,
             lookahead=25,
         )
 
@@ -433,12 +433,12 @@ class TestPasdBusComponentManager:
             # and smartbox warning and alarm flags
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
-                warning_flags=SmartboxSimulator.DEFAULT_FLAGS.name,
+                warning_flags=SmartboxAlarmFlags.NONE.name,
                 lookahead=25,
             )
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
-                alarm_flags=SmartboxSimulator.DEFAULT_FLAGS.name,
+                alarm_flags=SmartboxAlarmFlags.NONE.name,
                 lookahead=50,
             )
 

@@ -21,7 +21,7 @@ from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator, SmartboxSimulator
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility, SmartboxAlarmFlags
 
 gc.disable()  # TODO: why is this needed?
 
@@ -918,8 +918,8 @@ class TestSmartBoxPasdBusIntegration:
             smartbox_device.Fem12CurrentTripThreshold
             == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
         )
-        assert smartbox_device.WarningFlags == SmartboxSimulator.DEFAULT_FLAGS
-        assert smartbox_device.AlarmFlags == SmartboxSimulator.DEFAULT_FLAGS
+        assert smartbox_device.WarningFlags == SmartboxAlarmFlags.NONE.name
+        assert smartbox_device.AlarmFlags == SmartboxAlarmFlags.NONE.name
 
         # Subscribe to attribute change events
         smartbox_device.subscribe_event(

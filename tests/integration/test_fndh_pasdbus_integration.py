@@ -17,7 +17,7 @@ from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility, FNDHAlarmFlags
 
 gc.disable()  # TODO: why is this needed?
 
@@ -308,8 +308,8 @@ class TestfndhPasdBusIntegration:
         ) == PasdConversionUtility.scale_signed_16bit(
             fndh_simulator.internal_ambient_temperature_thresholds
         )
-        assert fndh_device.WarningFlags == FndhSimulator.DEFAULT_FLAGS
-        assert fndh_device.AlarmFlags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_device.WarningFlags == FNDHAlarmFlags.NONE.name
+        assert fndh_device.AlarmFlags == FNDHAlarmFlags.NONE.name
 
         for port in range(1, FndhSimulator.NUMBER_OF_PORTS + 1):
             is_port_on = fndh_simulator.ports_power_sensed[port - 1]

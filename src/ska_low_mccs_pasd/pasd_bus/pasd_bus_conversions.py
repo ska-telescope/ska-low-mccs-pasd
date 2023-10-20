@@ -482,7 +482,7 @@ class PasdConversionUtility:
     @classmethod
     def convert_fndh_alarm_status(
         cls,
-        value_list: list[int] | list[FNDHAlarmFlags] | list[str],
+        value_list: list[int] | list[FNDHAlarmFlags] | list[str] | int,
         inverse: bool = False,
     ) -> str | list[int]:
         """
@@ -497,12 +497,14 @@ class PasdConversionUtility:
         :return: string describing the parameters that have triggered
             the alarm or warning.
         """
-        raw_value = value_list[0]
         if inverse:
+            if isinstance(value_list, int):
+                return [value_list]
             result = 0
             for status in value_list:
-                result += 2**status.value
+                result += 2**status.value if isinstance(status, FNDHAlarmFlags) else 2**FNDHAlarmFlags[status].value
             return [result]
+        raw_value = value_list[0]
         status = FNDHAlarmFlags.NONE.name
         for bit in range(0, 12):
             if (raw_value >> bit) & 1:
@@ -515,7 +517,7 @@ class PasdConversionUtility:
     @classmethod
     def convert_smartbox_alarm_status(
         cls,
-        value_list: list[int] | list[SmartboxAlarmFlags] | list[str],
+        value_list: list[int] | list[SmartboxAlarmFlags] | list[str] | int,
         inverse: bool = False,
     ) -> str | list[int]:
         """
@@ -533,8 +535,10 @@ class PasdConversionUtility:
         raw_value = value_list[0]
         if inverse:
             result = 0
+            if isinstance(value_list, int):
+                return [value_list]
             for status in value_list:
-                result += 2**status.value
+                result += 2**status.value if isinstance(status, SmartboxAlarmFlags) else 2**SmartboxAlarmFlags[status].value
             return [result]
         status = SmartboxAlarmFlags.NONE.name
         for bit in range(0, 9):
