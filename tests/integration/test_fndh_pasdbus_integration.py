@@ -308,9 +308,8 @@ class TestfndhPasdBusIntegration:
         ) == PasdConversionUtility.scale_signed_16bit(
             fndh_simulator.internal_ambient_temperature_thresholds
         )
-        # TODO
-        # assert fndh_device.WarningFlags == FndhSimulator.DEFAULT_FLAGS
-        # assert fndh_device.AlarmFlags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_device.WarningFlags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_device.AlarmFlags == FndhSimulator.DEFAULT_FLAGS
 
         for port in range(1, FndhSimulator.NUMBER_OF_PORTS + 1):
             is_port_on = fndh_simulator.ports_power_sensed[port - 1]
@@ -437,6 +436,6 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "pasdBushealthState",
         "smartbox24AlarmFlags",
         "fndhPort2PowerState",
-        timeout=15.0,
+        timeout=20.0,
         assert_no_error=False,
     )

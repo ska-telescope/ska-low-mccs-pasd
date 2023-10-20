@@ -28,6 +28,7 @@ def mock_callbacks_fixture() -> MockCallableGroup:
         "pasd_device_state",
         "attribute_update",
         "port_power_state",
+        "smartbox_power_state",
         "task",
         timeout=10.0,
     )

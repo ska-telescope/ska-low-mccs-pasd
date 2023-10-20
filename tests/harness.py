@@ -208,9 +208,11 @@ class PasdTangoTestHarness:
             server_context_manager_factory(pasd_bus_simulator_server),
         )
 
-    def set_pasd_bus_device(
+    def set_pasd_bus_device(  # pylint: disable=too-many-arguments
         self: PasdTangoTestHarness,
         address: tuple[str, int] | None = None,
+        polling_rate: float = 0.5,
+        device_polling_rate: float = 15.0,
         timeout: float = 1.0,
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsPasdBus",
@@ -223,6 +225,10 @@ class PasdTangoTestHarness:
         :param address: address of the PaSD
             to be monitored and controlled by this Tango device.
             It is a tuple of hostname or IP address, and port.
+        :param polling_rate: minimum amount of time between communications
+            on the PaSD bus
+        :param device_polling_rate: minimum amount of time between communications
+            with the same device.
         :param timeout: timeout to use when interacting with the PaSD
         :param logging_level: the Tango device's default logging level.
         :param device_class: The device class to use.
@@ -245,6 +251,8 @@ class PasdTangoTestHarness:
             device_class,
             Host=host,
             Port=port,
+            PollingRate=polling_rate,
+            DevicePollingRate=device_polling_rate,
             Timeout=timeout,
             LoggingLevelDefault=logging_level,
         )
