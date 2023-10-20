@@ -182,12 +182,15 @@ def off_smartbox_attached_port_fixture(
 def test_context_fixture(
     fndh_simulator: FndhSimulator,
     smartbox_simulators: dict[int, SmartboxSimulator],
+    smartbox_attached_ports: list[int],
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
 
     :param fndh_simulator: the FNDH simulator against which to test
     :param smartbox_simulators: the smartbox simulators against which to test
+    :param smartbox_attached_ports: a list of FNDH port numbers each
+        smartbox is connected to.
 
     :yield: a test context in which to run the integration tests.
     """
@@ -197,8 +200,10 @@ def test_context_fixture(
     harness.set_pasd_bus_device(polling_rate=0.1, device_polling_rate=0.2)
     harness.set_fndh_device()
 
-    for on_smartbox_id in range(1, 25):
-        harness.add_smartbox_device(on_smartbox_id)
+    for smartbox_id in range(1, 25):
+        harness.add_smartbox_device(
+            smartbox_id, smartbox_attached_ports[smartbox_id - 1]
+        )
 
     harness.set_field_station_device()
 
