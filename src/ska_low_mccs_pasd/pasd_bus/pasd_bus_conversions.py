@@ -500,7 +500,7 @@ class PasdConversionUtility:
                 return [value_list]
             result = 0
             for status in value_list:
-                result += (
+                result ^= (
                     status.value
                     if isinstance(status, FNDHAlarmFlags)
                     else FNDHAlarmFlags[status].value
@@ -508,12 +508,12 @@ class PasdConversionUtility:
             return [result]
         raw_value = value_list[0]
         status = FNDHAlarmFlags.NONE.name
-        for bit in range(0, 12):
-            if (raw_value >> bit) & 1:
+        for flag in FNDHAlarmFlags:
+            if raw_value & flag.value:
                 if status == FNDHAlarmFlags.NONE.name:
-                    status = FNDHAlarmFlags(bit).name
+                    status = flag.name
                 else:
-                    status += f", {FNDHAlarmFlags(bit).name}"
+                    status += f", {flag.name}"
         return status
 
     @classmethod
@@ -539,7 +539,7 @@ class PasdConversionUtility:
             if isinstance(value_list, int):
                 return [value_list]
             for status in value_list:
-                result += (
+                result ^= (
                     status.value
                     if isinstance(status, SmartboxAlarmFlags)
                     else SmartboxAlarmFlags[status].value
@@ -547,10 +547,10 @@ class PasdConversionUtility:
             return [result]
         raw_value = value_list[0]
         status = SmartboxAlarmFlags.NONE.name
-        for bit in range(0, 9):
-            if (raw_value >> bit) & 1:
+        for flag in SmartboxAlarmFlags:
+            if raw_value & flag.value:
                 if status == SmartboxAlarmFlags.NONE.name:
-                    status = SmartboxAlarmFlags(bit).name
+                    status = flag.name
                 else:
-                    status += f", {SmartboxAlarmFlags(bit).name}"
+                    status += f", {flag.name}"
         return status

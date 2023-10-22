@@ -414,7 +414,7 @@ class PasdHardwareSimulator:
     DEFAULT_LED_PATTERN: int = LEDServiceMap.OFF << 8 | LEDStatusMap.OFF
     DEFAULT_STATUS: FndhStatusMap | SmartBoxStatusMap = FndhStatusMap.UNINITIALISED
     DEFAULT_UPTIME: Final = [0]
-    DEFAULT_FLAGS: FNDHAlarmFlags | SmartboxAlarmFlags = FNDHAlarmFlags.NONE
+    DEFAULT_FLAGS: int = 0x0
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
     ALARM_MAPPING: dict[str, FNDHAlarmFlags | SmartboxAlarmFlags] = {}
@@ -433,7 +433,7 @@ class PasdHardwareSimulator:
         self._sensors_status: dict = {}
         self._warning_flags: int = self.DEFAULT_FLAGS
         self._alarm_flags: int = self.DEFAULT_FLAGS
-        self._status = self.DEFAULT_STATUS
+        self._status: int = self.DEFAULT_STATUS
         self._led_pattern: int = self.DEFAULT_LED_PATTERN
 
     def _load_thresholds(
@@ -802,7 +802,7 @@ class PasdHardwareSimulator:
         return PasdConversionUtility.n_to_bytes(uptime_val)
 
     @property
-    def status(self: PasdHardwareSimulator) -> FndhStatusMap | SmartBoxStatusMap:
+    def status(self: PasdHardwareSimulator) -> int:
         """
         Return the status of the FNDH/smartbox.
 
