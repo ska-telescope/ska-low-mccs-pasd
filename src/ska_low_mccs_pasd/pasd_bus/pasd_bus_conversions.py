@@ -7,13 +7,13 @@
 # See LICENSE for more info.
 """This module provides scaling and other conversion functions for the PaSD."""
 import logging
-from enum import Enum
+from enum import IntEnum, IntFlag
 from typing import Any
 
 logger = logging.getLogger()
 
 
-class FndhStatusMap(Enum):
+class FndhStatusMap(IntEnum):
     """Enum type for FNDH health status strings."""
 
     UNDEFINED = -1  # We should never receive an undefined status
@@ -26,7 +26,7 @@ class FndhStatusMap(Enum):
     # then go through full powerup sequence
 
 
-class SmartBoxStatusMap(Enum):
+class SmartBoxStatusMap(IntEnum):
     """Enum type for SmartBox health status strings."""
 
     UNDEFINED = -1  # We should never receive an undefined status
@@ -38,15 +38,19 @@ class SmartBoxStatusMap(Enum):
     POWERDOWN = 5  # Local tech wants to turn off 48V to all ports in the station
 
 
-class LEDServiceMap(Enum):
+class LEDServiceMap(IntEnum):
     """Enum type for the service LED (MSB in SYS_LIGHTS register)."""
 
     UNDEFINED = -1
     OFF = 0
     ON = 1
+    VFAST = 2  # 5 Hz strobe
+    FAST = 3  # 2.5 Hz strobe
+    SLOW = 4  # 1.25 Hz strobe
+    VSLOW = 5  # 0.625 Hz strobe
 
 
-class LEDStatusMap(Enum):
+class LEDStatusMap(IntEnum):
     """Enum type for the status LED (LSB in SYS_LIGHTS_REGISTER)."""
 
     UNDEFINED = -1  # We should never receive an undefined status
@@ -71,37 +75,37 @@ class LEDStatusMap(Enum):
     GREENRED = 50  # Alternating green and red at 1.25 Hz - used for 'POWERDOWN'
 
 
-class FNDHAlarmFlags(Enum):
+class FNDHAlarmFlags(IntFlag):
     """Enum type for the FNDH alarm/warning flags."""
 
-    NONE = -1
-    SYS_48V1_V = 0  # Bit 0 is set
-    SYS_48V2_V = 1  # Bit 1 is set
-    SYS_48V_I = 2
-    SYS_48V1_TEMP = 3
-    SYS_48V2_TEMP = 4
-    SYS_PANELTEMP = 5
-    SYS_FNCBTEMP = 6
-    SYS_HUMIDITY = 7
-    SYS_SENSE01_COMMS_GATEWAY = 8
-    SYS_SENSE02_POWER_MODULE_TEMP = 9
-    SYS_SENSE03_OUTSIDE_TEMP = 10
-    SYS_SENSE04_INTERNAL_TEMP = 11  # Bit 11 is set
+    NONE = 0x0
+    SYS_48V1_V = 0x1
+    SYS_48V2_V = 0x2
+    SYS_48V_I = 0x4
+    SYS_48V1_TEMP = 0x8
+    SYS_48V2_TEMP = 0x10
+    SYS_PANELTEMP = 0x20
+    SYS_FNCBTEMP = 0x40
+    SYS_HUMIDITY = 0x80
+    SYS_SENSE01_COMMS_GATEWAY = 0x100
+    SYS_SENSE02_POWER_MODULE_TEMP = 0x200
+    SYS_SENSE03_OUTSIDE_TEMP = 0x400
+    SYS_SENSE04_INTERNAL_TEMP = 0x800
 
 
-class SmartboxAlarmFlags(Enum):
+class SmartboxAlarmFlags(IntFlag):
     """Enum type for the Smartbox alarm/warning flags."""
 
-    NONE = -1
-    SYS_48V_V = 0
-    SYS_PSU_V = 1
-    SYS_PSU_TEMP = 2
-    SYS_PCB_TEMP = 3
-    SYS_AMB_TEMP = 4
-    SYS_SENSE01_FEM_CASE1_TEMP = 5
-    SYS_SENSE02_FEM_CASE2_TEMP = 6
-    SYS_SENSE03_FEM_HEATSINK_TEMP1 = 7
-    SYS_SENSE04_FEM_HEATSINK_TEMP2 = 8
+    NONE = 0x0
+    SYS_48V_V = 0x1
+    SYS_PSU_V = 0x2
+    SYS_PSU_TEMP = 0x4
+    SYS_PCB_TEMP = 0x8
+    SYS_AMB_TEMP = 0x10
+    SYS_SENSE01_FEM_CASE1_TEMP = 0x20
+    SYS_SENSE02_FEM_CASE2_TEMP = 0x40
+    SYS_SENSE03_FEM_HEATSINK_TEMP1 = 0x80
+    SYS_SENSE04_FEM_HEATSINK_TEMP2 = 0x100
 
 
 class PasdConversionUtility:
@@ -292,9 +296,7 @@ class PasdConversionUtility:
         return [value / 100.0 for value in value_list]
 
     @classmethod
-    def convert_cpu_id(
-        cls, value_list: list[int] | list[str], inverse: bool = False
-    ) -> list[str] | list[int]:
+    def convert_cpu_id(cls, value_list: list, inverse: bool = False) -> list:
         """
         Convert a number of raw register values to a CPU ID.
 
@@ -334,9 +336,7 @@ class PasdConversionUtility:
             return []
 
     @classmethod
-    def convert_chip_id(
-        cls, value_list: list[int] | list[str], inverse: bool = False
-    ) -> list[str] | list[int]:
+    def convert_chip_id(cls, value_list: list, inverse: bool = False) -> list:
         """
         Convert the raw register values to a string chip id.
 
@@ -362,9 +362,7 @@ class PasdConversionUtility:
             return []
 
     @classmethod
-    def convert_firmware_version(
-        cls, value_list: list[int] | list[str], inverse: bool = False
-    ) -> list[str] | list[int]:
+    def convert_firmware_version(cls, value_list: list, inverse: bool = False) -> list:
         """
         Convert the raw register values to a string firmware version.
 
@@ -382,9 +380,9 @@ class PasdConversionUtility:
     @classmethod
     def convert_fndh_status(
         cls,
-        value_list: list[int] | list[FndhStatusMap] | list[str],
+        value_list: list,
         inverse: bool = False,
-    ) -> list[str] | list[int]:
+    ) -> list:
         """
         Convert the raw register value to a string status.
 
@@ -409,9 +407,9 @@ class PasdConversionUtility:
     @classmethod
     def convert_smartbox_status(
         cls,
-        value_list: list[int] | list[SmartBoxStatusMap] | list[str],
+        value_list: list,
         inverse: bool = False,
-    ) -> list[str] | list[int]:
+    ) -> list:
         """
         Convert the raw register value to a string status.
 
@@ -436,7 +434,7 @@ class PasdConversionUtility:
     @classmethod
     def convert_led_status(
         cls,
-        value_list: list[int] | list[LEDStatusMap] | list[LEDServiceMap],
+        value_list: list,
         inverse: bool = False,
     ) -> str | list[int]:
         """
@@ -482,7 +480,7 @@ class PasdConversionUtility:
     @classmethod
     def convert_fndh_alarm_status(
         cls,
-        value_list: list[int] | list[FNDHAlarmFlags] | list[str] | int,
+        value_list: list,
         inverse: bool = False,
     ) -> str | list[int]:
         """
@@ -502,7 +500,11 @@ class PasdConversionUtility:
                 return [value_list]
             result = 0
             for status in value_list:
-                result += 2**status.value if isinstance(status, FNDHAlarmFlags) else 2**FNDHAlarmFlags[status].value
+                result += (
+                    status.value
+                    if isinstance(status, FNDHAlarmFlags)
+                    else FNDHAlarmFlags[status].value
+                )
             return [result]
         raw_value = value_list[0]
         status = FNDHAlarmFlags.NONE.name
@@ -517,7 +519,7 @@ class PasdConversionUtility:
     @classmethod
     def convert_smartbox_alarm_status(
         cls,
-        value_list: list[int] | list[SmartboxAlarmFlags] | list[str] | int,
+        value_list: list,
         inverse: bool = False,
     ) -> str | list[int]:
         """
@@ -532,14 +534,18 @@ class PasdConversionUtility:
         :return: string describing the parameters that have triggered
             the alarm or warning.
         """
-        raw_value = value_list[0]
         if inverse:
             result = 0
             if isinstance(value_list, int):
                 return [value_list]
             for status in value_list:
-                result += 2**status.value if isinstance(status, SmartboxAlarmFlags) else 2**SmartboxAlarmFlags[status].value
+                result += (
+                    status.value
+                    if isinstance(status, SmartboxAlarmFlags)
+                    else SmartboxAlarmFlags[status].value
+                )
             return [result]
+        raw_value = value_list[0]
         status = SmartboxAlarmFlags.NONE.name
         for bit in range(0, 9):
             if (raw_value >> bit) & 1:

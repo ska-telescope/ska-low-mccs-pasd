@@ -209,18 +209,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             changes.
         """
         self._logger = logger
-        # self._logger.debug(
-        #     f"Creating TCP client for ({host}, {port}) with timeout {timeout}..."
-        # )
-        # tcp_client = TcpClient((host, port), timeout, logger=logger)
-
-        # self._logger.debug(r"Creating marshaller with sentinel '\n'...")
-        # marshaller = SentinelBytesMarshaller(b"\n", logger=logger)
-        # application_client = ApplicationClient[bytes, bytes](
-        #     tcp_client, marshaller.marshall, marshaller.unmarshall
-        # )
-        # self._pasd_bus_api_client = PasdBusJsonApiClient(application_client)
-
         self._pasd_bus_api_client = PasdBusModbusApiClient(host, port, logger)
         self._pasd_bus_device_state_callback = pasd_device_state_callback
 

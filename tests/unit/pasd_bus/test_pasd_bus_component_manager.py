@@ -22,7 +22,11 @@ from ska_low_mccs_pasd.pasd_bus import (
     PasdBusComponentManager,
     SmartboxSimulator,
 )
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility, FNDHAlarmFlags, SmartboxAlarmFlags
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
+    FNDHAlarmFlags,
+    PasdConversionUtility,
+    SmartboxAlarmFlags,
+)
 from tests.harness import PasdTangoTestHarness
 
 

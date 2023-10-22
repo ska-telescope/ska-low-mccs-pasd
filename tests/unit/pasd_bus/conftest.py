@@ -142,7 +142,9 @@ def mock_fndh_simulator_fixture(
         "status",
     ]:
 
-        def side_effect(sim, prop, val=None):
+        def side_effect(
+            sim: PasdBusSimulator, prop: str, val: int | None = None
+        ) -> property | None:
             if val:
                 setattr(sim, prop, val)
                 return None
@@ -267,7 +269,9 @@ def mock_smartbox_simulators_fixture(
             "ports_current_draw",
         ]:
 
-            def side_effect(sim, prop, val=None):
+            def side_effect(
+                sim: PasdBusSimulator, prop: str, val: int | None = None
+            ) -> property | None:
                 if val:
                     setattr(sim, prop, val)
                     return None

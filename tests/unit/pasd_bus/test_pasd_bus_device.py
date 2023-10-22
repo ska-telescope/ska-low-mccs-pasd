@@ -19,7 +19,11 @@ from ska_control_model import AdminMode, HealthState
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility, FNDHAlarmFlags, SmartboxAlarmFlags
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
+    FNDHAlarmFlags,
+    PasdConversionUtility,
+    SmartboxAlarmFlags,
+)
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
 from tests.harness import PasdTangoTestHarness
 
@@ -165,7 +169,7 @@ def test_communication(  # pylint: disable=too-many-statements
     )
     assert pasd_bus_device.fndhSysAddress == FndhSimulator.SYS_ADDRESS
     assert pasd_bus_device.fndhStatus == "OK"
-    assert pasd_bus_device.fndhLedPattern[-3:] == FndhSimulator.DEFAULT_LED_PATTERN.name
+    assert pasd_bus_device.fndhLedPattern == "service: OFF, status: OFF"
     assert list(
         pasd_bus_device.fndhPsu48vVoltages
     ) == PasdConversionUtility.scale_volts(FndhSimulator.DEFAULT_PSU48V_VOLTAGES)
@@ -320,8 +324,8 @@ def test_communication(  # pylint: disable=too-many-statements
         == SmartboxSimulator.DEFAULT_STATUS.name
     )
     assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}LedPattern")[-3:]
-        == SmartboxSimulator.DEFAULT_LED_PATTERN.name
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}LedPattern")
+        == "service: OFF, status: OFF"
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltage")

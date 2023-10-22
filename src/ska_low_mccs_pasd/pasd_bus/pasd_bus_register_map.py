@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Final, List, Optional, Sequence
+from typing import Any, Callable, Final, Optional, Sequence
 
 from .pasd_bus_conversions import PasdConversionUtility
 
@@ -125,7 +125,7 @@ class PasdBusAttribute:
         return self._count
 
     @property
-    def value(self: PasdBusAttribute) -> int | List[int]:
+    def value(self: PasdBusAttribute) -> int | list[int]:
         """
         Return the value to be set for this attribute.
 
@@ -134,7 +134,7 @@ class PasdBusAttribute:
         return self._value
 
     @value.setter
-    def value(self: PasdBusAttribute, value: int | List[int]) -> None:
+    def value(self: PasdBusAttribute, value: int | list[int]) -> None:
         """
         Set a new value for this attribute.
 
@@ -142,7 +142,7 @@ class PasdBusAttribute:
         """
         self._value = value
 
-    def convert_value(self: PasdBusAttribute, values: List[Any]) -> Any:
+    def convert_value(self: PasdBusAttribute, values: list[Any]) -> Any:
         """
         Execute the attribute's conversion function on the supplied value.
 
@@ -153,7 +153,7 @@ class PasdBusAttribute:
         """
         return self._conversion_function(values)
 
-    def convert_write_value(self: PasdBusAttribute, values: List[Any]) -> Any:
+    def convert_write_value(self: PasdBusAttribute, values: list[Any]) -> Any:
         """
         Execute the attribute's conversion function on the supplied value.
 
@@ -187,9 +187,9 @@ class PasdBusPortAttribute(PasdBusAttribute):
     # pylint: disable=too-many-branches, too-many-statements
     def _parse_port_bitmaps(  # noqa: C901
         self: PasdBusPortAttribute,
-        values: List[int | bool | str | None],
+        values: list[int | bool | str | None],
         inverse: bool = False,
-    ) -> List[bool | str | None, int]:
+    ) -> list[bool | str | None] | list[int]:
         """
         Parse the port register bitmap data into the desired port information.
 
@@ -205,7 +205,7 @@ class PasdBusPortAttribute(PasdBusAttribute):
         if isinstance(values[0], list):
             values = values[0]
         if inverse:
-            results: List[int] = []
+            inv_results: list[int] = []
             for value in values:
                 bitstring = "00"
 
@@ -242,9 +242,9 @@ class PasdBusPortAttribute(PasdBusAttribute):
                     bitstring += "0"
 
                 bitstring += "000000"  # pad to 16 bits
-                results.append(int(bitstring, 2))
-            return results
-        results: List[bool | str | None] = []
+                inv_results.append(int(bitstring, 2))
+            return inv_results
+        results: list[bool | str | None] = []
         for status_bitmap in values:
             bitstring = f"{status_bitmap:016b}"
             match (self.desired_info):
@@ -574,7 +574,7 @@ class PasdBusRegisterMap:
         return self._SMARTBOX_REGISTER_MAPS[self.revision_number]
 
     def get_writeable_attribute(
-        self, device_id: int, attribute_name: str, write_values: List[Any]
+        self, device_id: int, attribute_name: str, write_values: list[Any]
     ) -> PasdBusAttribute:
         """
         Return a PasdAttribute object for a writeable object.

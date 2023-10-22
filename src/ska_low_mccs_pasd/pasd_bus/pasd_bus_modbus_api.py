@@ -60,7 +60,9 @@ class PasdBusModbusApi:
         self._register_map = PasdBusRegisterMap()
 
     # pylint: disable=too-many-return-statements
-    def _convert_value(self, value: Any, attribute: PasdBusAttribute) -> list[int]:
+    def _convert_value(
+        self, value: Any, attribute: PasdBusAttribute
+    ) -> int | list[int]:
         if isinstance(attribute, PasdBusPortAttribute):
             return attribute.convert_write_value([value])
         if isinstance(value, list):
@@ -92,9 +94,9 @@ class PasdBusModbusApi:
 
         :return: List of attribute values
         """
-        if device_id == 101:
+        if device_id == FndhSimulator.SYS_ADDRESS:
             device_id = 0
-        values = []
+        values: list[Any] = []
         last_address = -1
         last_count = -1
         for name, attr in names.items():
@@ -127,7 +129,7 @@ class PasdBusModbusApi:
         starting_address: int,
         values: list,
     ) -> bool:
-        if device_id == 101:
+        if device_id == FndhSimulator.SYS_ADDRESS:
             device_id = 0
         for name, attr in names.items():
             try:
@@ -138,18 +140,22 @@ class PasdBusModbusApi:
                 reg_vals = values[list_index : list_index + attr.count]
                 if isinstance(attr, PasdBusPortAttribute):
                     port = starting_address - attr.address
-                    reg_vals = (attr.convert_value(reg_vals)[0], port)
-                setattr(self._simulators[device_id], name, reg_vals)
+                    reg_tuple = (attr.convert_value(reg_vals)[0], port)
+                    setattr(self._simulators[device_id], name, reg_tuple)
+                else:
+                    setattr(self._simulators[device_id], name, reg_vals)
             except AttributeError:
                 logger.error(f"Attribute not found: {name}")
                 return False
         return True
 
-    def _handle_no_match(self, request: dict) -> bytes:
+    def _handle_no_match(self, request: dict) -> ExceptionResponse:
         return ExceptionResponse(function_code=1)
 
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
-        response = None
+        response: (
+            ReadHoldingRegistersResponse | WriteMultipleRegistersResponse | None
+        ) = None
 
         def handle_request(message: Any) -> None:
             nonlocal response
