@@ -339,9 +339,9 @@ class PasdBusRequestProvider:
             and any arguments or extra information.
         """
         if self._fndh_initial_read_count != NUMBER_OF_FNDH_INITIAL_READS:
-            # First read the FNDH status to get the Modbus map revision number
-            # and so we know which SmartBoxes are connected. This requires
-            # two reads.
+            # First read the FNDH static info to get the Modbus map
+            # revision number, and the port status so we know which
+            # SmartBoxes are connected. This requires two reads.
             read_request = self._device_request_providers[0].get_read()
             self._fndh_initial_read_count += 1
             return 0, read_request, None

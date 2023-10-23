@@ -734,6 +734,18 @@ class PasdHardwareSimulator:
         """
         return [port.power_sensed for port in self._ports]
 
+    def get_unpowered_smartboxes(self: PasdHardwareSimulator) -> list[int]:
+        """
+        Return a list of unpowered smartboxes.
+
+        :return: the list of device ids for unpowered smartboxes.
+        """
+        return [
+            index + 1
+            for index, powered in enumerate(self.ports_power_sensed)
+            if not powered
+        ]
+
     @property
     def uptime(self: PasdHardwareSimulator) -> int:
         """
