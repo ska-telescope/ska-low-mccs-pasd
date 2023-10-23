@@ -378,7 +378,6 @@ class FndhComponentManager(TaskExecutorComponentManager):
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
-        self.logger.error("PowerOnAllPorts called")
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
@@ -416,7 +415,6 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 status=TaskStatus.COMPLETED,
                 result="Power on all ports success",
             )
-        self.logger.error("PowerOnAllPorts finished")
         return result_code, unique_id
 
     @check_communicating

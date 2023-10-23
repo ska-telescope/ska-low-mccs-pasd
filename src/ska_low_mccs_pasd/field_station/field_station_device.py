@@ -43,6 +43,7 @@ class MccsFieldStation(SKABaseDevice):
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), mandatory=True)
 
+    # TODO: Make forwarded attributes work
     # OutsideTemperature = attribute(
     #     name="outsideTemperature", label="outsideTemperature", forwarded=True
     # )
@@ -237,9 +238,7 @@ class MccsFieldStation(SKABaseDevice):
         self: MccsFieldStation, argin: str
     ) -> DevVarLongStringArrayType:
         """
-        Configure the field station.
-
-        Currently this only configures FNDH device attributes.
+        Manually update the antenna mask.
 
         :param argin: the configuration for the device in stringified json format
 
@@ -273,27 +272,27 @@ class MccsFieldStation(SKABaseDevice):
     @attribute(dtype=("bool",), max_dim_x=257, label="AntennaMask")
     def antennaMask(self: MccsFieldStation) -> list:
         """
-        Return the antenna ID attribute.
+        Return the antenna mask attribute.
 
-        :return: antenna ID
+        :return: antenna mask
         """
         return self.component_manager._antenna_mask
 
     @attribute(dtype="DevString", max_dim_x=257, label="AntennaMapping")
     def antennaMapping(self: MccsFieldStation) -> str:
         """
-        Return the antenna ID attribute.
+        Return the antenna mapping attribute.
 
-        :return: antenna ID
+        :return: antenna mappping
         """
         return json.dumps(self.component_manager._antenna_mapping)
 
     @attribute(dtype="DevString", max_dim_x=257, label="SmartboxMapping")
     def smartboxMapping(self: MccsFieldStation) -> str:
         """
-        Return the antenna ID attribute.
+        Return the smartbox mapping attribute.
 
-        :return: antenna ID
+        :return: smartbox mapping
         """
         return json.dumps(self.component_manager._smartbox_mapping)
 

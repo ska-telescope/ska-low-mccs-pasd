@@ -42,7 +42,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         logger: logging.Logger,
         fndh_name: str,
         smartbox_names: list[str],
-        antenna_mask: list[bool],  # 0-indexed
+        antenna_mask: list[bool],  # 1-indexed, entry 0 corresponds to all antennas
         antenna_mapping: dict[int, list],  # 1-indexed
         smartbox_mapping: dict[int, int],  # 1-indexed
         communication_state_callback: Callable[..., None],
@@ -120,7 +120,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._antenna_mapping = antenna_mapping
         self._smartbox_mapping = smartbox_mapping
 
-        # REMEMBER TO DELETE
+        # REMEMBER TO DELETE. This is temporary until we have a real configuration.
         with open("config.txt", encoding="utf-8") as f:
             config = f.read()
             self._configuration = json.loads(config)
@@ -514,7 +514,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         """
         Configure the field station.
 
-        Currently this only supports configuring FNDH alarm thresholds.
+        Currently this only pulls in mappings from a static source.
 
         :param task_callback: callback to be called when the status of
             the command changes
