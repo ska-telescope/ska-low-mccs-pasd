@@ -19,10 +19,6 @@ from ska_tango_base.poller import PollingComponentManager
 from .pasd_bus_modbus_api import PasdBusModbusApiClient
 from .pasd_bus_poll_management import PasdBusRequestProvider
 
-NUMBER_OF_FNDH_PORTS: Final = 28
-NUMBER_OF_SMARTBOXES: Final = 24
-NUMBER_OF_SMARTBOX_PORTS: Final = 12
-
 
 @dataclass
 class PasdBusRequest:
@@ -445,6 +441,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         super().poll_succeeded(poll_response)
 
         self._update_component_state(power=PowerState.ON, fault=False)
+
         if poll_response.command is None:
             self._pasd_bus_device_state_callback(
                 poll_response.device_id,

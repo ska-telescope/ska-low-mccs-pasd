@@ -179,21 +179,6 @@ class PasdConversionUtility:
         return values
 
     @classmethod
-    def default_conversion_2(
-        cls, values: list[Any], inverse: bool = False
-    ) -> list[Any]:
-        """
-        Return the supplied raw value(s) with no conversion.
-
-        :param values: raw value(s)
-        :param inverse: whether to invert the conversion
-        :return: the value(s) unchanged
-        """
-        if inverse:
-            return [round(value * 100) for value in values]
-        return values
-
-    @classmethod
     def scale_volts(
         cls, value_list: int | list[int] | list[float] | None, inverse: bool = False
     ) -> list[int] | list[float]:
@@ -217,8 +202,6 @@ class PasdConversionUtility:
         if isinstance(value_list, int):
             value_list = [value_list]
         if inverse:
-            if isinstance(value_list[0], list):
-                value_list = value_list[0]
             return [round(value * 100) & 0xFFFF for value in value_list]
         return [value / 100.0 for value in value_list]
 
@@ -260,11 +243,7 @@ class PasdConversionUtility:
         if isinstance(value_list, int):
             value_list = [value_list]
         if inverse:
-            if isinstance(value_list[0], list):
-                it = value_list[0]
-            else:
-                it = value_list
-            return [deg_to_raw(value) for value in it]
+            return [deg_to_raw(value) for value in value_list]
 
         return [raw_to_deg(int(value)) for value in value_list]
 
@@ -332,7 +311,7 @@ class PasdConversionUtility:
                 return cls.n_to_bytes(value_list[0])
             return [cls.bytes_to_n(value_list)]
         except ValueError:
-            logger.error(f"Invalid uptime value received: {value_list} {inverse}")
+            logger.error(f"Invalid uptime value received: {value_list}")
             return []
 
     @classmethod

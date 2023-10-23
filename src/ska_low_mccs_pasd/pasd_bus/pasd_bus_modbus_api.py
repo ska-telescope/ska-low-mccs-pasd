@@ -102,10 +102,7 @@ class PasdBusModbusApi:
         for name, attr in names.items():
             try:
                 unconverted_value = getattr(self._simulators[device_id], name)
-                if unconverted_value == "input_voltage":
-                    print(f"Wungusa {name} {attr.address} {attr.count}")
             except AttributeError:
-                # TODO
                 logger.error(f"Attribute not found: {name}")
             value = self._convert_value(unconverted_value, attr)
             if isinstance(value, list):
@@ -150,6 +147,7 @@ class PasdBusModbusApi:
         return True
 
     def _handle_no_match(self, request: dict) -> ExceptionResponse:
+        logger.error(f"No match found for request {request}")
         return ExceptionResponse(function_code=1)
 
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
@@ -283,6 +281,7 @@ class PasdBusModbusApiClient:
             return self._create_error_response(
                 "request", f"Exception: {e}"
             )  # TODO: What error code to use?
+
         if len(attributes) == 0:
             self._logger.warning(
                 f"No attributes matching {request['read']} in PaSD register map for"
@@ -303,6 +302,7 @@ class PasdBusModbusApiClient:
             f"MODBUS read request: modbus address {modbus_address}, "
             f"start address {attributes[keys[0]].address}, count {count}"
         )
+
         reply = self._client.read_holding_registers(
             attributes[keys[0]].address, count, modbus_address
         )
@@ -327,6 +327,7 @@ class PasdBusModbusApiClient:
                         last_attribute, PasdBusPortAttribute
                     ) and not isinstance(current_attribute, PasdBusPortAttribute):
                         register_index += last_attribute.count
+
                     converted_values = current_attribute.convert_value(
                         reply.registers[
                             register_index : register_index + current_attribute.count
@@ -422,6 +423,7 @@ class PasdBusModbusApiClient:
         modbus_address = (
             self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
         )
+
         # Get a PasdBusCommand object for this command
         command = self._register_map.get_command(
             request["device_id"], request["execute"], request["arguments"]

@@ -486,42 +486,18 @@ class PasdBusRegisterMap:
         "fem_heatsink_temperature_2_thresholds": PasdBusAttribute(
             1032, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
         ),
-        "fem1_current_trip_threshold": PasdBusAttribute(
-            1068, 1, PasdConversionUtility.default_conversion_2, writeable=True
-        ),
-        "fem2_current_trip_threshold": PasdBusAttribute(
-            1069, 1, PasdConversionUtility.default_conversion_2, writeable=True
-        ),
-        "fem3_current_trip_threshold": PasdBusAttribute(
-            1070, 1, PasdConversionUtility.default_conversion_2, writeable=True
-        ),
-        "fem4_current_trip_threshold": PasdBusAttribute(
-            1071, 1, PasdConversionUtility.default_conversion_2, writeable=True
-        ),
-        "fem5_current_trip_threshold": PasdBusAttribute(
-            1072, 1, PasdConversionUtility.default_conversion_2, writeable=True
-        ),
-        "fem6_current_trip_threshold": PasdBusAttribute(
-            1073, 1, PasdConversionUtility.default_conversion_2, writeable=True
-        ),
-        "fem7_current_trip_threshold": PasdBusAttribute(
-            1074, 1, PasdConversionUtility.default_conversion_2, writeable=True
-        ),
-        "fem8_current_trip_threshold": PasdBusAttribute(
-            1075, 1, PasdConversionUtility.default_conversion_2, writeable=True
-        ),
-        "fem9_current_trip_threshold": PasdBusAttribute(
-            1076, 1, PasdConversionUtility.default_conversion_2, writeable=True
-        ),
-        "fem10_current_trip_threshold": PasdBusAttribute(
-            1077, 1, PasdConversionUtility.default_conversion_2, writeable=True
-        ),
-        "fem11_current_trip_threshold": PasdBusAttribute(
-            1078, 1, PasdConversionUtility.default_conversion_2, writeable=True
-        ),
-        "fem12_current_trip_threshold": PasdBusAttribute(
-            1079, 1, PasdConversionUtility.default_conversion_2, writeable=True
-        ),
+        "fem1_current_trip_threshold": PasdBusAttribute(1068, 1, writeable=True),
+        "fem2_current_trip_threshold": PasdBusAttribute(1069, 1, writeable=True),
+        "fem3_current_trip_threshold": PasdBusAttribute(1070, 1, writeable=True),
+        "fem4_current_trip_threshold": PasdBusAttribute(1071, 1, writeable=True),
+        "fem5_current_trip_threshold": PasdBusAttribute(1072, 1, writeable=True),
+        "fem6_current_trip_threshold": PasdBusAttribute(1073, 1, writeable=True),
+        "fem7_current_trip_threshold": PasdBusAttribute(1074, 1, writeable=True),
+        "fem8_current_trip_threshold": PasdBusAttribute(1075, 1, writeable=True),
+        "fem9_current_trip_threshold": PasdBusAttribute(1076, 1, writeable=True),
+        "fem10_current_trip_threshold": PasdBusAttribute(1077, 1, writeable=True),
+        "fem11_current_trip_threshold": PasdBusAttribute(1078, 1, writeable=True),
+        "fem12_current_trip_threshold": PasdBusAttribute(1079, 1, writeable=True),
         WARNING_FLAGS: PasdBusAttribute(
             10129, 1, PasdConversionUtility.convert_smartbox_alarm_status
         ),

@@ -488,7 +488,7 @@ def check_fastcommand_fixture() -> Callable:
     """
 
     def _check_fastcommand(
-        device_proxy: tango.DeviceProxy, command: str, args: str, timeout: float = 35
+        device_proxy: tango.DeviceProxy, command: str, args: str, timeout: float = 10
     ) -> None:
         current_time = time.time()
         value = None
