@@ -29,11 +29,24 @@ NUMBER_OF_SMARTBOX_PORTS = 12
 
 @scenario(
     "features/monitor_and_control.feature",
-    "Monitor PaSD",
+    "Monitor PaSD FNDH",
 )
-def test_monitoring() -> None:
+def test_monitoring_fndh() -> None:
     """
-    Test basic monitoring of a PaSD.
+    Test basic monitoring of a PaSD FNDH
+
+    Any code in this scenario method is run at the *end* of the
+    scenario.
+    """
+
+
+@scenario(
+    "features/monitor_and_control.feature",
+    "Monitor PaSD Smartbox",
+)
+def test_monitoring_smartbox() -> None:
+    """
+    Test basic monitoring of a PaSD smartbox.
 
     Any code in this scenario method is run at the *end* of the
     scenario.
