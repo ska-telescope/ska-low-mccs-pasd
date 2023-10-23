@@ -374,7 +374,6 @@ class PasdTangoTestHarness:
             FndhPort=fndh_port or smartbox_id,
             PasdFQDN=get_pasd_bus_name(),
             FndhFQDN=get_fndh_name(),
-            SmartBoxNumber=smartbox_id,
             LoggingLevelDefault=logging_level,
         )
 

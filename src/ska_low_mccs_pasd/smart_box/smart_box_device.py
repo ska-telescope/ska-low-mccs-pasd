@@ -32,7 +32,6 @@ class MccsSmartBox(SKABaseDevice):
     # -----------------
     FndhPort = device_property(dtype=int, mandatory=True)
     PasdFQDN = device_property(dtype=(str), mandatory=True)
-    SmartBoxNumber = device_property(dtype=int, mandatory=True)
 
     PORT_COUNT: Final = 12
 
@@ -127,7 +126,6 @@ class MccsSmartBox(SKABaseDevice):
             f"Initialised {device_name} device with properties:\n"
             f"\tFndhPort: {self.FndhPort}\n"
             f"\tPasdFQDN: {self.PasdFQDN}\n"
-            f"\tSmartBoxNumber: {self.SmartBoxNumber}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties

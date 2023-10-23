@@ -81,18 +81,16 @@ class TestFieldStationIntegration:  # pylint: disable=too-few-public-methods
             change_event_callbacks["field_station_state"],
         )
 
-        # The field station device will be in alarm state
-        # because
-        #     Forwarded attribute outsideTemperature is not correctly configured!
-        #     Root attribute name = Not defined
-        # but we can still test what we need to
         change_event_callbacks["field_station_state"].assert_change_event(
-            tango.DevState.ALARM
+            tango.DevState.DISABLE
         )
-
+        # State will only reach unknown as it inherits state from smartboxes which
+        # aren't being acted upon.
         field_station_device.adminMode = AdminMode.ONLINE
-
-        # State is stuck in ALARM so there's no way to check
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        # State is stuck in UNKNOWN so there's no way to check
         # that we have successfully established communication.
         # Let's just sleep for a few seconds.
         time.sleep(3)
