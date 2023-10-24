@@ -94,6 +94,14 @@ class PasdTangoTestHarnessContext:
         """
         return self._tango_context.get_device(get_pasd_bus_name(self._station_label))
 
+    def get_pasd_bus_device2(self: PasdTangoTestHarnessContext) -> tango.DeviceProxy:
+        """
+        Get a proxy to the PaSD bus Tango device.
+
+        :returns: a proxy to the PaSD bus Tango device.
+        """
+        return self._tango_context.get_device(get_pasd_bus_name("station_name"))
+
     def get_field_station_device(
         self: PasdTangoTestHarnessContext,
     ) -> tango.DeviceProxy:
@@ -255,6 +263,82 @@ class PasdTangoTestHarness:
             DevicePollingRate=device_polling_rate,
             Timeout=timeout,
             LoggingLevelDefault=logging_level,
+        )
+
+    def set_pasd_bus_device2(  # pylint: disable=too-many-arguments
+        self: PasdTangoTestHarness,
+        address: tuple[str, int] | None = None,
+        polling_rate: float = 0.5,
+        device_polling_rate: float = 15.0,
+        timeout: float = 1.0,
+        logging_level: int = int(LoggingLevel.DEBUG),
+        device_class: type[Device] | str = "ska_low_mccs_pasd.MccsPasdBus",
+    ) -> None:
+        """
+        Set the PaSD bus Tango device in the test harness.
+
+        This test harness currently only permits one PaSD bus device.
+
+        :param address: address of the PaSD
+            to be monitored and controlled by this Tango device.
+            It is a tuple of hostname or IP address, and port.
+        :param polling_rate: minimum amount of time between communications
+            on the PaSD bus
+        :param device_polling_rate: minimum amount of time between communications
+            with the same device.
+        :param timeout: timeout to use when interacting with the PaSD
+        :param logging_level: the Tango device's default logging level.
+        :param device_class: The device class to use.
+            This may be used to override the usual device class,
+            for example with a patched subclass.
+        """
+        port: Callable[[dict[str, Any]], int] | int  # for the type checker
+
+        if address is None:
+            host = "localhost"
+
+            def port(context: dict[str, Any]) -> int:
+                return context["pasd_bus2"][1]
+
+        else:
+            (host, port) = address
+
+        self._tango_test_harness.add_device(
+            get_pasd_bus_name("station_name"),
+            device_class,
+            Host=host,
+            Port=port,
+            PollingRate=polling_rate,
+            DevicePollingRate=device_polling_rate,
+            Timeout=timeout,
+            LoggingLevelDefault=logging_level,
+        )
+
+    def set_pasd_bus_simulator2(
+        self: PasdTangoTestHarness,
+        fndh_simulator: FndhSimulator,
+        smartbox_simulators: dict[int, SmartboxSimulator],
+    ) -> None:
+        """
+        Set the PaSD bus simulator server for the test harness.
+
+        :param fndh_simulator: the FNDH simulator to be used in testing.
+        :param smartbox_simulators: the smartbox simulators to be used in testing.
+        """
+        # Defer importing from ska_low_mccs_pasd
+        # until we know we need to launch a PaSD simulator to test against.
+        # This ensures that we can use this harness to run tests against a real cluster,
+        # from within a pod that does not have ska_low_mccs_pasd installed.
+        # pylint: disable-next=import-outside-toplevel
+        from ska_low_mccs_pasd.pasd_bus import PasdBusSimulatorJsonServer
+
+        pasd_bus_simulator_server = PasdBusSimulatorJsonServer(
+            fndh_simulator, smartbox_simulators
+        )
+
+        self._tango_test_harness.add_context_manager(
+            "pasd_bus2",
+            server_context_manager_factory(pasd_bus_simulator_server),
         )
 
     def set_mock_pasd_bus_device(

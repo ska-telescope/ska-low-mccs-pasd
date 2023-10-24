@@ -18,7 +18,7 @@ include .make/base.mk
 include .make/python.mk
 
 PYTHON_LINE_LENGTH = 88
-PYTHON_VARS_AFTER_PYTEST = --forked
+PYTHON_VARS_AFTER_PYTEST = --forked --log-cli-level=DEBUG
 PYTHON_LINT_TARGET = src/ tests/
 
 python-post-lint:

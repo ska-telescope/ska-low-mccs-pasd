@@ -224,7 +224,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._pasd_bus_api_client = PasdBusJsonApiClient(application_client)
         # self._pasd_bus_api_client = PasdBusModbusApiClient(host, port, logger)
         self._pasd_bus_device_state_callback = pasd_device_state_callback
-
+        self._pasd_bus_api_client.connect()
         self._min_ticks = int(device_polling_rate / polling_rate)
         self._request_provider: PasdBusRequestProvider | None = None
 

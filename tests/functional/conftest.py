@@ -151,6 +151,12 @@ def functional_test_context_fixture(
             # pylint: disable-next=import-outside-toplevel
             from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import PasdBusSimulator
 
+            pasd_bus_simulator2 = PasdBusSimulator(pasd_config_path, "station_name")
+            harness.set_pasd_bus_simulator2(
+                pasd_bus_simulator2.get_fndh(), pasd_bus_simulator2.get_smartboxes()
+            )
+            harness.set_pasd_bus_device2(timeout=pasd_timeout)
+
             pasd_bus_simulator = PasdBusSimulator(pasd_config_path, station_label)
             harness.set_pasd_bus_simulator(
                 pasd_bus_simulator.get_fndh(), pasd_bus_simulator.get_smartboxes()
@@ -161,6 +167,23 @@ def functional_test_context_fixture(
 
     with harness as context:
         yield context
+
+
+@pytest.fixture(name="pasd_bus_device2", scope="module")
+def pasd_bus_device2_fixture(
+    functional_test_context: PasdTangoTestHarnessContext,
+    subscribe_device_proxy: Callable,
+) -> Iterator[tango.DeviceProxy]:
+    """
+    Return a DeviceProxy to an instance of MccsPasdBus.
+
+    :param functional_test_context: context in which the functional tests run.
+    :param subscribe_device_proxy: cached fixture for setting up device proxy.
+
+    :yields: A proxy to an instance of MccsPasdBus.
+    """
+    proxy = functional_test_context.get_pasd_bus_device2()
+    yield subscribe_device_proxy(proxy)
 
 
 @pytest.fixture(name="change_event_callbacks", scope="session")
@@ -266,6 +289,40 @@ def device_subscriptions_fixture() -> dict[str, list[str]]:
     """
     device_subscriptions = {
         get_pasd_bus_name(): [
+            "state",
+            "healthState",
+            "adminMode",
+            "fndhUptime",
+            "fndhStatus",
+            "fndhLedPattern",
+            "fndhPsu48vVoltages",
+            "fndhPsu48vCurrent",
+            "fndhPsu48vTemperatures",
+            "fndhPanelTemperature",
+            "fndhFncbTemperature",
+            "fndhFncbHumidity",
+            "fndhCommsGatewayTemperature",
+            "fndhPowerModuleTemperature",
+            "fndhOutsideTemperature",
+            "fndhInternalAmbientTemperature",
+            "fndhPortForcings",
+            "fndhPortsDesiredPowerOnline",
+            "fndhPortsDesiredPowerOffline",
+            "fndhPortsPowerSensed",
+            "smartbox1Uptime",
+            "smartbox1Status",
+            "smartbox1LedPattern",
+            "smartbox1InputVoltage",
+            "smartbox1PowerSupplyOutputVoltage",
+            "smartbox1PowerSupplyTemperature",
+            "smartbox1PcbTemperature",
+            "smartbox1FemAmbientTemperature",
+            "smartbox1FemCaseTemperatures",
+            "smartbox1FemHeatsinkTemperatures",
+            "smartbox1PortsPowerSensed",
+            "smartbox24AlarmFlags",
+        ],
+        get_pasd_bus_name("station_name"): [
             "state",
             "healthState",
             "adminMode",
