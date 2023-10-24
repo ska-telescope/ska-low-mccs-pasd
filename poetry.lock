@@ -1192,21 +1192,23 @@ pylint = "*"
 
 [[package]]
 name = "pymodbus"
-version = "3.5.2"
+version = "3.5.4"
 description = "A fully featured modbus protocol stack in python"
 category = "main"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "pymodbus-3.5.2-py3-none-any.whl", hash = "sha256:c861d30390d7b7cd0bca7b529392fc58fc35b63947d6ef574192b8026180f1c7"},
-    {file = "pymodbus-3.5.2.tar.gz", hash = "sha256:26c1aa9919b24f2247794d5d9d80f65ec06fdfd9bd6b76b81d446b55335cabf3"},
+    {file = "pymodbus-3.5.4-py3-none-any.whl", hash = "sha256:a965bb8d457e4cc828eefd19617683f2dc970082ccfb0d8c4a74ce006d9aedec"},
+    {file = "pymodbus-3.5.4.tar.gz", hash = "sha256:d020933cbc32fe8aff5b8157be46f429d08df3dfd06e9579417768128d31b974"},
 ]
 
 [package.extras]
-development = ["codespell (>=2.2.2)", "coverage (>=7.1.0)", "mypy (>=1.3.0)", "pre-commit (>=3.1.1)", "pycodestyle (>=2.10.0)", "pydocstyle (>=6.3.0)", "pyflakes (>=3.0.1)", "pylint (>=2.17.2)", "pytest (>=7.3.1)", "pytest-asyncio (>=0.20.3)", "pytest-cov (>=4.1.0)", "pytest-timeout (>=2.1.0)", "pytest-xdist (>=3.3.1)", "ruff (>=0.0.287)", "twine (>=4.0.2)", "types-Pygments", "types-pyserial"]
+all = ["Sphinx (>=5.3.0)", "aiohttp (>=3.8.6)", "build (>=1.0.3)", "click (>=8.0.0)", "codespell (>=2.2.2)", "coverage (>=7.1.0)", "mypy (>=1.3.0)", "pre-commit (>=3.1.1)", "prompt-toolkit (>=3.0.36)", "pycodestyle (>=2.10.0)", "pydocstyle (>=6.3.0)", "pyflakes (>=3.0.1)", "pygments (>=2.15.0)", "pylint (>=2.17.2)", "pyserial (>=3.5)", "pytest (>=7.3.1)", "pytest-asyncio (>=0.20.3)", "pytest-cov (>=4.1.0)", "pytest-timeout (>=2.1.0)", "pytest-xdist (>=3.3.1)", "recommonmark (>=0.7.1)", "ruff (>=0.0.287)", "sphinx-rtd-theme (>=1.1.1)", "twine (>=4.0.2)", "typer[all] (>=0.7.0)", "types-Pygments", "types-pyserial"]
+development = ["build (>=1.0.3)", "codespell (>=2.2.2)", "coverage (>=7.1.0)", "mypy (>=1.3.0)", "pre-commit (>=3.1.1)", "pycodestyle (>=2.10.0)", "pydocstyle (>=6.3.0)", "pyflakes (>=3.0.1)", "pylint (>=2.17.2)", "pytest (>=7.3.1)", "pytest-asyncio (>=0.20.3)", "pytest-cov (>=4.1.0)", "pytest-timeout (>=2.1.0)", "pytest-xdist (>=3.3.1)", "ruff (>=0.0.287)", "twine (>=4.0.2)", "types-Pygments", "types-pyserial"]
 documentation = ["Sphinx (>=5.3.0)", "recommonmark (>=0.7.1)", "sphinx-rtd-theme (>=1.1.1)"]
-repl = ["aiohttp (>=3.8.5)", "click (>=8.0.0)", "prompt-toolkit (>=3.0.36)", "pygments (>=2.15.0)", "typer[all] (>=0.7.0)"]
+repl = ["aiohttp (>=3.8.6)", "click (>=8.0.0)", "prompt-toolkit (>=3.0.36)", "pygments (>=2.15.0)", "typer[all] (>=0.7.0)"]
 serial = ["pyserial (>=3.5)"]
+simulator = ["aiohttp (>=3.8.6)"]
 
 [[package]]
 name = "pytango"
@@ -2264,4 +2266,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "c0a5693a9a958de6dcdf3259c7e3a576264fa460bfed8c96050b58a199fbe7de"
+content-hash = "ed7ecc4055112048252f911c6e708cff1ed86fc5689e482f5f25f3eee948017f"
