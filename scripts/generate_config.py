@@ -6,7 +6,7 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
-"""This module implements the MCCS FieldStation device."""
+"""This is a basic temporary script to generate a configuration for FieldStation."""
 import json
 
 SMARTBOX_NUMBER = 24

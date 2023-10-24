@@ -631,7 +631,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         :return: the task status and a human-readable status message
         """
-        self.logger.error("power_on_all_ports called")
         return self.submit_task(
             self._power_on_all_ports,  # type: ignore[arg-type]
             args=[masked_ports],
@@ -646,7 +645,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
-        self.logger.error("_power_on_all_ports called")
         desired_port_powers: list[bool | None] = [True] * NUMBER_OF_SMARTBOX_PORTS
         if masked_ports is not None:
             for masked_port in masked_ports:
@@ -659,7 +657,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 "stay_on_when_offline": True,
             }
         )
-        self.logger.error(json_argument)
         try:
             assert self._pasd_bus_proxy._proxy
             (
