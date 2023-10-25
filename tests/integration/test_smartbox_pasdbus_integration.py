@@ -87,10 +87,9 @@ def turn_pasd_devices_online(
     change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.UNKNOWN)
     if smartbox_on:
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
-        change_event_callbacks["smartbox_state"].assert_not_called()
     else:
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
-        change_event_callbacks["smartbox_state"].assert_not_called()
+    change_event_callbacks["smartbox_state"].assert_not_called()
 
 
 def setup_devices_with_subscriptions(
