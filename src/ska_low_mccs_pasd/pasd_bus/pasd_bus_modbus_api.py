@@ -138,7 +138,7 @@ class PasdBusModbusApiClient:
         :param port: the PaSD port
         :param logger_object: the logger to use
         """
-        self._client = ModbusTcpClient(host, port, ModbusAsciiFramer)
+        self._client = ModbusTcpClient(host, port, ModbusAsciiFramer, timeout=10)
         logger_object.info(f"Created Modbus TCP client for address {host}, port {port}")
         self._logger = logger_object
 
