@@ -269,16 +269,16 @@ class MccsFieldStation(SKABaseDevice):
     # Attributes
     # ----------
 
-    @attribute(dtype=("bool",), max_dim_x=257, label="AntennaMask")
+    @attribute(dtype=("bool",), max_dim_x=256, label="AntennaMask")
     def antennaMask(self: MccsFieldStation) -> list:
         """
         Return the antenna mask attribute.
 
         :return: antenna mask
         """
-        return self.component_manager._antenna_mask
+        return self.component_manager._antenna_mask[1:257]
 
-    @attribute(dtype="DevString", max_dim_x=257, label="AntennaMapping")
+    @attribute(dtype="DevString", label="AntennaMapping")
     def antennaMapping(self: MccsFieldStation) -> str:
         """
         Return the antenna mapping attribute.
@@ -287,7 +287,7 @@ class MccsFieldStation(SKABaseDevice):
         """
         return json.dumps(self.component_manager._antenna_mapping)
 
-    @attribute(dtype="DevString", max_dim_x=257, label="SmartboxMapping")
+    @attribute(dtype="DevString", label="SmartboxMapping")
     def smartboxMapping(self: MccsFieldStation) -> str:
         """
         Return the smartbox mapping attribute.

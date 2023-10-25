@@ -189,8 +189,7 @@ class MccsSmartBox(SKABaseDevice):
         for command_name, method_name in [
             ("PowerOnPort", "turn_on_port"),
             ("PowerOffPort", "turn_off_port"),
-            ("PowerOnAllPorts", "power_on_all_ports"),
-            ("PowerOffAllPorts", "power_off_all_ports"),
+            ("SetPortPowers", "set_port_powers"),
         ]:
             self.register_command_object(
                 command_name,
@@ -247,45 +246,23 @@ class MccsSmartBox(SKABaseDevice):
         return ([result_code], [message])
 
     @command(dtype_in="DevVarShortArray", dtype_out="DevVarLongStringArray")
-    def PowerOnAllPorts(
+    def SetPortPowers(
         self: MccsSmartBox,
-        masked_ports: list,
+        desired_port_powers: list,
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
         """
-        Power on all ports.
+        Set port powers.
 
-        These may or may not have an antenna attached.
+        These ports will not have an antenna attached.
 
-        :param masked_ports: list of masked ports, these ports are masked
-            if all antennas on that port are masked.
-
+        :param desired_port_powers: desired port powers of unmasked ports with
+            antenna attached.
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
             only.
         """
-        handler = self.get_command_object("PowerOnAllPorts")
-        result_code, message = handler(masked_ports)
-        return ([result_code], [message])
-
-    @command(dtype_in="DevVarShortArray", dtype_out="DevVarLongStringArray")
-    def PowerOffAllPorts(
-        self: MccsSmartBox,
-        masked_ports: list,
-    ) -> tuple[list[ResultCode], list[Optional[str]]]:
-        """
-        Power down all ports.
-
-        These may or may not have an antenna attached.
-
-        :param masked_ports: list of masked ports, these ports are masked
-            if all antennas on that port are masked.
-
-        :return: A tuple containing a return code and a string message
-            indicating status. The message is for information purposes
-            only.
-        """
-        handler = self.get_command_object("PowerOffAllPorts")
-        result_code, message = handler(masked_ports)
+        handler = self.get_command_object("SetPortPowers")
+        result_code, message = handler(desired_port_powers)
         return ([result_code], [message])
 
     # ----------

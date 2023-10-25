@@ -136,14 +136,8 @@ def fndh_device_fixture(
             [True, True],
         ),
         (
-            "PowerOnAllPorts",
-            "power_on_all_ports",
-            None,
-            [True, True],
-        ),
-        (
-            "PowerOffAllPorts",
-            "power_off_all_ports",
+            "SetPortPowers",
+            "set_port_powers",
             None,
             [True, True],
         ),

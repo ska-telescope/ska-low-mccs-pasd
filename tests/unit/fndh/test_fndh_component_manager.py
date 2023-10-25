@@ -25,6 +25,8 @@ from tests.harness import (
     get_pasd_bus_name,
 )
 
+NUMBER_OF_FNDH_PORTS = 28
+
 
 @pytest.fixture(name="mock_pasdbus")
 def mock_pasdbus_fixture() -> unittest.mock.Mock:
@@ -194,16 +196,10 @@ class TestFndhComponentManager:
                 f"Power off port '{3} success'",
             ),
             (
-                "power_on_all_ports",
-                None,
+                "set_port_powers",
+                [0] * NUMBER_OF_FNDH_PORTS,
                 (TaskStatus.QUEUED, "Task queued"),
-                "Power on all ports success",
-            ),
-            (
-                "power_off_all_ports",
-                None,
-                (TaskStatus.QUEUED, "Task queued"),
-                "Power off all ports success",
+                "Set port powers success",
             ),
         ],
     )

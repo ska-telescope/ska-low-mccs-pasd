@@ -105,11 +105,7 @@ def test_device_transitions_to_power_state_of_fndh_port(
             4,
         ),
         (
-            "PowerOnAllPorts",
-            None,
-        ),
-        (
-            "PowerOffAllPorts",
+            "SetPortPowers",
             None,
         ),
     ],

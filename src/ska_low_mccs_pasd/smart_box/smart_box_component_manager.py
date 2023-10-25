@@ -614,110 +614,48 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         return result_code, return_message
 
     @check_communicating
-    def power_on_all_ports(
+    def set_port_powers(
         self: SmartBoxComponentManager,
-        masked_ports: Optional[list] = None,
+        desired_port_powers: Optional[list] = None,
         task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
-        Turn on all ports.
+        Set port powers.
 
-        These ports may or may not have an antenna attached.
+        These ports will not have an antenna attached.
 
-        :param masked_ports: list of masked ports, these ports are masked
-            if all antennas on that port are masked.
+        :param desired_port_powers: desired port powers of unmasked ports with
+            antenna attached.
         :param task_callback: callback to be called when the status of
             the command changes
 
         :return: the task status and a human-readable status message
         """
         return self.submit_task(
-            self._power_on_all_ports,  # type: ignore[arg-type]
-            args=[masked_ports],
+            self._set_port_powers,  # type: ignore[arg-type]
+            args=[desired_port_powers],
             task_callback=task_callback,
         )
 
-    def _power_on_all_ports(
+    def _set_port_powers(
         self: SmartBoxComponentManager,
-        masked_ports: Optional[list] = None,
-        task_callback: Optional[Callable] = None,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, str]:
-        if task_callback:
-            task_callback(status=TaskStatus.IN_PROGRESS)
-        desired_port_powers: list[bool | None] = [True] * NUMBER_OF_SMARTBOX_PORTS
-        if masked_ports is not None:
-            for masked_port in masked_ports:
-                desired_port_powers[masked_port - 1] = None
-
-        json_argument = json.dumps(
-            {
-                "smartbox_number": self._fndh_port,
-                "port_powers": desired_port_powers,
-                "stay_on_when_offline": True,
-            }
-        )
-        try:
-            assert self._pasd_bus_proxy._proxy
-            (
-                result_code,
-                unique_id,
-            ) = self._pasd_bus_proxy.set_smartbox_port_powers(json_argument)
-
-        except Exception as ex:  # pylint: disable=broad-except
-            self.logger.error(f"error {repr(ex)}")
-            if task_callback:
-                task_callback(
-                    status=TaskStatus.FAILED,
-                    result="Power on all ports failed",
-                )
-
-            return ResultCode.FAILED, "0"
-
-        if task_callback:
-            task_callback(
-                status=TaskStatus.COMPLETED,
-                result="Power on all ports success",
-            )
-        return result_code, unique_id
-
-    @check_communicating
-    def power_off_all_ports(
-        self: SmartBoxComponentManager,
-        masked_ports: Optional[list] = None,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Turn off all ports.
-
-        These ports may or may not have an antenna attached.
-
-        :param masked_ports: list of masked ports, these ports are masked
-            if all antennas on that port are masked.
-        :param task_callback: callback to be called when the status of
-            the command changes
-
-        :return: the task status and a human-readable status message
-        """
-        return self.submit_task(
-            self._power_off_all_ports,  # type: ignore[arg-type]
-            args=[masked_ports],
-            task_callback=task_callback,
-        )
-
-    def _power_off_all_ports(
-        self: SmartBoxComponentManager,
-        masked_ports: Optional[list] = None,
+        desired_port_powers: Optional[list] = None,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
-        desired_port_powers: list[bool | None] = [False] * NUMBER_OF_SMARTBOX_PORTS
-        if masked_ports is not None:
-            for masked_port in masked_ports:
-                desired_port_powers[masked_port - 1] = None
+        desired_port_powers = list(desired_port_powers)  # type: ignore
+
+        for port_no, port_state in enumerate(desired_port_powers):
+            if port_state == 0:
+                desired_port_powers[port_no] = False
+            elif port_state == 1:
+                desired_port_powers[port_no] = True
+            else:
+                desired_port_powers[port_no] = None
+
         json_argument = json.dumps(
             {
                 "smartbox_number": self._fndh_port,
@@ -738,7 +676,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if task_callback:
                 task_callback(
                     status=TaskStatus.FAILED,
-                    result="Power off all ports failed",
+                    result="Set port powers failed",
                 )
 
             return ResultCode.FAILED, "0"
@@ -746,6 +684,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(
                 status=TaskStatus.COMPLETED,
-                result="Power off all ports success",
+                result="Set port powers success",
             )
         return result_code, unique_id

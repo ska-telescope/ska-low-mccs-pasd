@@ -261,21 +261,12 @@ class TestSmartBoxComponentManager:
         ),
         [
             (
-                "power_on_all_ports",
+                "set_port_powers",
                 [1, 4, 5],
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    "Power on all ports success",
-                ),
-            ),
-            (
-                "power_off_all_ports",
-                [1, 4, 5],
-                (TaskStatus.QUEUED, "Task queued"),
-                (
-                    TaskStatus.COMPLETED,
-                    "Power off all ports success",
+                    "Set port powers success",
                 ),
             ),
         ],
@@ -310,23 +301,19 @@ class TestSmartBoxComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
+        desired_port_powers: list[bool | None]
+
+        desired_port_powers = [True] * SMARTBOX_PORTS
+        for masked_port in masked_ports:
+            desired_port_powers[masked_port - 1] = None
+
         assert (
             getattr(smartbox_component_manager, component_manager_command)(
-                masked_ports=masked_ports, task_callback=mock_callbacks["task"]
+                desired_port_powers=desired_port_powers,
+                task_callback=mock_callbacks["task"],
             )
             == expected_manager_result
         )
-
-        desired_port_powers: list[bool | None]
-
-        if component_manager_command == "power_on_all_ports":
-            desired_port_powers = [True] * SMARTBOX_PORTS
-            for masked_port in masked_ports:
-                desired_port_powers[masked_port - 1] = None
-        else:
-            desired_port_powers = [False] * SMARTBOX_PORTS
-            for masked_port in masked_ports:
-                desired_port_powers[masked_port - 1] = None
 
         json_argument = json.dumps(
             {
