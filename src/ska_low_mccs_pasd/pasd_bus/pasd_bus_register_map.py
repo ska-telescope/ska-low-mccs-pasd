@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Final, Optional, Sequence
 
-from .pasd_bus_conversions import PasdConversionUtility
+from .pasd_bus_conversions import LEDServiceMap, LEDStatusMap, PasdConversionUtility
 
 logger = logging.getLogger()
 
@@ -66,13 +66,6 @@ class PasdCommandStrings(Enum):
     INITIALIZE = "initialize"
     RESET_ALARMS = "reset_alarms"
     RESET_WARNINGS = "reset_warnings"
-
-
-class PasdServiceLEDPattern(Enum):
-    """Enum type for service LED patterns."""
-
-    OFF = 0
-    SERVICE = 256
 
 
 class PasdBusAttribute:
@@ -673,11 +666,14 @@ class PasdBusRegisterMap:
 
         attribute = PasdBusAttribute(attribute_map[self.LED_PATTERN].address, 1)
         try:
-            # First argument is the pattern string for the service LED
-            attribute.value = PasdServiceLEDPattern[arguments[0]].value
+            # First argument is the pattern string for the service LED and
+            # second the pattern string for the status LED.
+            attribute.value = (
+                LEDServiceMap[arguments[0]].value ^ LEDStatusMap[arguments[1]].value
+            )
             return attribute
         except KeyError:
-            logger.error(f"Unknown LED pattern {arguments[0]}")
+            logger.error(f"Unknown LED pattern {arguments}")
             return None
 
     def _create_initialize_command(self, device_id: int) -> PasdBusAttribute:

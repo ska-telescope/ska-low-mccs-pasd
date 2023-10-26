@@ -43,11 +43,11 @@ class LEDServiceMap(IntEnum):
 
     UNDEFINED = -1
     OFF = 0
-    ON = 1
-    VFAST = 2  # 5 Hz strobe
-    FAST = 3  # 2.5 Hz strobe
-    SLOW = 4  # 1.25 Hz strobe
-    VSLOW = 5  # 0.625 Hz strobe
+    ON = 0x100
+    VFAST = 0x200  # 5 Hz strobe
+    FAST = 0x300  # 2.5 Hz strobe
+    SLOW = 0x400  # 1.25 Hz strobe
+    VSLOW = 0x500  # 0.625 Hz strobe
 
 
 class LEDStatusMap(IntEnum):
@@ -430,30 +430,20 @@ class PasdConversionUtility:
         if inverse:
             if len(value_list) == 1:
                 return [value_list[0].value]
-            reg_val = cls.bytes_to_n([v.value for v in value_list])
-            return [reg_val]
-        raw_value = value_list[0]
-        try:
-            byte_list = cls.n_to_bytes(raw_value)
-        except ValueError:
-            logger.error(f"Invalid LED register value received: {raw_value}")
-            return (
-                f"service: {LEDServiceMap.UNDEFINED.name}, "
-                f"status: {LEDStatusMap.UNDEFINED.name}"
-            )
+            return [value_list[0].value | value_list[1].value]
 
+        msb = value_list[0] & 0xFF00
+        lsb = value_list[0] & 0xFF
         try:
-            service = LEDServiceMap(byte_list[0]).name
+            service = LEDServiceMap(msb).name
         except ValueError:
-            logger.error(f"Invalid service LED value received: {byte_list[0]}")
+            logger.error(f"Invalid service LED value received: {msb}")
             service = LEDServiceMap.UNDEFINED.name
-
         try:
-            status = LEDStatusMap(byte_list[1]).name
+            status = LEDStatusMap(lsb).name
         except ValueError:
-            logger.error(f"Invalid status LED value received: {byte_list[1]}")
+            logger.error(f"Invalid status LED value received: {lsb}")
             status = LEDStatusMap.UNDEFINED.name
-
         return f"service: {service}, status: {status}"
 
     @classmethod

@@ -621,9 +621,10 @@ def test_fndh_led_pattern(
         "fndhLedPattern", "service: OFF, status: OFF"
     )
 
-    pasd_bus_device.SetFndhLedPattern("SERVICE")
+    json_argument = json.dumps({"service_led": "FAST", "status_led": "GREEN"})
+    pasd_bus_device.SetFndhLedPattern(json_argument)
     change_event_callbacks.assert_change_event(
-        "fndhLedPattern", "service: ON, status: OFF"
+        "fndhLedPattern", "service: FAST, status: GREEN"
     )
 
 
@@ -804,8 +805,10 @@ def test_smartbox_led_pattern(
         f"smartbox{smartbox_id}LedPattern", "service: OFF, status: OFF"
     )
 
-    json_argument = json.dumps({"smartbox_number": smartbox_id, "pattern": "SERVICE"})
+    json_argument = json.dumps(
+        {"smartbox_number": smartbox_id, "service_led": "FAST", "status_led": "GREEN"}
+    )
     pasd_bus_device.SetSmartboxLedPattern(json_argument)
     change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}LedPattern", "service: ON, status: OFF"
+        f"smartbox{smartbox_id}LedPattern", "service: FAST, status: GREEN"
     )

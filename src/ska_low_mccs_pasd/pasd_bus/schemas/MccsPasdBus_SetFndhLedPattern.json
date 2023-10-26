@@ -1,16 +1,10 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://skao.int/MccsPasdBus_SetSmartboxLedPattern.json",
-    "title": "MccsPasdBus SetSmartboxLedPattern schema",
-    "description": "Schema for MccsPasdBus's SetSmartboxLedPattern command",
+    "$id": "https://skao.int/MccsPasdBus_SetFndhLedPattern.json",
+    "title": "MccsPasdBus SetFndhLedPattern schema",
+    "description": "Schema for MccsPasdBus's SetFndhLedPattern command",
     "type": "object",
     "properties": {
-        "smartbox_number": {
-            "description": "Number of the smartbox being addressed",
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 24
-        },
         "service_led": {
             "description": "Name of the service LED pattern",
             "type": "string"
@@ -21,7 +15,6 @@
         }
     },
     "required": [
-        "smartbox_number",
         "service_led",
         "status_led"
     ]

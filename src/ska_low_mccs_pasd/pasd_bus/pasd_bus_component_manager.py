@@ -315,7 +315,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             case (device_id, "WRITE", spec):
                 request = PasdBusRequest(device_id, None, *spec)
             case (device_id, "LED_PATTERN", pattern):
-                request = PasdBusRequest(device_id, "set_led_pattern", None, [pattern])
+                request = PasdBusRequest(device_id, "set_led_pattern", None, [*pattern])
             case (device_id, "BREAKER_RESET", port):
                 request = PasdBusRequest(device_id, "reset_port_breaker", None, [port])
             case (device_id, "PORT_POWER", (port, is_on, stay_on_when_offline)):
@@ -499,16 +499,17 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     @check_communicating
     def set_fndh_led_pattern(
         self: PasdBusComponentManager,
-        led_pattern: str,
+        service_led: str,
+        status_led: str,
     ) -> None:
         """
         Set the FNDH's LED pattern.
 
-        :param led_pattern: name of the LED pattern.
-            Options are "OFF" and "SERVICE".
+        :param service_led: name of the service LED pattern.
+        :param status_led: name of the status LED pattern.
         """
         assert self._request_provider is not None
-        self._request_provider.desire_led_pattern(0, led_pattern)
+        self._request_provider.desire_led_pattern(0, service_led, status_led)
 
     @check_communicating
     def reset_fndh_alarms(self: PasdBusComponentManager) -> None:
@@ -562,17 +563,18 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     def set_smartbox_led_pattern(
         self: PasdBusComponentManager,
         smartbox_id: int,
-        led_pattern: str,
+        service_led: str,
+        status_led: str,
     ) -> None:
         """
         Set a smartbox's LED pattern.
 
-        :param smartbox_id: the smartbox to have its LED pattern set
-        :param led_pattern: name of the LED pattern.
-            Options are "OFF" and "SERVICE".
+        :param smartbox_id: the smartbox to have its LEDs' pattern set.
+        :param service_led: name of the service LED pattern.
+        :param status_led: name of the status LED pattern.
         """
         assert self._request_provider is not None
-        self._request_provider.desire_led_pattern(smartbox_id, led_pattern)
+        self._request_provider.desire_led_pattern(smartbox_id, service_led, status_led)
 
     @check_communicating
     def reset_smartbox_alarms(self: PasdBusComponentManager, smartbox_id: int) -> None:

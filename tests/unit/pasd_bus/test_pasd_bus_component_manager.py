@@ -666,13 +666,13 @@ class TestPasdBusComponentManager:
         for _ in range(6):
             mock_callbacks["pasd_device_state_for_fndh"].assert_against_call()
 
-        pasd_bus_component_manager.set_fndh_led_pattern("SERVICE")
+        pasd_bus_component_manager.set_fndh_led_pattern("FAST", "GREEN")
 
         mock_callbacks["pasd_device_state_for_fndh"].assert_call(
             uptime=Anything,
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="OK",
-            led_pattern="service: ON, status: OFF",
+            led_pattern="service: FAST, status: GREEN",
             psu48v_voltages=PasdConversionUtility.scale_volts(
                 FndhSimulator.DEFAULT_PSU48V_VOLTAGES
             ),
@@ -717,13 +717,15 @@ class TestPasdBusComponentManager:
                 f"pasd_device_state_for_smartbox{smartbox_number}"
             ].assert_against_call()
 
-        pasd_bus_component_manager.set_smartbox_led_pattern(smartbox_number, "SERVICE")
+        pasd_bus_component_manager.set_smartbox_led_pattern(
+            smartbox_number, "FAST", "GREEN"
+        )
 
         mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_number}"].assert_call(
             uptime=Anything,
             sys_address=smartbox_number,
             status=SmartboxSimulator.DEFAULT_STATUS.name,
-            led_pattern="service: ON, status: OFF",
+            led_pattern="service: FAST, status: GREEN",
             input_voltage=PasdConversionUtility.scale_volts(
                 [SmartboxSimulator.DEFAULT_INPUT_VOLTAGE]
             )[0],
