@@ -46,14 +46,20 @@ class PasdWriteError(Exception):
 
 
 class PortStatusString(Enum):
-    """Enum type for port status strings."""
+    """
+    Enum type for port status strings.
 
-    PORT_FORCINGS = "port_forcings"
-    BREAKERS_TRIPPED = "port_breakers_tripped"
-    DSON = "ports_desired_power_when_online"
-    DSOFF = "ports_desired_power_when_offline"
-    POWER_SENSED = "ports_power_sensed"
-    POWER = "power"
+    Corresponds to register bit names in PaSD firmware description document.
+    """
+
+    ENABLE = "All ports enabled/disabled"
+    ONLINE = "Field node controller status"
+    DSON = "Desired port state when online"
+    DSOFF = "Desired port state when offline"
+    TO = "Technician override all ports"
+    PWRSENSE = "PDOC power output"
+    BREAKER = "FEM over-current breaker trip"
+    POWER = "PDOC control line/FEM power output"
 
 
 class PasdCommandStrings(Enum):
@@ -217,7 +223,7 @@ class PasdBusPortAttribute(PasdBusAttribute):
                 else:
                     bitstring += "00"
 
-                if self.desired_info == PortStatusString.PORT_FORCINGS:
+                if self.desired_info == PortStatusString.TO:
                     if value == forcing_map[True]:
                         bitstring += "11"
                     elif value == forcing_map[False]:
@@ -227,9 +233,9 @@ class PasdBusPortAttribute(PasdBusAttribute):
                 else:
                     bitstring += "00"
 
-                if self.desired_info == PortStatusString.BREAKERS_TRIPPED:
+                if self.desired_info == PortStatusString.BREAKER:
                     bitstring += "1" if value else "0"
-                elif self.desired_info == PortStatusString.POWER_SENSED:
+                elif self.desired_info == PortStatusString.PWRSENSE:
                     bitstring += "1" if value else "0"
                 else:
                     bitstring += "0"
@@ -256,16 +262,16 @@ class PasdBusPortAttribute(PasdBusAttribute):
                         results.append(True)
                     else:
                         results.append(False)
-                case PortStatusString.PORT_FORCINGS:
+                case PortStatusString.TO:
                     if bitstring[6:8] == "10":
                         results.append(forcing_map[False])
                     elif bitstring[6:8] == "11":
                         results.append(forcing_map[True])
                     else:
                         results.append(forcing_map[None])
-                case PortStatusString.BREAKERS_TRIPPED:  # Smartboxes only
+                case PortStatusString.BREAKER:  # Smartboxes only
                     results.append(bitstring[8] == "1")
-                case PortStatusString.POWER_SENSED:  # FNDH only
+                case PortStatusString.PWRSENSE:  # FNDH only
                     results.append(bitstring[8] == "1")
                 case PortStatusString.POWER:
                     results.append(bitstring[9] == "1")
@@ -368,16 +374,14 @@ class PasdBusRegisterMap:
         "internal_ambient_temperature": PasdBusAttribute(
             29, 1, PasdConversionUtility.scale_signed_16bit
         ),
-        "port_forcings": PasdBusPortAttribute(35, 28, PortStatusString.PORT_FORCINGS),
+        "port_forcings": PasdBusPortAttribute(35, 28, PortStatusString.TO),
         "ports_desired_power_when_online": PasdBusPortAttribute(
             35, 28, PortStatusString.DSON
         ),
         "ports_desired_power_when_offline": PasdBusPortAttribute(
             35, 28, PortStatusString.DSOFF
         ),
-        "ports_power_sensed": PasdBusPortAttribute(
-            35, 28, PortStatusString.POWER_SENSED
-        ),
+        "ports_power_sensed": PasdBusPortAttribute(35, 28, PortStatusString.PWRSENSE),
         "ports_power_control": PasdBusPortAttribute(35, 28, PortStatusString.POWER),
         "psu48v_voltage_1_thresholds": PasdBusAttribute(
             1000, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
@@ -445,10 +449,8 @@ class PasdBusRegisterMap:
         "fem_heatsink_temperatures": PasdBusAttribute(
             25, 2, PasdConversionUtility.scale_signed_16bit
         ),
-        "port_forcings": PasdBusPortAttribute(35, 12, PortStatusString.PORT_FORCINGS),
-        "port_breakers_tripped": PasdBusPortAttribute(
-            35, 12, PortStatusString.BREAKERS_TRIPPED
-        ),
+        "port_forcings": PasdBusPortAttribute(35, 12, PortStatusString.TO),
+        "port_breakers_tripped": PasdBusPortAttribute(35, 12, PortStatusString.BREAKER),
         "ports_desired_power_when_online": PasdBusPortAttribute(
             35, 12, PortStatusString.DSON
         ),

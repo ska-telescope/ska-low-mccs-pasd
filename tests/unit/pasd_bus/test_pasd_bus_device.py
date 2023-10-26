@@ -20,7 +20,7 @@ from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
-    FNDHAlarmFlags,
+    FndhAlarmFlags,
     PasdConversionUtility,
     SmartboxAlarmFlags,
 )
@@ -233,6 +233,10 @@ def test_communication(  # pylint: disable=too-many-statements
     assert (
         list(pasd_bus_device.fndhPortsPowerSensed) == fndh_simulator.ports_power_sensed
     )
+    assert (
+        list(pasd_bus_device.fndhPortsPowerControl)
+        == fndh_simulator.ports_power_control
+    )
     assert list(
         pasd_bus_device.fndhPsu48vVoltage1Thresholds
     ) == PasdConversionUtility.scale_volts(fndh_simulator.psu48v_voltage_1_thresholds)
@@ -288,8 +292,8 @@ def test_communication(  # pylint: disable=too-many-statements
     ) == PasdConversionUtility.scale_signed_16bit(
         fndh_simulator.internal_ambient_temperature_thresholds
     )
-    assert pasd_bus_device.fndhWarningFlags == FNDHAlarmFlags.NONE.name
-    assert pasd_bus_device.fndhAlarmFlags == FNDHAlarmFlags.NONE.name
+    assert pasd_bus_device.fndhWarningFlags == FndhAlarmFlags.NONE.name
+    assert pasd_bus_device.fndhAlarmFlags == FndhAlarmFlags.NONE.name
     assert (
         getattr(
             pasd_bus_device,

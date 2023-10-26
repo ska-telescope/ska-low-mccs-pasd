@@ -73,6 +73,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         ("PortsDesiredPowerOnline", (bool,), PORT_COUNT),
         ("PortsDesiredPowerOffline", (bool,), PORT_COUNT),
         ("PortsPowerSensed", (bool,), PORT_COUNT),
+        ("PortsPowerControl", (bool,), PORT_COUNT),
         ("WarningFlags", str, None),
         ("AlarmFlags", str, None),
         ("Psu48vVoltage1Thresholds", (float,), 4),

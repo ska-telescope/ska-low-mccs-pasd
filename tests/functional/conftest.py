@@ -295,6 +295,7 @@ def device_subscriptions_fixture() -> dict[str, list[str]]:
             "fndhPortsDesiredPowerOnline",
             "fndhPortsDesiredPowerOffline",
             "fndhPortsPowerSensed",
+            "fndhPortsPowerControl",
             "smartbox1Uptime",
             "smartbox1Status",
             "smartbox1LedPattern",

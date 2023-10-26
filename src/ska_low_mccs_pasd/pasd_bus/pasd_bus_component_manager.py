@@ -90,7 +90,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         "ports_desired_power_when_online",  # Register STATE[13:12] - DSON
         "ports_desired_power_when_offline",  # Register STATE[11:10] - DSOFF
         "ports_power_sensed",  # Register STATE[7] - PWRSENSE
-        # "ports_power_contol", # Register STATE[6] - POWER
+        "ports_power_control",  # Register STATE[6] - POWER
     )
 
     FNDH_THRESHOLD_ATTRIBUTES: Final = (

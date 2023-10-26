@@ -43,13 +43,13 @@ from typing import Callable, Final, Optional, Sequence
 import yaml
 
 from .pasd_bus_conversions import (
-    FNDHAlarmFlags,
+    FndhAlarmFlags,
     FndhStatusMap,
     LEDServiceMap,
     LEDStatusMap,
     PasdConversionUtility,
     SmartboxAlarmFlags,
-    SmartBoxStatusMap,
+    SmartboxStatusMap,
 )
 from .pasd_bus_modbus_api import FNDH_MODBUS_ADDRESS
 
@@ -413,12 +413,12 @@ class PasdHardwareSimulator:
     """
 
     DEFAULT_LED_PATTERN: int = LEDServiceMap.OFF << 8 | LEDStatusMap.OFF
-    DEFAULT_STATUS: FndhStatusMap | SmartBoxStatusMap = FndhStatusMap.UNINITIALISED
+    DEFAULT_STATUS: FndhStatusMap | SmartboxStatusMap = FndhStatusMap.UNINITIALISED
     DEFAULT_UPTIME: Final = [0]
     DEFAULT_FLAGS: int = 0x0
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
-    ALARM_MAPPING: dict[str, FNDHAlarmFlags | SmartboxAlarmFlags] = {}
+    ALARM_MAPPING: dict[str, FndhAlarmFlags | SmartboxAlarmFlags] = {}
 
     def __init__(
         self: PasdHardwareSimulator,
@@ -957,18 +957,18 @@ class FndhSimulator(PasdHardwareSimulator):
     DEFAULT_INTERNAL_AMBIENT_TEMPERATURE: Final = 3600
 
     ALARM_MAPPING = {
-        "psu48v_voltage_1": FNDHAlarmFlags.SYS_48V1_V,
-        "psu48v_voltage_2": FNDHAlarmFlags.SYS_48V2_V,
-        "psu48v_current": FNDHAlarmFlags.SYS_48V_I,
-        "psu48v_temperature_1": FNDHAlarmFlags.SYS_48V1_TEMP,
-        "psu48v_temperature_2": FNDHAlarmFlags.SYS_48V2_TEMP,
-        "panel_temperature": FNDHAlarmFlags.SYS_PANELTEMP,
-        "fncb_temperature": FNDHAlarmFlags.SYS_FNCBTEMP,
-        "fncb_humidity": FNDHAlarmFlags.SYS_HUMIDITY,
-        "comms_gateway_temperature": FNDHAlarmFlags.SYS_SENSE01_COMMS_GATEWAY,
-        "power_module_temperature": FNDHAlarmFlags.SYS_SENSE02_POWER_MODULE_TEMP,
-        "outside_temperature": FNDHAlarmFlags.SYS_SENSE03_OUTSIDE_TEMP,
-        "internal_ambient_temperature": FNDHAlarmFlags.SYS_SENSE04_INTERNAL_TEMP,
+        "psu48v_voltage_1": FndhAlarmFlags.SYS_48V1_V,
+        "psu48v_voltage_2": FndhAlarmFlags.SYS_48V2_V,
+        "psu48v_current": FndhAlarmFlags.SYS_48V_I,
+        "psu48v_temperature_1": FndhAlarmFlags.SYS_48V1_TEMP,
+        "psu48v_temperature_2": FndhAlarmFlags.SYS_48V2_TEMP,
+        "panel_temperature": FndhAlarmFlags.SYS_PANELTEMP,
+        "fncb_temperature": FndhAlarmFlags.SYS_FNCBTEMP,
+        "fncb_humidity": FndhAlarmFlags.SYS_HUMIDITY,
+        "comms_gateway_temperature": FndhAlarmFlags.SYS_SENSE01_COMMS_GATEWAY,
+        "power_module_temperature": FndhAlarmFlags.SYS_SENSE02_POWER_MODULE_TEMP,
+        "outside_temperature": FndhAlarmFlags.SYS_SENSE03_OUTSIDE_TEMP,
+        "internal_ambient_temperature": FndhAlarmFlags.SYS_SENSE04_INTERNAL_TEMP,
     }
 
     # Instantiate sensor data descriptors
@@ -1120,7 +1120,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
     CPU_ID: Final = [2, 4]
     CHIP_ID: Final = [8, 7, 6, 5, 4, 3, 2, 1]
 
-    DEFAULT_STATUS: SmartBoxStatusMap = SmartBoxStatusMap.UNINITIALISED
+    DEFAULT_STATUS: SmartboxStatusMap = SmartboxStatusMap.UNINITIALISED
     DEFAULT_SYS_ADDRESS: Final = 1
     DEFAULT_FIRMWARE_VERSION: Final = 258
     # Address
@@ -1180,7 +1180,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
             for port_index in range(self.NUMBER_OF_PORTS)
         ]
         super().__init__(ports)
-        self._status = SmartBoxStatusMap.UNINITIALISED
+        self._status = SmartboxStatusMap.UNINITIALISED
         self._sys_address = address
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
