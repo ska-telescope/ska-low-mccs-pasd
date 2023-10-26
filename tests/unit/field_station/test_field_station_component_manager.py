@@ -59,7 +59,7 @@ def mock_smartbox_fixture() -> unittest.mock.Mock:
     builder.set_state(tango.DevState.ON)
     builder.add_result_command("PowerOnPort", ResultCode.OK)
     builder.add_result_command("SetPortPowers", ResultCode.OK)
-    builder.add_attribute("PortsPowerSensed", [False for _ in range(256)])
+    builder.add_attribute("PortsPowerSensed", [False for _ in range(12)])
     builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
     return builder()
 

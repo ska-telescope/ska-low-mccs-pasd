@@ -398,7 +398,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         )
 
     # All the if(task_callbacks) artificially extend the complexity.
-    def _turn_on_antenna(  # noqa: C901
+    def _turn_on_antenna(  # noqa: C901, pylint: disable=too-many-branches
         self: FieldStationComponentManager,
         antenna_number: int,
         ignore_mask: bool = False,
@@ -419,13 +419,24 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         if ignore_mask:
             self.logger.warning("Turning on masked antenna")
 
+        smartbox_id, smartbox_port = self._antenna_mapping[antenna_number]
+        try:
+            smartbox_proxy = self._smartbox_proxys[smartbox_id - 1]
+        except KeyError:
+            msg = (
+                f"Tried to turn on antenna {antenna_number}, this is mapped to "
+                f"smartbox {smartbox_id}, port {smartbox_port}. However this smartbox"
+                " device is not deployed"
+            )
+            self.logger.error(msg)
+            if task_callback:
+                task_callback(status=TaskStatus.REJECTED, result=msg)
+            return TaskStatus.REJECTED
+        fndh_port = self._smartbox_mapping[smartbox_id]
+
         result = None
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
-
-        smartbox_id, smartbox_port = self._antenna_mapping[antenna_number]
-        smartbox_proxy = self._smartbox_proxys[smartbox_id - 1]
-        fndh_port = self._smartbox_mapping[smartbox_id]
 
         if not self._fndh_proxy._proxy.PortPowerState(fndh_port):
             result, _ = self._fndh_proxy._proxy.PowerOnPort(fndh_port)
@@ -467,12 +478,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
-        Turn on an antenna.
+        Turn off an antenna.
 
         The Field station knows what ports need to be
         turned on and what fndh and smartboxes it is connected to.
-
-        Note: Not implemented yet
 
         :param antenna_number: (one-based) number of the TPM to turn on.
         :param task_callback: callback to be called when the status of
@@ -489,7 +498,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         )
 
     # All the if(task_callbacks) artificially extend the complexity.
-    def _turn_off_antenna(  # noqa: C901
+    def _turn_off_antenna(  # noqa: C901, pylint: disable=too-many-branches
         self: FieldStationComponentManager,
         antenna_number: int,
         ignore_mask: bool = False,
@@ -510,13 +519,24 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         if ignore_mask:
             self.logger.warning("Turning off masked antenna")
 
+        smartbox_id, smartbox_port = self._antenna_mapping[antenna_number]
+        try:
+            smartbox_proxy = self._smartbox_proxys[smartbox_id - 1]
+        except KeyError:
+            msg = (
+                f"Tried to turn off antenna {antenna_number}, this is mapped to "
+                f"smartbox {smartbox_id}, port {smartbox_port}. However this smartbox"
+                " device is not deployed"
+            )
+            self.logger.error(msg)
+            if task_callback:
+                task_callback(status=TaskStatus.REJECTED, result=msg)
+            return TaskStatus.REJECTED
+        fndh_port = self._smartbox_mapping[smartbox_id]
+
         result = None
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
-
-        smartbox_id, smartbox_port = self._antenna_mapping[antenna_number]
-        smartbox_proxy = self._smartbox_proxys[smartbox_id - 1]
-        fndh_port = self._smartbox_mapping[smartbox_id]
 
         if self._fndh_proxy._proxy.PortPowerState(fndh_port):
             result, _ = self._fndh_proxy._proxy.PowerOffPort(fndh_port)
