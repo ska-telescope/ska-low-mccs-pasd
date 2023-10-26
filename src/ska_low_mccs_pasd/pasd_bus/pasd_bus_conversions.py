@@ -292,7 +292,7 @@ class PasdConversionUtility:
             return [hex(cls.bytes_to_n(value_list))]
         except ValueError:
             logger.error(f"Invalid CPU ID value received: {value_list}")
-            return []
+            return ["Invalid CPU ID received"]
 
     @classmethod
     def convert_uptime(cls, value_list: list[int], inverse: bool = False) -> list[int]:
@@ -312,7 +312,7 @@ class PasdConversionUtility:
             return [cls.bytes_to_n(value_list)]
         except ValueError:
             logger.error(f"Invalid uptime value received: {value_list}")
-            return []
+            return [-1]
 
     @classmethod
     def convert_chip_id(cls, value_list: list, inverse: bool = False) -> list:
@@ -338,7 +338,7 @@ class PasdConversionUtility:
             return ["".join([f"{v:02X}" for v in bytelist])]
         except ValueError:
             logger.error(f"Invalid chip ID value received: {value_list}")
-            return []
+            return ["Invalid chip ID value received"]
 
     @classmethod
     def convert_firmware_version(cls, value_list: list, inverse: bool = False) -> list:

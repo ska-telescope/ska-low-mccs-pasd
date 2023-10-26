@@ -740,7 +740,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     f"Received update for unknown PaSD attribute {pasd_attribute_name} "
                     f"(for PaSD device {pasd_device_number})."
                 )
-                return
+                # Continue on to allow other attributes to be updated
 
             if self._pasd_state[tango_attribute_name] != pasd_attribute_value:
                 self._pasd_state[tango_attribute_name] = pasd_attribute_value
