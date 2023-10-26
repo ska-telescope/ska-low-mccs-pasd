@@ -83,7 +83,7 @@ class PasdBusModbusApi:
 
     def _handle_read_attributes(
         self, device_id: int, names: dict[str, PasdBusAttribute]
-    ) -> list[Any]:
+    ) -> list[Any] | ExceptionResponse:
         """
         Return list of attribute values.
 
@@ -94,16 +94,23 @@ class PasdBusModbusApi:
 
         :return: List of attribute values
         """
-        if device_id == FndhSimulator.SYS_ADDRESS:
-            device_id = 0
+        simulator_id = 0 if device_id == FndhSimulator.SYS_ADDRESS else device_id
         values: list[Any] = []
         last_address = -1
         last_count = -1
         for name, attr in names.items():
             try:
-                unconverted_value = getattr(self._simulators[device_id], name)
+                unconverted_value = getattr(self._simulators[simulator_id], name)
+            except KeyError:
+                logger.error(f"Simulator {simulator_id} not available")
+                return ExceptionResponse(
+                    function_code=1, exception_code=1, slave=device_id
+                )
             except AttributeError:
                 logger.error(f"Attribute not found: {name}")
+                return ExceptionResponse(
+                    function_code=1, exception_code=1, slave=device_id
+                )
             value = self._convert_value(unconverted_value, attr)
             if isinstance(value, list):
                 if isinstance(value[0], list):
@@ -125,9 +132,8 @@ class PasdBusModbusApi:
         names: dict[str, PasdBusAttribute],
         starting_address: int,
         values: list,
-    ) -> bool:
-        if device_id == FndhSimulator.SYS_ADDRESS:
-            device_id = 0
+    ) -> ExceptionResponse | None:
+        simulator_id = 0 if device_id == FndhSimulator.SYS_ADDRESS else device_id
         for name, attr in names.items():
             try:
                 if attr.address < starting_address:
@@ -138,21 +144,33 @@ class PasdBusModbusApi:
                 if isinstance(attr, PasdBusPortAttribute):
                     port = starting_address - attr.address
                     reg_tuple = (attr.convert_value(reg_vals)[0], port)
-                    setattr(self._simulators[device_id], name, reg_tuple)
+                    setattr(self._simulators[simulator_id], name, reg_tuple)
                 else:
-                    setattr(self._simulators[device_id], name, reg_vals)
+                    setattr(self._simulators[simulator_id], name, reg_vals)
+            except KeyError:
+                logger.error(f"Simulator {simulator_id} not available")
+                return ExceptionResponse(
+                    function_code=1, exception_code=1, slave=device_id
+                )
             except AttributeError:
                 logger.error(f"Attribute not found: {name}")
-                return False
-        return True
+                return ExceptionResponse(
+                    function_code=1, exception_code=1, slave=device_id
+                )
+        return None
 
-    def _handle_no_match(self, request: dict) -> ExceptionResponse:
-        logger.error(f"No match found for request {request}")
-        return ExceptionResponse(function_code=1)
+    def _handle_no_match(self, message: Any) -> ExceptionResponse:
+        logger.error(f"No match found for request {message}")
+        return ExceptionResponse(
+            function_code=1, exception_code=1, slave=message.slave_id
+        )
 
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
         response: (
-            ReadHoldingRegistersResponse | WriteMultipleRegistersResponse | None
+            ReadHoldingRegistersResponse
+            | WriteMultipleRegistersResponse
+            | ExceptionResponse
+            | None
         ) = None
 
         def handle_request(message: Any) -> None:
@@ -167,11 +185,14 @@ class PasdBusModbusApi:
                     values = self._handle_read_attributes(
                         message.slave_id, filtered_register_map
                     )
-                    response = ReadHoldingRegistersResponse(
-                        slave=message.slave_id,
-                        address=message.address,
-                        values=values,
-                    )
+                    if isinstance(values, ExceptionResponse):
+                        response = values
+                    else:
+                        response = ReadHoldingRegistersResponse(
+                            slave=message.slave_id,
+                            address=message.address,
+                            values=values,
+                        )
                 case WriteMultipleRegistersRequest():
                     writable_port_attrs = [
                         "ports_desired_power_when_online",
@@ -194,16 +215,16 @@ class PasdBusModbusApi:
                         message.address,
                         message.values,
                     )
-                    if result:
+                    if result is not None:
+                        response = result
+                    else:
                         response = WriteMultipleRegistersResponse(
                             slave=message.slave_id,
                             address=message.address,
                             count=message.count,
                         )
-                    else:
-                        raise ModbusIOException("Failed to write attributes")
                 case _:
-                    self._handle_no_match(message)
+                    response = self._handle_no_match(message)
 
         self._decoder.processIncomingPacket(
             modbus_request_str, handle_request, slave=self.responder_ids
