@@ -138,7 +138,12 @@ def fndh_device_fixture(
         (
             "SetPortPowers",
             "set_port_powers",
-            None,
+            json.dumps(
+                {
+                    "port_powers": [False for _ in range(24)],
+                    "stay_on_when_offline": True,
+                }
+            ),
             [True, True],
         ),
     ],

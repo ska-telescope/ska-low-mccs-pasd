@@ -653,6 +653,119 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._antenna_mapping = antenna_mapping
         self._smartbox_mapping = smartbox_mapping
 
+    def update_antenna_mask(
+        self: FieldStationComponentManager,
+        task_callback: Optional[Callable] = None,
+        **kwargs: Any,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Manually update the antenna mask.
+
+        :param task_callback: callback to be called when the status of
+            the command changes
+        :param kwargs: dict containing masking state for all antennas.
+
+        :return: the task status and a human-readable status message
+        """
+        return self.submit_task(
+            self._update_antenna_mask,  # type: ignore[arg-type]
+            kwargs=kwargs,
+            task_callback=task_callback,
+        )
+
+    def _update_antenna_mask(
+        self: FieldStationComponentManager,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+        **kwargs: Any,
+    ) -> None:
+        if task_callback:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+        all_masked = True
+        antenna_mask = kwargs["antennaMask"]
+        for antenna in antenna_mask:
+            antenna_id = antenna["antennaID"]
+            masking_state = antenna["maskingState"]
+            self._antenna_mask[antenna_id] = masking_state
+            if not masking_state:
+                all_masked = False
+        self._antenna_mask[0] = all_masked
+        if task_callback:
+            task_callback(status=TaskStatus.COMPLETED)
+
+    def update_antenna_mapping(
+        self: FieldStationComponentManager,
+        task_callback: Optional[Callable] = None,
+        **kwargs: Any,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Manually update the antenna mapping.
+
+        :param task_callback: callback to be called when the status of
+            the command changes
+        :param kwargs: dict containing mapping for all antennas.
+
+        :return: the task status and a human-readable status message
+        """
+        return self.submit_task(
+            self._update_antenna_mapping,  # type: ignore[arg-type]
+            kwargs=kwargs,
+            task_callback=task_callback,
+        )
+
+    def _update_antenna_mapping(
+        self: FieldStationComponentManager,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+        **kwargs: Any,
+    ) -> None:
+        if task_callback:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+        antenna_mapping = kwargs["antennaMapping"]
+        for antenna in antenna_mapping:
+            antenna_id = antenna["antennaID"]
+            smartbox_id = antenna["smartboxID"]
+            smartbox_port = antenna["smartboxPort"]
+            self._antenna_mapping[antenna_id] = [smartbox_id, smartbox_port]
+        if task_callback:
+            task_callback(status=TaskStatus.COMPLETED)
+
+    def update_smartbox_mapping(
+        self: FieldStationComponentManager,
+        task_callback: Optional[Callable] = None,
+        **kwargs: Any,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Manually update the smartbox mapping.
+
+        :param task_callback: callback to be called when the status of
+            the command changes
+        :param kwargs: dict containing mapping for all smartboxes.
+
+        :return: the task status and a human-readable status message
+        """
+        return self.submit_task(
+            self._update_smartbox_mapping,  # type: ignore[arg-type]
+            kwargs=kwargs,
+            task_callback=task_callback,
+        )
+
+    def _update_smartbox_mapping(
+        self: FieldStationComponentManager,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+        **kwargs: Any,
+    ) -> None:
+        if task_callback:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+        smartbox_mapping = kwargs["smartboxMapping"]
+        for smartbox in smartbox_mapping:
+            smartbox_id = smartbox["smartboxID"]
+            fndh_port = smartbox["fndhPort"]
+            self._smartbox_mapping[smartbox_id] = fndh_port
+        if task_callback:
+            task_callback(status=TaskStatus.COMPLETED)
+
     def configure(
         self: FieldStationComponentManager,
         task_callback: Optional[Callable] = None,

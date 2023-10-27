@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import gc
+import json
 import unittest.mock
 from typing import Any
 
@@ -106,7 +107,13 @@ def test_device_transitions_to_power_state_of_fndh_port(
         ),
         (
             "SetPortPowers",
-            None,
+            json.dumps(
+                {
+                    "smartbox_number": 2,
+                    "port_powers": [False for _ in range(12)],
+                    "stay_on_when_offline": True,
+                }
+            ),
         ),
     ],
 )

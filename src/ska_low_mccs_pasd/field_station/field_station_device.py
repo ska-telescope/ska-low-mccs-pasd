@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import importlib.resources
 import json
 from typing import Any, Final, Optional
 
@@ -106,28 +107,37 @@ class MccsFieldStation(SKABaseDevice):
             },
         }
 
-        mask_schema: Final = {
-            "type": "object",
-            "properties": {
-                "antennaMask": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "antennaID": {"type": "integer"},
-                            "maskingState": {"type": "boolean"},
-                        },
-                        "required": ["antennaID", "maskingState"],
-                    },
-                }
-            },
-            "required": ["antennaMask"],
-        }
+        mask_schema: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.field_station.schemas",
+                "MccsFieldStation_UpdateAntennaMask.json",
+            )
+        )
+
+        antenna_mapping_schema: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.field_station.schemas",
+                "MccsFieldStation_UpdateAntennaMapping.json",
+            )
+        )
+
+        smartbox_mapping_schema: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.field_station.schemas",
+                "MccsFieldStation_UpdateSmartboxMapping.json",
+            )
+        )
 
         for command_name, method_name, schema in [
             ("PowerOnAntenna", "turn_on_antenna", None),
             ("PowerOffAntenna", "turn_off_antenna", None),
             ("UpdateAntennaMask", "update_antenna_mask", mask_schema),
+            ("UpdateAntennaMapping", "update_antenna_mapping", antenna_mapping_schema),
+            (
+                "UpdateSmartboxMapping",
+                "update_smartbox_mapping",
+                smartbox_mapping_schema,
+            ),
             ("UpdateConfiguration", "update_configuration", None),
             ("Configure", "configure", configure_schema),
         ]:
@@ -240,13 +250,50 @@ class MccsFieldStation(SKABaseDevice):
         """
         Manually update the antenna mask.
 
-        :param argin: the configuration for the device in stringified json format
+        :param argin: the configuration for the antenna mask in
+            stringified json format
 
         :return: A tuple containing a return code and a string
             message indicating status. The message is for
             information purpose only.
         """
         handler = self.get_command_object("UpdateAntennaMask")
+        (return_code, message) = handler(argin)
+        return ([return_code], [message])
+
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def UpdateAntennaMapping(
+        self: MccsFieldStation, argin: str
+    ) -> DevVarLongStringArrayType:
+        """
+        Manually update the antenna mapping.
+
+        :param argin: the configuration for the antenna mapping in
+            stringified json format
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("UpdateAntennaMapping")
+        (return_code, message) = handler(argin)
+        return ([return_code], [message])
+
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def UpdateSmartboxMapping(
+        self: MccsFieldStation, argin: str
+    ) -> DevVarLongStringArrayType:
+        """
+        Manually update the smartbox mapping.
+
+        :param argin: the configuration for the smartbox mapping in
+            stringified json format
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("UpdateSmartboxMapping")
         (return_code, message) = handler(argin)
         return ([return_code], [message])
 

@@ -307,20 +307,20 @@ class TestSmartBoxComponentManager:
         for masked_port in masked_ports:
             desired_port_powers[masked_port - 1] = None
 
-        assert (
-            getattr(smartbox_component_manager, component_manager_command)(
-                desired_port_powers=desired_port_powers,
-                task_callback=mock_callbacks["task"],
-            )
-            == expected_manager_result
-        )
-
         json_argument = json.dumps(
             {
                 "smartbox_number": smartbox_component_manager._fndh_port,
                 "port_powers": desired_port_powers,
                 "stay_on_when_offline": True,
             }
+        )
+
+        assert (
+            getattr(smartbox_component_manager, component_manager_command)(
+                json_argument,
+                task_callback=mock_callbacks["task"],
+            )
+            == expected_manager_result
         )
 
         pasd_bus_proxy = smartbox_component_manager._pasd_bus_proxy._proxy

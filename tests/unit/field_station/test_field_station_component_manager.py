@@ -8,6 +8,7 @@
 """This module contains the tests of the field_station component manager."""
 from __future__ import annotations
 
+import json
 import logging
 import unittest.mock
 from typing import Any, Iterator
@@ -454,40 +455,48 @@ class TestFieldStationComponentManager:
             smartbox_id = 0
             smartbox_port = 0
 
-        if component_manager_command == "on":
-            expected_state = 1
-        else:
-            expected_state = 0
+        expected_state = component_manager_command == "on"
 
-        desired_fndh_port_powers = [expected_state] * NUMBER_OF_FNDH_PORTS
+        desired_fndh_port_powers: list[bool | None] = [
+            expected_state
+        ] * NUMBER_OF_FNDH_PORTS
 
         for unused_fndh_port in range(24, 28):
-            desired_fndh_port_powers[unused_fndh_port] = 2
+            desired_fndh_port_powers[unused_fndh_port] = None
+
+        fndh_json_arg = json.dumps(
+            {
+                "port_powers": desired_fndh_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
 
         # If we are not working with a fully masked station.
         if antenna_no != 0 or not antenna_masking_state:
             fndh_proxy_command = getattr(
                 field_station_component_manager._fndh_proxy._proxy, proxy_command
             )
-            fndh_proxy_command.assert_next_call(desired_fndh_port_powers)
+            fndh_proxy_command.assert_next_call(fndh_json_arg)
             for smartbox_no, smartbox in enumerate(
                 field_station_component_manager._smartbox_proxys
             ):
                 smartbox_proxy_command = getattr(smartbox._proxy, proxy_command)
-                desired_smartbox_port_powers = [
+
+                desired_smartbox_port_powers: list[bool | None] = [
                     expected_state
                 ] * NUMBER_OF_SMARTBOX_PORTS
-                print(desired_smartbox_port_powers)
                 if smartbox_no == smartbox_id - 1:
-                    desired_smartbox_port_powers[smartbox_port - 1] = 2
-                    print(desired_smartbox_port_powers)
-                    smartbox_proxy_command.assert_next_call(
-                        desired_smartbox_port_powers
-                    )
-                else:
-                    smartbox_proxy_command.assert_next_call(
-                        desired_smartbox_port_powers
-                    )
+                    desired_smartbox_port_powers[smartbox_port - 1] = None
+
+                smartbox_json_arg = json.dumps(
+                    {
+                        "smartbox_number": smartbox_no + 1,
+                        "port_powers": desired_smartbox_port_powers,
+                        "stay_on_when_offline": True,
+                    }
+                )
+
+                smartbox_proxy_command.assert_next_call(smartbox_json_arg)
 
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         if command_tracked_result[0] in [TaskStatus.COMPLETED, TaskStatus.FAILED]:

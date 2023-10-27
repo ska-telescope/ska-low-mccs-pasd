@@ -1,0 +1,36 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://skao.int/UpdateAntennaMapping.json",
+    "title": "MccsFieldStation UpdateAntennaMapping schema",
+    "description": "Schema for MccsFieldStation's UpdateAntennaMapping command",
+    "type": "object",
+    "properties": {
+        "antennaMapping": {
+            "type": "array",
+            "minItems": 256,
+            "maxItems": 256,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "antennaID": {
+                        "type": "integer"
+                    },
+                    "smartboxID": {
+                        "type": "integer"
+                    },
+                    "smartboxPort": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "antennaID",
+                    "smartboxID",
+                    "smartboxPort"
+                ]
+            }
+        }
+    },
+    "required": [
+        "antennaMapping"
+    ]
+}

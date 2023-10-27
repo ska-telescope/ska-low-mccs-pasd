@@ -1,0 +1,32 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://skao.int/UpdateAntennaMask.json",
+    "title": "MccsFieldStation UpdateAntennaMask schema",
+    "description": "Schema for MccsFieldStation's UpdateAntennaMask command",
+    "type": "object",
+    "properties": {
+        "antennaMask": {
+            "type": "array",
+            "minItems": 256,
+            "maxItems": 256,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "antennaID": {
+                        "type": "integer"
+                    },
+                    "maskingState": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "antennaID",
+                    "maskingState"
+                ]
+            }
+        }
+    },
+    "required": [
+        "antennaMask"
+    ]
+}
