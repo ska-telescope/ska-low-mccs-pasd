@@ -231,7 +231,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     """
     A component manager for MccsSmartBox.
 
-    This communicates via a proxy to a MccsPadsBus that talks to a simulator
+    This communicates via a proxy to a MccsPasdBus that talks to a simulator
     or the real hardware.
     """
 
@@ -616,7 +616,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     @check_communicating
     def set_port_powers(
         self: SmartBoxComponentManager,
-        desired_port_powers: Optional[list] = None,
+        json_argument: str,
         task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
@@ -624,8 +624,8 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         These ports will not have an antenna attached.
 
-        :param desired_port_powers: desired port powers of unmasked ports with
-            antenna attached.
+        :param json_argument: desired port powers of unmasked ports with
+            smartboxes attached in json form.
         :param task_callback: callback to be called when the status of
             the command changes
 
@@ -633,36 +633,18 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         """
         return self.submit_task(
             self._set_port_powers,  # type: ignore[arg-type]
-            args=[desired_port_powers],
+            args=[json_argument],
             task_callback=task_callback,
         )
 
     def _set_port_powers(
         self: SmartBoxComponentManager,
-        desired_port_powers: Optional[list] = None,
+        json_argument: str,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
-
-        desired_port_powers = list(desired_port_powers)  # type: ignore
-
-        for port_no, port_state in enumerate(desired_port_powers):
-            if port_state == 0:
-                desired_port_powers[port_no] = False
-            elif port_state == 1:
-                desired_port_powers[port_no] = True
-            else:
-                desired_port_powers[port_no] = None
-
-        json_argument = json.dumps(
-            {
-                "smartbox_number": self._fndh_port,
-                "port_powers": desired_port_powers,
-                "stay_on_when_offline": True,
-            }
-        )
 
         try:
             assert self._pasd_bus_proxy._proxy

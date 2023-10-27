@@ -187,7 +187,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             task_callback=task_callback,
         )
 
-    def _on(
+    def _on(  # pylint: disable=too-many-locals
         self: FieldStationComponentManager,
         ignore_mask: bool = False,
         task_callback: Optional[Callable] = None,
@@ -209,19 +209,35 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         results = []
         assert self._fndh_proxy._proxy
         masked_fndh_ports: list = self._get_masked_fndh_ports(masked_smartbox_ports)
-        desired_fndh_port_powers: list[int] = [1] * NUMBER_OF_FNDH_PORTS
+        desired_fndh_port_powers: list[bool | None] = [True] * NUMBER_OF_FNDH_PORTS
         for masked_port in masked_fndh_ports:
-            desired_fndh_port_powers[masked_port - 1] = 2
-        result, _ = self._fndh_proxy._proxy.SetPortPowers(desired_fndh_port_powers)
+            desired_fndh_port_powers[masked_port - 1] = None
+        json_argument = json.dumps(
+            {
+                "port_powers": desired_fndh_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
+
+        result, _ = self._fndh_proxy._proxy.SetPortPowers(json_argument)
         results += result
         masked_ports = []
         for smartbox_no, smartbox in enumerate(self._smartbox_proxys):
             assert smartbox._proxy
-            desired_smartbox_port_powers: list[int] = [1] * NUMBER_OF_SMARTBOX_PORTS
+            desired_smartbox_port_powers: list[bool | None] = [
+                True
+            ] * NUMBER_OF_SMARTBOX_PORTS
             masked_ports = masked_smartbox_ports.get(smartbox_no + 1, [])
             for masked_port in masked_ports:
-                desired_smartbox_port_powers[masked_port - 1] = 2
-            result, _ = smartbox._proxy.SetPortPowers(desired_smartbox_port_powers)
+                desired_smartbox_port_powers[masked_port - 1] = None
+            json_argument = json.dumps(
+                {
+                    "smartbox_number": self._smartbox_mapping[smartbox_no + 1],
+                    "port_powers": desired_smartbox_port_powers,
+                    "stay_on_when_offline": True,
+                }
+            )
+            result, _ = smartbox._proxy.SetPortPowers(json_argument)
             results += result
         if all(result == ResultCode.OK for result in results):
             if task_callback:
@@ -256,7 +272,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             task_callback=task_callback,
         )
 
-    def _off(
+    def _off(  # pylint: disable=too-many-locals
         self: FieldStationComponentManager,
         ignore_mask: bool = False,
         task_callback: Optional[Callable] = None,
@@ -278,19 +294,36 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         results = []
         assert self._fndh_proxy._proxy
         masked_fndh_ports: list = self._get_masked_fndh_ports(masked_smartbox_ports)
-        desired_fndh_port_powers: list[int] = [0] * NUMBER_OF_FNDH_PORTS
+        desired_fndh_port_powers: list[int | None] = [False] * NUMBER_OF_FNDH_PORTS
         for masked_port in masked_fndh_ports:
-            desired_fndh_port_powers[masked_port - 1] = 2
-        result, _ = self._fndh_proxy._proxy.SetPortPowers(desired_fndh_port_powers)
+            desired_fndh_port_powers[masked_port - 1] = None
+
+        json_argument = json.dumps(
+            {
+                "port_powers": desired_fndh_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
+
+        result, _ = self._fndh_proxy._proxy.SetPortPowers(json_argument)
         results += result
         masked_ports = []
         for smartbox_no, smartbox in enumerate(self._smartbox_proxys):
             assert smartbox._proxy
-            desired_smartbox_port_powers: list[int] = [0] * NUMBER_OF_SMARTBOX_PORTS
+            desired_smartbox_port_powers: list[int | None] = [
+                False
+            ] * NUMBER_OF_SMARTBOX_PORTS
             masked_ports = masked_smartbox_ports.get(smartbox_no + 1, [])
             for masked_port in masked_ports:
-                desired_smartbox_port_powers[masked_port - 1] = 2
-            result, _ = smartbox._proxy.SetPortPowers(desired_smartbox_port_powers)
+                desired_smartbox_port_powers[masked_port - 1] = None
+            json_argument = json.dumps(
+                {
+                    "smartbox_number": self._smartbox_mapping[smartbox_no + 1],
+                    "port_powers": desired_smartbox_port_powers,
+                    "stay_on_when_offline": True,
+                }
+            )
+            result, _ = smartbox._proxy.SetPortPowers(json_argument)
             results += result
 
         if all(result == ResultCode.OK for result in results):

@@ -412,25 +412,25 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         result_code, message = handler(argin)
         return ([result_code], [message])
 
-    @command(dtype_in="DevVarShortArray", dtype_out="DevVarLongStringArray")
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
     def SetPortPowers(
         self: MccsFNDH,
-        desired_port_powers: list,
+        json_argument: str,
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
         """
         Set port powers.
 
         These ports will not have a smartbox attached.
 
-        :param desired_port_powers: desired port powers of unmasked ports with
-            smartboxes attached.
+        :param json_argument: desired port powers of unmasked ports with
+            smartboxes attached in json form.
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
             only.
         """
         handler = self.get_command_object("SetPortPowers")
-        result_code, message = handler(desired_port_powers)
+        result_code, message = handler(json_argument)
         return ([result_code], [message])
 
     # -----------
