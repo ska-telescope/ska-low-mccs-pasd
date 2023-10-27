@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Final, List
+from typing import Any, Final, List
 
 import numpy as np
 from pymodbus.client import ModbusTcpClient
@@ -34,22 +34,21 @@ from .pasd_bus_register_map import (
     PasdReadError,
     PasdWriteError,
 )
-from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
 
 logger = logging.getLogger()
+
+FNDH_MODBUS_ADDRESS: Final = 101
 
 
 # pylint: disable=too-few-public-methods
 class PasdBusModbusApi:
     """A Modbus API for a PaSD bus simulator."""
 
-    def __init__(
-        self, simulators: Dict[int, FndhSimulator | SmartboxSimulator]
-    ) -> None:
+    def __init__(self, simulators: dict) -> None:
         """
         Initialise a new instance.
 
-        :param simulators: sequence of simulators (fndh and smartbox)
+        :param simulators: dictionary of simulators (FNDH and smartbox)
             that this API fronts.
 
         """
@@ -94,15 +93,14 @@ class PasdBusModbusApi:
 
         :return: List of attribute values
         """
-        simulator_id = 0 if device_id == FndhSimulator.SYS_ADDRESS else device_id
         values: list[Any] = []
         last_address = -1
         last_count = -1
         for name, attr in names.items():
             try:
-                unconverted_value = getattr(self._simulators[simulator_id], name)
+                unconverted_value = getattr(self._simulators[device_id], name)
             except KeyError:
-                logger.error(f"Simulator {simulator_id} not available")
+                logger.error(f"Simulator {device_id} not available")
                 return ExceptionResponse(
                     function_code=1, exception_code=1, slave=device_id
                 )
@@ -133,7 +131,6 @@ class PasdBusModbusApi:
         starting_address: int,
         values: list,
     ) -> ExceptionResponse | None:
-        simulator_id = 0 if device_id == FndhSimulator.SYS_ADDRESS else device_id
         for name, attr in names.items():
             try:
                 if attr.address < starting_address:
@@ -144,11 +141,11 @@ class PasdBusModbusApi:
                 if isinstance(attr, PasdBusPortAttribute):
                     port = starting_address - attr.address
                     reg_tuple = (attr.convert_value(reg_vals)[0], port)
-                    setattr(self._simulators[simulator_id], name, reg_tuple)
+                    setattr(self._simulators[device_id], name, reg_tuple)
                 else:
-                    setattr(self._simulators[simulator_id], name, reg_vals)
+                    setattr(self._simulators[device_id], name, reg_vals)
             except KeyError:
-                logger.error(f"Simulator {simulator_id} not available")
+                logger.error(f"Simulator {device_id} not available")
                 return ExceptionResponse(
                     function_code=1, exception_code=1, slave=device_id
                 )
@@ -175,15 +172,18 @@ class PasdBusModbusApi:
 
         def handle_request(message: Any) -> None:
             nonlocal response
+            device_id = (
+                0 if message.slave_id == FNDH_MODBUS_ADDRESS else message.slave_id
+            )
             match message:
                 case ReadHoldingRegistersRequest():
                     filtered_register_map = (
                         self._register_map.get_attributes_from_address_and_count(
-                            message.slave_id, message.address, message.count
+                            device_id, message.address, message.count
                         )
                     )
                     values = self._handle_read_attributes(
-                        message.slave_id, filtered_register_map
+                        device_id, filtered_register_map
                     )
                     if isinstance(values, ExceptionResponse):
                         response = values
@@ -203,14 +203,14 @@ class PasdBusModbusApi:
                         k: v
                         for k, v in (
                             self._register_map.get_attributes_from_address_and_count(
-                                message.slave_id, message.address, message.count
+                                device_id, message.address, message.count
                             ).items()
                         )
                         if k in writable_port_attrs
                         or not isinstance(v, PasdBusPortAttribute)
                     }
                     result = self._handle_write_attributes(
-                        message.slave_id,
+                        device_id,
                         filtered_register_map,
                         message.address,
                         message.values,
@@ -246,8 +246,6 @@ class PasdBusModbusApi:
 
 class PasdBusModbusApiClient:
     """A client class for a PaSD (simulator or h/w) with a Modbus API."""
-
-    FNDH_ADDRESS: Final = 101
 
     def __init__(
         self: PasdBusModbusApiClient,
@@ -289,7 +287,7 @@ class PasdBusModbusApiClient:
 
     def _do_read_request(self, request: dict) -> dict:
         modbus_address = (
-            self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
+            FNDH_MODBUS_ADDRESS if request["device_id"] == 0 else request["device_id"]
         )
 
         # Get a dictionary mapping the requested attribute names to
@@ -363,7 +361,7 @@ class PasdBusModbusApiClient:
                     )
 
                     # Check if we need to update the register map revision number
-                    if key == PasdBusRegisterMap.MODBUS_REGISTER_MAP_REVISION:
+                    if key == self._register_map.MODBUS_REGISTER_MAP_REVISION:
                         self._register_map.revision_number = results[key]
 
                     # Only increment the register index if we are not
@@ -425,7 +423,7 @@ class PasdBusModbusApiClient:
 
     def _do_write_request(self, request: dict) -> dict:
         modbus_address = (
-            self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
+            FNDH_MODBUS_ADDRESS if request["device_id"] == 0 else request["device_id"]
         )
 
         # Get a PasdBusAttribute object for this request
@@ -442,7 +440,7 @@ class PasdBusModbusApiClient:
 
     def _do_command_request(self, request: dict) -> dict:
         modbus_address = (
-            self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
+            FNDH_MODBUS_ADDRESS if request["device_id"] == 0 else request["device_id"]
         )
 
         # Get a PasdBusCommand object for this command

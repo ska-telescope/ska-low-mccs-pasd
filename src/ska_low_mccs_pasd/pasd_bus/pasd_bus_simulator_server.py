@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import os
 from socket import gethostname
-from typing import Dict, Iterator
+from typing import Iterator
 
 from ska_ser_devices.client_server import (
     ApplicationServer,
@@ -82,7 +82,7 @@ class PasdBusSimulatorModbusServer(ApplicationServer):
     def __init__(
         self: PasdBusSimulatorModbusServer,
         fndh_simulator: FndhSimulator,
-        smartbox_simulators: Dict[int, SmartboxSimulator],
+        smartbox_simulators: dict[int, SmartboxSimulator],
     ) -> None:
         """
         Initialise a new instance.
@@ -92,7 +92,7 @@ class PasdBusSimulatorModbusServer(ApplicationServer):
         :param smartbox_simulators: the smartbox simulator backends to
             which this server provides access.
         """
-        simulators: Dict[int, FndhSimulator | SmartboxSimulator] = {0: fndh_simulator}
+        simulators: dict = {0: fndh_simulator}
         simulators.update(smartbox_simulators)
         simulator_api = PasdBusModbusApi(simulators)
         marshaller = CustomMarshaller(b"\r\n")

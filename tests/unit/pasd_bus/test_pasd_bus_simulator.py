@@ -8,7 +8,7 @@
 """This module contains the tests of the PaSD bus component manager."""
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -48,7 +48,7 @@ class TestPasdBusSimulator:
     def test_smartboxes_depend_on_fndh_ports(
         self: TestPasdBusSimulator,
         fndh_simulator: FndhSimulator,
-        smartbox_simulators: Dict[int, SmartboxSimulator],
+        smartbox_simulators: dict[int, SmartboxSimulator],
         fndh_config: list[bool],
         smartbox_attached_ports: list[int],
     ) -> None:
@@ -85,7 +85,7 @@ class TestPasdBusSimulator:
     def test_uptimes(
         self: TestPasdBusSimulator,
         fndh_simulator: FndhSimulator,
-        smartbox_simulators: Dict[int, SmartboxSimulator],
+        smartbox_simulators: dict[int, SmartboxSimulator],
     ) -> None:
         """
         Test the uptimes of a PaSD bus simulator.

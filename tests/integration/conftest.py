@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Iterator
+from typing import Iterator
 
 import pytest
 import tango
@@ -82,7 +82,7 @@ def smartbox_attached_ports_fixture(
 @pytest.fixture(name="smartbox_simulators")
 def smartbox_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-) -> Dict[int, SmartboxSimulator]:
+) -> dict[int, SmartboxSimulator]:
     """
     Return the smartbox simulators.
 
@@ -99,7 +99,7 @@ def smartbox_simulators_fixture(
 
 @pytest.fixture(name="smartbox_simulator")
 def smartbox_simulator_fixture(
-    smartbox_simulators: Dict[int, SmartboxSimulator],
+    smartbox_simulators: dict[int, SmartboxSimulator],
     smartbox_number: int,
 ) -> SmartboxSimulator:
     """

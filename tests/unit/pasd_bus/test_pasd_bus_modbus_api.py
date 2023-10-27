@@ -8,7 +8,7 @@
 """Tests of the PasdBusModbusApi."""
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -78,7 +78,7 @@ class TestPasdBusModbusApi:
     @pytest.fixture(name="backend_smartboxes")
     def backend_smartboxes_fixture(
         self: TestPasdBusModbusApi,
-    ) -> Dict[int, mock.Mock]:
+    ) -> dict[int, mock.Mock]:
         """
         Return a dictionary of mock backend smartboxes to test the API against.
 
@@ -102,7 +102,7 @@ class TestPasdBusModbusApi:
     def api_fixture(
         self: TestPasdBusModbusApi,
         backend_fndh: mock.Mock,
-        backend_smartboxes: Dict[int, mock.Mock],
+        backend_smartboxes: dict[int, mock.Mock],
     ) -> PasdBusModbusApi:
         """
         Return an API instance against which to test.
@@ -113,7 +113,7 @@ class TestPasdBusModbusApi:
 
         :return: an API instance against which to test
         """
-        backend_mocks: Dict[int, FndhSimulator | SmartboxSimulator] = {0: backend_fndh}
+        backend_mocks: dict[int, FndhSimulator | SmartboxSimulator] = {0: backend_fndh}
         backend_mocks.update(backend_smartboxes)
         return PasdBusModbusApi(backend_mocks)
 

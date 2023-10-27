@@ -38,7 +38,7 @@ import importlib.resources
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Callable, Dict, Final, Optional, Sequence
+from typing import Callable, Final, Optional, Sequence
 
 import yaml
 
@@ -51,6 +51,7 @@ from .pasd_bus_conversions import (
     SmartboxAlarmFlags,
     SmartBoxStatusMap,
 )
+from .pasd_bus_modbus_api import FNDH_MODBUS_ADDRESS
 
 logger = logging.getLogger()
 
@@ -941,7 +942,7 @@ class FndhSimulator(PasdHardwareSimulator):
     PCB_REVISION: Final = 21
     CPU_ID: Final = [1, 2]
     CHIP_ID: Final = [1, 2, 3, 4, 5, 6, 7, 8]
-    SYS_ADDRESS: Final = 101
+    SYS_ADDRESS: Final = FNDH_MODBUS_ADDRESS
 
     DEFAULT_FIRMWARE_VERSION: Final = 257
     DEFAULT_PSU48V_VOLTAGES: Final = [4790, 4810]
@@ -1396,7 +1397,7 @@ class PasdBusSimulator:
             f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}."
         )
 
-        self._smartbox_simulators: Dict[int, SmartboxSimulator] = {}
+        self._smartbox_simulators: dict[int, SmartboxSimulator] = {}
         self._smartboxes_ports_connected: list[list[bool]] = []
         self._smartbox_attached_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
 
@@ -1427,7 +1428,7 @@ class PasdBusSimulator:
         """
         return self._fndh_simulator
 
-    def get_smartboxes(self: PasdBusSimulator) -> Dict[int, SmartboxSimulator]:
+    def get_smartboxes(self: PasdBusSimulator) -> dict[int, SmartboxSimulator]:
         """
         Return a dictionary of smartboxes.
 
