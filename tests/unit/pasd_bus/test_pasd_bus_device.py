@@ -52,6 +52,7 @@ def change_event_callbacks_fixture(
         "fndhStatus",
         "fndhLedPattern",
         "fndhPortsPowerSensed",
+        "fndhPortsPowerControl",
         f"smartbox{smartbox_id}LedPattern",
         f"smartbox{smartbox_id}PortBreakersTripped",
         f"smartbox{smartbox_id}PortsPowerSensed",
@@ -631,6 +632,93 @@ def test_fndh_led_pattern(
     )
 
 
+def test_fndh_port_faults(
+    pasd_bus_device: tango.DeviceProxy,
+    fndh_simulator: FndhSimulator,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> None:
+    """
+    Test the Tango device can be used to reset a smartbox port's breaker.
+
+    :param pasd_bus_device: a proxy to the PaSD bus device under test.
+    :param fndh_simulator: the smartbox simulator under test.
+    :param change_event_callbacks: dictionary of mock change event
+        callbacks with asynchrony support
+    """
+    fndh_ports_connected = fndh_simulator.ports_connected
+    connected_fndh_port = fndh_ports_connected.index(True) + 1
+
+    # Confirm a connected port is turned on
+    assert fndh_simulator.turn_port_on(connected_fndh_port) is None
+    # Simulate over current condition and check
+    assert fndh_simulator.simulate_port_over_current(connected_fndh_port)
+    fndh_ports_power_sensed = fndh_simulator.ports_power_sensed
+    assert fndh_ports_power_sensed[connected_fndh_port - 1] is False
+    fndh_ports_power_control = fndh_simulator.ports_power_control
+    assert fndh_ports_power_control[connected_fndh_port - 1]
+
+    assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+
+    pasd_bus_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    pasd_bus_device.subscribe_event(
+        "fndhPortsPowerSensed",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["fndhPortsPowerSensed"],
+    )
+    change_event_callbacks.assert_change_event("fndhPortsPowerSensed", None)
+    pasd_bus_device.subscribe_event(
+        "fndhPortsPowerControl",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["fndhPortsPowerControl"],
+    )
+    change_event_callbacks.assert_change_event("fndhPortsPowerControl", None)
+
+    pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+
+    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
+    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+
+    change_event_callbacks.assert_change_event(
+        "fndhPortsPowerSensed",
+        fndh_ports_power_sensed,
+    )
+    change_event_callbacks.assert_change_event(
+        "fndhPortsPowerControl",
+        fndh_ports_power_control,
+    )
+
+    # Revert over current condition and check
+    assert fndh_simulator.simulate_port_over_current(connected_fndh_port, False)
+    fndh_ports_power_sensed[connected_fndh_port - 1] = True
+    change_event_callbacks.assert_change_event(
+        "fndhPortsPowerSensed",
+        fndh_ports_power_sensed,
+    )
+
+    # Test port stuck on condition
+    assert fndh_simulator.simulate_port_stuck_on(connected_fndh_port)
+    assert fndh_simulator.simulate_port_forcing(False)
+
+    fndh_ports_power_sensed = fndh_simulator.ports_power_sensed
+    assert fndh_ports_power_sensed[connected_fndh_port - 1]
+    fndh_ports_power_control = fndh_simulator.ports_power_control
+    assert fndh_ports_power_control[connected_fndh_port - 1] is False
+
+    change_event_callbacks.assert_change_event(
+        "fndhPortsPowerSensed",
+        fndh_ports_power_sensed,
+    )
+    change_event_callbacks.assert_change_event(
+        "fndhPortsPowerControl",
+        fndh_ports_power_control,
+    )
+
+
 def test_set_smartbox_port_powers(
     pasd_bus_device: tango.DeviceProxy,
     smartbox_simulator: SmartboxSimulator,
@@ -721,7 +809,7 @@ def test_reset_smartbox_port_breaker(
 
     assert smartbox_simulator.initialize()
     assert smartbox_simulator.turn_port_on(connected_smartbox_port)
-    assert smartbox_simulator.simulate_port_breaker_trip(connected_smartbox_port)
+    assert smartbox_simulator.simulate_port_over_current(connected_smartbox_port)
     smartbox_port_breakers_tripped = smartbox_simulator.port_breakers_tripped
     assert smartbox_port_breakers_tripped[connected_smartbox_port - 1]
     # All of the above just to set up the simulator

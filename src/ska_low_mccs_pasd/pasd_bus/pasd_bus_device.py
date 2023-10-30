@@ -299,7 +299,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             (
                 "PortsPowerControl",
                 (bool,),
-                NUMBER_OF_FNDH_PORTS,
+                PasdData.NUMBER_OF_FNDH_PORTS,
                 tango.AttrWriteType.READ,
             ),
             (

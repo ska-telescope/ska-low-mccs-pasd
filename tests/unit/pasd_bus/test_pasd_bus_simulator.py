@@ -294,6 +294,87 @@ class TestFndhSimulator:
         assert fndh_simulator.turn_port_on(unconnected_fndh_port)
         assert fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
+    def test_port_over_current(
+        self: TestFndhSimulator,
+        fndh_simulator: FndhSimulator,
+        connected_fndh_port: int,
+    ) -> None:
+        """
+        Test fndh port over current.
+
+        :param fndh_simulator: the fndh simulator under test.
+        :param connected_fndh_port: a fndh port that has an
+            smartbox connected to it.
+        """
+        assert fndh_simulator.initialize()
+
+        expected_power_control = [True] * FndhSimulator.NUMBER_OF_PORTS
+        assert fndh_simulator.ports_power_control == expected_power_control
+
+        assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+        assert fndh_simulator.turn_port_on(connected_fndh_port)
+        assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+
+        assert fndh_simulator.simulate_port_over_current(connected_fndh_port)
+        assert fndh_simulator.ports_power_control[connected_fndh_port - 1]
+        assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+
+        assert fndh_simulator.simulate_port_over_current(connected_fndh_port) is None
+        assert fndh_simulator.ports_power_control[connected_fndh_port - 1]
+        assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+
+        assert fndh_simulator.simulate_port_over_current(connected_fndh_port, False)
+        assert fndh_simulator.ports_power_control[connected_fndh_port - 1]
+        assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+
+        assert (
+            fndh_simulator.simulate_port_over_current(connected_fndh_port, False)
+            is None
+        )
+        assert fndh_simulator.ports_power_control[connected_fndh_port - 1]
+        assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+
+    def test_port_stuck_on(
+        self: TestFndhSimulator,
+        fndh_simulator: FndhSimulator,
+        connected_fndh_port: int,
+    ) -> None:
+        """
+        Test fndh port over current.
+
+        :param fndh_simulator: the fndh simulator under test.
+        :param connected_fndh_port: a fndh port that has an
+            smartbox connected to it.
+        """
+        assert fndh_simulator.initialize()
+
+        expected_power_control = [True] * FndhSimulator.NUMBER_OF_PORTS
+        assert fndh_simulator.ports_power_control == expected_power_control
+
+        assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+        assert fndh_simulator.turn_port_on(connected_fndh_port)
+        assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+
+        assert fndh_simulator.simulate_port_forcing(False)
+        assert fndh_simulator.port_forcings == ["OFF"] * FndhSimulator.NUMBER_OF_PORTS
+
+        assert fndh_simulator.simulate_port_stuck_on(connected_fndh_port)
+        assert not fndh_simulator.ports_power_control[connected_fndh_port - 1]
+        assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+
+        assert fndh_simulator.simulate_port_stuck_on(connected_fndh_port) is None
+        assert not fndh_simulator.ports_power_control[connected_fndh_port - 1]
+        assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+
+        assert fndh_simulator.simulate_port_stuck_on(connected_fndh_port, False)
+        assert not fndh_simulator.ports_power_control[connected_fndh_port - 1]
+        assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+
+        assert fndh_simulator.simulate_port_stuck_on(connected_fndh_port, False) is None
+        assert fndh_simulator.simulate_port_forcing(None)
+        assert fndh_simulator.ports_power_control[connected_fndh_port - 1]
+        assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
+
     @pytest.mark.parametrize(
         ("attribute_name", "expected_value"),
         [
@@ -674,13 +755,13 @@ class TestSmartboxSimulator:
         assert smartbox_simulator.turn_port_on(connected_smartbox_port)
         assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
-        assert smartbox_simulator.simulate_port_breaker_trip(connected_smartbox_port)
+        assert smartbox_simulator.simulate_port_over_current(connected_smartbox_port)
         expected_tripped[connected_smartbox_port - 1] = True
         assert smartbox_simulator.port_breakers_tripped == expected_tripped
         assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
         assert (
-            smartbox_simulator.simulate_port_breaker_trip(connected_smartbox_port)
+            smartbox_simulator.simulate_port_over_current(connected_smartbox_port)
             is None
         )
         assert smartbox_simulator.port_breakers_tripped == expected_tripped
