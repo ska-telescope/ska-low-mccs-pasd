@@ -189,7 +189,7 @@ class TestfndhPasdBusIntegration:
             fndh_device.Uptime
             <= PasdConversionUtility.convert_uptime(fndh_simulator.uptime)[0]
         )
-        assert fndh_device.PasdStatus == FndhSimulator.DEFAULT_STATUS.name
+        assert fndh_device.PasdStatus == "OK"
         assert fndh_device.LedPattern == "service: OFF, status: OFF"
         assert list(fndh_device.Psu48vVoltages) == PasdConversionUtility.scale_volts(
             FndhSimulator.DEFAULT_PSU48V_VOLTAGES
@@ -325,11 +325,13 @@ class TestfndhPasdBusIntegration:
                     getattr(fndh_device, f"Port{port}PowerState") == PowerState.UNKNOWN
                 )
 
+    # pylint: disable=too-many-arguments
     def test_port_power(
         self: TestfndhPasdBusIntegration,
         fndh_device: tango.DeviceProxy,
         pasd_bus_device: tango.DeviceProxy,
         fndh_simulator: FndhSimulator,
+        off_smartbox_attached_port: int,
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
         """
@@ -345,12 +347,16 @@ class TestfndhPasdBusIntegration:
             :py:class:`tango.test_context.DeviceTestContext`.
         :param pasd_bus_device: a proxy to the PaSD bus device under test.
         :param fndh_simulator: the FNDH simulator under test
+        :param off_smartbox_attached_port: the FNDH port the off
+            smartbox-under-test is attached to.
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         """
         assert fndh_device.adminMode == AdminMode.OFFLINE
         assert pasd_bus_device.adminMode == AdminMode.OFFLINE
-        assert fndh_device.PortPowerState(2) == PowerState.UNKNOWN
+        assert (
+            fndh_device.PortPowerState(off_smartbox_attached_port) == PowerState.UNKNOWN
+        )
 
         pasd_bus_device.subscribe_event(
             "state",
@@ -409,20 +415,18 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks["fndh_state"].assert_not_called()
 
         fndh_device.subscribe_event(
-            "Port2PowerState",
+            f"Port{off_smartbox_attached_port}PowerState",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["fndhPort2PowerState"],
+            change_event_callbacks["fndhPortPowerState"],
         )
-        change_event_callbacks["fndhPort2PowerState"].assert_change_event(
-            PowerState.OFF
-        )
+        change_event_callbacks["fndhPortPowerState"].assert_change_event(PowerState.OFF)
 
-        assert fndh_device.PortPowerState(2) == PowerState.OFF
-        assert fndh_simulator.turn_port_on(2)
+        assert fndh_device.PortPowerState(off_smartbox_attached_port) == PowerState.OFF
+        assert fndh_simulator.turn_port_on(off_smartbox_attached_port)
 
-        change_event_callbacks["fndhPort2PowerState"].assert_change_event(PowerState.ON)
+        change_event_callbacks["fndhPortPowerState"].assert_change_event(PowerState.ON)
 
-        assert fndh_device.PortPowerState(2) == PowerState.ON
+        assert fndh_device.PortPowerState(off_smartbox_attached_port) == PowerState.ON
 
 
 @pytest.fixture(name="change_event_callbacks")
@@ -438,7 +442,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "pasd_bus_state",
         "pasdBushealthState",
         "smartbox24AlarmFlags",
-        "fndhPort2PowerState",
+        "fndhPortPowerState",
         timeout=20.0,
         assert_no_error=False,
     )
