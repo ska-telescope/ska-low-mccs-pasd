@@ -252,7 +252,7 @@ class PasdBusModbusApiClient:
         host: str,
         port: int,
         logger_object: logging.Logger,
-        timeout: int,
+        timeout: float,
     ) -> None:
         """
         Initialise a new instance.
