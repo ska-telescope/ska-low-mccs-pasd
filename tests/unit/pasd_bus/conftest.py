@@ -106,6 +106,7 @@ def mock_fndh_simulator_fixture(
         "port_forcings",
         "ports_desired_power_when_online",
         "ports_desired_power_when_offline",
+        "ports_power_control",
         "ports_power_sensed",
         "led_pattern",
         "sys_address",

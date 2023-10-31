@@ -63,7 +63,7 @@ class PasdBusModbusApi:
         self, value: Any, attribute: PasdBusAttribute
     ) -> int | list[int]:
         if isinstance(attribute, PasdBusPortAttribute):
-            return attribute.convert_write_value([value])
+            return attribute.convert_write_value(value)
         if isinstance(value, list):
             try:
                 return [(v + 65536) & 0xFFFF if v < 0 else v for v in value]
@@ -339,8 +339,6 @@ class PasdBusModbusApiClient:
                 # to the attributes dictionary to be returned
                 for key in keys:
                     current_attribute = attributes[key]
-                    if not hasattr(current_attribute, "_value"):
-                        current_attribute._value = 0
 
                     # Check if we're moving on from reading a set of port attribute data
                     # as we'll need to increment the register index

@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+import struct
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Final, Optional, Sequence
@@ -184,10 +185,9 @@ class PasdBusPortAttribute(PasdBusAttribute):
         super().__init__(address, count, self._parse_port_bitmaps)
         self.desired_info = desired_info
 
-    # pylint: disable=too-many-branches, too-many-statements
-    def _parse_port_bitmaps(  # noqa: C901
+    def _parse_port_bitmaps(
         self: PasdBusPortAttribute,
-        values: list[int | bool | str | None],
+        values: list[int | bool | str],
         inverse: bool = False,
     ) -> list[bool | str | None] | list[int]:
         """
@@ -202,46 +202,39 @@ class PasdBusPortAttribute(PasdBusAttribute):
             False: "OFF",
             None: "NONE",
         }
-        if isinstance(values[0], list):
-            values = values[0]
         if inverse:
             inv_results: list[int] = []
             for value in values:
-                bitstring = "00"
-
-                if self.desired_info == PortStatusString.DSON:
-                    bitstring += "11" if value else "10"
-                else:
-                    bitstring += "00"
-
-                if self.desired_info == PortStatusString.DSOFF:
-                    bitstring += "11" if value else "10"
-                else:
-                    bitstring += "00"
-
-                if self.desired_info == PortStatusString.PORT_FORCINGS:
-                    if value == forcing_map[True]:
-                        bitstring += "11"
-                    elif value == forcing_map[False]:
-                        bitstring += "10"
-                    else:
-                        bitstring += "00"
-                else:
-                    bitstring += "00"
-
-                if self.desired_info == PortStatusString.BREAKERS_TRIPPED:
-                    bitstring += "1" if value else "0"
-                elif self.desired_info == PortStatusString.POWER_SENSED:
-                    bitstring += "1" if value else "0"
-                else:
-                    bitstring += "0"
-
-                if self.desired_info == PortStatusString.POWER:
-                    bitstring += "1" if value else "0"
-                else:
-                    bitstring += "0"
-
-                bitstring += "000000"  # pad to 16 bits
+                bitstring = struct.pack(
+                    ">BBBBBBBB",
+                    0,
+                    (self.desired_info == PortStatusString.DSON) * 16
+                    + int(self.desired_info == PortStatusString.DSON and value),
+                    (self.desired_info == PortStatusString.DSOFF) * 16
+                    + int((self.desired_info == PortStatusString.DSOFF) and value),
+                    (
+                        self.desired_info == PortStatusString.PORT_FORCINGS
+                        and value != forcing_map[None]
+                    )
+                    * 16
+                    + int(
+                        self.desired_info == PortStatusString.PORT_FORCINGS
+                        and value == forcing_map[True]
+                    ),
+                    int(
+                        self.desired_info
+                        in [
+                            PortStatusString.BREAKERS_TRIPPED,
+                            PortStatusString.POWER_SENSED,
+                        ]
+                        and value
+                    )
+                    * 16
+                    + int((self.desired_info == PortStatusString.POWER) and value),
+                    0,
+                    0,
+                    0,
+                ).hex()
                 inv_results.append(int(bitstring, 2))
             return inv_results
         results: list[bool | str | None] = []
