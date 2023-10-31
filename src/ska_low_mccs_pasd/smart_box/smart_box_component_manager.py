@@ -208,6 +208,7 @@ class _PasdBusProxy(DeviceComponentManager):
             unique id to identify the command in the queue.
         """
         assert self._proxy
+        self._proxy.InitializeSmartbox(self._fndh_port)
         return self._proxy.SetSmartboxPortPowers(json_argument)
 
     def set_fndh_port_powers(
@@ -230,7 +231,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     """
     A component manager for MccsSmartBox.
 
-    This communicates via a proxy to a MccsPadsBus that talks to a simulator
+    This communicates via a proxy to a MccsPasdBus that talks to a simulator
     or the real hardware.
     """
 
@@ -611,3 +612,60 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 result=f"Power on port '{port_number} success'",
             )
         return result_code, return_message
+
+    @check_communicating
+    def set_port_powers(
+        self: SmartBoxComponentManager,
+        json_argument: str,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Set port powers.
+
+        These ports will not have an antenna attached.
+
+        :param json_argument: desired port powers of unmasked ports with
+            smartboxes attached in json form.
+        :param task_callback: callback to be called when the status of
+            the command changes
+
+        :return: the task status and a human-readable status message
+        """
+        return self.submit_task(
+            self._set_port_powers,  # type: ignore[arg-type]
+            args=[json_argument],
+            task_callback=task_callback,
+        )
+
+    def _set_port_powers(
+        self: SmartBoxComponentManager,
+        json_argument: str,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[ResultCode, str]:
+        if task_callback:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+
+        try:
+            assert self._pasd_bus_proxy._proxy
+            (
+                result_code,
+                unique_id,
+            ) = self._pasd_bus_proxy.set_smartbox_port_powers(json_argument)
+
+        except Exception as ex:  # pylint: disable=broad-except
+            self.logger.error(f"error {repr(ex)}")
+            if task_callback:
+                task_callback(
+                    status=TaskStatus.FAILED,
+                    result="Set port powers failed",
+                )
+
+            return ResultCode.FAILED, "0"
+
+        if task_callback:
+            task_callback(
+                status=TaskStatus.COMPLETED,
+                result="Set port powers success",
+            )
+        return result_code, unique_id

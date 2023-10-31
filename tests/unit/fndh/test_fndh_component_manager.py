@@ -25,6 +25,8 @@ from tests.harness import (
     get_pasd_bus_name,
 )
 
+NUMBER_OF_FNDH_PORTS = 28
+
 
 @pytest.fixture(name="mock_pasdbus")
 def mock_pasdbus_fixture() -> unittest.mock.Mock:
@@ -193,6 +195,12 @@ class TestFndhComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 f"Power off port '{3} success'",
             ),
+            (
+                "set_port_powers",
+                [0] * NUMBER_OF_FNDH_PORTS,
+                (TaskStatus.QUEUED, "Task queued"),
+                "Set port powers success",
+            ),
         ],
     )
     def test_command(  # pylint: disable=too-many-arguments
@@ -223,13 +231,21 @@ class TestFndhComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        assert (
-            getattr(fndh_component_manager, component_manager_command)(
-                component_manager_command_argument,
-                mock_callbacks["task"],
+        if component_manager_command_argument:
+            assert (
+                getattr(fndh_component_manager, component_manager_command)(
+                    component_manager_command_argument,
+                    task_callback=mock_callbacks["task"],
+                )
+                == expected_manager_result
             )
-            == expected_manager_result
-        )
+        else:
+            assert (
+                getattr(fndh_component_manager, component_manager_command)(
+                    task_callback=mock_callbacks["task"],
+                )
+                == expected_manager_result
+            )
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(

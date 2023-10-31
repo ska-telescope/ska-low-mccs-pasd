@@ -120,6 +120,21 @@ class _PasdBusProxy(DeviceComponentManager):
             "with 'fndh' string so it is assumed it is a incorrect subscription"
         )
 
+    def set_fndh_port_powers(
+        self: _PasdBusProxy, json_argument: str
+    ) -> tuple[ResultCode, str]:
+        """
+        Proxy for the SetFndhPortPowers command.
+
+        :param json_argument: the json formatted string.
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        assert self._proxy
+        self._proxy.InitializeFndh()
+        return self._proxy.SetFndhPortPowers(json_argument)
+
 
 # pylint: disable-next=abstract-method
 class FndhComponentManager(TaskExecutorComponentManager):
@@ -330,5 +345,62 @@ class FndhComponentManager(TaskExecutorComponentManager):
             task_callback(
                 status=TaskStatus.COMPLETED,
                 result=f"Power on port '{port_number} success'",
+            )
+        return result_code, unique_id
+
+    @check_communicating
+    def set_port_powers(
+        self: FndhComponentManager,
+        json_argument: str,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Set port powers.
+
+        These ports will not have a smartbox attached.
+
+        :param json_argument: desired port powers of unmasked ports with
+            smartboxes attached in json form.
+        :param task_callback: callback to be called when the status of
+            the command changes
+
+        :return: the task status and a human-readable status message
+        """
+        return self.submit_task(
+            self._set_port_powers,  # type: ignore[arg-type]
+            args=[json_argument],
+            task_callback=task_callback,
+        )
+
+    def _set_port_powers(
+        self: FndhComponentManager,
+        json_argument: str,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[ResultCode, str]:
+        if task_callback:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+
+        try:
+            assert self._pasd_bus_proxy._proxy
+            (
+                result_code,
+                unique_id,
+            ) = self._pasd_bus_proxy.set_fndh_port_powers(json_argument)
+
+        except Exception as ex:  # pylint: disable=broad-except
+            self.logger.error(f"error {repr(ex)}")
+            if task_callback:
+                task_callback(
+                    status=TaskStatus.FAILED,
+                    result="Set port powers failed",
+                )
+
+            return ResultCode.FAILED, "0"
+
+        if task_callback:
+            task_callback(
+                status=TaskStatus.COMPLETED,
+                result="Set port powers success",
             )
         return result_code, unique_id

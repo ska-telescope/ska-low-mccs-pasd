@@ -135,6 +135,17 @@ def fndh_device_fixture(
             4,
             [True, True],
         ),
+        (
+            "SetPortPowers",
+            "set_port_powers",
+            json.dumps(
+                {
+                    "port_powers": [False for _ in range(24)],
+                    "stay_on_when_offline": True,
+                }
+            ),
+            [True, True],
+        ),
     ],
 )
 def test_command(  # pylint: disable=too-many-arguments
@@ -167,7 +178,7 @@ def test_command(  # pylint: disable=too-many-arguments
 
     command = getattr(fndh_device, device_command)
     if device_command_argin is None:
-        command_return = command()
+        command_return = command([])
     else:
         command_return = command(device_command_argin)
 

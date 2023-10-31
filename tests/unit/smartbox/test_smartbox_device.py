@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import gc
+import json
 import unittest.mock
 from typing import Any
 
@@ -104,6 +105,16 @@ def test_device_transitions_to_power_state_of_fndh_port(
             "PowerOffPort",
             4,
         ),
+        (
+            "SetPortPowers",
+            json.dumps(
+                {
+                    "smartbox_number": 2,
+                    "port_powers": [False for _ in range(12)],
+                    "stay_on_when_offline": True,
+                }
+            ),
+        ),
     ],
 )
 def test_command_queued(
@@ -143,7 +154,7 @@ def test_command_queued(
 
     command = getattr(smartbox_device, device_command)
     if device_command_argin is None:
-        command_return = command()
+        command_return = command([])
     else:
         command_return = command(device_command_argin)
 

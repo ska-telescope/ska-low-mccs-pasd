@@ -52,6 +52,7 @@ autodoc_mock_imports = [
     "ska_low_mccs_common",
     "ska_tango_testing",
     "pymodbus",
+    "jsonschema",
 ]
 
 

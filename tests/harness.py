@@ -69,7 +69,7 @@ def get_smartbox_name(smartbox_id: int, station_label: str | None = None) -> str
 
 
 class PasdTangoTestHarnessContext:
-    """Handle for the SPSHW test harness context."""
+    """Handle for the PaSD test harness context."""
 
     def __init__(
         self: PasdTangoTestHarnessContext,
@@ -333,6 +333,21 @@ class PasdTangoTestHarness:
         """
         self._tango_test_harness.add_mock_device(
             get_fndh_name(self._station_label), mock
+        )
+
+    def set_mock_smartbox_device(
+        self: PasdTangoTestHarness,
+        mock: tango.DeviceProxy,
+        smartbox_id: int,
+    ) -> None:
+        """
+        Add a mock FNDH Tango device to this test harness.
+
+        :param mock: the proxy or mock to be used as a mock FNDH device.
+        :param smartbox_id: the id of the smartbox.
+        """
+        self._tango_test_harness.add_mock_device(
+            get_smartbox_name(smartbox_id, self._station_label), mock
         )
 
     def add_smartbox_device(

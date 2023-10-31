@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+import importlib.resources
+import json
 from typing import Any, Final, Optional
 
 from ska_control_model import CommunicationStatus, PowerState, ResultCode
@@ -22,6 +24,9 @@ __all__ = ["MccsFieldStation", "main"]
 
 
 DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
+
+SMARTBOX_NUMBER = 24
+SMARTBOX_PORTS = 12
 
 
 class MccsFieldStation(SKABaseDevice):
@@ -39,15 +44,28 @@ class MccsFieldStation(SKABaseDevice):
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), mandatory=True)
 
-    OutsideTemperature = attribute(
-        name="outsideTemperature", label="outsideTemperature", forwarded=True
-    )
+    # TODO: Make forwarded attributes work
+    # OutsideTemperature = attribute(
+    #     name="outsideTemperature", label="outsideTemperature", forwarded=True
+    # )
     # --------------
     # Initialisation
     # --------------
 
     def init_device(self: MccsFieldStation) -> None:
         """Initialise the device."""
+        self._antenna_mask = [False for _ in range(256 + 1)]
+        self._antenna_mapping = {
+            smartbox_no * SMARTBOX_PORTS
+            + smartbox_port
+            + 1: [smartbox_no + 1, smartbox_port + 1]
+            for smartbox_no in range(0, SMARTBOX_NUMBER)
+            for smartbox_port in range(0, SMARTBOX_PORTS)
+            if smartbox_no * SMARTBOX_PORTS + smartbox_port < 256
+        }
+        self._smartbox_mapping = {
+            port + 1: port + 1 for port in range(0, SMARTBOX_NUMBER)
+        }
         super().init_device()
 
         message = (
@@ -69,6 +87,9 @@ class MccsFieldStation(SKABaseDevice):
             self.logger,
             self.FndhFQDN,
             self.SmartBoxFQDNs,
+            self._antenna_mask,
+            self._antenna_mapping,
+            self._smartbox_mapping,
             self._communication_state_callback,
             self._component_state_callback,
         )
@@ -86,8 +107,38 @@ class MccsFieldStation(SKABaseDevice):
             },
         }
 
+        mask_schema: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.field_station.schemas",
+                "MccsFieldStation_UpdateAntennaMask.json",
+            )
+        )
+
+        antenna_mapping_schema: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.field_station.schemas",
+                "MccsFieldStation_UpdateAntennaMapping.json",
+            )
+        )
+
+        smartbox_mapping_schema: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.field_station.schemas",
+                "MccsFieldStation_UpdateSmartboxMapping.json",
+            )
+        )
+
         for command_name, method_name, schema in [
             ("PowerOnAntenna", "turn_on_antenna", None),
+            ("PowerOffAntenna", "turn_off_antenna", None),
+            ("UpdateAntennaMask", "update_antenna_mask", mask_schema),
+            ("UpdateAntennaMapping", "update_antenna_mapping", antenna_mapping_schema),
+            (
+                "UpdateSmartboxMapping",
+                "update_smartbox_mapping",
+                smartbox_mapping_schema,
+            ),
+            ("UpdateConfiguration", "update_configuration", None),
             ("Configure", "configure", configure_schema),
         ]:
             validator = (
@@ -115,7 +166,7 @@ class MccsFieldStation(SKABaseDevice):
     def _communication_state_callback(
         self: MccsFieldStation,
         communication_state: CommunicationStatus,
-        device_name: str,
+        device_name: Optional[str] = None,
     ) -> None:
         super()._communication_state_changed(communication_state)
 
@@ -157,6 +208,140 @@ class MccsFieldStation(SKABaseDevice):
         handler = self.get_command_object("Configure")
         (return_code, message) = handler(argin)
         return ([return_code], [message])
+
+    @command(dtype_in="DevShort", dtype_out="DevVarLongStringArray")
+    def PowerOnAntenna(
+        self: MccsFieldStation, antenna_no: int
+    ) -> DevVarLongStringArrayType:
+        """
+        Turn on an antenna.
+
+        :param antenna_no: Antenna number to turn on.
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("PowerOnAntenna")
+        (return_code, message) = handler(antenna_no)
+        return ([return_code], [message])
+
+    @command(dtype_in="DevShort", dtype_out="DevVarLongStringArray")
+    def PowerOffAntenna(
+        self: MccsFieldStation, antenna_no: int
+    ) -> DevVarLongStringArrayType:
+        """
+        Turn off an antenna.
+
+        :param antenna_no: Antenna number to turn on.
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("PowerOffAntenna")
+        (return_code, message) = handler(antenna_no)
+        return ([return_code], [message])
+
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def UpdateAntennaMask(
+        self: MccsFieldStation, argin: str
+    ) -> DevVarLongStringArrayType:
+        """
+        Manually update the antenna mask.
+
+        :param argin: the configuration for the antenna mask in
+            stringified json format
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("UpdateAntennaMask")
+        (return_code, message) = handler(argin)
+        return ([return_code], [message])
+
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def UpdateAntennaMapping(
+        self: MccsFieldStation, argin: str
+    ) -> DevVarLongStringArrayType:
+        """
+        Manually update the antenna mapping.
+
+        :param argin: the configuration for the antenna mapping in
+            stringified json format
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("UpdateAntennaMapping")
+        (return_code, message) = handler(argin)
+        return ([return_code], [message])
+
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def UpdateSmartboxMapping(
+        self: MccsFieldStation, argin: str
+    ) -> DevVarLongStringArrayType:
+        """
+        Manually update the smartbox mapping.
+
+        :param argin: the configuration for the smartbox mapping in
+            stringified json format
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("UpdateSmartboxMapping")
+        (return_code, message) = handler(argin)
+        return ([return_code], [message])
+
+    @command(dtype_out="DevVarLongStringArray")
+    def UpdateConfiguration(self: MccsFieldStation) -> DevVarLongStringArrayType:
+        """
+        Update the configuration of the FieldStation.
+
+        This updates the antenna mask, antenna mapping and smartbox mapping.
+
+        :return: A tuple containing a return code and a string
+            message indicating status. The message is for
+            information purpose only.
+        """
+        handler = self.get_command_object("UpdateConfiguration")
+        (return_code, message) = handler()
+        return ([return_code], [message])
+
+    # ----------
+    # Attributes
+    # ----------
+
+    @attribute(dtype=("bool",), max_dim_x=256, label="AntennaMask")
+    def antennaMask(self: MccsFieldStation) -> list:
+        """
+        Return the antenna mask attribute.
+
+        :return: antenna mask
+        """
+        return self.component_manager._antenna_mask[1:257]
+
+    @attribute(dtype="DevString", label="AntennaMapping")
+    def antennaMapping(self: MccsFieldStation) -> str:
+        """
+        Return the antenna mapping attribute.
+
+        :return: antenna mappping
+        """
+        return json.dumps(self.component_manager._antenna_mapping)
+
+    @attribute(dtype="DevString", label="SmartboxMapping")
+    def smartboxMapping(self: MccsFieldStation) -> str:
+        """
+        Return the smartbox mapping attribute.
+
+        :return: smartbox mapping
+        """
+        return json.dumps(self.component_manager._smartbox_mapping)
 
 
 # ----------
