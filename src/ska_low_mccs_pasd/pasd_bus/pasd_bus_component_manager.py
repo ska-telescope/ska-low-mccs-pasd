@@ -205,7 +205,9 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             changes.
         """
         self._logger = logger
-        self._pasd_bus_api_client = PasdBusModbusApiClient(host, port, logger)
+        self._pasd_bus_api_client = PasdBusModbusApiClient(
+            host, port, logger, timeout=timeout
+        )
         self._pasd_bus_device_state_callback = pasd_device_state_callback
 
         self._min_ticks = int(device_polling_rate / polling_rate)

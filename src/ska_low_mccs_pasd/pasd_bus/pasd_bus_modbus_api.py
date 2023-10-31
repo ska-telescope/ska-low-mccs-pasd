@@ -252,6 +252,7 @@ class PasdBusModbusApiClient:
         host: str,
         port: int,
         logger_object: logging.Logger,
+        timeout: int,
     ) -> None:
         """
         Initialise a new instance.
@@ -259,8 +260,9 @@ class PasdBusModbusApiClient:
         :param host: the host IP address for the PaSD
         :param port: the PaSD port
         :param logger_object: the logger to use
+        :param timeout: the timeout period in seconds
         """
-        self._client = ModbusTcpClient(host, port, ModbusAsciiFramer)
+        self._client = ModbusTcpClient(host, port, ModbusAsciiFramer, timeout=timeout)
         logger_object.info(f"Created Modbus TCP client for address {host}, port {port}")
         self._logger = logger_object
 
