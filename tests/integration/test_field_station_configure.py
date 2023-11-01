@@ -15,10 +15,13 @@ import time
 
 import pytest
 import tango
-from ska_control_model import AdminMode, ResultCode
+from ska_control_model import AdminMode, PowerState, ResultCode
+from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 gc.disable()
+
+NUMBER_OF_SMARTBOX = 24
 
 
 @pytest.fixture(name="change_event_callbacks")
@@ -33,12 +36,179 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "field_station_state",
         "field_station_command_status",
         "fndh_state",
-        timeout=15.0,
+        "pasd_bus_state",
+        "antenna_power_states",
+        "smartbox24PortsPowerSensed",
+        "smartbox1_state",
+        "smartbox2_state",
+        "smartbox3_state",
+        "smartbox4_state",
+        "smartbox5_state",
+        "smartbox6_state",
+        "smartbox7_state",
+        "smartbox8_state",
+        "smartbox9_state",
+        "smartbox10_state",
+        "smartbox11_state",
+        "smartbox12_state",
+        "smartbox13_state",
+        "smartbox14_state",
+        "smartbox15_state",
+        "smartbox16_state",
+        "smartbox17_state",
+        "smartbox18_state",
+        "smartbox19_state",
+        "smartbox20_state",
+        "smartbox21_state",
+        "smartbox22_state",
+        "smartbox23_state",
+        "smartbox24_state",
+        "smartbox24AlarmFlags",
+        timeout=20.0,
     )
 
 
-class TestFieldStationIntegration:  # pylint: disable=too-few-public-methods
+@pytest.fixture(name="antenna_to_turn_on")
+def antenna_to_turn_on_fixture() -> int:
+    """
+    Return the logical antenna.
+
+    :return: the logical antenna to use in test.
+    """
+    return 26
+
+
+class TestFieldStationIntegration:
     """Test pasdbus and fndh integration."""
+
+    # pylint: disable=too-many-arguments, disable=too-many-locals
+    def test_turn_on_off_antenna(
+        self: TestFieldStationIntegration,
+        field_station_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        fndh_device: tango.DeviceProxy,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+        smartbox_proxys: list[tango.DeviceProxy],
+        off_smartbox_id: int,
+        antenna_to_turn_on: int,
+    ) -> None:
+        """
+        Test Antenna can be powered on.
+
+        :param field_station_device: provide to the field station device
+        :param pasd_bus_device: proxy to the pasd_device
+        :param fndh_device: proxy to the FNDH device
+        :param change_event_callbacks: group of Tango change event
+            callbacks with asynchrony support
+        :param smartbox_proxys: a list of device proxies to the stations
+            smartboxes.
+        :param off_smartbox_id: a fixture containing the id of a smartbox
+            simulated to be off.
+        :param antenna_to_turn_on: the antenne under test.
+        """
+        # PasdBus Online
+        pasd_bus_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasd_bus_state"],
+        )
+        change_event_callbacks["pasd_bus_state"].assert_change_event(Anything)
+        pasd_bus_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
+
+        # Initialise the station subdevices.
+        pasd_bus_device.initializefndh()
+        for i in range(NUMBER_OF_SMARTBOX):
+            pasd_bus_device.initializesmartbox(i)
+
+        # set adminMode online for all smartbox.
+        for smartbox_id, smartbox in enumerate(smartbox_proxys):
+            smartbox.subscribe_event(
+                "state",
+                tango.EventType.CHANGE_EVENT,
+                change_event_callbacks[f"smartbox{smartbox_id+1}_state"],
+            )
+            change_event_callbacks[
+                f"smartbox{smartbox_id+1}_state"
+            ].assert_change_event(Anything)
+
+            smartbox.adminMode = AdminMode.ONLINE
+
+            change_event_callbacks[
+                f"smartbox{smartbox_id+1}_state"
+            ].assert_change_event(tango.DevState.UNKNOWN)
+
+            change_event_callbacks[
+                f"smartbox{smartbox_id+1}_state"
+            ].assert_change_event(Anything)
+
+        # Set the Fndh adminMode ONLINE
+        fndh_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndh_state"],
+        )
+        change_event_callbacks["fndh_state"].assert_change_event(Anything)
+        fndh_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
+
+        # Subscribe to antennapowerstates attribute.
+        field_station_device.subscribe_event(
+            "antennapowerstates",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["antenna_power_states"],
+        )
+        change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
+
+        # Set the FieldStation adminMode ONLINE
+        # This will form proxies to smartboxes.
+        field_station_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["field_station_state"],
+        )
+        change_event_callbacks["field_station_state"].assert_change_event(Anything)
+        field_station_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.ON
+        )
+
+        # 2 smartbox have no antenna attached.
+        for i in range(NUMBER_OF_SMARTBOX - 2):
+            change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
+        change_event_callbacks["antenna_power_states"].assert_not_called()
+
+        # Use mapping to work out what smartbox port will change.
+        antenna_mapping = json.loads(field_station_device.antennamapping)
+        smartbox_id, smartbox_port = antenna_mapping[str(antenna_to_turn_on)]
+
+        # Check initial state.
+        assert not smartbox_proxys[smartbox_id - 1].portspowersensed[smartbox_port - 1]
+
+        # Turn on Antenna
+        field_station_device.PowerOnAntenna(antenna_to_turn_on)
+
+        # Check power changed.
+        change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
+        assert smartbox_proxys[smartbox_id - 1].portspowersensed[smartbox_port - 1]
+        antenna_power_states = json.loads(field_station_device.antennapowerstates)
+
+        assert smartbox_proxys[smartbox_id - 1].portspowersensed[smartbox_port - 1]
+
+        # off_smartbox_id is off in the simulator.
+        # Check that antennas attached to it are OFF.
+        for antenna_id, config in antenna_mapping.items():
+            smartbox_id = config[0]
+            # If the smartbox is off all antenna attached to it are OFF.
+            if smartbox_id == off_smartbox_id:
+                assert antenna_power_states[str(antenna_id)] == PowerState.OFF
 
     def test_configure(
         self: TestFieldStationIntegration,

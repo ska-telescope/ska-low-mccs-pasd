@@ -262,6 +262,7 @@ class TestFieldStationComponentManager:
             mock_smartbox_mapping,
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
+            mock_callbacks["antenna_callback"],
         )
 
     def test_communication(

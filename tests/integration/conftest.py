@@ -283,3 +283,20 @@ def off_smartbox_device_fixture(
     :return: the smartbox Tango device.
     """
     return test_context.get_smartbox_device(off_smartbox_id)
+
+
+@pytest.fixture(name="smartbox_proxys")
+def smartbox_proxys_fixture(
+    test_context: PasdTangoTestHarnessContext,
+) -> list[tango.DeviceProxy]:
+    """
+    Fixture that returns a list of smartbox Tango devices.
+
+    :param test_context: context in which the integration tests will run.
+
+    :return: the list of smartbox Tango devices.
+    """
+    smartbox_devices = []
+    for i in range(1, 25):
+        smartbox_devices.append(test_context.get_smartbox_device(i))
+    return smartbox_devices

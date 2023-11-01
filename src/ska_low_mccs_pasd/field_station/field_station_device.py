@@ -92,6 +92,7 @@ class MccsFieldStation(SKABaseDevice):
             self._smartbox_mapping,
             self._communication_state_callback,
             self._component_state_callback,
+            self._on_antenna_power_change,
         )
 
     def init_command_objects(self: MccsFieldStation) -> None:
@@ -159,6 +160,7 @@ class MccsFieldStation(SKABaseDevice):
                     validator=validator,
                 ),
             )
+        self.set_change_event("antennaPowerStates", True, False)
 
     # ----------
     # Callbacks
@@ -342,6 +344,26 @@ class MccsFieldStation(SKABaseDevice):
         :return: smartbox mapping
         """
         return json.dumps(self.component_manager._smartbox_mapping)
+
+    def _on_antenna_power_change(
+        self: MccsFieldStation, antenna_powers: dict[int, PowerState]
+    ) -> None:
+        """
+        Handle a change in antenna power.
+
+        :param antenna_powers: a dictionary containing all
+            256 antenna power states
+        """
+        self.push_change_event("antennaPowerStates", json.dumps(antenna_powers))
+
+    @attribute(dtype="DevString", label="antennaPowerStates")
+    def antennaPowerStates(self: MccsFieldStation) -> str:
+        """
+        Return the logical antenna powers.
+
+        :return: the power of the logical antennas.
+        """
+        return json.dumps(self.component_manager.antenna_powers)
 
 
 # ----------

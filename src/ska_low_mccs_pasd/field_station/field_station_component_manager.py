@@ -15,7 +15,8 @@ import logging
 import threading
 from typing import Any, Callable, Optional
 
-from ska_control_model import CommunicationStatus, TaskStatus
+import tango
+from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
@@ -29,6 +30,25 @@ NUMBER_OF_SMARTBOXES = 24
 NUMBER_OF_SMARTBOX_PORTS = 12
 NUMBER_OF_FNDH_PORTS = 28
 NUMBER_OF_ANTENNAS = 256
+
+
+def _update_antenna_power(
+    power_map: dict[str, PowerState],
+    antenna_map: dict[int, list],
+    smartbox: int,
+    port_powers: list[PowerState],
+) -> None:
+    for antenna_id, antenna_config in antenna_map.items():
+        antennas_smartbox = antenna_config[0]
+        smartbox_port = antenna_config[1]
+        # if changing smartbox
+        if smartbox == antennas_smartbox:
+            if str(antenna_id) in power_map.keys():
+                power_map[str(antenna_id)] = port_powers[smartbox_port - 1]
+            else:
+                print(
+                    f"Unexpected key {str(antenna_id)}, Could not " "update antenna map"
+                )
 
 
 class FieldStationComponentManager(TaskExecutorComponentManager):
@@ -49,6 +69,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         smartbox_mapping: dict[int, int],  # 1-indexed
         communication_state_callback: Callable[..., None],
         component_state_changed: Callable[..., None],
+        antenna_power_changed: Callable[..., None],
         _fndh_proxy: Optional[DeviceComponentManager] = None,
         _smartbox_proxys: Optional[list[DeviceComponentManager]] = None,
     ) -> None:
@@ -69,9 +90,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             the component manager and its component changes
         :param component_state_changed: callback to be
             called when the component state changes
+        :param antenna_power_changed: callback to be
+            called when power state of a antenna changes
         :param _fndh_proxy: a injected fndh proxy for purposes of testing only.
         :param _smartbox_proxys: injected smartbox proxys for purposes of testing only.
         """
+        self._on_antenna_power_change = antenna_power_changed
         self._communication_state_callback: Callable[..., None]
         self._component_state_callback: Callable[..., None]
         max_workers = 1
@@ -122,6 +146,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._antenna_mapping = antenna_mapping
         self._smartbox_mapping = smartbox_mapping
 
+        # initialise the power
+        self.antenna_powers: dict[str, PowerState] = {}
+        for i in range(0, 256):
+            self.antenna_powers[str(i)] = PowerState.UNKNOWN
+
         # REMEMBER TO DELETE. This is temporary until we have a real configuration.
         config = importlib.resources.read_text(
             "ska_low_mccs_pasd.field_station.resources",
@@ -151,11 +180,81 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             return
         self._update_communication_state(CommunicationStatus.DISABLED)
 
+    def subscribe_to_port_powers(
+        self: FieldStationComponentManager,
+        fqdn: str,
+    ) -> None:
+        """
+        Subscribe to the port powers.
+
+        :param fqdn: The device to subscribe too.
+        """
+        for smartbox_no, smartbox_proxy in enumerate(self._smartbox_proxys):
+            assert smartbox_proxy._proxy is not None
+            if (
+                "PortsPowerSensed".lower()
+                not in smartbox_proxy._proxy._change_event_callbacks.keys()
+                and smartbox_proxy._proxy.dev_name() == fqdn
+            ):
+                try:
+                    smartbox_proxy._proxy.add_change_event_callback(
+                        "PortsPowerSensed",
+                        functools.partial(self._on_port_power_change, smartbox_no + 1),
+                        stateless=True,
+                    )
+                    self.logger.error(f"subscription to {fqdn} port powers")
+
+                except Exception:  # pylint: disable=broad-except
+                    self.logger.error(
+                        f"Failed to make subscription to {fqdn} port powers"
+                    )
+
+    def _on_port_power_change(
+        self: FieldStationComponentManager,
+        smartbox_under_change: int,
+        event_name: str,
+        event_value: list[bool],
+        event_quality: tango.AttrQuality,
+    ) -> None:
+        assert event_name.lower() == "portspowersensed"
+        port_powers = [PowerState.UNKNOWN] * 12
+
+        for i, value in enumerate(event_value):
+            if value:
+                port_powers[i] = PowerState.ON
+            else:
+                port_powers[i] = PowerState.OFF
+
+        cached_antenna_power = self.antenna_powers.copy()
+        cached_antenna_map = self._antenna_mapping.copy()
+
+        try:
+            _update_antenna_power(
+                cached_antenna_power,
+                cached_antenna_map,
+                smartbox_under_change,
+                port_powers,
+            )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.error(f"Failed to update antenna power {e}")
+
+        # On change.
+        if cached_antenna_power != self.antenna_powers:
+            self.logger.error(f"update {smartbox_under_change}")
+            self.antenna_powers = cached_antenna_power
+            self._on_antenna_power_change(cached_antenna_power)
+
     def _device_communication_state_changed(
         self: FieldStationComponentManager,
         fqdn: str,
         communication_state: CommunicationStatus,
     ) -> None:
+        if communication_state == CommunicationStatus.ESTABLISHED:
+            try:
+                if self._fndh_name != fqdn:
+                    self.subscribe_to_port_powers(fqdn)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                self.logger.error(f"failed to subscribe to {fqdn}: {e}")
         self._communication_states[fqdn] = communication_state
         self.logger.debug(
             f"device {fqdn} changed communcation state to {communication_state.name}"
