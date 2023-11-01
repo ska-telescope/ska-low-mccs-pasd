@@ -91,6 +91,11 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         self._port_breaker_resets: list[bool] = [False] * number_of_ports
         self._attribute_writes: dict[str, list[Any]] = {}
 
+        # Store a list of attribute names for expedited reading
+        # following a write command
+        self._attribute_update_requests: list[str] = []
+        self._ports_status_update_request: bool = False
+
         self._read_request_iterator = read_request_iterator_factory()
 
     def desire_initialize(self) -> None:
@@ -166,11 +171,13 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
 
         if self._attribute_writes:
             attribute_name, values = self._attribute_writes.popitem()
+            self._attribute_update_requests.append(attribute_name)
             return "WRITE", (attribute_name, values)
 
         if self._led_pattern_requested:
             pattern = self._led_pattern_requested
             self._led_pattern_requested = None
+            self._attribute_update_requests.append("led_pattern")
             return "LED_PATTERN", pattern
 
         for port, reset in enumerate(self._port_breaker_resets, start=1):
@@ -184,6 +191,7 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
                 if change is None:
                     continue
                 self._port_power_changes[port - 1] = None
+                self._ports_status_update_request = True
                 return "PORT_POWER", (port, *change)
 
         return "NONE", None
@@ -195,6 +203,23 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         :return: The name of the next read to be performed on the device.
         """
         return next(self._read_request_iterator)
+
+    def get_expedited_read(self) -> tuple[str, Any]:
+        """
+        Return a description of a read request for attributes which need
+        an expedited update due to having recently been written.
+
+        :return: A tuple, consisting of the name of a predefined attribute set
+        (see PasdBusComponentManager), or the command READ along with the
+        name of the specific attribute to be read.
+
+        """
+        if self._ports_status_update_request:
+            self._ports_status_update_request = False
+            return "PORTS", None
+        if self._attribute_update_requests:
+            return "READ", self._attribute_update_requests.pop(0)
+        return "NONE", None
 
 
 class PasdBusRequestProvider:
@@ -357,6 +382,19 @@ class PasdBusRequestProvider:
                 self._ticks[device_id] = 0
                 return device_id, *write_request
 
+        # Next check if any expedited attribute reads need to be done.
+        for device_id, tick in self._ticks.items():
+            if tick < self._min_ticks:
+                break
+            read_request = self._device_request_providers[
+                device_id
+            ].get_expedited_read()
+            if read_request != ("NONE", None):
+                del self._ticks[device_id]  # see comment above
+                self._ticks[device_id] = 0
+                return device_id, *read_request
+
+        # No outstanding reads/writes remaining, so cycle through the polling list.
         for device_id, tick in self._ticks.items():
             if tick < self._min_ticks:
                 break
