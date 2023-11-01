@@ -112,7 +112,9 @@ class TestFieldStationIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["pasd_bus_state"],
         )
-        change_event_callbacks["pasd_bus_state"].assert_change_event(Anything)
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
         pasd_bus_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.UNKNOWN

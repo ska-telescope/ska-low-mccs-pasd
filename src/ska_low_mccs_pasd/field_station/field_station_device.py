@@ -55,6 +55,7 @@ class MccsFieldStation(SKABaseDevice):
     def init_device(self: MccsFieldStation) -> None:
         """Initialise the device."""
         self._antenna_mask = [False for _ in range(256 + 1)]
+        self._antenna_power_json: Optional[str] = None
         self._antenna_mapping = {
             smartbox_no * SMARTBOX_PORTS
             + smartbox_port
@@ -190,6 +191,20 @@ class MccsFieldStation(SKABaseDevice):
             state.
         """
         super()._component_state_changed(fault=fault, power=power)
+
+    def _on_antenna_power_change(
+        self: MccsFieldStation, antenna_powers: dict[int, PowerState]
+    ) -> None:
+        """
+        Handle a change in antenna power.
+
+        :param antenna_powers: a dictionary containing all
+            256 antenna power states
+        """
+        # Antenna powers have changed delete json and reload.
+        # pylint: disable=attribute-defined-outside-init
+        self._antenna_power_json = None
+        self.push_change_event("antennaPowerStates", json.dumps(antenna_powers))
 
     # --------
     # Commands
@@ -345,17 +360,6 @@ class MccsFieldStation(SKABaseDevice):
         """
         return json.dumps(self.component_manager._smartbox_mapping)
 
-    def _on_antenna_power_change(
-        self: MccsFieldStation, antenna_powers: dict[int, PowerState]
-    ) -> None:
-        """
-        Handle a change in antenna power.
-
-        :param antenna_powers: a dictionary containing all
-            256 antenna power states
-        """
-        self.push_change_event("antennaPowerStates", json.dumps(antenna_powers))
-
     @attribute(dtype="DevString", label="antennaPowerStates")
     def antennaPowerStates(self: MccsFieldStation) -> str:
         """
@@ -363,7 +367,10 @@ class MccsFieldStation(SKABaseDevice):
 
         :return: the power of the logical antennas.
         """
-        return json.dumps(self.component_manager.antenna_powers)
+        # pylint: disable=attribute-defined-outside-init
+        if self._antenna_power_json is None:
+            self._antenna_power_json = json.dumps(self.component_manager.antenna_powers)
+        return self._antenna_power_json
 
 
 # ----------

@@ -18,6 +18,7 @@ import tango
 from ska_control_model import CommunicationStatus, ResultCode, TaskStatus
 from ska_low_mccs_common.testing.mock import MockDeviceBuilder
 from ska_tango_testing.mock import MockCallableGroup
+from ska_tango_testing.mock.placeholders import Anything
 
 from ska_low_mccs_pasd.field_station import FieldStationComponentManager
 from tests.harness import (
@@ -144,39 +145,43 @@ def mock_fndh_fixture() -> unittest.mock.Mock:
     return builder()
 
 
-@pytest.fixture(name="mock_smartbox")
-def mock_smartbox_fixture() -> unittest.mock.Mock:
+@pytest.fixture(name="mock_smartboxes")
+def mock_smartboxes_fixture() -> list[unittest.mock.Mock]:
     """
     Fixture that provides a mock MccsSmartBox device.
 
     :return: a mock MccsSmartBox device.
     """
-    builder = MockDeviceBuilder()
-    builder.set_state(tango.DevState.ON)
-    builder.add_result_command("PowerOnPort", ResultCode.OK)
-    builder.add_result_command("SetPortPowers", ResultCode.OK)
-    builder.add_attribute("PortsPowerSensed", [False for _ in range(12)])
-    builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
-    return builder()
+    smartboxes = []
+    for i in range(1, 25):
+        builder = MockDeviceBuilder()
+        builder.set_state(tango.DevState.ON)
+        builder.add_result_command("PowerOnPort", ResultCode.OK)
+        builder.add_result_command("SetPortPowers", ResultCode.OK)
+        builder.add_attribute("PortsPowerSensed", [False for _ in range(12)])
+        builder.add_command("dev_name", f"low-mccs/smartbox/ci-1-{i:02d}")
+        builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
+        smartboxes.append(builder())
+    return smartboxes
 
 
 @pytest.fixture(name="test_context")
 def test_context_fixture(
     mock_fndh: unittest.mock.Mock,
-    mock_smartbox: unittest.mock.Mock,
+    mock_smartboxes: list[unittest.mock.Mock],
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Create a test context containing a single mock PaSD bus device.
 
     :param mock_fndh: A mock FNDH device.
-    :param mock_smartbox: A mock Smartbox device.
+    :param mock_smartboxes: A list of mock Smartbox devices.
 
     :yield: the test context
     """
     harness = PasdTangoTestHarness()
     harness.set_mock_fndh_device(mock_fndh)
     for smartbox_id in range(1, NUMBER_OF_SMARTBOXES + 1):
-        harness.set_mock_smartbox_device(mock_smartbox, smartbox_id)
+        harness.set_mock_smartbox_device(mock_smartboxes[smartbox_id - 1], smartbox_id)
     with harness as context:
         yield context
 
@@ -206,6 +211,7 @@ def mock_antenna_mapping_fixture() -> dict[int, list]:
         + 1: [smartbox_no + 1, smartbox_port + 1]
         for smartbox_no in range(0, NUMBER_OF_SMARTBOXES)
         for smartbox_port in range(0, NUMBER_OF_SMARTBOX_PORTS)
+        if smartbox_no * NUMBER_OF_SMARTBOX_PORTS + smartbox_port + 1 < 256
         # For sanity's sake we assign all ports antennas, this is not realistic
         # however the calls on the smartboxes become complex to predict, and these
         # unit tests are already quite complex.
@@ -290,6 +296,10 @@ class TestFieldStationComponentManager:
             field_station_component_manager.communication_state
             == CommunicationStatus.ESTABLISHED
         )
+        # two smartboxes have no antenna attached. Therefore a update in the
+        # the port powers has no antenna callback.
+        for i in range(NUMBER_OF_SMARTBOXES - 2):
+            mock_callbacks["antenna_callback"].assert_call(Anything)
 
         # check that the communication state goes to DISABLED after stop communication.
         field_station_component_manager.stop_communicating()

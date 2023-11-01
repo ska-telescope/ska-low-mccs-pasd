@@ -32,31 +32,8 @@ NUMBER_OF_FNDH_PORTS = 28
 NUMBER_OF_ANTENNAS = 256
 
 
-def _update_antenna_power(
-    power_map: dict[str, PowerState],
-    antenna_map: dict[int, list],
-    smartbox: int,
-    port_powers: list[PowerState],
-) -> None:
-    for antenna_id, antenna_config in antenna_map.items():
-        antennas_smartbox = antenna_config[0]
-        smartbox_port = antenna_config[1]
-        # if changing smartbox
-        if smartbox == antennas_smartbox:
-            if str(antenna_id) in power_map.keys():
-                power_map[str(antenna_id)] = port_powers[smartbox_port - 1]
-            else:
-                print(
-                    f"Unexpected key {str(antenna_id)}, Could not " "update antenna map"
-                )
-
-
 class FieldStationComponentManager(TaskExecutorComponentManager):
-    """
-    A component manager for MccsFieldStation.
-
-    Note: Initial stub device.
-    """
+    """A component manager for MccsFieldStation."""
 
     # pylint: disable=too-many-arguments, abstract-method, too-many-instance-attributes
     def __init__(
@@ -148,8 +125,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         # initialise the power
         self.antenna_powers: dict[str, PowerState] = {}
-        for i in range(0, 256):
-            self.antenna_powers[str(i)] = PowerState.UNKNOWN
+        for antenna_id in range(0, NUMBER_OF_ANTENNAS):
+            self.antenna_powers[str(antenna_id)] = PowerState.UNKNOWN
 
         # REMEMBER TO DELETE. This is temporary until we have a real configuration.
         config = importlib.resources.read_text(
@@ -183,13 +160,29 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     def subscribe_to_port_powers(
         self: FieldStationComponentManager,
         fqdn: str,
-    ) -> None:
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
         """
         Subscribe to the port powers.
 
         :param fqdn: The device to subscribe too.
+        :param task_callback: Update task state, defaults to None
+
+        :return: a result code and a unique_id or message.
         """
-        for smartbox_no, smartbox_proxy in enumerate(self._smartbox_proxys):
+        return self.submit_task(
+            self._subscribe_to_port_powers,  # type: ignore[arg-type]
+            args=[fqdn],
+            task_callback=task_callback,
+        )
+
+    def _subscribe_to_port_powers(
+        self: FieldStationComponentManager,
+        fqdn: str,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
+        for smartbox_no, smartbox_proxy in enumerate(self._smartbox_proxys, start=1):
             assert smartbox_proxy._proxy is not None
             if (
                 "PortsPowerSensed".lower()
@@ -199,10 +192,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 try:
                     smartbox_proxy._proxy.add_change_event_callback(
                         "PortsPowerSensed",
-                        functools.partial(self._on_port_power_change, smartbox_no + 1),
+                        functools.partial(self._on_port_power_change, smartbox_no),
                         stateless=True,
                     )
-                    self.logger.error(f"subscription to {fqdn} port powers")
+                    self.logger.error(f"subscribed to {fqdn} port powers")
 
                 except Exception:  # pylint: disable=broad-except
                     self.logger.error(
@@ -225,24 +218,39 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             else:
                 port_powers[i] = PowerState.OFF
 
-        cached_antenna_power = self.antenna_powers.copy()
+        antenna_power_map = self.antenna_powers.copy()
         cached_antenna_map = self._antenna_mapping.copy()
 
         try:
-            _update_antenna_power(
-                cached_antenna_power,
+            self._update_antenna_power_map(
+                antenna_power_map,
                 cached_antenna_map,
                 smartbox_under_change,
                 port_powers,
             )
         except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.error(f"Failed to update antenna power {e}")
+            self.logger.error(f"Failed to update antenna power {repr(e)}")
 
         # On change.
-        if cached_antenna_power != self.antenna_powers:
-            self.logger.error(f"update {smartbox_under_change}")
-            self.antenna_powers = cached_antenna_power
-            self._on_antenna_power_change(cached_antenna_power)
+        if antenna_power_map != self.antenna_powers:
+            self.antenna_powers = antenna_power_map
+            self._on_antenna_power_change(antenna_power_map)
+
+    def _update_antenna_power_map(
+        self: FieldStationComponentManager,
+        antenna_power_map: dict[str, PowerState],
+        antenna_mapping: dict[int, list[int]],
+        smartbox_under_change: int,
+        port_powers: list[PowerState],
+    ) -> None:
+        for antenna_id, antenna_config in antenna_mapping.items():
+            antennas_smartbox = antenna_config[0]
+            smartbox_port = antenna_config[1]
+            if antennas_smartbox == smartbox_under_change:
+                if str(antenna_id) in antenna_power_map.keys():
+                    antenna_power_map[str(antenna_id)] = port_powers[smartbox_port - 1]
+                else:
+                    raise KeyError(f"Unexpected key {str(antenna_id)}")
 
     def _device_communication_state_changed(
         self: FieldStationComponentManager,
