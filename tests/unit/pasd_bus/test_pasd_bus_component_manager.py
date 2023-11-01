@@ -454,7 +454,7 @@ class TestPasdBusComponentManager:
                 ports_desired_power_when_online=expected_desired_power_when_online,
                 ports_desired_power_when_offline=expected_desired_power_when_offline,
                 ports_power_sensed=expected_ports_power_sensed,
-                lookahead=11,  # Full cycle plus one to cover off on race conditions
+                lookahead=15,  # Full cycle plus one to cover off on race conditions
             )
 
     def test_smartbox_port_power_commands(  # pylint: disable=too-many-locals
