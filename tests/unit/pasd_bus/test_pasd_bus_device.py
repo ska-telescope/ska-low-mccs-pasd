@@ -75,7 +75,7 @@ def pasd_bus_device_fixture(
     """
     harness = PasdTangoTestHarness()
     harness.set_pasd_bus_simulator(mock_fndh_simulator, mock_smartbox_simulators)
-    harness.set_pasd_bus_device(polling_rate=0.1, device_polling_rate=0.2)
+    harness.set_pasd_bus_device(polling_rate=0.01, device_polling_rate=0.2)
     with harness as context:
         yield context.get_pasd_bus_device()
 

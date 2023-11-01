@@ -197,7 +197,7 @@ def test_context_fixture(
     harness = PasdTangoTestHarness()
 
     harness.set_pasd_bus_simulator(fndh_simulator, smartbox_simulators)
-    harness.set_pasd_bus_device(polling_rate=0.1, device_polling_rate=0.2)
+    harness.set_pasd_bus_device(polling_rate=0.01, device_polling_rate=0.2)
     harness.set_fndh_device()
 
     for smartbox_id in range(1, 25):

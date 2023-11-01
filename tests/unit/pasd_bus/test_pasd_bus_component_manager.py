@@ -84,7 +84,7 @@ def pasd_bus_component_manager_fixture(
         component_manager = PasdBusComponentManager(
             host,
             port,
-            0.1,  # polling_rate very fast for unit testing
+            0.01,  # polling_rate very fast for unit testing
             0.2,  # device_polling_rate very fast for unit testing
             3.0,
             logger,
