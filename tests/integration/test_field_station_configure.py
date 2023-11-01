@@ -19,9 +19,9 @@ from ska_control_model import AdminMode, PowerState, ResultCode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-gc.disable()
+from ska_low_mccs_pasd.pasd_data import PasdData
 
-NUMBER_OF_SMARTBOX = 24
+gc.disable()
 
 
 @pytest.fixture(name="change_event_callbacks")
@@ -123,7 +123,7 @@ class TestFieldStationIntegration:
 
         # Initialise the station subdevices.
         pasd_bus_device.initializefndh()
-        for i in range(NUMBER_OF_SMARTBOX):
+        for i in range(PasdData.NUMBER_OF_SMARTBOXES):
             pasd_bus_device.initializesmartbox(i)
 
         # set adminMode online for all smartbox.
@@ -183,7 +183,7 @@ class TestFieldStationIntegration:
         )
 
         # 2 smartbox have no antenna attached.
-        for i in range(NUMBER_OF_SMARTBOX - 2):
+        for i in range(PasdData.NUMBER_OF_SMARTBOXES - 2):
             change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
         change_event_callbacks["antenna_power_states"].assert_not_called()
 

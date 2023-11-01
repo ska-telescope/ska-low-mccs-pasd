@@ -29,9 +29,11 @@ __all__ = [
     "pasd_bus",
     "smart_box",
     "fndh",
+    "PasdData",
     "MccsFNDH",
 ]
 from .field_station import MccsFieldStation
 from .fndh import MccsFNDH
 from .pasd_bus import MccsPasdBus
+from .pasd_data import PasdData
 from .smart_box import MccsSmartBox

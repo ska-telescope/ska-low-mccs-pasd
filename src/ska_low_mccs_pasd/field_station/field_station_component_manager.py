@@ -22,14 +22,11 @@ from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
 
+from ska_low_mccs_pasd.pasd_data import PasdData
+
 from ..command_proxy import MccsCommandProxy
 
 __all__ = ["FieldStationComponentManager"]
-
-NUMBER_OF_SMARTBOXES = 24
-NUMBER_OF_SMARTBOX_PORTS = 12
-NUMBER_OF_FNDH_PORTS = 28
-NUMBER_OF_ANTENNAS = 256
 
 
 class FieldStationComponentManager(TaskExecutorComponentManager):
@@ -125,7 +122,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         # initialise the power
         self.antenna_powers: dict[str, PowerState] = {}
-        for antenna_id in range(0, NUMBER_OF_ANTENNAS):
+        for antenna_id in range(0, PasdData.NUMBER_OF_ANTENNAS):
             self.antenna_powers[str(antenna_id)] = PowerState.UNKNOWN
 
         # REMEMBER TO DELETE. This is temporary until we have a real configuration.
@@ -148,7 +145,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             proxy.start_communicating()
 
     def stop_communicating(self: FieldStationComponentManager) -> None:
-        """Break off communication with the pasdBus."""
+        """Break off communication with the PasdData."""
         self._fndh_proxy.stop_communicating()
         for proxy in self._smartbox_proxys:
             proxy.stop_communicating()
@@ -316,7 +313,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         results = []
         assert self._fndh_proxy._proxy
         masked_fndh_ports: list = self._get_masked_fndh_ports(masked_smartbox_ports)
-        desired_fndh_port_powers: list[bool | None] = [True] * NUMBER_OF_FNDH_PORTS
+        desired_fndh_port_powers: list[bool | None] = [
+            True
+        ] * PasdData.NUMBER_OF_FNDH_PORTS
         for masked_port in masked_fndh_ports:
             desired_fndh_port_powers[masked_port - 1] = None
         json_argument = json.dumps(
@@ -333,7 +332,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             assert smartbox._proxy
             desired_smartbox_port_powers: list[bool | None] = [
                 True
-            ] * NUMBER_OF_SMARTBOX_PORTS
+            ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
             masked_ports = masked_smartbox_ports.get(smartbox_no + 1, [])
             for masked_port in masked_ports:
                 desired_smartbox_port_powers[masked_port - 1] = None
@@ -399,7 +398,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         results = []
         assert self._fndh_proxy._proxy
         masked_fndh_ports: list = self._get_masked_fndh_ports(masked_smartbox_ports)
-        desired_fndh_port_powers: list[int | None] = [False] * NUMBER_OF_FNDH_PORTS
+        desired_fndh_port_powers: list[int | None] = [
+            False
+        ] * PasdData.NUMBER_OF_FNDH_PORTS
         for masked_port in masked_fndh_ports:
             desired_fndh_port_powers[masked_port - 1] = None
 
@@ -417,7 +418,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             assert smartbox._proxy
             desired_smartbox_port_powers: list[int | None] = [
                 False
-            ] * NUMBER_OF_SMARTBOX_PORTS
+            ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
             masked_ports = masked_smartbox_ports.get(smartbox_no + 1, [])
             for masked_port in masked_ports:
                 desired_smartbox_port_powers[masked_port - 1] = None
@@ -452,7 +453,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         # masked
         masked_fndh_ports = []
         for smartbox_id in list(masked_smartbox_ports.keys()):
-            if len(masked_smartbox_ports[smartbox_id]) == NUMBER_OF_SMARTBOX_PORTS:
+            if (
+                len(masked_smartbox_ports[smartbox_id])
+                == PasdData.NUMBER_OF_SMARTBOX_PORTS
+            ):
                 fndh_port = self._smartbox_mapping[smartbox_id]
                 masked_fndh_ports.append(fndh_port)
         for fndh_port, fndh_port_state in enumerate(
@@ -481,7 +485,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     masked_smartbox_ports[smartbox_id] = []
                 masked_smartbox_ports[smartbox_id].append(smartbox_port)
 
-        for smartbox_id in range(1, NUMBER_OF_SMARTBOXES + 1):
+        for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
             for smartbox_port, smartbox_state in enumerate(
                 self._get_smartbox_ports_with_antennas(smartbox_id)
             ):
@@ -497,14 +501,14 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     def _get_smartbox_ports_with_antennas(
         self: FieldStationComponentManager, smartbox_id: int
     ) -> list:
-        smartbox_ports = [False] * NUMBER_OF_SMARTBOX_PORTS
+        smartbox_ports = [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS
         for smartbox in list(self._antenna_mapping.values()):
             if smartbox[0] == smartbox_id:
                 smartbox_ports[smartbox[1] - 1] = True
         return smartbox_ports
 
     def _get_fndh_ports_with_smartboxes(self: FieldStationComponentManager) -> list:
-        fndh_ports = [False] * NUMBER_OF_FNDH_PORTS
+        fndh_ports = [False] * PasdData.NUMBER_OF_FNDH_PORTS
         for fndh_port in list(self._smartbox_mapping.values()):
             fndh_ports[fndh_port - 1] = True
         return fndh_ports
@@ -737,7 +741,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     ) -> None:
         antennas = self._configuration["antennas"]
 
-        antenna_mask: list[bool] = [False] * (NUMBER_OF_ANTENNAS + 1)
+        antenna_mask: list[bool] = [False] * (PasdData.NUMBER_OF_ANTENNAS + 1)
         antenna_mapping: dict[int, list] = {}
         all_masked = True
         for antenna_id in list(antennas.keys()):

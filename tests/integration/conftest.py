@@ -21,6 +21,7 @@ from ska_low_mccs_pasd.pasd_bus import (
     PasdBusSimulator,
     SmartboxSimulator,
 )
+from ska_low_mccs_pasd.pasd_data import PasdData
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 
@@ -297,6 +298,6 @@ def smartbox_proxys_fixture(
     :return: the list of smartbox Tango devices.
     """
     smartbox_devices = []
-    for i in range(1, 25):
+    for i in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
         smartbox_devices.append(test_context.get_smartbox_device(i))
     return smartbox_devices

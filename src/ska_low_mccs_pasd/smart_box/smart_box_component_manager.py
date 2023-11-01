@@ -22,11 +22,9 @@ from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
 
+from ska_low_mccs_pasd.pasd_data import PasdData
+
 __all__ = ["SmartBoxComponentManager"]
-
-
-NUMBER_OF_FNDH_PORTS = 28
-NUMBER_OF_SMARTBOX_PORTS = 12
 
 
 class Port:
@@ -379,7 +377,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if self._fndh_port:
                 if self._pasd_bus_proxy is None:
                     raise ValueError(f"Power on smartbox '{self._fndh_port} failed'")
-                desired_port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+                desired_port_powers: list[bool | None] = [
+                    None
+                ] * PasdData.NUMBER_OF_FNDH_PORTS
                 desired_port_powers[self._fndh_port - 1] = True
                 json_argument = json.dumps(
                     {
@@ -444,7 +444,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 if self._pasd_bus_proxy is None:
                     raise ValueError(f"Power off smartbox '{self._fndh_port} failed'")
 
-                desired_port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+                desired_port_powers: list[bool | None] = [
+                    None
+                ] * PasdData.NUMBER_OF_FNDH_PORTS
                 desired_port_powers[self._fndh_port - 1] = False
                 json_argument = json.dumps(
                     {
@@ -514,7 +516,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         try:
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
-            desired_port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
+            desired_port_powers: list[bool | None] = [
+                None
+            ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
             desired_port_powers[port_number - 1] = False
             json_argument = json.dumps(
                 {
@@ -591,7 +595,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                     ResultCode.STARTED,
                     "The command will continue when the smartbox turns on.",
                 )
-            desired_port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
+            desired_port_powers: list[bool | None] = [
+                None
+            ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
             desired_port_powers[port_number - 1] = True
             json_argument = json.dumps(
                 {
