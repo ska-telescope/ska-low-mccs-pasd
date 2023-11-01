@@ -121,6 +121,7 @@ class _PasdBusProxy(DeviceComponentManager):
         self._attribute_change_callback = attribute_change_callback
         self._power_change_callback = power_change_callback
         self._fndh_port = fndh_port
+        self._power_state = PowerState.UNKNOWN
         assert (
             0 < fndh_port < 29
         ), "The smartbox must be attached to a valid FNDH port in range (1-28)"
@@ -170,8 +171,14 @@ class _PasdBusProxy(DeviceComponentManager):
         is_a_smartbox = re.search("^smartbox([1-9]|1[0-9]|2[0-4])", attr_name)
 
         if is_a_smartbox:
-            tango_attribute_name = attr_name[is_a_smartbox.end() :].lower()
-
+            # TODO: There is a bug, MCCS-1813 will to cover this.
+            # This is a very nasty hack just to get it working in the short term.
+            try:
+                isinstance(int(attr_name[is_a_smartbox.end()]), int)
+                tango_attribute_name = attr_name[is_a_smartbox.end() + 1 :].lower()
+            except Exception:  # pylint: disable=broad-except
+                tango_attribute_name = attr_name[is_a_smartbox.end() :].lower()
+            # tango_attribute_name = attr_name[is_a_smartbox.end() :].lower()
             # Status is a bad name since it conflicts with TANGO status.
             if tango_attribute_name.lower() == "status":
                 tango_attribute_name = "pasdstatus"
@@ -192,9 +199,12 @@ class _PasdBusProxy(DeviceComponentManager):
         attr_quality: tango.AttrQuality,
     ) -> None:
         assert attr_name.lower() == "fndhportspowersensed"
-        self._power_change_callback(
-            PowerState.ON if attr_value[self._fndh_port - 1] else PowerState.OFF
-        )
+        power = PowerState.ON if attr_value[self._fndh_port - 1] else PowerState.OFF
+        if self._power_state != power:
+            self._power_state = power
+            if power == PowerState.OFF:
+                self._attribute_change_callback("portspowersensed", [False] * 12)
+            self._power_change_callback(power)
 
     def set_smartbox_port_powers(
         self: _PasdBusProxy, json_argument: str
@@ -505,7 +515,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
             desired_port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
-            desired_port_powers[port_number - 1] = True
+            desired_port_powers[port_number - 1] = False
             json_argument = json.dumps(
                 {
                     "smartbox_number": self._fndh_port,
