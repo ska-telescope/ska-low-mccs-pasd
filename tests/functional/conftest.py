@@ -164,7 +164,9 @@ def functional_test_context_fixture(
             smartbox_simulators = pasd_bus_simulator.get_smartboxes()
             # Set devices for test harness
             harness.set_pasd_bus_simulator(fndh_simulator, smartbox_simulators)
-            harness.set_pasd_bus_device(timeout=pasd_timeout, polling_rate=0.01, device_polling_rate=0.2)
+            harness.set_pasd_bus_device(
+                timeout=pasd_timeout, polling_rate=0.01, device_polling_rate=0.2
+            )
             harness.set_fndh_device()
             harness.set_field_station_device()
 
