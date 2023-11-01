@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 import logging
-import struct
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Final, Optional, Sequence
