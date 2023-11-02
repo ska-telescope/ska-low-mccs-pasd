@@ -20,23 +20,20 @@ from ska_control_model import AdminMode, LoggingLevel, ResultCode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd import MccsFieldStation
+from ska_low_mccs_pasd.pasd_data import PasdData
 from tests.harness import PasdTangoTestHarness
 
 # TODO: Weird hang-at-garbage-collection bug
 gc.disable()
-NUMBER_OF_SMARTBOXES = 24
-NUMBER_OF_SMARTBOX_PORTS = 12
-NUMBER_OF_FNDH_PORTS = 28
-NUMBER_OF_ANTENNAS = 256
 
 
 def _antenna_mask_arg() -> str:
-    antenna_mask: list[dict] = [{} for _ in range(NUMBER_OF_ANTENNAS)]
-    for antenna_no in range(NUMBER_OF_ANTENNAS):
+    antenna_mask: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_ANTENNAS)]
+    for antenna_no in range(PasdData.NUMBER_OF_ANTENNAS):
         antenna_mask[antenna_no]["antennaID"] = antenna_no + 1
         antenna_mask[antenna_no]["maskingState"] = False
     # Mask the first 12 antennas
-    for antenna_no in range(NUMBER_OF_SMARTBOX_PORTS):
+    for antenna_no in range(PasdData.NUMBER_OF_SMARTBOX_PORTS):
         antenna_mask[antenna_no]["maskingState"] = True
     # The 94th element in this list will have antennaID = 95
     antenna_mask[94]["maskingState"] = True
@@ -56,13 +53,13 @@ def _bad_antenna_mask_arg() -> str:
 
 
 def _antenna_mapping_arg() -> str:
-    antenna_mapping: list[dict] = [{} for _ in range(NUMBER_OF_ANTENNAS)]
-    for smartbox_no in range(1, NUMBER_OF_SMARTBOXES + 1):
-        for smartbox_port in range(1, NUMBER_OF_SMARTBOX_PORTS + 1):
+    antenna_mapping: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_ANTENNAS)]
+    for smartbox_no in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+        for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
             try:
                 antenna_no = (
                     smartbox_no - 1
-                ) * NUMBER_OF_SMARTBOX_PORTS + smartbox_port
+                ) * PasdData.NUMBER_OF_SMARTBOX_PORTS + smartbox_port
                 antenna_mapping[antenna_no - 1]["antennaID"] = antenna_no
                 antenna_mapping[antenna_no - 1]["smartboxID"] = smartbox_no
                 antenna_mapping[antenna_no - 1]["smartboxPort"] = smartbox_port
@@ -100,8 +97,8 @@ def _bad_antenna_mapping_arg() -> str:
 
 
 def _smartbox_mapping_arg() -> str:
-    smartbox_mapping: list[dict] = [{} for _ in range(NUMBER_OF_SMARTBOXES)]
-    for fndh_port in range(NUMBER_OF_SMARTBOXES):
+    smartbox_mapping: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_SMARTBOXES)]
+    for fndh_port in range(PasdData.NUMBER_OF_SMARTBOXES):
         smartbox_mapping[fndh_port]["fndhPort"] = fndh_port + 1
         smartbox_mapping[fndh_port]["smartboxID"] = fndh_port + 1
 

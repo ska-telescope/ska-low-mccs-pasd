@@ -29,14 +29,13 @@ from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidato
 from tango.device_attribute import ExtractAs
 from tango.server import attribute, command
 
+from ska_low_mccs_pasd.pasd_data import PasdData
+
 from .pasd_bus_component_manager import PasdBusComponentManager
 from .pasd_bus_health_model import PasdBusHealthModel
 
 __all__ = ["MccsPasdBus", "main"]
 
-
-NUMBER_OF_FNDH_PORTS = 28
-NUMBER_OF_SMARTBOX_PORTS = 12
 
 DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 
@@ -270,25 +269,30 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("InternalAmbientTemperature", float, None, tango.AttrWriteType.READ),
             ("Status", str, None, tango.AttrWriteType.READ),
             ("LedPattern", str, None, tango.AttrWriteType.READ),
-            ("PortForcings", (str,), NUMBER_OF_FNDH_PORTS, tango.AttrWriteType.READ),
+            (
+                "PortForcings",
+                (str,),
+                PasdData.NUMBER_OF_FNDH_PORTS,
+                tango.AttrWriteType.READ,
+            ),
             ("WarningFlags", str, None, tango.AttrWriteType.READ),
             ("AlarmFlags", str, None, tango.AttrWriteType.READ),
             (
                 "PortsDesiredPowerOnline",
                 (bool,),
-                NUMBER_OF_FNDH_PORTS,
+                PasdData.NUMBER_OF_FNDH_PORTS,
                 tango.AttrWriteType.READ,
             ),
             (
                 "PortsDesiredPowerOffline",
                 (bool,),
-                NUMBER_OF_FNDH_PORTS,
+                PasdData.NUMBER_OF_FNDH_PORTS,
                 tango.AttrWriteType.READ,
             ),
             (
                 "PortsPowerSensed",
                 (bool,),
-                NUMBER_OF_FNDH_PORTS,
+                PasdData.NUMBER_OF_FNDH_PORTS,
                 tango.AttrWriteType.READ,
             ),
             (
@@ -389,37 +393,37 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             (
                 "PortForcings",
                 (str,),
-                NUMBER_OF_SMARTBOX_PORTS,
+                PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 tango.AttrWriteType.READ,
             ),
             (
                 "PortBreakersTripped",
                 (bool,),
-                NUMBER_OF_SMARTBOX_PORTS,
+                PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 tango.AttrWriteType.READ,
             ),
             (
                 "PortsDesiredPowerOnline",
                 (bool,),
-                NUMBER_OF_SMARTBOX_PORTS,
+                PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 tango.AttrWriteType.READ,
             ),
             (
                 "PortsDesiredPowerOffline",
                 (bool,),
-                NUMBER_OF_SMARTBOX_PORTS,
+                PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 tango.AttrWriteType.READ,
             ),
             (
                 "PortsPowerSensed",
                 (bool,),
-                NUMBER_OF_SMARTBOX_PORTS,
+                PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 tango.AttrWriteType.READ,
             ),
             (
                 "PortsCurrentDraw",
                 (float,),
-                NUMBER_OF_SMARTBOX_PORTS,
+                PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 tango.AttrWriteType.READ,
             ),
             ("InputVoltageThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),

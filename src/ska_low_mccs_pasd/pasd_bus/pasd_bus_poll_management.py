@@ -10,11 +10,9 @@
 
 import logging
 import threading
-from typing import Any, Callable, Final, Iterator, Sequence
+from typing import Any, Callable, Iterator, Sequence
 
-NUMBER_OF_FNDH_PORTS: Final = 28
-NUMBER_OF_SMARTBOXES: Final = 24
-NUMBER_OF_SMARTBOX_PORTS: Final = 12
+from ska_low_mccs_pasd.pasd_data import PasdData
 
 
 def fndh_read_request_iterator() -> Iterator[str]:
@@ -228,17 +226,19 @@ class PasdBusRequestProvider:
 
         self._ticks = {
             device_number: self._min_ticks
-            for device_number in range(NUMBER_OF_SMARTBOXES + 1)
+            for device_number in range(PasdData.NUMBER_OF_SMARTBOXES + 1)
         }
 
         fndh_request_provider = DeviceRequestProvider(
-            NUMBER_OF_FNDH_PORTS, fndh_read_request_iterator, logger
+            PasdData.NUMBER_OF_FNDH_PORTS, fndh_read_request_iterator, logger
         )
         smartbox_request_providers = [
             DeviceRequestProvider(
-                NUMBER_OF_SMARTBOX_PORTS, smartbox_read_request_iterator, logger
+                PasdData.NUMBER_OF_SMARTBOX_PORTS,
+                smartbox_read_request_iterator,
+                logger,
             )
-            for _ in range(NUMBER_OF_SMARTBOXES)
+            for _ in range(PasdData.NUMBER_OF_SMARTBOXES)
         ]
         self._device_request_providers = [
             fndh_request_provider

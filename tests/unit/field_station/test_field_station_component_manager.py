@@ -18,8 +18,10 @@ import tango
 from ska_control_model import CommunicationStatus, ResultCode, TaskStatus
 from ska_low_mccs_common.testing.mock import MockDeviceBuilder
 from ska_tango_testing.mock import MockCallableGroup
+from ska_tango_testing.mock.placeholders import Anything
 
 from ska_low_mccs_pasd.field_station import FieldStationComponentManager
+from ska_low_mccs_pasd.pasd_data import PasdData
 from tests.harness import (
     PasdTangoTestHarness,
     PasdTangoTestHarnessContext,
@@ -27,19 +29,14 @@ from tests.harness import (
     get_smartbox_name,
 )
 
-NUMBER_OF_SMARTBOXES = 24
-NUMBER_OF_SMARTBOX_PORTS = 12
-NUMBER_OF_FNDH_PORTS = 28
-NUMBER_OF_ANTENNAS = 256
-
 
 def _input_antenna_mask() -> dict:
-    antenna_mask: list[dict] = [{} for _ in range(NUMBER_OF_ANTENNAS)]
-    for antenna_no in range(NUMBER_OF_ANTENNAS):
+    antenna_mask: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_ANTENNAS)]
+    for antenna_no in range(PasdData.NUMBER_OF_ANTENNAS):
         antenna_mask[antenna_no]["antennaID"] = antenna_no + 1
         antenna_mask[antenna_no]["maskingState"] = False
     # Mask the first 12 antennas
-    for antenna_no in range(NUMBER_OF_SMARTBOX_PORTS):
+    for antenna_no in range(PasdData.NUMBER_OF_SMARTBOX_PORTS):
         antenna_mask[antenna_no]["maskingState"] = True
     # The 94th element in this list will have antennaID = 95
     antenna_mask[94]["maskingState"] = True
@@ -47,21 +44,21 @@ def _input_antenna_mask() -> dict:
 
 
 def _output_antenna_mask() -> list:
-    antenna_mask: list = [False for _ in range(NUMBER_OF_ANTENNAS + 1)]
-    for antenna_id in range(1, NUMBER_OF_SMARTBOX_PORTS + 1):
+    antenna_mask: list = [False for _ in range(PasdData.NUMBER_OF_ANTENNAS + 1)]
+    for antenna_id in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
         antenna_mask[antenna_id] = True
     antenna_mask[95] = True
     return antenna_mask
 
 
 def _input_antenna_mapping() -> dict:
-    antenna_mapping: list[dict] = [{} for _ in range(NUMBER_OF_ANTENNAS)]
-    for smartbox_no in range(1, NUMBER_OF_SMARTBOXES + 1):
-        for smartbox_port in range(1, NUMBER_OF_SMARTBOX_PORTS + 1):
+    antenna_mapping: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_ANTENNAS)]
+    for smartbox_no in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+        for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
             try:
                 antenna_no = (
                     smartbox_no - 1
-                ) * NUMBER_OF_SMARTBOX_PORTS + smartbox_port
+                ) * PasdData.NUMBER_OF_SMARTBOX_PORTS + smartbox_port
                 antenna_mapping[antenna_no - 1]["antennaID"] = antenna_no
                 antenna_mapping[antenna_no - 1]["smartboxID"] = smartbox_no
                 antenna_mapping[antenna_no - 1]["smartboxPort"] = smartbox_port
@@ -82,15 +79,16 @@ def _input_antenna_mapping() -> dict:
 
 def _output_antenna_mapping() -> dict:
     antenna_mapping: dict[int, list] = {
-        antenna_id: [0, 0] for antenna_id in range(1, NUMBER_OF_ANTENNAS + 1)
+        antenna_id: [0, 0] for antenna_id in range(1, PasdData.NUMBER_OF_ANTENNAS + 1)
     }
-    for smartbox_no in range(1, NUMBER_OF_SMARTBOXES + 1):
-        for smartbox_port in range(1, NUMBER_OF_SMARTBOX_PORTS + 1):
+    for smartbox_no in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+        for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
             try:
                 antenna_no = (
                     smartbox_no - 1
-                ) * NUMBER_OF_SMARTBOX_PORTS + smartbox_port
-                antenna_mapping[antenna_no] = [smartbox_no, smartbox_port]
+                ) * PasdData.NUMBER_OF_SMARTBOX_PORTS + smartbox_port
+                if antenna_no in antenna_mapping.keys():
+                    antenna_mapping[antenna_no] = [smartbox_no, smartbox_port]
             except KeyError:
                 break
 
@@ -102,8 +100,8 @@ def _output_antenna_mapping() -> dict:
 
 
 def _input_smartbox_mapping() -> dict:
-    smartbox_mapping: list[dict] = [{} for _ in range(NUMBER_OF_FNDH_PORTS)]
-    for fndh_port in range(NUMBER_OF_FNDH_PORTS):
+    smartbox_mapping: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_FNDH_PORTS)]
+    for fndh_port in range(PasdData.NUMBER_OF_FNDH_PORTS):
         smartbox_mapping[fndh_port]["fndhPort"] = fndh_port + 1
         smartbox_mapping[fndh_port]["smartboxID"] = fndh_port + 1
 
@@ -119,7 +117,8 @@ def _input_smartbox_mapping() -> dict:
 
 def _output_smartbox_mapping() -> dict:
     smartbox_mapping: dict = {
-        fndh_port: fndh_port for fndh_port in range(1, NUMBER_OF_FNDH_PORTS + 1)
+        fndh_port: fndh_port
+        for fndh_port in range(1, PasdData.NUMBER_OF_FNDH_PORTS + 1)
     }
 
     # Swap two smartboxes
@@ -144,39 +143,43 @@ def mock_fndh_fixture() -> unittest.mock.Mock:
     return builder()
 
 
-@pytest.fixture(name="mock_smartbox")
-def mock_smartbox_fixture() -> unittest.mock.Mock:
+@pytest.fixture(name="mock_smartboxes")
+def mock_smartboxes_fixture() -> list[unittest.mock.Mock]:
     """
     Fixture that provides a mock MccsSmartBox device.
 
     :return: a mock MccsSmartBox device.
     """
-    builder = MockDeviceBuilder()
-    builder.set_state(tango.DevState.ON)
-    builder.add_result_command("PowerOnPort", ResultCode.OK)
-    builder.add_result_command("SetPortPowers", ResultCode.OK)
-    builder.add_attribute("PortsPowerSensed", [False for _ in range(12)])
-    builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
-    return builder()
+    smartboxes = []
+    for i in range(1, 25):
+        builder = MockDeviceBuilder()
+        builder.set_state(tango.DevState.ON)
+        builder.add_result_command("PowerOnPort", ResultCode.OK)
+        builder.add_result_command("SetPortPowers", ResultCode.OK)
+        builder.add_attribute("PortsPowerSensed", [False for _ in range(12)])
+        builder.add_command("dev_name", f"low-mccs/smartbox/ci-1-{i:02d}")
+        builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
+        smartboxes.append(builder())
+    return smartboxes
 
 
 @pytest.fixture(name="test_context")
 def test_context_fixture(
     mock_fndh: unittest.mock.Mock,
-    mock_smartbox: unittest.mock.Mock,
+    mock_smartboxes: list[unittest.mock.Mock],
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Create a test context containing a single mock PaSD bus device.
 
     :param mock_fndh: A mock FNDH device.
-    :param mock_smartbox: A mock Smartbox device.
+    :param mock_smartboxes: A list of mock Smartbox devices.
 
     :yield: the test context
     """
     harness = PasdTangoTestHarness()
     harness.set_mock_fndh_device(mock_fndh)
-    for smartbox_id in range(1, NUMBER_OF_SMARTBOXES + 1):
-        harness.set_mock_smartbox_device(mock_smartbox, smartbox_id)
+    for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+        harness.set_mock_smartbox_device(mock_smartboxes[smartbox_id - 1], smartbox_id)
     with harness as context:
         yield context
 
@@ -201,11 +204,12 @@ def mock_antenna_mapping_fixture() -> dict[int, list]:
     :returns: a default set of antenna mappings for testing.
     """
     return {
-        smartbox_no * NUMBER_OF_SMARTBOX_PORTS
+        smartbox_no * PasdData.NUMBER_OF_SMARTBOX_PORTS
         + smartbox_port
         + 1: [smartbox_no + 1, smartbox_port + 1]
-        for smartbox_no in range(0, NUMBER_OF_SMARTBOXES)
-        for smartbox_port in range(0, NUMBER_OF_SMARTBOX_PORTS)
+        for smartbox_no in range(0, PasdData.NUMBER_OF_SMARTBOXES)
+        for smartbox_port in range(0, PasdData.NUMBER_OF_SMARTBOX_PORTS)
+        if smartbox_no * PasdData.NUMBER_OF_SMARTBOX_PORTS + smartbox_port + 1 < 257
         # For sanity's sake we assign all ports antennas, this is not realistic
         # however the calls on the smartboxes become complex to predict, and these
         # unit tests are already quite complex.
@@ -222,7 +226,7 @@ def mock_smartbox_mapping_fixture() -> dict[int, int]:
 
     :returns: a default set of fndh port mappings
     """
-    return {port: port for port in range(1, NUMBER_OF_SMARTBOXES + 1)}
+    return {port: port for port in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)}
 
 
 class TestFieldStationComponentManager:
@@ -255,13 +259,14 @@ class TestFieldStationComponentManager:
             get_fndh_name(),
             [
                 get_smartbox_name(smartbox_id)
-                for smartbox_id in range(1, NUMBER_OF_SMARTBOXES + 1)
+                for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
             ],
             mock_antenna_mask,
             mock_antenna_mapping,
             mock_smartbox_mapping,
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
+            mock_callbacks["antenna_callback"],
         )
 
     def test_communication(
@@ -289,7 +294,10 @@ class TestFieldStationComponentManager:
             field_station_component_manager.communication_state
             == CommunicationStatus.ESTABLISHED
         )
-
+        # two smartboxes have no antenna attached. Therefore a update in the
+        # the port powers has no antenna callback.
+        for i in range(PasdData.NUMBER_OF_SMARTBOXES):
+            mock_callbacks["antenna_callback"].assert_call(Anything)
         # check that the communication state goes to DISABLED after stop communication.
         field_station_component_manager.stop_communicating()
         mock_callbacks["communication_state"].assert_call(
@@ -554,9 +562,10 @@ class TestFieldStationComponentManager:
 
         desired_fndh_port_powers: list[bool | None] = [
             expected_state
-        ] * NUMBER_OF_FNDH_PORTS
+        ] * PasdData.NUMBER_OF_FNDH_PORTS
 
-        for unused_fndh_port in range(24, 28):
+        # There are 4 surplus ports plus 2 smartbox have no antenna.
+        for unused_fndh_port in range(22, 28):
             desired_fndh_port_powers[unused_fndh_port] = None
 
         fndh_json_arg = json.dumps(
@@ -579,7 +588,17 @@ class TestFieldStationComponentManager:
 
                 desired_smartbox_port_powers: list[bool | None] = [
                     expected_state
-                ] * NUMBER_OF_SMARTBOX_PORTS
+                ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
+
+                if smartbox_no == 21:
+                    # The last smartbox only has 4 antenna
+                    desired_smartbox_port_powers = [expected_state] * 4 + [None] * 8
+                if smartbox_no > 21:
+                    # The configuration did not put any antenna on the
+                    # last 2 smartbox
+                    desired_smartbox_port_powers = [
+                        None
+                    ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
                 if smartbox_no == smartbox_id - 1:
                     desired_smartbox_port_powers[smartbox_port - 1] = None
 

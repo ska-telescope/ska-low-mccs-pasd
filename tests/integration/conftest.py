@@ -21,6 +21,7 @@ from ska_low_mccs_pasd.pasd_bus import (
     PasdBusSimulator,
     SmartboxSimulator,
 )
+from ska_low_mccs_pasd.pasd_data import PasdData
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 
@@ -200,7 +201,7 @@ def test_context_fixture(
     harness.set_pasd_bus_device(polling_rate=0.1, device_polling_rate=0.2)
     harness.set_fndh_device()
 
-    for smartbox_id in range(1, 25):
+    for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
         harness.add_smartbox_device(
             smartbox_id, smartbox_attached_ports[smartbox_id - 1]
         )
@@ -283,3 +284,20 @@ def off_smartbox_device_fixture(
     :return: the smartbox Tango device.
     """
     return test_context.get_smartbox_device(off_smartbox_id)
+
+
+@pytest.fixture(name="smartbox_proxys")
+def smartbox_proxys_fixture(
+    test_context: PasdTangoTestHarnessContext,
+) -> list[tango.DeviceProxy]:
+    """
+    Fixture that returns a list of smartbox Tango devices.
+
+    :param test_context: context in which the integration tests will run.
+
+    :return: the list of smartbox Tango devices.
+    """
+    smartbox_devices = []
+    for i in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+        smartbox_devices.append(test_context.get_smartbox_device(i))
+    return smartbox_devices

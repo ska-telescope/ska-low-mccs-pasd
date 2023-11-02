@@ -23,10 +23,9 @@ from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
 
+from ska_low_mccs_pasd.pasd_data import PasdData
+
 __all__ = ["FndhComponentManager", "_PasdBusProxy"]
-
-
-NUMBER_OF_FNDH_PORTS = 28
 
 
 class _PasdBusProxy(DeviceComponentManager):
@@ -249,7 +248,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
-        desired_port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+        desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
         desired_port_powers[port_number - 1] = False
         json_args = json.dumps(
             {
@@ -315,7 +314,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
-        desired_port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+        desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
         desired_port_powers[port_number - 1] = True
         json_argument = json.dumps(
             {
