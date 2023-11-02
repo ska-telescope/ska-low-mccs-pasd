@@ -7,11 +7,40 @@
     "properties": {
         "service_led": {
             "description": "Name of the service LED pattern",
-            "type": "string"
+            "type": "string",
+            "enum": [
+                "OFF",
+                "ON",
+                "VFAST",
+                "FAST",
+                "SLOW",
+                "VSLOW"
+            ]
         },
         "status_led": {
             "description": "Name of the status LED pattern",
-            "type": "string"
+            "type": "string",
+            "enum": [
+                "OFF",
+                "GREEN",
+                "GREENSLOW",
+                "GREENFAST",
+                "GREENVFAST",
+                "GREENDOTDASH",
+                "YELLOW",
+                "YELLOWSLOW",
+                "YELLOWFAST",
+                "YELLOWVFAST",
+                "YELLOWDOTDASH",
+                "RED",
+                "REDSLOW",
+                "REDFAST",
+                "REDVFAST",
+                "REDDOTDASH",
+                "YELLOWRED",
+                "YELLOWREDSLOW",
+                "GREENRED"
+            ]
         }
     },
     "required": [
