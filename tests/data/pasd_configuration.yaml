@@ -8,43 +8,43 @@ pasd:
       modbus_id: 101
   smartboxes:
     "1":
-      fndh_port: 1
+      fndh_port: 7
       modbus_id: 1
     "2":
-      fndh_port: 2
+      fndh_port: 5
       modbus_id: 2
     "3":
-      fndh_port: 3
+      fndh_port: 1
       modbus_id: 3
     "4":
-      fndh_port: 4
+      fndh_port: 6
       modbus_id: 4
     "5":
-      fndh_port: 5
+      fndh_port: 4
       modbus_id: 5
     "6":
-      fndh_port: 6
+      fndh_port: 2
       modbus_id: 6
     "7":
-      fndh_port: 7
+      fndh_port: 10
       modbus_id: 7
     "8":
-      fndh_port: 8
+      fndh_port: 9
       modbus_id: 8
     "9":
-      fndh_port: 9
+      fndh_port: 11
       modbus_id: 9
     "10":
-      fndh_port: 10
+      fndh_port: 21
       modbus_id: 10
     "11":
-      fndh_port: 11
+      fndh_port: 20
       modbus_id: 11
     "12":
-      fndh_port: 12
+      fndh_port: 22
       modbus_id: 12
     "13":
-      fndh_port: 13
+      fndh_port: 23
       modbus_id: 13
     "14":
       fndh_port: 14
@@ -65,19 +65,19 @@ pasd:
       fndh_port: 19
       modbus_id: 19
     "20":
-      fndh_port: 20
+      fndh_port: 24
       modbus_id: 20
     "21":
-      fndh_port: 21
+      fndh_port: 26
       modbus_id: 21
     "22":
-      fndh_port: 22
+      fndh_port: 12
       modbus_id: 22
     "23":
-      fndh_port: 23
+      fndh_port: 13
       modbus_id: 23
     "24":
-      fndh_port: 24
+      fndh_port: 28
       modbus_id: 24
 antennas:
   "1":

@@ -177,6 +177,7 @@ class MccsSmartBox(SKABaseDevice):
             self._communication_state_changed,
             self._component_state_callback,
             self._attribute_changed_callback,
+            self.SmartBoxNumber,
             self.PORT_COUNT,
             self.FndhPort,
             self.PasdFQDN,

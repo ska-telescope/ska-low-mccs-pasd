@@ -91,6 +91,7 @@ class _PasdBusProxy(DeviceComponentManager):
     def __init__(
         self: _PasdBusProxy,
         fqdn: str,
+        smartbox_nr: int,
         fndh_port: int,
         logger: logging.Logger,
         max_workers: int,
@@ -102,7 +103,8 @@ class _PasdBusProxy(DeviceComponentManager):
         """
         Initialise a new instance.
 
-        :param fqdn: the FQDN of the Tile device
+        :param fqdn: the FQDN of the Tile device.
+        :param smartbox_nr: the smartbox's ID number.
         :param fndh_port: this FNDH port this smartbox is attached to.
         :param logger: the logger to be used by this object.
         :param max_workers: the maximum worker threads for the slow commands
@@ -118,6 +120,7 @@ class _PasdBusProxy(DeviceComponentManager):
         """
         self._attribute_change_callback = attribute_change_callback
         self._power_change_callback = power_change_callback
+        self._smartbox_nr = smartbox_nr
         self._fndh_port = fndh_port
         self._power_state = PowerState.UNKNOWN
         assert (
@@ -135,7 +138,7 @@ class _PasdBusProxy(DeviceComponentManager):
         """Subscribe to attributes relating to this SmartBox."""
         assert self._proxy is not None
         # Ask what attributes to subscribe to and subscribe to them.
-        subscriptions = self._proxy.GetPasdDeviceSubscriptions(self._fndh_port)
+        subscriptions = self._proxy.GetPasdDeviceSubscriptions(self._smartbox_nr)
         for attribute in subscriptions:
             if attribute not in self._proxy._change_event_subscription_ids.keys():
                 self._proxy.add_change_event_callback(
@@ -216,7 +219,7 @@ class _PasdBusProxy(DeviceComponentManager):
             unique id to identify the command in the queue.
         """
         assert self._proxy
-        self._proxy.InitializeSmartbox(self._fndh_port)
+        self._proxy.InitializeSmartbox(self._smartbox_nr)
         return self._proxy.SetSmartboxPortPowers(json_argument)
 
     def set_fndh_port_powers(
@@ -234,7 +237,7 @@ class _PasdBusProxy(DeviceComponentManager):
         return self._proxy.SetFndhPortPowers(json_argument)
 
 
-# pylint: disable-next=abstract-method
+# pylint: disable-next=abstract-method, too-many-instance-attributes
 class SmartBoxComponentManager(TaskExecutorComponentManager):
     """
     A component manager for MccsSmartBox.
@@ -250,6 +253,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         communication_state_callback: Callable[[CommunicationStatus], None],
         component_state_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
+        smartbox_nr: int,
         port_count: int,
         fndh_port: int,
         pasd_fqdn: str,
@@ -266,8 +270,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             called when the component state changes
         :param attribute_change_callback: callback to be called when a attribute
             of interest changes.
+        :param smartbox_nr: the smartbox's ID number.
         :param port_count: the number of smartbox ports.
-        :param fndh_port: the fndh port this smartbox is attached.
+        :param fndh_port: the fndh port this smartbox is attached to.
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
         """
@@ -278,10 +283,12 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             Port(self.turn_on_port, port, logger) for port in range(1, port_count + 1)
         ]
         self._power_state = PowerState.UNKNOWN
+        self._smartbox_nr = smartbox_nr
         self._fndh_port = fndh_port
 
         self._pasd_bus_proxy = _pasd_bus_proxy or _PasdBusProxy(
             pasd_fqdn,
+            smartbox_nr,
             fndh_port,
             logger,
             max_workers,
@@ -522,7 +529,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             desired_port_powers[port_number - 1] = False
             json_argument = json.dumps(
                 {
-                    "smartbox_number": self._fndh_port,
+                    "smartbox_number": self._smartbox_nr,
                     "port_powers": desired_port_powers,
                     "stay_on_when_offline": True,
                 }
@@ -601,7 +608,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             desired_port_powers[port_number - 1] = True
             json_argument = json.dumps(
                 {
-                    "smartbox_number": self._fndh_port,
+                    "smartbox_number": self._smartbox_nr,
                     "port_powers": desired_port_powers,
                     "stay_on_when_offline": True,
                 }

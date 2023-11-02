@@ -50,11 +50,13 @@ def test_context_fixture(
 class TestPasdBusProxy:
     """Tests of the PaSD bus proxy used by the smartbox component manager."""
 
+    # pylint: disable=too-many-arguments
     @pytest.fixture(name="pasd_bus_proxy")
     def pasd_bus_proxy_fixture(
         self: TestPasdBusProxy,
         test_context: str,
         smartbox_number: int,
+        fndh_port: int,
         logger: logging.Logger,
         mock_callbacks: MockCallableGroup,
     ) -> _PasdBusProxy:
@@ -62,7 +64,8 @@ class TestPasdBusProxy:
         Return the PaSD bus proxy used by the smartbox component manager.
 
         :param test_context: a test context containing the Tango devices.
-        :param smartbox_number: number of the smartbox under test
+        :param smartbox_number: number of the smartbox under test.
+        :param fndh_port: the fndh port this smartbox is attached to.
         :param logger: a logger for the PaSD bus proxy to use
         :param mock_callbacks: A group of callables.
 
@@ -71,6 +74,7 @@ class TestPasdBusProxy:
         return _PasdBusProxy(
             get_pasd_bus_name(),
             smartbox_number,
+            fndh_port,
             logger,
             1,
             mock_callbacks["communication_state"],
@@ -106,11 +110,13 @@ class TestPasdBusProxy:
 class TestSmartBoxComponentManager:
     """Tests for the SmartBox component manager."""
 
+    # pylint: disable=too-many-arguments
     @pytest.fixture(name="smartbox_component_manager")
     def smartbox_component_manager_fixture(
         self: TestSmartBoxComponentManager,
         test_context: str,
         logger: logging.Logger,
+        smartbox_number: int,
         fndh_port: int,
         mock_callbacks: MockCallableGroup,
     ) -> SmartBoxComponentManager:
@@ -119,7 +125,8 @@ class TestSmartBoxComponentManager:
 
         :param test_context: a test context containing the Tango devices.
         :param logger: a logger for this command to use.
-        :param fndh_port: the fndh port this smartbox is attached.
+        :param smartbox_number: number of the smartbox under test.
+        :param fndh_port: the fndh port this smartbox is attached to.
         :param mock_callbacks: mock callables.
 
         :return: an SmartBox component manager.
@@ -129,7 +136,8 @@ class TestSmartBoxComponentManager:
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
             mock_callbacks["attribute_update"],
-            12,
+            smartbox_number,
+            SMARTBOX_PORTS,
             fndh_port,
             get_pasd_bus_name(),
         )
@@ -309,7 +317,7 @@ class TestSmartBoxComponentManager:
 
         json_argument = json.dumps(
             {
-                "smartbox_number": smartbox_component_manager._fndh_port,
+                "smartbox_number": smartbox_component_manager._smartbox_nr,
                 "port_powers": desired_port_powers,
                 "stay_on_when_offline": True,
             }
