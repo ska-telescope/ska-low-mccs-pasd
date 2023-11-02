@@ -122,7 +122,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         # initialise the power
         self.antenna_powers: dict[str, PowerState] = {}
-        for antenna_id in range(0, PasdData.NUMBER_OF_ANTENNAS):
+        for antenna_id in range(1, PasdData.NUMBER_OF_ANTENNAS + 1):
             self.antenna_powers[str(antenna_id)] = PowerState.UNKNOWN
 
         # REMEMBER TO DELETE. This is temporary until we have a real configuration.
@@ -215,23 +215,21 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             else:
                 port_powers[i] = PowerState.OFF
 
-        antenna_power_map = self.antenna_powers.copy()
-        cached_antenna_map = self._antenna_mapping.copy()
-
         try:
-            self._update_antenna_power_map(
-                antenna_power_map,
-                cached_antenna_map,
-                smartbox_under_change,
-                port_powers,
-            )
+            for antenna_id, antenna_config in self._antenna_mapping.items():
+                antennas_smartbox = antenna_config[0]
+                smartbox_port = antenna_config[1]
+                if antennas_smartbox == smartbox_under_change:
+                    if str(antenna_id) in self.antenna_powers:
+                        self.antenna_powers[str(antenna_id)] = port_powers[
+                            smartbox_port - 1
+                        ]
+                    else:
+                        raise KeyError(f"Unexpected key {str(antenna_id)}")
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.error(f"Failed to update antenna power {repr(e)}")
-
-        # On change.
-        if antenna_power_map != self.antenna_powers:
-            self.antenna_powers = antenna_power_map
-            self._on_antenna_power_change(antenna_power_map)
+            return
+        self._on_antenna_power_change(self.antenna_powers)
 
     def _update_antenna_power_map(
         self: FieldStationComponentManager,
