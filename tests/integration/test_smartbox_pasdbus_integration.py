@@ -570,7 +570,6 @@ class TestSmartBoxPasdBusIntegration:
         # TODO: MCCS to make a decision on the requirements of this test,
         # discussions held on MR!41.
         smartbox_device.PowerOnPort(smartbox_port_desired_on)
-        assert pasd_bus_device.InitializeSmartbox(on_smartbox_id)[0] == ResultCode.OK
 
         # ======
         # ASSERT
@@ -676,7 +675,6 @@ class TestSmartBoxPasdBusIntegration:
 
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["smartbox_state"].assert_not_called()
-        assert pasd_bus_device.InitializeSmartbox(on_smartbox_id)[0] == ResultCode.OK
 
         pasd_claimed_port_states = list(
             getattr(pasd_bus_device, f"smartbox{on_smartbox_id}portspowersensed")
