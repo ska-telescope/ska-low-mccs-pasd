@@ -87,7 +87,8 @@ def _output_antenna_mapping() -> dict:
                 antenna_no = (
                     smartbox_no - 1
                 ) * PasdData.NUMBER_OF_SMARTBOX_PORTS + smartbox_port
-                antenna_mapping[antenna_no] = [smartbox_no, smartbox_port]
+                if antenna_no in antenna_mapping.keys():
+                    antenna_mapping[antenna_no] = [smartbox_no, smartbox_port]
             except KeyError:
                 break
 
@@ -208,7 +209,7 @@ def mock_antenna_mapping_fixture() -> dict[int, list]:
         + 1: [smartbox_no + 1, smartbox_port + 1]
         for smartbox_no in range(0, PasdData.NUMBER_OF_SMARTBOXES)
         for smartbox_port in range(0, PasdData.NUMBER_OF_SMARTBOX_PORTS)
-        # if smartbox_no * NUMBER_OF_SMARTBOX_PORTS + smartbox_port + 1 < 256
+        if smartbox_no * PasdData.NUMBER_OF_SMARTBOX_PORTS + smartbox_port + 1 < 257
         # For sanity's sake we assign all ports antennas, this is not realistic
         # however the calls on the smartboxes become complex to predict, and these
         # unit tests are already quite complex.
@@ -295,9 +296,8 @@ class TestFieldStationComponentManager:
         )
         # two smartboxes have no antenna attached. Therefore a update in the
         # the port powers has no antenna callback.
-        for i in range(PasdData.NUMBER_OF_SMARTBOXES - 2):
+        for i in range(PasdData.NUMBER_OF_SMARTBOXES):
             mock_callbacks["antenna_callback"].assert_call(Anything)
-
         # check that the communication state goes to DISABLED after stop communication.
         field_station_component_manager.stop_communicating()
         mock_callbacks["communication_state"].assert_call(
@@ -564,7 +564,8 @@ class TestFieldStationComponentManager:
             expected_state
         ] * PasdData.NUMBER_OF_FNDH_PORTS
 
-        for unused_fndh_port in range(24, 28):
+        # There are 4 surplus ports plus 2 smartbox have no antenna.
+        for unused_fndh_port in range(22, 28):
             desired_fndh_port_powers[unused_fndh_port] = None
 
         fndh_json_arg = json.dumps(
@@ -588,6 +589,16 @@ class TestFieldStationComponentManager:
                 desired_smartbox_port_powers: list[bool | None] = [
                     expected_state
                 ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
+
+                if smartbox_no == 21:
+                    # The last smartbox only has 4 antenna
+                    desired_smartbox_port_powers = [expected_state] * 4 + [None] * 8
+                if smartbox_no > 21:
+                    # The configuration did not put any antenna on the
+                    # last 2 smartbox
+                    desired_smartbox_port_powers = [
+                        None
+                    ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
                 if smartbox_no == smartbox_id - 1:
                     desired_smartbox_port_powers[smartbox_port - 1] = None
 

@@ -181,9 +181,7 @@ class TestFieldStationIntegration:
         change_event_callbacks["field_station_state"].assert_change_event(
             tango.DevState.ON
         )
-
-        # 2 smartbox have no antenna attached.
-        for i in range(PasdData.NUMBER_OF_SMARTBOXES - 2):
+        for i in range(PasdData.NUMBER_OF_SMARTBOXES):
             change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
         change_event_callbacks["antenna_power_states"].assert_not_called()
 
