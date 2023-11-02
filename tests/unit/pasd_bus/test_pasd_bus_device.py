@@ -621,6 +621,13 @@ def test_fndh_led_pattern(
         "fndhLedPattern", "service: OFF, status: OFF"
     )
 
+    # Check for validation error
+    json_argument = json.dumps({"service_led": "FAST", "status_led": "PINK"})
+    with pytest.raises(tango.DevFailed) as exception:
+        pasd_bus_device.SetFndhLedPattern(json_argument)
+    assert "jsonschema.exceptions.ValidationError" in str(exception.value)
+
+    # Set correct values
     json_argument = json.dumps({"service_led": "FAST", "status_led": "GREEN"})
     pasd_bus_device.SetFndhLedPattern(json_argument)
     change_event_callbacks.assert_change_event(
@@ -805,6 +812,15 @@ def test_smartbox_led_pattern(
         f"smartbox{smartbox_id}LedPattern", "service: OFF, status: OFF"
     )
 
+    # Check for validation error
+    json_argument = json.dumps(
+        {"smartbox_number": smartbox_id, "service_led": "NORMAL", "status_led": "GREEN"}
+    )
+    with pytest.raises(tango.DevFailed) as exception:
+        pasd_bus_device.SetSmartboxLedPattern(json_argument)
+    assert "jsonschema.exceptions.ValidationError" in str(exception.value)
+
+    # Set correct values
     json_argument = json.dumps(
         {"smartbox_number": smartbox_id, "service_led": "FAST", "status_led": "GREEN"}
     )
