@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import os
 from socket import gethostname
-from typing import Dict
+from typing import Iterator
 
 from ska_ser_devices.client_server import (
     ApplicationServer,
@@ -19,18 +19,70 @@ from ska_ser_devices.client_server import (
     TcpServer,
 )
 
-from .pasd_bus_json_api import PasdBusJsonApi
+from .pasd_bus_modbus_api import PasdBusModbusApi
 from .pasd_bus_simulator import FndhSimulator, PasdBusSimulator, SmartboxSimulator
 
 
+class CustomMarshaller(SentinelBytesMarshaller):
+    r"""
+    Custom marshaller that doesn't remove sentinel and only adds if not present.
+
+    This is necessary as Modbus uses \r\n as a sentinel, but the sentinel needs to
+        remain when pymodbus processes the packet.
+    """
+
+    def __init__(self, sentinel: bytes) -> None:
+        """
+        Create new instance.
+
+        :param sentinel: the sentinel to indicate end of message
+        """
+        super().__init__(sentinel)
+
+    def marshall(self, payload: bytes) -> bytes:
+        """
+        Marshall application-layer payload bytes into bytes to be transmitted.
+
+        This class simply appends the sentinel character sequence if it isn't present.
+
+        :param payload: the application-layer payload bytes.
+
+        :return: the bytes to be transmitted.
+        """
+        if not payload.endswith(self._sentinel):
+            payload += self._sentinel
+        return payload
+
+    def unmarshall(self, bytes_iterator: Iterator[bytes]) -> bytes:
+        """
+        Unmarshall transmitted bytes into application-layer payload bytes.
+
+        This method is implemented to continually receive bytestrings
+        until it receives a bytestring terminated by the sentinel.
+
+        :param bytes_iterator: an iterator of bytestrings received
+            by the server
+
+        :return: the application-layer bytestring.
+        """
+        payload = b""
+        more_bytes = next(bytes_iterator)
+        payload = payload + more_bytes
+
+        while not more_bytes.endswith(self._sentinel):
+            more_bytes = next(bytes_iterator)
+            payload = payload + more_bytes
+        return payload
+
+
 # pylint: disable-next=too-few-public-methods
-class PasdBusSimulatorJsonServer(ApplicationServer):
-    """An application-layer server that provides JSON access to a PasdBusSimulator."""
+class PasdBusSimulatorModbusServer(ApplicationServer):
+    """An application-layer server that provides Modbus access to a PasdBusSimulator."""
 
     def __init__(
-        self: PasdBusSimulatorJsonServer,
+        self: PasdBusSimulatorModbusServer,
         fndh_simulator: FndhSimulator,
-        smartbox_simulators: Dict[int, SmartboxSimulator],
+        smartbox_simulators: dict[int, SmartboxSimulator],
     ) -> None:
         """
         Initialise a new instance.
@@ -40,10 +92,10 @@ class PasdBusSimulatorJsonServer(ApplicationServer):
         :param smartbox_simulators: the smartbox simulator backends to
             which this server provides access.
         """
-        simulators: Dict[int, FndhSimulator | SmartboxSimulator] = {0: fndh_simulator}
+        simulators: dict = {0: fndh_simulator}
         simulators.update(smartbox_simulators)
-        simulator_api = PasdBusJsonApi(simulators)
-        marshaller = SentinelBytesMarshaller(b"\n")
+        simulator_api = PasdBusModbusApi(simulators)
+        marshaller = CustomMarshaller(b"\r\n")
         super().__init__(marshaller.unmarshall, marshaller.marshall, simulator_api)
 
 
@@ -53,8 +105,6 @@ def main() -> None:
 
     :raises ValueError: if SIMULATOR_CONFIG_PATH is not set in the environment.
     """
-    logger = logging.getLogger()
-
     station_label = os.getenv("SIMULATOR_STATION", "ci-1")
     config_path = os.getenv("SIMULATOR_CONFIG_PATH")
     host = os.getenv("SIMULATOR_HOST", gethostname())
@@ -64,9 +114,9 @@ def main() -> None:
         raise ValueError("SIMULATOR_CONFIG_PATH environment variable must be set.")
 
     simulator = PasdBusSimulator(config_path, station_label, logging.DEBUG)
-    simulator_server = PasdBusSimulatorJsonServer(
+    simulator_server = PasdBusSimulatorModbusServer(
         simulator.get_fndh(), simulator.get_smartboxes()
     )
-    server = TcpServer(host, port, simulator_server, logger=logger)
+    server = TcpServer(host, port, simulator_server)
     with server:
         server.serve_forever()

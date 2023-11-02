@@ -106,6 +106,7 @@ def mock_fndh_simulator_fixture(
         "port_forcings",
         "ports_desired_power_when_online",
         "ports_desired_power_when_offline",
+        "ports_power_control",
         "ports_power_sensed",
         "led_pattern",
         "sys_address",
@@ -141,12 +142,22 @@ def mock_fndh_simulator_fixture(
         "uptime",
         "status",
     ]:
+
+        def side_effect(
+            sim: PasdBusSimulator, prop: str, val: int | None = None
+        ) -> property | None:
+            if val:
+                setattr(sim, prop, val)
+                return None
+            return getattr(sim, prop)
+
+        side_effect_partial = functools.partial(
+            side_effect, fndh_simulator, property_name
+        )
         setattr(
             type(mock_simulator),
             property_name,
-            unittest.mock.PropertyMock(
-                side_effect=functools.partial(getattr, fndh_simulator, property_name)
-            ),
+            unittest.mock.PropertyMock(side_effect=side_effect_partial),
         )
 
     return mock_simulator
@@ -258,14 +269,22 @@ def mock_smartbox_simulators_fixture(
             "ports_power_sensed",
             "ports_current_draw",
         ]:
+
+            def side_effect(
+                sim: PasdBusSimulator, prop: str, val: int | None = None
+            ) -> property | None:
+                if val:
+                    setattr(sim, prop, val)
+                    return None
+                return getattr(sim, prop)
+
+            side_effect_partial = functools.partial(
+                side_effect, smartbox_simulator, property_name
+            )
             setattr(
                 type(mock_simulator),
                 property_name,
-                unittest.mock.PropertyMock(
-                    side_effect=functools.partial(
-                        getattr, smartbox_simulator, property_name
-                    )
-                ),
+                unittest.mock.PropertyMock(side_effect=side_effect_partial),
             )
 
         mock_simulators[smartbox_id] = mock_simulator

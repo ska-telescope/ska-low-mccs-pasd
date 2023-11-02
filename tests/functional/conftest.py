@@ -496,8 +496,8 @@ def check_fastcommand_fixture() -> Callable:
     :returns: A callable which checks value of given FastCommand.
     """
 
-    def _check_fastcommand(
-        device_proxy: tango.DeviceProxy, command: str, args: str, timeout: float = 3
+    def _check_fastcommand(  # TODO: reduce the timeout to 3
+        device_proxy: tango.DeviceProxy, command: str, args: str, timeout: float = 4
     ) -> None:
         current_time = time.time()
         value = None

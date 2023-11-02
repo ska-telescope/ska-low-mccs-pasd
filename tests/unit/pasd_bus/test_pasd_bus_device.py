@@ -19,6 +19,11 @@ from ska_control_model import AdminMode, HealthState
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
+    FNDHAlarmFlags,
+    PasdConversionUtility,
+    SmartboxAlarmFlags,
+)
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
 from tests.harness import PasdTangoTestHarness
 
@@ -144,42 +149,77 @@ def test_communication(  # pylint: disable=too-many-statements
         == FndhSimulator.MODBUS_REGISTER_MAP_REVISION
     )
     assert pasd_bus_device.fndhPcbRevisionNumber == FndhSimulator.PCB_REVISION
-    assert pasd_bus_device.fndhCpuId == FndhSimulator.CPU_ID
-    assert pasd_bus_device.fndhChipId == FndhSimulator.CHIP_ID
-    assert pasd_bus_device.fndhFirmwareVersion == FndhSimulator.DEFAULT_FIRMWARE_VERSION
-    assert pasd_bus_device.fndhUptime <= fndh_simulator.uptime
+    assert (
+        pasd_bus_device.fndhCpuId
+        == PasdConversionUtility.convert_cpu_id(FndhSimulator.CPU_ID)[0]
+    )
+    assert (
+        pasd_bus_device.fndhChipId
+        == PasdConversionUtility.convert_chip_id(FndhSimulator.CHIP_ID)[0]
+    )
+    assert (
+        pasd_bus_device.fndhFirmwareVersion
+        == PasdConversionUtility.convert_firmware_version(
+            [FndhSimulator.DEFAULT_FIRMWARE_VERSION]
+        )[0]
+    )
+    assert (
+        pasd_bus_device.fndhUptime
+        <= PasdConversionUtility.convert_uptime(fndh_simulator.uptime)[0]
+    )
     assert pasd_bus_device.fndhSysAddress == FndhSimulator.SYS_ADDRESS
     assert pasd_bus_device.fndhStatus == "OK"
-    assert pasd_bus_device.fndhLedPattern == FndhSimulator.DEFAULT_LED_PATTERN
+    assert pasd_bus_device.fndhLedPattern == "service: OFF, status: OFF"
+    assert list(
+        pasd_bus_device.fndhPsu48vVoltages
+    ) == PasdConversionUtility.scale_volts(FndhSimulator.DEFAULT_PSU48V_VOLTAGES)
     assert (
-        list(pasd_bus_device.fndhPsu48vVoltages)
-        == FndhSimulator.DEFAULT_PSU48V_VOLTAGES
+        pasd_bus_device.fndhPsu48vCurrent
+        == PasdConversionUtility.scale_48vcurrents(
+            [FndhSimulator.DEFAULT_PSU48V_CURRENT]
+        )[0]
     )
-    assert pasd_bus_device.fndhPsu48vCurrent == FndhSimulator.DEFAULT_PSU48V_CURRENT
+    assert list(
+        pasd_bus_device.fndhPsu48vTemperatures
+    ) == PasdConversionUtility.scale_signed_16bit(
+        FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
+    )
     assert (
-        list(pasd_bus_device.fndhPsu48vTemperatures)
-        == FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
+        pasd_bus_device.fndhPanelTemperature
+        == PasdConversionUtility.scale_signed_16bit(
+            [FndhSimulator.DEFAULT_PANEL_TEMPERATURE]
+        )[0]
     )
     assert (
-        pasd_bus_device.fndhPanelTemperature == FndhSimulator.DEFAULT_PANEL_TEMPERATURE
+        pasd_bus_device.fndhFncbTemperature
+        == PasdConversionUtility.scale_signed_16bit(
+            [FndhSimulator.DEFAULT_FNCB_TEMPERATURE]
+        )[0]
     )
-    assert pasd_bus_device.fndhFncbTemperature == FndhSimulator.DEFAULT_FNCB_TEMPERATURE
     assert pasd_bus_device.fndhFncbHumidity == FndhSimulator.DEFAULT_FNCB_HUMIDITY
     assert (
         pasd_bus_device.fndhCommsGatewayTemperature
-        == FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE
+        == PasdConversionUtility.scale_signed_16bit(
+            [FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE]
+        )[0]
     )
     assert (
         pasd_bus_device.fndhPowerModuleTemperature
-        == FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE
+        == PasdConversionUtility.scale_signed_16bit(
+            [FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE]
+        )[0]
     )
     assert (
         pasd_bus_device.fndhOutsideTemperature
-        == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE
+        == PasdConversionUtility.scale_signed_16bit(
+            [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
+        )[0]
     )
     assert (
         pasd_bus_device.fndhInternalAmbientTemperature
-        == FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
+        == PasdConversionUtility.scale_signed_16bit(
+            [FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE]
+        )[0]
     )
     assert list(pasd_bus_device.fndhPortForcings) == fndh_simulator.port_forcings
     assert (
@@ -193,56 +233,63 @@ def test_communication(  # pylint: disable=too-many-statements
     assert (
         list(pasd_bus_device.fndhPortsPowerSensed) == fndh_simulator.ports_power_sensed
     )
-    assert (
-        list(pasd_bus_device.fndhPsu48vVoltage1Thresholds)
-        == fndh_simulator.psu48v_voltage_1_thresholds
+    assert list(
+        pasd_bus_device.fndhPsu48vVoltage1Thresholds
+    ) == PasdConversionUtility.scale_volts(fndh_simulator.psu48v_voltage_1_thresholds)
+    assert list(
+        pasd_bus_device.fndhPsu48vVoltage2Thresholds
+    ) == PasdConversionUtility.scale_volts(fndh_simulator.psu48v_voltage_2_thresholds)
+    assert list(
+        pasd_bus_device.fndhPsu48vCurrentThresholds
+    ) == PasdConversionUtility.scale_48vcurrents(
+        fndh_simulator.psu48v_current_thresholds
     )
-    assert (
-        list(pasd_bus_device.fndhPsu48vVoltage2Thresholds)
-        == fndh_simulator.psu48v_voltage_2_thresholds
+    assert list(
+        pasd_bus_device.fndhPsu48vTemperature1Thresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        fndh_simulator.psu48v_temperature_1_thresholds
     )
-    assert (
-        list(pasd_bus_device.fndhPsu48vCurrentThresholds)
-        == fndh_simulator.psu48v_current_thresholds
+    assert list(
+        pasd_bus_device.fndhPsu48vTemperature2Thresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        fndh_simulator.psu48v_temperature_2_thresholds
     )
-    assert (
-        list(pasd_bus_device.fndhPsu48vTemperature1Thresholds)
-        == fndh_simulator.psu48v_temperature_1_thresholds
+    assert list(
+        pasd_bus_device.fndhPanelTemperatureThresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        fndh_simulator.panel_temperature_thresholds
     )
-    assert (
-        list(pasd_bus_device.fndhPsu48vTemperature2Thresholds)
-        == fndh_simulator.psu48v_temperature_2_thresholds
-    )
-    assert (
-        list(pasd_bus_device.fndhPanelTemperatureThresholds)
-        == fndh_simulator.panel_temperature_thresholds
-    )
-    assert (
-        list(pasd_bus_device.fndhFncbTemperatureThresholds)
-        == fndh_simulator.fncb_temperature_thresholds
+    assert list(
+        pasd_bus_device.fndhFncbTemperatureThresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        fndh_simulator.fncb_temperature_thresholds
     )
     assert (
         list(pasd_bus_device.fndhHumidityThresholds)
         == fndh_simulator.fncb_humidity_thresholds
     )
-    assert (
-        list(pasd_bus_device.fndhCommsGatewayTemperatureThresholds)
-        == fndh_simulator.comms_gateway_temperature_thresholds
+    assert list(
+        pasd_bus_device.fndhCommsGatewayTemperatureThresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        fndh_simulator.comms_gateway_temperature_thresholds
     )
-    assert (
-        list(pasd_bus_device.fndhPowerModuleTemperatureThresholds)
-        == fndh_simulator.power_module_temperature_thresholds
+    assert list(
+        pasd_bus_device.fndhPowerModuleTemperatureThresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        fndh_simulator.power_module_temperature_thresholds
     )
-    assert (
-        list(pasd_bus_device.fndhOutsideTemperatureThresholds)
-        == fndh_simulator.outside_temperature_thresholds
+    assert list(
+        pasd_bus_device.fndhOutsideTemperatureThresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        fndh_simulator.outside_temperature_thresholds
     )
-    assert (
-        list(pasd_bus_device.fndhInternalAmbientTemperatureThresholds)
-        == fndh_simulator.internal_ambient_temperature_thresholds
+    assert list(
+        pasd_bus_device.fndhInternalAmbientTemperatureThresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        fndh_simulator.internal_ambient_temperature_thresholds
     )
-    assert pasd_bus_device.fndhWarningFlags == FndhSimulator.DEFAULT_FLAGS
-    assert pasd_bus_device.fndhAlarmFlags == FndhSimulator.DEFAULT_FLAGS
+    assert pasd_bus_device.fndhWarningFlags == FNDHAlarmFlags.NONE.name
+    assert pasd_bus_device.fndhAlarmFlags == FNDHAlarmFlags.NONE.name
     assert (
         getattr(
             pasd_bus_device,
@@ -256,55 +303,69 @@ def test_communication(  # pylint: disable=too-many-statements
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}CpuId")
-        == SmartboxSimulator.CPU_ID
+        == PasdConversionUtility.convert_cpu_id(SmartboxSimulator.CPU_ID)[0]
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}ChipId")
-        == SmartboxSimulator.CHIP_ID
+        == PasdConversionUtility.convert_chip_id(SmartboxSimulator.CHIP_ID)[0]
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}FirmwareVersion")
-        == SmartboxSimulator.DEFAULT_FIRMWARE_VERSION
+        == PasdConversionUtility.convert_firmware_version(
+            [SmartboxSimulator.DEFAULT_FIRMWARE_VERSION]
+        )[0]
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}Uptime")
-        <= smartbox_simulator.uptime
+        <= PasdConversionUtility.convert_uptime(smartbox_simulator.uptime)[0]
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}Status")
-        == SmartboxSimulator.DEFAULT_STATUS
+        == SmartboxSimulator.DEFAULT_STATUS.name
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}LedPattern")
-        == SmartboxSimulator.DEFAULT_LED_PATTERN
+        == "service: OFF, status: OFF"
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltage")
-        == SmartboxSimulator.DEFAULT_INPUT_VOLTAGE
+        == PasdConversionUtility.scale_volts([SmartboxSimulator.DEFAULT_INPUT_VOLTAGE])[
+            0
+        ]
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}PowerSupplyOutputVoltage")
-        == SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
+        == PasdConversionUtility.scale_volts(
+            [SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE]
+        )[0]
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}PowerSupplyTemperature")
-        == SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
+        == PasdConversionUtility.scale_signed_16bit(
+            [SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE]
+        )[0]
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}PcbTemperature")
-        == SmartboxSimulator.DEFAULT_PCB_TEMPERATURE
+        == PasdConversionUtility.scale_signed_16bit(
+            [SmartboxSimulator.DEFAULT_PCB_TEMPERATURE]
+        )[0]
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}FemAmbientTemperature")
-        == SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
+        == PasdConversionUtility.scale_signed_16bit(
+            [SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE]
+        )[0]
     )
-    assert (
-        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}FemCaseTemperatures"))
-        == SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+    assert list(
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}FemCaseTemperatures")
+    ) == PasdConversionUtility.scale_signed_16bit(
+        SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
     )
-    assert (
-        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}FemHeatsinkTemperatures"))
-        == SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+    assert list(
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}FemHeatsinkTemperatures")
+    ) == PasdConversionUtility.scale_signed_16bit(
+        SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
     )
     assert (
         list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortForcings"))
@@ -340,76 +401,69 @@ def test_communication(  # pylint: disable=too-many-statements
         list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsCurrentDraw"))
         == smartbox_simulator.ports_current_draw
     )
-    assert (
-        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltageThresholds"))
-        == smartbox_simulator.input_voltage_thresholds
-    )
-    assert (
-        list(
-            getattr(
-                pasd_bus_device,
-                f"smartbox{smartbox_id}PowerSupplyOutputVoltageThresholds",
-            )
+    assert list(
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltageThresholds")
+    ) == PasdConversionUtility.scale_volts(smartbox_simulator.input_voltage_thresholds)
+    assert list(
+        getattr(
+            pasd_bus_device,
+            f"smartbox{smartbox_id}PowerSupplyOutputVoltageThresholds",
         )
-        == smartbox_simulator.power_supply_output_voltage_thresholds
+    ) == PasdConversionUtility.scale_volts(
+        smartbox_simulator.power_supply_output_voltage_thresholds
     )
-    assert (
-        list(
-            getattr(
-                pasd_bus_device,
-                f"smartbox{smartbox_id}PowerSupplyTemperatureThresholds",
-            )
+    assert list(
+        getattr(
+            pasd_bus_device,
+            f"smartbox{smartbox_id}PowerSupplyTemperatureThresholds",
         )
-        == smartbox_simulator.power_supply_temperature_thresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        smartbox_simulator.power_supply_temperature_thresholds
     )
-    assert (
-        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PcbTemperatureThresholds"))
-        == smartbox_simulator.pcb_temperature_thresholds
+    assert list(
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}PcbTemperatureThresholds")
+    ) == PasdConversionUtility.scale_signed_16bit(
+        smartbox_simulator.pcb_temperature_thresholds
     )
-    assert (
-        list(
-            getattr(
-                pasd_bus_device,
-                f"smartbox{smartbox_id}FemAmbientTemperatureThresholds",
-            )
+    assert list(
+        getattr(
+            pasd_bus_device,
+            f"smartbox{smartbox_id}FemAmbientTemperatureThresholds",
         )
-        == smartbox_simulator.fem_ambient_temperature_thresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        smartbox_simulator.fem_ambient_temperature_thresholds
     )
-    assert (
-        list(
-            getattr(
-                pasd_bus_device,
-                f"smartbox{smartbox_id}FemCaseTemperature1Thresholds",
-            )
+    assert list(
+        getattr(
+            pasd_bus_device,
+            f"smartbox{smartbox_id}FemCaseTemperature1Thresholds",
         )
-        == smartbox_simulator.fem_case_temperature_1_thresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        smartbox_simulator.fem_case_temperature_1_thresholds
     )
-    assert (
-        list(
-            getattr(
-                pasd_bus_device,
-                f"smartbox{smartbox_id}FemCaseTemperature2Thresholds",
-            )
+    assert list(
+        getattr(
+            pasd_bus_device,
+            f"smartbox{smartbox_id}FemCaseTemperature2Thresholds",
         )
-        == smartbox_simulator.fem_case_temperature_2_thresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        smartbox_simulator.fem_case_temperature_2_thresholds
     )
-    assert (
-        list(
-            getattr(
-                pasd_bus_device,
-                f"smartbox{smartbox_id}FemHeatsinkTemperature1Thresholds",
-            )
+    assert list(
+        getattr(
+            pasd_bus_device,
+            f"smartbox{smartbox_id}FemHeatsinkTemperature1Thresholds",
         )
-        == smartbox_simulator.fem_heatsink_temperature_1_thresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        smartbox_simulator.fem_heatsink_temperature_1_thresholds
     )
-    assert (
-        list(
-            getattr(
-                pasd_bus_device,
-                f"smartbox{smartbox_id}FemHeatsinkTemperature2Thresholds",
-            )
+    assert list(
+        getattr(
+            pasd_bus_device,
+            f"smartbox{smartbox_id}FemHeatsinkTemperature2Thresholds",
         )
-        == smartbox_simulator.fem_heatsink_temperature_2_thresholds
+    ) == PasdConversionUtility.scale_signed_16bit(
+        smartbox_simulator.fem_heatsink_temperature_2_thresholds
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem1CurrentTripThreshold")
@@ -461,11 +515,11 @@ def test_communication(  # pylint: disable=too-many-statements
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}WarningFlags")
-        == SmartboxSimulator.DEFAULT_FLAGS
+        == SmartboxAlarmFlags.NONE.name
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}AlarmFlags")
-        == SmartboxSimulator.DEFAULT_FLAGS
+        == SmartboxAlarmFlags.NONE.name
     )
 
 
@@ -563,10 +617,14 @@ def test_fndh_led_pattern(
     change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
     change_event_callbacks.assert_change_event("state", tango.DevState.ON)
 
-    change_event_callbacks.assert_change_event("fndhLedPattern", "OFF")
+    change_event_callbacks.assert_change_event(
+        "fndhLedPattern", "service: OFF, status: OFF"
+    )
 
     pasd_bus_device.SetFndhLedPattern("SERVICE")
-    change_event_callbacks.assert_change_event("fndhLedPattern", "SERVICE")
+    change_event_callbacks.assert_change_event(
+        "fndhLedPattern", "service: ON, status: OFF"
+    )
 
 
 def test_set_smartbox_port_powers(
@@ -699,7 +757,9 @@ def test_reset_smartbox_port_breaker(
             "port_number": connected_smartbox_port,
         }
     )
+    print("Reset breaker command sending")
     pasd_bus_device.ResetSmartboxPortBreaker(json_argument)
+    print("Reset breaker command sent")
     smartbox_port_breakers_tripped[connected_smartbox_port - 1] = False
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}PortBreakersTripped",
@@ -740,13 +800,12 @@ def test_smartbox_led_pattern(
 
     change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
     change_event_callbacks.assert_change_event("state", tango.DevState.ON)
-
     change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}LedPattern", "OFF"
+        f"smartbox{smartbox_id}LedPattern", "service: OFF, status: OFF"
     )
 
     json_argument = json.dumps({"smartbox_number": smartbox_id, "pattern": "SERVICE"})
     pasd_bus_device.SetSmartboxLedPattern(json_argument)
     change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}LedPattern", "SERVICE"
+        f"smartbox{smartbox_id}LedPattern", "service: ON, status: OFF"
     )

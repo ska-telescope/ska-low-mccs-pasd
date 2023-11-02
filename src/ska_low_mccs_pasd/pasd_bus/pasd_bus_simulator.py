@@ -23,9 +23,7 @@ device is given exclusive use of the PaSD bus. All other devices can
 only communicate on the PaSD bus by proxying through MccsPasdBus.
 
 To that end, MccsPasdBus needs a PasdBusComponentManager that talks to
-the PaSD bus using MODBUS-over-TCP. This class is not yet written; but
-meanwhile, a PasdBusJsonApi class takes its place, providing access to
-the PaSD bus simulator, but talking JSON instead of MODBUS.
+the PaSD bus using MODBUS-over-TCP.
 
 The Pasd bus simulator class is provided below. To help manage
 complexity, it is composed of a separate FNDH simulator and a number of
@@ -40,18 +38,20 @@ import importlib.resources
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Callable, Dict, Final, Optional, Sequence
+from typing import Callable, Final, Optional, Sequence
 
 import yaml
 
-# from .pasd_bus_conversions import (
-#     FNDHAlarmFlags,
-#     FndhStatusMap,
-#     LEDServiceMap,
-#     LEDStatusMap,
-#     SmartboxAlarmFlags,
-#     SmartBoxStatusMap,
-# )
+from .pasd_bus_conversions import (
+    FNDHAlarmFlags,
+    FndhStatusMap,
+    LEDServiceMap,
+    LEDStatusMap,
+    PasdConversionUtility,
+    SmartboxAlarmFlags,
+    SmartBoxStatusMap,
+)
+from .pasd_bus_modbus_api import FNDH_MODBUS_ADDRESS
 
 logger = logging.getLogger()
 
@@ -239,6 +239,15 @@ class _PasdPortSimulator(ABC):
         """
         return self._desired_on_when_online
 
+    @desired_power_when_online.setter
+    def desired_power_when_online(self: _PasdPortSimulator, power_on: bool) -> None:
+        """
+        Set the desired power mode of the port when the control system is online.
+
+        :param power_on: whether power is on
+        """
+        self._desired_on_when_online = power_on
+
     @property
     def desired_power_when_offline(self: _PasdPortSimulator) -> bool:
         """
@@ -248,6 +257,15 @@ class _PasdPortSimulator(ABC):
             system is offline.
         """
         return self._desired_on_when_offline
+
+    @desired_power_when_offline.setter
+    def desired_power_when_offline(self: _PasdPortSimulator, power_on: bool) -> None:
+        """
+        Set the desired power mode of the port when the control system is offline.
+
+        :param power_on: whether power is on
+        """
+        self._desired_on_when_offline = power_on
 
     @property
     def power_sensed(self: _PasdPortSimulator) -> bool:
@@ -394,12 +412,13 @@ class PasdHardwareSimulator:
     which can be switched on and off, locally forced, etc.
     """
 
-    # TODO: Change to enum int values when Modbus server is used
-    DEFAULT_LED_PATTERN: Final = "OFF"  # LEDStatusMap.OFF
-    DEFAULT_STATUS: Final = "UNINITIALISED"  # FndhStatusMap.UNINITIALISED
-    DEFAULT_UPTIME: Final = 0
-    DEFAULT_FLAGS: Final = "NONE"  # FNDHAlarmFlags.NONE
+    DEFAULT_LED_PATTERN: int = LEDServiceMap.OFF << 8 | LEDStatusMap.OFF
+    DEFAULT_STATUS: FndhStatusMap | SmartBoxStatusMap = FndhStatusMap.UNINITIALISED
+    DEFAULT_UPTIME: Final = [0]
+    DEFAULT_FLAGS: int = 0x0
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
+
+    ALARM_MAPPING: dict[str, FNDHAlarmFlags | SmartboxAlarmFlags] = {}
 
     def __init__(
         self: PasdHardwareSimulator,
@@ -413,10 +432,10 @@ class PasdHardwareSimulator:
         self._ports = ports
         self._boot_on_time: datetime | None = datetime.now()
         self._sensors_status: dict = {}
-        self._warning_flags = self.DEFAULT_FLAGS
-        self._alarm_flags = self.DEFAULT_FLAGS
-        self._status = self.DEFAULT_STATUS
-        self._led_pattern = self.DEFAULT_LED_PATTERN
+        self._warning_flags: int = self.DEFAULT_FLAGS
+        self._alarm_flags: int = self.DEFAULT_FLAGS
+        self._status: int = self.DEFAULT_STATUS
+        self._led_pattern: int = self.DEFAULT_LED_PATTERN
 
     def _load_thresholds(
         self: PasdHardwareSimulator, file_path: str, device: str
@@ -506,11 +525,7 @@ class PasdHardwareSimulator:
         :param sensor_name: to use as the dict key and flag description.
         """
         self._sensors_status[sensor_name] = "ALARM"
-        # TODO: Change this to a bits representation for Modbus server
-        if self._alarm_flags == self.DEFAULT_FLAGS:
-            self._alarm_flags = sensor_name
-        else:
-            self._alarm_flags += f", {sensor_name}"
+        self._alarm_flags ^= self.ALARM_MAPPING[sensor_name].value
 
     def _set_sensor_warning(self: PasdHardwareSimulator, sensor_name: str) -> None:
         """
@@ -519,11 +534,7 @@ class PasdHardwareSimulator:
         :param sensor_name: to use as the dict key and flag description.
         """
         self._sensors_status[sensor_name] = "WARNING"
-        # TODO: Change this to a bits representation for Modbus server
-        if self._warning_flags == self.DEFAULT_FLAGS:
-            self._warning_flags = sensor_name
-        else:
-            self._warning_flags += f", {sensor_name}"
+        self._warning_flags ^= self.ALARM_MAPPING[sensor_name].value
 
     def _update_system_status(
         self: PasdHardwareSimulator, request_ok: bool = False
@@ -535,19 +546,19 @@ class PasdHardwareSimulator:
         """
         if (
             request_ok is False
-            and self._status in {"ALARM", "RECOVERY"}
+            and self._status in {FndhStatusMap.ALARM, FndhStatusMap.RECOVERY}
             and "ALARM" not in self._sensors_status.values()
         ):
-            self._status = "RECOVERY"
+            self._status = FndhStatusMap.RECOVERY
         elif request_ok or (
             request_ok is False and self._status is not self.DEFAULT_STATUS
         ):
             if "ALARM" in self._sensors_status.values():
-                self._status = "ALARM"
+                self._status = FndhStatusMap.ALARM
             elif "WARNING" in self._sensors_status.values():
-                self._status = "WARNING"
+                self._status = FndhStatusMap.WARNING
             else:
-                self._status = "OK"
+                self._status = FndhStatusMap.OK
 
     def _update_ports_state(self: PasdHardwareSimulator) -> None:
         """
@@ -555,7 +566,10 @@ class PasdHardwareSimulator:
 
         Enable or disable all the ports based on the system status.
         """
-        if self._status in {"OK", "WARNING"} and not self._ports[0].enabled:
+        if (
+            self._status in {FndhStatusMap.OK, FndhStatusMap.WARNING}
+            and not self._ports[0].enabled
+        ):
             for port in self._ports:
                 port.enabled = True
         elif self._ports[0].enabled:
@@ -581,7 +595,7 @@ class PasdHardwareSimulator:
             port.connected = is_connected
 
     @property
-    def warning_flags(self: PasdHardwareSimulator) -> str | None:
+    def warning_flags(self: PasdHardwareSimulator) -> int:
         """
         Return the sensor warning flags.
 
@@ -601,7 +615,7 @@ class PasdHardwareSimulator:
         return None
 
     @property
-    def alarm_flags(self: PasdHardwareSimulator) -> str | None:
+    def alarm_flags(self: PasdHardwareSimulator) -> int:
         """
         Return the sensor alarm flags.
 
@@ -637,7 +651,7 @@ class PasdHardwareSimulator:
 
         :param forcing: the new forcing status of the port. True means
             the port has been forced on. False means it has been forced
-            off. None means it has not be forced.
+            off. None means it has not been forced.
 
         :return: whether successful, or None if there was nothing to do.
         """
@@ -663,6 +677,20 @@ class PasdHardwareSimulator:
             None: "NONE",
         }
         return [forcing_map[port.forcing] for port in self._ports]
+
+    @port_forcings.setter
+    def port_forcings(self: PasdHardwareSimulator, forcing: tuple[str, int]) -> None:
+        """
+        Set the forcing status of a port.
+
+        :param forcing: tuple of (forcing, port)
+        """
+        forcing_map = {
+            "ON": True,
+            "OFF": False,
+            "NONE": None,
+        }
+        self._ports[forcing[1]].simulate_forcing(forcing_map[forcing[0]])
 
     def turn_port_on(
         self: PasdHardwareSimulator,
@@ -710,6 +738,19 @@ class PasdHardwareSimulator:
         """
         return [port.desired_power_when_online for port in self._ports]
 
+    @ports_desired_power_when_online.setter
+    def ports_desired_power_when_online(
+        self: PasdHardwareSimulator,
+        desire: tuple[bool, int],
+    ) -> None:
+        """
+        Set the desired power of a port when the device is online.
+
+        :param desire: tuple of (desire power when online, port)
+        """
+        self._ports[desire[1]].desired_power_when_online = desire[0]
+        self._ports[desire[1]]._update_port_power()
+
     @property
     def ports_desired_power_when_offline(
         self: PasdHardwareSimulator,
@@ -725,6 +766,19 @@ class PasdHardwareSimulator:
         """
         return [port.desired_power_when_offline for port in self._ports]
 
+    @ports_desired_power_when_offline.setter
+    def ports_desired_power_when_offline(
+        self: PasdHardwareSimulator,
+        desire: tuple[bool, int],
+    ) -> None:
+        """
+        Set the desired power of a port when the device is offline.
+
+        :param desire: tuple of (desire power when offline, port)
+        """
+        self._ports[desire[1]].desired_power_when_offline = desire[0]
+        self._ports[desire[1]]._update_port_power()
+
     @property
     def ports_power_sensed(self: PasdHardwareSimulator) -> list[bool]:
         """
@@ -735,7 +789,7 @@ class PasdHardwareSimulator:
         return [port.power_sensed for port in self._ports]
 
     @property
-    def uptime(self: PasdHardwareSimulator) -> int:
+    def uptime(self: PasdHardwareSimulator) -> list[int]:
         """
         Return the uptime, as an integer, in microseconds.
 
@@ -743,12 +797,13 @@ class PasdHardwareSimulator:
         """
         if self._boot_on_time is None:
             return self.DEFAULT_UPTIME
-        return int(
-            (datetime.now().timestamp() - self._boot_on_time.timestamp()) * 100000
+        uptime_val = int(
+            (datetime.now().timestamp() - self._boot_on_time.timestamp()) * 100
         )
+        return PasdConversionUtility.n_to_bytes(uptime_val)
 
     @property
-    def status(self: PasdHardwareSimulator) -> str:
+    def status(self: PasdHardwareSimulator) -> int:
         """
         Return the status of the FNDH/smartbox.
 
@@ -761,6 +816,15 @@ class PasdHardwareSimulator:
         """
         return self._status
 
+    @status.setter
+    def status(self: PasdHardwareSimulator, _: int) -> None:
+        """
+        Set the status of the FNDH/smartbox.
+
+        This indicates the smartbox should be initialised, no matter the input value.
+        """
+        self.initialize()
+
     def initialize(self: PasdHardwareSimulator) -> bool | None:
         """
         Initialize a FNDH/smartbox.
@@ -769,10 +833,10 @@ class PasdHardwareSimulator:
 
         :return: whether successful, or None if there was nothing to do.
         """
-        if self._status != "OK":
+        if self._status != FndhStatusMap.OK:
             self._update_system_status(request_ok=True)
             self._update_ports_state()
-            if self._status == "OK":
+            if self._status == FndhStatusMap.OK:
                 return True
             logger.debug(
                 f"PaSD Bus simulator status was not set to OK, status is {self._status}"
@@ -781,7 +845,7 @@ class PasdHardwareSimulator:
         return None
 
     @property
-    def led_pattern(self: PasdHardwareSimulator) -> str:
+    def led_pattern(self: PasdHardwareSimulator) -> int:
         """
         Return the LED pattern name.
 
@@ -789,16 +853,23 @@ class PasdHardwareSimulator:
         """
         return self._led_pattern
 
+    @led_pattern.setter
+    def led_pattern(self: PasdHardwareSimulator, led_pattern: int) -> None:
+        """
+        Set the LED pattern.
+
+        :param led_pattern: the LED pattern to be set.
+        """
+        self.set_led_pattern(led_pattern)
+
     def set_led_pattern(
         self: PasdHardwareSimulator,
-        led_pattern: str,
+        led_pattern: int,
     ) -> bool | None:
         """
         Set the LED pattern.
 
         :param led_pattern: the LED pattern to be set.
-            Options are "OFF" and "SERVICE".
-
         :return: whether successful, or None if there was nothing to do.
         """
         if self._led_pattern == led_pattern:
@@ -849,10 +920,7 @@ class _Sensor:
         :param obj: The instance of the class where the descriptor is being used.
         :param value: The value to be set for the sensor attribute.
         """
-        if isinstance(value, list):
-            obj.__dict__[self.name] = [int(val) for val in value]
-        else:
-            obj.__dict__[self.name] = int(value)
+        obj.__dict__[self.name] = value
         obj._update_sensor_status(self.name.removesuffix("_thresholds"))
         obj._update_system_status()
         obj._update_ports_state()
@@ -872,13 +940,11 @@ class FndhSimulator(PasdHardwareSimulator):
 
     MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
-    # TODO: Change to list of integer values when Modbus server is used
-    CPU_ID: Final = "22"  # [1,2]
-    CHIP_ID: Final = "12345678"  # [1,2,3,4,5,6,7,8]
-    SYS_ADDRESS: Final = 101
+    CPU_ID: Final = [1, 2]
+    CHIP_ID: Final = [1, 2, 3, 4, 5, 6, 7, 8]
+    SYS_ADDRESS: Final = FNDH_MODBUS_ADDRESS
 
-    # TODO: Change to integer when Modbus server is used
-    DEFAULT_FIRMWARE_VERSION: Final = "257"
+    DEFAULT_FIRMWARE_VERSION: Final = 257
     DEFAULT_PSU48V_VOLTAGES: Final = [4790, 4810]
     DEFAULT_PSU48V_CURRENT: Final = 1510
     DEFAULT_PSU48V_TEMPERATURES: Final = [4120, 4290]
@@ -889,6 +955,21 @@ class FndhSimulator(PasdHardwareSimulator):
     DEFAULT_POWER_MODULE_TEMPERATURE: Final = 4580
     DEFAULT_OUTSIDE_TEMPERATURE: Final = 3250
     DEFAULT_INTERNAL_AMBIENT_TEMPERATURE: Final = 3600
+
+    ALARM_MAPPING = {
+        "psu48v_voltage_1": FNDHAlarmFlags.SYS_48V1_V,
+        "psu48v_voltage_2": FNDHAlarmFlags.SYS_48V2_V,
+        "psu48v_current": FNDHAlarmFlags.SYS_48V_I,
+        "psu48v_temperature_1": FNDHAlarmFlags.SYS_48V1_TEMP,
+        "psu48v_temperature_2": FNDHAlarmFlags.SYS_48V2_TEMP,
+        "panel_temperature": FNDHAlarmFlags.SYS_PANELTEMP,
+        "fncb_temperature": FNDHAlarmFlags.SYS_FNCBTEMP,
+        "fncb_humidity": FNDHAlarmFlags.SYS_HUMIDITY,
+        "comms_gateway_temperature": FNDHAlarmFlags.SYS_SENSE01_COMMS_GATEWAY,
+        "power_module_temperature": FNDHAlarmFlags.SYS_SENSE02_POWER_MODULE_TEMP,
+        "outside_temperature": FNDHAlarmFlags.SYS_SENSE03_OUTSIDE_TEMP,
+        "internal_ambient_temperature": FNDHAlarmFlags.SYS_SENSE04_INTERNAL_TEMP,
+    }
 
     # Instantiate sensor data descriptors
     psu48v_voltages = _Sensor()
@@ -984,7 +1065,7 @@ class FndhSimulator(PasdHardwareSimulator):
         return self.PCB_REVISION
 
     @property
-    def cpu_id(self: FndhSimulator) -> str:
+    def cpu_id(self: FndhSimulator) -> list[int]:
         """
         Return the ID of the CPU.
 
@@ -993,7 +1074,7 @@ class FndhSimulator(PasdHardwareSimulator):
         return self.CPU_ID
 
     @property
-    def chip_id(self: FndhSimulator) -> str:
+    def chip_id(self: FndhSimulator) -> list[int]:
         """
         Return the ID of the chip.
 
@@ -1002,13 +1083,29 @@ class FndhSimulator(PasdHardwareSimulator):
         return self.CHIP_ID
 
     @property
-    def firmware_version(self: FndhSimulator) -> str:
+    def firmware_version(self: FndhSimulator) -> int:
         """
         Return the firmware version.
 
         :return: the firmware version.
         """
         return self.DEFAULT_FIRMWARE_VERSION
+
+    @property
+    def ports_power_control(
+        self: FndhSimulator,
+    ) -> list[bool]:
+        """
+        Return the power control line state of each FNDH port.
+
+        :return: the power control line state of each FNDH port.
+        """
+        # TODO: Implement real behaviour -  PDOC port can be turned on,
+        # or is forced off due to alarm condition/technician override.
+        # For this to make sense, a per port fault condition should be implemented.
+        return [
+            port.enabled if port.forcing is not False else False for port in self._ports
+        ]
 
 
 class SmartboxSimulator(PasdHardwareSimulator):
@@ -1020,13 +1117,12 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
     MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
-    # TODO: Change to list of integer values when Modbus server is used
-    CPU_ID: Final = "24"
-    CHIP_ID: Final = "87654321"
+    CPU_ID: Final = [2, 4]
+    CHIP_ID: Final = [8, 7, 6, 5, 4, 3, 2, 1]
 
+    DEFAULT_STATUS: SmartBoxStatusMap = SmartBoxStatusMap.UNINITIALISED
     DEFAULT_SYS_ADDRESS: Final = 1
-    # TODO: Change to integer when Modbus server is used
-    DEFAULT_FIRMWARE_VERSION: Final = "258"
+    DEFAULT_FIRMWARE_VERSION: Final = 258
     # Address
     DEFAULT_INPUT_VOLTAGE: Final = 4800
     DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE: Final = 480
@@ -1037,6 +1133,18 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_FEM_HEATSINK_TEMPERATURES: Final = [4280, 4250]
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
     DEFAULT_PORT_CURRENT_THRESHOLD: Final = 496
+
+    ALARM_MAPPING = {
+        "input_voltage": SmartboxAlarmFlags.SYS_48V_V,
+        "power_supply_output_voltage": SmartboxAlarmFlags.SYS_PSU_V,
+        "power_supply_temperature": SmartboxAlarmFlags.SYS_PSU_TEMP,
+        "pcb_temperature": SmartboxAlarmFlags.SYS_PCB_TEMP,
+        "fem_ambient_temperature": SmartboxAlarmFlags.SYS_AMB_TEMP,
+        "fem_case_temperature_1": SmartboxAlarmFlags.SYS_SENSE01_FEM_CASE1_TEMP,
+        "fem_case_temperature_2": SmartboxAlarmFlags.SYS_SENSE02_FEM_CASE2_TEMP,
+        "fem_heatsink_temperature_1": SmartboxAlarmFlags.SYS_SENSE03_FEM_HEATSINK_TEMP1,
+        "fem_heatsink_temperature_2": SmartboxAlarmFlags.SYS_SENSE04_FEM_HEATSINK_TEMP2,
+    }
 
     # Instantiate sensor data descriptors
     input_voltage = _Sensor()
@@ -1072,6 +1180,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
             for port_index in range(self.NUMBER_OF_PORTS)
         ]
         super().__init__(ports)
+        self._status = SmartBoxStatusMap.UNINITIALISED
         self._sys_address = address
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
@@ -1176,7 +1285,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         return self.PCB_REVISION
 
     @property
-    def cpu_id(self: SmartboxSimulator) -> str:
+    def cpu_id(self: SmartboxSimulator) -> list[int]:
         """
         Return the CPU ID.
 
@@ -1185,7 +1294,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         return self.CPU_ID
 
     @property
-    def chip_id(self: SmartboxSimulator) -> str:
+    def chip_id(self: SmartboxSimulator) -> list[int]:
         """
         Return the chip ID.
 
@@ -1194,7 +1303,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         return self.CHIP_ID
 
     @property
-    def firmware_version(self: SmartboxSimulator) -> str:
+    def firmware_version(self: SmartboxSimulator) -> int:
         """
         Return the firmware version.
 
@@ -1210,6 +1319,19 @@ class SmartboxSimulator(PasdHardwareSimulator):
         :return: whether each port has had its breaker tripped
         """
         return [port.breaker_tripped for port in self._ports]
+
+    @port_breakers_tripped.setter
+    def port_breakers_tripped(self: SmartboxSimulator, trip: tuple[bool, int]) -> None:
+        """
+        Set a port trip status.
+
+        This can only be used to reset a port breaker, it cannot simulate a port
+        breaker trip.
+
+        :param trip: tuple of (breaker status (True to reset breaker), port)
+        """
+        if trip[0]:
+            self.reset_port_breaker(trip[1] + 1)
 
     def simulate_port_breaker_trip(
         self: SmartboxSimulator,
@@ -1275,7 +1397,7 @@ class PasdBusSimulator:
             f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}."
         )
 
-        self._smartbox_simulators: Dict[int, SmartboxSimulator] = {}
+        self._smartbox_simulators: dict[int, SmartboxSimulator] = {}
         self._smartboxes_ports_connected: list[list[bool]] = []
         self._smartbox_attached_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
 
@@ -1306,7 +1428,7 @@ class PasdBusSimulator:
         """
         return self._fndh_simulator
 
-    def get_smartboxes(self: PasdBusSimulator) -> Dict[int, SmartboxSimulator]:
+    def get_smartboxes(self: PasdBusSimulator) -> dict[int, SmartboxSimulator]:
         """
         Return a dictionary of smartboxes.
 

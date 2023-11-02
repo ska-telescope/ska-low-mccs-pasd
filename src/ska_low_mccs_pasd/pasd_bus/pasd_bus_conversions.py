@@ -6,15 +6,14 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module provides scaling and other conversion functions for the PaSD."""
-
 import logging
-from enum import Enum
+from enum import IntEnum, IntFlag
 from typing import Any
 
 logger = logging.getLogger()
 
 
-class FndhStatusMap(Enum):
+class FndhStatusMap(IntEnum):
     """Enum type for FNDH health status strings."""
 
     UNDEFINED = -1  # We should never receive an undefined status
@@ -27,7 +26,7 @@ class FndhStatusMap(Enum):
     # then go through full powerup sequence
 
 
-class SmartBoxStatusMap(Enum):
+class SmartBoxStatusMap(IntEnum):
     """Enum type for SmartBox health status strings."""
 
     UNDEFINED = -1  # We should never receive an undefined status
@@ -39,15 +38,19 @@ class SmartBoxStatusMap(Enum):
     POWERDOWN = 5  # Local tech wants to turn off 48V to all ports in the station
 
 
-class LEDServiceMap(Enum):
+class LEDServiceMap(IntEnum):
     """Enum type for the service LED (MSB in SYS_LIGHTS register)."""
 
     UNDEFINED = -1
     OFF = 0
     ON = 1
+    VFAST = 2  # 5 Hz strobe
+    FAST = 3  # 2.5 Hz strobe
+    SLOW = 4  # 1.25 Hz strobe
+    VSLOW = 5  # 0.625 Hz strobe
 
 
-class LEDStatusMap(Enum):
+class LEDStatusMap(IntEnum):
     """Enum type for the status LED (LSB in SYS_LIGHTS_REGISTER)."""
 
     UNDEFINED = -1  # We should never receive an undefined status
@@ -72,37 +75,37 @@ class LEDStatusMap(Enum):
     GREENRED = 50  # Alternating green and red at 1.25 Hz - used for 'POWERDOWN'
 
 
-class FNDHAlarmFlags(Enum):
+class FNDHAlarmFlags(IntFlag):
     """Enum type for the FNDH alarm/warning flags."""
 
-    NONE = -1
-    SYS_48V1_V = 0  # Bit 0 is set
-    SYS_48V2_V = 1  # Bit 1 is set
-    SYS_48V_I = 2
-    SYS_48V1_TEMP = 3
-    SYS_48V2_TEMP = 4
-    SYS_PANELTEMP = 5
-    SYS_FNCBTEMP = 6
-    SYS_HUMIDITY = 7
-    SYS_SENSE01_COMMS_GATEWAY = 8
-    SYS_SENSE02_POWER_MODULE_TEMP = 9
-    SYS_SENSE03_OUTSIDE_TEMP = 10
-    SYS_SENSE04_INTERNAL_TEMP = 11  # Bit 11 is set
+    NONE = 0x0
+    SYS_48V1_V = 0x1
+    SYS_48V2_V = 0x2
+    SYS_48V_I = 0x4
+    SYS_48V1_TEMP = 0x8
+    SYS_48V2_TEMP = 0x10
+    SYS_PANELTEMP = 0x20
+    SYS_FNCBTEMP = 0x40
+    SYS_HUMIDITY = 0x80
+    SYS_SENSE01_COMMS_GATEWAY = 0x100
+    SYS_SENSE02_POWER_MODULE_TEMP = 0x200
+    SYS_SENSE03_OUTSIDE_TEMP = 0x400
+    SYS_SENSE04_INTERNAL_TEMP = 0x800
 
 
-class SmartboxAlarmFlags(Enum):
+class SmartboxAlarmFlags(IntFlag):
     """Enum type for the Smartbox alarm/warning flags."""
 
-    NONE = -1
-    SYS_48V_V = 0
-    SYS_PSU_V = 1
-    SYS_PSU_TEMP = 2
-    SYS_PCB_TEMP = 3
-    SYS_AMB_TEMP = 4
-    SYS_SENSE01_FEM_CASE1_TEMP = 5
-    SYS_SENSE02_FEM_CASE2_TEMP = 6
-    SYS_SENSE03_FEM_HEATSINK_TEMP1 = 7
-    SYS_SENSE04_FEM_HEATSINK_TEMP2 = 8
+    NONE = 0x0
+    SYS_48V_V = 0x1
+    SYS_PSU_V = 0x2
+    SYS_PSU_TEMP = 0x4
+    SYS_PCB_TEMP = 0x8
+    SYS_AMB_TEMP = 0x10
+    SYS_SENSE01_FEM_CASE1_TEMP = 0x20
+    SYS_SENSE02_FEM_CASE2_TEMP = 0x40
+    SYS_SENSE03_FEM_HEATSINK_TEMP1 = 0x80
+    SYS_SENSE04_FEM_HEATSINK_TEMP2 = 0x100
 
 
 class PasdConversionUtility:
@@ -177,8 +180,8 @@ class PasdConversionUtility:
 
     @classmethod
     def scale_volts(
-        cls, value_list: list[int | float], inverse: bool = False
-    ) -> list[int | float]:
+        cls, value_list: int | list[int] | list[float] | None, inverse: bool = False
+    ) -> list[int] | list[float]:
         """
         Convert raw register value(s) to Volts.
 
@@ -190,16 +193,22 @@ class PasdConversionUtility:
         :param inverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
 
+        :raises ValueError: if value_list is None
+
         :return: output_values in Volts
         """
+        if not value_list:
+            raise ValueError()
+        if isinstance(value_list, int):
+            value_list = [value_list]
         if inverse:
-            return [int(value * 100) & 0xFFFF for value in value_list]
+            return [round(value * 100) & 0xFFFF for value in value_list]
         return [value / 100.0 for value in value_list]
 
     @classmethod
     def scale_signed_16bit(
-        cls, value_list: list[int | float], inverse: bool = False
-    ) -> list[int | float]:
+        cls, value_list: int | list[int] | list[float] | None, inverse: bool = False
+    ) -> list[int] | list[float]:
         """
         Convert raw register value(s) to deg C.
 
@@ -211,6 +220,8 @@ class PasdConversionUtility:
 
         :param inverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
+
+        :raises ValueError: if value_list is None
 
         :return: value in deg C (if inverse=False), or raw value as an
             unsigned 16 bit integer
@@ -224,9 +235,13 @@ class PasdConversionUtility:
 
         def deg_to_raw(value: float) -> int:
             if value < 0:
-                return (int(value * 100) + 65536) & 0xFFFF
-            return int(value * 100) & 0xFFFF
+                return (round(value * 100) + 65536) & 0xFFFF
+            return round(value * 100) & 0xFFFF
 
+        if not value_list:
+            raise ValueError()
+        if isinstance(value_list, int):
+            value_list = [value_list]
         if inverse:
             return [deg_to_raw(value) for value in value_list]
 
@@ -234,8 +249,8 @@ class PasdConversionUtility:
 
     @classmethod
     def scale_48vcurrents(
-        cls, value_list: list[int | float], inverse: bool = False
-    ) -> list[int | float]:
+        cls, value_list: int | list[int] | list[float] | None, inverse: bool = False
+    ) -> list[int] | list[float]:
         """
         Convert raw register value(s) to Amps.
 
@@ -247,50 +262,77 @@ class PasdConversionUtility:
         :param inverse: Boolean, True to perform physical->raw conversion
             instead of raw->physical
 
+        :raises ValueError: if value_list is None
+
         :return: list of output_values
         """
+        if not value_list:
+            raise ValueError()
+        if isinstance(value_list, int):
+            value_list = [value_list]
         if inverse:
-            return [int(value * 100) & 0xFFFF for value in value_list]
+            return [round(value * 100) & 0xFFFF for value in value_list]
         return [value / 100.0 for value in value_list]
 
     @classmethod
-    def convert_cpu_id(cls, value_list: list[int]) -> list[str]:
+    def convert_cpu_id(cls, value_list: list, inverse: bool = False) -> list:
         """
         Convert a number of raw register values to a CPU ID.
 
         :param value_list: list of raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string ID
         """
         try:
+            if inverse:
+                return cls.n_to_bytes(int(value_list[0], base=16))
             return [hex(cls.bytes_to_n(value_list))]
         except ValueError:
             logger.error(f"Invalid CPU ID value received: {value_list}")
             return []
 
     @classmethod
-    def convert_uptime(cls, value_list: list[int]) -> list[int]:
+    def convert_uptime(cls, value_list: list[int], inverse: bool = False) -> list[int]:
         """
         Convert the raw register values to an uptime in seconds.
 
         :param value_list: list of raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: integer number of seconds
         """
         try:
+            if inverse:
+                return cls.n_to_bytes(value_list[0])
             return [cls.bytes_to_n(value_list)]
         except ValueError:
             logger.error(f"Invalid uptime value received: {value_list}")
             return []
 
     @classmethod
-    def convert_chip_id(cls, value_list: list[int]) -> list[str]:
+    def convert_chip_id(cls, value_list: list, inverse: bool = False) -> list:
         """
         Convert the raw register values to a string chip id.
 
         :param value_list: list of raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string chip identification
         """
         bytelist = []
         try:
+            if inverse:
+                reglist = []
+                for i in range(0, len(value_list[0]), 4):
+                    reglist.append(int(value_list[0][i : i + 4]))
+                return reglist
             for raw_value in value_list:
                 bytelist += cls.n_to_bytes(raw_value)
             return ["".join([f"{v:02X}" for v in bytelist])]
@@ -299,42 +341,97 @@ class PasdConversionUtility:
             return []
 
     @classmethod
-    def convert_fndh_status(cls, value_list: list[int]) -> list[str]:
+    def convert_firmware_version(cls, value_list: list, inverse: bool = False) -> list:
+        """
+        Convert the raw register values to a string firmware version.
+
+        :param value_list: list of raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
+        :return: string firmware version
+        """
+        if inverse:
+            return [int(value_list[0])]
+        return [str(value_list[0])]
+
+    @classmethod
+    def convert_fndh_status(
+        cls,
+        value_list: list,
+        inverse: bool = False,
+    ) -> list:
         """
         Convert the raw register value to a string status.
 
         :param value_list: raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string status representation
         """
         try:
+            if inverse:
+                return [
+                    FndhStatusMap[v].value if isinstance(v, str) else v.value
+                    for v in value_list
+                ]
             return [FndhStatusMap(value_list[0]).name]
         except ValueError:
             logger.error(f"Invalid FNDH status value received: {value_list[0]}")
             return [FndhStatusMap.UNDEFINED.name]
 
     @classmethod
-    def convert_smartbox_status(cls, value_list: list[int]) -> list[str]:
+    def convert_smartbox_status(
+        cls,
+        value_list: list,
+        inverse: bool = False,
+    ) -> list:
         """
         Convert the raw register value to a string status.
 
         :param value_list: raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string status representation
         """
         try:
+            if inverse:
+                return [
+                    SmartBoxStatusMap[v].value if isinstance(v, str) else v.value
+                    for v in value_list
+                ]
             return [SmartBoxStatusMap(value_list[0]).name]
         except ValueError:
             logger.error(f"Invalid Smartbox status value received: {value_list[0]}")
             return [SmartBoxStatusMap.UNDEFINED.name]
 
     @classmethod
-    def convert_led_status(cls, value_list: list[int]) -> str:
+    def convert_led_status(
+        cls,
+        value_list: list,
+        inverse: bool = False,
+    ) -> str | list[int]:
         """
         Convert the raw register value to LED status strings.
 
         :param value_list: raw register contents
             (MSB represents service LED and LSB represents status LED)
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string describing LED patterns
         """
+        if inverse:
+            if len(value_list) == 1:
+                return [value_list[0].value]
+            reg_val = cls.bytes_to_n([v.value for v in value_list])
+            return [reg_val]
         raw_value = value_list[0]
         try:
             byte_list = cls.n_to_bytes(raw_value)
@@ -360,41 +457,79 @@ class PasdConversionUtility:
         return f"service: {service}, status: {status}"
 
     @classmethod
-    def convert_fndh_alarm_status(cls, value_list: list[int]) -> str:
+    def convert_fndh_alarm_status(
+        cls,
+        value_list: list,
+        inverse: bool = False,
+    ) -> str | list[int]:
         """
         Convert the alarm and warning flag registers to strings.
 
         :param value_list: raw register contents
             (each of the 16 bits represents a potential alarm cause)
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string describing the parameters that have triggered
             the alarm or warning.
         """
+        if inverse:
+            if isinstance(value_list, int):
+                return [value_list]
+            result = 0
+            for status in value_list:
+                result ^= (
+                    status.value
+                    if isinstance(status, FNDHAlarmFlags)
+                    else FNDHAlarmFlags[status].value
+                )
+            return [result]
         raw_value = value_list[0]
         status = FNDHAlarmFlags.NONE.name
-        for bit in range(0, 12):
-            if (raw_value >> bit) & 1:
+        for flag in FNDHAlarmFlags:
+            if raw_value & flag.value:
                 if status == FNDHAlarmFlags.NONE.name:
-                    status = FNDHAlarmFlags(bit).name
+                    status = flag.name
                 else:
-                    status += f", {FNDHAlarmFlags(bit).name}"
+                    status += f", {flag.name}"
         return status
 
     @classmethod
-    def convert_smartbox_alarm_status(cls, value_list: list[int]) -> str:
+    def convert_smartbox_alarm_status(
+        cls,
+        value_list: list,
+        inverse: bool = False,
+    ) -> str | list[int]:
         """
         Convert the alarm and warning flag registers to strings.
 
         :param value_list: raw register contents
             (each of the 16 bits represents a potential alarm cause)
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
         :return: string describing the parameters that have triggered
             the alarm or warning.
         """
+        if inverse:
+            result = 0
+            if isinstance(value_list, int):
+                return [value_list]
+            for status in value_list:
+                result ^= (
+                    status.value
+                    if isinstance(status, SmartboxAlarmFlags)
+                    else SmartboxAlarmFlags[status].value
+                )
+            return [result]
         raw_value = value_list[0]
         status = SmartboxAlarmFlags.NONE.name
-        for bit in range(0, 9):
-            if (raw_value >> bit) & 1:
+        for flag in SmartboxAlarmFlags:
+            if raw_value & flag.value:
                 if status == SmartboxAlarmFlags.NONE.name:
-                    status = SmartboxAlarmFlags(bit).name
+                    status = flag.name
                 else:
-                    status += f", {SmartboxAlarmFlags(bit).name}"
+                    status += f", {flag.name}"
         return status

@@ -8,10 +8,19 @@
 """This module contains the tests of the PaSD bus component manager."""
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
+    FNDHAlarmFlags,
+    FndhStatusMap,
+    LEDServiceMap,
+    LEDStatusMap,
+    PasdConversionUtility,
+    SmartboxAlarmFlags,
+    SmartBoxStatusMap,
+)
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
     FndhSimulator,
     SmartboxSimulator,
@@ -39,7 +48,7 @@ class TestPasdBusSimulator:
     def test_smartboxes_depend_on_fndh_ports(
         self: TestPasdBusSimulator,
         fndh_simulator: FndhSimulator,
-        smartbox_simulators: Dict[int, SmartboxSimulator],
+        smartbox_simulators: dict[int, SmartboxSimulator],
         fndh_config: list[bool],
         smartbox_attached_ports: list[int],
     ) -> None:
@@ -55,7 +64,7 @@ class TestPasdBusSimulator:
         :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
             is connected to.
         """
-        assert fndh_simulator.status == "OK"
+        assert fndh_simulator.status == FndhStatusMap.OK
         assert fndh_simulator.ports_connected == fndh_config
         assert fndh_simulator.ports_desired_power_when_online == fndh_config
         assert fndh_simulator.ports_power_sensed == fndh_config
@@ -64,7 +73,7 @@ class TestPasdBusSimulator:
             port_nr = smartbox_attached_ports[smartbox_id - 1]
             assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
             assert smartbox_simulator.initialize()
-            assert smartbox_simulator.status == "OK"
+            assert smartbox_simulator.status == FndhStatusMap.OK
             assert fndh_simulator.turn_port_off(port_nr)
             assert fndh_simulator.ports_power_sensed[port_nr - 1] is False
             assert smartbox_simulators.get(smartbox_id) is None
@@ -76,7 +85,7 @@ class TestPasdBusSimulator:
     def test_uptimes(
         self: TestPasdBusSimulator,
         fndh_simulator: FndhSimulator,
-        smartbox_simulators: Dict[int, SmartboxSimulator],
+        smartbox_simulators: dict[int, SmartboxSimulator],
     ) -> None:
         """
         Test the uptimes of a PaSD bus simulator.
@@ -87,15 +96,18 @@ class TestPasdBusSimulator:
         :param fndh_simulator: the FNDH simulator under test
         :param smartbox_simulators: list of smartbox simulators under test
         """
-        fndh_uptime = fndh_simulator.uptime
+        fndh_uptime = PasdConversionUtility.convert_uptime(fndh_simulator.uptime)[0]
         assert fndh_uptime > 0
         previous_smartbox_uptime = 0
         for smartbox_simulator in list(smartbox_simulators.values()):
-            assert smartbox_simulator.uptime > 0
-            assert fndh_uptime > smartbox_simulator.uptime
+            smartbox_uptime = PasdConversionUtility.convert_uptime(
+                smartbox_simulator.uptime
+            )[0]
+            assert smartbox_uptime > 0
+            assert fndh_uptime > smartbox_uptime
             if previous_smartbox_uptime != 0:
-                assert smartbox_simulator.uptime < previous_smartbox_uptime
-            previous_smartbox_uptime = smartbox_simulator.uptime
+                assert smartbox_uptime < previous_smartbox_uptime
+            previous_smartbox_uptime = smartbox_uptime
 
 
 class TestFndhSimulator:
@@ -142,14 +154,14 @@ class TestFndhSimulator:
             that doesn't have a smartbox connected
         """
         assert fndh_simulator.initialize()
-        assert fndh_simulator.status == "OK"
+        assert fndh_simulator.status == FndhStatusMap.OK
 
         expected_forcings: list[str] = ["NONE"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
 
         fndh_simulator.fncb_temperature = 10000
-        assert fndh_simulator.status == "ALARM"
+        assert fndh_simulator.status == FndhStatusMap.ALARM
         assert fndh_simulator.turn_port_on(unconnected_fndh_port)
         assert not fndh_simulator.ports_power_sensed[unconnected_fndh_port - 1]
         assert all(fndh_simulator.simulate_port_forcing(True))
@@ -198,14 +210,14 @@ class TestFndhSimulator:
             that has a smartbox connected
         """
         assert fndh_simulator.initialize()
-        assert fndh_simulator.status == "OK"
+        assert fndh_simulator.status == FndhStatusMap.OK
 
         expected_forcings: list[str] = ["NONE"] * FndhSimulator.NUMBER_OF_PORTS
         assert fndh_simulator.port_forcings == expected_forcings
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
 
         fndh_simulator.fncb_temperature = 10000
-        assert fndh_simulator.status == "ALARM"
+        assert fndh_simulator.status == FndhStatusMap.ALARM
         assert fndh_simulator.turn_port_on(connected_fndh_port)
         assert all(fndh_simulator.simulate_port_forcing(True))
         expected_forcings = ["ON"] * FndhSimulator.NUMBER_OF_PORTS
@@ -222,7 +234,7 @@ class TestFndhSimulator:
 
         fndh_simulator.fncb_temperature = fndh_simulator.DEFAULT_FNCB_TEMPERATURE
         assert fndh_simulator.initialize()
-        assert fndh_simulator.status == "OK"
+        assert fndh_simulator.status == FndhStatusMap.OK
         assert fndh_simulator.turn_port_on(connected_fndh_port)
         assert fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
 
@@ -252,7 +264,7 @@ class TestFndhSimulator:
             that has a smartbox connected
         """
         assert fndh_simulator.initialize()
-        assert fndh_simulator.status == "OK"
+        assert fndh_simulator.status == FndhStatusMap.OK
         assert fndh_simulator.ports_connected[connected_fndh_port - 1]
         assert not fndh_simulator.ports_power_sensed[connected_fndh_port - 1]
         assert fndh_simulator.turn_port_on(connected_fndh_port)
@@ -317,13 +329,13 @@ class TestFndhSimulator:
         fndh_simulator: FndhSimulator,
     ) -> None:
         """
-        Test setting the LED pattern.
+        Test setting the FNDH LED pattern.
 
         :param fndh_simulator: the FNDH simulator under test
         """
-        assert fndh_simulator.led_pattern == "OFF"
-        assert fndh_simulator.set_led_pattern("SERVICE")
-        assert fndh_simulator.led_pattern == "SERVICE"
+        assert fndh_simulator.led_pattern == LEDServiceMap.OFF << 8
+        assert fndh_simulator.set_led_pattern(LEDServiceMap.ON << 8)
+        assert fndh_simulator.led_pattern == LEDServiceMap.ON << 8
 
     @pytest.mark.parametrize(
         ("sensor_name", "simulated_value", "expected_status"),
@@ -395,24 +407,24 @@ class TestFndhSimulator:
         """
         assert fndh_simulator.status == FndhSimulator.DEFAULT_STATUS
         assert fndh_simulator.initialize()
-        assert fndh_simulator.status == "OK"
+        assert fndh_simulator.status == FndhStatusMap.OK
         setattr(fndh_simulator, sensor_name, simulated_value)
         assert getattr(fndh_simulator, sensor_name) == simulated_value
-        assert fndh_simulator.status == expected_status
+        assert fndh_simulator.status == FndhStatusMap[expected_status].value
         default_value = getattr(fndh_simulator, "DEFAULT_" + sensor_name.upper())
         setattr(fndh_simulator, sensor_name, default_value)
         if expected_status == "ALARM":
-            assert fndh_simulator.status == "RECOVERY"
+            assert fndh_simulator.status == FndhStatusMap.RECOVERY
             setattr(fndh_simulator, sensor_name, simulated_value)
-            assert fndh_simulator.status == expected_status
+            assert fndh_simulator.status == FndhStatusMap[expected_status].value
             assert fndh_simulator.initialize() is False
             setattr(fndh_simulator, sensor_name, default_value)
-            assert fndh_simulator.status == "RECOVERY"
+            assert fndh_simulator.status == FndhStatusMap.RECOVERY
             assert fndh_simulator.initialize()
-        assert fndh_simulator.status == "OK"
+        assert fndh_simulator.status == FndhStatusMap.OK
         if expected_status == "OK":
             setattr(fndh_simulator, sensor_name + "_thresholds", [0, 0, 0, 0])
-            assert fndh_simulator.status == "ALARM"
+            assert fndh_simulator.status == FndhStatusMap.ALARM
 
     def test_warning_and_alarm_flags(
         self: TestFndhSimulator,
@@ -423,30 +435,35 @@ class TestFndhSimulator:
 
         :param fndh_simulator: the FNDH simulator under test
         """
-        assert fndh_simulator.warning_flags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_simulator.warning_flags == FNDHAlarmFlags.NONE.value
         assert fndh_simulator.reset_warnings() is None
-        assert fndh_simulator.alarm_flags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_simulator.alarm_flags == FNDHAlarmFlags.NONE.value
         assert fndh_simulator.reset_alarms() is None
         # Setup warnings
         assert fndh_simulator.initialize()
-        assert fndh_simulator.status == "OK"
+        assert fndh_simulator.status == FndhStatusMap.OK
         fndh_simulator.fncb_temperature = 7500
-        assert fndh_simulator.status == "WARNING"
-        assert fndh_simulator.warning_flags == "fncb_temperature"
+        assert fndh_simulator.status == FndhStatusMap.WARNING
+        assert fndh_simulator.warning_flags == FNDHAlarmFlags.SYS_FNCBTEMP.value
         fndh_simulator.psu48v_voltages = [5100, 5100]
         assert (
             fndh_simulator.warning_flags
-            == "fncb_temperature, psu48v_voltage_1, psu48v_voltage_2"
+            == FNDHAlarmFlags.SYS_FNCBTEMP.value
+            ^ FNDHAlarmFlags.SYS_48V1_V.value
+            ^ FNDHAlarmFlags.SYS_48V2_V.value
         )
         # Setup alarms
         fndh_simulator.fncb_temperature = 9000
         fndh_simulator.psu48v_temperatures = [6000, -600]
-        assert fndh_simulator.alarm_flags == "fncb_temperature, psu48v_temperature_2"
+        assert (
+            fndh_simulator.alarm_flags
+            == FNDHAlarmFlags.SYS_FNCBTEMP.value ^ FNDHAlarmFlags.SYS_48V2_TEMP.value
+        )
         # Clear all flags
         assert fndh_simulator.reset_warnings()
-        assert fndh_simulator.warning_flags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_simulator.warning_flags == FNDHAlarmFlags.NONE.value
         assert fndh_simulator.reset_alarms()
-        assert fndh_simulator.alarm_flags == FndhSimulator.DEFAULT_FLAGS
+        assert fndh_simulator.alarm_flags == FNDHAlarmFlags.NONE.value
 
 
 class TestSmartboxSimulator:
@@ -494,11 +511,11 @@ class TestSmartboxSimulator:
             have an antenna connected to it
         """
         assert smartbox_simulator.initialize()
-        assert smartbox_simulator.status == "OK"
+        assert smartbox_simulator.status == SmartBoxStatusMap.OK
         assert smartbox_simulator.turn_port_on(unconnected_smartbox_port)
 
         smartbox_simulator.power_supply_temperature = 10000
-        assert smartbox_simulator.status == "ALARM"
+        assert smartbox_simulator.status == SmartBoxStatusMap.ALARM
         assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
         assert all(smartbox_simulator.simulate_port_forcing(True))
         assert smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
@@ -520,11 +537,11 @@ class TestSmartboxSimulator:
             antenna connected to it
         """
         assert smartbox_simulator.initialize()
-        assert smartbox_simulator.status == "OK"
+        assert smartbox_simulator.status == SmartBoxStatusMap.OK
         assert smartbox_simulator.turn_port_on(connected_smartbox_port)
 
         smartbox_simulator.power_supply_temperature = 10000
-        assert smartbox_simulator.status == "ALARM"
+        assert smartbox_simulator.status == SmartBoxStatusMap.ALARM
         assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
         assert all(smartbox_simulator.simulate_port_forcing(True))
         assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
@@ -535,7 +552,7 @@ class TestSmartboxSimulator:
             smartbox_simulator.DEFAULT_POWER_SUPPLY_TEMPERATURE
         )
         assert smartbox_simulator.initialize()
-        assert smartbox_simulator.status == "OK"
+        assert smartbox_simulator.status == SmartBoxStatusMap.OK
         assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
         assert all(smartbox_simulator.simulate_port_forcing(False))
         assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
@@ -555,7 +572,7 @@ class TestSmartboxSimulator:
             antenna connected to it
         """
         assert smartbox_simulator.initialize()
-        assert smartbox_simulator.status == "OK"
+        assert smartbox_simulator.status == SmartBoxStatusMap.OK
 
         expected_when_online = [False] * SmartboxSimulator.NUMBER_OF_PORTS
         assert (
@@ -630,7 +647,7 @@ class TestSmartboxSimulator:
             have an antenna connected to it
         """
         assert smartbox_simulator.initialize()
-        assert smartbox_simulator.status == "OK"
+        assert smartbox_simulator.status == SmartBoxStatusMap.OK
         assert not smartbox_simulator.ports_connected[unconnected_smartbox_port - 1]
         assert not smartbox_simulator.ports_power_sensed[unconnected_smartbox_port - 1]
         assert smartbox_simulator.turn_port_on(unconnected_smartbox_port)
@@ -734,13 +751,13 @@ class TestSmartboxSimulator:
 
         :param smartbox_simulator: the smartbox simulator under test.
         """
-        assert smartbox_simulator.led_pattern == "OFF"
-        assert smartbox_simulator.set_led_pattern("SERVICE")
-        assert smartbox_simulator.led_pattern == "SERVICE"
-        assert smartbox_simulator.set_led_pattern("SERVICE") is None
-        assert smartbox_simulator.led_pattern == "SERVICE"
-        assert smartbox_simulator.set_led_pattern("OFF")
-        assert smartbox_simulator.led_pattern == "OFF"
+        assert smartbox_simulator.led_pattern == LEDStatusMap.OFF
+        assert smartbox_simulator.set_led_pattern(LEDStatusMap.GREEN)
+        assert smartbox_simulator.led_pattern == LEDStatusMap.GREEN
+        assert smartbox_simulator.set_led_pattern(LEDStatusMap.GREEN) is None
+        assert smartbox_simulator.led_pattern == LEDStatusMap.GREEN
+        assert smartbox_simulator.set_led_pattern(LEDStatusMap.OFF)
+        assert smartbox_simulator.led_pattern == LEDStatusMap.OFF
 
     def test_sys_address(
         self: TestSmartboxSimulator,
@@ -821,24 +838,24 @@ class TestSmartboxSimulator:
         """
         assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
         assert smartbox_simulator.initialize()
-        assert smartbox_simulator.status == "OK"
+        assert smartbox_simulator.status == SmartBoxStatusMap.OK
         setattr(smartbox_simulator, sensor_name, simulated_value)
         assert getattr(smartbox_simulator, sensor_name) == simulated_value
-        assert smartbox_simulator.status == expected_status
+        assert smartbox_simulator.status == SmartBoxStatusMap[expected_status].value
         default_value = getattr(smartbox_simulator, "DEFAULT_" + sensor_name.upper())
         setattr(smartbox_simulator, sensor_name, default_value)
         if expected_status == "ALARM":
-            assert smartbox_simulator.status == "RECOVERY"
+            assert smartbox_simulator.status == SmartBoxStatusMap.RECOVERY
             setattr(smartbox_simulator, sensor_name, simulated_value)
-            assert smartbox_simulator.status == expected_status
+            assert smartbox_simulator.status == SmartBoxStatusMap[expected_status].value
             assert smartbox_simulator.initialize() is False
             setattr(smartbox_simulator, sensor_name, default_value)
-            assert smartbox_simulator.status == "RECOVERY"
+            assert smartbox_simulator.status == SmartBoxStatusMap.RECOVERY
             assert smartbox_simulator.initialize()
-        assert smartbox_simulator.status == "OK"
+        assert smartbox_simulator.status == SmartBoxStatusMap.OK
         if expected_status == "OK":
             setattr(smartbox_simulator, sensor_name + "_thresholds", [0, 0, 0, 0])
-            assert smartbox_simulator.status == "ALARM"
+            assert smartbox_simulator.status == SmartBoxStatusMap.ALARM
 
     def test_warning_and_alarm_flags(
         self: TestSmartboxSimulator,
@@ -849,30 +866,33 @@ class TestSmartboxSimulator:
 
         :param smartbox_simulator: the smartbox simulator under test
         """
-        assert smartbox_simulator.warning_flags == FndhSimulator.DEFAULT_FLAGS
+        assert smartbox_simulator.warning_flags == 0
         assert smartbox_simulator.reset_warnings() is None
-        assert smartbox_simulator.alarm_flags == FndhSimulator.DEFAULT_FLAGS
+        assert smartbox_simulator.alarm_flags == 0
         assert smartbox_simulator.reset_alarms() is None
         # Setup warnings
         assert smartbox_simulator.initialize()
-        assert smartbox_simulator.status == "OK"
+        assert smartbox_simulator.status == SmartBoxStatusMap.OK
         smartbox_simulator.input_voltage = 4950
-        assert smartbox_simulator.status == "WARNING"
-        assert smartbox_simulator.warning_flags == "input_voltage"
+        assert smartbox_simulator.status == SmartBoxStatusMap.WARNING
+        assert smartbox_simulator.warning_flags == SmartboxAlarmFlags.SYS_48V_V.value
         smartbox_simulator.fem_case_temperatures = [5000, 5000]
         assert (
             smartbox_simulator.warning_flags
-            == "input_voltage, fem_case_temperature_1, fem_case_temperature_2"
+            == SmartboxAlarmFlags.SYS_48V_V.value
+            ^ SmartboxAlarmFlags.SYS_SENSE01_FEM_CASE1_TEMP.value
+            ^ SmartboxAlarmFlags.SYS_SENSE02_FEM_CASE2_TEMP.value
         )
         # Setup alarms
         smartbox_simulator.input_voltage = 5100
         smartbox_simulator.fem_heatsink_temperatures = [3000, -600]
         assert (
             smartbox_simulator.alarm_flags
-            == "input_voltage, fem_heatsink_temperature_2"
+            == SmartboxAlarmFlags.SYS_48V_V.value
+            ^ SmartboxAlarmFlags.SYS_SENSE04_FEM_HEATSINK_TEMP2.value
         )
         # Clear all flags
         assert smartbox_simulator.reset_warnings()
-        assert smartbox_simulator.warning_flags == FndhSimulator.DEFAULT_FLAGS
+        assert smartbox_simulator.warning_flags == 0
         assert smartbox_simulator.reset_alarms()
-        assert smartbox_simulator.alarm_flags == FndhSimulator.DEFAULT_FLAGS
+        assert smartbox_simulator.alarm_flags == 0

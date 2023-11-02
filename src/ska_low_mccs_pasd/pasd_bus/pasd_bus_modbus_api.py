@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Final, List
+from typing import Any, Final, List
 
+import numpy as np
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
 from pymodbus.factory import ServerDecoder
@@ -21,30 +22,33 @@ from pymodbus.register_read_message import (
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
 )
-from pymodbus.register_write_message import WriteMultipleRegistersResponse
+from pymodbus.register_write_message import (
+    WriteMultipleRegistersRequest,
+    WriteMultipleRegistersResponse,
+)
 
 from .pasd_bus_register_map import (
+    PasdBusAttribute,
     PasdBusPortAttribute,
     PasdBusRegisterMap,
     PasdReadError,
     PasdWriteError,
 )
-from .pasd_bus_simulator import FndhSimulator, SmartboxSimulator
 
 logger = logging.getLogger()
+
+FNDH_MODBUS_ADDRESS: Final = 101
 
 
 # pylint: disable=too-few-public-methods
 class PasdBusModbusApi:
     """A Modbus API for a PaSD bus simulator."""
 
-    def __init__(
-        self, simulators: Dict[int, FndhSimulator | SmartboxSimulator]
-    ) -> None:
+    def __init__(self, simulators: dict) -> None:
         """
         Initialise a new instance.
 
-        :param simulators: sequence of simulators (fndh and smartbox)
+        :param simulators: dictionary of simulators (FNDH and smartbox)
             that this API fronts.
 
         """
@@ -52,61 +56,181 @@ class PasdBusModbusApi:
         self._framer = ModbusAsciiFramer(None)
         self._decoder = ModbusAsciiFramer(ServerDecoder(), client=None)
         self.responder_ids = list(range(len(simulators)))
+        self._register_map = PasdBusRegisterMap()
 
-    def _handle_read_attributes(self, device_id: int, names: list[str]) -> list[Any]:
+    # pylint: disable=too-many-return-statements
+    def _convert_value(
+        self, value: Any, attribute: PasdBusAttribute
+    ) -> int | list[int]:
+        if isinstance(attribute, PasdBusPortAttribute):
+            return attribute.convert_write_value(value)
+        if isinstance(value, list):
+            try:
+                return [(v + 65536) & 0xFFFF if v < 0 else v for v in value]
+            except TypeError:
+                return attribute.convert_write_value(value)
+        if isinstance(value, int):
+            if value < 0:
+                value = (value + 65536) & 0xFFFF
+            return [value]
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return attribute.convert_write_value([value])
+        return attribute.convert_write_value([value])
+
+    def _handle_read_attributes(
+        self, device_id: int, names: dict[str, PasdBusAttribute]
+    ) -> list[Any] | ExceptionResponse:
         """
         Return list of attribute values.
 
         :param device_id: The responder ID
-        :param names: List of string attribute names to read
+        :param names: dict of string attribute names to read, with register counts
+
+        :raises ValueError: if value read is invalid
 
         :return: List of attribute values
         """
-        values = []
-        for name in names:
+        values: list[Any] = []
+        last_address = -1
+        last_count = -1
+        for name, attr in names.items():
             try:
-                value = getattr(self._simulators[device_id], name)
-                # TODO: Handle multi-register attributes
+                unconverted_value = getattr(self._simulators[device_id], name)
+            except KeyError:
+                logger.error(f"Simulator {device_id} not available")
+                return ExceptionResponse(
+                    function_code=1, exception_code=1, slave=device_id
+                )
             except AttributeError:
-                # TODO
                 logger.error(f"Attribute not found: {name}")
-            values.append(value)
+                return ExceptionResponse(
+                    function_code=1, exception_code=1, slave=device_id
+                )
+            value = self._convert_value(unconverted_value, attr)
+            if isinstance(value, list):
+                if isinstance(value[0], list):
+                    value = value[0]
+                for index, char in enumerate(value):
+                    if attr.address == last_address:
+                        values[index - last_count] |= char
+                    else:
+                        values.append(int(char))
+            else:
+                raise ValueError(f"Expected a list from {value}")
+            last_address = attr.address
+            last_count = attr.count
         return values
 
-    def _handle_command(self, device_id: int, name: str, args: tuple) -> dict:
-        # TODO
-        raise NotImplementedError
+    def _handle_write_attributes(
+        self,
+        device_id: int,
+        names: dict[str, PasdBusAttribute],
+        starting_address: int,
+        values: list,
+    ) -> ExceptionResponse | None:
+        for name, attr in names.items():
+            try:
+                if attr.address < starting_address:
+                    list_index = 0
+                else:
+                    list_index = attr.address - starting_address
+                reg_vals = values[list_index : list_index + attr.count]
+                if isinstance(attr, PasdBusPortAttribute):
+                    port = starting_address - attr.address
+                    reg_tuple = (attr.convert_value(reg_vals)[0], port)
+                    setattr(self._simulators[device_id], name, reg_tuple)
+                else:
+                    setattr(self._simulators[device_id], name, reg_vals)
+            except KeyError:
+                logger.error(f"Simulator {device_id} not available")
+                return ExceptionResponse(
+                    function_code=1, exception_code=1, slave=device_id
+                )
+            except AttributeError:
+                logger.error(f"Attribute not found: {name}")
+                return ExceptionResponse(
+                    function_code=1, exception_code=1, slave=device_id
+                )
+        return None
 
-    def _handle_no_match(self, request: dict) -> bytes:
-        # TODO
-        raise NotImplementedError
+    def _handle_no_match(self, message: Any) -> ExceptionResponse:
+        logger.error(f"No match found for request {message}")
+        return ExceptionResponse(
+            function_code=1, exception_code=1, slave=message.slave_id
+        )
 
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
-        # TODO (temporary placeholder code here only)
-        response = None
+        response: (
+            ReadHoldingRegistersResponse
+            | WriteMultipleRegistersResponse
+            | ExceptionResponse
+            | None
+        ) = None
 
         def handle_request(message: Any) -> None:
             nonlocal response
-
+            device_id = (
+                0 if message.slave_id == FNDH_MODBUS_ADDRESS else message.slave_id
+            )
             match message:
                 case ReadHoldingRegistersRequest():
-                    # TODO: Map register numbers from message.address and
-                    # message.count to the corresponding attribute names
-                    attr_names = ["fncb_temperature"]
-                    values = self._handle_read_attributes(message.slave_id, attr_names)
-                    response = ReadHoldingRegistersResponse(
-                        slave=message.slave_id,
-                        address=message.address,
-                        values=values,
+                    filtered_register_map = (
+                        self._register_map.get_attributes_from_address_and_count(
+                            device_id, message.address, message.count
+                        )
                     )
+                    values = self._handle_read_attributes(
+                        device_id, filtered_register_map
+                    )
+                    if isinstance(values, ExceptionResponse):
+                        response = values
+                    else:
+                        response = ReadHoldingRegistersResponse(
+                            slave=message.slave_id,
+                            address=message.address,
+                            values=values,
+                        )
+                case WriteMultipleRegistersRequest():
+                    writable_port_attrs = [
+                        "ports_desired_power_when_online",
+                        "ports_desired_power_when_offline",
+                        "port_breakers_tripped",
+                    ]
+                    filtered_register_map = {
+                        k: v
+                        for k, v in (
+                            self._register_map.get_attributes_from_address_and_count(
+                                device_id, message.address, message.count
+                            ).items()
+                        )
+                        if k in writable_port_attrs
+                        or not isinstance(v, PasdBusPortAttribute)
+                    }
+                    result = self._handle_write_attributes(
+                        device_id,
+                        filtered_register_map,
+                        message.address,
+                        message.values,
+                    )
+                    if result is not None:
+                        response = result
+                    else:
+                        response = WriteMultipleRegistersResponse(
+                            slave=message.slave_id,
+                            address=message.address,
+                            count=message.count,
+                        )
                 case _:
-                    self._handle_no_match(message)
+                    response = self._handle_no_match(message)
 
         self._decoder.processIncomingPacket(
             modbus_request_str, handle_request, slave=self.responder_ids
         )
-
-        return self._framer.buildPacket(response)
+        packet = self._framer.buildPacket(response)
+        return packet
 
     def __call__(self, modbus_request_bytes: bytes) -> bytes:
         """
@@ -123,14 +247,12 @@ class PasdBusModbusApi:
 class PasdBusModbusApiClient:
     """A client class for a PaSD (simulator or h/w) with a Modbus API."""
 
-    FNDH_ADDRESS: Final = 101
-
     def __init__(
         self: PasdBusModbusApiClient,
         host: str,
         port: int,
         logger_object: logging.Logger,
-        timeout: int,
+        timeout: float,
     ) -> None:
         """
         Initialise a new instance.
@@ -167,7 +289,7 @@ class PasdBusModbusApiClient:
 
     def _do_read_request(self, request: dict) -> dict:
         modbus_address = (
-            self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
+            FNDH_MODBUS_ADDRESS if request["device_id"] == 0 else request["device_id"]
         )
 
         # Get a dictionary mapping the requested attribute names to
@@ -197,7 +319,7 @@ class PasdBusModbusApiClient:
             + attributes[keys[-1]].count
             - attributes[keys[0]].address
         )
-        self._logger.debug(
+        logger.debug(
             f"MODBUS read request: modbus address {modbus_address}, "
             f"start address {attributes[keys[0]].address}, count {count}"
         )
@@ -230,6 +352,8 @@ class PasdBusModbusApiClient:
                             register_index : register_index + current_attribute.count
                         ]
                     )
+                    if isinstance(converted_values, np.ndarray):
+                        converted_values = list(converted_values)
                     results[key] = (
                         converted_values[0]
                         if len(converted_values) == 1
@@ -237,7 +361,7 @@ class PasdBusModbusApiClient:
                     )
 
                     # Check if we need to update the register map revision number
-                    if key == PasdBusRegisterMap.MODBUS_REGISTER_MAP_REVISION:
+                    if key == self._register_map.MODBUS_REGISTER_MAP_REVISION:
                         self._register_map.revision_number = results[key]
 
                     # Only increment the register index if we are not
@@ -299,7 +423,7 @@ class PasdBusModbusApiClient:
 
     def _do_write_request(self, request: dict) -> dict:
         modbus_address = (
-            self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
+            FNDH_MODBUS_ADDRESS if request["device_id"] == 0 else request["device_id"]
         )
 
         # Get a PasdBusAttribute object for this request
@@ -316,7 +440,7 @@ class PasdBusModbusApiClient:
 
     def _do_command_request(self, request: dict) -> dict:
         modbus_address = (
-            self.FNDH_ADDRESS if request["device_id"] == 0 else request["device_id"]
+            FNDH_MODBUS_ADDRESS if request["device_id"] == 0 else request["device_id"]
         )
 
         # Get a PasdBusCommand object for this command

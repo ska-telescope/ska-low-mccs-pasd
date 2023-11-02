@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Final, List, Optional, Sequence
+from typing import Any, Callable, Final, Optional, Sequence
 
 from .pasd_bus_conversions import PasdConversionUtility
 
@@ -125,7 +125,7 @@ class PasdBusAttribute:
         return self._count
 
     @property
-    def value(self: PasdBusAttribute) -> int | List[int]:
+    def value(self: PasdBusAttribute) -> int | list[int]:
         """
         Return the value to be set for this attribute.
 
@@ -134,7 +134,7 @@ class PasdBusAttribute:
         return self._value
 
     @value.setter
-    def value(self: PasdBusAttribute, value: int | List[int]) -> None:
+    def value(self: PasdBusAttribute, value: int | list[int]) -> None:
         """
         Set a new value for this attribute.
 
@@ -142,7 +142,7 @@ class PasdBusAttribute:
         """
         self._value = value
 
-    def convert_value(self: PasdBusAttribute, values: List[Any]) -> Any:
+    def convert_value(self: PasdBusAttribute, values: list[Any]) -> Any:
         """
         Execute the attribute's conversion function on the supplied value.
 
@@ -153,7 +153,7 @@ class PasdBusAttribute:
         """
         return self._conversion_function(values)
 
-    def convert_write_value(self: PasdBusAttribute, values: List[Any]) -> Any:
+    def convert_write_value(self: PasdBusAttribute, values: list[Any]) -> Any:
         """
         Execute the attribute's conversion function on the supplied value.
 
@@ -184,13 +184,17 @@ class PasdBusPortAttribute(PasdBusAttribute):
         super().__init__(address, count, self._parse_port_bitmaps)
         self.desired_info = desired_info
 
-    def _parse_port_bitmaps(
-        self: PasdBusPortAttribute, values: List[int]
-    ) -> List[bool | str | None]:
+    # pylint: disable=too-many-branches, too-many-statements
+    def _parse_port_bitmaps(  # noqa: C901
+        self: PasdBusPortAttribute,
+        values: list[int | bool | str],
+        inverse: bool = False,
+    ) -> list[bool | str | None] | list[int]:
         """
         Parse the port register bitmap data into the desired port information.
 
-        :param: values: list of raw port bitmaps (one per port)
+        :param values: list of raw port bitmaps (one per port)
+        :param inverse: convert port information into bitmap instead
         :return: list of flags representing the desired port information
         """
         forcing_map = {
@@ -198,7 +202,47 @@ class PasdBusPortAttribute(PasdBusAttribute):
             False: "OFF",
             None: "NONE",
         }
-        results: List[bool | str | None] = []
+        if inverse:
+            inv_results: list[int] = []
+            for value in values:
+                bitstring = "00"
+
+                if self.desired_info == PortStatusString.DSON:
+                    bitstring += "11" if value else "10"
+                else:
+                    bitstring += "00"
+
+                if self.desired_info == PortStatusString.DSOFF:
+                    bitstring += "11" if value else "10"
+                else:
+                    bitstring += "00"
+
+                if self.desired_info == PortStatusString.PORT_FORCINGS:
+                    if value == forcing_map[True]:
+                        bitstring += "11"
+                    elif value == forcing_map[False]:
+                        bitstring += "10"
+                    else:
+                        bitstring += "00"
+                else:
+                    bitstring += "00"
+
+                if self.desired_info == PortStatusString.BREAKERS_TRIPPED:
+                    bitstring += "1" if value else "0"
+                elif self.desired_info == PortStatusString.POWER_SENSED:
+                    bitstring += "1" if value else "0"
+                else:
+                    bitstring += "0"
+
+                if self.desired_info == PortStatusString.POWER:
+                    bitstring += "1" if value else "0"
+                else:
+                    bitstring += "0"
+
+                bitstring += "000000"  # pad to 16 bits
+                inv_results.append(int(bitstring, 2))
+            return inv_results
+        results: list[bool | str | None] = []
         for status_bitmap in values:
             bitstring = f"{status_bitmap:016b}"
             match (self.desired_info):
@@ -280,7 +324,9 @@ class PasdBusRegisterMap:
         "pcb_revision": PasdBusAttribute(1, 1),
         "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
         "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_chip_id),
-        "firmware_version": PasdBusAttribute(12, 1, lambda x: str(x[0])),
+        "firmware_version": PasdBusAttribute(
+            12, 1, PasdConversionUtility.convert_firmware_version
+        ),
     }
 
     # Inverse dictionary mapping register number (address) to
@@ -502,7 +548,7 @@ class PasdBusRegisterMap:
         return self._SMARTBOX_REGISTER_MAPS[self.revision_number]
 
     def get_writeable_attribute(
-        self, device_id: int, attribute_name: str, write_values: List[Any]
+        self, device_id: int, attribute_name: str, write_values: list[Any]
     ) -> PasdBusAttribute:
         """
         Return a PasdAttribute object for a writeable object.
@@ -577,9 +623,48 @@ class PasdBusRegisterMap:
         """
         names = [self._INFO_REGISTER_INVERSE_MAP[address] for address in addresses]
         register_map = self._get_register_info(device_id).register_map
-        inverse_map = {v.address: k for k, v in register_map.items()}
-        names.extend([inverse_map[address] for address in addresses])
+        names.extend(
+            [
+                name
+                for name, attribute in register_map.items()
+                if attribute.address in addresses
+            ]
+        )
         return names
+
+    def get_attributes_from_address_and_count(
+        self, device_id: int, first_address: int, count: int
+    ) -> dict[str, PasdBusAttribute]:
+        """
+        Map initial register address and count to attributes.
+
+        :param device_id: The ID of the smartbox / FNDH device
+        :param first_address: Starting address of the desired Modbus registers
+        :param count: number of registers
+
+        :return: A dictionary of the corresponding string attribute names and attribute
+            instances
+        """
+        attributes = {
+            name: attribute
+            for name, attribute in self._INFO_REGISTER_MAP.items()
+            if first_address <= attribute.address < first_address + count
+            or (
+                attribute.address <= first_address
+                and first_address + count <= attribute.address + attribute.count
+            )
+        }
+        register_map = self._get_register_info(device_id).register_map
+        attributes |= {
+            name: attribute
+            for name, attribute in register_map.items()
+            if first_address <= attribute.address < first_address + count
+            or (
+                attribute.address <= first_address
+                and first_address + count <= attribute.address + attribute.count
+            )
+        }
+        return attributes
 
     def _create_led_pattern_command(
         self, device_id: int, arguments: Sequence[Any]
