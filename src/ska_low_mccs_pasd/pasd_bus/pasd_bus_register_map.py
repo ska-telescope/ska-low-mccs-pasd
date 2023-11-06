@@ -610,6 +610,12 @@ class PasdBusRegisterMap:
                 last_name = name
                 continue
             raise PasdReadError(last_name, name)
+
+        # Check all attribute names have been found in the map
+        for name in attribute_names:
+            if name not in attributes:
+                logger.warning(f"Couldn't find {name} in attribute map")
+
         return attributes
 
     def get_attribute_names(self, device_id: int, addresses: list[int]) -> list[str]:
