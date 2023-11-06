@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Final, Optional
+from typing import Any, Callable, Final, Optional, Sequence
 
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_tango_base.base import check_communicating
@@ -35,7 +35,7 @@ class PasdBusRequest:
     device_id: int
     command: str | None
     attribute_to_write: str | None
-    arguments: list[Any]
+    arguments: Sequence[Any]
 
 
 @dataclass
@@ -315,7 +315,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             case (device_id, "WRITE", spec):
                 request = PasdBusRequest(device_id, None, *spec)
             case (device_id, "LED_PATTERN", pattern):
-                request = PasdBusRequest(device_id, "set_led_pattern", None, [*pattern])
+                request = PasdBusRequest(device_id, "set_led_pattern", None, pattern)
             case (device_id, "BREAKER_RESET", port):
                 request = PasdBusRequest(device_id, "reset_port_breaker", None, [port])
             case (device_id, "PORT_POWER", (port, is_on, stay_on_when_offline)):
