@@ -36,20 +36,20 @@ from __future__ import annotations
 
 import importlib.resources
 import logging
-from abc import ABC, abstractmethod
+from abc import ABC
 from datetime import datetime
 from typing import Callable, Final, Optional, Sequence
 
 import yaml
 
 from .pasd_bus_conversions import (
-    FNDHAlarmFlags,
+    FndhAlarmFlags,
     FndhStatusMap,
     LEDServiceMap,
     LEDStatusMap,
     PasdConversionUtility,
     SmartboxAlarmFlags,
-    SmartBoxStatusMap,
+    SmartboxStatusMap,
 )
 from .pasd_bus_modbus_api import FNDH_MODBUS_ADDRESS
 
@@ -92,6 +92,7 @@ class _PasdPortSimulator(ABC):
         # Internal to simulator port states
         self._connected: bool = False
         self._on: bool = False
+        self._over_current: bool = False
         # Simulated PDoC/FEM state registers
         self._enabled: bool = False
         self._online: bool = True  # Redundant, as desribed above
@@ -99,9 +100,24 @@ class _PasdPortSimulator(ABC):
         self._desired_on_when_offline: bool = False  # Redundant, as desribed above
         self._forcing: Optional[bool] = None
 
-    @abstractmethod
     def _update_port_power(self: _PasdPortSimulator) -> None:
-        """Update the port power."""
+        """
+        Update the port power.
+
+        Turn the port ON or OFF depending on the desired power, forcing and
+        over current states.
+        """
+        if self._forcing is False:
+            self._on = False
+        elif (self._forcing or self._enabled) and not self._over_current:
+            if (self._desired_on_when_online and self._online) or (
+                self._desired_on_when_offline and not self._online
+            ):
+                self._on = True
+            else:
+                self._on = False
+        elif not self._enabled or self._over_current:  # forcing has priority
+            self._on = False
 
     @property
     def breaker_tripped(self: _PasdPortSimulator) -> bool:
@@ -112,18 +128,28 @@ class _PasdPortSimulator(ABC):
         """
         raise NotImplementedError
 
-    def simulate_breaker_trip(self: _PasdPortSimulator) -> Optional[bool]:
+    def simulate_over_current(
+        self: _PasdPortSimulator, state: bool = True
+    ) -> Optional[bool]:
         """
-        Simulate a breaker trip.
+        Simulate port over-current condition.
 
-        :raises NotImplementedError: raised if not implemented in subclass
+        :param state: of simulating condition.
+        :return: whether successful, or None if there was nothing to do.
         """
-        raise NotImplementedError
+        if self._over_current == state:
+            return None
+        self._over_current = state
+        self._update_port_power()
+        return True
 
-    def reset_breaker(self: _PasdPortSimulator) -> Optional[bool]:
+    def simulate_stuck_on(
+        self: _PasdPortSimulator, state: bool = True
+    ) -> Optional[bool]:
         """
-        Reset the breaker.
+        Simulate port stuck on fault condition.
 
+        :param state: of simulating condition.
         :raises NotImplementedError: raised if not implemented in subclass
         """
         raise NotImplementedError
@@ -297,25 +323,19 @@ class _FndhPortSimulator(_PasdPortSimulator):
         super().__init__(number)
         self._instantiate_smartbox = instantiate_smartbox
         self._delete_smartbox = delete_smartbox
+        self._stuck_on = False
 
     def _update_port_power(self: _FndhPortSimulator) -> None:
         """
         Update the port power.
 
-        Turn the port ON or OFF depending on the desired power and forcing state.
+        Turn the port ON or OFF depending on the desired power, forcing and
+        over current states.
         """
         previous = self._on
-        if self._forcing is False:
-            self._on = False
-        elif self._forcing or self._enabled:
-            if (self._desired_on_when_online and self._online) or (
-                self._desired_on_when_offline and not self._online
-            ):
-                self._on = True
-            else:
-                self._on = False
-        elif not self._enabled:  # forcing has priority
-            self._on = False
+        super()._update_port_power()
+        if self._stuck_on:
+            self._on = True
         # Instantiate or delete smartbox if port state has changed
         if (
             previous != self._on
@@ -327,6 +347,21 @@ class _FndhPortSimulator(_PasdPortSimulator):
                 self._instantiate_smartbox(self._number)
             else:
                 self._delete_smartbox(self._number)
+
+    def simulate_stuck_on(
+        self: _FndhPortSimulator, state: bool = True
+    ) -> Optional[bool]:
+        """
+        Simulate port stuck on fault condition.
+
+        :param state: of simulating condition.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        if self._stuck_on == state:
+            return None
+        self._stuck_on = state
+        self._update_port_power()
+        return True
 
 
 class _SmartboxPortSimulator(_PasdPortSimulator):
@@ -349,26 +384,6 @@ class _SmartboxPortSimulator(_PasdPortSimulator):
         number: int | None = None,
     ):
         super().__init__(number)
-        self._breaker_tripped: bool = False  # Smartbox FEM only
-
-    def _update_port_power(self: _SmartboxPortSimulator) -> None:
-        """
-        Update the port power.
-
-        Turn the port ON or OFF depending on the desired power, forcing and
-        breaker trip states.
-        """
-        if self._forcing is False:
-            self._on = False
-        elif self._forcing or (self._enabled and not self._breaker_tripped):
-            if (self._desired_on_when_online and self._online) or (
-                self._desired_on_when_offline and not self._online
-            ):
-                self._on = True
-            else:
-                self._on = False
-        elif not self._enabled or self._breaker_tripped:  # forcing has priority
-            self._on = False
 
     @property
     def breaker_tripped(self: _SmartboxPortSimulator) -> bool:
@@ -377,31 +392,7 @@ class _SmartboxPortSimulator(_PasdPortSimulator):
 
         :return: whether the breaker has been tripped
         """
-        return self._breaker_tripped
-
-    def simulate_breaker_trip(self: _SmartboxPortSimulator) -> Optional[bool]:
-        """
-        Simulate a breaker trip.
-
-        :return: whether successful, or None if there was nothing to do.
-        """
-        if self._breaker_tripped or not self._on:
-            return None
-        self._breaker_tripped = True
-        self._update_port_power()
-        return True
-
-    def reset_breaker(self: _SmartboxPortSimulator) -> Optional[bool]:
-        """
-        Reset the breaker.
-
-        :return: whether successful, or None if there was nothing to do.
-        """
-        if self._breaker_tripped:
-            self._breaker_tripped = False
-            self._update_port_power()
-            return True
-        return None
+        return self._over_current
 
 
 class PasdHardwareSimulator:
@@ -413,12 +404,12 @@ class PasdHardwareSimulator:
     """
 
     DEFAULT_LED_PATTERN: int = LEDServiceMap.OFF << 8 | LEDStatusMap.OFF
-    DEFAULT_STATUS: FndhStatusMap | SmartBoxStatusMap = FndhStatusMap.UNINITIALISED
+    DEFAULT_STATUS: FndhStatusMap | SmartboxStatusMap = FndhStatusMap.UNINITIALISED
     DEFAULT_UPTIME: Final = [0]
     DEFAULT_FLAGS: int = 0x0
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
-    ALARM_MAPPING: dict[str, FNDHAlarmFlags | SmartboxAlarmFlags] = {}
+    ALARM_MAPPING: dict[str, FndhAlarmFlags | SmartboxAlarmFlags] = {}
 
     def __init__(
         self: PasdHardwareSimulator,
@@ -723,6 +714,19 @@ class PasdHardwareSimulator:
         """
         return self._ports[port_number - 1].desired_off()
 
+    def simulate_port_over_current(
+        self: PasdHardwareSimulator, port_number: int, state: bool = True
+    ) -> Optional[bool]:
+        """
+        Simulate a port breaker trip.
+
+        :param port_number: number of the port for which a breaker trip
+            will be simulated.
+        :param state: of simulating condition.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        return self._ports[port_number - 1].simulate_over_current(state)
+
     @property
     def ports_desired_power_when_online(
         self: PasdHardwareSimulator,
@@ -957,18 +961,18 @@ class FndhSimulator(PasdHardwareSimulator):
     DEFAULT_INTERNAL_AMBIENT_TEMPERATURE: Final = 3600
 
     ALARM_MAPPING = {
-        "psu48v_voltage_1": FNDHAlarmFlags.SYS_48V1_V,
-        "psu48v_voltage_2": FNDHAlarmFlags.SYS_48V2_V,
-        "psu48v_current": FNDHAlarmFlags.SYS_48V_I,
-        "psu48v_temperature_1": FNDHAlarmFlags.SYS_48V1_TEMP,
-        "psu48v_temperature_2": FNDHAlarmFlags.SYS_48V2_TEMP,
-        "panel_temperature": FNDHAlarmFlags.SYS_PANELTEMP,
-        "fncb_temperature": FNDHAlarmFlags.SYS_FNCBTEMP,
-        "fncb_humidity": FNDHAlarmFlags.SYS_HUMIDITY,
-        "comms_gateway_temperature": FNDHAlarmFlags.SYS_SENSE01_COMMS_GATEWAY,
-        "power_module_temperature": FNDHAlarmFlags.SYS_SENSE02_POWER_MODULE_TEMP,
-        "outside_temperature": FNDHAlarmFlags.SYS_SENSE03_OUTSIDE_TEMP,
-        "internal_ambient_temperature": FNDHAlarmFlags.SYS_SENSE04_INTERNAL_TEMP,
+        "psu48v_voltage_1": FndhAlarmFlags.SYS_48V1_V,
+        "psu48v_voltage_2": FndhAlarmFlags.SYS_48V2_V,
+        "psu48v_current": FndhAlarmFlags.SYS_48V_I,
+        "psu48v_temperature_1": FndhAlarmFlags.SYS_48V1_TEMP,
+        "psu48v_temperature_2": FndhAlarmFlags.SYS_48V2_TEMP,
+        "panel_temperature": FndhAlarmFlags.SYS_PANELTEMP,
+        "fncb_temperature": FndhAlarmFlags.SYS_FNCBTEMP,
+        "fncb_humidity": FndhAlarmFlags.SYS_HUMIDITY,
+        "comms_gateway_temperature": FndhAlarmFlags.SYS_SENSE01_COMMS_GATEWAY,
+        "power_module_temperature": FndhAlarmFlags.SYS_SENSE02_POWER_MODULE_TEMP,
+        "outside_temperature": FndhAlarmFlags.SYS_SENSE03_OUTSIDE_TEMP,
+        "internal_ambient_temperature": FndhAlarmFlags.SYS_SENSE04_INTERNAL_TEMP,
     }
 
     # Instantiate sensor data descriptors
@@ -1100,12 +1104,22 @@ class FndhSimulator(PasdHardwareSimulator):
 
         :return: the power control line state of each FNDH port.
         """
-        # TODO: Implement real behaviour -  PDOC port can be turned on,
-        # or is forced off due to alarm condition/technician override.
-        # For this to make sense, a per port fault condition should be implemented.
         return [
             port.enabled if port.forcing is not False else False for port in self._ports
         ]
+
+    def simulate_port_stuck_on(
+        self: FndhSimulator, port_number: int, state: bool = True
+    ) -> Optional[bool]:
+        """
+        Simulate port stuck on fault condition.
+
+        :param port_number: number of the port for which a breaker trip
+            will be simulated.
+        :param state: of simulating condition.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        return self._ports[port_number - 1].simulate_stuck_on(state)
 
 
 class SmartboxSimulator(PasdHardwareSimulator):
@@ -1120,7 +1134,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
     CPU_ID: Final = [2, 4]
     CHIP_ID: Final = [8, 7, 6, 5, 4, 3, 2, 1]
 
-    DEFAULT_STATUS: SmartBoxStatusMap = SmartBoxStatusMap.UNINITIALISED
+    DEFAULT_STATUS: SmartboxStatusMap = SmartboxStatusMap.UNINITIALISED
     DEFAULT_SYS_ADDRESS: Final = 1
     DEFAULT_FIRMWARE_VERSION: Final = 258
     # Address
@@ -1180,7 +1194,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
             for port_index in range(self.NUMBER_OF_PORTS)
         ]
         super().__init__(ports)
-        self._status = SmartBoxStatusMap.UNINITIALISED
+        self._status = SmartboxStatusMap.UNINITIALISED
         self._sys_address = address
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
@@ -1321,31 +1335,17 @@ class SmartboxSimulator(PasdHardwareSimulator):
         return [port.breaker_tripped for port in self._ports]
 
     @port_breakers_tripped.setter
-    def port_breakers_tripped(self: SmartboxSimulator, trip: tuple[bool, int]) -> None:
+    def port_breakers_tripped(self: SmartboxSimulator, reset: tuple[bool, int]) -> None:
         """
-        Set a port trip status.
+        Set a port breaker's status.
 
         This can only be used to reset a port breaker, it cannot simulate a port
         breaker trip.
 
-        :param trip: tuple of (breaker status (True to reset breaker), port)
+        :param reset: tuple of (breaker status (True to reset breaker), port)
         """
-        if trip[0]:
-            self.reset_port_breaker(trip[1] + 1)
-
-    def simulate_port_breaker_trip(
-        self: SmartboxSimulator,
-        port_number: int,
-    ) -> Optional[bool]:
-        """
-        Simulate a port breaker trip.
-
-        :param port_number: number of the port for which a breaker trip
-            will be simulated
-
-        :return: whether successful, or None if there was nothing to do
-        """
-        return self._ports[port_number - 1].simulate_breaker_trip()
+        if reset[0]:
+            self.reset_port_breaker(reset[1] + 1)
 
     def reset_port_breaker(
         self: SmartboxSimulator,
@@ -1354,12 +1354,10 @@ class SmartboxSimulator(PasdHardwareSimulator):
         """
         Reset a tripped port breaker.
 
-        :param port_number: number of the port whose breaker should be
-            reset
-
-        :return: whether successful, or None if there was nothing to do
+        :param port_number: number of the port whose breaker should be reset.
+        :return: whether successful, or None if there was nothing to do.
         """
-        return self._ports[port_number - 1].reset_breaker()
+        return self._ports[port_number - 1].simulate_over_current(False)
 
 
 class PasdBusSimulator:

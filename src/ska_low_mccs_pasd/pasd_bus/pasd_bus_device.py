@@ -72,6 +72,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             "ports_desired_power_when_online": "fndhPortsDesiredPowerOnline",
             "ports_desired_power_when_offline": "fndhPortsDesiredPowerOffline",
             "ports_power_sensed": "fndhPortsPowerSensed",
+            "ports_power_control": "fndhPortsPowerControl",
             "psu48v_voltage_1_thresholds": "fndhPsu48vVoltage1Thresholds",
             "psu48v_voltage_2_thresholds": "fndhPsu48vVoltage2Thresholds",
             "psu48v_current_thresholds": "fndhPsu48vCurrentThresholds",
@@ -291,6 +292,12 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ),
             (
                 "PortsPowerSensed",
+                (bool,),
+                PasdData.NUMBER_OF_FNDH_PORTS,
+                tango.AttrWriteType.READ,
+            ),
+            (
+                "PortsPowerControl",
                 (bool,),
                 PasdData.NUMBER_OF_FNDH_PORTS,
                 tango.AttrWriteType.READ,

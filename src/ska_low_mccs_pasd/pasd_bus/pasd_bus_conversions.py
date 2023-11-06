@@ -26,7 +26,7 @@ class FndhStatusMap(IntEnum):
     # then go through full powerup sequence
 
 
-class SmartBoxStatusMap(IntEnum):
+class SmartboxStatusMap(IntEnum):
     """Enum type for SmartBox health status strings."""
 
     UNDEFINED = -1  # We should never receive an undefined status
@@ -75,7 +75,7 @@ class LEDStatusMap(IntEnum):
     GREENRED = 50  # Alternating green and red at 1.25 Hz - used for 'POWERDOWN'
 
 
-class FNDHAlarmFlags(IntFlag):
+class FndhAlarmFlags(IntFlag):
     """Enum type for the FNDH alarm/warning flags."""
 
     NONE = 0x0
@@ -402,13 +402,13 @@ class PasdConversionUtility:
         try:
             if inverse:
                 return [
-                    SmartBoxStatusMap[v].value if isinstance(v, str) else v.value
+                    SmartboxStatusMap[v].value if isinstance(v, str) else v.value
                     for v in value_list
                 ]
-            return [SmartBoxStatusMap(value_list[0]).name]
+            return [SmartboxStatusMap(value_list[0]).name]
         except ValueError:
             logger.error(f"Invalid Smartbox status value received: {value_list[0]}")
-            return [SmartBoxStatusMap.UNDEFINED.name]
+            return [SmartboxStatusMap.UNDEFINED.name]
 
     @classmethod
     def convert_led_status(
@@ -481,15 +481,15 @@ class PasdConversionUtility:
             for status in value_list:
                 result ^= (
                     status.value
-                    if isinstance(status, FNDHAlarmFlags)
-                    else FNDHAlarmFlags[status].value
+                    if isinstance(status, FndhAlarmFlags)
+                    else FndhAlarmFlags[status].value
                 )
             return [result]
         raw_value = value_list[0]
-        status = FNDHAlarmFlags.NONE.name
-        for flag in FNDHAlarmFlags:
+        status = FndhAlarmFlags.NONE.name
+        for flag in FndhAlarmFlags:
             if raw_value & flag.value:
-                if status == FNDHAlarmFlags.NONE.name:
+                if status == FndhAlarmFlags.NONE.name:
                     status = flag.name
                 else:
                     status += f", {flag.name}"

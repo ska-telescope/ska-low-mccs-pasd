@@ -23,7 +23,7 @@ from ska_low_mccs_pasd.pasd_bus import (
     SmartboxSimulator,
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
-    FNDHAlarmFlags,
+    FndhAlarmFlags,
     PasdConversionUtility,
     SmartboxAlarmFlags,
 )
@@ -407,17 +407,18 @@ class TestPasdBusComponentManager:
             ports_desired_power_when_online=expected_fndh_ports_powered,
             ports_desired_power_when_offline=expected_fndh_ports_powered,
             ports_power_sensed=expected_fndh_ports_powered,
+            ports_power_control=[True] * FndhSimulator.NUMBER_OF_PORTS,
             lookahead=25,
         )
         # and FNDH warning and alarm flags
         mock_callbacks.assert_call(
             "pasd_device_state_for_fndh",
-            warning_flags=FNDHAlarmFlags.NONE.name,
+            warning_flags=FndhAlarmFlags.NONE.name,
             lookahead=25,
         )
         mock_callbacks.assert_call(
             "pasd_device_state_for_fndh",
-            alarm_flags=FNDHAlarmFlags.NONE.name,
+            alarm_flags=FndhAlarmFlags.NONE.name,
             lookahead=25,
         )
 
@@ -537,6 +538,7 @@ class TestPasdBusComponentManager:
                 ports_desired_power_when_online=expected_desired_power_when_online,
                 ports_desired_power_when_offline=expected_desired_power_when_offline,
                 ports_power_sensed=expected_ports_power_sensed,
+                ports_power_control=[True] * FndhSimulator.NUMBER_OF_PORTS,
                 lookahead=11,  # Full cycle plus one to cover off on race conditions
             )
 

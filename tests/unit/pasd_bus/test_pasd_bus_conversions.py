@@ -11,13 +11,13 @@ from typing import Any, Callable
 import pytest
 
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
-    FNDHAlarmFlags,
+    FndhAlarmFlags,
     FndhStatusMap,
     LEDServiceMap,
     LEDStatusMap,
     PasdConversionUtility,
     SmartboxAlarmFlags,
-    SmartBoxStatusMap,
+    SmartboxStatusMap,
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import (
     PasdBusPortAttribute,
@@ -114,7 +114,7 @@ def test_conversion_function(
             PasdConversionUtility.convert_fndh_alarm_status,
             [5],
             "SYS_48V1_V, SYS_48V_I",
-            [FNDHAlarmFlags.SYS_48V1_V, FNDHAlarmFlags.SYS_48V_I],
+            [FndhAlarmFlags.SYS_48V1_V, FndhAlarmFlags.SYS_48V_I],
             id="convert_fndh_alarm_status",
         ),
         pytest.param(
@@ -140,7 +140,7 @@ def test_conversion_function(
             PasdConversionUtility.convert_smartbox_status,
             [3],
             ["RECOVERY"],
-            [SmartBoxStatusMap.RECOVERY],
+            [SmartboxStatusMap.RECOVERY],
             id="convert_smartbox_status",
         ),
         pytest.param(
@@ -208,43 +208,43 @@ def test_non_reversible_conversion_function(
             id="DSOFF_10",
         ),
         pytest.param(
-            PortStatusString.PORT_FORCINGS,
+            PortStatusString.TO,
             [(1 << 8) + (1 << 9)],
             ["ON"],
             id="PORT_FORCINGS_11",
         ),
         pytest.param(
-            PortStatusString.PORT_FORCINGS,
+            PortStatusString.TO,
             [(1 << 9)],
             ["OFF"],
             id="PORT_FORCINGS_10",
         ),
         pytest.param(
-            PortStatusString.PORT_FORCINGS,
+            PortStatusString.TO,
             [0],
             ["NONE"],
             id="PORT_FORCINGS_00",
         ),
         pytest.param(
-            PortStatusString.BREAKERS_TRIPPED,
+            PortStatusString.BREAKER,
             [(1 << 7)],
             [True],
             id="BREAKERS_TRIPPED_1",
         ),
         pytest.param(
-            PortStatusString.BREAKERS_TRIPPED,
+            PortStatusString.BREAKER,
             [0],
             [False],
             id="BREAKERS_TRIPPED_0",
         ),
         pytest.param(
-            PortStatusString.POWER_SENSED,
+            PortStatusString.PWRSENSE,
             [(1 << 7)],
             [True],
             id="POWER_SENSED_1",
         ),
         pytest.param(
-            PortStatusString.POWER_SENSED,
+            PortStatusString.PWRSENSE,
             [0],
             [False],
             id="POWER_SENSED_0",
