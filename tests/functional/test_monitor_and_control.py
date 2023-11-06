@@ -18,13 +18,10 @@ from ska_control_model import AdminMode, HealthState, ResultCode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
+from ska_low_mccs_pasd.pasd_data import PasdData
 from tests.harness import get_pasd_bus_name
 
 gc.disable()
-
-
-NUMBER_OF_FNDH_PORTS = 28
-NUMBER_OF_SMARTBOX_PORTS = 12
 
 
 @scenario(
@@ -452,7 +449,7 @@ def turn_fndh_port_on(
     :param pasd_bus_device: a proxy to the PaSD bus device.
     :param fndh_port_no: an FNDH port.
     """
-    desired_port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+    desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
     desired_port_powers[fndh_port_no - 1] = True
     json_argument = json.dumps(
         {"port_powers": desired_port_powers, "stay_on_when_offline": True}
@@ -471,7 +468,7 @@ def turn_fndh_port_off(
     :param pasd_bus_device: a proxy to the PaSD bus device.
     :param fndh_port_no: an FNDH port.
     """
-    desired_port_powers: list[bool | None] = [None] * NUMBER_OF_FNDH_PORTS
+    desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
     desired_port_powers[fndh_port_no - 1] = False
     json_argument = json.dumps(
         {"port_powers": desired_port_powers, "stay_on_when_offline": True}
@@ -530,7 +527,7 @@ def find_connected_smartbox_port(
         port can be turned on and power will be sensed.
     """
     smartbox_port_number = 1
-    desired_port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
+    desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_SMARTBOX_PORTS
     desired_port_powers[smartbox_port_number - 1] = True
 
     json_argument = json.dumps(
@@ -656,7 +653,7 @@ def turn_smartbox_port_on(
     :param smartbox_id: number of the smartbox under test.
     :param smartbox_port_no: a smartbox port.
     """
-    desired_port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
+    desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_SMARTBOX_PORTS
     desired_port_powers[smartbox_port_no - 1] = True
     json_argument = json.dumps(
         {
@@ -681,7 +678,7 @@ def turn_smartbox_port_off(
     :param smartbox_id: number of the smartbox under test.
     :param smartbox_port_no: a smartbox port.
     """
-    desired_port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
+    desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_SMARTBOX_PORTS
     desired_port_powers[smartbox_port_no - 1] = False
     json_argument = json.dumps(
         {

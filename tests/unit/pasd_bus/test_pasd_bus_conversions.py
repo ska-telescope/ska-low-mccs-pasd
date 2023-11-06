@@ -21,7 +21,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import (
     PasdBusPortAttribute,
-    PortStatusString,
+    PortStatusBits,
 )
 
 
@@ -184,79 +184,79 @@ def test_non_reversible_conversion_function(
     ["desired_info", "forward_input", "expected_forward_result"],
     [
         pytest.param(
-            PortStatusString.DSON,
+            PortStatusBits.DSON,
             [(1 << 12) + (1 << 13)],
             [True],
             id="DSON_11",
         ),
         pytest.param(
-            PortStatusString.DSON,
+            PortStatusBits.DSON,
             [(1 << 13)],
             [False],
             id="DSON_10",
         ),
         pytest.param(
-            PortStatusString.DSOFF,
+            PortStatusBits.DSOFF,
             [(1 << 10) + (1 << 11)],
             [True],
             id="DSOFF_11",
         ),
         pytest.param(
-            PortStatusString.DSOFF,
+            PortStatusBits.DSOFF,
             [(1 << 11)],
             [False],
             id="DSOFF_10",
         ),
         pytest.param(
-            PortStatusString.TO,
-            [(1 << 8) + (1 << 9)],
+            PortStatusBits.TO,
+            [(1 << 8)],
             ["ON"],
-            id="PORT_FORCINGS_11",
+            id="PORT_FORCINGS_01",
         ),
         pytest.param(
-            PortStatusString.TO,
+            PortStatusBits.TO,
             [(1 << 9)],
             ["OFF"],
             id="PORT_FORCINGS_10",
         ),
         pytest.param(
-            PortStatusString.TO,
+            PortStatusBits.TO,
             [0],
             ["NONE"],
             id="PORT_FORCINGS_00",
         ),
         pytest.param(
-            PortStatusString.BREAKER,
+            PortStatusBits.PWRSENSE_BREAKER,
             [(1 << 7)],
             [True],
             id="BREAKERS_TRIPPED_1",
         ),
         pytest.param(
-            PortStatusString.BREAKER,
+            PortStatusBits.PWRSENSE_BREAKER,
             [0],
             [False],
             id="BREAKERS_TRIPPED_0",
         ),
         pytest.param(
-            PortStatusString.PWRSENSE,
+            PortStatusBits.PWRSENSE_BREAKER,
             [(1 << 7)],
             [True],
             id="POWER_SENSED_1",
         ),
         pytest.param(
-            PortStatusString.PWRSENSE,
+            PortStatusBits.PWRSENSE_BREAKER,
             [0],
             [False],
             id="POWER_SENSED_0",
         ),
         pytest.param(
-            PortStatusString.POWER,
+            PortStatusBits.POWER,
             [(1 << 6)],
             [True],
             id="POWER_1",
         ),
         pytest.param(
-            PortStatusString.POWER,
+            PortStatusBits.POWER,
             [0],
             [False],
             id="POWER_0",
@@ -264,7 +264,7 @@ def test_non_reversible_conversion_function(
     ],
 )
 def test_port_attribute_conversion(
-    desired_info: PortStatusString, forward_input: Any, expected_forward_result: Any
+    desired_info: PortStatusBits, forward_input: Any, expected_forward_result: Any
 ) -> None:
     """
     Test conversion function for port attributes.

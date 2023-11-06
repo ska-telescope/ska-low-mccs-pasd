@@ -19,13 +19,12 @@ from ska_low_mccs_common.testing.mock import MockDeviceBuilder
 from ska_tango_testing.mock import MockCallableGroup
 
 from ska_low_mccs_pasd.fndh import FndhComponentManager, _PasdBusProxy
+from ska_low_mccs_pasd.pasd_data import PasdData
 from tests.harness import (
     PasdTangoTestHarness,
     PasdTangoTestHarnessContext,
     get_pasd_bus_name,
 )
-
-NUMBER_OF_FNDH_PORTS = 28
 
 
 @pytest.fixture(name="mock_pasdbus")
@@ -197,7 +196,7 @@ class TestFndhComponentManager:
             ),
             (
                 "set_port_powers",
-                [0] * NUMBER_OF_FNDH_PORTS,
+                [0] * PasdData.NUMBER_OF_FNDH_PORTS,
                 (TaskStatus.QUEUED, "Task queued"),
                 "Set port powers success",
             ),
