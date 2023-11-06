@@ -62,20 +62,25 @@ class PortStatusBits(IntFlag):
     NONE = 0x0
 
 
-class PortDesiredState(IntEnum):
-    """Port desired state when device is online/offline."""
+class PortDesiredStateOnline(IntEnum):
+    """Port desired state when device is online."""
 
-    NONE = 0
-    OFF = 2
-    ON = 3
+    OFF = 0x2000
+    ON = 0x3000
+
+
+class PortDesiredStateOffline(IntEnum):
+    """Port desired state when device is offline."""
+
+    OFF = 0x800
+    ON = 0xC00
 
 
 class PortOverride(IntEnum):
     """Port override for field maintenance."""
 
-    NONE = 0
-    ALLOW_ON = 1
-    FORCE_OFF = 2
+    ALLOW_ON = 0x100
+    FORCE_OFF = 0x200
 
 
 class PasdCommandStrings(Enum):
@@ -206,6 +211,7 @@ class PasdBusPortAttribute(PasdBusAttribute):
         super().__init__(address, count, self._parse_port_bitmaps)
         self.desired_info = desired_info
 
+    # pylint: disable=too-many-branches
     def _parse_port_bitmaps(
         self: PasdBusPortAttribute,
         values: list[int | bool | str],
@@ -228,29 +234,34 @@ class PasdBusPortAttribute(PasdBusAttribute):
             for value in values:
                 bitmap: int = 0
                 match self.desired_info:
-                    case PortStatusBits.DSON | PortStatusBits.DSOFF:
+                    case PortStatusBits.DSON:
                         if value:
-                            bitmap = PortDesiredState.ON
-                        elif value is False:
-                            bitmap = PortDesiredState.OFF
+                            bitmap = PortDesiredStateOnline.ON
+                        else:
+                            bitmap = PortDesiredStateOnline.OFF
+                    case PortStatusBits.DSOFF:
+                        if value:
+                            bitmap = PortDesiredStateOffline.ON
+                        else:
+                            bitmap = PortDesiredStateOffline.OFF
                     case PortStatusBits.TO:
                         if value == forcing_map[True]:
                             bitmap = PortOverride.ALLOW_ON
                         elif value == forcing_map[False]:
                             bitmap = PortOverride.FORCE_OFF
                     case PortStatusBits.PWRSENSE_BREAKER | PortStatusBits.POWER:
-                        bitmap = int(value)
-                bitmap <<= self._bit_shifts(self.desired_info)
+                        if value:
+                            bitmap = self.desired_info
                 inv_results.append(bitmap)
             return inv_results
         results: list[bool | str | None] = []
         for status_bitmap in values:
-            status = (int(status_bitmap) & self.desired_info) >> self._bit_shifts(
-                self.desired_info
-            )
+            status = int(status_bitmap) & self.desired_info
             match self.desired_info:
-                case PortStatusBits.DSON | PortStatusBits.DSOFF:
-                    results.append(status == PortDesiredState.ON)
+                case PortStatusBits.DSON:
+                    results.append(status == PortDesiredStateOnline.ON)
+                case PortStatusBits.DSOFF:
+                    results.append(status == PortDesiredStateOffline.ON)
                 case PortStatusBits.TO:
                     if status == PortOverride.FORCE_OFF:
                         results.append(forcing_map[False])
@@ -271,37 +282,18 @@ class PasdBusPortAttribute(PasdBusAttribute):
     ) -> None:
         value = 0
         if desired_on_online:
-            value ^= PortDesiredState.ON << self._bit_shifts(PortStatusBits.DSON)
+            value ^= PortDesiredStateOnline.ON
         elif desired_on_online is False:
-            value ^= PortDesiredState.OFF << self._bit_shifts(PortStatusBits.DSON)
+            value ^= PortDesiredStateOnline.OFF
         if desired_on_offline:
-            value ^= PortDesiredState.ON << self._bit_shifts(PortStatusBits.DSOFF)
+            value ^= PortDesiredStateOffline.ON
         elif desired_on_offline is False:
-            value ^= PortDesiredState.OFF << self._bit_shifts(PortStatusBits.DSOFF)
+            value ^= PortDesiredStateOffline.OFF
         if force_off:
-            value ^= PortOverride.FORCE_OFF << self._bit_shifts(PortStatusBits.TO)
+            value ^= PortOverride.FORCE_OFF
         if reset_breaker:
             value ^= PortStatusBits.PWRSENSE_BREAKER
         self.value = value
-
-    def _bit_shifts(self, mask: int) -> int:
-        """Return number of bit shifts needed to fit 16-bit mask.
-
-        :param mask: bits mask
-        :returns: shifts count
-        """
-        count = 1
-        if mask & 0xFF == 0:
-            mask >>= 8
-            count += 8
-        if mask & 0xF == 0:
-            mask >>= 4
-            count += 4
-        if mask & 0x3 == 0:
-            mask >>= 2
-            count += 2
-        count -= mask & 0x1
-        return count
 
 
 @dataclass
