@@ -6,41 +6,41 @@
 {{- $fndh_instances := dict}}
 
 {{- range $station_cluster_id, $station_cluster_spec := $platform.array.station_clusters}}
-{{- range $station_id, $station_spec := $station_cluster_spec.stations}}
+  {{- range $station_id, $station_spec := $station_cluster_spec.stations}}
+    {{- $station_enabled := true}}
+    {{- if hasKey $station_spec "enabled"}}
+      {{- $station_enabled = $station_spec.enabled}}
+    {{- end}}
 
-{{- $station_enabled := dig "enabled" true $station_spec}}
-{{- if $station_enabled}}
-{{- $pasd_spec := dig "pasd" (dict "enabled" false) $station_spec}}
-{{- $pasd_enabled := dig "enabled" true $pasd_spec}}
-{{- if $pasd_enabled}}
+    {{- $pasd_spec := dig "pasd" dict $station_spec}}
+    {{- $pasd_enabled := $station_enabled}}
+    {{- if hasKey $pasd_spec "enabled"}}
+      {{- $pasd_enabled = $pasd_spec.enabled}}
+    {{- end}}
 
-{{- $fndh_spec := dig "fndh" "controller" (dict "enabled" false) $pasd_spec}}
-{{- $fndh_enabled := dig "enabled" true $fndh_spec}}
+    {{- $fndh_spec := dig "fndh" "controller" (dict "enabled" false) $pasd_spec}}
+    {{- $fndh_enabled := $pasd_enabled}}
+    {{- if hasKey $fndh_spec "enabled"}}
+      {{- $fndh_enabled = $fndh_spec.enabled}}
+    {{- end}}
 
-{{- if $fndh_enabled}}
+    {{- if $fndh_enabled}}
+      {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
+      {{- $fndh_name := printf "low-mccs/fndh/%s" $station_name}}
+      {{- $fndh_instance := dict "pasdbus_name" (printf "low-mccs/pasdbus/%s" $station_name)}}
 
-{{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
+      {{- $fndh_logging_level_defaults := pluck "logging_level_default" $fndh_spec $defaults}}
+      {{- if $fndh_logging_level_defaults}}
+        {{- $_ := set $fndh_instance "logging_level_default" (first $fndh_logging_level_defaults)}}
+      {{- end}}
 
-{{- $fndh_name := printf "low-mccs/fndh/%s" $station_name}}
-{{- $fndh_instance := dict "pasdbus_name" (printf "low-mccs/pasdbus/%s" $station_name)}}
-
-{{- $fndh_logging_level_defaults := pluck "logging_level_default" $fndh_spec $defaults}}
-{{- if $fndh_logging_level_defaults}}
-{{- $_ := set $fndh_instance "logging_level_default" (first $fndh_logging_level_defaults)}}
-{{- end }}
-
-{{- $_ := set $fndh_instances $station_name (dict $fndh_name $fndh_instance)}}
+      {{- $_ := set $fndh_instances $station_name (dict $fndh_name $fndh_instance)}}
+    {{- end}}
+  {{- end}}
 {{- end}}
-{{- end}}
-{{- end}}
-{{- end}}
-{{- end}}
 
-{{- if $fndh_instances}}
+{{- with $fndh_instances}}
 deviceServers:
   fndhs:
-{{- range $server_name, $fndh_spec := $fndh_instances}}
-    {{$server_name}}:
-{{toYaml $fndh_spec | indent 6}}
-{{- end }}
-{{- end }}
+{{toYaml . | indent 4}}
+{{- end}}

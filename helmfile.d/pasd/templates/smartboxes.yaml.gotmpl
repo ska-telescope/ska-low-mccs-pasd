@@ -6,49 +6,52 @@
 {{- $smartbox_instances := dict}}
 
 {{- range $station_cluster_id, $station_cluster_spec := $platform.array.station_clusters}}
-{{- range $station_id, $station_spec := $station_cluster_spec.stations}}
+  {{- range $station_id, $station_spec := $station_cluster_spec.stations}}
+    {{- $station_enabled := true}}
+    {{- if hasKey $station_spec "enabled"}}
+      {{- $station_enabled = $station_spec.enabled}}
+    {{- end}}
 
-{{- $station_enabled := dig "enabled" true $station_spec}}
+    {{- $pasd_spec := dig "pasd" dict $station_spec}}
+    {{- $pasd_enabled := $station_enabled}}
+    {{- if hasKey $pasd_spec "enabled"}}
+      {{- $pasd_enabled = $pasd_spec.enabled}}
+    {{- end}}
 
-{{- $smartbox_specs := dig "pasd" "smartboxes" dict $station_spec}}
+    {{- $smartbox_specs := dig "smartboxes" dict $pasd_spec}}
+    {{- range $smartbox_id, $smartbox_spec := $smartbox_specs}}
+      {{- $smartbox_enabled := $pasd_enabled}}
+      {{- if hasKey $smartbox_spec "enabled"}}
+        {{- $smartbox_enabled = $smartbox_spec.enabled}}
+      {{- end }}
 
-{{- range $smartbox_id, $smartbox_spec := $smartbox_specs}}
+      {{- if $smartbox_enabled}}
+        {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
 
-{{- $smartbox_enabled := dig "enabled" $station_enabled $smartbox_spec}}
+        {{- $server_name := printf "%s-%02d" $station_name (int $smartbox_id)}}
+        {{- $smartbox_name := printf "low-mccs/smartbox/%s" $server_name}}
 
-{{- if $smartbox_enabled}}
+        {{- $pasdbus_name := printf "low-mccs/pasdbus/%s" $station_name}}
+        {{- $fndh_name := printf "low-mccs/fndh/%s" $station_name}}
 
-{{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
+        {{- $smartbox_instance := pick $smartbox_spec "fndh_port"}}
+        {{- $_ := set $smartbox_instance "smartbox_number" $smartbox_spec.modbus_id}}
+        {{- $_ := set $smartbox_instance "pasdbus_name" $pasdbus_name}}
+        {{- $_ := set $smartbox_instance "fndh_name" $fndh_name}}
 
-{{- $server_name := printf "%s-%02d" $station_name (int $smartbox_id)}}
-{{- $smartbox_name := printf "low-mccs/smartbox/%s" $server_name}}
+        {{- $smartbox_logging_level_defaults := pluck "logging_level_default" $smartbox_spec $defaults}}
+        {{- if $smartbox_logging_level_defaults}}
+          {{- $_ := set $smartbox_instance "logging_level_default" (first $smartbox_logging_level_defaults)}}
+        {{- end }}
 
-{{- $pasdbus_name := printf "low-mccs/pasdbus/%s" $station_name}}
-{{- $fndh_name := printf "low-mccs/fndh/%s" $station_name}}
-
-{{- $smartbox_instance := pick $smartbox_spec "fndh_port"}}
-{{- $_ := set $smartbox_instance "smartbox_number" $smartbox_spec.modbus_id}}
-{{- $_ := set $smartbox_instance "pasdbus_name" $pasdbus_name}}
-{{- $_ := set $smartbox_instance "fndh_name" $fndh_name}}
-
-{{- $smartbox_logging_level_defaults := pluck "logging_level_default" $smartbox_spec $defaults}}
-{{- if $smartbox_logging_level_defaults}}
-{{- $_ := set $smartbox_instance "logging_level_default" (first $smartbox_logging_level_defaults)}}
-{{- end }}
-
-{{- $_ := set $smartbox_instances $server_name (dict $smartbox_name $smartbox_instance)}}
+        {{- $_ := set $smartbox_instances $server_name (dict $smartbox_name $smartbox_instance)}}
+      {{- end}}
+    {{- end}}
+  {{- end}}
 {{- end}}
 
-{{- end}}
-
-{{- end}}
-{{- end}}
-
-{{- if $smartbox_instances}}
+{{- with $smartbox_instances}}
 deviceServers:
   smartboxes:
-{{- range $server_name, $smartbox_spec := $smartbox_instances}}
-    {{$server_name}}:
-{{toYaml $smartbox_spec | indent 6}}
-{{- end }}
+{{toYaml . | indent 4}}
 {{- end }}
