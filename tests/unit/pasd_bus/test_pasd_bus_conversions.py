@@ -150,6 +150,13 @@ def test_conversion_function(
             [LEDServiceMap.ON, LEDStatusMap.REDVFAST],
             id="convert_led_status",
         ),
+        pytest.param(
+            PasdConversionUtility.convert_led_status,
+            [0x500],
+            "service: VSLOW, status: OFF",
+            [LEDServiceMap.VSLOW],
+            id="convert_led_status",
+        ),
     ],
 )
 def test_non_reversible_conversion_function(

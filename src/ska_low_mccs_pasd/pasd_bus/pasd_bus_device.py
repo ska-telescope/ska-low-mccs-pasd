@@ -920,40 +920,50 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         return ([ResultCode.FAILED], ["SetFndhPortPowers failed"])
 
     class _SetFndhLedPatternCommand(FastCommand):
+        SCHEMA: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "MccsPasdBus_SetFndhLedPattern.json",
+            )
+        )
+
         def __init__(
             self: MccsPasdBus._SetFndhLedPatternCommand,
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
         ):
             self._component_manager = component_manager
-            super().__init__(logger)
+
+            validator = JsonValidator("SetFndhLedPattern", self.SCHEMA, logger)
+            super().__init__(logger, validator)
 
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
             self: MccsPasdBus._SetFndhLedPatternCommand,
-            pattern: str,
+            service_led: str,
+            status_led: str,
         ) -> Optional[bool]:
             """
             Set the FNDH LED pattern.
 
-            :param pattern: name of the new LED pattern
-
+            :param service_led: name of the service LED pattern.
+            :param status_led: name of the status LED pattern.
             :return: whether successful, or None if there was nothing to
                 do.
             """
-            return self._component_manager.set_fndh_led_pattern(pattern)
+            return self._component_manager.set_fndh_led_pattern(service_led, status_led)
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def SetFndhLedPattern(self: MccsPasdBus, pattern: str) -> DevVarLongStringArrayType:
+    def SetFndhLedPattern(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
         """
-        Set the FNDH's LED pattern.
+        Set the FNDH's LEDs' patterns.
 
-        :param pattern: name of the new LED pattern.
+        :param argin: JSON encoded dictionary of arguments.
 
         :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("SetFndhLedPattern")
-        success = handler(pattern)
+        success = handler(argin)
         if success:
             return ([ResultCode.OK], ["SetFndhLedPattern succeeded"])
         if success is None:
@@ -1148,10 +1158,11 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         def do(  # type: ignore[override]
             self: MccsPasdBus._SetSmartboxLedPatternCommand,
             smartbox_number: int,
-            pattern: str,
+            service_led: str,
+            status_led: str,
         ) -> Optional[bool]:
             return self._component_manager.set_smartbox_led_pattern(
-                smartbox_number, pattern
+                smartbox_number, service_led, status_led
             )
 
     @command(dtype_in="str", dtype_out="DevVarLongStringArray")
@@ -1159,7 +1170,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         self: MccsPasdBus, argin: str
     ) -> DevVarLongStringArrayType:
         """
-        Set a smartbox's LED pattern.
+        Set a smartbox's LEDs' patterns.
 
         :param argin: JSON encoded dictionary of arguments.
 
