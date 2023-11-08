@@ -2,6 +2,31 @@
 
 ## unreleased
 
+## 0.5.0
+
+* [WOM-157] Update set led pattern commands
+* [WOM-107] Implement FNDH port state registers PWRSENSE & POWER
+* [MCCS-1846] Support disabling PaSD
+* [WOM-111] Handle bad responses more robustly
+* [WOM-162] Fix bug in SmartBoxComponentManager and its PasdBusProxy
+* [MCCS-1745] : Add antenna powers attribute to FieldStation
+* [MCCS-1753] Modify PaSD Bus Simulator to use Modbus API rather than JSON API
+* [MCCS-1755] Fieldstation ON/OFF
+* [WOM-156] Make timeout setting in values.yaml take effect
+* [WOM-140] Smarboxes depend on attached FNDH ports in functional and integration tests
+* [WOM-150] Add warning/alarm flags to FNDH and SMART box polling loop
+* [MCCS-1814] Simplify smartbox
+* [MCCS-1801] Poll management
+* [MCCS-1807] Filter by device
+* [WOM-108] - Alarm thresholds
+* [MCCS-1800] set port powers
+* [MCCS-1794] defer connecting
+* [MCCS-1788] Refactor test harness
+* [MCCS-1787] TurnAllPortsOn
+* [WOM-113] Removed ports_connected attribute from FNDH/smartbox.
+* [MCCS-1784] field station configure
+
+
 ## 0.4.0
 
 * [MCCS-1769] Update to pytango 9.4.2
