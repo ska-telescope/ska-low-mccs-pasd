@@ -312,8 +312,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         match request_spec:
             case (device_id, "INITIALIZE", None):
                 request = PasdBusRequest(device_id, "initialize", None, [])
-            case (device_id, "READ", spec):
-                request = PasdBusRequest(device_id, None, None, spec)
+            case (device_id, "READ", attribute):
+                request = PasdBusRequest(device_id, None, None, [attribute])
             case (device_id, "WRITE", spec):
                 request = PasdBusRequest(device_id, None, *spec)
             case (device_id, "LED_PATTERN", pattern):
