@@ -830,6 +830,7 @@ class TestSmartBoxPasdBusIntegration:
             <= PasdConversionUtility.convert_uptime(smartbox_simulator.uptime)[0]
         )
         assert smartbox_device.PasdStatus == SmartboxSimulator.DEFAULT_STATUS.name
+        assert smartbox_device.LedPattern == "service: OFF, status: YELLOWFAST"
         assert (
             smartbox_device.InputVoltage
             == PasdConversionUtility.scale_volts(
@@ -1064,6 +1065,7 @@ class TestSmartBoxPasdBusIntegration:
             f"smartbox{on_smartbox_id}status", "OK"
         )
         assert smartbox_device.PasdStatus == "OK"
+        assert smartbox_device.LedPattern == "service: OFF, status: GREENSLOW"
 
         smartbox_simulator.input_voltage = 3000
         change_event_callbacks.assert_change_event(

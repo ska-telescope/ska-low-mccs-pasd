@@ -282,7 +282,7 @@ class TestPasdBusComponentManager:
             uptime=Anything,
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="OK",
-            led_pattern="service: OFF, status: OFF",
+            led_pattern="service: OFF, status: GREENSLOW",
             psu48v_voltages=PasdConversionUtility.scale_volts(
                 FndhSimulator.DEFAULT_PSU48V_VOLTAGES
             ),
@@ -365,7 +365,7 @@ class TestPasdBusComponentManager:
                 uptime=Anything,
                 sys_address=smartbox_number,
                 status="OK",
-                led_pattern="service: OFF, status: OFF",
+                led_pattern="service: OFF, status: GREENSLOW",
                 input_voltage=PasdConversionUtility.scale_volts(
                     [SmartboxSimulator.DEFAULT_INPUT_VOLTAGE]
                 )[0],
@@ -668,13 +668,13 @@ class TestPasdBusComponentManager:
         for _ in range(6):
             mock_callbacks["pasd_device_state_for_fndh"].assert_against_call()
 
-        pasd_bus_component_manager.set_fndh_led_pattern("FAST", "GREEN")
+        pasd_bus_component_manager.set_fndh_led_pattern("FAST")
 
         mock_callbacks["pasd_device_state_for_fndh"].assert_call(
             uptime=Anything,
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="OK",
-            led_pattern="service: FAST, status: GREEN",
+            led_pattern="service: FAST, status: GREENSLOW",
             psu48v_voltages=PasdConversionUtility.scale_volts(
                 FndhSimulator.DEFAULT_PSU48V_VOLTAGES
             ),
@@ -719,15 +719,13 @@ class TestPasdBusComponentManager:
                 f"pasd_device_state_for_smartbox{smartbox_number}"
             ].assert_against_call()
 
-        pasd_bus_component_manager.set_smartbox_led_pattern(
-            smartbox_number, "FAST", "GREEN"
-        )
+        pasd_bus_component_manager.set_smartbox_led_pattern(smartbox_number, "FAST")
 
         mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_number}"].assert_call(
             uptime=Anything,
             sys_address=smartbox_number,
             status=SmartboxSimulator.DEFAULT_STATUS.name,
-            led_pattern="service: FAST, status: GREEN",
+            led_pattern="service: FAST, status: YELLOWFAST",
             input_voltage=PasdConversionUtility.scale_volts(
                 [SmartboxSimulator.DEFAULT_INPUT_VOLTAGE]
             )[0],

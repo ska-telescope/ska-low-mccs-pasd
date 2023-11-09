@@ -940,23 +940,21 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
             self: MccsPasdBus._SetFndhLedPatternCommand,
-            service_led: str,
-            status_led: str,
+            pattern: str,
         ) -> Optional[bool]:
             """
-            Set the FNDH LED pattern.
+            Set the FNDH service LED pattern.
 
-            :param service_led: name of the service LED pattern.
-            :param status_led: name of the status LED pattern.
+            :param pattern: name of the service LED pattern.
             :return: whether successful, or None if there was nothing to
                 do.
             """
-            return self._component_manager.set_fndh_led_pattern(service_led, status_led)
+            return self._component_manager.set_fndh_led_pattern(pattern)
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
     def SetFndhLedPattern(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
         """
-        Set the FNDH's LEDs' patterns.
+        Set the FNDH service LED pattern.
 
         :param argin: JSON encoded dictionary of arguments.
 
@@ -1158,11 +1156,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         def do(  # type: ignore[override]
             self: MccsPasdBus._SetSmartboxLedPatternCommand,
             smartbox_number: int,
-            service_led: str,
-            status_led: str,
+            pattern: str,
         ) -> Optional[bool]:
             return self._component_manager.set_smartbox_led_pattern(
-                smartbox_number, service_led, status_led
+                smartbox_number, pattern
             )
 
     @command(dtype_in="str", dtype_out="DevVarLongStringArray")
@@ -1170,7 +1167,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         self: MccsPasdBus, argin: str
     ) -> DevVarLongStringArrayType:
         """
-        Set a smartbox's LEDs' patterns.
+        Set a smartbox's service LED pattern.
 
         :param argin: JSON encoded dictionary of arguments.
 

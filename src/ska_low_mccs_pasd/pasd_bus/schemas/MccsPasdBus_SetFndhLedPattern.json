@@ -5,7 +5,7 @@
     "description": "Schema for MccsPasdBus's SetFndhLedPattern command",
     "type": "object",
     "properties": {
-        "service_led": {
+        "pattern": {
             "description": "Name of the service LED pattern",
             "type": "string",
             "enum": [
@@ -16,35 +16,9 @@
                 "SLOW",
                 "VSLOW"
             ]
-        },
-        "status_led": {
-            "description": "Name of the status LED pattern",
-            "type": "string",
-            "enum": [
-                "OFF",
-                "GREEN",
-                "GREENSLOW",
-                "GREENFAST",
-                "GREENVFAST",
-                "GREENDOTDASH",
-                "YELLOW",
-                "YELLOWSLOW",
-                "YELLOWFAST",
-                "YELLOWVFAST",
-                "YELLOWDOTDASH",
-                "RED",
-                "REDSLOW",
-                "REDFAST",
-                "REDVFAST",
-                "REDDOTDASH",
-                "YELLOWRED",
-                "YELLOWREDSLOW",
-                "GREENRED"
-            ]
         }
     },
     "required": [
-        "service_led",
-        "status_led"
+        "pattern"
     ]
 }

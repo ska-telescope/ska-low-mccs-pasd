@@ -47,8 +47,8 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 from .pasd_bus_conversions import (
     FndhAlarmFlags,
     FndhStatusMap,
-    LEDServiceMap,
-    LEDStatusMap,
+    LedServiceMap,
+    LedStatusMap,
     PasdConversionUtility,
     SmartboxAlarmFlags,
     SmartboxStatusMap,
@@ -405,7 +405,9 @@ class PasdHardwareSimulator:
     which can be switched on and off, locally forced, etc.
     """
 
-    DEFAULT_LED_PATTERN: int = LEDServiceMap.OFF << 8 | LEDStatusMap.OFF
+    # pylint: disable=too-many-instance-attributes
+
+    DEFAULT_LED_PATTERN: int = LedServiceMap.OFF | LedStatusMap.YELLOWFAST
     DEFAULT_STATUS: FndhStatusMap | SmartboxStatusMap = FndhStatusMap.UNINITIALISED
     DEFAULT_UPTIME: Final = [0]
     DEFAULT_FLAGS: int = 0x0
@@ -428,7 +430,8 @@ class PasdHardwareSimulator:
         self._warning_flags: int = self.DEFAULT_FLAGS
         self._alarm_flags: int = self.DEFAULT_FLAGS
         self._status: int = self.DEFAULT_STATUS
-        self._led_pattern: int = self.DEFAULT_LED_PATTERN
+        self._service_led: int = LedServiceMap.OFF
+        self._status_led: int = LedStatusMap.YELLOWFAST
 
     def _load_thresholds(
         self: PasdHardwareSimulator, file_path: str, device: str
@@ -548,10 +551,13 @@ class PasdHardwareSimulator:
         ):
             if "ALARM" in self._sensors_status.values():
                 self._status = FndhStatusMap.ALARM
+                self._status_led = LedStatusMap.REDSLOW
             elif "WARNING" in self._sensors_status.values():
                 self._status = FndhStatusMap.WARNING
+                self._status_led = LedStatusMap.YELLOWSLOW
             else:
                 self._status = FndhStatusMap.OK
+                self._status_led = LedStatusMap.GREENSLOW
 
     def _update_ports_state(self: PasdHardwareSimulator) -> None:
         """
@@ -857,31 +863,34 @@ class PasdHardwareSimulator:
 
         :return: the name of the LED pattern.
         """
-        return self._led_pattern
+        return self._service_led | self._status_led
 
     @led_pattern.setter
-    def led_pattern(self: PasdHardwareSimulator, led_pattern: int) -> None:
+    def led_pattern(self: PasdHardwareSimulator, service_pattern: list[int]) -> None:
         """
         Set the LED pattern.
 
-        :param led_pattern: the LED pattern to be set.
+        :param service_pattern: the LED pattern to be set.
         """
-        self.set_led_pattern(led_pattern)
+        self.set_led_pattern(service_pattern[0])
 
     def set_led_pattern(
         self: PasdHardwareSimulator,
-        led_pattern: int,
+        service_pattern: int,
     ) -> bool | None:
         """
         Set the LED pattern.
 
-        :param led_pattern: the LED pattern to be set.
+        :param service_pattern: the LED pattern to be set.
         :return: whether successful, or None if there was nothing to do.
         """
-        if self._led_pattern == led_pattern:
-            return None
-        self._led_pattern = led_pattern
-        return True
+        if (
+            service_pattern in LedServiceMap.__members__.values()
+            and self._service_led != service_pattern
+        ):
+            self._service_led = LedServiceMap(service_pattern)
+            return True
+        return None
 
 
 class _Sensor:
