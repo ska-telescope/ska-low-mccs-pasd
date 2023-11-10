@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, IntEnum, IntFlag
 from typing import Any, Callable, Final, Optional, Sequence
 
 from .pasd_bus_conversions import LEDServiceMap, LEDStatusMap, PasdConversionUtility
@@ -45,21 +45,42 @@ class PasdWriteError(Exception):
         super().__init__(f"Non-writeable register requestedfor write: {attribute}")
 
 
-class PortStatusString(Enum):
+class PortStatusBits(IntFlag):
     """
-    Enum type for port status strings.
+    Enum type for PDOC/FEM port status bits.
 
     Corresponds to register bit names in PaSD firmware description document.
     """
 
-    ENABLE = "All ports enabled/disabled"
-    ONLINE = "Field node controller status"
-    DSON = "Desired port state when online"
-    DSOFF = "Desired port state when offline"
-    TO = "Technician override all ports"
-    PWRSENSE = "PDOC power output"
-    BREAKER = "FEM over-current breaker trip"
-    POWER = "PDOC control line/FEM power output"
+    ENABLE = 0x8000
+    ONLINE = 0x4000
+    DSON = 0x3000
+    DSOFF = 0x0C00
+    TO = 0x0300
+    PWRSENSE_BREAKER = 0x0080
+    POWER = 0x0040
+    NONE = 0x0
+
+
+class PortDesiredStateOnline(IntEnum):
+    """Port desired state when device is online."""
+
+    OFF = 0x2000
+    ON = 0x3000
+
+
+class PortDesiredStateOffline(IntEnum):
+    """Port desired state when device is offline."""
+
+    OFF = 0x800
+    ON = 0xC00
+
+
+class PortOverride(IntEnum):
+    """Port override for field maintenance."""
+
+    ALLOW_ON = 0x100
+    FORCE_OFF = 0x200
 
 
 class PasdCommandStrings(Enum):
@@ -171,20 +192,20 @@ class PasdBusPortAttribute(PasdBusAttribute):
         self: PasdBusPortAttribute,
         address: int,
         count: int,
-        desired_info: Optional[PortStatusString] = None,
+        desired_info: PortStatusBits = PortStatusBits.NONE,
     ):
         """Initialise a new instance.
 
         :param address: starting register address
         :param count: number of registers containing the port data
         :param desired_info: port status attribute of interest if
-            reading status (must match member of PortStatusStrings)
+            reading status (must match member of PortStatusBits)
         """
         super().__init__(address, count, self._parse_port_bitmaps)
         self.desired_info = desired_info
 
-    # pylint: disable=too-many-branches, too-many-statements
-    def _parse_port_bitmaps(  # noqa: C901
+    # pylint: disable=too-many-branches
+    def _parse_port_bitmaps(
         self: PasdBusPortAttribute,
         values: list[int | bool | str],
         inverse: bool = False,
@@ -204,98 +225,68 @@ class PasdBusPortAttribute(PasdBusAttribute):
         if inverse:
             inv_results: list[int] = []
             for value in values:
-                bitstring = "00"
-
-                if self.desired_info == PortStatusString.DSON:
-                    bitstring += "11" if value else "10"
-                else:
-                    bitstring += "00"
-
-                if self.desired_info == PortStatusString.DSOFF:
-                    bitstring += "11" if value else "10"
-                else:
-                    bitstring += "00"
-
-                if self.desired_info == PortStatusString.TO:
-                    if value == forcing_map[True]:
-                        bitstring += "11"
-                    elif value == forcing_map[False]:
-                        bitstring += "10"
-                    else:
-                        bitstring += "00"
-                else:
-                    bitstring += "00"
-
-                if self.desired_info == PortStatusString.BREAKER:
-                    bitstring += "1" if value else "0"
-                elif self.desired_info == PortStatusString.PWRSENSE:
-                    bitstring += "1" if value else "0"
-                else:
-                    bitstring += "0"
-
-                if self.desired_info == PortStatusString.POWER:
-                    bitstring += "1" if value else "0"
-                else:
-                    bitstring += "0"
-
-                bitstring += "000000"  # pad to 16 bits
-                inv_results.append(int(bitstring, 2))
+                bitmap: int = 0
+                match self.desired_info:
+                    case PortStatusBits.DSON:
+                        if value:
+                            bitmap = PortDesiredStateOnline.ON
+                        else:
+                            bitmap = PortDesiredStateOnline.OFF
+                    case PortStatusBits.DSOFF:
+                        if value:
+                            bitmap = PortDesiredStateOffline.ON
+                        else:
+                            bitmap = PortDesiredStateOffline.OFF
+                    case PortStatusBits.TO:
+                        if value == forcing_map[True]:
+                            bitmap = PortOverride.ALLOW_ON
+                        elif value == forcing_map[False]:
+                            bitmap = PortOverride.FORCE_OFF
+                    case PortStatusBits.PWRSENSE_BREAKER | PortStatusBits.POWER:
+                        if value:
+                            bitmap = self.desired_info
+                inv_results.append(bitmap)
             return inv_results
         results: list[bool | str | None] = []
         for status_bitmap in values:
-            bitstring = f"{status_bitmap:016b}"
-            match (self.desired_info):
-                case PortStatusString.DSON:
-                    if bitstring[2:4] == "11":
-                        results.append(True)
-                    else:
-                        results.append(False)
-                case PortStatusString.DSOFF:
-                    if bitstring[4:6] == "11":
-                        results.append(True)
-                    else:
-                        results.append(False)
-                case PortStatusString.TO:
-                    if bitstring[6:8] == "10":
+            status = int(status_bitmap) & self.desired_info
+            match self.desired_info:
+                case PortStatusBits.DSON:
+                    results.append(status == PortDesiredStateOnline.ON)
+                case PortStatusBits.DSOFF:
+                    results.append(status == PortDesiredStateOffline.ON)
+                case PortStatusBits.TO:
+                    if status == PortOverride.FORCE_OFF:
                         results.append(forcing_map[False])
-                    elif bitstring[6:8] == "11":
+                    elif status == PortOverride.ALLOW_ON:
                         results.append(forcing_map[True])
                     else:
                         results.append(forcing_map[None])
-                case PortStatusString.BREAKER:  # Smartboxes only
-                    results.append(bitstring[8] == "1")
-                case PortStatusString.PWRSENSE:  # FNDH only
-                    results.append(bitstring[8] == "1")
-                case PortStatusString.POWER:
-                    results.append(bitstring[9] == "1")
+                case PortStatusBits.PWRSENSE_BREAKER | PortStatusBits.POWER:
+                    results.append(bool(status))
         return results
 
     def _set_bitmap_value(
         self: PasdBusPortAttribute,
-        desired_on_online: Optional[bool],
-        desired_on_offline: Optional[bool],
+        desired_on_online: Optional[bool] = None,
+        desired_on_offline: Optional[bool] = None,
         reset_breaker: bool = False,
+        force_off: bool = False,
     ) -> None:
-        # First two bits are read-only (ENABLE and ONLINE)
-        bitstring = "00"
-
-        if desired_on_online is None:
-            bitstring += "00"
-        else:
-            bitstring += "11" if desired_on_online else "10"
-
-        if desired_on_offline is None:
-            bitstring += "00"
-        else:
-            bitstring += "11" if desired_on_offline else "10"
-
-        # Next two bits are read-only (FORCED ON / OFF)
-        bitstring += "00"
-
-        bitstring += "1" if reset_breaker else "0"
-
-        bitstring += "0000000"  # pad to 16 bits
-        self.value = int(bitstring, 2)
+        value = 0
+        if desired_on_online:
+            value ^= PortDesiredStateOnline.ON
+        elif desired_on_online is False:
+            value ^= PortDesiredStateOnline.OFF
+        if desired_on_offline:
+            value ^= PortDesiredStateOffline.ON
+        elif desired_on_offline is False:
+            value ^= PortDesiredStateOffline.OFF
+        if force_off:
+            value ^= PortOverride.FORCE_OFF
+        if reset_breaker:
+            value ^= PortStatusBits.PWRSENSE_BREAKER
+        self.value = value
 
 
 @dataclass
@@ -367,15 +358,17 @@ class PasdBusRegisterMap:
         "internal_ambient_temperature": PasdBusAttribute(
             29, 1, PasdConversionUtility.scale_signed_16bit
         ),
-        "port_forcings": PasdBusPortAttribute(35, 28, PortStatusString.TO),
+        "port_forcings": PasdBusPortAttribute(35, 28, PortStatusBits.TO),
         "ports_desired_power_when_online": PasdBusPortAttribute(
-            35, 28, PortStatusString.DSON
+            35, 28, PortStatusBits.DSON
         ),
         "ports_desired_power_when_offline": PasdBusPortAttribute(
-            35, 28, PortStatusString.DSOFF
+            35, 28, PortStatusBits.DSOFF
         ),
-        "ports_power_sensed": PasdBusPortAttribute(35, 28, PortStatusString.PWRSENSE),
-        "ports_power_control": PasdBusPortAttribute(35, 28, PortStatusString.POWER),
+        "ports_power_sensed": PasdBusPortAttribute(
+            35, 28, PortStatusBits.PWRSENSE_BREAKER
+        ),
+        "ports_power_control": PasdBusPortAttribute(35, 28, PortStatusBits.POWER),
         "psu48v_voltage_1_thresholds": PasdBusAttribute(
             1000, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
         ),
@@ -442,15 +435,17 @@ class PasdBusRegisterMap:
         "fem_heatsink_temperatures": PasdBusAttribute(
             25, 2, PasdConversionUtility.scale_signed_16bit
         ),
-        "port_forcings": PasdBusPortAttribute(35, 12, PortStatusString.TO),
-        "port_breakers_tripped": PasdBusPortAttribute(35, 12, PortStatusString.BREAKER),
+        "port_forcings": PasdBusPortAttribute(35, 12, PortStatusBits.TO),
+        "port_breakers_tripped": PasdBusPortAttribute(
+            35, 12, PortStatusBits.PWRSENSE_BREAKER
+        ),
         "ports_desired_power_when_online": PasdBusPortAttribute(
-            35, 12, PortStatusString.DSON
+            35, 12, PortStatusBits.DSON
         ),
         "ports_desired_power_when_offline": PasdBusPortAttribute(
-            35, 12, PortStatusString.DSOFF
+            35, 12, PortStatusBits.DSOFF
         ),
-        "ports_power_sensed": PasdBusPortAttribute(35, 12, PortStatusString.POWER),
+        "ports_power_sensed": PasdBusPortAttribute(35, 12, PortStatusBits.POWER),
         "ports_current_draw": PasdBusAttribute(47, 12),
         "input_voltage_thresholds": PasdBusAttribute(
             1000, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
@@ -722,7 +717,7 @@ class PasdBusRegisterMap:
             case PasdCommandStrings.TURN_PORT_OFF:
                 attribute._set_bitmap_value(False, False)
             case PasdCommandStrings.RESET_PORT_BREAKER:
-                attribute._set_bitmap_value(None, None, True)
+                attribute._set_bitmap_value(reset_breaker=True)
         return attribute
 
     def _create_reset_alarms_command(self, device_id: int) -> PasdBusAttribute:

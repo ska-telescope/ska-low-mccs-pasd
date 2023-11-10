@@ -42,6 +42,8 @@ from typing import Callable, Final, Optional, Sequence
 
 import yaml
 
+from ska_low_mccs_pasd.pasd_data import PasdData
+
 from .pasd_bus_conversions import (
     FndhAlarmFlags,
     FndhStatusMap,
@@ -1370,9 +1372,6 @@ class PasdBusSimulator:
     * Voltages, currents and temperatures never change.
     """
 
-    NUMBER_OF_SMARTBOXES = 24
-    NUMBER_OF_ANTENNAS = 256
-
     def __init__(
         self: PasdBusSimulator,
         pasd_configuration_path: str,
@@ -1397,7 +1396,7 @@ class PasdBusSimulator:
 
         self._smartbox_simulators: dict[int, SmartboxSimulator] = {}
         self._smartboxes_ports_connected: list[list[bool]] = []
-        self._smartbox_attached_ports: list[int] = [0] * self.NUMBER_OF_SMARTBOXES
+        self._smartbox_attached_ports: list[int] = [0] * PasdData.NUMBER_OF_SMARTBOXES
 
         if smartboxes_depend_on_attached_ports:
             self._fndh_simulator = FndhSimulator(
@@ -1508,7 +1507,7 @@ class PasdBusSimulator:
 
         self._smartboxes_ports_connected = [
             [False] * SmartboxSimulator.NUMBER_OF_PORTS
-            for _ in range(self.NUMBER_OF_SMARTBOXES)
+            for _ in range(PasdData.NUMBER_OF_SMARTBOXES)
         ]
         for antenna_config in config["antennas"].values():
             smartbox_id = int(antenna_config["smartbox"])
