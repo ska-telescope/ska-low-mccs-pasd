@@ -8,6 +8,7 @@ metadata:
   namespace: {{$.Release.Namespace}}
 {{- with $labels}}
   labels:
+    findme: "configmap-to-watch"
 {{ toYaml . | indent 4 }}
 {{- end}}
 data:

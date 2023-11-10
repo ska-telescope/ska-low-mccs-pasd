@@ -13,6 +13,7 @@ url = 'https://artefact.skao.int/repository/pypi-internal/simple'
 
 [tool.poetry.dependencies]
 python = "~3.10"
+kubernetes = "28.1.0"
 numpy = "1.25.2"
 pytango = "9.4.2"
 PyYAML = "^6.0"
@@ -64,6 +65,7 @@ typing-extensions = "^4.6.1"       # undeclared dependency-dependency
 MccsPasdBus = "ska_low_mccs_pasd.pasd_bus.pasd_bus_device:main"
 PasdBusSimulatorServer = "ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator_server:main"
 MccsSmartBox = "ska_low_mccs_pasd.smart_box.smart_box_device:main"
+FieldStationConfigurator = "ska_low_mccs_pasd.configurator.field_station_configurator_server:main"
 MccsFNDH = "ska_low_mccs_pasd.fndh.fndh_device:main"
 MccsFieldStation = "ska_low_mccs_pasd.field_station.field_station_device:main"
 
