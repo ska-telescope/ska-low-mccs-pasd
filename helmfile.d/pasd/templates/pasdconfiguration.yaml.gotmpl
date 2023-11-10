@@ -1,0 +1,51 @@
+{{- /* Configure the PaSD bus Tango devices. */}}
+{{- $overrides := .Values | get "overrides" dict}}
+{{- $platform := mergeOverwrite .Values.platform $overrides}}
+
+{{- $pasdbus_configuration := dict}}
+
+{{- range $station_cluster_id, $station_cluster_spec := $platform.array.station_clusters}}
+  {{- range $station_id, $station_spec := $station_cluster_spec.stations}}
+
+    {{- $station_enabled := dig "enabled" true $station_spec}}
+    {{- $pasd_enabled := false}}
+    {{- $pasd_spec := dig "pasd" dict $station_spec}}
+
+    {{- if $station_enabled}}
+      {{- $pasd_enabled = dig "enabled" true $pasd_spec}}
+    {{- end}}
+
+    {{- if $pasd_enabled}}
+      {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
+      {{- $pasdbus_spec := dig "fndh" "gateway" (dict "enabled" false) $pasd_spec}}
+      {{- $pasdbus_simulated := dig "simulated" false $pasdbus_spec}}
+      {{- if $pasdbus_simulated}}
+
+        {{- $pasdbus_instance_configuration := dict}}
+
+        {{- $_ := set $pasdbus_instance_configuration "pasd" (dict "smartboxes" dict)}}
+        {{- range $smartbox_id, $smartbox_spec := $pasd_spec.smartboxes}}
+          {{- $_ := set $pasdbus_instance_configuration.pasd.smartboxes $smartbox_id (pick $smartbox_spec "fndh_port")}}
+        {{- end}}
+
+        {{- $_ := set $pasdbus_instance_configuration "antennas" dict}}
+        {{- $antenna_masked_state := false}}
+        {{- range $antenna_id, $antenna_spec := $station_spec.antennas}}
+          {{- $antenna_masked_state = dig "masked" false $antenna_spec}}
+          {{- $_ := set $antenna_spec "masked" $antenna_masked_state}}
+          {{- $_ := set $pasdbus_instance_configuration.antennas $antenna_id (pick $antenna_spec "smartbox" "smartbox_port" "masked")}}
+        {{- end}}
+
+        {{- $_ := set $pasdbus_configuration $station_name $pasdbus_instance_configuration}}
+      
+      {{- end }}
+    {{- end}}
+  {{- end}}
+{{- end}}
+
+{{- with $pasdbus_configuration}}
+referenceData:
+  pasdconfiguration:
+{{toYaml . | indent 4}}
+{{- end }}
+

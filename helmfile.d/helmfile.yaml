@@ -85,6 +85,7 @@ releases:
       - pasd/templates/fndhs.yaml.gotmpl
       - pasd/templates/pasdbuses.yaml.gotmpl
       - pasd/templates/smartboxes.yaml.gotmpl
+      - pasd/templates/pasdconfiguration.yaml.gotmpl
 
 {{- $_tango_host_provided := dig "platform" "cluster" "services" "tango-base" "tango-host" "" .Values}}
 {{- $tango_host_provided := dig "overrides" "cluster" "services" "tango-base" "tango-host" $_tango_host_provided .Values}}

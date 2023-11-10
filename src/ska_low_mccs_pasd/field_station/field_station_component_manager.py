@@ -149,7 +149,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.station_name = station_name
 
         # TODO add configurability.
-        # This could just be as simple as ...
+        # This could be as simple as ...
         # "if i am given a ip / port i am in simulation mode"
         simulation_mode = True
 
@@ -208,14 +208,16 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         antenna_mapping_pretty: list[dict] = [{}] * 256
         smartbox_mapping_pretty: list[dict] = [{}] * 24
 
-        antenna_masks_logical: list[bool] = [False] * 256
+        antenna_masks_logical: list[bool] = [False] * 257
         antenna_mapping_logical: dict[str, list[int]] = {}
         smartbox_mappings_logical: dict[str, int] = {}
+
+        all_masked = True
 
         for antenna_id, antenna_config in reference_data["antennas"].items():
             smartbox_id = int(antenna_config["smartbox"])
             smartbox_port = int(antenna_config["smartbox_port"])
-            masked_state = False
+            masked_state = bool(antenna_config["masked"])
 
             antenna_mapping_pretty[int(antenna_id) - 1] = {
                 "antennaID": int(antenna_id),
@@ -228,14 +230,24 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 "antennaID": int(antenna_id),
                 "maskingState": masked_state,
             }
-            antenna_masks_logical[int(antenna_id) - 1] = masked_state
+            if not masked_state:
+                all_masked = False
 
-        for smartbox_id, fndh_config in reference_data["pasd"]["smartboxes"].items():
+            antenna_masks_logical[int(antenna_id)] = masked_state
+
+        for smartbox_id, smartbox_config in reference_data["pasd"][
+            "smartboxes"
+        ].items():
             smartbox_mapping_pretty[int(smartbox_id) - 1] = {
                 "smartboxID": int(smartbox_id),
-                "fndhPort": fndh_config["fndh_port"],
+                "fndhPort": smartbox_config["fndh_port"],
             }
-            smartbox_mappings_logical[str(smartbox_id)] = fndh_config["fndh_port"]
+            smartbox_mappings_logical[str(smartbox_id)] = smartbox_config["fndh_port"]
+
+        if all_masked:
+            antenna_masks_logical[0] = True
+        else:
+            antenna_masks_logical[0] = False
 
         self._antenna_mask_pretty = {"antennaMask": antenna_masks_pretty}
         self._smartbox_mapping_pretty = {"smartboxMapping": smartbox_mapping_pretty}
@@ -697,7 +709,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         The Field station knows what ports need to be
         turned on and what fndh and smartboxes it is connected to.
 
-        :param antenna_number: (one-based) number of the TPM to turn on.
+        :param antenna_number: (one-based) number of the Antenna to turn on.
         :param task_callback: callback to be called when the status of
             the command changes
 
@@ -720,7 +732,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         task_abort_event: Optional[threading.Event] = None,
     ) -> TaskStatus:
         assert self._fndh_proxy._proxy is not None
-        if not ignore_mask and (self._antenna_mask[antenna_number - 1]):
+        if not ignore_mask and (self._antenna_mask[antenna_number]):
             msg = (
                 f"Antenna number {antenna_number} is masked, call "
                 "with ignore_mask=True to ignore"
@@ -821,7 +833,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         task_abort_event: Optional[threading.Event] = None,
     ) -> TaskStatus:
         assert self._fndh_proxy._proxy is not None
-        if not ignore_mask and self._antenna_mask[antenna_number - 1]:
+        if not ignore_mask and self._antenna_mask[antenna_number]:
             msg = (
                 f"Antenna number {antenna_number} is masked, call "
                 "with ignore_mask=True to ignore"
@@ -920,7 +932,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             antenna_id = antenna["antennaID"]
             masking_state = antenna["maskingState"]
 
-            self._antenna_mask[antenna_id - 1] = masking_state
+            self._antenna_mask[antenna_id] = masking_state
             if not masking_state:
                 all_masked = False
         self._antenna_mask[0] = all_masked

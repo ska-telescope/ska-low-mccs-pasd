@@ -2,20 +2,6 @@
 {{- range $key, $value := ((.Values.simulators).pasdbuses)}}
 ---
 apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: pasd-configuration-{{$key}}
-  namespace: {{$.Release.Namespace}}
-{{- with $labels}}
-  labels:
-    findme: "configmap-to-watch"
-{{ toYaml . | indent 4 }}
-{{- end}}
-data:
-  pasd_configuration.yaml: |
-{{toYaml $value.config | indent 4}}
----
-apiVersion: v1
 kind: Service
 metadata:
   name: pasd-simulator-{{$key}}

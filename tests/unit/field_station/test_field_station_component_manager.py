@@ -36,7 +36,7 @@ def _input_antenna_mask() -> dict:
         antenna_mask[antenna_no]["antennaID"] = antenna_no + 1
         antenna_mask[antenna_no]["maskingState"] = False
     # Mask the first 12 antennas
-    for antenna_no in range(PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
+    for antenna_no in range(PasdData.NUMBER_OF_SMARTBOX_PORTS):
         antenna_mask[antenna_no]["maskingState"] = True
     # The 94th element in this list will have antennaID = 95
     antenna_mask[94]["maskingState"] = True
@@ -44,10 +44,10 @@ def _input_antenna_mask() -> dict:
 
 
 def _output_antenna_mask() -> list:
-    antenna_mask: list = [False for _ in range(PasdData.NUMBER_OF_ANTENNAS)]
+    antenna_mask: list = [False for _ in range(PasdData.NUMBER_OF_ANTENNAS + 1)]
     for antenna_id in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
         antenna_mask[antenna_id] = True
-    antenna_mask[94] = True
+    antenna_mask[95] = True
     return antenna_mask
 
 
@@ -230,6 +230,7 @@ def simulated_configuration_fixture(mock_antenna_mapping: Any) -> dict[Any, Any]
         antennas[str(antenna_id)] = {
             "smartbox": str(config[0]),
             "smartbox_port": config[1],
+            "masked": False,
         }
 
     for i in range(1, 25):
@@ -480,7 +481,7 @@ class TestFieldStationComponentManager:
         )
 
         field_station_component_manager._antenna_mask[
-            component_manager_command_argument - 1
+            component_manager_command_argument
         ] = antenna_masking_state
 
         assert (

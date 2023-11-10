@@ -80,6 +80,7 @@ def invalid_simulated_configuration_fixture() -> dict[Any, Any]:
     Return a invalid configuration.
 
     This is invalid because all 256 antenna must be specified.
+    And the masked key is required.
     This configuration only specifies 230.
 
     :return: a configuration for representing the antenna port mapping information.
@@ -107,7 +108,11 @@ def simulated_configuration_alternative_fixture() -> dict[Any, Any]:
     antennas = {}
     smartboxes = {}
     for i in range(1, number_of_antenna + 1):
-        antennas[str(i)] = {"smartbox": str(i % 24 + 1), "smartbox_port": i % 12}
+        antennas[str(i)] = {
+            "smartbox": str(i % 24 + 1),
+            "smartbox_port": i % 12,
+            "masked": False,
+        }
     for i in range(1, 25):
         smartboxes[str(i)] = {"fndh_port": i + 1}
 

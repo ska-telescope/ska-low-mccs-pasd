@@ -91,3 +91,18 @@ simulators: {} # e.g.
   #   s8-1:
   #     host: pasd-simulator-s8-1  # mandatory
   #     port: 8502  # optional, defaults to 502
+
+# Reference data from Helm. (mainly used for simulator configuration.)
+referenceData: {}
+  # pasdconfiguration:
+  #   s8-1:
+  #     pasds:
+  #       smartboxes:
+  #         "1":
+  #           fndh_port: 1
+  #     antennas:
+  #       "255":
+  #         smartbox: "1"
+  #         smartbox_port: 3
+  #         masked: false
+

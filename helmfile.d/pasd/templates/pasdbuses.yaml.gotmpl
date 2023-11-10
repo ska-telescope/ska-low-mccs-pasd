@@ -43,18 +43,6 @@
         {{- $pasdbus_host = printf "pasd-simulator-%s" $station_name}}
         {{- $pasdbus_simulator := dict "host" $pasdbus_host "port" $pasdbus_port}}
 
-        {{- $_ := set $pasdbus_simulator "config" dict}}
-
-        {{- $_ := set $pasdbus_simulator.config "pasd" (dict "smartboxes" dict)}}
-        {{- range $smartbox_id, $smartbox_spec := $pasd_spec.smartboxes}}
-          {{- $_ := set $pasdbus_simulator.config.pasd.smartboxes $smartbox_id (pick $smartbox_spec "fndh_port")}}
-        {{- end}}
-
-        {{- $_ := set $pasdbus_simulator.config "antennas" dict}}
-        {{- range $antenna_id, $antenna_spec := $station_spec.antennas}}
-          {{- $_ := set $pasdbus_simulator.config.antennas $antenna_id (pick $antenna_spec "smartbox" "smartbox_port")}}
-        {{- end}}
-
         {{- $_ := set $pasdbus_simulators $station_name $pasdbus_simulator}}
       {{- end }}
 
