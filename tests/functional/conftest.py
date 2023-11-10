@@ -8,8 +8,9 @@
 """This module contains pytest-specific test harness for PaSD functional tests."""
 import os
 import time
+import unittest.mock
 from functools import lru_cache
-from typing import Callable, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 
 import _pytest
 import pytest
@@ -24,6 +25,7 @@ from tests.harness import (
     get_field_station_name,
     get_fndh_name,
     get_pasd_bus_name,
+    get_smartbox_name,
 )
 
 
@@ -77,7 +79,7 @@ def is_true_context_fixture(request: pytest.FixtureRequest) -> bool:
     return False
 
 
-@pytest.fixture(name="pasd_address", scope="module")
+@pytest.fixture(name="pasd_address", scope="session")
 def pasd_address_fixture() -> tuple[str, int] | None:
     """
     Return the address of the PaSD.
@@ -118,13 +120,99 @@ def pasd_timeout_fixture() -> Optional[float]:
     return 5.0
 
 
-@pytest.fixture(name="functional_test_context", scope="module")
+@pytest.fixture(name="smartbox_ids", scope="session")
+def smartbox_ids_fixture() -> list[int]:
+    """
+    Return the timeout to use when communicating with the PaSD.
+
+    :return: the timeout to use when communicating with the PaSD.
+    """
+    return [1]
+
+
+@pytest.fixture(name="simulated_configuration", scope="session")
+def simulated_configuration_fixture() -> dict[Any, Any]:
+    """
+    Return a configuration for the fieldstation.
+
+    :return: a configuration for representing the antenna port mapping information.
+    """
+    number_of_antenna = 256
+    antennas = {}
+    smartboxes = {}
+    for i in range(1, number_of_antenna + 1):
+        antennas[str(i)] = {"smartbox": str(i % 24 + 1), "smartbox_port": i % 11}
+    for i in range(1, 25):
+        smartboxes[str(i)] = {"fndh_port": i}
+
+    configuration = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
+    return configuration
+
+
+@pytest.fixture(name="configuration_manager", scope="session")
+def configuration_manager_fixture(
+    simulated_configuration: dict[Any, Any]
+) -> unittest.mock.Mock:
+    """
+    Return a mock configuration_manager.
+
+    :param simulated_configuration: a fixture containing the
+        simulated configuration.
+
+    :return: a mock configuration_manager.
+    """
+    manager = unittest.mock.Mock()
+    manager.connect = unittest.mock.Mock(return_value=True)
+    manager.read_data = unittest.mock.Mock(return_value=simulated_configuration)
+    return manager
+
+
+@pytest.fixture(name="smartboxes_under_test", scope="session")
+def smartboxes_under_test_fixture(
+    is_true_context: bool,
+    smartbox_ids: list[int],
+    station_label: str,
+    functional_test_context: PasdTangoTestHarnessContext,
+) -> list[tango.DeviceProxy]:
+    """
+    Return a list of the smartboxes under test.
+
+    :param is_true_context: whether to test against an existing Tango
+        deployment
+    :param smartbox_ids: a list of the smarbox id's used in this test.
+    :param station_label: name of the station under test.
+    :param functional_test_context: context in which the functional tests run.
+
+    :return: a list of device proxies to use in this test.
+    """
+    smartboxes_under_test = []
+
+    if not is_true_context:
+        for smartbox_id in smartbox_ids:
+            print(smartbox_id)
+            smartboxes_under_test.append(
+                functional_test_context.get_smartbox_device(smartbox_id)
+            )
+    else:
+        db = tango.Database()
+        devices_exported = db.get_device_exported("*")
+        for device_name in devices_exported:
+            if f"low-mccs/smartbox/{station_label}" in device_name:
+                smartbox_proxy = tango.DeviceProxy(device_name)
+                smartboxes_under_test.append(smartbox_proxy)
+
+    return smartboxes_under_test
+
+
+@pytest.fixture(name="functional_test_context", scope="session")
 def functional_test_context_fixture(
     is_true_context: bool,
     station_label: str,
     pasd_address: tuple[str, int] | None,
     pasd_config_path: str,
     pasd_timeout: float,
+    smartbox_ids: list[int],
+    configuration_manager: unittest.mock.Mock,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Yield a Tango context containing the device/s under test.
@@ -136,6 +224,9 @@ def functional_test_context_fixture(
     :param pasd_config_path: configuration file from which to configure
         a simulator if necessary
     :param pasd_timeout: timeout to use with the PaSD
+    :param smartbox_ids: a list of the smarbox id's used in this test.
+    :param configuration_manager: a mock configuration manager to manage a
+        configuration for the field station
 
     :yields: a Tango context containing the devices under test
     """
@@ -164,9 +255,14 @@ def functional_test_context_fixture(
             smartbox_simulators = pasd_bus_simulator.get_smartboxes()
             # Set devices for test harness
             harness.set_pasd_bus_simulator(fndh_simulator, smartbox_simulators)
+            harness.set_configuration_server(configuration_manager)
             harness.set_pasd_bus_device(timeout=pasd_timeout)
+            for smartbox_id in smartbox_ids:
+                harness.add_smartbox_device(
+                    smartbox_id=smartbox_id, fndh_port=smartbox_id
+                )
             harness.set_fndh_device()
-            harness.set_field_station_device()
+            harness.set_field_station_device(smartbox_numbers=smartbox_ids)
 
     with harness as context:
         yield context
@@ -213,7 +309,7 @@ def field_station_device_fixture(
     yield subscribe_device_proxy(proxy)
 
 
-@pytest.fixture(name="pasd_bus_device", scope="module")
+@pytest.fixture(name="pasd_bus_device", scope="session")
 def pasd_bus_device_fixture(
     functional_test_context: PasdTangoTestHarnessContext,
     subscribe_device_proxy: Callable,
@@ -230,7 +326,7 @@ def pasd_bus_device_fixture(
     yield subscribe_device_proxy(proxy)
 
 
-@pytest.fixture(name="fndh_device", scope="module")
+@pytest.fixture(name="fndh_device", scope="session")
 def fndh_device_fixture(
     functional_test_context: PasdTangoTestHarnessContext,
     subscribe_device_proxy: Callable,
@@ -247,7 +343,7 @@ def fndh_device_fixture(
     yield subscribe_device_proxy(proxy)
 
 
-@pytest.fixture(name="device_mapping", scope="module")
+@pytest.fixture(name="device_mapping", scope="session")
 def device_mapping_fixture(
     functional_test_context: PasdTangoTestHarnessContext,
 ) -> dict[str, tango.DeviceProxy]:
@@ -318,9 +414,20 @@ def device_subscriptions_fixture() -> dict[str, list[str]]:
             "state",
             "healthState",
             "adminMode",
-            "OutsideTemperature",
         ],
     }
+
+    for i in range(1, 25):
+        device_subscriptions.update(
+            {
+                get_smartbox_name(i): [
+                    "state",
+                    "healthState",
+                    "adminMode",
+                ],
+            }
+        )
+
     return device_subscriptions
 
 
@@ -358,7 +465,7 @@ def subscribe_device_proxy_fixture(
     return _subscribe_device_proxy
 
 
-@pytest.fixture(name="set_device_state", scope="module")
+@pytest.fixture(name="set_device_state", scope="session")
 def set_device_state_fixture(
     device_mapping: dict[str, tango.DeviceProxy],
     subscribe_device_proxy: Callable,
@@ -377,9 +484,14 @@ def set_device_state_fixture(
     """
 
     def _set_device_state(
-        device_ref: str, state: tango.DevState, mode: AdminMode
+        device_ref: str,
+        state: tango.DevState,
+        mode: AdminMode,
+        device_proxy: Optional[tango.DeviceProxy] = None,
     ) -> None:
-        device_proxy = device_mapping[device_ref]
+        if device_proxy is None:
+            device_proxy = device_mapping[device_ref]
+
         subscribe_device_proxy(device_proxy)
         device_name = device_proxy.dev_name()
 

@@ -11,7 +11,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Iterator
+import unittest.mock
+from typing import Any, Iterator
 
 import pytest
 import tango
@@ -179,11 +180,49 @@ def off_smartbox_attached_port_fixture(
     return smartbox_attached_ports[off_smartbox_id - 1]
 
 
+@pytest.fixture(name="simulated_configuration", scope="module")
+def simulated_configuration_fixture() -> dict[Any, Any]:
+    """
+    Return a configuration for the fieldstation.
+
+    :return: a configuration for representing the antenna port mapping information.
+    """
+    number_of_antenna = 256
+    antennas = {}
+    smartboxes = {}
+    for i in range(1, number_of_antenna + 1):
+        antennas[str(i)] = {"smartbox": str(i % 13 + 1), "smartbox_port": i % 11}
+    for i in range(1, 25):
+        smartboxes[str(i)] = {"fndh_port": i}
+
+    configuration = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
+    return configuration
+
+
+@pytest.fixture(name="configuration_manager", scope="module")
+def configuration_manager_fixture(
+    simulated_configuration: dict[Any, Any]
+) -> unittest.mock.Mock:
+    """
+    Return a mock configuration_manager.
+
+    :param simulated_configuration: a fixture containing the
+        simulated configuration.
+
+    :return: a mock configuration_manager.
+    """
+    manager = unittest.mock.Mock()
+    manager.connect = unittest.mock.Mock(return_value=True)
+    manager.read_data = unittest.mock.Mock(return_value=simulated_configuration)
+    return manager
+
+
 @pytest.fixture(name="test_context")
 def test_context_fixture(
     fndh_simulator: FndhSimulator,
     smartbox_simulators: dict[int, SmartboxSimulator],
     smartbox_attached_ports: list[int],
+    configuration_manager: unittest.mock.Mock,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
@@ -192,6 +231,8 @@ def test_context_fixture(
     :param smartbox_simulators: the smartbox simulators against which to test
     :param smartbox_attached_ports: a list of FNDH port numbers each
         smartbox is connected to.
+    :param configuration_manager: the configuration manager to manage configuration
+        for field station.
 
     :yield: a test context in which to run the integration tests.
     """
@@ -205,7 +246,7 @@ def test_context_fixture(
         harness.add_smartbox_device(
             smartbox_id, smartbox_attached_ports[smartbox_id - 1]
         )
-
+    harness.set_configuration_server(configuration_manager)
     harness.set_field_station_device()
 
     with harness as context:

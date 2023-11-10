@@ -53,6 +53,7 @@ deviceServers: {}  # e.g.:
   #   s8-1:
   #     low-mccs/fndh/s8-1:
   #       fndh_name: low-mccs/fndh/s8-1
+  #       configuration_host: "field-configuration-service-s8-1"
   #       smartbox_names:
   #         - low-mccs/smartbox/s8-1-01
   #         - low-mccs/smartbox/s8-1-02

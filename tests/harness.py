@@ -122,6 +122,14 @@ class PasdTangoTestHarnessContext:
         """
         return self._tango_context.get_context("pasd_bus")
 
+    def get_field_station_address(self: PasdTangoTestHarnessContext) -> tuple[str, int]:
+        """
+        Get the address of the PaSD.
+
+        :returns: the address (hostname and port) of the PaSD.
+        """
+        return self._tango_context.get_context("configuration_manager")
+
     def get_smartbox_device(
         self: PasdTangoTestHarnessContext, smartbox_id: int
     ) -> tango.DeviceProxy:
@@ -208,6 +216,32 @@ class PasdTangoTestHarness:
             server_context_manager_factory(pasd_bus_simulator_server),
         )
 
+    def set_configuration_server(
+        self: PasdTangoTestHarness,
+        config_manager: Any,
+    ) -> None:
+        """
+        Set the FieldStation configuration server for the test harness.
+
+        :param config_manager: a configuration manager to manage
+            configuration resource.
+        """
+        # Defer importing from ska_low_mccs_pasd
+        # until we know we need to launch a PaSD simulator to test against.
+        # This ensures that we can use this harness to run tests against a real cluster,
+        # from within a pod that does not have ska_low_mccs_pasd installed.
+        # pylint: disable-next=import-outside-toplevel
+        from ska_low_mccs_pasd.configurator import FieldStationConfigurationJsonServer
+
+        configuration_server = FieldStationConfigurationJsonServer(
+            self._station_label, "ska-low-mccs", config_manager
+        )
+
+        self._tango_test_harness.add_context_manager(
+            "configuration_manager",
+            server_context_manager_factory(configuration_server),
+        )
+
     def set_pasd_bus_device(  # pylint: disable=too-many-arguments
         self: PasdTangoTestHarness,
         address: tuple[str, int] | None = None,
@@ -290,11 +324,18 @@ class PasdTangoTestHarness:
         if smartbox_numbers is None:
             smartbox_numbers = list(range(1, 25))
 
+        def port(context: dict[str, Any]) -> int:
+            return context["configuration_manager"][1]
+
         smartbox_names = [get_smartbox_name(number) for number in smartbox_numbers]
 
         self._tango_test_harness.add_device(
             get_field_station_name(self._station_label),
             device_class,
+            StationName=self._station_label,
+            ConfigurationHost="localhost",
+            ConfigurationPort=port,
+            ConfigurationTimeout=5,
             FndhFQDN=get_fndh_name(),
             SmartBoxFQDNs=smartbox_names,
             LoggingLevelDefault=logging_level,
@@ -386,9 +427,17 @@ class PasdTangoTestHarness:
 
         :return: the entered context.
         """
-        return PasdTangoTestHarnessContext(
-            self._tango_test_harness.__enter__(), self._station_label
-        )
+        with self._cleanup_on_error():
+            return PasdTangoTestHarnessContext(
+                self._tango_test_harness.__enter__(), self._station_label
+            )
+
+    @contextmanager
+    def _cleanup_on_error(self: PasdTangoTestHarness) -> Iterator[None]:
+        with self._tango_test_harness._exit_stack as stack:
+            stack.push(self)
+            yield
+            stack.pop_all()
 
     def __exit__(
         self: PasdTangoTestHarness,

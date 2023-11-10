@@ -444,6 +444,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "pasdBushealthState",
         "smartbox24AlarmFlags",
         "fndhPortPowerState",
-        timeout=20.0,
+        "fndhPort2PowerState",
+        timeout=26.0,
         assert_no_error=False,
     )

@@ -12,6 +12,8 @@ from __future__ import annotations
 import gc
 import json
 import time
+import unittest.mock
+from typing import Any, Optional
 
 import pytest
 import tango
@@ -72,6 +74,47 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     )
 
 
+@pytest.fixture(name="invalid_simulated_configuration", scope="module")
+def invalid_simulated_configuration_fixture() -> dict[Any, Any]:
+    """
+    Return a invalid configuration.
+
+    This is invalid because all 256 antenna must be specified.
+    This configuration only specifies 230.
+
+    :return: a configuration for representing the antenna port mapping information.
+    """
+    number_of_antenna = 230
+    antennas = {}
+    smartboxes = {}
+    for i in range(1, number_of_antenna + 1):
+        antennas[str(i)] = {"smartbox": str(i % 13 + 1), "smartbox_port": i % 11}
+    for i in range(1, 25):
+        smartboxes[str(i)] = {"fndh_port": i}
+
+    configuration = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
+    return configuration
+
+
+@pytest.fixture(name="simulated_configuration_alternative", scope="module")
+def simulated_configuration_alternative_fixture() -> dict[Any, Any]:
+    """
+    Return a configuration for the fieldstation.
+
+    :return: a configuration for representing the antenna port mapping information.
+    """
+    number_of_antenna = 256
+    antennas = {}
+    smartboxes = {}
+    for i in range(1, number_of_antenna + 1):
+        antennas[str(i)] = {"smartbox": str(i % 24 + 1), "smartbox_port": i % 12}
+    for i in range(1, 25):
+        smartboxes[str(i)] = {"fndh_port": i + 1}
+
+    configuration = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
+    return configuration
+
+
 @pytest.fixture(name="antenna_to_turn_on")
 def antenna_to_turn_on_fixture() -> int:
     """
@@ -80,6 +123,28 @@ def antenna_to_turn_on_fixture() -> int:
     :return: the logical antenna to use in test.
     """
     return 26
+
+
+def antenna_mapping_from_reference_data(
+    reference_data: dict[str, Any]
+) -> dict[str, Any]:
+    """Return the antenna mapping expected from a reference configuration.
+
+    :param reference_data: the backend reference data.
+
+    :return: the antenna_mapping as
+    """
+    antenna_mapping: dict[str, list[Optional[dict]]] = {}
+    antenna_mapping["antennaMapping"] = [None] * 256
+    for antenna_id in range(1, len(reference_data["antennas"]) + 1):
+        antenna_mapping["antennaMapping"][antenna_id - 1] = {
+            "antennaID": antenna_id,
+            "smartboxID": int(reference_data["antennas"][str(antenna_id)]["smartbox"]),
+            "smartboxPort": reference_data["antennas"][str(antenna_id)][
+                "smartbox_port"
+            ],
+        }
+    return antenna_mapping
 
 
 class TestFieldStationIntegration:
@@ -129,7 +194,7 @@ class TestFieldStationIntegration:
 
         # Initialise the station subdevices.
         pasd_bus_device.initializefndh()
-        for i in range(PasdData.NUMBER_OF_SMARTBOXES):
+        for i in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
             pasd_bus_device.initializesmartbox(i)
 
         # set adminMode online for all smartbox.
@@ -193,7 +258,11 @@ class TestFieldStationIntegration:
 
         # Use mapping to work out what smartbox port will change.
         antenna_mapping = json.loads(field_station_device.antennamapping)
-        smartbox_id, smartbox_port = antenna_mapping[str(antenna_to_turn_on)]
+
+        for antenna_config in antenna_mapping["antennaMapping"]:
+            if antenna_config["antennaID"] == antenna_to_turn_on:
+                smartbox_id = antenna_config["smartboxID"]
+                smartbox_port = antenna_config["smartboxPort"]
 
         # Check initial state.
         assert not smartbox_proxys[smartbox_id - 1].portspowersensed[smartbox_port - 1]
@@ -298,7 +367,6 @@ class TestFieldStationIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["field_station_state"],
         )
-
         change_event_callbacks["field_station_state"].assert_change_event(
             tango.DevState.DISABLE
         )
@@ -343,3 +411,65 @@ class TestFieldStationIntegration:
         assert fndh_device.overCurrentThreshold == over_current_threshold
         assert fndh_device.overVoltageThreshold == over_voltage_threshold
         assert fndh_device.humidityThreshold == humidity_threshold
+
+    def test_configuration_change(  # pylint: disable=too-many-arguments
+        self: TestFieldStationIntegration,
+        field_station_device: tango.DeviceProxy,
+        simulated_configuration: dict[Any, Any],
+        configuration_manager: unittest.mock.Mock,
+        invalid_simulated_configuration: dict[Any, Any],
+        simulated_configuration_alternative: dict[Any, Any],
+    ) -> None:
+        """
+        Test loading a new configuration.
+
+        :param field_station_device: provide to the field station device
+        :param simulated_configuration: a fixture containing the
+            simulated configuration.
+        :param configuration_manager: the configuration manager to manager configuration
+            for field station.
+        :param invalid_simulated_configuration: a fixture containing a
+            invalid simulated configuration.
+        :param simulated_configuration_alternative: a fixture containing a
+            alternative simulated configuration.
+        """
+        antenna_mapping = antenna_mapping_from_reference_data(simulated_configuration)
+
+        # Check initial configuration loaded.
+        assert field_station_device.antennamapping == json.dumps(antenna_mapping)
+
+        # Loading a invalid backend configuration.
+        configuration_manager.read_data = unittest.mock.Mock(
+            return_value=invalid_simulated_configuration
+        )
+        field_station_device.LoadConfiguration()
+        # A sleep is needed due to LoadConfiguration being a slow command
+        # And antennaMapping reading the configuration before the configuration
+        # updated. Maybe we need to push a change event for antennaMapping?
+        time.sleep(0.3)
+        assert field_station_device.antennamapping == json.dumps(antenna_mapping)
+        invalid_antenna_mapping = antenna_mapping_from_reference_data(
+            invalid_simulated_configuration
+        )
+        assert field_station_device.antennamapping != json.dumps(
+            invalid_antenna_mapping
+        )
+
+        # Loading a different backend configuration.
+        configuration_manager.read_data = unittest.mock.Mock(
+            return_value=simulated_configuration_alternative
+        )
+        time.sleep(1)
+        field_station_device.LoadConfiguration()
+        # A sleep is needed due to LoadConfiguration being a slow command
+        # And antennaMapping reading the configuration before the configuration
+        # updated. Maybe we need to push a change event for antennaMapping?
+        time.sleep(1)
+
+        alternative_antenna_mapping = antenna_mapping_from_reference_data(
+            simulated_configuration_alternative
+        )
+        assert field_station_device.antennamapping != json.dumps(antenna_mapping)
+        assert field_station_device.antennamapping == json.dumps(
+            alternative_antenna_mapping
+        )

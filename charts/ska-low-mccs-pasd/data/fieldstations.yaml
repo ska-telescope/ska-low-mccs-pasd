@@ -55,6 +55,12 @@ server:
 {{- range $fieldstation_name, $this_fieldstation := $this_server}}
             - name: {{$fieldstation_name}}
               properties:
+                - name: "ConfigurationHost"
+                  values: 
+                    - {{quote $this_fieldstation.configuration_host}}
+                - name: "StationName"
+                  values: 
+                    - {{$server_key}}
                 - name: "FndhFQDN"
                   values: 
                     - {{quote $this_fieldstation.fndh_name}}
