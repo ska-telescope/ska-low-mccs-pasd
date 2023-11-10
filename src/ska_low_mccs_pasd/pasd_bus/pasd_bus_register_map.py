@@ -42,7 +42,7 @@ class PasdWriteError(Exception):
         :param attribute: name of the requested attribute
         """
         logger.error(f"Non-writeable register requested for write: {attribute}")
-        super().__init__(f"Non-writeable register requestedfor write: {attribute}")
+        super().__init__(f"Non-writeable register requested for write: {attribute}")
 
 
 class PortStatusBits(IntFlag):
