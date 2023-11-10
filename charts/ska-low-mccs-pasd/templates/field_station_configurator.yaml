@@ -50,7 +50,7 @@ spec:
 {{- end}}    
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
   name: config-watcher-role
   namespace: {{$.Release.Namespace}}
@@ -65,13 +65,13 @@ metadata:
   name: config-watcher-acc
   namespace: {{$.Release.Namespace}}
 ---
-kind: ClusterRoleBinding
+kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: config-watcher-rolebind
   namespace: {{$.Release.Namespace}}
 roleRef:
-  kind: ClusterRole
+  kind: Role
   name: config-watcher-role
   apiGroup: rbac.authorization.k8s.io
 subjects:
