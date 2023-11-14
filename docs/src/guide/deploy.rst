@@ -247,7 +247,6 @@ For example:
            fndh_name: low-mccs/fndh/ci-1
            smartbox_names:
            - low-mccs/smartbox/ci-1-01
-           outside_temperature_attribute_name: low-mccs/fndh/ci-1/outsideTemperature
            logging_level_default: 5
      fndhs:
        ci-1:

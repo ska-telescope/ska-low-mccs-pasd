@@ -19,6 +19,8 @@ from ska_control_model import AdminMode, PowerState, ResultCode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
+from ska_low_mccs_pasd.pasd_bus import FndhSimulator
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
 from ska_low_mccs_pasd.pasd_data import PasdData
 
 gc.disable()
@@ -38,6 +40,8 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "fndh_state",
         "pasd_bus_state",
         "antenna_power_states",
+        "field_station_outside_temperature",
+        "fndh_outside_temperature",
         "smartbox24PortsPowerSensed",
         "smartbox1_state",
         "smartbox2_state",
@@ -91,6 +95,7 @@ class TestFieldStationIntegration:
         smartbox_proxys: list[tango.DeviceProxy],
         off_smartbox_id: int,
         antenna_to_turn_on: int,
+        fndh_simulator: FndhSimulator,
     ) -> None:
         """
         Test Antenna can be powered on.
@@ -105,6 +110,7 @@ class TestFieldStationIntegration:
         :param off_smartbox_id: a fixture containing the id of a smartbox
             simulated to be off.
         :param antenna_to_turn_on: the antenne under test.
+        :param fndh_simulator: the backend fndh simulator.
         """
         # PasdBus Online
         pasd_bus_device.subscribe_event(
@@ -200,8 +206,6 @@ class TestFieldStationIntegration:
         assert smartbox_proxys[smartbox_id - 1].portspowersensed[smartbox_port - 1]
         antenna_power_states = json.loads(field_station_device.antennapowerstates)
 
-        assert smartbox_proxys[smartbox_id - 1].portspowersensed[smartbox_port - 1]
-
         # off_smartbox_id is off in the simulator.
         # Check that antennas attached to it are OFF.
         for antenna_id, config in antenna_mapping.items():
@@ -209,6 +213,50 @@ class TestFieldStationIntegration:
             # If the smartbox is off all antenna attached to it are OFF.
             if smartbox_id == off_smartbox_id:
                 assert antenna_power_states[str(antenna_id)] == PowerState.OFF
+
+        # Check both fndh and FieldStation agree value of outsideTemperature
+        default_simulator_outside_temperature = (
+            PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
+            )[0]
+        )
+        fndh_device.subscribe_event(
+            "outsideTemperature",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndh_outside_temperature"],
+        )
+        change_event_callbacks["fndh_outside_temperature"].assert_change_event(
+            default_simulator_outside_temperature
+        )
+        field_station_device.subscribe_event(
+            "outsideTemperature",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["field_station_outside_temperature"],
+        )
+        change_event_callbacks["field_station_outside_temperature"].assert_change_event(
+            default_simulator_outside_temperature
+        )
+        assert fndh_device.outsideTemperature == default_simulator_outside_temperature
+        assert (
+            field_station_device.outsideTemperature
+            == default_simulator_outside_temperature
+        )
+
+        # Check that when we mock a change in the register value
+        # Both fndh and FieldStation get the updated value.
+        mocked_outside_temperature_register: int = 2345
+        scaled_outside_temperature = PasdConversionUtility.scale_signed_16bit(
+            [mocked_outside_temperature_register]
+        )[0]
+
+        fndh_simulator.outside_temperature = mocked_outside_temperature_register
+
+        change_event_callbacks["fndh_outside_temperature"].assert_change_event(
+            scaled_outside_temperature
+        )
+        change_event_callbacks["field_station_outside_temperature"].assert_change_event(
+            scaled_outside_temperature
+        )
 
     def test_configure(
         self: TestFieldStationIntegration,

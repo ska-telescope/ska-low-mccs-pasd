@@ -31,7 +31,6 @@ Define the deployment for MccsFieldStation devices.
             - low-mccs/smartbox/s8-1-22
             - low-mccs/smartbox/s8-1-23
             - low-mccs/smartbox/s8-1-24
-          outside_temperature_attribute_name: low-mccs/fndh/s8-1/OutsideTemperature
           logging_level_default: 5
 
 */}}
@@ -55,12 +54,6 @@ server:
           devices:
 {{- range $fieldstation_name, $this_fieldstation := $this_server}}
             - name: {{$fieldstation_name}}
-              attribute_properties:
-                - attribute: "OutsideTemperature"
-                  properties:
-                    - name: "__root_att"
-                      values:
-                        - {{$this_fieldstation.outside_temperature_attribute_name}}
               properties:
                 - name: "FndhFQDN"
                   values: 
