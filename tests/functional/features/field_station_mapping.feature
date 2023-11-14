@@ -4,5 +4,5 @@ Feature: field station antenna mapping
         And A MccsFndh which is ready
         And the smartboxes are ready
         And A MccsFieldStation which is ready
-        When we check the antennaMapping
-        Then we get a valid mapping
+        When we check the fieldstations maps
+        Then we get valid mappings

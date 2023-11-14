@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import copy
 import gc
 import json
 import time
@@ -97,27 +98,25 @@ def invalid_simulated_configuration_fixture() -> dict[Any, Any]:
     return configuration
 
 
-@pytest.fixture(name="simulated_configuration_alternative", scope="module")
-def simulated_configuration_alternative_fixture() -> dict[Any, Any]:
+@pytest.fixture(name="simulated_configuration_alternative", scope="session")
+def simulated_configuration_alternative_fixture(
+    simulated_configuration: dict[Any, Any],
+) -> dict[Any, Any]:
     """
-    Return a configuration for the fieldstation.
+    Return an alternate configuration for the fieldstation.
 
-    :return: a configuration for representing the antenna port mapping information.
+    :param simulated_configuration: the default simulated configuration.
+
+    :return: an alternate configuration for fieldstation
     """
-    number_of_antenna = 256
-    antennas = {}
-    smartboxes = {}
-    for i in range(1, number_of_antenna + 1):
-        antennas[str(i)] = {
-            "smartbox": str(i % 24 + 1),
-            "smartbox_port": i % 12,
-            "masked": False,
-        }
-    for i in range(1, 25):
-        smartboxes[str(i)] = {"fndh_port": i + 1}
+    alternate_config = copy.deepcopy(simulated_configuration)
+    antenna1 = alternate_config["antennas"]["1"]
+    antenna2 = alternate_config["antennas"]["2"]
 
-    configuration = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
-    return configuration
+    alternate_config["antennas"]["1"] = antenna2
+    alternate_config["antennas"]["2"] = antenna1
+
+    return alternate_config
 
 
 @pytest.fixture(name="antenna_to_turn_on")
@@ -133,11 +132,13 @@ def antenna_to_turn_on_fixture() -> int:
 def antenna_mapping_from_reference_data(
     reference_data: dict[str, Any]
 ) -> dict[str, Any]:
-    """Return the antenna mapping expected from a reference configuration.
+    """
+    Return the antenna mapping expected from a reference configuration.
 
     :param reference_data: the backend reference data.
 
-    :return: the antenna_mapping as
+    :return: the antenna_mapping that adheres to
+        'schemas.MccsFieldStation_UpdateAntennaMapping.json'
     """
     antenna_mapping: dict[str, list[Optional[dict]]] = {}
     antenna_mapping["antennaMapping"] = [None] * 256
@@ -447,11 +448,9 @@ class TestFieldStationIntegration:
         configuration_manager.read_data = unittest.mock.Mock(
             return_value=invalid_simulated_configuration
         )
-        field_station_device.LoadConfiguration()
-        # A sleep is needed due to LoadConfiguration being a slow command
-        # And antennaMapping reading the configuration before the configuration
-        # updated. Maybe we need to push a change event for antennaMapping?
-        time.sleep(0.3)
+        [return_code], [command_id] = field_station_device.LoadConfiguration()
+        poll_until_command_completed(field_station_device, command_id, 3)
+
         assert field_station_device.antennamapping == json.dumps(antenna_mapping)
         invalid_antenna_mapping = antenna_mapping_from_reference_data(
             invalid_simulated_configuration
@@ -464,12 +463,9 @@ class TestFieldStationIntegration:
         configuration_manager.read_data = unittest.mock.Mock(
             return_value=simulated_configuration_alternative
         )
-        time.sleep(1)
-        field_station_device.LoadConfiguration()
-        # A sleep is needed due to LoadConfiguration being a slow command
-        # And antennaMapping reading the configuration before the configuration
-        # updated. Maybe we need to push a change event for antennaMapping?
-        time.sleep(1)
+
+        [return_code], [command_id] = field_station_device.LoadConfiguration()
+        poll_until_command_completed(field_station_device, command_id, 3)
 
         alternative_antenna_mapping = antenna_mapping_from_reference_data(
             simulated_configuration_alternative
@@ -478,3 +474,27 @@ class TestFieldStationIntegration:
         assert field_station_device.antennamapping == json.dumps(
             alternative_antenna_mapping
         )
+
+
+# pylint: disable=inconsistent-return-statements
+def poll_until_command_completed(
+    device: tango.DeviceProxy, command_id: str, no_of_iters: int = 5
+) -> None:
+    """
+    Poll until command has completed.
+
+    This function recursively calls itself up to `no_of_iters` times.
+
+    :param device: the TANGO device
+    :param command_id: the command_id to check
+    :param no_of_iters: number of times to iterate
+    """
+    command_status = device.CheckLongRunningCommandStatus(command_id)
+    if command_status == "COMPLETED":
+        return
+
+    if no_of_iters == 1:
+        pytest.fail("Command Failed to complete in time")
+
+    time.sleep(0.1)
+    return poll_until_command_completed(device, command_id, no_of_iters - 1)

@@ -180,29 +180,6 @@ def off_smartbox_attached_port_fixture(
     return smartbox_attached_ports[off_smartbox_id - 1]
 
 
-@pytest.fixture(name="simulated_configuration", scope="module")
-def simulated_configuration_fixture() -> dict[Any, Any]:
-    """
-    Return a configuration for the fieldstation.
-
-    :return: a configuration for representing the antenna port mapping information.
-    """
-    number_of_antenna = 256
-    antennas = {}
-    smartboxes = {}
-    for i in range(1, number_of_antenna + 1):
-        antennas[str(i)] = {
-            "smartbox": str(i % 13 + 1),
-            "smartbox_port": i % 11,
-            "masked": False,
-        }
-    for i in range(1, 25):
-        smartboxes[str(i)] = {"fndh_port": i}
-
-    configuration = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
-    return configuration
-
-
 @pytest.fixture(name="configuration_manager", scope="module")
 def configuration_manager_fixture(
     simulated_configuration: dict[Any, Any]

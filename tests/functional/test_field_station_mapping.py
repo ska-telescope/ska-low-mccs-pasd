@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
-"""This module contains a simple test of the MCCS FNDH Tango device."""
+"""This module contains a test of the MCCS FieldStation device antenna mapping."""
 from __future__ import annotations
 
 import gc
@@ -142,7 +142,7 @@ def get_device_ready(
         )
 
 
-@when("we check the antennaMapping", target_fixture="maps")
+@when("we check the fieldstations maps", target_fixture="maps")
 def check_port_mapping(
     field_station_device: tango.DeviceProxy,
 ) -> dict[str, dict[Any, Any]]:
@@ -151,7 +151,7 @@ def check_port_mapping(
 
     :param field_station_device: a proxy to the field station device.
 
-    :return: the antenna mapping reported by the field station.
+    :return: the maps reported by the field station.
     """
     return {
         "antenna_map": json.loads(field_station_device.antennaMapping),
@@ -160,13 +160,12 @@ def check_port_mapping(
     }
 
 
-@then("we get a valid mapping")
+@then("we get valid mappings")
 def check_the_mapping_is_valid(maps: dict[str, dict]) -> None:
     """
     Check that the mapping passes the validation.
 
-    :param maps: the antenna mapping as reported
-        by the FieldStation.
+    :param maps: the maps reported by the field station.
     """
     # Validate against the
     jsonschema.validate(maps["antenna_map"], ANTENNA_MAPPING_SCHEMA)

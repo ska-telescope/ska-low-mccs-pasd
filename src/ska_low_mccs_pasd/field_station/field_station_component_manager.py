@@ -260,6 +260,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         self.logger.info("Configuration has been successfully updated.")
 
+        # TODO: Contact every MccsSmartbox under this FieldStations control
+        # informing them of the fndh port they are on?
+
     def start_communicating(self: FieldStationComponentManager) -> None:
         """Establish communication."""
         if self._communication_state == CommunicationStatus.ESTABLISHED:

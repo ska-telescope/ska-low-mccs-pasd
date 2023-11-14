@@ -301,7 +301,7 @@ class TestFieldStationComponentManager:
             )
         harness.set_configuration_server(configuration_manager)
         with harness as context:
-            (host, port) = context.get_field_station_address()
+            (host, port) = context.get_pasd_configuration_server_address()
 
         return FieldStationComponentManager(
             logger,
@@ -493,7 +493,6 @@ class TestFieldStationComponentManager:
         )
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         if command_tracked_result[0] == TaskStatus.COMPLETED:
-            print(component_manager_command)
             mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(
             status=command_tracked_result[0], result=command_tracked_result[1]

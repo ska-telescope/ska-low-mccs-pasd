@@ -123,11 +123,13 @@ class PasdTangoTestHarnessContext:
         """
         return self._tango_context.get_context("pasd_bus")
 
-    def get_field_station_address(self: PasdTangoTestHarnessContext) -> tuple[str, int]:
+    def get_pasd_configuration_server_address(
+        self: PasdTangoTestHarnessContext,
+    ) -> tuple[str, int]:
         """
-        Get the address of the PaSD.
+        Get the address of the PaSD configuration server.
 
-        :returns: the address (hostname and port) of the PaSD.
+        :returns: the address (hostname and port) of the PaSD configuration server.
         """
         return self._tango_context.get_context("configuration_manager")
 

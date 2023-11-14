@@ -28,6 +28,10 @@ from tests.harness import (
     get_smartbox_name,
 )
 
+NUMBER_OF_ANTENNA = 256
+NUMBER_OF_SMARTBOX = 24
+NUMBER_OF_SMARTBOX_PORTS = 12
+
 
 # TODO: https://github.com/pytest-dev/pytest-forked/issues/67
 # We're stuck on pytest 6.2 until this gets fixed,
@@ -123,34 +127,11 @@ def pasd_timeout_fixture() -> Optional[float]:
 @pytest.fixture(name="smartbox_ids", scope="session")
 def smartbox_ids_fixture() -> list[int]:
     """
-    Return the timeout to use when communicating with the PaSD.
+    Return a list of smartbox IDs to use in a test.
 
-    :return: the timeout to use when communicating with the PaSD.
+    :return: a list of smartbox IDs to use in a test
     """
     return [1]
-
-
-@pytest.fixture(name="simulated_configuration", scope="session")
-def simulated_configuration_fixture() -> dict[Any, Any]:
-    """
-    Return a configuration for the fieldstation.
-
-    :return: a configuration for representing the antenna port mapping information.
-    """
-    number_of_antenna = 256
-    antennas = {}
-    smartboxes = {}
-    for i in range(1, number_of_antenna + 1):
-        antennas[str(i)] = {
-            "smartbox": str(i % 24 + 1),
-            "smartbox_port": i % 11,
-            "masked": False,
-        }
-    for i in range(1, 25):
-        smartboxes[str(i)] = {"fndh_port": i}
-
-    configuration = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
-    return configuration
 
 
 @pytest.fixture(name="configuration_manager", scope="session")
@@ -193,7 +174,6 @@ def smartboxes_under_test_fixture(
 
     if not is_true_context:
         for smartbox_id in smartbox_ids:
-            print(smartbox_id)
             smartboxes_under_test.append(
                 functional_test_context.get_smartbox_device(smartbox_id)
             )
@@ -261,9 +241,11 @@ def functional_test_context_fixture(
             harness.set_pasd_bus_simulator(fndh_simulator, smartbox_simulators)
             harness.set_configuration_server(configuration_manager)
             harness.set_pasd_bus_device(timeout=pasd_timeout)
+
+            smartbox_attached_ports = pasd_bus_simulator.get_smartbox_attached_ports()
             for smartbox_id in smartbox_ids:
                 harness.add_smartbox_device(
-                    smartbox_id=smartbox_id, fndh_port=smartbox_id
+                    smartbox_id=smartbox_id, fndh_port=smartbox_attached_ports.pop()
                 )
             harness.set_fndh_device()
             harness.set_field_station_device(smartbox_numbers=smartbox_ids)
@@ -421,7 +403,7 @@ def device_subscriptions_fixture() -> dict[str, list[str]]:
         ],
     }
 
-    for i in range(1, 25):
+    for i in range(1, NUMBER_OF_SMARTBOX + 1):
         device_subscriptions.update(
             {
                 get_smartbox_name(i): [
