@@ -1,52 +1,52 @@
-{{- $labels := coalesce .Values.global.labels .Values.labels "label:none" }}
 {{- range $key, $value := ((.Values.simulators).pasdbuses)}}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: field-configuration-service-{{$key}}
+  name: pasd-configuration-service-{{$key}}
   namespace: {{$.Release.Namespace}}
   labels:
-    component: field-configuration-service-{{$key}}
+    component: pasd-configuration-service-{{$key}}
 spec:
   ports:
     - protocol: TCP
-      port: 8081
+      port: {{$value.configuration_port}}
       targetPort: 8081
   type: ClusterIP
   selector:
-    component: field-configuration-service-{{$key}}
+    component: pasd-configuration-service-{{$key}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: field-station-configurator-{{$key}}
+  name: pasd-configuration-server-{{$key}}
   namespace: {{$.Release.Namespace}}
   labels:
-    component: field-configuration-service-{{$key}}
+    component: pasd-configuration-service-{{$key}}
 spec:
   selector:
     matchLabels:
-      component: field-configuration-service-{{$key}}
+      component: pasd-configuration-service-{{$key}}
   replicas: 1
-  serviceName: field-configuration-service-{{$key}}
+  serviceName: pasd-configuration-service-{{$key}}
   template:
     metadata:
       labels:
-        component: field-configuration-service-{{$key}}
+        component: pasd-configuration-service-{{$key}}
     spec:
       serviceAccountName: config-watcher-acc
       containers:
-      - name: field-station-configurator-{{$key}}
+      - name: pasd-configuration-server-{{$key}}
         image: {{$.Values.image.registry}}/{{$.Values.image.name}}:{{$.Values.image.tag}}
         imagePullPolicy: IfNotPresent
         command: 
-          - "FieldStationConfigurator"
+          - "PasdConfigurationServer"
         env:
           - name: STATION_NAME
             value: {{$key}}
           - name: NAMESPACE
             value: {{$.Release.Namespace}}
+
 {{- end}}    
 ---
 apiVersion: rbac.authorization.k8s.io/v1

@@ -31,7 +31,7 @@ __all__ = [
     "fndh",
     "PasdData",
     "MccsFNDH",
-    "configurator",
+    "reference_data_store",
 ]
 from .field_station import MccsFieldStation
 from .fndh import MccsFNDH

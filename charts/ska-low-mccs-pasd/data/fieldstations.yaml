@@ -58,6 +58,9 @@ server:
                 - name: "ConfigurationHost"
                   values: 
                     - {{quote $this_fieldstation.configuration_host}}
+                - name: "ConfigurationPort"
+                  values: 
+                    - {{quote $this_fieldstation.configuration_port}}
                 - name: "StationName"
                   values: 
                     - {{$server_key}}

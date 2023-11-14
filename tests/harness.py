@@ -2,6 +2,7 @@
 """This module provides a flexible test harness for testing PaSD Tango devices."""
 from __future__ import annotations
 
+import logging
 import threading
 from contextlib import contextmanager
 from types import TracebackType
@@ -231,10 +232,11 @@ class PasdTangoTestHarness:
         # This ensures that we can use this harness to run tests against a real cluster,
         # from within a pod that does not have ska_low_mccs_pasd installed.
         # pylint: disable-next=import-outside-toplevel
-        from ska_low_mccs_pasd.configurator import FieldStationConfigurationJsonServer
+        from ska_low_mccs_pasd.reference_data_store import PasdConfigurationJsonServer
 
-        configuration_server = FieldStationConfigurationJsonServer(
-            self._station_label, "ska-low-mccs", config_manager
+        logger: logging.Logger = logging.getLogger()
+        configuration_server = PasdConfigurationJsonServer(
+            logger, self._station_label, "ska-low-mccs", config_manager
         )
 
         self._tango_test_harness.add_context_manager(

@@ -37,9 +37,9 @@ class MccsFieldStation(SKABaseDevice):
     # -----------------
     StationName = device_property(dtype=(str), mandatory=True)
     ConfigurationHost = device_property(dtype=(str), mandatory=True)
+    ConfigurationPort = device_property(dtype=(int), mandatory=True)
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), mandatory=True)
-    ConfigurationPort = device_property(dtype=(int), default_value=8081)
     ConfigurationTimeout = device_property(dtype=(int), default_value=4)
     # --------------
     # Initialisation

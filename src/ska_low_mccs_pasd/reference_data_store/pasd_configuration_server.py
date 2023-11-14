@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
-"""This module provides an entry point for a PaSD bus simulator TCP server."""
+"""This module provides an entry point for a Pasd Configuration TCP server."""
 from __future__ import annotations
 
 import logging
@@ -19,15 +19,16 @@ from ska_ser_devices.client_server import (
     TcpServer,
 )
 
-from .field_station_configmap_interface import FieldStationConfigurationInterface
+from .pasd_configmap_interface import PasdConfigurationInterface
 
 
 # pylint: disable-next=too-few-public-methods
-class FieldStationConfigurationJsonServer(ApplicationServer):
+class PasdConfigurationJsonServer(ApplicationServer):
     """An application-layer server that provides JSON access to a ConfigMap."""
 
     def __init__(
-        self: FieldStationConfigurationJsonServer,
+        self: PasdConfigurationJsonServer,
+        logger: logging.Logger,
         station_name: str,
         namespace: str,
         _config_manager: Optional[Any] = None,
@@ -35,13 +36,14 @@ class FieldStationConfigurationJsonServer(ApplicationServer):
         """
         Initialise a new instance.
 
+        :param logger: a logger for this object to use
         :param station_name: the name of the station used to locate configMap
             resource
         :param namespace: the namespace of the configMap for configuration.
         :param _config_manager: configuration manager for testing.
         """
-        store = FieldStationConfigurationInterface(
-            station_name, namespace, _config_manager
+        store = PasdConfigurationInterface(
+            logger, station_name, namespace, _config_manager
         )
         marshaller = SentinelBytesMarshaller(b"\n")
         super().__init__(marshaller.unmarshall, marshaller.marshall, store)
@@ -49,7 +51,7 @@ class FieldStationConfigurationJsonServer(ApplicationServer):
 
 def main() -> None:
     """
-    Run a server to allow the FieldStation connection to a configmap server.
+    Run a server to allow a connection to a configmap server.
 
     :raises ValueError: if STATION_NAME or NAMESPACE is not set in the environment.
     """
@@ -66,7 +68,7 @@ def main() -> None:
     host = os.getenv("SIMULATOR_HOST", gethostname())
     port = int(os.getenv("SIMULATOR_PORT", "8081"))
 
-    simulator_server = FieldStationConfigurationJsonServer(station_name, namespace)
+    simulator_server = PasdConfigurationJsonServer(logger, station_name, namespace)
     server = TcpServer(host, port, simulator_server, logger=logger)
     with server:
         server.serve_forever()

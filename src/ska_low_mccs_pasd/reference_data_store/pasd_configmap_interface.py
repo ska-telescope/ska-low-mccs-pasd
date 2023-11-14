@@ -5,9 +5,10 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
-"""This module provides a JSON API to the PaSD bus."""
+"""This module provides a JSON API to the Pasd Configuration."""
 from __future__ import annotations
 
+import importlib.resources
 import json
 import logging
 from datetime import datetime
@@ -60,49 +61,32 @@ class ConfigMapManager:
         """
         assert self.api is not None
 
-        data = {}
-        try:
-            configmap_list = self.api.get(
-                name=self._configmap_name,
-                namespace=self._configmap_namespace,
-                label_selector=self._configmap_label,
-            )
-            config_data = configmap_list.data
-            for data_key in config_data.keys():
-                data = yaml.safe_load(config_data[data_key])
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logging.error(f"Failed to read configMap: {e}")
-
+        configmap_list = self.api.get(
+            name=self._configmap_name,
+            namespace=self._configmap_namespace,
+            label_selector=self._configmap_label,
+        )
+        config_data = configmap_list.data
+        for _, data_yaml in config_data.items():
+            data = yaml.safe_load(data_yaml)
         return data
 
 
 # pylint: disable=too-few-public-methods
-class FieldStationConfigurationInterface:
+class PasdConfigurationInterface:
     """A JSON-based API for interfacing with a configmap."""
 
     # This schema is loosely adapted from jsonapi.org.
-    REQUEST_SCHEMA: Final = {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "https://skao.int/Pasd.json",
-        "title": "PaSD bus simulator JSON API",
-        "description": "Temporary JSON API for PaSD bus simulator",
-        "type": "object",
-        "oneOf": [
-            {
-                "properties": {
-                    "read": {
-                        "description": "List of attributes to read",
-                        "type": "string",
-                    },
-                },
-                "additionalProperties": False,
-                "required": ["read"],
-            },
-        ],
-    }
+    REQUEST_SCHEMA: Final = json.loads(
+        importlib.resources.read_text(
+            "ska_low_mccs_pasd.reference_data_store.schemas",
+            "MccsPasdConfiguration_request.json",
+        )
+    )
 
     def __init__(
         self,
+        logger: logging.Logger,
         station_name: str,
         namespace: str,
         _config_manager: Optional[Any] = None,
@@ -111,12 +95,14 @@ class FieldStationConfigurationInterface:
         """
         Initialise a new instance.
 
+        :param logger: an injected logger for information.
         :param station_name: the station name used to locate the configmap.
         :param namespace: the namespace of the configMap.
         :param _config_manager: _config_manager to use for testing.
         :param encoding: encoding to use for conversion between string
             and bytes.
         """
+        self.logger = logger
         self._station_name = station_name
         self._encoding = encoding
         self.configmanager = _config_manager or ConfigMapManager(
@@ -128,18 +114,19 @@ class FieldStationConfigurationInterface:
     def _handle_read_attributes(self, station_name: str) -> dict:
         value: Any = {}
         try:
-            logging.info(f"station name requesting {station_name} .....")
-
+            self.logger.info(f"station name requesting {station_name} ...")
+            logging.error(f"station name requesting {station_name} ...")
+            logging.info(f"station name requesting {station_name} ...")
             # Only a specific station has permission to access its configuration.
             if not self._station_name == station_name:
-                logging.error(f"access resused to {self._station_name}")
+                self.logger.warning(f"access refused to station {self._station_name}")
                 raise PermissionError(
                     f"only {self._station_name}",
                     "has permission to access configuration.",
                 )
 
-            logging.error(f"access granted to {self._station_name}")
-            # Connect to the kubernetes API and read configmap data
+            self.logger.info(f"access granted to {self._station_name}")
+            # Connect to the kubernetes API and read configmap data.
             self.configmanager.connect()
             value = self.configmanager.read_data()
 
@@ -151,10 +138,10 @@ class FieldStationConfigurationInterface:
                 },
                 "timestamp": datetime.utcnow().isoformat(),
             }
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception as e:  # pylint: disable=broad-exception-caught
             return {
                 "error": {
-                    "code": "Unknown",
+                    "code": f"Unknown {e}",
                     "detail": "Unknown Exception raised when attempting a read.",
                 },
                 "timestamp": datetime.utcnow().isoformat(),
@@ -226,11 +213,11 @@ class FieldStationConfigurationInterface:
         return json_response_str.encode(self._encoding)
 
 
-class FieldStationConfigurationJsonApiClient:
-    """A client class for a PaSD bus simulator with a JSON API."""
+class PasdConfigurationJsonApiClient:
+    """A client class for interfacing with Pasd Configuration using a JSON API."""
 
     def __init__(
-        self: FieldStationConfigurationJsonApiClient,
+        self: PasdConfigurationJsonApiClient,
         application_client: ApplicationClient[bytes, bytes],
         encoding: str = "utf-8",
     ) -> None:

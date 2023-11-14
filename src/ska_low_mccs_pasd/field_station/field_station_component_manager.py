@@ -31,8 +31,8 @@ from ska_tango_base.executor import TaskExecutorComponentManager
 from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..command_proxy import MccsCommandProxy
-from ..configurator.field_station_configmap_interface import (
-    FieldStationConfigurationJsonApiClient,
+from ..reference_data_store.pasd_configmap_interface import (
+    PasdConfigurationJsonApiClient,
 )
 
 __all__ = ["FieldStationComponentManager"]
@@ -89,6 +89,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             called when power state of a antenna changes
         :param _fndh_proxy: a injected fndh proxy for purposes of testing only.
         :param _smartbox_proxys: injected smartbox proxys for purposes of testing only.
+
+        :raises NotImplementedError: configuration in TelModel not yet implemented
         """
         self._on_antenna_power_change = antenna_power_changed
         self._communication_state_callback: Callable[..., None]
@@ -167,7 +169,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     tcp_client, marshaller.marshall, marshaller.unmarshall
                 )
                 self._field_station_configuration_api_client = (
-                    FieldStationConfigurationJsonApiClient(application_client)
+                    PasdConfigurationJsonApiClient(application_client)
                 )
                 self._field_station_configuration_api_client.connect()
 
@@ -178,10 +180,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 )
             else:
                 # TODO: ask for data from TelModel
-                self.logger.info(
+                self.logger.error(
                     "Attempted read from TelModel when functionality not implemented."
                 )
-                configuration = {}
+                raise NotImplementedError(
+                    "Attempted read from TelModel when functionality not implemented."
+                )
 
             # Validate configuration before updating.
             jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)
@@ -204,11 +208,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :param reference_data: the single source of truth for the
             field station port mapping information.
         """
-        antenna_masks_pretty: list[dict] = [{}] * 256
-        antenna_mapping_pretty: list[dict] = [{}] * 256
-        smartbox_mapping_pretty: list[dict] = [{}] * 24
+        antenna_masks_pretty: list[dict] = [{}] * PasdData.NUMBER_OF_ANTENNAS
+        antenna_mapping_pretty: list[dict] = [{}] * PasdData.NUMBER_OF_ANTENNAS
+        smartbox_mapping_pretty: list[dict] = [{}] * PasdData.NUMBER_OF_SMARTBOXES
 
-        antenna_masks_logical: list[bool] = [False] * 257
+        antenna_masks_logical: list[bool] = [False] * (PasdData.NUMBER_OF_ANTENNAS + 1)
         antenna_mapping_logical: dict[str, list[int]] = {}
         smartbox_mappings_logical: dict[str, int] = {}
 
@@ -244,10 +248,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             }
             smartbox_mappings_logical[str(smartbox_id)] = smartbox_config["fndh_port"]
 
-        if all_masked:
-            antenna_masks_logical[0] = True
-        else:
-            antenna_masks_logical[0] = False
+        antenna_masks_logical[0] = all_masked
 
         self._antenna_mask_pretty = {"antennaMask": antenna_masks_pretty}
         self._smartbox_mapping_pretty = {"smartboxMapping": smartbox_mapping_pretty}
@@ -370,7 +371,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             return
         smartbox_number = self._smartbox_name_number_map[smartbox_name] + 1
         assert event_name.lower() == "portspowersensed"
-        port_powers = [PowerState.UNKNOWN] * 12
+        port_powers = [PowerState.UNKNOWN] * PasdData.NUMBER_OF_SMARTBOX_PORTS
+
         for i, value in enumerate(event_value):
             if value:
                 port_powers[i] = PowerState.ON
@@ -1065,6 +1067,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         :param task_callback: Update task state, defaults to None
         :param task_abort_event: Check for abort, defaults to None
+
+        :raises NotImplementedError: configuration in TelModel not yet implemented
         """
         try:
             self.logger.info("Attempting to load data from configmap.....")
@@ -1078,10 +1082,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 )
             else:
                 # TODO: Add data to TelModel
-                self.logger.info(
+                self.logger.error(
                     "Attempted read from TelModel when functionality not implemented."
                 )
-                configuration = {}
+                raise NotImplementedError(
+                    "Attempted read from TelModel when functionality not implemented."
+                )
 
             # Validate configuration before updating.
             jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)

@@ -65,7 +65,7 @@ typing-extensions = "^4.6.1"       # undeclared dependency-dependency
 MccsPasdBus = "ska_low_mccs_pasd.pasd_bus.pasd_bus_device:main"
 PasdBusSimulatorServer = "ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator_server:main"
 MccsSmartBox = "ska_low_mccs_pasd.smart_box.smart_box_device:main"
-FieldStationConfigurator = "ska_low_mccs_pasd.configurator.field_station_configurator_server:main"
+PasdConfigurationServer = "ska_low_mccs_pasd.reference_data_store.pasd_configuration_server:main"
 MccsFNDH = "ska_low_mccs_pasd.fndh.fndh_device:main"
 MccsFieldStation = "ska_low_mccs_pasd.field_station.field_station_device:main"
 
