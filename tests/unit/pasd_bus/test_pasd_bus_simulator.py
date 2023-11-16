@@ -15,8 +15,8 @@ import pytest
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     FndhAlarmFlags,
     FndhStatusMap,
-    LEDServiceMap,
-    LEDStatusMap,
+    LedServiceMap,
+    LedStatusMap,
     PasdConversionUtility,
     SmartboxAlarmFlags,
     SmartboxStatusMap,
@@ -414,9 +414,9 @@ class TestFndhSimulator:
 
         :param fndh_simulator: the FNDH simulator under test
         """
-        assert fndh_simulator.led_pattern == LEDServiceMap.OFF << 8
-        assert fndh_simulator.set_led_pattern(LEDServiceMap.ON << 8)
-        assert fndh_simulator.led_pattern == LEDServiceMap.ON << 8
+        assert fndh_simulator.led_pattern == fndh_simulator.DEFAULT_LED_PATTERN
+        assert fndh_simulator.set_led_pattern(LedServiceMap.ON)
+        assert fndh_simulator.led_pattern == LedServiceMap.ON | LedStatusMap.YELLOWFAST
 
     @pytest.mark.parametrize(
         ("sensor_name", "simulated_value", "expected_status"),
@@ -832,13 +832,23 @@ class TestSmartboxSimulator:
 
         :param smartbox_simulator: the smartbox simulator under test.
         """
-        assert smartbox_simulator.led_pattern == LEDStatusMap.OFF
-        assert smartbox_simulator.set_led_pattern(LEDStatusMap.GREEN)
-        assert smartbox_simulator.led_pattern == LEDStatusMap.GREEN
-        assert smartbox_simulator.set_led_pattern(LEDStatusMap.GREEN) is None
-        assert smartbox_simulator.led_pattern == LEDStatusMap.GREEN
-        assert smartbox_simulator.set_led_pattern(LEDStatusMap.OFF)
-        assert smartbox_simulator.led_pattern == LEDStatusMap.OFF
+        assert smartbox_simulator.led_pattern == smartbox_simulator.DEFAULT_LED_PATTERN
+        assert smartbox_simulator.set_led_pattern(LedServiceMap.FAST)
+        assert (
+            smartbox_simulator.led_pattern
+            == LedServiceMap.FAST | LedStatusMap.YELLOWFAST
+        )
+        assert smartbox_simulator.set_led_pattern(LedServiceMap.FAST) is None
+        assert smartbox_simulator.initialize()
+        assert (
+            smartbox_simulator.led_pattern
+            == LedServiceMap.FAST | LedStatusMap.GREENSLOW
+        )
+        assert smartbox_simulator.set_led_pattern(LedStatusMap.GREEN) is None
+        assert smartbox_simulator.set_led_pattern(LedServiceMap.OFF)
+        assert (
+            smartbox_simulator.led_pattern == LedServiceMap.OFF | LedStatusMap.GREENSLOW
+        )
 
     def test_sys_address(
         self: TestSmartboxSimulator,

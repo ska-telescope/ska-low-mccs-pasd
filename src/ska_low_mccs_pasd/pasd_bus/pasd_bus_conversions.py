@@ -38,7 +38,7 @@ class SmartboxStatusMap(IntEnum):
     POWERDOWN = 5  # Local tech wants to turn off 48V to all ports in the station
 
 
-class LEDServiceMap(IntEnum):
+class LedServiceMap(IntEnum):
     """Enum type for the service LED (MSB in SYS_LIGHTS register)."""
 
     UNDEFINED = -1
@@ -50,7 +50,7 @@ class LEDServiceMap(IntEnum):
     VSLOW = 0x500  # 0.625 Hz strobe
 
 
-class LEDStatusMap(IntEnum):
+class LedStatusMap(IntEnum):
     """Enum type for the status LED (LSB in SYS_LIGHTS_REGISTER)."""
 
     UNDEFINED = -1  # We should never receive an undefined status
@@ -435,15 +435,15 @@ class PasdConversionUtility:
         msb = value_list[0] & 0xFF00
         lsb = value_list[0] & 0xFF
         try:
-            service = LEDServiceMap(msb).name
+            service = LedServiceMap(msb).name
         except ValueError:
             logger.error(f"Invalid service LED value received: {msb}")
-            service = LEDServiceMap.UNDEFINED.name
+            service = LedServiceMap.UNDEFINED.name
         try:
-            status = LEDStatusMap(lsb).name
+            status = LedStatusMap(lsb).name
         except ValueError:
             logger.error(f"Invalid status LED value received: {lsb}")
-            status = LEDStatusMap.UNDEFINED.name
+            status = LedStatusMap.UNDEFINED.name
         return f"service: {service}, status: {status}"
 
     @classmethod

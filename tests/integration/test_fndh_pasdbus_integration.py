@@ -190,7 +190,7 @@ class TestfndhPasdBusIntegration:
             <= PasdConversionUtility.convert_uptime(fndh_simulator.uptime)[0]
         )
         assert fndh_device.PasdStatus == "OK"
-        assert fndh_device.LedPattern == "service: OFF, status: OFF"
+        assert fndh_device.LedPattern == "service: OFF, status: GREENSLOW"
         assert list(fndh_device.Psu48vVoltages) == PasdConversionUtility.scale_volts(
             FndhSimulator.DEFAULT_PSU48V_VOLTAGES
         )

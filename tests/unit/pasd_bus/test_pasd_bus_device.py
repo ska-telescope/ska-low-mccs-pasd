@@ -170,7 +170,7 @@ def test_communication(  # pylint: disable=too-many-statements
     )
     assert pasd_bus_device.fndhSysAddress == FndhSimulator.SYS_ADDRESS
     assert pasd_bus_device.fndhStatus == "OK"
-    assert pasd_bus_device.fndhLedPattern == "service: OFF, status: OFF"
+    assert pasd_bus_device.fndhLedPattern == "service: OFF, status: GREENSLOW"
     assert list(
         pasd_bus_device.fndhPsu48vVoltages
     ) == PasdConversionUtility.scale_volts(FndhSimulator.DEFAULT_PSU48V_VOLTAGES)
@@ -330,7 +330,7 @@ def test_communication(  # pylint: disable=too-many-statements
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}LedPattern")
-        == "service: OFF, status: OFF"
+        == "service: OFF, status: YELLOWFAST"
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltage")
@@ -623,20 +623,20 @@ def test_fndh_led_pattern(
     change_event_callbacks.assert_change_event("state", tango.DevState.ON)
 
     change_event_callbacks.assert_change_event(
-        "fndhLedPattern", "service: OFF, status: OFF"
+        "fndhLedPattern", "service: OFF, status: GREENSLOW"
     )
 
     # Check for validation error
-    json_argument = json.dumps({"service_led": "FAST", "status_led": "PINK"})
+    json_argument = json.dumps({"pattern": "SERVICE"})
     with pytest.raises(tango.DevFailed) as exception:
         pasd_bus_device.SetFndhLedPattern(json_argument)
     assert "jsonschema.exceptions.ValidationError" in str(exception.value)
 
     # Set correct values
-    json_argument = json.dumps({"service_led": "FAST", "status_led": "GREEN"})
+    json_argument = json.dumps({"pattern": "FAST"})
     pasd_bus_device.SetFndhLedPattern(json_argument)
     change_event_callbacks.assert_change_event(
-        "fndhLedPattern", "service: FAST, status: GREEN"
+        "fndhLedPattern", "service: FAST, status: GREENSLOW"
     )
 
 
@@ -901,22 +901,18 @@ def test_smartbox_led_pattern(
     change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
     change_event_callbacks.assert_change_event("state", tango.DevState.ON)
     change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}LedPattern", "service: OFF, status: OFF"
+        f"smartbox{smartbox_id}LedPattern", "service: OFF, status: YELLOWFAST"
     )
 
     # Check for validation error
-    json_argument = json.dumps(
-        {"smartbox_number": smartbox_id, "service_led": "NORMAL", "status_led": "GREEN"}
-    )
+    json_argument = json.dumps({"smartbox_number": smartbox_id, "pattern": "SERVICE"})
     with pytest.raises(tango.DevFailed) as exception:
         pasd_bus_device.SetSmartboxLedPattern(json_argument)
     assert "jsonschema.exceptions.ValidationError" in str(exception.value)
 
     # Set correct values
-    json_argument = json.dumps(
-        {"smartbox_number": smartbox_id, "service_led": "FAST", "status_led": "GREEN"}
-    )
+    json_argument = json.dumps({"smartbox_number": smartbox_id, "pattern": "FAST"})
     pasd_bus_device.SetSmartboxLedPattern(json_argument)
     change_event_callbacks.assert_change_event(
-        f"smartbox{smartbox_id}LedPattern", "service: FAST, status: GREEN"
+        f"smartbox{smartbox_id}LedPattern", "service: FAST, status: YELLOWFAST"
     )

@@ -82,7 +82,7 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         self._logger = logger
 
         self._initialize_requested: bool = False
-        self._led_pattern_requested: tuple[str, str] | None = None
+        self._led_pattern_requested: str = ""
         self._alarm_reset_requested: bool = False
         self._warning_reset_requested: bool = False
         self._port_power_changes: list[tuple[bool, bool] | None] = [
@@ -140,14 +140,13 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         """
         self._port_breaker_resets[port_number - 1] = True
 
-    def desire_led_pattern(self, service_led: str, status_led: str) -> None:
+    def desire_led_pattern(self, pattern: str) -> None:
         """
         Register a request to set the device's LED pattern.
 
-        :param service_led: name of the service LED pattern.
-        :param status_led: name of the status LED pattern.
+        :param pattern: name of the service LED pattern.
         """
-        self._led_pattern_requested = (service_led, status_led)
+        self._led_pattern_requested = pattern
 
     def desire_attribute_write(self, attribute_name: str, values: list[Any]) -> None:
         """
@@ -176,7 +175,7 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
 
         if self._led_pattern_requested:
             pattern = self._led_pattern_requested
-            self._led_pattern_requested = None
+            self._led_pattern_requested = ""
             self._attribute_update_requests.append("led_pattern")
             return "LED_PATTERN", pattern
 
@@ -344,20 +343,15 @@ class PasdBusRequestProvider:
         """
         self._device_request_providers[device_id].desire_port_breaker_reset(port_number)
 
-    def desire_led_pattern(
-        self, device_id: int, service_led: str, status_led: str
-    ) -> None:
+    def desire_led_pattern(self, device_id: int, pattern: str) -> None:
         """
         Register a request to set a device's LED pattern.
 
         :param device_id: the device number.
             This is 0 for the FNDH, otherwise a smartbox number.
-        :param service_led: name of the service LED pattern.
-        :param status_led: name of the status LED pattern.
+        :param pattern: name of the service LED pattern.
         """
-        self._device_request_providers[device_id].desire_led_pattern(
-            service_led, status_led
-        )
+        self._device_request_providers[device_id].desire_led_pattern(pattern)
 
     def get_request(self) -> tuple[int, str, Any] | None:
         """
