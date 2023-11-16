@@ -453,6 +453,15 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             )
 
     @check_communicating
+    def request_startup_info(self: PasdBusComponentManager, device_id: int) -> None:
+        """Read the registers normally just polled at startup.
+
+        :param: device_id: 0 for the FNDH, else a smartbox id
+        """
+        assert self._request_provider is not None
+        self._request_provider.desire_read_startup_info(device_id)
+
+    @check_communicating
     def initialize_fndh(self: PasdBusComponentManager) -> None:
         """Initialize the FNDH by writing to its status register."""
         assert self._request_provider is not None
