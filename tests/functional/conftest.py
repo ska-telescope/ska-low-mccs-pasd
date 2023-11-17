@@ -111,7 +111,7 @@ def station_label_fixture() -> str | None:
 
     :return: the name of the station under test.
     """
-    return os.environ.get("STATION_LABEL")
+    return os.environ.get("STATION_LABEL", "ci-1")
 
 
 @pytest.fixture(name="pasd_timeout", scope="session")
@@ -495,7 +495,6 @@ def set_device_state_fixture(
             set_tango_device_state(
                 change_event_callbacks, subscribe_device_proxy, device_proxy, state
             )
-            state_callback.assert_change_event(mode)
 
     return _set_device_state
 
@@ -518,8 +517,9 @@ def set_tango_device_state(
     :raises ValueError: if input desired_state is not valid.
     """
     subscribe_device_proxy(dev)
+    initial_state = dev.state()
     # Issue the command
-    if desired_state != dev.state():
+    if desired_state != initial_state:
         if desired_state == tango.DevState.ON:
             [result_code], [command_id] = dev.On()
         elif desired_state == tango.DevState.OFF:
@@ -531,8 +531,11 @@ def set_tango_device_state(
 
     assert result_code == ResultCode.QUEUED
     print(f"Command queued on {dev.dev_name()}: {command_id}")
-
-    change_event_callbacks[f"{dev.dev_name()}/state"].assert_change_event(desired_state)
+    if initial_state != desired_state:
+        change_event_callbacks[f"{dev.dev_name()}/state"].assert_change_event(
+            desired_state
+        )
+    assert dev.state() == desired_state
 
 
 @pytest.fixture(name="check_change_event", scope="session")

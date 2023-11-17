@@ -156,7 +156,7 @@ def antenna_mapping_from_reference_data(
 class TestFieldStationIntegration:
     """Test pasdbus and fndh integration."""
 
-    # pylint: disable=too-many-arguments, disable=too-many-locals
+    # pylint: disable=too-many-arguments, too-many-locals, too-many-statements
     def test_turn_on_off_antenna(
         self: TestFieldStationIntegration,
         field_station_device: tango.DeviceProxy,

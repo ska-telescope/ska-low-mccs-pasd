@@ -141,7 +141,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 self._smartbox_name_number_map.update({smartbox_name: smartbox_count})
                 smartbox_count += 1
 
-
         # initialise the power
         self.antenna_powers: dict[str, PowerState] = {}
         for antenna_id in range(1, PasdData.NUMBER_OF_ANTENNAS + 1):
@@ -413,22 +412,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         self._on_antenna_power_change(self.antenna_powers)
 
-    def _update_antenna_power_map(
-        self: FieldStationComponentManager,
-        antenna_power_map: dict[str, PowerState],
-        antenna_mapping: dict[int, list[int]],
-        smartbox_under_change: int,
-        port_powers: list[PowerState],
-    ) -> None:
-        for antenna_id, antenna_config in antenna_mapping.items():
-            antennas_smartbox = antenna_config[0]
-            smartbox_port = antenna_config[1]
-            if antennas_smartbox == smartbox_under_change:
-                if str(antenna_id) in antenna_power_map.keys():
-                    antenna_power_map[str(antenna_id)] = port_powers[smartbox_port - 1]
-                else:
-                    raise KeyError(f"Unexpected key {str(antenna_id)}")
-
     def _device_communication_state_changed(
         self: FieldStationComponentManager,
         fqdn: str,
@@ -640,19 +623,33 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         # A FNDH port will be masked if either there is no smartbox
         # attached to the port or the smartbox attached to the port is
         # masked
-        masked_fndh_ports = []
+        fndh_ports_masking_state: list[Optional[bool]] = [
+            None
+        ] * PasdData.NUMBER_OF_FNDH_PORTS
         for smartbox_id in list(masked_smartbox_ports.keys()):
             if (
                 len(masked_smartbox_ports[smartbox_id])
                 == PasdData.NUMBER_OF_SMARTBOX_PORTS
             ):
-                fndh_port = self._smartbox_mapping[str(smartbox_id)]
-                masked_fndh_ports.append(fndh_port)
+                if str(smartbox_id) in self._smartbox_mapping:
+                    fndh_port = self._smartbox_mapping[str(smartbox_id)]
+                    fndh_ports_masking_state[fndh_port - 1] = True
+                else:
+                    self.logger.info(
+                        f"No mapping found for {str(smartbox_id)} smartbox"
+                        "leaving smartbox masking state unknown"
+                    )
+                    continue
         for fndh_port, fndh_port_state in enumerate(
             self._get_fndh_ports_with_smartboxes()
         ):
             if fndh_port_state is False:
-                masked_fndh_ports.append(fndh_port + 1)
+                fndh_ports_masking_state[fndh_port] = True
+
+        masked_fndh_ports = []
+        for fndh_port_idx, masking_state in enumerate(fndh_ports_masking_state):
+            if masking_state:
+                masked_fndh_ports.append(fndh_port_idx + 1)
 
         return masked_fndh_ports
 
@@ -674,11 +671,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     masked_smartbox_ports[smartbox_id] = []
                 masked_smartbox_ports[smartbox_id].append(smartbox_port)
 
+        # mask all smartbox ports with no antenna attached.
         for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
-            for smartbox_port, smartbox_state in enumerate(
+            for smartbox_port, port_has_antenna in enumerate(
                 self._get_smartbox_ports_with_antennas(smartbox_id)
             ):
-                if smartbox_state is False:
+                if not port_has_antenna:
                     try:
                         masked_smartbox_ports[smartbox_id]
                     except KeyError:
@@ -691,9 +689,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self: FieldStationComponentManager, smartbox_id: int
     ) -> list:
         smartbox_ports = [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS
-        for smartbox in list(self._antenna_mapping.values()):
-            if smartbox[0] == smartbox_id:
-                smartbox_ports[smartbox[1] - 1] = True
+        for antenna_smartbox_id, antennas_smartbox_port in list(
+            self._antenna_mapping.values()
+        ):
+            if antenna_smartbox_id == smartbox_id:
+                smartbox_ports[antennas_smartbox_port - 1] = True
         return smartbox_ports
 
     def _get_fndh_ports_with_smartboxes(self: FieldStationComponentManager) -> list:

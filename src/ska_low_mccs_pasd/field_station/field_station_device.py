@@ -181,6 +181,9 @@ class MccsFieldStation(SKABaseDevice):
         """
         if "outsidetemperature" in kwargs:
             self.push_change_event("outsideTemperature", kwargs["outsidetemperature"])
+        # TODO: This is being called by all fndh and smartbox proxies.
+        # But it is not yet being handled. Therefore FieldStation State
+        # is not representing the state of all devices belonging to it.
         super()._component_state_changed(fault=fault, power=power)
 
     def _on_antenna_power_change(
@@ -366,16 +369,6 @@ class MccsFieldStation(SKABaseDevice):
         :return: smartbox mapping
         """
         return json.dumps(self.component_manager._smartbox_mapping_pretty)
-
-    @attribute(dtype="float", label="OutsideTemperature")
-    def outsideTemperature(self: MccsFieldStation) -> float:
-        """
-        Return the OutsideTemperature.
-
-        :return: the OutsideTemperature
-        """
-        # TODO: MCCS-1848 will reimplement this.
-        return 28.0
 
     @attribute(dtype="DevString", label="antennaPowerStates")
     def antennaPowerStates(self: MccsFieldStation) -> str:
