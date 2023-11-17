@@ -111,10 +111,10 @@ releases:
 {{- $_taranta_platform_provided := dig "platform" "cluster" "services" "taranta-platform" false .Values}}
 {{- $taranta_platform_provided := dig "overrides" "cluster" "services" "taranta-platform" $_taranta_platform_provided .Values}}
 {{- if not $taranta_platform_provided}}
-  - name: taranta-dashboard
+  - name: taranta-dshbrd
     namespace: ska-low-mccs
     chart: skao/ska-tango-taranta-dashboard
-    version: 1.4.0
+    version: 1.4.1
     values:
       - ingress:
           enabled: true
@@ -123,12 +123,12 @@ releases:
   - name: taranta-dashboard-pvc
     namespace: ska-low-mccs
     chart: skao/ska-tango-taranta-dashboard-pvc
-    version: 1.4.0
+    version: 1.4.1
 
   - name: taranta-auth
     namespace: ska-low-mccs
     chart: skao/ska-tango-taranta-auth
-    version: 0.1.6
+    version: 0.1.9
     values:
       - ingress:
           enabled: true
@@ -138,14 +138,14 @@ releases:
   - name: taranta
     namespace: ska-low-mccs
     chart: skao/ska-tango-taranta
-    version: 2.2.4
+    version: 2.4.2
     values:
       - values/taranta.yaml
 
   - name: tangogql
     namespace: ska-low-mccs
     chart: skao/ska-tango-tangogql
-    version: 1.3.8
+    version: 1.3.10
     values:
       - values/globals.yaml.gotmpl
       - ska-tango-base:
