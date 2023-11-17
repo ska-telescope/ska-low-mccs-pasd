@@ -1,10 +1,10 @@
 {
-  "id": "6557314dcc0a4900190e1c3e",
-  "name": "Untitled dashboard copy 1 copy 1 copy 1",
+  "id": "655794674df03b00190ba194",
+  "name": "FieldStationDashboard",
   "version": "2.4.2",
   "user": "MCCS",
-  "insertTime": "2023-11-17T09:24:29.257Z",
-  "updateTime": "2023-11-17T09:25:13.160Z",
+  "insertTime": "2023-11-17T16:27:19.746Z",
+  "updateTime": "2023-11-17T16:29:39.441Z",
   "group": null,
   "groupWriteAccess": false,
   "lastUpdatedBy": "MCCS",
@@ -110,11 +110,11 @@
     {
       "valid": 1,
       "id": "12",
-      "x": 0,
+      "x": 1,
       "y": 44,
       "canvas": "0",
-      "width": 43,
-      "height": 13,
+      "width": 28,
+      "height": 41,
       "type": "BOX",
       "inputs": {
         "title": "Antenna Mask",
@@ -136,11 +136,11 @@
       "innerWidgets": [
         {
           "id": "9",
-          "x": 0.6000000000000001,
-          "y": 49.64,
+          "x": 1.6,
+          "y": 51.88,
           "canvas": "0",
-          "width": 41.8,
-          "height": 7.2,
+          "width": 26.8,
+          "height": 33,
           "type": "ATTRIBUTE_DISPLAY",
           "inputs": {
             "attribute": {
@@ -171,11 +171,11 @@
     {
       "valid": 1,
       "id": "17",
-      "x": 0,
-      "y": 58,
+      "x": 28,
+      "y": 44,
       "canvas": "0",
-      "width": 43,
-      "height": 13,
+      "width": 30,
+      "height": 41,
       "type": "BOX",
       "inputs": {
         "title": "Antenna Mapping",
@@ -197,11 +197,11 @@
       "innerWidgets": [
         {
           "id": "18",
-          "x": 0.6000000000000001,
-          "y": 63.64,
+          "x": 28.6,
+          "y": 51.88,
           "canvas": "0",
-          "width": 41.8,
-          "height": 7.2,
+          "width": 26.8,
+          "height": 33,
           "type": "ATTRIBUTE_DISPLAY",
           "inputs": {
             "attribute": {
@@ -232,11 +232,11 @@
     {
       "valid": 1,
       "id": "19",
-      "x": 0,
-      "y": 72,
+      "x": 58,
+      "y": 44,
       "canvas": "0",
-      "width": 43,
-      "height": 14,
+      "width": 32,
+      "height": 41,
       "type": "BOX",
       "inputs": {
         "title": "Smartbox Mapping",
@@ -258,11 +258,11 @@
       "innerWidgets": [
         {
           "id": "20",
-          "x": 0.6000000000000001,
-          "y": 77.72,
+          "x": 58.6,
+          "y": 51.88,
           "canvas": "0",
-          "width": 41.8,
-          "height": 8.1,
+          "width": 29.8,
+          "height": 33,
           "type": "ATTRIBUTE_DISPLAY",
           "inputs": {
             "attribute": {
@@ -293,10 +293,10 @@
     {
       "valid": 1,
       "id": "24",
-      "x": 44,
+      "x": 90,
       "y": 44,
       "canvas": "0",
-      "width": 30,
+      "width": 31,
       "height": 41,
       "type": "BOX",
       "inputs": {
@@ -319,7 +319,7 @@
       "innerWidgets": [
         {
           "id": "21",
-          "x": 44.6,
+          "x": 90.6,
           "y": 49.88,
           "canvas": "0",
           "width": 28.8,
@@ -356,7 +356,7 @@
         },
         {
           "id": "16",
-          "x": 44.6,
+          "x": 90.6,
           "y": 56.88,
           "canvas": "0",
           "width": 28.8,
@@ -393,7 +393,7 @@
         },
         {
           "id": "22",
-          "x": 44.6,
+          "x": 90.6,
           "y": 63.88,
           "canvas": "0",
           "width": 28.8,
@@ -430,7 +430,7 @@
         },
         {
           "id": "23",
-          "x": 44.6,
+          "x": 90.6,
           "y": 70.88,
           "canvas": "0",
           "width": 28.8,
@@ -467,7 +467,7 @@
         },
         {
           "id": "27",
-          "x": 44.6,
+          "x": 90.6,
           "y": 77.88,
           "canvas": "0",
           "width": 28.8,
@@ -506,10 +506,10 @@
     {
       "valid": 1,
       "id": "26",
-      "x": 75,
+      "x": 121,
       "y": 44,
       "canvas": "0",
-      "width": 86,
+      "width": 40,
       "height": 41,
       "type": "BOX",
       "inputs": {
@@ -532,10 +532,10 @@
       "innerWidgets": [
         {
           "id": "25",
-          "x": 75.6,
+          "x": 121.6,
           "y": 49.88,
           "canvas": "0",
-          "width": 84.8,
+          "width": 38,
           "height": 34.92,
           "type": "ATTRIBUTE_PLOT",
           "inputs": {
@@ -613,7 +613,7 @@
       "_id": "655641f5f195b900192d6af0",
       "name": "SmartboxNo",
       "class": "MccsSmartbox",
-      "device": "low-mccs/smartbox/ci-1-18"
+      "device": "low-mccs/smartbox/ci-1-01"
     }
   ]
 }
