@@ -1,5 +1,5 @@
-FROM artefact.skao.int/ska-tango-images-pytango-builder:9.4.3 AS buildenv
-FROM artefact.skao.int/ska-tango-images-pytango-runtime:9.4.3 AS runtime
+FROM registry.gitlab.com/ska-telescope/ska-tango-images/ska-tango-images-pytango-builder:c863a168 AS buildenv
+FROM registry.gitlab.com/ska-telescope/ska-tango-images/ska-tango-images-pytango-runtime:c863a168 AS runtime
 
 USER root
 
