@@ -17,7 +17,7 @@ from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
 from pymodbus.factory import ServerDecoder
 from pymodbus.framer.ascii_framer import ModbusAsciiFramer
-from pymodbus.pdu import ExceptionResponse
+from pymodbus.pdu import ExceptionResponse, ModbusExceptions
 from pymodbus.register_read_message import (
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
@@ -102,12 +102,16 @@ class PasdBusModbusApi:
             except KeyError:
                 logger.error(f"Simulator {device_id} not available")
                 return ExceptionResponse(
-                    function_code=1, exception_code=1, slave=device_id
+                    ReadHoldingRegistersRequest.function_code,
+                    ModbusExceptions.GatewayNoResponse,
+                    slave=device_id,
                 )
             except AttributeError:
-                logger.error(f"Attribute not found: {name}")
+                logger.error(f"{name}: {attr}")
                 return ExceptionResponse(
-                    function_code=1, exception_code=1, slave=device_id
+                    ReadHoldingRegistersRequest.function_code,
+                    ModbusExceptions.IllegalAddress,
+                    slave=device_id,
                 )
             value = self._convert_value(unconverted_value, attr)
             if isinstance(value, list):
@@ -147,19 +151,25 @@ class PasdBusModbusApi:
             except KeyError:
                 logger.error(f"Simulator {device_id} not available")
                 return ExceptionResponse(
-                    function_code=1, exception_code=1, slave=device_id
+                    WriteMultipleRegistersRequest.function_code,
+                    ModbusExceptions.GatewayNoResponse,
+                    slave=device_id,
                 )
             except AttributeError:
-                logger.error(f"Attribute not found: {name}")
+                logger.error(f"{name}: {attr}")
                 return ExceptionResponse(
-                    function_code=1, exception_code=1, slave=device_id
+                    WriteMultipleRegistersRequest.function_code,
+                    ModbusExceptions.IllegalAddress,
+                    slave=device_id,
                 )
         return None
 
     def _handle_no_match(self, message: Any) -> ExceptionResponse:
         logger.error(f"No match found for request {message}")
         return ExceptionResponse(
-            function_code=1, exception_code=1, slave=message.slave_id
+            message.function_code,
+            ModbusExceptions.IllegalFunction,
+            slave=message.slave_id,
         )
 
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
@@ -182,6 +192,8 @@ class PasdBusModbusApi:
                             device_id, message.address, message.count
                         )
                     )
+                    if filtered_register_map == {}:
+                        filtered_register_map = {"Illegal address": message.address}
                     values = self._handle_read_attributes(
                         device_id, filtered_register_map
                     )
@@ -209,6 +221,8 @@ class PasdBusModbusApi:
                         if k in writable_port_attrs
                         or not isinstance(v, PasdBusPortAttribute)
                     }
+                    if filtered_register_map == {}:
+                        filtered_register_map = {"Illegal address": message.address}
                     result = self._handle_write_attributes(
                         device_id,
                         filtered_register_map,
