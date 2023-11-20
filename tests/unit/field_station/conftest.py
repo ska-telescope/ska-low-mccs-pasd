@@ -12,18 +12,37 @@ import unittest.mock
 
 import pytest
 import tango
+from ska_control_model import ResultCode
 from ska_low_mccs_common.testing.mock import MockDeviceBuilder
 
 
-@pytest.fixture(name="mock_fndh")
-def mock_fndh_fixture() -> unittest.mock.Mock:
+@pytest.fixture(name="mocked_outside_temperature")
+def mocked_outside_temperature_fixture() -> float:
     """
-    Fixture that provides a mock MccsFNDH device.
+    Return a mocked value for the outsideTemperature.
 
-    :return: a mock MccsFNDH device.
+    :returns: a mocked value for the outsideTemperature.
+    """
+    return 36.5
+
+
+@pytest.fixture(name="mock_fndh")
+def mock_fndh_fixture(mocked_outside_temperature: float) -> unittest.mock.Mock:
+    """
+    Fixture that provides a mock MccsFndh device.
+
+    :param mocked_outside_temperature: the mocked outside temperature.
+
+    :return: a mock MccsFndh device.
     """
     builder = MockDeviceBuilder()
     builder.set_state(tango.DevState.ON)
+    builder.add_result_command("PowerOnPort", ResultCode.OK)
+    builder.add_result_command("SetPortPowers", ResultCode.OK)
+    builder.add_attribute("OutsideTemperature", mocked_outside_temperature)
+    builder.add_command("PortPowerState", False)
+    builder.add_command("dev_name", "low-mccs/fndh/ci-1")
+    builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
     return builder()
 
 

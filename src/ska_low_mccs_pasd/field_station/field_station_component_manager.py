@@ -72,6 +72,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._on_antenna_power_change = antenna_power_changed
         self._communication_state_callback: Callable[..., None]
         self._component_state_callback: Callable[..., None]
+        self.outsideTemperature: Optional[float] = None
         max_workers = 1
         super().__init__(
             logger,
@@ -95,6 +96,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         )
 
         self._smartbox_proxys = []
+        smartbox_count = 0
+        self._smartbox_name_number_map: dict[str, int] = {}
         if _smartbox_proxys:
             self._smartbox_proxys = _smartbox_proxys
         else:
@@ -112,6 +115,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                         ),
                     )
                 )
+                self._smartbox_name_number_map.update({smartbox_name: smartbox_count})
+                smartbox_count += 1
 
         self.logger = logger
 
@@ -154,81 +159,131 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             return
         self._update_communication_state(CommunicationStatus.DISABLED)
 
-    def subscribe_to_port_powers(
+    def subscribe_to_attribute(
         self: FieldStationComponentManager,
         fqdn: str,
+        attribute_name: str,
+        callback: Callable,
         task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
-        Subscribe to the port powers.
+        Subscribe to an attribute on a device.
 
         :param fqdn: The device to subscribe too.
+        :param attribute_name: the name of the attribute to subscribe to.
+        :param callback: a callback to call on change.
         :param task_callback: Update task state, defaults to None
 
         :return: a result code and a unique_id or message.
         """
         return self.submit_task(
-            self._subscribe_to_port_powers,  # type: ignore[arg-type]
-            args=[fqdn],
+            self._subscribe_to_attribute,  # type: ignore[arg-type]
+            args=[fqdn, attribute_name, callback],
             task_callback=task_callback,
         )
 
-    def _subscribe_to_port_powers(
+    def _subscribe_to_attribute(
         self: FieldStationComponentManager,
         fqdn: str,
+        attribute_name: str,
+        callback: Callable,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> None:
-        for smartbox_no, smartbox_proxy in enumerate(self._smartbox_proxys, start=1):
-            assert smartbox_proxy._proxy is not None
-            if (
-                "PortsPowerSensed".lower()
-                not in smartbox_proxy._proxy._change_event_callbacks.keys()
-                and smartbox_proxy._proxy.dev_name() == fqdn
-            ):
-                try:
-                    smartbox_proxy._proxy.add_change_event_callback(
-                        "PortsPowerSensed",
-                        functools.partial(self._on_port_power_change, smartbox_no),
-                        stateless=True,
-                    )
-                    self.logger.error(f"subscribed to {fqdn} port powers")
+        proxy_object = None
+        if fqdn == self._fndh_name:
+            proxy_object = self._fndh_proxy
+        elif fqdn in self._smartbox_name_number_map:
+            smartbox_no = self._smartbox_name_number_map[fqdn]
+            proxy_object = self._smartbox_proxys[smartbox_no]
 
-                except Exception:  # pylint: disable=broad-except
-                    self.logger.error(
-                        f"Failed to make subscription to {fqdn} port powers"
+        if (
+            proxy_object is not None
+            and proxy_object._proxy is not None
+            and attribute_name.lower()
+            not in proxy_object._proxy._change_event_callbacks.keys()
+        ):
+            try:
+                proxy_object._proxy.add_change_event_callback(
+                    attribute_name,
+                    callback,
+                    stateless=True,
+                )
+                self.logger.info(f"subscribed to {fqdn} {attribute_name}")
+
+            except Exception:  # pylint: disable=broad-except
+                self.logger.error(
+                    f"Failed to make subscription to {fqdn} {attribute_name}"
+                )
+
+    def _on_field_conditions_change(
+        self: FieldStationComponentManager,
+        event_name: str,
+        event_value: Any,
+        event_quality: tango.AttrQuality,
+    ) -> None:
+        match event_name.lower():
+            case "outsidetemperature":
+                if event_quality == tango.AttrQuality.ATTR_VALID:
+                    assert isinstance(event_value, float)
+                    self.outsideTemperature = event_value
+                    self._component_state_callback(
+                        outsidetemperature=self.outsideTemperature
                     )
+            case _:
+                self.logger.error(f"Attribute name {event_name} Unknown")
 
     def _on_port_power_change(
         self: FieldStationComponentManager,
-        smartbox_under_change: int,
+        smartbox_name: str,
         event_name: str,
         event_value: list[bool],
         event_quality: tango.AttrQuality,
     ) -> None:
+        if smartbox_name not in self._smartbox_name_number_map:
+            self.logger.error(
+                f"An unrecognised smartbox {smartbox_name}"
+                "had a change in its port powers"
+            )
+            return
+        smartbox_number = self._smartbox_name_number_map[smartbox_name] + 1
         assert event_name.lower() == "portspowersensed"
         port_powers = [PowerState.UNKNOWN] * 12
-
         for i, value in enumerate(event_value):
             if value:
                 port_powers[i] = PowerState.ON
             else:
                 port_powers[i] = PowerState.OFF
 
-        try:
-            for antenna_id, antenna_config in self._antenna_mapping.items():
-                antennas_smartbox = antenna_config[0]
-                smartbox_port = antenna_config[1]
-                if antennas_smartbox == smartbox_under_change:
-                    if str(antenna_id) in self.antenna_powers:
-                        self.antenna_powers[str(antenna_id)] = port_powers[
-                            smartbox_port - 1
-                        ]
+        number_of_antenna_powers_updated = 0
+        for antenna_id, (
+            antennas_smartbox,
+            smartbox_port,
+        ) in self._antenna_mapping.items():
+            if antennas_smartbox == smartbox_number:
+                str_antenna_id = str(antenna_id)
+                if str_antenna_id in self.antenna_powers:
+                    port_index = smartbox_port - 1
+                    if 0 <= port_index < len(port_powers):
+                        self.antenna_powers[str_antenna_id] = port_powers[port_index]
+                        number_of_antenna_powers_updated += 1
+                        if (
+                            number_of_antenna_powers_updated
+                            == PasdData.NUMBER_OF_SMARTBOX_PORTS
+                        ):
+                            # Max 12 antenna per smartbox. Therefore break.
+                            break
                     else:
-                        raise KeyError(f"Unexpected key {str(antenna_id)}")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.error(f"Failed to update antenna power {repr(e)}")
-            return
+                        self.logger.warning(
+                            "Warning: Invalid smartbox port index"
+                            f"for antenna {str_antenna_id}"
+                        )
+                else:
+                    self.logger.warning(
+                        f"Warning: Antenna {str_antenna_id} not "
+                        "found in antenna powers"
+                    )
+
         self._on_antenna_power_change(self.antenna_powers)
 
     def _update_antenna_power_map(
@@ -254,8 +309,18 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     ) -> None:
         if communication_state == CommunicationStatus.ESTABLISHED:
             try:
-                if self._fndh_name != fqdn:
-                    self.subscribe_to_port_powers(fqdn)
+                match fqdn:
+                    case self._fndh_name:
+                        self.subscribe_to_attribute(
+                            fqdn, "OutsideTemperature", self._on_field_conditions_change
+                        )
+                    case _:
+                        self.subscribe_to_attribute(
+                            fqdn,
+                            "PortsPowerSensed",
+                            functools.partial(self._on_port_power_change, fqdn),
+                        )
+
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.logger.error(f"failed to subscribe to {fqdn}: {e}")
         self._communication_states[fqdn] = communication_state

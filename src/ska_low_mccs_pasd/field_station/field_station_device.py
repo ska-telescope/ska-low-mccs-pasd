@@ -30,13 +30,7 @@ SMARTBOX_PORTS = 12
 
 
 class MccsFieldStation(SKABaseDevice):
-    """
-    An implementation of the FieldStation device.
-
-    Note: this is a initial Stub device.
-    Note: this cannot be tested using the MultiDeviceTestContext
-    due to lack of support for Forwarded Attributes.
-    """
+    """An implementation of the FieldStation device."""
 
     # -----------------
     # Device Properties
@@ -44,10 +38,6 @@ class MccsFieldStation(SKABaseDevice):
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), mandatory=True)
 
-    # TODO: Make forwarded attributes work
-    # OutsideTemperature = attribute(
-    #     name="outsideTemperature", label="outsideTemperature", forwarded=True
-    # )
     # --------------
     # Initialisation
     # --------------
@@ -162,6 +152,7 @@ class MccsFieldStation(SKABaseDevice):
                 ),
             )
         self.set_change_event("antennaPowerStates", True, False)
+        self.set_change_event("outsideTemperature", True, False)
 
     # ----------
     # Callbacks
@@ -190,6 +181,8 @@ class MccsFieldStation(SKABaseDevice):
         :param kwargs: additional keyword arguments defining component
             state.
         """
+        if "outsidetemperature" in kwargs:
+            self.push_change_event("outsideTemperature", kwargs["outsidetemperature"])
         super()._component_state_changed(fault=fault, power=power)
 
     def _on_antenna_power_change(
@@ -371,6 +364,15 @@ class MccsFieldStation(SKABaseDevice):
         if self._antenna_power_json is None:
             self._antenna_power_json = json.dumps(self.component_manager.antenna_powers)
         return self._antenna_power_json
+
+    @attribute(dtype="float", label="OutsideTemperature")
+    def outsideTemperature(self: MccsFieldStation) -> float:
+        """
+        Return the OutsideTemperature.
+
+        :return: the OutsideTemperature.
+        """
+        return self.component_manager.outsideTemperature
 
 
 # ----------
