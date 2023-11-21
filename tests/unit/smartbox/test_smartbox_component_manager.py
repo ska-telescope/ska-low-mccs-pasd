@@ -131,7 +131,7 @@ class TestPasdBusProxy:
 
         # Choose an example attribute to send event for
         attribute = f"smartbox{smartbox_number}PcbTemperature"
-        smartbox_attribute = "PcbTemperature"
+        smartbox_attribute = "PcbTemperature".lower()
 
         # Pretend to receive a change event
         pasd_bus_proxy._on_attribute_change(

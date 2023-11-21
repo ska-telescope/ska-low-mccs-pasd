@@ -409,7 +409,7 @@ class PasdHardwareSimulator:
 
     DEFAULT_LED_PATTERN: int = LedServiceMap.OFF | LedStatusMap.YELLOWFAST
     DEFAULT_STATUS: FndhStatusMap | SmartboxStatusMap = FndhStatusMap.UNINITIALISED
-    DEFAULT_UPTIME: Final = [0]
+    DEFAULT_UPTIME: Final = [0, 0]
     DEFAULT_FLAGS: int = 0x0
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
@@ -425,7 +425,7 @@ class PasdHardwareSimulator:
         :param ports: instantiated ports for the simulator.
         """
         self._ports = ports
-        self._boot_on_time: datetime | None = datetime.now()
+        self._boot_on_time: datetime | None = None
         self._sensors_status: dict = {}
         self._warning_flags: int = self.DEFAULT_FLAGS
         self._alarm_flags: int = self.DEFAULT_FLAGS
@@ -812,7 +812,7 @@ class PasdHardwareSimulator:
         uptime_val = int(
             (datetime.now().timestamp() - self._boot_on_time.timestamp()) * 100
         )
-        return PasdConversionUtility.n_to_bytes(uptime_val)
+        return PasdConversionUtility.n_to_bytes(uptime_val, nbytes=4)
 
     @property
     def status(self: PasdHardwareSimulator) -> int:

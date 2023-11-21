@@ -182,9 +182,9 @@ class _PasdBusProxy(DeviceComponentManager):
             assert int(smartbox_attribute.group(1)) == self._smartbox_nr
 
             # If there's a match, return the string after the number
-            tango_attribute_name = smartbox_attribute.group(2)
+            tango_attribute_name = smartbox_attribute.group(2).lower()
 
-            if tango_attribute_name.lower() == "status":
+            if tango_attribute_name == "status":
                 tango_attribute_name = "pasdstatus"
 
             self._attribute_change_callback(tango_attribute_name, attr_value)
