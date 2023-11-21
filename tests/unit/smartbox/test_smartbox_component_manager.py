@@ -14,6 +14,7 @@ import unittest.mock
 from typing import Any, Iterator
 
 import pytest
+import tango
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_tango_testing.mock import MockCallableGroup
 
@@ -105,6 +106,41 @@ class TestPasdBusProxy:
 
         pasd_bus_proxy.stop_communicating()
         mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
+
+    def test_attribute_change_events(
+        self: TestPasdBusProxy,
+        pasd_bus_proxy: _PasdBusProxy,
+        smartbox_number: int,
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test the attribute change event callback produces correct attribute names.
+
+        :param pasd_bus_proxy: A proxy to the pasd_bus device.
+        :param smartbox_number: number of the smartbox under test.
+        :param mock_callbacks: A group of callables.
+        """
+        assert pasd_bus_proxy.communication_state == CommunicationStatus.DISABLED
+        pasd_bus_proxy.start_communicating()
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.ESTABLISHED
+        )
+
+        # Choose an example attribute to send event for
+        attribute = f"smartbox{smartbox_number}PcbTemperature"
+        smartbox_attribute = "PcbTemperature"
+
+        # Pretend to receive a change event
+        pasd_bus_proxy._on_attribute_change(
+            attr_name=attribute,
+            attr_value=50,
+            attr_quality=tango.AttrQuality.ATTR_VALID,
+        )
+
+        mock_callbacks["attribute_update"].assert_call(smartbox_attribute, 50)
 
 
 class TestSmartBoxComponentManager:
