@@ -20,7 +20,7 @@ from ska_ser_devices.client_server import (
 )
 
 from .pasd_bus_modbus_api import PasdBusModbusApi
-from .pasd_bus_simulator import FndhSimulator, PasdBusSimulator, SmartboxSimulator
+from .pasd_bus_simulator import PasdBusSimulator, PasdHardwareSimulator
 
 
 class CustomMarshaller(SentinelBytesMarshaller):
@@ -81,20 +81,15 @@ class PasdBusSimulatorModbusServer(ApplicationServer):
 
     def __init__(
         self: PasdBusSimulatorModbusServer,
-        fndh_simulator: FndhSimulator,
-        smartbox_simulators: dict[int, SmartboxSimulator],
+        pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     ) -> None:
         """
         Initialise a new instance.
 
-        :param fndh_simulator: the FNDH simulator backend to which this
+        :param pasd_hw_simulators: FNDH and Smartbox simulator backends to which this
             server provides access.
-        :param smartbox_simulators: the smartbox simulator backends to
-            which this server provides access.
         """
-        simulators: dict = {0: fndh_simulator}
-        simulators.update(smartbox_simulators)
-        simulator_api = PasdBusModbusApi(simulators)
+        simulator_api = PasdBusModbusApi(pasd_hw_simulators)
         marshaller = CustomMarshaller(b"\r\n")
         super().__init__(marshaller.unmarshall, marshaller.marshall, simulator_api)
 
@@ -113,10 +108,20 @@ def main() -> None:
     if config_path is None:
         raise ValueError("SIMULATOR_CONFIG_PATH environment variable must be set.")
 
-    simulator = PasdBusSimulator(config_path, station_label, logging.DEBUG)
-    simulator_server = PasdBusSimulatorModbusServer(
-        simulator.get_fndh(), simulator.get_smartboxes()
+    pasd_bus_simulator = PasdBusSimulator(
+        config_path,
+        station_label,
+        logging.DEBUG,
+        smartboxes_depend_on_attached_ports=True,
+        time_multiplier=1,  # seconds
     )
+    # Initialize all smartbox simulators
+    fndh_simulator = pasd_bus_simulator.get_fndh()
+    fndh_simulator.initialize()
+    for port_nr in pasd_bus_simulator.get_smartbox_attached_ports():
+        fndh_simulator.turn_port_on(port_nr)
+    pasd_hw_simulators = pasd_bus_simulator.get_fndh_and_smartboxes()
+    simulator_server = PasdBusSimulatorModbusServer(pasd_hw_simulators)
     server = TcpServer(host, port, simulator_server)
     with server:
         server.serve_forever()

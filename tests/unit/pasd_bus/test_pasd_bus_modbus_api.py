@@ -29,6 +29,7 @@ from ska_low_mccs_pasd.pasd_bus import (
     FndhSimulator,
     PasdBusModbusApi,
     PasdBusModbusApiClient,
+    PasdHardwareSimulator,
     SmartboxSimulator,
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
@@ -346,22 +347,19 @@ class TestPasdBusModbusApiClient:
     @pytest.fixture(name="api")
     def api_fixture(
         self: TestPasdBusModbusApiClient,
-        fndh_simulator: FndhSimulator,
-        smartbox_simulators: dict[int, SmartboxSimulator],
+        pasd_hw_simulators: dict[int, PasdHardwareSimulator],
         logger: logging.Logger,
     ) -> Generator:
         """
         Return an API instance against which to test.
 
-        :param fndh_simulator:
-            the FNDH simulator backend that the TCP server will front.
-        :param smartbox_simulators:
-            the smartbox simulator backends that the TCP server will front.
+        :param pasd_hw_simulators:
+            the FNDH and smartbox simulator backends that the TCP server will front.
         :param logger: the logger to be used by this object.
         :yields: an API instance against which to test
         """
         harness = PasdTangoTestHarness()
-        harness.set_pasd_bus_simulator(fndh_simulator, smartbox_simulators)
+        harness.set_pasd_bus_simulator(pasd_hw_simulators)
         with harness as context:
             (host, port) = context.get_pasd_bus_address()
             api = PasdBusModbusApiClient(host, port, logger, 3.0)

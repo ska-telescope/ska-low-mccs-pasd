@@ -17,11 +17,7 @@ from typing import Any, Iterator
 import pytest
 import tango
 
-from ska_low_mccs_pasd.pasd_bus import (
-    FndhSimulator,
-    PasdBusSimulator,
-    SmartboxSimulator,
-)
+from ska_low_mccs_pasd.pasd_bus import PasdBusSimulator, PasdHardwareSimulator
 from ska_low_mccs_pasd.pasd_data import PasdData
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
@@ -61,7 +57,7 @@ def pasd_bus_simulator_fixture(
 @pytest.fixture(name="fndh_simulator")
 def fndh_simulator_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-) -> FndhSimulator:
+) -> PasdHardwareSimulator:
     """
     Return an FNDH simulator.
 
@@ -86,13 +82,13 @@ def smartbox_attached_ports_fixture(
     return pasd_bus_simulator.get_smartbox_attached_ports()
 
 
-@pytest.fixture(name="smartbox_simulators")
-def smartbox_simulators_fixture(
+@pytest.fixture(name="pasd_hw_simulators")
+def pasd_hw_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-    fndh_simulator: FndhSimulator,
+    fndh_simulator: PasdHardwareSimulator,
     smartbox_attached_ports: list[int],
     off_smartbox_id: int,
-) -> dict[int, SmartboxSimulator]:
+) -> dict[int, PasdHardwareSimulator]:
     """
     Return the smartbox simulators.
 
@@ -102,30 +98,30 @@ def smartbox_simulators_fixture(
     :param smartbox_attached_ports: a list of FNDH port numbers each
         smartbox is connected to.
     :param off_smartbox_id: id of a smartbox to be turned off.
-    :return: a dictionary of smartbox simulators
+    :return: a dictionary of FNDH and smartbox simulators
     """
     fndh_simulator.initialize()
     for port_nr in smartbox_attached_ports:
         fndh_simulator.turn_port_on(port_nr)
     fndh_simulator.turn_port_off(smartbox_attached_ports[off_smartbox_id - 1])
-    return pasd_bus_simulator.get_smartboxes()
+    return pasd_bus_simulator.get_fndh_and_smartboxes()
 
 
 @pytest.fixture(name="smartbox_simulator")
 def smartbox_simulator_fixture(
-    smartbox_simulators: dict[int, SmartboxSimulator],
+    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     on_smartbox_id: int,
-) -> SmartboxSimulator:
+) -> PasdHardwareSimulator:
     """
     Return a smartbox simulator for testing.
 
-    :param smartbox_simulators:
+    :param pasd_hw_simulators:
         the smartbox simulator backends that the TCP server will front.
     :param on_smartbox_id: id of the smartbox being addressed.
 
     :return: a smartbox simulator, wrapped in a mock.
     """
-    return smartbox_simulators[on_smartbox_id]
+    return pasd_hw_simulators[on_smartbox_id]
 
 
 @pytest.fixture(name="on_smartbox_id")
@@ -200,16 +196,14 @@ def configuration_manager_fixture(
 
 @pytest.fixture(name="test_context")
 def test_context_fixture(
-    fndh_simulator: FndhSimulator,
-    smartbox_simulators: dict[int, SmartboxSimulator],
+    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     smartbox_attached_ports: list[int],
     configuration_manager: unittest.mock.Mock,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
 
-    :param fndh_simulator: the FNDH simulator against which to test
-    :param smartbox_simulators: the smartbox simulators against which to test
+    :param pasd_hw_simulators: the FNDH and smartbox simulators against which to test
     :param smartbox_attached_ports: a list of FNDH port numbers each
         smartbox is connected to.
     :param configuration_manager: the configuration manager to manage configuration
@@ -219,7 +213,7 @@ def test_context_fixture(
     """
     harness = PasdTangoTestHarness()
 
-    harness.set_pasd_bus_simulator(fndh_simulator, smartbox_simulators)
+    harness.set_pasd_bus_simulator(pasd_hw_simulators)
     harness.set_pasd_bus_device(polling_rate=0.05, device_polling_rate=0.1)
     harness.set_fndh_device()
 

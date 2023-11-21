@@ -20,6 +20,7 @@ from ska_tango_testing.mock.placeholders import Anything
 from ska_low_mccs_pasd.pasd_bus import (
     FndhSimulator,
     PasdBusComponentManager,
+    PasdHardwareSimulator,
     SmartboxSimulator,
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
@@ -56,19 +57,15 @@ def mock_callbacks_fixture() -> MockCallableGroup:
 
 @pytest.fixture(name="pasd_bus_component_manager")
 def pasd_bus_component_manager_fixture(
-    mock_fndh_simulator: FndhSimulator,
-    mock_smartbox_simulators: dict[int, SmartboxSimulator],
+    mock_pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     logger: logging.Logger,
     mock_callbacks: MockCallableGroup,
 ) -> Iterator[PasdBusComponentManager]:
     """
     Return a PaSD bus component manager, running against a PaSD bus simulator.
 
-    :param mock_fndh_simulator:
-        the FNDH simulator backend that the TCP server will front,
-        wrapped with a mock so that we can assert calls.
-    :param mock_smartbox_simulators:
-        the smartbox simulator backends that the TCP server will front,
+    :param mock_pasd_hw_simulators:
+        the FNDH and smartbox simulator backends that the TCP server will front,
         each wrapped with a mock so that we can assert calls.
     :param logger: the logger to be used by this object.
     :param mock_callbacks: a group of mock callables for the component
@@ -82,7 +79,7 @@ def pasd_bus_component_manager_fixture(
         mock_callbacks[f"pasd_device_state_for_{device_name}"](**kwargs)
 
     harness = PasdTangoTestHarness()
-    harness.set_pasd_bus_simulator(mock_fndh_simulator, mock_smartbox_simulators)
+    harness.set_pasd_bus_simulator(mock_pasd_hw_simulators)
     with harness as context:
         (host, port) = context.get_pasd_bus_address()
 

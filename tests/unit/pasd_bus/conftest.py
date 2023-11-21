@@ -17,11 +17,7 @@ import unittest.mock
 import pytest
 import yaml
 
-from ska_low_mccs_pasd.pasd_bus import (
-    FndhSimulator,
-    PasdBusSimulator,
-    SmartboxSimulator,
-)
+from ska_low_mccs_pasd.pasd_bus import PasdBusSimulator, PasdHardwareSimulator
 
 
 @pytest.fixture(name="station_label")
@@ -72,7 +68,7 @@ def pasd_bus_simulator_fixture(
 @pytest.fixture(name="fndh_simulator")
 def fndh_simulator_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-) -> FndhSimulator:
+) -> PasdHardwareSimulator:
     """
     Return an FNDH simulator.
 
@@ -82,86 +78,6 @@ def fndh_simulator_fixture(
     :return: an FNDH simulator
     """
     return pasd_bus_simulator.get_fndh()
-
-
-@pytest.fixture(name="mock_fndh_simulator")
-def mock_fndh_simulator_fixture(
-    fndh_simulator: PasdBusSimulator,
-) -> unittest.mock.Mock:
-    """
-    Return a mock FNDH simulator.
-
-    The returned mock wraps a real simulator instance, so it will behave
-    like a real one, but we can access it as a mock too, for example
-    assert calls.
-
-    :param fndh_simulator: an FNDH simulator to be wrapped in a mock.
-
-    :return: a mock FNDH simulator
-    """
-    mock_simulator = unittest.mock.Mock(wraps=fndh_simulator)
-
-    # "wraps" doesn't handle properties -- we have to add them manually
-    for property_name in [
-        "port_forcings",
-        "ports_desired_power_when_online",
-        "ports_desired_power_when_offline",
-        "ports_power_control",
-        "ports_power_sensed",
-        "ports_power_control",
-        "led_pattern",
-        "sys_address",
-        "psu48v_voltages",
-        "psu48v_current",
-        "psu48v_temperatures",
-        "panel_temperature",
-        "fncb_temperature",
-        "fncb_humidity",
-        "comms_gateway_temperature",
-        "power_module_temperature",
-        "outside_temperature",
-        "internal_ambient_temperature",
-        "psu48v_voltage_1_thresholds",
-        "psu48v_voltage_2_thresholds",
-        "psu48v_current_thresholds",
-        "psu48v_temperature_1_thresholds",
-        "psu48v_temperature_2_thresholds",
-        "panel_temperature_thresholds",
-        "fncb_temperature_thresholds",
-        "fncb_humidity_thresholds",
-        "comms_gateway_temperature_thresholds",
-        "power_module_temperature_thresholds",
-        "outside_temperature_thresholds",
-        "internal_ambient_temperature_thresholds",
-        "warning_flags",
-        "alarm_flags",
-        "modbus_register_map_revision",
-        "pcb_revision",
-        "cpu_id",
-        "chip_id",
-        "firmware_version",
-        "uptime",
-        "status",
-    ]:
-
-        def side_effect(
-            sim: PasdBusSimulator, prop: str, val: int | None = None
-        ) -> property | None:
-            if val:
-                setattr(sim, prop, val)
-                return None
-            return getattr(sim, prop)
-
-        side_effect_partial = functools.partial(
-            side_effect, fndh_simulator, property_name
-        )
-        setattr(
-            type(mock_simulator),
-            property_name,
-            unittest.mock.PropertyMock(side_effect=side_effect_partial),
-        )
-
-    return mock_simulator
 
 
 @pytest.fixture(name="smartbox_attached_ports")
@@ -177,12 +93,12 @@ def smartbox_attached_ports_fixture(
     return pasd_bus_simulator.get_smartbox_attached_ports()
 
 
-@pytest.fixture(name="smartbox_simulators")
-def smartbox_simulators_fixture(
+@pytest.fixture(name="pasd_hw_simulators")
+def pasd_hw_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-    fndh_simulator: FndhSimulator,
+    fndh_simulator: PasdHardwareSimulator,
     smartbox_attached_ports: list[int],
-) -> dict[int, SmartboxSimulator]:
+) -> dict[int, PasdHardwareSimulator]:
     """
     Return the smartbox simulators.
 
@@ -191,17 +107,17 @@ def smartbox_simulators_fixture(
     :param fndh_simulator: FNDH simulator the smartboxes are connected to.
     :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
             is connected to.
-    :return: a dictionary of smartbox simulators
+    :return: a dictionary of FNDH and smartbox simulators
     """
     fndh_simulator.initialize()
     for port_nr in smartbox_attached_ports:
         fndh_simulator.turn_port_on(port_nr)
-    return pasd_bus_simulator.get_smartboxes()
+    return pasd_bus_simulator.get_fndh_and_smartboxes()
 
 
-@pytest.fixture(name="mock_smartbox_simulators")
-def mock_smartbox_simulators_fixture(
-    smartbox_simulators: dict[int, SmartboxSimulator],
+@pytest.fixture(name="mock_pasd_hw_simulators")
+def mock_pasd_hw_simulators_fixture(
+    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
 ) -> dict[int, unittest.mock.Mock]:
     """
     Return the mock smartbox simulators.
@@ -210,86 +126,135 @@ def mock_smartbox_simulators_fixture(
     so it will behave like a real one,
     but we can access it as a mock too, for example assert calls.
 
-    :param smartbox_simulators:
+    :param pasd_hw_simulators:
         the smartbox simulator backends that the TCP server will front.
 
     :return: a sequence of mock smartbox simulators
     """
     mock_simulators: dict[int, unittest.mock.Mock] = {}
 
-    for smartbox_id, smartbox_simulator in smartbox_simulators.items():
-        mock_simulator = unittest.mock.Mock(wraps=smartbox_simulator)
+    for sim_id, simulator in pasd_hw_simulators.items():
+        mock_simulator = unittest.mock.Mock(wraps=simulator)
+
+        def side_effect(
+            sim: PasdBusSimulator, prop: str, val: int | None = None
+        ) -> property | None:
+            if val:
+                setattr(sim, prop, val)
+                return None
+            return getattr(sim, prop)
 
         # "wraps" doesn't handle properties -- we have to add them manually
         property_name: str
-        for property_name in [
-            "modbus_register_map_revision",
-            "pcb_revision",
-            "cpu_id",
-            "chip_id",
-            "firmware_version",
-            "uptime",
-            "sys_address",
-            "input_voltage",
-            "power_supply_output_voltage",
-            "power_supply_temperature",
-            "pcb_temperature",
-            "fem_ambient_temperature",
-            "status",
-            "led_pattern",
-            "fem_case_temperatures",
-            "fem_heatsink_temperatures",
-            "input_voltage_thresholds",
-            "power_supply_output_voltage_thresholds",
-            "power_supply_temperature_thresholds",
-            "pcb_temperature_thresholds",
-            "fem_ambient_temperature_thresholds",
-            "fem_case_temperature_1_thresholds",
-            "fem_case_temperature_2_thresholds",
-            "fem_heatsink_temperature_1_thresholds",
-            "fem_heatsink_temperature_2_thresholds",
-            "warning_flags",
-            "alarm_flags",
-            "fem1_current_trip_threshold",
-            "fem2_current_trip_threshold",
-            "fem3_current_trip_threshold",
-            "fem4_current_trip_threshold",
-            "fem5_current_trip_threshold",
-            "fem6_current_trip_threshold",
-            "fem7_current_trip_threshold",
-            "fem8_current_trip_threshold",
-            "fem9_current_trip_threshold",
-            "fem10_current_trip_threshold",
-            "fem11_current_trip_threshold",
-            "fem12_current_trip_threshold",
-            "ports_connected",
-            "port_forcings",
-            "port_breakers_tripped",
-            "ports_desired_power_when_online",
-            "ports_desired_power_when_offline",
-            "ports_power_sensed",
-            "ports_current_draw",
-        ]:
+        if sim_id == 0:
+            for property_name in [
+                "port_forcings",
+                "ports_desired_power_when_online",
+                "ports_desired_power_when_offline",
+                "ports_power_control",
+                "ports_power_sensed",
+                "ports_power_control",
+                "led_pattern",
+                "sys_address",
+                "psu48v_voltages",
+                "psu48v_current",
+                "psu48v_temperatures",
+                "panel_temperature",
+                "fncb_temperature",
+                "fncb_humidity",
+                "comms_gateway_temperature",
+                "power_module_temperature",
+                "outside_temperature",
+                "internal_ambient_temperature",
+                "psu48v_voltage_1_thresholds",
+                "psu48v_voltage_2_thresholds",
+                "psu48v_current_thresholds",
+                "psu48v_temperature_1_thresholds",
+                "psu48v_temperature_2_thresholds",
+                "panel_temperature_thresholds",
+                "fncb_temperature_thresholds",
+                "fncb_humidity_thresholds",
+                "comms_gateway_temperature_thresholds",
+                "power_module_temperature_thresholds",
+                "outside_temperature_thresholds",
+                "internal_ambient_temperature_thresholds",
+                "warning_flags",
+                "alarm_flags",
+                "modbus_register_map_revision",
+                "pcb_revision",
+                "cpu_id",
+                "chip_id",
+                "firmware_version",
+                "uptime",
+                "status",
+            ]:
+                side_effect_partial = functools.partial(
+                    side_effect, simulator, property_name
+                )
+                setattr(
+                    type(mock_simulator),
+                    property_name,
+                    unittest.mock.PropertyMock(side_effect=side_effect_partial),
+                )
+        else:
+            for property_name in [
+                "modbus_register_map_revision",
+                "pcb_revision",
+                "cpu_id",
+                "chip_id",
+                "firmware_version",
+                "uptime",
+                "sys_address",
+                "input_voltage",
+                "power_supply_output_voltage",
+                "power_supply_temperature",
+                "pcb_temperature",
+                "fem_ambient_temperature",
+                "status",
+                "led_pattern",
+                "fem_case_temperatures",
+                "fem_heatsink_temperatures",
+                "input_voltage_thresholds",
+                "power_supply_output_voltage_thresholds",
+                "power_supply_temperature_thresholds",
+                "pcb_temperature_thresholds",
+                "fem_ambient_temperature_thresholds",
+                "fem_case_temperature_1_thresholds",
+                "fem_case_temperature_2_thresholds",
+                "fem_heatsink_temperature_1_thresholds",
+                "fem_heatsink_temperature_2_thresholds",
+                "warning_flags",
+                "alarm_flags",
+                "fem1_current_trip_threshold",
+                "fem2_current_trip_threshold",
+                "fem3_current_trip_threshold",
+                "fem4_current_trip_threshold",
+                "fem5_current_trip_threshold",
+                "fem6_current_trip_threshold",
+                "fem7_current_trip_threshold",
+                "fem8_current_trip_threshold",
+                "fem9_current_trip_threshold",
+                "fem10_current_trip_threshold",
+                "fem11_current_trip_threshold",
+                "fem12_current_trip_threshold",
+                "ports_connected",
+                "port_forcings",
+                "port_breakers_tripped",
+                "ports_desired_power_when_online",
+                "ports_desired_power_when_offline",
+                "ports_power_sensed",
+                "ports_current_draw",
+            ]:
+                side_effect_partial = functools.partial(
+                    side_effect, simulator, property_name
+                )
+                setattr(
+                    type(mock_simulator),
+                    property_name,
+                    unittest.mock.PropertyMock(side_effect=side_effect_partial),
+                )
 
-            def side_effect(
-                sim: PasdBusSimulator, prop: str, val: int | None = None
-            ) -> property | None:
-                if val:
-                    setattr(sim, prop, val)
-                    return None
-                return getattr(sim, prop)
-
-            side_effect_partial = functools.partial(
-                side_effect, smartbox_simulator, property_name
-            )
-            setattr(
-                type(mock_simulator),
-                property_name,
-                unittest.mock.PropertyMock(side_effect=side_effect_partial),
-            )
-
-        mock_simulators[smartbox_id] = mock_simulator
-
+        mock_simulators[sim_id] = mock_simulator
     return mock_simulators
 
 
@@ -305,37 +270,16 @@ def smartbox_id_fixture() -> int:
 
 @pytest.fixture(name="smartbox_simulator")
 def smartbox_simulator_fixture(
-    smartbox_simulators: dict[int, SmartboxSimulator],
+    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     smartbox_id: int,
-) -> SmartboxSimulator:
+) -> PasdHardwareSimulator:
     """
     Return a smartbox simulator for testing.
 
-    :param smartbox_simulators:
+    :param pasd_hw_simulators:
         the smartbox simulator backends that the TCP server will front.
     :param smartbox_id: id of the smartbox being addressed.
 
     :return: a smartbox simulator, wrapped in a mock.
     """
-    return smartbox_simulators[smartbox_id]
-
-
-@pytest.fixture(name="mock_smartbox_simulator")
-def mock_smartbox_simulator(
-    mock_smartbox_simulators: list[unittest.mock.Mock],
-    smartbox_id: int,
-) -> unittest.mock.Mock:
-    """
-    Return a mock smartbox simulator.
-
-    That is, a smartbox simulator, wrapped in a mock so that we can
-    assert on calls to it.
-
-    :param mock_smartbox_simulators:
-        the smartbox simulator backends that the TCP server will front,
-        each wrapped with a mock so that we can assert calls.
-    :param smartbox_id: id of the smartbox being addressed.
-
-    :return: a smartbox simulator, wrapped in a mock.
-    """
-    return mock_smartbox_simulators[smartbox_id - 1]
+    return pasd_hw_simulators[smartbox_id]

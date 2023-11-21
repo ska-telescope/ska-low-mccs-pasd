@@ -109,63 +109,12 @@ class SmartboxAlarmFlags(IntFlag):
 
 
 class PasdConversionUtility:
-    """Conversion utility to provide scaling functions for PaSD registers."""
+    """
+    Conversion utility to provide scaling functions for PaSD registers.
 
-    @classmethod
-    def bytes_to_n(cls, value_list: list[int]) -> int:
-        """
-        Convert a list of bytes to an integer.
-
-        Given a list of integers in network order (MSB first),
-        convert to an integer.
-
-        :raises ValueError: If odd number of bytes given to convert
-
-        :param value_list: A list of integers
-        :return: The integer result
-        """
-        nbytes = len(value_list)
-        if nbytes % 2:
-            raise ValueError(f"Odd number of bytes to convert: {value_list}")
-
-        return sum(
-            value * (256 ** (nbytes - i - 1)) for i, value in enumerate(value_list)
-        )
-
-    @classmethod
-    def n_to_bytes(cls, value: int, nbytes: int = 2) -> list[int]:
-        """
-        Convert a value into a list of bytes.
-
-        Given an integer value 'value' and a word length 'nbytes',
-        convert 'value' into a list of integers from 0-255,  with MSB first
-        and LSB last.
-
-        :raises ValueError: If nbytes is not equal to 1, 2 or 4
-            or value not in range
-
-        :param value: An integer small enough to fit into the given word length
-        :param nbytes: The word length to return
-        :return: a list of integers, each in the range 0-255
-        """
-        if nbytes == 1:
-            if 0 <= value < 256:
-                return [value]
-        elif nbytes == 2:
-            if 0 <= value < 65536:
-                return list(divmod(value, 256))
-        elif nbytes == 4:
-            if 0 <= value < 4294967296:
-                high_word, low_word = divmod(value, 65536)
-                return list(divmod(high_word, 256)) + list(divmod(low_word, 256))
-        else:
-            raise ValueError(f"Invalid number of bytes to convert: {nbytes}")
-        raise ValueError(f"Value out of range: {value}")
-
-    # ##########################################################################
-    # The following methods each accept and return a list of values to simplify
-    # the calling code
-    # ##########################################################################
+    The following methods each accept and return a list of values to simplify
+    the calling code.
+    """
 
     @classmethod
     def default_conversion(cls, values: list[Any], inverse: bool = False) -> list[Any]:
@@ -229,13 +178,13 @@ class PasdConversionUtility:
         """
 
         def raw_to_deg(value: int) -> float:
-            if value >= 32768:
-                value -= 65536
+            if value >= 0x8000:
+                value -= 0x10000
             return value / 100.0
 
         def deg_to_raw(value: float) -> int:
             if value < 0:
-                return (round(value * 100) + 65536) & 0xFFFF
+                return (round(value * 100) + 0x10000) & 0xFFFF
             return round(value * 100) & 0xFFFF
 
         if not value_list:
@@ -288,8 +237,9 @@ class PasdConversionUtility:
         """
         try:
             if inverse:
-                return cls.n_to_bytes(int(value_list[0], base=16))
-            return [hex(cls.bytes_to_n(value_list))]
+                integer = int(value_list[0], base=16)
+                return [(integer & 0xFFFF0000) >> 16, integer & 0xFFFF]
+            return [hex(value_list[0] << 16 | value_list[1])]
         except ValueError:
             logger.error(f"Invalid CPU ID value received: {value_list}")
             return ["Invalid CPU ID received"]
@@ -306,13 +256,17 @@ class PasdConversionUtility:
 
         :return: integer number of seconds
         """
+        if inverse:
+            try:
+                return [(value_list[0] & 0xFFFF0000) >> 16, value_list[0] & 0xFFFF]
+            except ValueError:
+                logger.error(f"Invalid uptime value received: {value_list}")
+                return [0, 0]
         try:
-            if inverse:
-                return cls.n_to_bytes(value_list[0])
-            return [cls.bytes_to_n(value_list)]
+            return [value_list[0] << 16 | value_list[1]]
         except ValueError:
             logger.error(f"Invalid uptime value received: {value_list}")
-            return [-1]
+            return [0]
 
     @classmethod
     def convert_chip_id(cls, value_list: list, inverse: bool = False) -> list:
@@ -334,7 +288,7 @@ class PasdConversionUtility:
                     reglist.append(int(value_list[0][i : i + 4]))
                 return reglist
             for raw_value in value_list:
-                bytelist += cls.n_to_bytes(raw_value)
+                bytelist += list(int(raw_value).to_bytes(2, "big"))
             return ["".join([f"{v:02X}" for v in bytelist])]
         except ValueError:
             logger.error(f"Invalid chip ID value received: {value_list}")

@@ -409,7 +409,7 @@ class PasdHardwareSimulator:
 
     DEFAULT_LED_PATTERN: int = LedServiceMap.OFF | LedStatusMap.YELLOWFAST
     DEFAULT_STATUS: FndhStatusMap | SmartboxStatusMap = FndhStatusMap.UNINITIALISED
-    DEFAULT_UPTIME: Final = [0]
+    DEFAULT_UPTIME: Final = [0, 1]
     DEFAULT_FLAGS: int = 0x0
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
@@ -418,14 +418,17 @@ class PasdHardwareSimulator:
     def __init__(
         self: PasdHardwareSimulator,
         ports: Sequence[_FndhPortSimulator | _SmartboxPortSimulator],
+        time_multiplier: int,
     ) -> None:
         """
         Initialise a new instance.
 
         :param ports: instantiated ports for the simulator.
+        :param time_multiplier: to differentiate uptime in test context without delays.
         """
         self._ports = ports
         self._boot_on_time: datetime | None = datetime.now()
+        self._time_multiplier: int = time_multiplier
         self._sensors_status: dict = {}
         self._warning_flags: int = self.DEFAULT_FLAGS
         self._alarm_flags: int = self.DEFAULT_FLAGS
@@ -803,16 +806,17 @@ class PasdHardwareSimulator:
     @property
     def uptime(self: PasdHardwareSimulator) -> list[int]:
         """
-        Return the uptime, as an integer, in microseconds.
+        Return the uptime as an integer in seconds, or fractions of a second for tests.
 
         :return: the uptime.
         """
         if self._boot_on_time is None:
             return self.DEFAULT_UPTIME
         uptime_val = int(
-            (datetime.now().timestamp() - self._boot_on_time.timestamp()) * 100
+            (datetime.now().timestamp() - self._boot_on_time.timestamp())
+            * self._time_multiplier
         )
-        return PasdConversionUtility.n_to_bytes(uptime_val)
+        return PasdConversionUtility.convert_uptime([uptime_val], inverse=True)
 
     @property
     def status(self: PasdHardwareSimulator) -> int:
@@ -1020,12 +1024,14 @@ class FndhSimulator(PasdHardwareSimulator):
 
     def __init__(
         self: FndhSimulator,
+        time_multiplier: int,
         instantiate_smartbox: Callable[[int], Optional[bool]] | None = None,
         delete_smartbox: Callable[[int], Optional[bool]] | None = None,
     ) -> None:
         """
         Initialise a new instance.
 
+        :param time_multiplier: to differentiate uptime in test context without delays.
         :param instantiate_smartbox: optional reference to PasdBusSimulator function.
         :param delete_smartbox: optional reference to PasdBusSimulator function.
         """
@@ -1033,7 +1039,7 @@ class FndhSimulator(PasdHardwareSimulator):
             _FndhPortSimulator(port_index, instantiate_smartbox, delete_smartbox)
             for port_index in range(1, self.NUMBER_OF_PORTS + 1)
         ]
-        super().__init__(ports)
+        super().__init__(ports, time_multiplier)
         # Sensors
         super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "fndh")
         self.psu48v_voltages = self.DEFAULT_PSU48V_VOLTAGES
@@ -1194,17 +1200,22 @@ class SmartboxSimulator(PasdHardwareSimulator):
     """Public attribute as _Sensor() data descriptor: *int*"""
     fem_heatsink_temperatures_thresholds = _Sensor()
 
-    def __init__(self: SmartboxSimulator, address: int = DEFAULT_SYS_ADDRESS) -> None:
+    def __init__(
+        self: SmartboxSimulator,
+        time_multiplier: int,
+        address: int = DEFAULT_SYS_ADDRESS,
+    ) -> None:
         """
         Initialise a new instance.
 
+        :param time_multiplier: to differentiate uptime in test context without delays.
         :param address: to set as default system address.
         """
         ports: Sequence[_SmartboxPortSimulator] = [
             _SmartboxPortSimulator(port_index + 1)
             for port_index in range(self.NUMBER_OF_PORTS)
         ]
-        super().__init__(ports)
+        super().__init__(ports, time_multiplier)
         self._status = SmartboxStatusMap.UNINITIALISED
         self._sys_address = address
         # Sensors
@@ -1381,12 +1392,14 @@ class PasdBusSimulator:
     * Voltages, currents and temperatures never change.
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self: PasdBusSimulator,
         pasd_configuration_path: str,
         station_label: str,
         logging_level: int = logging.INFO,
         smartboxes_depend_on_attached_ports: bool = False,
+        time_multiplier: int = 1000,  # ms
     ) -> None:
         """
         Initialise a new instance.
@@ -1396,6 +1409,7 @@ class PasdBusSimulator:
         :param logging_level: the level to log at.
         :param smartboxes_depend_on_attached_ports: enable instantiation/deleting
             of smartboxes when FNDH ports are turned on and off.
+        :param time_multiplier: to differentiate uptime in test context without delays.
         """
         self._station_label = station_label
         logger.setLevel(logging_level)
@@ -1403,16 +1417,17 @@ class PasdBusSimulator:
             f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}."
         )
 
-        self._smartbox_simulators: dict[int, SmartboxSimulator] = {}
+        self._hw_simulators: dict[int, PasdHardwareSimulator] = {}
         self._smartboxes_ports_connected: list[list[bool]] = []
         self._smartbox_attached_ports: list[int] = [0] * PasdData.NUMBER_OF_SMARTBOXES
+        self._time_multiplier: int = time_multiplier
 
         if smartboxes_depend_on_attached_ports:
-            self._fndh_simulator = FndhSimulator(
-                self._instantiate_smartbox, self._delete_smartbox
+            self._hw_simulators[0] = FndhSimulator(
+                time_multiplier, self._instantiate_smartbox, self._delete_smartbox
             )
         else:
-            self._fndh_simulator = FndhSimulator()
+            self._hw_simulators[0] = FndhSimulator(time_multiplier)
         logger.info(f"Initialised FNDH simulator for station {station_label}.")
 
         self._load_config(pasd_configuration_path)
@@ -1426,21 +1441,23 @@ class PasdBusSimulator:
                 self._instantiate_smartbox(port_number)
         logger.info(f"Initialised PaSD bus simulator for station {station_label}.")
 
-    def get_fndh(self: PasdBusSimulator) -> FndhSimulator:
+    def get_fndh(self: PasdBusSimulator) -> PasdHardwareSimulator:
         """
-        Return the FNDH simulator.
+        Return only the FNDH simulator.
 
         :return: the FNDH simulator.
         """
-        return self._fndh_simulator
+        return self._hw_simulators[0]
 
-    def get_smartboxes(self: PasdBusSimulator) -> dict[int, SmartboxSimulator]:
+    def get_fndh_and_smartboxes(
+        self: PasdBusSimulator,
+    ) -> dict[int, PasdHardwareSimulator]:
         """
-        Return a dictionary of smartboxes.
+        Return a dictionary of the FNDH and Smartbox simulators.
 
-        :return: a dictionary of smartboxes.
+        :return: a dictionary of simulators.
         """
-        return self._smartbox_simulators
+        return self._hw_simulators
 
     def get_smartbox_attached_ports(self: PasdBusSimulator) -> list[int]:
         """
@@ -1461,8 +1478,10 @@ class PasdBusSimulator:
         """
         try:
             smartbox_id = self._smartbox_attached_ports.index(port_number) + 1
-            self._smartbox_simulators[smartbox_id] = SmartboxSimulator(smartbox_id)
-            self._smartbox_simulators[smartbox_id].configure(
+            self._hw_simulators[smartbox_id] = SmartboxSimulator(
+                self._time_multiplier, smartbox_id
+            )
+            self._hw_simulators[smartbox_id].configure(
                 self._smartboxes_ports_connected[smartbox_id - 1]
             )
             logger.debug(f"Initialised Smartbox simulator {smartbox_id}.")
@@ -1479,7 +1498,7 @@ class PasdBusSimulator:
         """
         try:
             smartbox_id = self._smartbox_attached_ports.index(port_number) + 1
-            del self._smartbox_simulators[smartbox_id]
+            del self._hw_simulators[smartbox_id]
             logger.debug(f"Deleted Smartbox simulator {smartbox_id}.")
             return True
         except ValueError:
@@ -1512,7 +1531,7 @@ class PasdBusSimulator:
             fndh_port = smartbox_config["fndh_port"]
             self._smartbox_attached_ports[smartbox_id - 1] = fndh_port
             fndh_ports_is_connected[fndh_port - 1] = True
-        self._fndh_simulator.configure(fndh_ports_is_connected)
+        self._hw_simulators[0].configure(fndh_ports_is_connected)
 
         self._smartboxes_ports_connected = [
             [False] * SmartboxSimulator.NUMBER_OF_PORTS
