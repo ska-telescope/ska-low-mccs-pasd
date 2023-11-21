@@ -45,14 +45,16 @@ resources:
 image:
   registry: artefact.skao.int
   name: ska-low-mccs-pasd
-  tag: 0.5.0
+  tag: 0.5.0-dirty
   pullPolicy: IfNotPresent
 
 deviceServers: {}  # e.g.:
   # fieldstations:
   #   s8-1:
-  #     low-mccs/fndh/s8-1:
+  #     low-mccs/fieldstations/s8-1:
   #       fndh_name: low-mccs/fndh/s8-1
+  #       configuration_host: "pasd-configuration-service-s8-1"
+  #       configuration_port: 8081
   #       smartbox_names:
   #         - low-mccs/smartbox/s8-1-01
   #         - low-mccs/smartbox/s8-1-02
@@ -90,3 +92,20 @@ simulators: {} # e.g.
   #   s8-1:
   #     host: pasd-simulator-s8-1  # mandatory
   #     port: 8502  # optional, defaults to 502
+  #     configuration_host: pasd-configuration-service-s8-1
+  #     configuration_port: 50053
+
+# Reference data from Helm. (mainly used for simulator configuration.)
+referenceData: {}
+  # pasdconfiguration:
+  #   s8-1:
+  #     pasds:
+  #       smartboxes:
+  #         "1":
+  #           fndh_port: 1
+  #     antennas:
+  #       "255":
+  #         smartbox: "1"
+  #         smartbox_port: 3
+  #         masked: false
+

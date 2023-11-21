@@ -1,0 +1,81 @@
+{{- range $key, $value := ((.Values.simulators).pasdbuses)}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pasd-configuration-service-{{$key}}
+  namespace: {{$.Release.Namespace}}
+  labels:
+    component: pasd-configuration-service-{{$key}}
+spec:
+  ports:
+    - protocol: TCP
+      port: {{$value.configuration_port}}
+      targetPort: 8081
+  type: ClusterIP
+  selector:
+    component: pasd-configuration-service-{{$key}}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pasd-configuration-server-{{$key}}
+  namespace: {{$.Release.Namespace}}
+  labels:
+    component: pasd-configuration-service-{{$key}}
+spec:
+  selector:
+    matchLabels:
+      component: pasd-configuration-service-{{$key}}
+  replicas: 1
+  serviceName: pasd-configuration-service-{{$key}}
+  template:
+    metadata:
+      labels:
+        component: pasd-configuration-service-{{$key}}
+    spec:
+      serviceAccountName: config-watcher-acc
+      containers:
+      - name: pasd-configuration-server-{{$key}}
+        image: {{$.Values.image.registry}}/{{$.Values.image.name}}:{{$.Values.image.tag}}
+        imagePullPolicy: IfNotPresent
+        command: 
+          - "PasdConfigurationServer"
+        env:
+          - name: STATION_NAME
+            value: {{$key}}
+          - name: NAMESPACE
+            value: {{$.Release.Namespace}}
+
+{{- end}}    
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: config-watcher-role
+  namespace: {{$.Release.Namespace}}
+rules:
+- apiGroups: [""]
+  resources: ["pod", "configmaps", "secrets"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: config-watcher-acc
+  namespace: {{$.Release.Namespace}}
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: config-watcher-rolebind
+  namespace: {{$.Release.Namespace}}
+roleRef:
+  kind: Role
+  name: config-watcher-role
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: config-watcher-acc
+  namespace: {{$.Release.Namespace}}
+---

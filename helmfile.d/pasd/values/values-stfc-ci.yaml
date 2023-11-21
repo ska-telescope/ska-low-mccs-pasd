@@ -18,6 +18,9 @@ overrides:
                 "1":
                   fndh_port: 1
                   modbus_id: 1
+                "2":
+                  fndh_port: 2
+                  modbus_id: 2
             antennas:
               "100":
                 location_offset:
@@ -119,6 +122,10 @@ overrides:
                 smartbox_port: 1
                 tpm: "1"
                 tpm_input: 1
+
+defaults:
+  logging_level_default: 5
+
 
 defaults:
   logging_level_default: 5

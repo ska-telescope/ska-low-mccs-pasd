@@ -4,3 +4,4 @@ pytest-json-report==1.5.0
 pyyaml==6.0
 ska-control-model==0.3.1
 ska-tango-testing==0.6.1
+jsonschema==4.19.1 

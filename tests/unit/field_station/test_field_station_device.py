@@ -193,11 +193,49 @@ def patched_field_station_device_class_fixture(
     return PatchedMccsFieldStation
 
 
+@pytest.fixture(name="simulated_configuration", scope="module")
+def simulated_configuration_fixture() -> dict[Any, Any]:
+    """
+    Return a configuration for the fieldstation.
+
+    :return: a configuration for representing the antenna port mapping information.
+    """
+    number_of_antenna = 256
+    antennas = {}
+    smartboxes = {}
+    for i in range(1, number_of_antenna + 1):
+        antennas[str(i)] = {"smartbox": str(i % 13 + 1), "smartbox_port": i % 11}
+    for i in range(1, 25):
+        smartboxes[str(i)] = {"fndh_port": i}
+
+    configuration = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
+    return configuration
+
+
+@pytest.fixture(name="configuration_manager", scope="module")
+def configuration_manager_fixture(
+    simulated_configuration: dict[Any, Any]
+) -> unittest.mock.Mock:
+    """
+    Return a mock configuration_manager.
+
+    :param simulated_configuration: a fixture containing the
+        simulated configuration.
+
+    :return: a mock configuration_manager.
+    """
+    manager = unittest.mock.Mock()
+    manager.connect = unittest.mock.Mock(return_value=True)
+    manager.read_data = unittest.mock.Mock(return_value=simulated_configuration)
+    return manager
+
+
 @pytest.fixture(name="field_station_device")
 def field_station_device_fixture(
     patched_field_station_device_class: type[MccsFieldStation],
     mock_fndh: unittest.mock.Mock,
     mock_smartbox: unittest.mock.Mock,
+    configuration_manager: unittest.mock.Mock,
 ) -> tango.DeviceProxy:
     """
     Fixture that returns a proxy to the FieldStation Tango device under test.
@@ -205,6 +243,8 @@ def field_station_device_fixture(
     :param patched_field_station_device_class: a patches class for use in testing.
     :param mock_fndh: a mock FNDH for use in testing.
     :param mock_smartbox: a mock Smartbox for use in testing.
+    :param configuration_manager: the configuration manager to manage configuration
+        for field station.
 
     :yield: a proxy to the FieldStation Tango device under test.
     """
@@ -212,6 +252,7 @@ def field_station_device_fixture(
     harness.set_mock_fndh_device(mock_fndh)
     for smarbox_no in range(1, 24 + 1):
         harness.set_mock_smartbox_device(mock_smartbox, smarbox_no)
+    harness.set_configuration_server(configuration_manager)
     harness.set_field_station_device(
         logging_level=int(LoggingLevel.DEBUG),
         device_class=patched_field_station_device_class,

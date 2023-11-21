@@ -48,7 +48,7 @@ class MccsCommandProxy:  # pylint: disable=too-few-public-methods
 
         :param device_name: name of the device on which to invoke the command
         :param command_name: name of the command to invoke
-        :param logger: the logger to use
+        :param logger: a logger for this object to use
         :param device_proxy_factory: optional override for device proxy factory
         """
         self._device_name = device_name

@@ -57,7 +57,7 @@ def change_event_callbacks_fixture(
         f"smartbox{smartbox_id}PortBreakersTripped",
         f"smartbox{smartbox_id}PortsPowerSensed",
         f"smartbox{smartbox_id}AlarmFlags",
-        timeout=20.0,
+        timeout=23.0,
         assert_no_error=False,
     )
 

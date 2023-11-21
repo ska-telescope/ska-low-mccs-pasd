@@ -35,34 +35,29 @@ class MccsFieldStation(SKABaseDevice):
     # -----------------
     # Device Properties
     # -----------------
+    StationName = device_property(dtype=(str), mandatory=True)
+    ConfigurationHost = device_property(dtype=(str), mandatory=True)
+    ConfigurationPort = device_property(dtype=(int), mandatory=True)
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), mandatory=True)
-
+    ConfigurationTimeout = device_property(dtype=(int), default_value=4)
     # --------------
     # Initialisation
     # --------------
 
     def init_device(self: MccsFieldStation) -> None:
         """Initialise the device."""
-        self._antenna_mask = [False for _ in range(256 + 1)]
         self._antenna_power_json: Optional[str] = None
-        self._antenna_mapping = {
-            smartbox_no * SMARTBOX_PORTS
-            + smartbox_port
-            + 1: [smartbox_no + 1, smartbox_port + 1]
-            for smartbox_no in range(0, SMARTBOX_NUMBER)
-            for smartbox_port in range(0, SMARTBOX_PORTS)
-            if smartbox_no * SMARTBOX_PORTS + smartbox_port < 256
-        }
-        self._smartbox_mapping = {
-            port + 1: port + 1 for port in range(0, SMARTBOX_NUMBER)
-        }
         super().init_device()
 
         message = (
             "Initialised MccsFieldStation device with properties:\n"
             f"\tFndhFQDN: {self.FndhFQDN}\n"
             f"\tSmartBoxFQDNs: {self.SmartBoxFQDNs}\n"
+            f"\tConfigurationHost: {self.ConfigurationHost}\n"
+            f"\tConfigurationPort: {self.ConfigurationPort}\n"
+            f"\tConfigurationTimeout: {self.ConfigurationTimeout}\n"
+            f"\tStationName: {self.StationName}\n"
         )
         self.logger.info(message)
 
@@ -76,11 +71,12 @@ class MccsFieldStation(SKABaseDevice):
         """
         return FieldStationComponentManager(
             self.logger,
+            self.ConfigurationHost,
+            self.ConfigurationPort,
+            self.ConfigurationTimeout,
+            self.StationName,
             self.FndhFQDN,
             self.SmartBoxFQDNs,
-            self._antenna_mask,
-            self._antenna_mapping,
-            self._smartbox_mapping,
             self._communication_state_callback,
             self._component_state_callback,
             self._on_antenna_power_change,
@@ -130,7 +126,7 @@ class MccsFieldStation(SKABaseDevice):
                 "update_smartbox_mapping",
                 smartbox_mapping_schema,
             ),
-            ("UpdateConfiguration", "update_configuration", None),
+            ("LoadConfiguration", "load_configuration", None),
             ("Configure", "configure", configure_schema),
         ]:
             validator = (
@@ -157,11 +153,13 @@ class MccsFieldStation(SKABaseDevice):
     # ----------
     # Callbacks
     # ----------
+
     def _communication_state_callback(
         self: MccsFieldStation,
         communication_state: CommunicationStatus,
         device_name: Optional[str] = None,
     ) -> None:
+        # We need to subscribe and re-emit change events.
         super()._communication_state_changed(communication_state)
 
     def _component_state_callback(
@@ -183,6 +181,9 @@ class MccsFieldStation(SKABaseDevice):
         """
         if "outsidetemperature" in kwargs:
             self.push_change_event("outsideTemperature", kwargs["outsidetemperature"])
+        # TODO: This is being called by all fndh and smartbox proxies.
+        # But it is not yet being handled. Therefore FieldStation State
+        # is not representing the state of all devices belonging to it.
         super()._component_state_changed(fault=fault, power=power)
 
     def _on_antenna_power_change(
@@ -202,6 +203,22 @@ class MccsFieldStation(SKABaseDevice):
     # --------
     # Commands
     # --------
+
+    @command(dtype_out="DevVarLongStringArray")
+    def LoadConfiguration(
+        self: MccsFieldStation,
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Power up a antenna.
+
+        :return: A tuple containing a return code and a string message
+            indicating status. The message is for information purposes
+            only.
+        """
+        handler = self.get_command_object("LoadConfiguration")
+        (return_code, message) = handler()
+        return ([return_code], [message])
+
     @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
     def Configure(self: MccsFieldStation, argin: str) -> DevVarLongStringArrayType:
         """
@@ -326,14 +343,14 @@ class MccsFieldStation(SKABaseDevice):
     # Attributes
     # ----------
 
-    @attribute(dtype=("bool",), max_dim_x=256, label="AntennaMask")
-    def antennaMask(self: MccsFieldStation) -> list:
+    @attribute(dtype="DevString", label="AntennaMask")
+    def antennaMask(self: MccsFieldStation) -> str:
         """
         Return the antenna mask attribute.
 
         :return: antenna mask
         """
-        return self.component_manager._antenna_mask[1:257]
+        return json.dumps(self.component_manager._antenna_mask_pretty)
 
     @attribute(dtype="DevString", label="AntennaMapping")
     def antennaMapping(self: MccsFieldStation) -> str:
@@ -342,7 +359,7 @@ class MccsFieldStation(SKABaseDevice):
 
         :return: antenna mappping
         """
-        return json.dumps(self.component_manager._antenna_mapping)
+        return json.dumps(self.component_manager._antenna_mapping_pretty)
 
     @attribute(dtype="DevString", label="SmartboxMapping")
     def smartboxMapping(self: MccsFieldStation) -> str:
@@ -351,7 +368,7 @@ class MccsFieldStation(SKABaseDevice):
 
         :return: smartbox mapping
         """
-        return json.dumps(self.component_manager._smartbox_mapping)
+        return json.dumps(self.component_manager._smartbox_mapping_pretty)
 
     @attribute(dtype="DevString", label="antennaPowerStates")
     def antennaPowerStates(self: MccsFieldStation) -> str:

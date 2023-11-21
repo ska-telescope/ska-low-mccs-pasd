@@ -14,9 +14,14 @@ functional (BDD).
 from __future__ import annotations
 
 import logging
+from typing import Any, Final
 
 import pytest
 import tango
+
+NUMBER_OF_ANTENNA = 256
+NUMBER_OF_SMARTBOX = 24
+NUMBER_OF_SMARTBOX_PORTS = 12
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
@@ -50,3 +55,26 @@ def logger_fixture() -> logging.Logger:
     debug_logger = logging.getLogger()
     debug_logger.setLevel(logging.DEBUG)
     return debug_logger
+
+
+@pytest.fixture(name="simulated_configuration", scope="session")
+def simulated_configuration_fixture() -> dict[Any, Any]:
+    """
+    Return a configuration for the fieldstation.
+
+    :return: a configuration for representing the antenna port mapping information.
+    """
+    number_of_antenna = NUMBER_OF_ANTENNA
+    antennas = {}
+    smartboxes = {}
+    for i in range(1, number_of_antenna + 1):
+        antennas[str(i)] = {
+            "smartbox": str(i % NUMBER_OF_SMARTBOX + 1),
+            "smartbox_port": i % (NUMBER_OF_SMARTBOX_PORTS - 1),
+            "masked": False,
+        }
+    for i in range(1, NUMBER_OF_SMARTBOX + 1):
+        smartboxes[str(i)] = {"fndh_port": i}
+
+    configuration: Final = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
+    return configuration

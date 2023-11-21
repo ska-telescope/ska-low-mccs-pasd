@@ -78,8 +78,9 @@ def _input_antenna_mapping() -> dict:
 
 
 def _output_antenna_mapping() -> dict:
-    antenna_mapping: dict[int, list] = {
-        antenna_id: [0, 0] for antenna_id in range(1, PasdData.NUMBER_OF_ANTENNAS + 1)
+    antenna_mapping: dict[str, list] = {
+        str(antenna_id): [0, 0]
+        for antenna_id in range(1, PasdData.NUMBER_OF_ANTENNAS + 1)
     }
     for smartbox_no in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
         for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
@@ -87,14 +88,14 @@ def _output_antenna_mapping() -> dict:
                 antenna_no = (
                     smartbox_no - 1
                 ) * PasdData.NUMBER_OF_SMARTBOX_PORTS + smartbox_port
-                if antenna_no in antenna_mapping.keys():
-                    antenna_mapping[antenna_no] = [smartbox_no, smartbox_port]
+                if str(antenna_no) in antenna_mapping.keys():
+                    antenna_mapping[str(antenna_no)] = [smartbox_no, smartbox_port]
             except KeyError:
                 break
 
     # Swap two antennas
-    antenna_mapping[1] = [1, 2]
-    antenna_mapping[2] = [1, 1]
+    antenna_mapping["1"] = [1, 2]
+    antenna_mapping["2"] = [1, 1]
 
     return antenna_mapping
 
@@ -117,13 +118,13 @@ def _input_smartbox_mapping() -> dict:
 
 def _output_smartbox_mapping() -> dict:
     smartbox_mapping: dict = {
-        fndh_port: fndh_port
+        str(fndh_port): fndh_port
         for fndh_port in range(1, PasdData.NUMBER_OF_FNDH_PORTS + 1)
     }
 
     # Swap two smartboxes
-    smartbox_mapping[1] = 2
-    smartbox_mapping[2] = 1
+    smartbox_mapping["1"] = 2
+    smartbox_mapping["2"] = 1
     return smartbox_mapping
 
 
@@ -213,6 +214,53 @@ def mock_smartbox_mapping_fixture() -> dict[int, int]:
     return {port: port for port in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)}
 
 
+@pytest.fixture(name="simulated_configuration")
+def simulated_configuration_fixture(mock_antenna_mapping: Any) -> dict[Any, Any]:
+    """
+     Return a configuration for the fieldstation.
+
+    :param mock_antenna_mapping: a default set of antenna mappings for testing.
+
+     :return: a configuration for representing the antenna port mapping information.
+    """
+    antennas = {}
+    smartboxes = {}
+
+    for antenna_id, config in mock_antenna_mapping.items():
+        antennas[str(antenna_id)] = {
+            "smartbox": str(config[0]),
+            "smartbox_port": config[1],
+            "masked": False,
+        }
+
+    for i in range(1, 25):
+        smartboxes[str(i)] = {"fndh_port": i}
+
+    configuration = {
+        "antennas": antennas,
+        "pasd": {"smartboxes": smartboxes},
+    }
+    return configuration
+
+
+@pytest.fixture(name="configuration_manager")
+def configuration_manager_fixture(
+    simulated_configuration: dict[Any, Any]
+) -> unittest.mock.Mock:
+    """
+    Return a mock configuration_manager.
+
+    :param simulated_configuration: a fixture containing the
+        simulated configuration.
+
+    :return: a mock configuration_manager.
+    """
+    manager = unittest.mock.Mock()
+    manager.connect = unittest.mock.Mock(return_value=True)
+    manager.read_data = unittest.mock.Mock(return_value=simulated_configuration)
+    return manager
+
+
 class TestFieldStationComponentManager:
     """Tests of the FieldStation component manager."""
 
@@ -225,6 +273,9 @@ class TestFieldStationComponentManager:
         mock_antenna_mask: list[bool],
         mock_antenna_mapping: dict[int, list],
         mock_smartbox_mapping: dict[int, int],
+        configuration_manager: Any,
+        mock_smartboxes: Any,
+        mock_fndh: Any,
     ) -> FieldStationComponentManager:
         """
         Return an FieldStation component manager.
@@ -235,19 +286,34 @@ class TestFieldStationComponentManager:
         :param mock_antenna_mask: a default set of maskings for testing, all unmasked.
         :param mock_antenna_mapping: a default set of antenna mappings for testing.
         :param mock_smartbox_mapping: a default set of fndh port mappings
+        :param configuration_manager: a mock configuration manager to manage a
+            configuration for the field station
+        :param mock_smartboxes: A list of mock Smartbox devices.
+        :param mock_fndh: A mock FNDH device.
 
         :return: an FieldStation component manager.
         """
+        harness = PasdTangoTestHarness()
+        harness.set_mock_fndh_device(mock_fndh)
+        for smartbox_id in range(1, 25):
+            harness.set_mock_smartbox_device(
+                mock_smartboxes[smartbox_id - 1], smartbox_id
+            )
+        harness.set_configuration_server(configuration_manager)
+        with harness as context:
+            (host, port) = context.get_pasd_configuration_server_address()
+
         return FieldStationComponentManager(
             logger,
+            host,
+            port,
+            2,
+            "ci-1",
             get_fndh_name(),
             [
                 get_smartbox_name(smartbox_id)
                 for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
             ],
-            mock_antenna_mask,
-            mock_antenna_mapping,
-            mock_smartbox_mapping,
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
             mock_callbacks["antenna_callback"],
@@ -569,10 +635,12 @@ class TestFieldStationComponentManager:
         # If we are working with a specific antenna, rather than all antennas,
         # get the smartbox_id and smartbox_port that the antenna is connected to.
         if antenna_no > 0:
-            (
-                smartbox_id,
-                smartbox_port,
-            ) = field_station_component_manager._antenna_mapping[antenna_no]
+            smartbox_id = field_station_component_manager._antenna_mapping_pretty[
+                "antennaMapping"
+            ][antenna_no - 1]["smartboxID"]
+            smartbox_port = field_station_component_manager._antenna_mapping_pretty[
+                "antennaMapping"
+            ][antenna_no - 1]["smartboxPort"]
         else:
             # If working with all antennas, no specific smartbox will get a call with a
             # masked port
