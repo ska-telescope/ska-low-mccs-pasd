@@ -1,0 +1,619 @@
+{
+  "id": "655794674df03b00190ba194",
+  "name": "FieldStationDashboard",
+  "version": "2.4.2",
+  "user": "MCCS",
+  "insertTime": "2023-11-17T16:27:19.746Z",
+  "updateTime": "2023-11-17T16:29:39.441Z",
+  "group": null,
+  "groupWriteAccess": false,
+  "lastUpdatedBy": "MCCS",
+  "widget": [
+    {
+      "valid": 1,
+      "id": "1",
+      "x": 5,
+      "y": 9,
+      "canvas": "0",
+      "width": 60,
+      "height": 7,
+      "type": "LABEL",
+      "inputs": {
+        "text": "Dashboard for FieldStation",
+        "textColor": "#000000",
+        "backgroundColor": "#ffffff",
+        "size": 3,
+        "borderWidth": 0.2,
+        "borderColor": "#000000",
+        "font": "Helvetica",
+        "linkTo": "",
+        "customCss": "text-align: center;\nalign-items: center;",
+        "automaticResize": "Disabled"
+      },
+      "order": 1
+    },
+    {
+      "valid": 1,
+      "id": "6",
+      "x": 0,
+      "y": 17,
+      "canvas": "0",
+      "width": 161,
+      "height": 26,
+      "type": "TABULAR_VIEW",
+      "inputs": {
+        "devices": [
+          {
+            "device": "low-mccs/fieldstation/ci-1"
+          },
+          {
+            "device": "low-mccs/fndh/ci-1"
+          },
+          {
+            "device": "SmartboxNo"
+          }
+        ],
+        "precision": 2,
+        "scientificNotation": false,
+        "showDefaultAttribute": true,
+        "showEnumLabels": true,
+        "customAttributes": [
+          {
+            "attribute": {
+              "device": "low-mccs/fieldstation/ci-1,low-mccs/fndh/ci-1,SmartboxNo",
+              "attribute": "longrunningcommandsinqueue",
+              "label": "longRunningCommandsInQueue"
+            }
+          },
+          {
+            "attribute": {
+              "device": "low-mccs/fieldstation/ci-1,low-mccs/fndh/ci-1,SmartboxNo",
+              "attribute": "portspowersensed",
+              "label": "PortsPowerSensed"
+            }
+          },
+          {
+            "attribute": {
+              "device": "low-mccs/fieldstation/ci-1,low-mccs/fndh/ci-1,SmartboxNo",
+              "attribute": "state",
+              "label": "state",
+              "hideList": true
+            }
+          },
+          {
+            "attribute": {
+              "device": "low-mccs/fieldstation/ci-1,low-mccs/fndh/ci-1,SmartboxNo",
+              "attribute": "adminmode",
+              "label": "adminmode",
+              "hideList": true
+            }
+          },
+          {
+            "attribute": {
+              "device": "low-mccs/fieldstation/ci-1,low-mccs/fndh/ci-1,SmartboxNo",
+              "attribute": "healthstate",
+              "label": "healthstate",
+              "hideList": true
+            }
+          }
+        ],
+        "compactTable": false,
+        "borderedTable": true,
+        "textColor": "#000000",
+        "backgroundColor": "#ffffff",
+        "size": 1,
+        "font": "Courier new",
+        "widgetCss": ""
+      },
+      "order": 3
+    },
+    {
+      "valid": 1,
+      "id": "12",
+      "x": 1,
+      "y": 44,
+      "canvas": "0",
+      "width": 28,
+      "height": 41,
+      "type": "BOX",
+      "inputs": {
+        "title": "Antenna Mask",
+        "bigWidget": 7,
+        "smallWidget": 3,
+        "textColor": "#000000",
+        "backgroundColor": "#ffffff",
+        "borderColor": "",
+        "borderWidth": 2,
+        "borderStyle": "solid",
+        "textSize": 2,
+        "fontFamily": "Helvetica",
+        "layout": "vertical",
+        "alignment": "Center",
+        "padding": 0,
+        "customCss": ""
+      },
+      "order": 0,
+      "innerWidgets": [
+        {
+          "id": "9",
+          "x": 1.6,
+          "y": 51.88,
+          "canvas": "0",
+          "width": 26.8,
+          "height": 33,
+          "type": "ATTRIBUTE_DISPLAY",
+          "inputs": {
+            "attribute": {
+              "device": "low-mccs/fieldstation/ci-1",
+              "attribute": "antennamask",
+              "label": "AntennaMask"
+            },
+            "precision": 2,
+            "showDevice": false,
+            "showAttribute": "None",
+            "alignTextCenter": true,
+            "alignValueRight": false,
+            "scientificNotation": false,
+            "showEnumLabels": false,
+            "showAttrQuality": false,
+            "textColor": "#000000",
+            "backgroundColor": "#ffffff",
+            "size": 1,
+            "font": "Helvetica",
+            "widgetCss": ""
+          },
+          "valid": 1,
+          "order": 3,
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "valid": 1,
+      "id": "17",
+      "x": 28,
+      "y": 44,
+      "canvas": "0",
+      "width": 30,
+      "height": 41,
+      "type": "BOX",
+      "inputs": {
+        "title": "Antenna Mapping",
+        "bigWidget": 7,
+        "smallWidget": 3,
+        "textColor": "#000000",
+        "backgroundColor": "#ffffff",
+        "borderColor": "",
+        "borderWidth": 2,
+        "borderStyle": "solid",
+        "textSize": 2,
+        "fontFamily": "Helvetica",
+        "layout": "vertical",
+        "alignment": "Center",
+        "padding": 0,
+        "customCss": ""
+      },
+      "order": 4,
+      "innerWidgets": [
+        {
+          "id": "18",
+          "x": 28.6,
+          "y": 51.88,
+          "canvas": "0",
+          "width": 26.8,
+          "height": 33,
+          "type": "ATTRIBUTE_DISPLAY",
+          "inputs": {
+            "attribute": {
+              "device": "low-mccs/fieldstation/ci-1",
+              "attribute": "antennamapping",
+              "label": "AntennaMapping"
+            },
+            "precision": 2,
+            "showDevice": false,
+            "showAttribute": "None",
+            "alignTextCenter": true,
+            "alignValueRight": false,
+            "scientificNotation": false,
+            "showEnumLabels": false,
+            "showAttrQuality": false,
+            "textColor": "#000000",
+            "backgroundColor": "#ffffff",
+            "size": 1,
+            "font": "Helvetica",
+            "widgetCss": ""
+          },
+          "valid": 1,
+          "order": 3,
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "valid": 1,
+      "id": "19",
+      "x": 58,
+      "y": 44,
+      "canvas": "0",
+      "width": 32,
+      "height": 41,
+      "type": "BOX",
+      "inputs": {
+        "title": "Smartbox Mapping",
+        "bigWidget": 7,
+        "smallWidget": 3,
+        "textColor": "#000000",
+        "backgroundColor": "#ffffff",
+        "borderColor": "",
+        "borderWidth": 2,
+        "borderStyle": "solid",
+        "textSize": 2,
+        "fontFamily": "Helvetica",
+        "layout": "vertical",
+        "alignment": "Center",
+        "padding": 0,
+        "customCss": ""
+      },
+      "order": 5,
+      "innerWidgets": [
+        {
+          "id": "20",
+          "x": 58.6,
+          "y": 51.88,
+          "canvas": "0",
+          "width": 29.8,
+          "height": 33,
+          "type": "ATTRIBUTE_DISPLAY",
+          "inputs": {
+            "attribute": {
+              "device": "low-mccs/fieldstation/ci-1",
+              "attribute": "smartboxmapping",
+              "label": "SmartboxMapping"
+            },
+            "precision": 2,
+            "showDevice": false,
+            "showAttribute": "None",
+            "alignTextCenter": true,
+            "alignValueRight": false,
+            "scientificNotation": false,
+            "showEnumLabels": false,
+            "showAttrQuality": false,
+            "textColor": "#000000",
+            "backgroundColor": "#ffffff",
+            "size": 1,
+            "font": "Helvetica",
+            "widgetCss": ""
+          },
+          "valid": 1,
+          "order": 3,
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "valid": 1,
+      "id": "24",
+      "x": 90,
+      "y": 44,
+      "canvas": "0",
+      "width": 31,
+      "height": 41,
+      "type": "BOX",
+      "inputs": {
+        "title": "Commands",
+        "bigWidget": 4,
+        "smallWidget": 1,
+        "textColor": "#000000",
+        "backgroundColor": "#ffffff",
+        "borderColor": "",
+        "borderWidth": 2,
+        "borderStyle": "solid",
+        "textSize": 1,
+        "fontFamily": "Helvetica",
+        "layout": "vertical",
+        "alignment": "Center",
+        "padding": 0,
+        "customCss": ""
+      },
+      "order": 6,
+      "innerWidgets": [
+        {
+          "id": "21",
+          "x": 90.6,
+          "y": 49.88,
+          "canvas": "0",
+          "width": 28.8,
+          "height": 7,
+          "type": "COMMAND",
+          "inputs": {
+            "title": "Turn PaSD ON",
+            "command": {
+              "device": "low-mccs/fieldstation/ci-1",
+              "command": "On",
+              "acceptedType": "DevVoid",
+              "intypedesc": "Uninitialised",
+              "outtypedesc": "Uninitialised",
+              "outtype": "DevVarLongStringArray",
+              "tag": "0"
+            },
+            "commandArgs": [],
+            "showDevice": false,
+            "showCommand": false,
+            "requireConfirmation": true,
+            "displayOutput": false,
+            "alignButtonRight": true,
+            "placeholder": "intype",
+            "textColor": "#000000",
+            "backgroundColor": "#ffffff",
+            "size": 1,
+            "font": "Helvetica",
+            "btnCss": "",
+            "widgetCss": ""
+          },
+          "valid": 1,
+          "order": 2,
+          "disabled": false
+        },
+        {
+          "id": "16",
+          "x": 90.6,
+          "y": 56.88,
+          "canvas": "0",
+          "width": 28.8,
+          "height": 7,
+          "type": "COMMAND",
+          "inputs": {
+            "title": "Turn PaSD OFF",
+            "command": {
+              "device": "low-mccs/fieldstation/ci-1",
+              "command": "Off",
+              "acceptedType": "DevVoid",
+              "intypedesc": "Uninitialised",
+              "outtypedesc": "Uninitialised",
+              "outtype": "DevVarLongStringArray",
+              "tag": "0"
+            },
+            "commandArgs": [],
+            "showDevice": false,
+            "showCommand": false,
+            "requireConfirmation": true,
+            "displayOutput": false,
+            "alignButtonRight": true,
+            "placeholder": "intype",
+            "textColor": "#000000",
+            "backgroundColor": "#ffffff",
+            "size": 1,
+            "font": "Helvetica",
+            "btnCss": "",
+            "widgetCss": ""
+          },
+          "valid": 1,
+          "order": 3,
+          "disabled": false
+        },
+        {
+          "id": "22",
+          "x": 90.6,
+          "y": 63.88,
+          "canvas": "0",
+          "width": 28.8,
+          "height": 7,
+          "type": "COMMAND",
+          "inputs": {
+            "title": "Turn Antenna ON",
+            "command": {
+              "device": "low-mccs/fieldstation/ci-1",
+              "command": "PowerOnAntenna",
+              "acceptedType": "DevShort",
+              "intypedesc": "Uninitialised",
+              "outtypedesc": "Uninitialised",
+              "outtype": "DevVarLongStringArray",
+              "tag": "0"
+            },
+            "commandArgs": [],
+            "showDevice": false,
+            "showCommand": false,
+            "requireConfirmation": true,
+            "displayOutput": false,
+            "alignButtonRight": true,
+            "placeholder": "intype",
+            "textColor": "#000000",
+            "backgroundColor": "#ffffff",
+            "size": 1,
+            "font": "Helvetica",
+            "btnCss": "",
+            "widgetCss": ""
+          },
+          "valid": 1,
+          "order": 4,
+          "disabled": false
+        },
+        {
+          "id": "23",
+          "x": 90.6,
+          "y": 70.88,
+          "canvas": "0",
+          "width": 28.8,
+          "height": 7,
+          "type": "COMMAND",
+          "inputs": {
+            "title": "Turn Antenna OFF",
+            "command": {
+              "device": "low-mccs/fieldstation/ci-1",
+              "command": "PowerOffAntenna",
+              "acceptedType": "DevShort",
+              "intypedesc": "Uninitialised",
+              "outtypedesc": "Uninitialised",
+              "outtype": "DevVarLongStringArray",
+              "tag": "0"
+            },
+            "commandArgs": [],
+            "showDevice": false,
+            "showCommand": false,
+            "requireConfirmation": true,
+            "displayOutput": false,
+            "alignButtonRight": true,
+            "placeholder": "intype",
+            "textColor": "#000000",
+            "backgroundColor": "#ffffff",
+            "size": 1,
+            "font": "Helvetica",
+            "btnCss": "",
+            "widgetCss": ""
+          },
+          "valid": 1,
+          "order": 5,
+          "disabled": false
+        },
+        {
+          "id": "27",
+          "x": 90.6,
+          "y": 77.88,
+          "canvas": "0",
+          "width": 28.8,
+          "height": 7,
+          "type": "COMMAND",
+          "inputs": {
+            "title": "Update Configuration",
+            "command": {
+              "device": "low-mccs/fieldstation/ci-1",
+              "command": "LoadConfiguration",
+              "acceptedType": "DevVoid",
+              "intypedesc": "Uninitialised",
+              "outtypedesc": "Uninitialised",
+              "outtype": "DevVarLongStringArray",
+              "tag": "0"
+            },
+            "commandArgs": [],
+            "showDevice": false,
+            "showCommand": false,
+            "requireConfirmation": true,
+            "displayOutput": false,
+            "alignButtonRight": true,
+            "placeholder": "intype",
+            "textColor": "#000000",
+            "backgroundColor": "#ffffff",
+            "size": 1,
+            "font": "Helvetica",
+            "btnCss": "",
+            "widgetCss": ""
+          },
+          "valid": 1,
+          "order": 6
+        }
+      ]
+    },
+    {
+      "valid": 1,
+      "id": "26",
+      "x": 121,
+      "y": 44,
+      "canvas": "0",
+      "width": 40,
+      "height": 41,
+      "type": "BOX",
+      "inputs": {
+        "title": "Outside Temperature vs Time",
+        "bigWidget": 4,
+        "smallWidget": 1,
+        "textColor": "#000000",
+        "backgroundColor": "#ffffff",
+        "borderColor": "",
+        "borderWidth": 2,
+        "borderStyle": "solid",
+        "textSize": 1,
+        "fontFamily": "Helvetica",
+        "layout": "horizontal",
+        "alignment": "Center",
+        "padding": 0,
+        "customCss": ""
+      },
+      "order": 7,
+      "innerWidgets": [
+        {
+          "id": "25",
+          "x": 121.6,
+          "y": 49.88,
+          "canvas": "0",
+          "width": 38,
+          "height": 34.92,
+          "type": "ATTRIBUTE_PLOT",
+          "inputs": {
+            "timeWindow": 120,
+            "showZeroLine": true,
+            "logarithmic": false,
+            "attributes": [
+              {
+                "attribute": {
+                  "device": "low-mccs/fieldstation/ci-1",
+                  "attribute": "outsidetemperature",
+                  "label": "OutsideTemperature"
+                },
+                "showAttribute": "Name",
+                "yAxis": "left",
+                "lineColor": "#000000"
+              }
+            ],
+            "textColor": "#000000",
+            "backgroundColor": "#ffffff"
+          },
+          "valid": 1,
+          "order": 1,
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "valid": 1,
+      "id": "28",
+      "x": 91,
+      "y": 9,
+      "canvas": "0",
+      "width": 40,
+      "height": 7,
+      "type": "BOX",
+      "inputs": {
+        "title": "",
+        "bigWidget": 4,
+        "smallWidget": 1,
+        "textColor": "#000000",
+        "backgroundColor": "#ffffff",
+        "borderColor": "",
+        "borderWidth": 2,
+        "borderStyle": "solid",
+        "textSize": 1,
+        "fontFamily": "Helvetica",
+        "layout": "vertical",
+        "alignment": "Center",
+        "padding": 0,
+        "customCss": ""
+      },
+      "order": 8,
+      "innerWidgets": [
+        {
+          "id": "5",
+          "x": 91.6,
+          "y": 10.16,
+          "canvas": "0",
+          "width": 38.8,
+          "height": 5.8,
+          "type": "PARAMETRIC_WIDGET",
+          "inputs": {
+            "name": "Smartbox Selector",
+            "variable": "SmartboxNo"
+          },
+          "valid": 1,
+          "order": 1
+        }
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "_id": "655641f5f195b900192d6af0",
+      "name": "SmartboxNo",
+      "class": "MccsSmartbox",
+      "device": "low-mccs/smartbox/ci-1-01"
+    }
+  ]
+}
