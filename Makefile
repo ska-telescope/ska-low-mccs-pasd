@@ -63,9 +63,9 @@ K8S_TEST_RUNNER_PYTEST_TARGET = tests/functional
 K8S_TEST_RUNNER_PIP_INSTALL_ARGS = -r tests/functional/requirements.txt
 
 # ALL THIS SHOULD BE UPSTREAMED
-K8S_TEST_RUNNER_CHART_REGISTRY ?= https://artefact.skao.int/repository/helm-internal
+K8S_TEST_RUNNER_CHART_REGISTRY ?= https://gitlab.com/api/v4/projects/38627478/packages/helm/dev
 K8S_TEST_RUNNER_CHART_NAME ?= ska-low-mccs-k8s-test-runner
-K8S_TEST_RUNNER_CHART_TAG ?= 0.9.0
+K8S_TEST_RUNNER_CHART_TAG ?= 0.9.1-dev.c1f577bfd
 
 K8S_TEST_RUNNER_CHART_OVERRIDES = --set global.tango_host=databaseds-tango-base:10000  # TODO: This should be the default in the k8s-test-runner
 ifdef K8S_TEST_RUNNER_IMAGE_REGISTRY
