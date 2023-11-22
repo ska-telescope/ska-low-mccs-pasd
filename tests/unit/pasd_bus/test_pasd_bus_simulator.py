@@ -82,7 +82,6 @@ class TestPasdBusSimulator:
             smartbox_simulator = smartbox_simulators[smartbox_id]
             assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
 
-    @pytest.mark.xfail(reason="Temporarily skipped as uptime is not ticking up.")
     def test_uptimes(
         self: TestPasdBusSimulator,
         fndh_simulator: FndhSimulator,
