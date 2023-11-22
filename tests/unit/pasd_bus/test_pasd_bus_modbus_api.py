@@ -170,8 +170,9 @@ class TestPasdBusModbusApi:
     @pytest.mark.parametrize(
         ("slave", "address", "count"),
         [
-            (0, 64, 1),
-            (1, 60, 1),
+            (0, 64, 1),  # nonexistent FNDH attribute
+            (1, 60, 1),  # nonexistent smartbox attribute
+            (0, 1100, 4),  # dummy FNDH attribute in register map, but not in simulator
         ],
     )
     def test_read_nonexistent_attribute(
@@ -297,8 +298,9 @@ class TestPasdBusModbusApi:
     @pytest.mark.parametrize(
         ("slave", "address", "values"),
         [
-            (0, 1048, [1, 2]),
-            (1, 1036, [1, 2, 3, 4]),
+            (0, 1048, [1, 2]),  # nonexistent FNDH attribute
+            (1, 1036, [1, 2, 3, 4]),  # nonexistent smartbox attribute
+            (0, 1100, 1),  # dummy FNDH attribute in register map, but not in simulator
         ],
     )
     def test_write_nonexistent_attribute(

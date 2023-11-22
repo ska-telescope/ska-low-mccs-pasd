@@ -107,7 +107,7 @@ class PasdBusModbusApi:
                     slave=device_id,
                 )
             except AttributeError:
-                logger.error(f"{name}: {attr}")
+                logger.error(f"No attribute exists at address {attr.address}: {name}")
                 return ExceptionResponse(
                     ReadHoldingRegistersRequest.function_code,
                     ModbusExceptions.IllegalAddress,
@@ -156,7 +156,7 @@ class PasdBusModbusApi:
                     slave=device_id,
                 )
             except AttributeError:
-                logger.error(f"{name}: {attr}")
+                logger.error(f"No attribute exists at address {attr.address}: {name}")
                 return ExceptionResponse(
                     WriteMultipleRegistersRequest.function_code,
                     ModbusExceptions.IllegalAddress,
@@ -193,7 +193,11 @@ class PasdBusModbusApi:
                         )
                     )
                     if filtered_register_map == {}:
-                        filtered_register_map = {"Illegal address": message.address}
+                        filtered_register_map = {
+                            "Illegal address": PasdBusAttribute(
+                                message.address, message.count
+                            )
+                        }
                     values = self._handle_read_attributes(
                         device_id, filtered_register_map
                     )
@@ -222,7 +226,11 @@ class PasdBusModbusApi:
                         or not isinstance(v, PasdBusPortAttribute)
                     }
                     if filtered_register_map == {}:
-                        filtered_register_map = {"Illegal address": message.address}
+                        filtered_register_map = {
+                            "Illegal address": PasdBusAttribute(
+                                message.address, message.count
+                            )
+                        }
                     result = self._handle_write_attributes(
                         device_id,
                         filtered_register_map,
