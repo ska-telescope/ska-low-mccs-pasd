@@ -23,7 +23,7 @@ def smartbox_number_fixture() -> int:
 
     :return: the logical number of the smartbox under test.
     """
-    return 1
+    return 18
 
 
 @pytest.fixture(name="mocked_initial_port_power_state")

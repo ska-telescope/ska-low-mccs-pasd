@@ -15,7 +15,7 @@ import threading
 from typing import Any, Callable, Optional
 
 import tango
-from ska_control_model import CommunicationStatus, HealthState, PowerState, TaskStatus
+from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_mccs_common import MccsDeviceProxy
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.base import check_communicating
@@ -156,7 +156,7 @@ class _PasdBusProxy(DeviceComponentManager):
     def _on_attribute_change(
         self: _PasdBusProxy,
         attr_name: str,
-        attr_value: HealthState,
+        attr_value: Any,
         attr_quality: tango.AttrQuality,
     ) -> None:
         """
@@ -168,30 +168,31 @@ class _PasdBusProxy(DeviceComponentManager):
         """
         # TODO: MCCS-1481: Update the MccsDeviceProxy to conserve attribute case.
 
-        # Are really receiving from a pasd smartbox device between 1-24
-        is_a_smartbox = re.search("^smartbox([1-9]|1[0-9]|2[0-4])", attr_name)
+        try:
+            # 'smartbox' followed by 1 or 2 digits, followed by a string.
+            smartbox_attribute_pattern = re.compile(r"smartbox(\d{1,2})(.*)")
 
-        if is_a_smartbox:
-            # TODO: There is a bug, MCCS-1813 will to cover this.
-            # This is a very nasty hack just to get it working in the short term.
-            try:
-                isinstance(int(attr_name[is_a_smartbox.end()]), int)
-                tango_attribute_name = attr_name[is_a_smartbox.end() + 1 :].lower()
-            except Exception:  # pylint: disable=broad-except
-                tango_attribute_name = attr_name[is_a_smartbox.end() :].lower()
-            # tango_attribute_name = attr_name[is_a_smartbox.end() :].lower()
-            # Status is a bad name since it conflicts with TANGO status.
-            if tango_attribute_name.lower() == "status":
+            # Use the pattern to match the input string
+            smartbox_attribute = smartbox_attribute_pattern.match(attr_name)
+
+            # Check if we got a match, this checks it starts with 'smartbox'
+            assert smartbox_attribute is not None
+
+            # Check we're looking at the correct smartbox
+            assert int(smartbox_attribute.group(1)) == self._smartbox_nr
+
+            # If there's a match, return the string after the number
+            tango_attribute_name = smartbox_attribute.group(2).lower()
+
+            if tango_attribute_name == "status":
                 tango_attribute_name = "pasdstatus"
 
             self._attribute_change_callback(tango_attribute_name, attr_value)
-            return
-
-        self.logger.error(
-            f"""Attribute subscription {attr_name} does not seem to begin
-             with 'smartbox' string so it is not handled."""
-        )
-        return
+        except AssertionError:
+            self.logger.error(
+                f"Attribute subscription {attr_name} does not seem to belong "
+                f"to this smartbox (smartbox {self._smartbox_nr})"
+            )
 
     def _fndh_ports_power_sensed_changed(
         self: _PasdBusProxy,

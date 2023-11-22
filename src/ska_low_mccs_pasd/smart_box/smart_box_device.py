@@ -376,7 +376,7 @@ class MccsSmartBox(SKABaseDevice):
             self.push_archive_event("healthState", health)
 
     def _attribute_changed_callback(
-        self: MccsSmartBox, attr_name: str, attr_value: HealthState
+        self: MccsSmartBox, attr_name: str, attr_value: Any
     ) -> None:
         """
         Handle changes to subscribed attributes.
