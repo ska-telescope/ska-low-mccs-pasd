@@ -42,7 +42,7 @@ class PasdWriteError(Exception):
         :param attribute: name of the requested attribute
         """
         logger.error(f"Non-writeable register requested for write: {attribute}")
-        super().__init__(f"Non-writeable register requestedfor write: {attribute}")
+        super().__init__(f"Non-writeable register requested for write: {attribute}")
 
 
 class PortStatusBits(IntFlag):
@@ -403,6 +403,7 @@ class PasdBusRegisterMap:
         "internal_ambient_temperature_thresholds": PasdBusAttribute(
             1044, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
         ),
+        "dummy_for_test": PasdBusAttribute(1100, 4),
         WARNING_FLAGS: PasdBusAttribute(
             10129, 1, PasdConversionUtility.convert_fndh_alarm_status
         ),
