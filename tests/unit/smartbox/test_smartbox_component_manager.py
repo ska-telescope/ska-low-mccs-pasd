@@ -18,12 +18,16 @@ import tango
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_tango_testing.mock import MockCallableGroup
 
+from ska_low_mccs_pasd import PasdData
 from ska_low_mccs_pasd.smart_box import SmartBoxComponentManager, _PasdBusProxy
 from tests.harness import (
     PasdTangoTestHarness,
     PasdTangoTestHarnessContext,
+    get_field_station_name,
     get_pasd_bus_name,
 )
+
+from .conftest import _input_smartbox_mapping
 
 SMARTBOX_PORTS = 12
 
@@ -31,18 +35,18 @@ SMARTBOX_PORTS = 12
 @pytest.fixture(name="test_context")
 def test_context_fixture(
     mock_pasdbus: unittest.mock.Mock,
-    mock_fndh: unittest.mock.Mock,
+    mock_field_station: unittest.mock.Mock,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Create a test context containing mock PaSD bus and FNDH devices.
 
     :param mock_pasdbus: A mock PaSD bus device.
-    :param mock_fndh: A mock FNDH device.
+    :param mock_field_station: A mock FieldStation device.
 
     :yield: the test context
     """
     harness = PasdTangoTestHarness()
-    harness.set_mock_fndh_device(mock_fndh)
+    harness.set_mock_field_station_device(mock_field_station)
     harness.set_mock_pasd_bus_device(mock_pasdbus)
     with harness as context:
         yield context
@@ -75,7 +79,6 @@ class TestPasdBusProxy:
         return _PasdBusProxy(
             get_pasd_bus_name(),
             smartbox_number,
-            fndh_port,
             logger,
             1,
             mock_callbacks["communication_state"],
@@ -174,7 +177,7 @@ class TestSmartBoxComponentManager:
             mock_callbacks["attribute_update"],
             smartbox_number,
             SMARTBOX_PORTS,
-            fndh_port,
+            get_field_station_name(),
             get_pasd_bus_name(),
         )
         return component_manager
@@ -228,7 +231,11 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        mock_callbacks["component_state"].assert_call(power=PowerState.ON)
+        # To transition to a state we need to know what fndh port we are on.
+        # Lookahead 2 is needed incase this information is not initially known
+        # We first transtion to UNKNOWN,
+        # then when we know the state we transition to ON/OFF
+        mock_callbacks["component_state"].assert_call(power=PowerState.ON, lookahead=2)
 
     @pytest.mark.parametrize(
         (
@@ -282,7 +289,8 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-
+        # see comment in TestSmartBoxComponentManager::test_component_state
+        mock_callbacks["component_state"].assert_call(power=PowerState.ON, lookahead=2)
         assert (
             getattr(smartbox_component_manager, component_manager_command)(
                 mock_callbacks["task"]
@@ -515,3 +523,75 @@ class TestSmartBoxComponentManager:
         mock_callbacks["task"].assert_call(
             status=TaskStatus.FAILED, result=command_tracked_response
         )
+
+    def test_configuration_change(
+        self: TestSmartBoxComponentManager,
+        smartbox_component_manager: SmartBoxComponentManager,
+        mock_callbacks: MockCallableGroup,
+        mock_pasdbus: unittest.mock.Mock,
+        alternate_input_smartbox_mapping: str,
+        changed_fndh_port: int,
+    ) -> None:
+        """
+        Test that a change in fieldstation configuration is noticed.
+
+        :param smartbox_component_manager: A SmartBox component manager
+            with communication established.
+        :param mock_callbacks: A group of callables.
+        :param mock_pasdbus: A mock pasdBus
+        :param alternate_input_smartbox_mapping: an alternate smartbox mapping to use.
+        :param changed_fndh_port: the new port for this smartbox.
+        """
+        smartbox_component_manager.start_communicating()
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.ESTABLISHED
+        )
+        mock_callbacks["component_state"].assert_call(power=PowerState.ON, lookahead=2)
+
+        # mock a callback from the fieldstation when it changes state.
+        # We are placing the smartbox on a new port that is OFF.
+        smartbox_component_manager._on_mapping_change(
+            "smartboxmapping",
+            alternate_input_smartbox_mapping,
+            tango.AttrQuality.ATTR_VALID,
+        )
+        mock_callbacks["component_state"].assert_call(power=PowerState.OFF, lookahead=2)
+
+        mock_pasdbus.set_fndh_port_powers = unittest.mock.Mock()
+
+        # Check that when we turn on the correct port for this new configuration.
+        smartbox_component_manager.on()
+        desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
+        desired_port_powers[changed_fndh_port - 1] = True
+        json_argument = json.dumps(
+            {
+                "port_powers": desired_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
+        mock_pasdbus.SetFndhPortPowers.assert_next_call(json_argument)
+
+
+@pytest.fixture(name="alternate_input_smartbox_mapping")
+def alternate_input_smartbox_mapping_fixture(
+    smartbox_number: int, changed_fndh_port: int
+) -> str:
+    """
+    Alternate configuration to use in smartbox.
+
+    This is to simulate a change in the fieldstations configuration.
+
+    :param smartbox_number: the id of this smartbox
+    :param changed_fndh_port: the new port to place this smartbox.
+
+    :return: a string representing the smartbox mapping reported by fieldstation.
+    """
+    smartbox_mapping = _input_smartbox_mapping()["smartboxMapping"]
+
+    smartbox_mapping[smartbox_number]["fndhPort"] = changed_fndh_port
+    smartbox_mapping[smartbox_number]["smartboxID"] = smartbox_number
+
+    return json.dumps({"smartboxMapping": smartbox_mapping})

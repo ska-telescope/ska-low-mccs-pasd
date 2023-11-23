@@ -18,6 +18,7 @@ from typing import Any, Final
 
 import pytest
 import tango
+import yaml
 
 NUMBER_OF_ANTENNA = 256
 NUMBER_OF_SMARTBOX = 24
@@ -58,23 +59,33 @@ def logger_fixture() -> logging.Logger:
 
 
 @pytest.fixture(name="simulated_configuration", scope="session")
-def simulated_configuration_fixture() -> dict[Any, Any]:
+def simulated_configuration_fixture(pasd_config_path: str) -> dict[Any, Any]:
     """
-    Return a configuration for the fieldstation.
+    Return a configuration for the fieldstation to use.
+
+    WARNING: the configuration we load into the FieldStation must match that
+    we configure the PaSDSimulator with. Otherwise we have a configuration issues.
+    i.e. we are simulating that TelModel has the wrong data stored.
+
+    :param pasd_config_path: this is the configuration that the
+        PaSDSimulator is configured with.
 
     :return: a configuration for representing the antenna port mapping information.
     """
-    number_of_antenna = NUMBER_OF_ANTENNA
-    antennas = {}
-    smartboxes = {}
-    for i in range(1, number_of_antenna + 1):
-        antennas[str(i)] = {
-            "smartbox": str(i % NUMBER_OF_SMARTBOX + 1),
-            "smartbox_port": i % (NUMBER_OF_SMARTBOX_PORTS - 1),
-            "masked": False,
-        }
-    for i in range(1, NUMBER_OF_SMARTBOX + 1):
-        smartboxes[str(i)] = {"fndh_port": i}
+    with open(pasd_config_path, "r", encoding="utf-8") as f:
+        simulator_configuration = yaml.safe_load(f)
 
-    configuration: Final = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
+    antennas = simulator_configuration["antennas"]
+    for _, config in antennas.items():
+        config["masked"] = False
+
+    smartboxes = simulator_configuration["pasd"]["smartboxes"]
+    smartbox_mapping = {}
+    for smartbox_id, config in smartboxes.items():
+        smartbox_mapping[smartbox_id] = {"fndh_port": config["fndh_port"]}
+
+    configuration: Final = {
+        "antennas": antennas,
+        "pasd": {"smartboxes": smartbox_mapping},
+    }
     return configuration

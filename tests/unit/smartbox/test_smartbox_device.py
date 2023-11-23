@@ -16,7 +16,7 @@ from typing import Any
 
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel, PowerState, ResultCode
+from ska_control_model import AdminMode, LoggingLevel, ResultCode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from tests.harness import PasdTangoTestHarness
@@ -29,7 +29,7 @@ gc.disable()
 def smartbox_device_fixture(
     fndh_port: int,
     smartbox_number: int,
-    mock_fndh: unittest.mock.Mock,
+    mock_field_station: unittest.mock.Mock,
     mock_pasdbus: unittest.mock.Mock,
 ) -> tango.DeviceProxy:
     """
@@ -38,16 +38,15 @@ def smartbox_device_fixture(
     :param fndh_port: the port that this smartbox is attached to
     :param smartbox_number: number of the smartbox under test
     :param mock_pasdbus: A mock PaSD bus device.
-    :param mock_fndh: A mock FNDH device.
+    :param mock_field_station: A mock FieldStation device.
 
     :yield: a proxy to the smartbox Tango device under test.
     """
     harness = PasdTangoTestHarness()
-    harness.set_mock_fndh_device(mock_fndh)
+    harness.set_mock_field_station_device(mock_field_station)
     harness.set_mock_pasd_bus_device(mock_pasdbus)
     harness.add_smartbox_device(
         smartbox_number,
-        fndh_port=fndh_port,
         logging_level=int(LoggingLevel.DEBUG),
     )
 
@@ -58,7 +57,7 @@ def smartbox_device_fixture(
 def test_device_transitions_to_power_state_of_fndh_port(
     smartbox_device: tango.DeviceProxy,
     change_event_callbacks: MockTangoEventCallbackGroup,
-    mocked_initial_port_power_state: PowerState,
+    mocked_initial_port_power_state: bool,
 ) -> None:
     """
     Test the smartbox transitions to the correct power upon startup.
@@ -85,7 +84,7 @@ def test_device_transitions_to_power_state_of_fndh_port(
     smartbox_device.adminMode = AdminMode.ONLINE
     change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
 
-    state = {PowerState.ON: tango.DevState.ON, PowerState.OFF: tango.DevState.OFF}
+    state = {True: tango.DevState.ON, False: tango.DevState.OFF}
     change_event_callbacks.assert_change_event(
         "state", state[mocked_initial_port_power_state]
     )
@@ -120,7 +119,7 @@ def test_device_transitions_to_power_state_of_fndh_port(
 def test_command_queued(
     smartbox_device: tango.DeviceProxy,
     change_event_callbacks: MockTangoEventCallbackGroup,
-    mocked_initial_port_power_state: PowerState,
+    mocked_initial_port_power_state: bool,
     device_command: str,
     device_command_argin: Any,
 ) -> None:
@@ -147,7 +146,7 @@ def test_command_queued(
     smartbox_device.adminMode = AdminMode.ONLINE
     change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
 
-    state = {PowerState.ON: tango.DevState.ON, PowerState.OFF: tango.DevState.OFF}
+    state = {True: tango.DevState.ON, False: tango.DevState.OFF}
     change_event_callbacks.assert_change_event(
         "state", state[mocked_initial_port_power_state]
     )

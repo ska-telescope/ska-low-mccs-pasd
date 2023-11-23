@@ -317,6 +317,7 @@ class TestFieldStationComponentManager:
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
             mock_callbacks["antenna_callback"],
+            mock_callbacks["configuration_change_callback"],
         )
 
     def test_outside_temperature(
