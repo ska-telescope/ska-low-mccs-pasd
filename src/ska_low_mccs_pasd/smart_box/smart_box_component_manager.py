@@ -92,12 +92,11 @@ class _PasdBusProxy(DeviceComponentManager):
         self: _PasdBusProxy,
         fqdn: str,
         smartbox_nr: int,
-        fndh_port: int,
         logger: logging.Logger,
         max_workers: int,
         smartbox_communication_state_callback: Callable[[CommunicationStatus], None],
         smartbox_component_state_callback: Callable[..., None],
-        power_change_callback: Callable[..., None],
+        fndh_port_power_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
     ) -> None:
         """
@@ -105,7 +104,6 @@ class _PasdBusProxy(DeviceComponentManager):
 
         :param fqdn: the FQDN of the Tile device.
         :param smartbox_nr: the smartbox's ID number.
-        :param fndh_port: this FNDH port this smartbox is attached to.
         :param logger: the logger to be used by this object.
         :param max_workers: the maximum worker threads for the slow commands
             associated with this component manager.
@@ -113,19 +111,16 @@ class _PasdBusProxy(DeviceComponentManager):
             called when the status of the communications change.
         :param smartbox_component_state_callback: callback to be
             called when the component state changes.
-        :param power_change_callback: callback to be called when the
-            smartbox power state changes
+        :param fndh_port_power_callback: callback to be called when the
+            fndh port power states change.
         :param attribute_change_callback: callback for when a attribute relevant to
             this smartbox changes.
         """
         self._attribute_change_callback = attribute_change_callback
-        self._power_change_callback = power_change_callback
+        self._fndh_port_power_callback = fndh_port_power_callback
         self._smartbox_nr = smartbox_nr
-        self._fndh_port = fndh_port
         self._power_state = PowerState.UNKNOWN
-        assert (
-            0 < fndh_port < 29
-        ), "The smartbox must be attached to a valid FNDH port in range (1-28)"
+
         super().__init__(
             fqdn,
             logger,
@@ -150,7 +145,7 @@ class _PasdBusProxy(DeviceComponentManager):
             not in self._proxy._change_event_subscription_ids.keys()
         ):
             self._proxy.add_change_event_callback(
-                "fndhPortsPowerSensed", self._fndh_ports_power_sensed_changed
+                "fndhPortsPowerSensed", self._fndh_port_power_callback
             )
 
     def _on_attribute_change(
@@ -193,20 +188,6 @@ class _PasdBusProxy(DeviceComponentManager):
                 f"Attribute subscription {attr_name} does not seem to belong "
                 f"to this smartbox (smartbox {self._smartbox_nr})"
             )
-
-    def _fndh_ports_power_sensed_changed(
-        self: _PasdBusProxy,
-        attr_name: str,
-        attr_value: list[bool],
-        attr_quality: tango.AttrQuality,
-    ) -> None:
-        assert attr_name.lower() == "fndhportspowersensed"
-        power = PowerState.ON if attr_value[self._fndh_port - 1] else PowerState.OFF
-        if self._power_state != power:
-            self._power_state = power
-            if power == PowerState.OFF:
-                self._attribute_change_callback("portspowersensed", [False] * 12)
-            self._power_change_callback(power)
 
     def set_smartbox_port_powers(
         self: _PasdBusProxy, json_argument: str
@@ -256,7 +237,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         attribute_change_callback: Callable[..., None],
         smartbox_nr: int,
         port_count: int,
-        fndh_port: int,
+        field_station_name: str,
         pasd_fqdn: str,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
     ) -> None:
@@ -273,7 +254,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             of interest changes.
         :param smartbox_nr: the smartbox's ID number.
         :param port_count: the number of smartbox ports.
-        :param fndh_port: the fndh port this smartbox is attached to.
+        :param field_station_name: the name of the field station.
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
         """
@@ -285,17 +266,27 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         ]
         self._power_state = PowerState.UNKNOWN
         self._smartbox_nr = smartbox_nr
-        self._fndh_port = fndh_port
+        self._fndh_port: Optional[int] = None
+        self._attribute_change_callback = attribute_change_callback
+
+        self._fndh_port_powers = [PowerState.UNKNOWN] * PasdData.NUMBER_OF_FNDH_PORTS
+
+        self._field_station_proxy = DeviceComponentManager(
+            field_station_name,
+            logger,
+            max_workers,
+            self._field_station_communication_change,
+            self._field_station_state_change,
+        )
 
         self._pasd_bus_proxy = _pasd_bus_proxy or _PasdBusProxy(
             pasd_fqdn,
             smartbox_nr,
-            fndh_port,
             logger,
             max_workers,
             self._pasd_bus_communication_state_changed,
             self._pasd_bus_component_state_changed,
-            self._smartbox_power_state_changed,
+            self._on_fndh_ports_power_changed,
             attribute_change_callback,
         )
         self._pasd_communication_state = CommunicationStatus.NOT_ESTABLISHED
@@ -310,9 +301,46 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             pasdbus_status=None,
         )
 
+    def _field_station_communication_change(
+        self: SmartBoxComponentManager,
+        communication_state: CommunicationStatus,
+    ) -> None:
+        if communication_state == CommunicationStatus.ESTABLISHED:
+            assert self._field_station_proxy._proxy is not None
+            self._field_station_proxy._proxy.add_change_event_callback(
+                "smartboxMapping", self._on_mapping_change
+            )
+
+    def _on_mapping_change(
+        self: SmartBoxComponentManager,
+        event_name: str,
+        event_value: str,
+        event_quality: tango.AttrQuality,
+    ) -> None:
+        self.logger.error(f"Mapping changed to {event_value}")
+        assert event_name.lower() == "smartboxmapping"
+
+        mapping = json.loads(event_value)
+        for smartbox_config in mapping["smartboxMapping"]:
+            if "smartboxID" in smartbox_config:
+                if smartbox_config["smartboxID"] == self._smartbox_nr:
+                    fndh_port = smartbox_config["fndhPort"]
+                    if 0 < fndh_port < PasdData.NUMBER_OF_FNDH_PORTS + 1:
+                        self.update_fndh_port(fndh_port)
+                        self.logger.info(
+                            f"Smartbox has been moved to fndh port {fndh_port}"
+                        )
+                        return
+                    self.logger.error(
+                        f"Unable to put smartbox on port {fndh_port},"
+                        "Out of range 0 - 28"
+                    )
+                    return
+
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """Establish communication."""
         self._pasd_bus_proxy.start_communicating()
+        self._field_station_proxy.start_communicating()
 
     def _pasd_bus_communication_state_changed(
         self: SmartBoxComponentManager,
@@ -331,23 +359,71 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         **kwargs: Any,
     ) -> None:
         if power == PowerState.UNKNOWN:
+            self.logger.warning(
+                "PasdBus power state has become UNKNOWN."
+                "This is treated as communication `NOT_ESTABLISHED`"
+            )
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
         elif power == PowerState.ON:
             self._update_communication_state(CommunicationStatus.ESTABLISHED)
 
-    def _smartbox_power_state_changed(
+    def _field_station_state_change(
         self: SmartBoxComponentManager,
         power: PowerState | None = None,
+        **kwargs: Any,
     ) -> None:
-        if power is None:
+        # MccsSmartbox does not care about the state of fieldstation!
+        return
+
+    def _on_fndh_ports_power_changed(
+        self: SmartBoxComponentManager,
+        attr_name: str,
+        attr_value: list[bool],
+        attr_quality: tango.AttrQuality,
+    ) -> None:
+        assert attr_name.lower() == "fndhportspowersensed", (
+            "failed to update the fndh port powers"
+            f"{attr_name.lower()} is not fndhportspowersensed"
+        )
+
+        for idx, attr in enumerate(attr_value):
+            self._fndh_port_powers[idx] = PowerState.ON if attr else PowerState.OFF
+        self._evaluate_power()
+
+    def update_fndh_port(self: SmartBoxComponentManager, fndh_port: int) -> None:
+        """
+        Update the fndh port this smartbox is on.
+
+        :param fndh_port: The fndh port this smartbox is on.
+        """
+        if self._fndh_port != fndh_port and fndh_port is not None:
+            for port in self.ports:
+                port.desire_on = False
+            self._fndh_port = fndh_port
+            self._evaluate_power()
+
+    def _evaluate_power(self: SmartBoxComponentManager) -> None:
+        """Evaluate the power state of the smartbox device."""
+        if self._fndh_port is None:
+            self.logger.info(
+                "The fndh port this smartbox is attached to is unknown,"
+                "Therefore smartbox state transitions to UNKNOWN."
+            )
+            self._update_component_state(power=PowerState.UNKNOWN)
             return
-        self._power_state = power
-        # Turn on any pending ports
+
+        smartbox_power = self._fndh_port_powers[self._fndh_port - 1]
+        if self._power_state != smartbox_power:
+            self._power_state = smartbox_power
+
         if self._power_state == PowerState.ON:
             for port in self.ports:
                 if port.desire_on:
                     port.turn_on()
-        self._update_component_state(power=self._power_state)
+        if self._power_state == PowerState.OFF:
+            self._attribute_change_callback("portspowersensed", [False] * 12)
+
+        self._update_component_state(power=smartbox_power)
 
     def stop_communicating(self: SmartBoxComponentManager) -> None:
         """Stop communication with components under control."""

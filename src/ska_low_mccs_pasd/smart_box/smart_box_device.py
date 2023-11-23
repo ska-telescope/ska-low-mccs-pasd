@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from typing import Any, Final, Optional, cast
 
@@ -16,7 +17,7 @@ import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
-from tango.server import command, device_property
+from tango.server import attribute, command, device_property
 
 from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
@@ -30,7 +31,7 @@ class MccsSmartBox(SKABaseDevice):
     # -----------------
     # Device Properties
     # -----------------
-    FndhPort = device_property(dtype=int, mandatory=True)
+    FieldStationName = device_property(dtype=(str), mandatory=True)
     PasdFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxNumber = device_property(dtype=int, mandatory=True)
 
@@ -125,7 +126,7 @@ class MccsSmartBox(SKABaseDevice):
         version = f"{device_name} Software Version: {self._version_id}"
         properties = (
             f"Initialised {device_name} device with properties:\n"
-            f"\tFndhPort: {self.FndhPort}\n"
+            f"\tFieldStationName: {self.FieldStationName}\n"
             f"\tPasdFQDN: {self.PasdFQDN}\n"
             f"\tSmartBoxNumber: {self.SmartBoxNumber}\n"
         )
@@ -179,7 +180,7 @@ class MccsSmartBox(SKABaseDevice):
             self._attribute_changed_callback,
             self.SmartBoxNumber,
             self.PORT_COUNT,
-            self.FndhPort,
+            self.FieldStationName,
             self.PasdFQDN,
         )
 
@@ -411,6 +412,15 @@ class MccsSmartBox(SKABaseDevice):
                 f"""The attribute {attr_name} pushed from MccsPasdBus
                 device does not exist in MccsSmartBox"""
             )
+
+    @attribute(dtype="DevString", label="FndhPort")
+    def fndhPort(self: MccsSmartBox) -> str:
+        """
+        Return the fndh port the smartbox is attached to.
+
+        :return: the fndh port that the smartbox is attached to.
+        """
+        return json.dumps(self.component_manager._fndh_port)
 
 
 # ----------

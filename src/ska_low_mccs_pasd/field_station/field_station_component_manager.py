@@ -62,6 +62,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         communication_state_callback: Callable[..., None],
         component_state_changed: Callable[..., None],
         antenna_power_changed: Callable[..., None],
+        configuration_change_callback: Callable[..., None],
         _fndh_proxy: Optional[DeviceComponentManager] = None,
         _smartbox_proxys: Optional[list[DeviceComponentManager]] = None,
     ) -> None:
@@ -87,12 +88,15 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             called when the component state changes
         :param antenna_power_changed: callback to be
             called when power state of a antenna changes
+        :param configuration_change_callback: callback to be
+            called when configuration changes.
         :param _fndh_proxy: a injected fndh proxy for purposes of testing only.
         :param _smartbox_proxys: injected smartbox proxys for purposes of testing only.
 
         :raises NotImplementedError: configuration in TelModel not yet implemented
         """
         self._on_antenna_power_change = antenna_power_changed
+        self._on_configuration_change = configuration_change_callback
         self._communication_state_callback: Callable[..., None]
         self._component_state_callback: Callable[..., None]
         self.outsideTemperature: Optional[float] = None
@@ -258,9 +262,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._antenna_mapping = antenna_mapping_logical
 
         self.logger.info("Configuration has been successfully updated.")
-
-        # TODO: Contact every MccsSmartbox under this FieldStations control
-        # informing them of the fndh port they are on?
+        self._on_configuration_change(self._smartbox_mapping_pretty)
 
     def start_communicating(self: FieldStationComponentManager) -> None:
         """Establish communication."""

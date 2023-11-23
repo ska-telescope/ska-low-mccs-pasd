@@ -224,9 +224,7 @@ def test_context_fixture(
     harness.set_fndh_device()
 
     for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
-        harness.add_smartbox_device(
-            smartbox_id, smartbox_attached_ports[smartbox_id - 1]
-        )
+        harness.add_smartbox_device(smartbox_id)
     harness.set_configuration_server(configuration_manager)
     harness.set_field_station_device()
 

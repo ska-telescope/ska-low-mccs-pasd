@@ -40,6 +40,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     return MockTangoEventCallbackGroup(
         "field_station_state",
         "field_station_command_status",
+        "field_station_configuration_change",
         "fndh_state",
         "pasd_bus_state",
         "antenna_power_states",
@@ -234,7 +235,14 @@ class TestFieldStationIntegration:
         fndh_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
-
+        field_station_device.subscribe_event(
+            "smartboxMapping",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["field_station_configuration_change"],
+        )
+        change_event_callbacks[
+            "field_station_configuration_change"
+        ].assert_change_event(Anything)
         # Subscribe to antennapowerstates attribute.
         field_station_device.subscribe_event(
             "antennapowerstates",
@@ -272,6 +280,9 @@ class TestFieldStationIntegration:
 
         # Check initial state.
         assert not smartbox_proxys[smartbox_id - 1].portspowersensed[smartbox_port - 1]
+
+        antenna_power_states = json.loads(field_station_device.antennapowerstates)
+        assert antenna_power_states[str(antenna_to_turn_on)] != PowerState.ON
 
         # Turn on Antenna
         field_station_device.PowerOnAntenna(antenna_to_turn_on)

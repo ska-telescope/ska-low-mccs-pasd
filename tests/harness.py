@@ -367,6 +367,19 @@ class PasdTangoTestHarness:
             LoggingLevelDefault=logging_level,
         )
 
+    def set_mock_field_station_device(
+        self: PasdTangoTestHarness,
+        mock: tango.DeviceProxy,
+    ) -> None:
+        """
+        Add a mock Field Station Tango device to this test harness.
+
+        :param mock: the proxy or mock to be used as a mock FieldStation device.
+        """
+        self._tango_test_harness.add_mock_device(
+            get_field_station_name(self._station_label), mock
+        )
+
     def set_mock_fndh_device(
         self: PasdTangoTestHarness,
         mock: tango.DeviceProxy,
@@ -398,7 +411,6 @@ class PasdTangoTestHarness:
     def add_smartbox_device(
         self: PasdTangoTestHarness,
         smartbox_id: int,
-        fndh_port: int = 0,
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsSmartBox",
     ) -> None:
@@ -406,8 +418,6 @@ class PasdTangoTestHarness:
         Add a smartbox Tango device to the test harness.
 
         :param smartbox_id: ID number of the smartbox.
-        :param fndh_port: FNDH port in which this smartbox is plugged.
-            If omitted or set to zero, the port will be the same as the smartbox id.
         :param logging_level: the Tango device's default logging level.
         :param device_class: The device class to use.
             This may be used to override the usual device class,
@@ -416,9 +426,8 @@ class PasdTangoTestHarness:
         self._tango_test_harness.add_device(
             get_smartbox_name(smartbox_id, station_label=self._station_label),
             device_class,
-            FndhPort=fndh_port or smartbox_id,
+            FieldStationName=get_field_station_name(),
             PasdFQDN=get_pasd_bus_name(),
-            FndhFQDN=get_fndh_name(),
             SmartBoxNumber=smartbox_id,
             LoggingLevelDefault=logging_level,
         )

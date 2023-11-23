@@ -42,9 +42,9 @@ server:
                 - name: FndhFQDN
                   values: 
                     - {{$this_smartbox.fndh_name}}
-                - name: FndhPort
+                - name: FieldStationName
                   values: 
-                    - {{quote $this_smartbox.fndh_port}}
+                    - {{printf "low-mccs/fieldstation/ci-1"}}
 {{- with $this_smartbox.logging_level_default}}
                 - name: LoggingLevelDefault
                   values:
