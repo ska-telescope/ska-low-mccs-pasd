@@ -12,18 +12,12 @@
       {{- $station_enabled = $station_spec.enabled}}
     {{- end}}
 
-    {{- $pasd_spec := dig "pasd" dict $station_spec}}
-    {{- $pasd_enabled := $station_enabled}}
-    {{- if hasKey $pasd_spec "enabled"}}
-      {{- $pasd_enabled = $pasd_spec.enabled}}
-    {{- end}}
+    {{- $pasd_spec := dig "pasd" (dict "enabled" false) $station_spec}}
+    {{- $pasd_enabled := dig "enabled" $station_enabled $pasd_spec}}
 
     {{- $smartbox_specs := dig "smartboxes" dict $pasd_spec}}
     {{- range $smartbox_id, $smartbox_spec := $smartbox_specs}}
-      {{- $smartbox_enabled := $pasd_enabled}}
-      {{- if hasKey $smartbox_spec "enabled"}}
-        {{- $smartbox_enabled = $smartbox_spec.enabled}}
-      {{- end }}
+      {{- $smartbox_enabled := dig "enabled" $pasd_enabled $smartbox_spec}}
 
       {{- if $smartbox_enabled}}
         {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}

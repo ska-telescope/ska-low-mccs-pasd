@@ -7,31 +7,22 @@
 
 {{- range $station_cluster_id, $station_cluster_spec := $platform.array.station_clusters}}
   {{- range $station_id, $station_spec := $station_cluster_spec.stations}}
-    {{- $station_enabled := true}}
-    {{- if hasKey $station_spec "enabled"}}
-      {{- $station_enabled = $station_spec.enabled}}
-    {{- end}}
+    {{- $station_enabled := dig "enabled" true $station_spec}}
 
-    {{- $pasd_spec := dig "pasd" dict $station_spec}}
-    {{- $pasd_enabled := $station_enabled}}
-    {{- if hasKey $pasd_spec "enabled"}}
-      {{- $pasd_enabled = $pasd_spec.enabled}}
-    {{- end}}
+    {{- $pasd_spec := dig "pasd" (dict "enabled" false) $station_spec}}
+    {{- $pasd_enabled := dig "enabled" $station_enabled $pasd_spec}}
 
     {{- $fieldstation_spec := dig "field_station" dict $pasd_spec}}
-    {{- $fieldstation_enabled := $pasd_enabled}}
-    {{- if hasKey $fieldstation_spec "enabled"}}
-      {{- $fieldstation_enabled = $fieldstation_spec.enabled}}
-    {{- end}}
+    {{- $fieldstation_enabled := dig "enabled" $pasd_enabled $fieldstation_spec}}
 
     {{- if $fieldstation_enabled}}
 
-    {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
+      {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
 
-    {{- $fieldstation_name := printf "low-mccs/fieldstation/%s" $station_name}}
-    {{- $fndh_name := printf "low-mccs/fndh/%s" $station_name}}
-    {{- $configuration_host := printf "pasd-configuration-service-%s" $station_name}}
-    {{- $fieldstation_instance := dict "configuration_host" $configuration_host "configuration_port" 50034 "fndh_name" $fndh_name}}
+      {{- $fieldstation_name := printf "low-mccs/fieldstation/%s" $station_name}}
+      {{- $fndh_name := printf "low-mccs/fndh/%s" $station_name}}
+      {{- $configuration_host := printf "pasd-configuration-service-%s" $station_name}}
+      {{- $fieldstation_instance := dict "configuration_host" $configuration_host "configuration_port" 50034 "fndh_name" $fndh_name}}
 
       {{- $smartboxes := list}}
       {{- $smartbox_specs := dig "pasd" "smartboxes" dict $station_spec}}

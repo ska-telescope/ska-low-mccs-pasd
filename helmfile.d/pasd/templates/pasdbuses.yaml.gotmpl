@@ -13,17 +13,11 @@
       {{- $station_enabled = $station_spec.enabled}}
     {{- end}}
 
-    {{- $pasd_spec := dig "pasd" dict $station_spec}}
-    {{- $pasd_enabled := $station_enabled}}
-    {{- if hasKey $pasd_spec "enabled"}}
-      {{- $pasd_enabled = $pasd_spec.enabled}}
-    {{- end}}
+    {{- $pasd_spec := dig "pasd" (dict "enabled" false) $station_spec}}
+    {{- $pasd_enabled := dig "enabled" $station_enabled $pasd_spec}}
 
     {{- $pasdbus_spec := dig "fndh" "gateway" (dict "enabled" false) $pasd_spec}}
-    {{- $pasdbus_enabled := $pasd_enabled}}
-    {{- if hasKey $pasdbus_spec "enabled"}}
-      {{- $pasdbus_enabled = $pasdbus_spec.enabled}}
-    {{- end }}
+    {{- $pasdbus_enabled := dig "enabled" $pasd_enabled $pasdbus_spec}}
 
     {{- if $pasdbus_enabled}}
       {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
