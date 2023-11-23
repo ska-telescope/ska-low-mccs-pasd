@@ -116,7 +116,7 @@ def smartbox_simulator_fixture(
     Return a smartbox simulator for testing.
 
     :param pasd_hw_simulators:
-        the smartbox simulator backends that the TCP server will front.
+        the FNDH and smartbox simulator backends that the TCP server will front.
     :param on_smartbox_id: id of the smartbox being addressed.
 
     :return: a smartbox simulator, wrapped in a mock.

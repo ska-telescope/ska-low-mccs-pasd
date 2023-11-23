@@ -104,6 +104,7 @@ def main() -> None:
     config_path = os.getenv("SIMULATOR_CONFIG_PATH")
     host = os.getenv("SIMULATOR_HOST", gethostname())
     port = int(os.getenv("SIMULATOR_PORT", "502"))
+    time_multiplier = int(os.getenv("SIMULATOR_TIME_MULTIPLIER", "1"))
 
     if config_path is None:
         raise ValueError("SIMULATOR_CONFIG_PATH environment variable must be set.")
@@ -113,13 +114,8 @@ def main() -> None:
         station_label,
         logging.DEBUG,
         smartboxes_depend_on_attached_ports=True,
-        time_multiplier=1,  # seconds
+        time_multiplier=time_multiplier,
     )
-    # Initialize all smartbox simulators
-    fndh_simulator = pasd_bus_simulator.get_fndh()
-    fndh_simulator.initialize()
-    for port_nr in pasd_bus_simulator.get_smartbox_attached_ports():
-        fndh_simulator.turn_port_on(port_nr)
     pasd_hw_simulators = pasd_bus_simulator.get_fndh_and_smartboxes()
     simulator_server = PasdBusSimulatorModbusServer(pasd_hw_simulators)
     server = TcpServer(host, port, simulator_server)

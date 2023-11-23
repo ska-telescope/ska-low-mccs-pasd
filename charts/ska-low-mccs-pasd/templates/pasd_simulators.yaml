@@ -47,6 +47,8 @@ spec:
             value: {{$value.port | default "502" | quote}}
           - name: SIMULATOR_CONFIG_PATH
             value: /etc/pasd-configuration/pasd_configuration.yaml
+          - name: SIMULATOR_TIME_MULTIPLIER
+            value: {{$value.time_multiplier | default "1" | quote}}
         volumeMounts:
         - name: pasd-configuration-volume
           mountPath: /etc/pasd-configuration

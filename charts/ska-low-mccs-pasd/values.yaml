@@ -92,6 +92,7 @@ simulators: {} # e.g.
   #   s8-1:
   #     host: pasd-simulator-s8-1  # mandatory
   #     port: 8502  # optional, defaults to 502
+  #     time_multiplier: 1  # optional, defaults to 1
   #     configuration_host: pasd-configuration-service-s8-1
   #     configuration_port: 50053
 

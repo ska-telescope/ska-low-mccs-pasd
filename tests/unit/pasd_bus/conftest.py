@@ -127,7 +127,7 @@ def mock_pasd_hw_simulators_fixture(
     but we can access it as a mock too, for example assert calls.
 
     :param pasd_hw_simulators:
-        the smartbox simulator backends that the TCP server will front.
+        the FNDH and smartbox simulator backends that the TCP server will front.
 
     :return: a sequence of mock smartbox simulators
     """
@@ -277,7 +277,7 @@ def smartbox_simulator_fixture(
     Return a smartbox simulator for testing.
 
     :param pasd_hw_simulators:
-        the smartbox simulator backends that the TCP server will front.
+        the FNDH and smartbox simulator backends that the TCP server will front.
     :param smartbox_id: id of the smartbox being addressed.
 
     :return: a smartbox simulator, wrapped in a mock.
