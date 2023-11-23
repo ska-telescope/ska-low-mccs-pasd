@@ -80,6 +80,7 @@ class MccsFieldStation(SKABaseDevice):
             self._communication_state_callback,
             self._component_state_callback,
             self._on_antenna_power_change,
+            self._on_configuration_change,
         )
 
     def init_command_objects(self: MccsFieldStation) -> None:
@@ -148,6 +149,7 @@ class MccsFieldStation(SKABaseDevice):
                 ),
             )
         self.set_change_event("antennaPowerStates", True, False)
+        self.set_change_event("smartboxMapping", True, False)
         self.set_change_event("outsideTemperature", True, False)
 
     # ----------
@@ -199,6 +201,17 @@ class MccsFieldStation(SKABaseDevice):
         # pylint: disable=attribute-defined-outside-init
         self._antenna_power_json = None
         self.push_change_event("antennaPowerStates", json.dumps(antenna_powers))
+
+    def _on_configuration_change(
+        self: MccsFieldStation, smartbox_mapping: dict[int, PowerState]
+    ) -> None:
+        """
+        Handle a change in antenna power.
+
+        :param smartbox_mapping: a dictionary containing the smartboxMapping.
+        """
+        self.logger.error("configuration has changed .........")
+        self.push_change_event("smartboxMapping", json.dumps(smartbox_mapping))
 
     # --------
     # Commands
