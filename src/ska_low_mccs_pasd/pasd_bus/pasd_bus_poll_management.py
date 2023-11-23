@@ -96,7 +96,12 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         self._attribute_update_requests: list[str] = []
         self._ports_status_update_request: bool = False
 
+        self._read_request_iterator_factory = read_request_iterator_factory
         self._read_request_iterator = read_request_iterator_factory()
+
+    def desire_read_startup_info(self) -> None:
+        """Register a request to read the info usually just read on startup."""
+        self._read_request_iterator = self._read_request_iterator_factory()
 
     def desire_initialize(self) -> None:
         """Register a request to initialize the device."""
@@ -269,6 +274,15 @@ class PasdBusRequestProvider:
         self._device_request_providers = [
             fndh_request_provider
         ] + smartbox_request_providers
+
+    def desire_read_startup_info(self, device_id: int) -> None:
+        """
+        Register a request to read the information usually just read at startup.
+
+        :param device_id: the device number.
+            This is 0 for the FNDH, otherwise a smartbox number.
+        """
+        self._device_request_providers[device_id].desire_read_startup_info()
 
     def desire_initialize(self, device_id: int) -> None:
         """
