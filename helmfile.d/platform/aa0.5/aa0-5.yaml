@@ -26,12 +26,14 @@ platform:
         are all completely faked (actually they are a copy-paste of AAVS3).
 
   cluster:
-    domain: au-aavs3.skao.int  # target-platform-for-now
+    domain: lowitf.internal.skao.int  # target-platform-for-now
     services:
       jupyterhub: true
       taranta-platform: true
-      tango-base:
-        tango-host: databaseds.tango-base:10000
+      # tango-base:
+      #   tango-host: databaseds.low-itf-system:10000
+      # skuid:
+      #   url: http://ska-ser-skuid-ska-low-itf-svc.low-itf-system:9870/
     daq:
       storage_class: nfss1
       runtime_class: nvidia
