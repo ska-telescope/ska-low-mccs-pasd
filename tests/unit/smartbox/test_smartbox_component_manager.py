@@ -27,8 +27,6 @@ from tests.harness import (
     get_pasd_bus_name,
 )
 
-from .conftest import _input_smartbox_mapping
-
 SMARTBOX_PORTS = 12
 
 
@@ -428,7 +426,6 @@ class TestSmartBoxComponentManager:
         :param command_tracked_response: The result of the command.
         :param mock_callbacks: A group of callables.
         """
-        smartbox_component_manager._power_state = PowerState.ON
         smartbox_component_manager.start_communicating()
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.NOT_ESTABLISHED
@@ -436,7 +433,8 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-
+        # Overwrite whatever power state was calculated during start_communicating
+        smartbox_component_manager._power_state = PowerState.ON
         assert (
             getattr(smartbox_component_manager, component_manager_command)(
                 component_manager_command_argument,
@@ -577,21 +575,27 @@ class TestSmartBoxComponentManager:
 
 @pytest.fixture(name="alternate_input_smartbox_mapping")
 def alternate_input_smartbox_mapping_fixture(
-    smartbox_number: int, changed_fndh_port: int
+    input_smartbox_mapping: dict[str, Any],
+    smartbox_number: int,
+    changed_fndh_port: int,
 ) -> str:
     """
     Alternate configuration to use in smartbox.
 
     This is to simulate a change in the fieldstations configuration.
 
+    :param input_smartbox_mapping: A mocked fieldstation smartboxMapping
+        attribute value.
     :param smartbox_number: the id of this smartbox
     :param changed_fndh_port: the new port to place this smartbox.
 
     :return: a string representing the smartbox mapping reported by fieldstation.
     """
-    smartbox_mapping = _input_smartbox_mapping()["smartboxMapping"]
+    smartbox_mapping = input_smartbox_mapping["smartboxMapping"]
 
-    smartbox_mapping[smartbox_number]["fndhPort"] = changed_fndh_port
-    smartbox_mapping[smartbox_number]["smartboxID"] = smartbox_number
+    # The smartbox under test is attached to the port
+    # given by fixture changed_fndh_port!!
+    smartbox_mapping[smartbox_number - 1]["fndhPort"] = changed_fndh_port
+    smartbox_mapping[smartbox_number - 1]["smartboxID"] = smartbox_number
 
     return json.dumps({"smartboxMapping": smartbox_mapping})

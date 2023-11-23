@@ -206,11 +206,10 @@ class MccsFieldStation(SKABaseDevice):
         self: MccsFieldStation, smartbox_mapping: dict[int, PowerState]
     ) -> None:
         """
-        Handle a change in antenna power.
+        Handle a change in the field station configuration.
 
         :param smartbox_mapping: a dictionary containing the smartboxMapping.
         """
-        self.logger.error("configuration has changed .........")
         self.push_change_event("smartboxMapping", json.dumps(smartbox_mapping))
 
     # --------

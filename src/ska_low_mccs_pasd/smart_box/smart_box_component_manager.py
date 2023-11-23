@@ -335,6 +335,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                         f"Unable to put smartbox on port {fndh_port},"
                         "Out of range 0 - 28"
                     )
+                    return
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """Establish communication."""
@@ -396,7 +397,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param fndh_port: The fndh port this smartbox is on.
         """
         if self._fndh_port != fndh_port and fndh_port is not None:
-            self.logger.error("Updating fndh port .................")
             for port in self.ports:
                 port.desire_on = False
             self._fndh_port = fndh_port
@@ -407,7 +407,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         if self._fndh_port is None:
             self.logger.info(
                 "The fndh port this smartbox is attached to is unknown,"
-                "Therefore state becomed UNKNOWN."
+                "Therefore smartbox state transitions to UNKNOWN."
             )
             self._update_component_state(power=PowerState.UNKNOWN)
             return

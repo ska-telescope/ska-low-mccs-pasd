@@ -348,7 +348,6 @@ class MccsSmartBox(SKABaseDevice):
         :param kwargs: additional keyword arguments defining component
             state.
         """
-        self.logger.error(f"Power changed {power}")
         if fqdn is not None:
             # TODO: use this in the health model.
             if power == PowerState.UNKNOWN:
