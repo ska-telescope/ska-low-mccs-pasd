@@ -69,6 +69,7 @@ deviceServers: {}  # e.g.:
   #     low-mccs/smartbox/s8-1-01:
   #       smartbox_number: 1
   #       fndh_name: "low-mccs/fndh/s8-1"
+  #       field_station_name: "low-mccs/fieldstation/s8-1"
   #       fndh_port: 1
   #       pasdbus_name: "low-mccs/pasdbus/s8-1"
   #       logging_level_default: 5
@@ -76,6 +77,7 @@ deviceServers: {}  # e.g.:
   #     low-mccs/smartbox/s8-1-01:
   #       pasdbus_name: "low-mccs/pasdbus/s8-1"
   #       fndh_name: "low-mccs/fndh/s8-1"
+  #       field_station_name: "low-mccs/fieldstation/s8-1"
   #       smartbox_number: 1
   #       fndh_port: 1
   #       logging_level_default: 5
