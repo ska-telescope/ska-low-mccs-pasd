@@ -44,7 +44,7 @@ server:
                     - {{$this_smartbox.fndh_name}}
                 - name: FieldStationName
                   values: 
-                    - {{printf "low-mccs/fieldstation/ci-1"}}
+                    - {{$this_smartbox.field_station_name}}
 {{- with $this_smartbox.logging_level_default}}
                 - name: LoggingLevelDefault
                   values:
