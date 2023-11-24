@@ -23,6 +23,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
     FndhSimulator,
+    PasdHardwareSimulator,
     SmartboxSimulator,
 )
 
@@ -48,7 +49,7 @@ class TestPasdBusSimulator:
     def test_smartboxes_depend_on_fndh_ports(
         self: TestPasdBusSimulator,
         fndh_simulator: FndhSimulator,
-        smartbox_simulators: dict[int, SmartboxSimulator],
+        pasd_hw_simulators: dict[int, PasdHardwareSimulator],
         fndh_config: list[bool],
         smartbox_attached_ports: list[int],
     ) -> None:
@@ -60,7 +61,7 @@ class TestPasdBusSimulator:
 
         :param fndh_simulator: the FNDH simulator under test
         :param fndh_config: a list indicating which FNDH ports are connected
-        :param smartbox_simulators: list of smartbox simulators under test
+        :param pasd_hw_simulators: dict of FNDH and smartbox simulators under test
         :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
             is connected to.
         """
@@ -68,24 +69,24 @@ class TestPasdBusSimulator:
         assert fndh_simulator.ports_connected == fndh_config
         assert fndh_simulator.ports_desired_power_when_online == fndh_config
         assert fndh_simulator.ports_power_sensed == fndh_config
-        for smartbox_id in list(smartbox_simulators.keys()):
-            smartbox_simulator = smartbox_simulators[smartbox_id]
+        for smartbox_id in list(pasd_hw_simulators.keys())[1:]:
+            smartbox_simulator = pasd_hw_simulators[smartbox_id]
             port_nr = smartbox_attached_ports[smartbox_id - 1]
             assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
             assert smartbox_simulator.initialize()
             assert smartbox_simulator.status == FndhStatusMap.OK
             assert fndh_simulator.turn_port_off(port_nr)
             assert fndh_simulator.ports_power_sensed[port_nr - 1] is False
-            assert smartbox_simulators.get(smartbox_id) is None
+            assert pasd_hw_simulators.get(smartbox_id) is None
             assert fndh_simulator.turn_port_on(port_nr)
             assert fndh_simulator.ports_power_sensed[port_nr - 1]
-            smartbox_simulator = smartbox_simulators[smartbox_id]
+            smartbox_simulator = pasd_hw_simulators[smartbox_id]
             assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
 
     def test_uptimes(
         self: TestPasdBusSimulator,
         fndh_simulator: FndhSimulator,
-        smartbox_simulators: dict[int, SmartboxSimulator],
+        pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     ) -> None:
         """
         Test the uptimes of a PaSD bus simulator.
@@ -94,15 +95,16 @@ class TestPasdBusSimulator:
             to the order of configuration.
 
         :param fndh_simulator: the FNDH simulator under test
-        :param smartbox_simulators: list of smartbox simulators under test
+        :param pasd_hw_simulators: dict of FNDH and smartbox simulators under test
         """
         fndh_uptime = PasdConversionUtility.convert_uptime(fndh_simulator.uptime)[0]
         assert fndh_uptime > 0
         previous_smartbox_uptime = 0
-        for smartbox_simulator in list(smartbox_simulators.values()):
+        for smartbox_simulator in list(pasd_hw_simulators.values())[1:]:
             smartbox_uptime = PasdConversionUtility.convert_uptime(
                 smartbox_simulator.uptime
             )[0]
+            fndh_uptime = PasdConversionUtility.convert_uptime(fndh_simulator.uptime)[0]
             assert smartbox_uptime > 0
             assert fndh_uptime > smartbox_uptime
             if previous_smartbox_uptime != 0:

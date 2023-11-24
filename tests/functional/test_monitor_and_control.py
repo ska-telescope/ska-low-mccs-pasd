@@ -141,7 +141,7 @@ def fndh_port_no_fixture() -> int:
 
     :return: the number of the FNDH port under test.
     """
-    return 1
+    return 28
 
 
 @given("a smartbox", target_fixture="smartbox_id")

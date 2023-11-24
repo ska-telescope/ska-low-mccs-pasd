@@ -24,7 +24,10 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     PasdConversionUtility,
     SmartboxAlarmFlags,
 )
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import SmartboxSimulator
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
+    PasdHardwareSimulator,
+    SmartboxSimulator,
+)
 from tests.harness import PasdTangoTestHarness
 
 # TODO: Weird hang-at-garbage-collection bug
@@ -64,23 +67,18 @@ def change_event_callbacks_fixture(
 
 @pytest.fixture(name="pasd_bus_device")
 def pasd_bus_device_fixture(
-    mock_fndh_simulator: FndhSimulator,
-    mock_smartbox_simulators: dict[int, SmartboxSimulator],
+    mock_pasd_hw_simulators: dict[int, PasdHardwareSimulator],
 ) -> tango.DeviceProxy:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
 
-    :param mock_fndh_simulator:
-        the FNDH simulator backend that the TCP server will front,
-        wrapped with a mock so that we can assert calls.
-    :param mock_smartbox_simulators:
-        the smartbox simulator backends that the TCP server will front,
+    :param mock_pasd_hw_simulators:
+        the FNDH and smartbox simulator backends that the TCP server will front,
         each wrapped with a mock so that we can assert calls.
-
     :yield: a proxy to the PaSD bus Tango device under test.
     """
     harness = PasdTangoTestHarness()
-    harness.set_pasd_bus_simulator(mock_fndh_simulator, mock_smartbox_simulators)
+    harness.set_pasd_bus_simulator(mock_pasd_hw_simulators)
     harness.set_pasd_bus_device(polling_rate=0.05, device_polling_rate=0.1)
     with harness as context:
         yield context.get_pasd_bus_device()

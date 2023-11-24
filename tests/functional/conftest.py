@@ -236,9 +236,9 @@ def functional_test_context_fixture(
             fndh_simulator.initialize()
             for port_nr in pasd_bus_simulator.get_smartbox_attached_ports():
                 fndh_simulator.turn_port_on(port_nr)
-            smartbox_simulators = pasd_bus_simulator.get_smartboxes()
+            pasd_hw_simulators = pasd_bus_simulator.get_fndh_and_smartboxes()
             # Set devices for test harness
-            harness.set_pasd_bus_simulator(fndh_simulator, smartbox_simulators)
+            harness.set_pasd_bus_simulator(pasd_hw_simulators)
             harness.set_configuration_server(configuration_manager)
             harness.set_pasd_bus_device(
                 timeout=pasd_timeout, polling_rate=0.05, device_polling_rate=0.1

@@ -14,7 +14,7 @@ from ska_tango_testing.harness import TangoTestHarness, TangoTestHarnessContext
 from tango.server import Device
 
 if TYPE_CHECKING:
-    from ska_low_mccs_pasd.pasd_bus import FndhSimulator, SmartboxSimulator
+    from ska_low_mccs_pasd.pasd_bus import PasdHardwareSimulator
 
 DEFAULT_STATION_LABEL = "ci-1"  # station 1 of cluster "ci"
 
@@ -194,14 +194,12 @@ class PasdTangoTestHarness:
 
     def set_pasd_bus_simulator(
         self: PasdTangoTestHarness,
-        fndh_simulator: FndhSimulator,
-        smartbox_simulators: dict[int, SmartboxSimulator],
+        pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     ) -> None:
         """
         Set the PaSD bus simulator server for the test harness.
 
-        :param fndh_simulator: the FNDH simulator to be used in testing.
-        :param smartbox_simulators: the smartbox simulators to be used in testing.
+        :param pasd_hw_simulators: FNDH and smartbox simulators to be used in testing.
         """
         # Defer importing from ska_low_mccs_pasd
         # until we know we need to launch a PaSD simulator to test against.
@@ -210,9 +208,7 @@ class PasdTangoTestHarness:
         # pylint: disable-next=import-outside-toplevel
         from ska_low_mccs_pasd.pasd_bus import PasdBusSimulatorModbusServer
 
-        pasd_bus_simulator_server = PasdBusSimulatorModbusServer(
-            fndh_simulator, smartbox_simulators
-        )
+        pasd_bus_simulator_server = PasdBusSimulatorModbusServer(pasd_hw_simulators)
 
         self._tango_test_harness.add_context_manager(
             "pasd_bus",

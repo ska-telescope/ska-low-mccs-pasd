@@ -31,7 +31,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import (
         pytest.param(
             PasdConversionUtility.convert_cpu_id,
             [2, 4],
-            ["0x204"],
+            ["0x20004"],
             id="convert_cpu_id",
         ),
         pytest.param(
@@ -49,7 +49,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import (
         pytest.param(
             PasdConversionUtility.convert_uptime,
             [8, 6],
-            [2054],
+            [0x80006],
             id="convert_uptime",
         ),
         pytest.param(
