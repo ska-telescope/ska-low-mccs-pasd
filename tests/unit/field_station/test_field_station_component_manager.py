@@ -316,7 +316,6 @@ class TestFieldStationComponentManager:
             ],
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
-            mock_callbacks["antenna_callback"],
             mock_callbacks["configuration_change_callback"],
         )
 
@@ -385,7 +384,9 @@ class TestFieldStationComponentManager:
         # two smartboxes have no antenna attached. Therefore a update in the
         # the port powers has no antenna callback.
         for i in range(PasdData.NUMBER_OF_SMARTBOXES):
-            mock_callbacks["antenna_callback"].assert_call(Anything)
+            mock_callbacks["component_state"].assert_call(
+                antenna_powers=Anything, lookahead=30
+            )
         # check that the communication state goes to DISABLED after stop communication.
         field_station_component_manager.stop_communicating()
         mock_callbacks["communication_state"].assert_call(

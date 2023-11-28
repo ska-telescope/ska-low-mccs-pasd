@@ -61,7 +61,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         smartbox_names: list[str],
         communication_state_callback: Callable[..., None],
         component_state_changed: Callable[..., None],
-        antenna_power_changed: Callable[..., None],
         configuration_change_callback: Callable[..., None],
         _fndh_proxy: Optional[DeviceComponentManager] = None,
         _smartbox_proxys: Optional[list[DeviceComponentManager]] = None,
@@ -86,8 +85,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             the component manager and its component changes
         :param component_state_changed: callback to be
             called when the component state changes
-        :param antenna_power_changed: callback to be
-            called when power state of a antenna changes
         :param configuration_change_callback: callback to be
             called when configuration changes.
         :param _fndh_proxy: a injected fndh proxy for purposes of testing only.
@@ -95,12 +92,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         :raises NotImplementedError: configuration in TelModel not yet implemented
         """
-        self._on_antenna_power_change = antenna_power_changed
         self._on_configuration_change = configuration_change_callback
         self._communication_state_callback: Callable[..., None]
         self._component_state_callback: Callable[..., None]
         self.outsideTemperature: Optional[float] = None
         max_workers = 1
+        self.has_antenna = False
         super().__init__(
             logger,
             communication_state_callback,
@@ -264,6 +261,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.logger.info("Configuration has been successfully updated.")
         self._on_configuration_change(self._smartbox_mapping_pretty)
 
+        if self._antenna_mapping:
+            self.has_antenna = True
+
     def start_communicating(self: FieldStationComponentManager) -> None:
         """Establish communication."""
         if self._communication_state == CommunicationStatus.ESTABLISHED:
@@ -412,7 +412,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                         "found in antenna powers"
                     )
 
-        self._on_antenna_power_change(self.antenna_powers)
+        self._component_state_callback(antenna_powers=self.antenna_powers)
 
     def _device_communication_state_changed(
         self: FieldStationComponentManager,
@@ -439,6 +439,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.logger.debug(
             f"device {fqdn} changed communcation state to {communication_state.name}"
         )
+        if not self.has_antenna:
+            self.logger.info("FieldStation has no antenna, Transitioning to `ON` ...")
+            self._component_state_callback(power=PowerState.ON)
 
         if CommunicationStatus.DISABLED in self._communication_states.values():
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)

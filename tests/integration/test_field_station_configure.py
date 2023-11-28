@@ -264,7 +264,7 @@ class TestFieldStationIntegration:
             tango.DevState.UNKNOWN
         )
         change_event_callbacks["field_station_state"].assert_change_event(
-            tango.DevState.ON
+            tango.DevState.OFF
         )
         for i in range(PasdData.NUMBER_OF_SMARTBOXES):
             change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
