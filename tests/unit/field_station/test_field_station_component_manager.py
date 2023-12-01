@@ -15,7 +15,7 @@ from typing import Any, Iterator
 
 import pytest
 import tango
-from ska_control_model import CommunicationStatus, ResultCode, TaskStatus
+from ska_control_model import CommunicationStatus, PowerState, ResultCode, TaskStatus
 from ska_low_mccs_common.testing.mock import MockDeviceBuilder
 from ska_tango_testing.mock import MockCallableGroup
 from ska_tango_testing.mock.placeholders import Anything
@@ -787,7 +787,8 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
-    def test_on_off_commands(  # pylint: disable=too-many-arguments, too-many-locals
+    def test_on_off_commands(  # noqa: C901
+        # pylint: disable=too-many-arguments, too-many-locals
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         component_manager_command: Any,
@@ -869,6 +870,33 @@ class TestFieldStationComponentManager:
                 field_station_component_manager._fndh_proxy._proxy, proxy_command
             )
             fndh_proxy_command.assert_next_call(fndh_json_arg)
+
+            # Mock a change event in the power of fndh ports
+            field_station_component_manager._on_fndh_port_change(
+                "portspowersensed",
+                desired_fndh_port_powers,
+                tango.AttrQuality.ATTR_VALID,
+            )
+            for smartbox_proxy in field_station_component_manager._smartbox_proxys:
+                smartbox_name = smartbox_proxy._name
+
+                smartbox_no = (
+                    field_station_component_manager._smartbox_name_number_map[
+                        smartbox_name
+                    ]
+                    + 1
+                )
+                fndh_port = field_station_component_manager._smartbox_mapping[
+                    str(smartbox_no)
+                ]
+                if desired_fndh_port_powers[fndh_port - 1]:
+                    mocked_smartbox_power = PowerState.ON
+                else:
+                    mocked_smartbox_power = PowerState.OFF
+
+                field_station_component_manager.smartbox_state_change(
+                    smartbox_name, power=mocked_smartbox_power
+                )
             for smartbox_no, smartbox in enumerate(
                 field_station_component_manager._smartbox_proxys
             ):

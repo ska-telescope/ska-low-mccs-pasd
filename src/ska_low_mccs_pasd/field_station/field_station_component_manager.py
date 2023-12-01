@@ -13,6 +13,7 @@ import importlib.resources
 import json
 import logging
 import threading
+import time
 from typing import Any, Callable, Final, Optional
 
 import jsonschema
@@ -97,6 +98,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._component_state_callback: Callable[..., None]
         self.outsideTemperature: Optional[float] = None
         max_workers = 1
+        self.fndh_port_states: list[Optional[bool]] = [
+            None
+        ] * PasdData.NUMBER_OF_FNDH_PORTS
+        self.fndh_port_change = threading.Event()
         self.has_antenna = False
         super().__init__(
             logger,
@@ -118,7 +123,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             functools.partial(self._device_communication_state_changed, fndh_name),
             functools.partial(self._component_state_callback, device_name=fndh_name),
         )
-
+        self._smartbox_power_state = []
         self._smartbox_proxys = []
         smartbox_count = 0
         self._smartbox_name_number_map: dict[str, int] = {}
@@ -126,6 +131,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self._smartbox_proxys = _smartbox_proxys
         else:
             for smartbox_name in smartbox_names:
+                self._smartbox_power_state.append(PowerState.UNKNOWN)
                 self._smartbox_proxys.append(
                     DeviceComponentManager(
                         smartbox_name,
@@ -414,6 +420,28 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         self._component_state_callback(antenna_powers=self.antenna_powers)
 
+    def _on_fndh_port_change(
+        self: FieldStationComponentManager,
+        event_name: str,
+        event_value: list[Optional[bool]],
+        event_quality: tango.AttrQuality,
+    ) -> None:
+        assert event_name.lower() == "portspowersensed"
+        self.fndh_port_states = event_value
+        self.fndh_port_change.set()
+
+    def smartbox_state_change(
+        self: FieldStationComponentManager, smartbox_name: str, power: PowerState
+    ) -> None:
+        """
+        Register a state change for a smartbox.
+
+        :param smartbox_name: the name of the smartbox with a state change
+        :param power: the power state of the smartbox.
+        """
+        smartbox_id = self._smartbox_name_number_map[smartbox_name]
+        self._smartbox_power_state[smartbox_id] = power
+
     def _device_communication_state_changed(
         self: FieldStationComponentManager,
         fqdn: str,
@@ -425,6 +453,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     case self._fndh_name:
                         self.subscribe_to_attribute(
                             fqdn, "OutsideTemperature", self._on_field_conditions_change
+                        )
+                        self.subscribe_to_attribute(
+                            fqdn, "PortsPowerSensed", self._on_fndh_port_change
                         )
                     case _:
                         self.subscribe_to_attribute(
@@ -505,6 +536,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         )
         result, _ = self._fndh_proxy._proxy.SetPortPowers(json_argument)
         results += result
+
+        timeout = 60
+        self.logger.info("waiting on smartbox state change...............")
+        results += [self.wait_for_smartbox_state(desired_fndh_port_powers, timeout)]
         masked_ports = []
         for smartbox_no, smartbox in enumerate(self._smartbox_proxys, start=1):
             assert smartbox._proxy
@@ -533,6 +568,87 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             task_callback(
                 status=TaskStatus.FAILED, result="Didn't turn on all unmasked antennas."
             )
+
+    def wait_for_smartbox_state(  # noqa: C901
+        self: FieldStationComponentManager, desired: list[Optional[bool]], timeout: int
+    ) -> ResultCode:
+        """
+        Wait for the fndh ports to change state to a desired state.
+
+        :param desired: the desired port powers looks like `[False]*28`
+        :param timeout: the maximum time to wait in seconds (s)
+
+        :return: A ResultCode and a string.
+        """
+        t1 = time.time()
+        failure_registered = False
+        self.fndh_port_change.clear()
+
+        def fndh_ports_match_desired(
+            current_state: list[Optional[bool]], desired_state: list[Optional[bool]]
+        ) -> bool:
+            for port_idx, port_state in enumerate(desired_state):
+                if port_state is not None:
+                    if current_state[port_idx] != port_state:
+                        return False
+            return True
+
+        # Wait for port to match the desired state, else report failure
+        if not fndh_ports_match_desired(self.fndh_port_states, desired):
+            # Wait for a callback.
+            self.fndh_port_change.wait(timeout)
+            if self.fndh_port_change.is_set():
+                if not fndh_ports_match_desired(self.fndh_port_states, desired):
+                    self.logger.warning(
+                        "Failed to get fndh ports to the correct state."
+                        f"Wanted {desired}, Got {self.fndh_port_states}"
+                    )
+
+        # Wait for the smartboxes on those ports to register as ON.
+        self.logger.info("waiting for smartbox devices to transition state .......")
+        desired_smartbox_power = [PowerState.UNKNOWN] * len(self._smartbox_proxys)
+        for port_idx, _ in enumerate(desired):
+            for smartbox_id, fndh_port in self._smartbox_mapping.items():
+                if fndh_port == port_idx + 1:
+                    desired_smartbox_power[int(smartbox_id) - 1] = (
+                        PowerState.ON
+                        if self.fndh_port_states[port_idx]
+                        else PowerState.OFF
+                    )
+        t2 = time.time()
+        time_passed = t2 - t1
+        time_remaining = int(timeout - time_passed)
+        if not self.wait_for_smartbox_device_state(
+            desired_smartbox_power, time_remaining
+        ):
+            failure_registered = True
+
+        if failure_registered:
+            self.logger.error("On command failed to complete successfully")
+            return ResultCode.FAILED
+        self.logger.info("All smartboxes turned ON successfully")
+        return ResultCode.OK
+
+    def wait_for_smartbox_device_state(
+        self: FieldStationComponentManager, desired: list[PowerState], timeout: int
+    ) -> bool:
+        """
+        Wait for the fndh ports to change state to a desired state.
+
+        :param desired: the desired port powers looks like `[False]*28`
+        :param timeout: the maximum time to wait in seconds (s)
+
+        :return: True if state reached before timeout.
+        """
+        tick = 0
+        while tick < timeout:
+            if desired == self._smartbox_power_state:
+                self.logger.info("The smartboxes are in the desired states.")
+                return True
+            tick += 1
+            time.sleep(1)
+        self.logger.error("The smartbox devices failed reach the desired states.")
+        return False
 
     def off(
         self: FieldStationComponentManager, task_callback: Optional[Callable] = None
