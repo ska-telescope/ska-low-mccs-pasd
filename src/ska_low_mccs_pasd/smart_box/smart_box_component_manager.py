@@ -419,6 +419,18 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self._power_state = smartbox_power
 
         if self._power_state == PowerState.ON:
+            try:
+                port_power = getattr(
+                    self._pasd_bus_proxy._proxy,
+                    f"smartbox{self._smartbox_nr}portspowersensed",
+                )
+                self._attribute_change_callback("portspowersensed", port_power)
+            except Exception:  # pylint: disable=broad-except
+                self.logger.warning(
+                    "Unable to read smartbox port powers"
+                    "May be attempting read before attribute polled."
+                    "port powers will be updated when polled."
+                )
             for port in self.ports:
                 if port.desire_on:
                     port.turn_on()
