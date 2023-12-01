@@ -48,6 +48,8 @@ class MccsFieldStation(SKABaseDevice):
     def init_device(self: MccsFieldStation) -> None:
         """Initialise the device."""
         self._antenna_power_json: Optional[str] = None
+        self._component_state_on: Optional[bool] = None
+
         super().init_device()
 
         message = (
@@ -79,7 +81,6 @@ class MccsFieldStation(SKABaseDevice):
             self.SmartBoxFQDNs,
             self._communication_state_callback,
             self._component_state_callback,
-            self._on_antenna_power_change,
             self._on_configuration_change,
         )
 
@@ -164,7 +165,7 @@ class MccsFieldStation(SKABaseDevice):
         # We need to subscribe and re-emit change events.
         super()._communication_state_changed(communication_state)
 
-    def _component_state_callback(
+    def _component_state_callback(  # noqa: C901
         self: MccsFieldStation,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,
@@ -181,26 +182,61 @@ class MccsFieldStation(SKABaseDevice):
         :param kwargs: additional keyword arguments defining component
             state.
         """
+        if "device_name" in kwargs:
+            device_name = kwargs["device_name"]
+            device_family = device_name.split("/")[1]
+
+            if device_family == "fndh":
+                self.logger.debug(
+                    f"FNDH {device_name} changed state to "
+                    f"power = {power}, "
+                    f"fault = {fault}, "
+                )
+            else:
+                assert device_family == "smartbox"
+                self.logger.debug(
+                    f"Smartbox {device_name} changed state to "
+                    f"power = {power}, "
+                    f"fault = {fault}, "
+                )
+            return
+
         if "outsidetemperature" in kwargs:
             self.push_change_event("outsideTemperature", kwargs["outsidetemperature"])
-        # TODO: This is being called by all fndh and smartbox proxies.
-        # But it is not yet being handled. Therefore FieldStation State
-        # is not representing the state of all devices belonging to it.
+
+        if "antenna_powers" in kwargs:
+            self.logger.debug("antenna power state changed")
+            component_state_on = True
+            # Antenna powers have changed delete json and reload.
+            # pylint: disable=attribute-defined-outside-init
+            self._antenna_power_json = None
+            antenna_powers = kwargs["antenna_powers"]  # dict[str, PowerState]
+            for antenna_id in self.component_manager._antenna_mapping:
+                antenna_number = int(antenna_id)
+                antenna_masks = self.component_manager._antenna_mask
+
+                if not antenna_masks[antenna_number]:
+                    if antenna_powers[antenna_id] != PowerState.ON:
+                        component_state_on = False
+
+            if self._component_state_on != component_state_on:
+                self._component_state_on = component_state_on
+                if component_state_on:
+                    self.logger.info(
+                        "All unmasked Antenna are `ON`,"
+                        "FieldStation transitioning to `ON` state ...."
+                    )
+                    self._component_state_callback(power=PowerState.ON)
+                else:
+                    self.logger.info(
+                        "Not all unmasked Antenna are `ON`,"
+                        "FieldStation transitioning to `OFF` state ...."
+                    )
+                    self._component_state_callback(power=PowerState.OFF)
+
+            self.push_change_event("antennaPowerStates", json.dumps(antenna_powers))
+
         super()._component_state_changed(fault=fault, power=power)
-
-    def _on_antenna_power_change(
-        self: MccsFieldStation, antenna_powers: dict[int, PowerState]
-    ) -> None:
-        """
-        Handle a change in antenna power.
-
-        :param antenna_powers: a dictionary containing all
-            256 antenna power states
-        """
-        # Antenna powers have changed delete json and reload.
-        # pylint: disable=attribute-defined-outside-init
-        self._antenna_power_json = None
-        self.push_change_event("antennaPowerStates", json.dumps(antenna_powers))
 
     def _on_configuration_change(
         self: MccsFieldStation, smartbox_mapping: dict[int, PowerState]

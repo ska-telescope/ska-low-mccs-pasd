@@ -569,7 +569,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     @check_communicating
     def turn_off_port(
         self: SmartBoxComponentManager,
-        antenna_number: int,
+        port_number: int,
         task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
@@ -577,7 +577,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         This may or may not have a Antenna attached.
 
-        :param antenna_number: (one-based) number of the TPM to turn off.
+        :param port_number: (one-based) number of the port to turn off.
         :param task_callback: callback to be called when the status of
             the command changes
 
@@ -585,7 +585,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         """
         return self.submit_task(
             self._turn_off_port,  # type: ignore[arg-type]
-            args=[antenna_number],
+            args=[port_number],
             task_callback=task_callback,
         )
 
@@ -636,7 +636,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     @check_communicating
     def turn_on_port(
         self: SmartBoxComponentManager,
-        antenna_number: int,
+        port_number: int,
         task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
@@ -644,7 +644,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         This may or may not have a Antenna attached.
 
-        :param antenna_number: (one-based) number of the TPM to turn on.
+        :param port_number: (one-based) number of the port to turn on.
         :param task_callback: callback to be called when the status of
             the command changes
 
@@ -653,7 +653,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         return self.submit_task(
             self._turn_on_port,  # type: ignore[arg-type]
             args=[
-                antenna_number,
+                port_number,
             ],
             task_callback=task_callback,
         )

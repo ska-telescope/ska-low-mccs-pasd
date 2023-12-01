@@ -131,7 +131,7 @@ def smartbox_ids_fixture() -> list[int]:
 
     :return: a list of smartbox IDs to use in a test
     """
-    return [1]
+    return list(range(1, 25))
 
 
 @pytest.fixture(name="configuration_manager", scope="session")
@@ -272,7 +272,7 @@ def change_event_callbacks_fixture(
     ]
     return MockTangoEventCallbackGroup(
         *keys,
-        timeout=100.0,
+        timeout=200.0,
         assert_no_error=False,
     )
 
