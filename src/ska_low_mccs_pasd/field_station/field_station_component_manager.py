@@ -773,12 +773,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
-        if not self._fndh_proxy._proxy.PortPowerState(fndh_port):
+        if not self._fndh_proxy._proxy.PortsPowerSensed[fndh_port - 1]:
             result, _ = self._fndh_proxy._proxy.PowerOnPort(fndh_port)
 
         assert smartbox_proxy._proxy is not None
 
-        if not smartbox_proxy._proxy.PortsPowerSensed[smartbox_port]:
+        if not smartbox_proxy._proxy.PortsPowerSensed[smartbox_port - 1]:
             if result is None or result[0] in [
                 ResultCode.OK,
                 ResultCode.STARTED,
@@ -871,27 +871,25 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             return TaskStatus.REJECTED
         fndh_port = self._smartbox_mapping[str(smartbox_id)]
 
-        result = None
+        try:
+            assert self._fndh_proxy._proxy.PortsPowerSensed[fndh_port - 1] is True
+        except AssertionError:
+            msg = (
+                f"Tried to turn off antenna {antenna_number}, this is mapped to "
+                f"smartbox {smartbox_id}, which is on fndh port port {fndh_port}."
+                " However this port is not powered on."
+            )
+            self.logger.error(msg)
+            if task_callback:
+                task_callback(status=TaskStatus.REJECTED, result=msg)
+            return TaskStatus.REJECTED
+
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
-        if self._fndh_proxy._proxy.PortPowerState(fndh_port):
-            result, _ = self._fndh_proxy._proxy.PowerOffPort(fndh_port)
         assert smartbox_proxy._proxy is not None
-        if smartbox_proxy._proxy.PortsPowerSensed[smartbox_port]:
-            if result is None or result[0] in [
-                ResultCode.OK,
-                ResultCode.STARTED,
-                ResultCode.QUEUED,
-            ]:
-                result, _ = smartbox_proxy._proxy.PowerOffPort(smartbox_port)
-        if result is None:
-            if task_callback:
-                task_callback(
-                    status=TaskStatus.COMPLETED,
-                    result=f"antenna {antenna_number} was already off.",
-                )
-            return TaskStatus.COMPLETED
+        result, _ = smartbox_proxy._proxy.PowerOffPort(smartbox_port)
+
         if result[0] in [
             ResultCode.OK,
             ResultCode.STARTED,
