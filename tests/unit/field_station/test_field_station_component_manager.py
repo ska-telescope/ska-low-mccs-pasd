@@ -695,7 +695,6 @@ class TestFieldStationComponentManager:
 
                 smartbox_json_arg = json.dumps(
                     {
-                        "smartbox_number": smartbox_no + 1,
                         "port_powers": desired_smartbox_port_powers,
                         "stay_on_when_offline": True,
                     }

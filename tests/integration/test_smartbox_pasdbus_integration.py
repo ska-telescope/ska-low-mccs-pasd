@@ -1250,6 +1250,6 @@ def change_event_callbacks_fixture(
         f"smartbox{off_smartbox_id}portpowersensed",
         f"smartbox{off_smartbox_id}status",
         "fndhportpowerstate",
-        timeout=120.0,
+        timeout=20.0,
         assert_no_error=False,
     )

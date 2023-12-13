@@ -516,7 +516,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 desired_smartbox_port_powers[masked_port - 1] = None
             json_argument = json.dumps(
                 {
-                    "smartbox_number": smartbox_no + 1,
                     "port_powers": desired_smartbox_port_powers,
                     "stay_on_when_offline": True,
                 }
@@ -601,7 +600,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 desired_smartbox_port_powers[masked_port - 1] = None
             json_argument = json.dumps(
                 {
-                    "smartbox_number": self._smartbox_mapping[str(smartbox_no + 1)],
                     "port_powers": desired_smartbox_port_powers,
                     "stay_on_when_offline": True,
                 }
