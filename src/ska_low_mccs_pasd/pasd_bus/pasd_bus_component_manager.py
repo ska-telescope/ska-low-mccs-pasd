@@ -324,6 +324,10 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 )
             case (device_id, "BREAKER_RESET", port):
                 request = PasdBusRequest(device_id, "reset_port_breaker", None, [port])
+            case (device_id, "SET_PORT_POWERS", [(is_on, stay_on_when_offline)]):
+                request = PasdBusRequest(
+                    device_id, "set_port_powers", None, [(is_on, stay_on_when_offline)]
+                )
             case (device_id, "PORT_POWER", (port, is_on, stay_on_when_offline)):
                 if is_on:
                     request = PasdBusRequest(

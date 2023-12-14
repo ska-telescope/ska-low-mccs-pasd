@@ -89,6 +89,7 @@ class PasdCommandStrings(Enum):
 
     TURN_PORT_ON = "turn_port_on"
     TURN_PORT_OFF = "turn_port_off"
+    SET_PORT_POWERS = "set_port_powers"
     RESET_PORT_BREAKER = "reset_port_breaker"
     SET_LED_PATTERN = "set_led_pattern"
     SET_LOW_PASS_FILTER = "set_low_pass_filter"
@@ -188,7 +189,7 @@ class PasdBusAttribute:
 
 
 class PasdBusPortAttribute(PasdBusAttribute):
-    """Class representing a port status attribute."""
+    """Class representing the power status for one or more ports."""
 
     def __init__(
         self: PasdBusPortAttribute,
@@ -205,6 +206,7 @@ class PasdBusPortAttribute(PasdBusAttribute):
         """
         super().__init__(address, count, self._parse_port_bitmaps)
         self.desired_info = desired_info
+        self.value = []
 
     # pylint: disable=too-many-branches
     def _parse_port_bitmaps(
@@ -268,8 +270,10 @@ class PasdBusPortAttribute(PasdBusAttribute):
                     results.append(bool(status))
         return results
 
+    # pylint: disable=too-many-arguments
     def _set_bitmap_value(
         self: PasdBusPortAttribute,
+        port_number_offset: int,
         desired_on_online: Optional[bool] = None,
         desired_on_offline: Optional[bool] = None,
         reset_breaker: bool = False,
@@ -288,7 +292,8 @@ class PasdBusPortAttribute(PasdBusAttribute):
             value ^= PortOverride.FORCE_OFF
         if reset_breaker:
             value ^= PortStatusBits.PWRSENSE_BREAKER
-        self.value = value
+        assert isinstance(self.value, list)
+        self.value[port_number_offset] = value
 
 
 @dataclass
@@ -701,7 +706,24 @@ class PasdBusRegisterMap:
         attribute.value = 1  # Write any value to initialize the device
         return attribute
 
-    def _create_port_command(
+    def _create_port_powers_command(
+        self, device_id: int, arguments: Sequence[Any]
+    ) -> Optional[PasdBusAttribute]:
+        register_info = self._get_register_info(device_id)
+        if len(arguments) > register_info.number_of_ports:
+            logger.error(f"Too many port status arguments given for device {device_id}")
+            return None
+
+        attribute = PasdBusPortAttribute(
+            register_info.starting_port_register, len(arguments)
+        )
+        offset = 0
+        for dson, dsoff in arguments:
+            attribute._set_bitmap_value(offset, dson, dsoff)
+            offset = offset + 1
+        return attribute
+
+    def _create_single_port_command(
         self, device_id: int, command: PasdCommandStrings, arguments: Sequence[Any]
     ) -> Optional[PasdBusPortAttribute]:
         register_info = self._get_register_info(device_id)
@@ -729,11 +751,11 @@ class PasdBusRegisterMap:
                     desired_on_offline = arguments[1]
                 else:
                     desired_on_offline = True  # default case
-                attribute._set_bitmap_value(True, desired_on_offline)
+                attribute._set_bitmap_value(0, True, desired_on_offline)
             case PasdCommandStrings.TURN_PORT_OFF:
-                attribute._set_bitmap_value(False, False)
+                attribute._set_bitmap_value(0, False, False)
             case PasdCommandStrings.RESET_PORT_BREAKER:
-                attribute._set_bitmap_value(reset_breaker=True)
+                attribute._set_bitmap_value(0, reset_breaker=True)
         return attribute
 
     def _create_reset_alarms_command(self, device_id: int) -> PasdBusAttribute:
@@ -809,9 +831,11 @@ class PasdBusRegisterMap:
             attribute = self._create_reset_alarms_command(device_id)
         elif command == PasdCommandStrings.RESET_WARNINGS:
             attribute = self._create_reset_warnings_command(device_id)
+        elif command == PasdCommandStrings.SET_PORT_POWERS:
+            attribute = self._create_port_powers_command(device_id, arguments)
         else:
-            # All other commands relate to port control
-            attribute = self._create_port_command(device_id, command, arguments)
+            # All other commands relate to individual port control
+            attribute = self._create_single_port_command(device_id, command, arguments)
 
         return attribute
 
