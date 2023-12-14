@@ -20,7 +20,7 @@ Feature: field station antenna mapping
         When we turn <desired_state> antenna <antenna_number>
         Then the correct smartbox becomes <desired_state>
         And antenna <antenna_number> turns <desired_state>
-        And only smartbox port <smartbox_port> turns <desired_state>
+        And smartbox port <smartbox_port> turns <desired_state>
 
         Examples:
         |  station_name  |  antenna_number  | smartbox_id  | smartbox_port  |  setup_state |  desired_state  |

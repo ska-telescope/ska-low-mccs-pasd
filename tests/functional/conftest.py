@@ -15,7 +15,7 @@ from typing import Any, Callable, Iterator, Optional
 import _pytest
 import pytest
 import tango
-from ska_control_model import AdminMode, ResultCode
+from ska_control_model import AdminMode, LoggingLevel, ResultCode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -241,7 +241,10 @@ def functional_test_context_fixture(
             harness.set_pasd_bus_simulator(pasd_hw_simulators)
             harness.set_configuration_server(configuration_manager)
             harness.set_pasd_bus_device(
-                timeout=pasd_timeout, polling_rate=0.05, device_polling_rate=0.1
+                timeout=pasd_timeout,
+                polling_rate=0.05,
+                device_polling_rate=0.1,
+                logging_level=int(LoggingLevel.DEBUG),
             )
 
             for smartbox_id in smartbox_ids:

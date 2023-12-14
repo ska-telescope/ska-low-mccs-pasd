@@ -208,6 +208,7 @@ def mock_smartboxes_fixture(
         if i == on_smartbox_id:
             port_powers[on_smartbox_port - 1] = True
         builder.add_attribute("PortsPowerSensed", port_powers)
+        builder.add_attribute("fndhPort", i)
         builder.add_command("dev_name", f"low-mccs/smartbox/ci-1-{i:02d}")
         builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
         smartboxes.append(builder())
@@ -788,7 +789,7 @@ class TestFieldStationComponentManager:
         ],
     )
     def test_on_off_commands(  # noqa: C901
-        # pylint: disable=too-many-arguments, too-many-locals
+        # pylint: disable=too-many-arguments, too-many-locals, too-many-branches
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         component_manager_command: Any,
@@ -897,6 +898,22 @@ class TestFieldStationComponentManager:
                 field_station_component_manager.smartbox_state_change(
                     smartbox_name, power=mocked_smartbox_power
                 )
+
+                desired_state = (
+                    field_station_component_manager._get_masked_smartbox_ports()
+                )
+                ports_to_change = [not expected_state] * 12
+                for smartbox_identity, port_powers in desired_state.items():
+                    if smartbox_no == smartbox_identity:
+                        for port_power in port_powers:
+                            ports_to_change[port_power - 1] = expected_state
+                field_station_component_manager._on_port_power_change(
+                    smartbox_name,
+                    "portspowersensed",
+                    ports_to_change,
+                    tango.AttrQuality.ATTR_VALID,
+                )
+
             for smartbox_no, smartbox in enumerate(
                 field_station_component_manager._smartbox_proxys
             ):

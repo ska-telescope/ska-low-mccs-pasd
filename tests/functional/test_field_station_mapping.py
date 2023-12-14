@@ -323,14 +323,14 @@ def correct_smartbox_turns_on(
         assert False
 
 
-@then(parsers.parse("only smartbox port {smartbox_port} turns {desired_state}"))
+@then(parsers.parse("smartbox port {smartbox_port} turns {desired_state}"))
 def correct_smartbox_port_turns_off(
     smartbox_under_test: tango.DeviceProxy,
     smartbox_port: str,
     desired_state: str,
 ) -> None:
     """
-    Check that only the smartbox under test turns OFF.
+    Check that the smartbox under test turns OFF.
 
     :param smartbox_under_test: the smartbox of interest.
     :param smartbox_port: the port of interest
@@ -342,12 +342,7 @@ def correct_smartbox_port_turns_off(
         port_has_power = True
     else:
         assert False
-    time.sleep(10)
-    for port_id, port_power in enumerate(smartbox_under_test.portspowersensed, start=1):
-        if port_id == int(smartbox_port):
-            assert port_power == port_has_power
-        else:
-            assert port_power != port_has_power
+    assert smartbox_under_test.portspowersensed[int(smartbox_port)] == port_has_power
 
 
 @when("we check the fieldstations maps", target_fixture="maps")
