@@ -835,7 +835,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         )
 
     # All the if(task_callbacks) artificially extend the complexity.
-    def _turn_off_antenna(  # noqa: C901, pylint: disable=too-many-branches
+    def _turn_off_antenna(  # noqa: C901
         self: FieldStationComponentManager,
         antenna_number: int,
         ignore_mask: bool = False,
@@ -872,14 +872,14 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         fndh_port = self._smartbox_mapping[str(smartbox_id)]
 
         try:
-            assert self._fndh_proxy._proxy.PortsPowerSensed[fndh_port - 1] is True
+            assert self._fndh_proxy._proxy.PortsPowerSensed[fndh_port - 1]
         except AssertionError:
             msg = (
                 f"Tried to turn off antenna {antenna_number}, this is mapped to "
                 f"smartbox {smartbox_id}, which is on fndh port port {fndh_port}."
                 " However this port is not powered on."
             )
-            self.logger.error(msg)
+            self.logger.warning(msg)
             if task_callback:
                 task_callback(status=TaskStatus.REJECTED, result=msg)
             return TaskStatus.REJECTED
