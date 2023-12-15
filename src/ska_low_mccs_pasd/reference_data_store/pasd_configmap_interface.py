@@ -115,8 +115,6 @@ class PasdConfigurationInterface:
         value: Any = {}
         try:
             self.logger.info(f"station name requesting {station_name} ...")
-            logging.error(f"station name requesting {station_name} ...")
-            logging.info(f"station name requesting {station_name} ...")
             # Only a specific station has permission to access its configuration.
             if not self._station_name == station_name:
                 self.logger.warning(f"access refused to station {self._station_name}")

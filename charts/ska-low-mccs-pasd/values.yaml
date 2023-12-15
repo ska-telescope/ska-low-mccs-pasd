@@ -102,6 +102,8 @@ simulators: {} # e.g.
 referenceData: {}
   # pasdconfiguration:
   #   s8-1:
+  #     configuration_host: pasd-configuration-server-s8-1
+  #     configuration_port: 50053
   #     pasds:
   #       smartboxes:
   #         "1":

@@ -1,4 +1,4 @@
-{{- range $key, $value := ((.Values.simulators).pasdbuses)}}
+{{- range $key, $value := ((.Values.referenceData).pasdconfiguration)}}
 ---
 apiVersion: v1
 kind: Service
@@ -19,7 +19,7 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: pasd-configuration-server-{{$key}}
+  name: {{$value.configuration_host}}
   namespace: {{$.Release.Namespace}}
   labels:
     component: pasd-configuration-service-{{$key}}
@@ -36,7 +36,7 @@ spec:
     spec:
       serviceAccountName: config-watcher-acc
       containers:
-      - name: pasd-configuration-server-{{$key}}
+      - name: {{$value.configuration_host}}
         image: {{$.Values.image.registry}}/{{$.Values.image.name}}:{{$.Values.image.tag}}
         imagePullPolicy: IfNotPresent
         command: 
