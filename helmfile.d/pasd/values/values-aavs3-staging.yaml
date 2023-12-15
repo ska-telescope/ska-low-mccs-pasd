@@ -1,5 +1,9 @@
-defaults:
-  logging_level_default: 5
+platform:
+  cluster:
+    domain: lowitf.internal.skao.int
+    services:
+      tango-base:
+        tango-host: ""  # Override to empty, so we deploy ska-tango-base ourselves
 
 # Use helm_values to set arbitrary helm values.
 # These are passed through to the helm values file as-is.
@@ -8,4 +12,4 @@ defaults:
 # helm_values:
 #   image:
 #     registry: registry.gitlab.com/ska-telescope/mccs/ska-low-mccs-pasd
-#     tag: 0.11.0-dev.cae7b6bc2
+#     tag: 0.5.0-dev.c9b57d917
