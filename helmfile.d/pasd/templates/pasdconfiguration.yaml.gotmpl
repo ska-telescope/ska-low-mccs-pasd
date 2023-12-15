@@ -19,7 +19,7 @@
       {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
 
       {{- $pasdbus_instance_configuration := dict}}
-      {{- $_ := set $pasdbus_instance_configuration "configuration_host" (printf "pasd-configuration-server-%s-%s" $station_cluster_id $station_id)}}
+      {{- $_ := set $pasdbus_instance_configuration "configuration_host" (printf "pasd-configuration-server-%s" $station_name)}}
       {{- $_ := set $pasdbus_instance_configuration "configuration_port" 50034}}
 
       {{- $_ := set $pasdbus_instance_configuration "pasd" (dict "smartboxes" dict)}}
