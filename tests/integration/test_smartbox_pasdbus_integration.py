@@ -1135,6 +1135,87 @@ class TestSmartBoxPasdBusIntegration:
         )
         assert (smartbox_device.FemHeatsinkTemperatures == [51.00, 50.00]).all()
 
+    def test_set_port_powers(
+        self: TestSmartBoxPasdBusIntegration,
+        smartbox_proxys: list[tango.DeviceProxy],
+        on_smartbox_id: int,
+        pasd_bus_device: tango.DeviceProxy,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test `SetPortPowers` turns on the correct ports on the correct smartbox.
+
+        :param smartbox_proxys: fixture that provides a list of the
+            :py:class:`tango.DeviceProxy` to the devices under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param pasd_bus_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param on_smartbox_id: A fixture containing the id of a smartbox that is `ON`
+        :param change_event_callbacks: group of Tango change event
+            callback with asynchrony support
+        """
+        smartbox_under_test_id = on_smartbox_id
+        smartbox_under_test = smartbox_proxys[smartbox_under_test_id - 1]
+
+        pasd_bus_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasd_bus_state"],
+        )
+        change_event_callbacks.assert_change_event(
+            "pasd_bus_state", tango.DevState.DISABLE
+        )
+
+        pasd_bus_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks.assert_change_event(
+            "pasd_bus_state", tango.DevState.ON, lookahead=2
+        )
+
+        pasd_bus_device.initializefndh()
+
+        pasd_bus_device.initializesmartbox(smartbox_under_test_id)
+        smartbox_under_test.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartbox_state"],
+        )
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
+
+        smartbox_under_test.adminMode = AdminMode.ONLINE
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["smartbox_state"].assert_change_event(Anything)
+        change_event_callbacks["smartbox_state"].assert_not_called()
+
+        json_argument = json.dumps(
+            {
+                "smartbox_number": smartbox_under_test_id + 4,
+                "port_powers": [True] * 12,
+                "stay_on_when_offline": True,
+            }
+        )
+        smartbox_under_test.subscribe_event(
+            "portspowersensed",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{smartbox_under_test_id}portpowersensed"],
+        )
+        change_event_callbacks[
+            f"smartbox{smartbox_under_test_id}portpowersensed"
+        ].assert_change_event(
+            [False] * 12,
+        )
+        smartbox_under_test.SetPortPowers(json_argument)
+
+        change_event_callbacks[
+            f"smartbox{smartbox_under_test_id}portpowersensed"
+        ].assert_change_event(
+            [True] * 12,
+        )
+
 
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture(

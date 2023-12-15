@@ -202,7 +202,9 @@ class _PasdBusProxy(DeviceComponentManager):
         """
         assert self._proxy
         self._proxy.InitializeSmartbox(self._smartbox_nr)
-        return self._proxy.SetSmartboxPortPowers(json_argument)
+        argument = json.loads(json_argument)
+        argument.update({"smartbox_number": self._smartbox_nr})
+        return self._proxy.SetSmartboxPortPowers(json.dumps(argument))
 
     def set_fndh_port_powers(
         self: _PasdBusProxy, json_argument: str
@@ -606,7 +608,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             desired_port_powers[port_number - 1] = False
             json_argument = json.dumps(
                 {
-                    "smartbox_number": self._smartbox_nr,
                     "port_powers": desired_port_powers,
                     "stay_on_when_offline": True,
                 }
@@ -685,7 +686,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             desired_port_powers[port_number - 1] = True
             json_argument = json.dumps(
                 {
-                    "smartbox_number": self._smartbox_nr,
                     "port_powers": desired_port_powers,
                     "stay_on_when_offline": True,
                 }

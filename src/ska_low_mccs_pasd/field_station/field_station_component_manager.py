@@ -506,17 +506,16 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         result, _ = self._fndh_proxy._proxy.SetPortPowers(json_argument)
         results += result
         masked_ports = []
-        for smartbox_no, smartbox in enumerate(self._smartbox_proxys):
+        for smartbox_no, smartbox in enumerate(self._smartbox_proxys, start=1):
             assert smartbox._proxy
             desired_smartbox_port_powers: list[bool | None] = [
                 True
             ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
-            masked_ports = masked_smartbox_ports.get(smartbox_no + 1, [])
+            masked_ports = masked_smartbox_ports.get(smartbox_no, [])
             for masked_port in masked_ports:
                 desired_smartbox_port_powers[masked_port - 1] = None
             json_argument = json.dumps(
                 {
-                    "smartbox_number": smartbox_no + 1,
                     "port_powers": desired_smartbox_port_powers,
                     "stay_on_when_offline": True,
                 }
@@ -591,17 +590,16 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         result, _ = self._fndh_proxy._proxy.SetPortPowers(json_argument)
         results += result
         masked_ports = []
-        for smartbox_no, smartbox in enumerate(self._smartbox_proxys):
+        for smartbox_no, smartbox in enumerate(self._smartbox_proxys, start=1):
             assert smartbox._proxy
             desired_smartbox_port_powers: list[int | None] = [
                 False
             ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
-            masked_ports = masked_smartbox_ports.get(smartbox_no + 1, [])
+            masked_ports = masked_smartbox_ports.get(smartbox_no, [])
             for masked_port in masked_ports:
                 desired_smartbox_port_powers[masked_port - 1] = None
             json_argument = json.dumps(
                 {
-                    "smartbox_number": self._smartbox_mapping[str(smartbox_no + 1)],
                     "port_powers": desired_smartbox_port_powers,
                     "stay_on_when_offline": True,
                 }
@@ -652,9 +650,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 fndh_ports_masking_state[fndh_port] = True
 
         masked_fndh_ports = []
-        for fndh_port_idx, masking_state in enumerate(fndh_ports_masking_state):
+        for fndh_port_idx, masking_state in enumerate(
+            fndh_ports_masking_state, start=1
+        ):
             if masking_state:
-                masked_fndh_ports.append(fndh_port_idx + 1)
+                masked_fndh_ports.append(fndh_port_idx)
 
         return masked_fndh_ports
 
@@ -679,14 +679,14 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         # mask all smartbox ports with no antenna attached.
         for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
             for smartbox_port, port_has_antenna in enumerate(
-                self._get_smartbox_ports_with_antennas(smartbox_id)
+                self._get_smartbox_ports_with_antennas(smartbox_id), start=1
             ):
                 if not port_has_antenna:
                     try:
                         masked_smartbox_ports[smartbox_id]
                     except KeyError:
                         masked_smartbox_ports[smartbox_id] = []
-                    masked_smartbox_ports[smartbox_id].append(smartbox_port + 1)
+                    masked_smartbox_ports[smartbox_id].append(smartbox_port)
 
         return masked_smartbox_ports
 
