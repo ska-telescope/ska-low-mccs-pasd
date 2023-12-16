@@ -33,18 +33,18 @@ environments:
   aavs3-production:
     kubeContext: aavs3-production
     values:
-      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=28c8505016419170e9249e1d9ae0b7db38834bc0
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=79b40b033beebeed14bed1b5ed5cc4e1c6d178c9
       - pasd/values/values-aavs3.yaml
   aavs3-staging:
     kubeContext: low-itf
     values:
-      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=28c8505016419170e9249e1d9ae0b7db38834bc0
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=79b40b033beebeed14bed1b5ed5cc4e1c6d178c9
       - pasd/values/values-aavs3.yaml
       - pasd/values/values-aavs3-staging.yaml
   aavs3-minikube:
     kubeContext: minikube
     values:
-      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=28c8505016419170e9249e1d9ae0b7db38834bc0
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=79b40b033beebeed14bed1b5ed5cc4e1c6d178c9
       - pasd/values/values-aavs3.yaml
       - platform/minikube.yaml
   low-itf:
