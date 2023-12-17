@@ -8,10 +8,7 @@
 
 {{- range $station_cluster_id, $station_cluster_spec := $platform.array.station_clusters}}
   {{- range $station_id, $station_spec := $station_cluster_spec.stations}}
-    {{- $station_enabled := true}}
-    {{- if hasKey $station_spec "enabled"}}
-      {{- $station_enabled = $station_spec.enabled}}
-    {{- end}}
+    {{- $station_enabled := dig "enabled" true $station_spec}}
 
     {{- $pasd_spec := dig "pasd" (dict "enabled" false) $station_spec}}
     {{- $pasd_enabled := dig "enabled" $station_enabled $pasd_spec}}

@@ -8,12 +8,9 @@
   {{- range $station_id, $station_spec := $station_cluster_spec.stations}}
 
     {{- $station_enabled := dig "enabled" true $station_spec}}
-    {{- $pasd_enabled := false}}
-    {{- $pasd_spec := dig "pasd" dict $station_spec}}
 
-    {{- if $station_enabled}}
-      {{- $pasd_enabled = dig "enabled" true $pasd_spec}}
-    {{- end}}
+    {{- $pasd_spec := dig "pasd" dict $station_spec}}
+    {{- $pasd_enabled := dig "enabled" $station_enabled $pasd_spec}}
 
     {{- if $pasd_enabled}}
       {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
