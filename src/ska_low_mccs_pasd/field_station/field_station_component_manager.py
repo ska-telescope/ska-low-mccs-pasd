@@ -43,6 +43,7 @@ __all__ = ["FieldStationComponentManager"]
 class FieldStationComponentManager(TaskExecutorComponentManager):
     """A component manager for MccsFieldStation."""
 
+    FIELDSTATION_ON_COMMAND_TIMEOUT = 600  # seconds
     CONFIGURATION_SCHEMA: Final = json.loads(
         importlib.resources.read_text(
             "ska_low_mccs_pasd.field_station.schemas",
@@ -429,6 +430,14 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         event_value: list[Optional[bool]],
         event_quality: tango.AttrQuality,
     ) -> None:
+        """
+        Handle change in fndh port powers.
+
+        :param event_name: name of the event; will always be
+            "portspowersensed" for this callback
+        :param event_value: the new attribute value
+        :param event_quality: the quality of the change event
+        """
         assert event_name.lower() == "portspowersensed"
         self.fndh_port_states = event_value
         self.fndh_port_change.set()
@@ -504,14 +513,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             task_callback=task_callback,
         )
 
-    # pylint: disable-next=too-many-locals, too-many-statements, too-many-branches
     def _on(  # noqa: C901
         self: FieldStationComponentManager,
         ignore_mask: bool = False,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> None:
-        failure_log = ""
         if not ignore_mask and self._antenna_mask[0]:
             msg = (
                 "Antennas in this station are masked, "
@@ -523,71 +530,17 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             return
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
-        # Smartbox_id : [List of masked ports on that smartbox]
-        masked_smartbox_ports: dict[int, list] = self._get_masked_smartbox_ports()
-        results = []
-        assert self._fndh_proxy._proxy
-        masked_fndh_ports: list = self._get_masked_fndh_ports(masked_smartbox_ports)
 
-        desired_fndh_port_powers: list[bool | None] = [
-            True
-        ] * PasdData.NUMBER_OF_FNDH_PORTS
-        for masked_port in masked_fndh_ports:
-            desired_fndh_port_powers[masked_port - 1] = None
+        try:
+            # Wait for the smartbox to change state
+            timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
+            failure_log = self._turn_on_station(timeout)
 
-        desired_smartbox_power: list = self._get_masked_smartboxes(
-            desired_fndh_port_powers
-        )
+        except TimeoutError as e:
+            failure_log = f"Timeout when turning station on {e}, "
 
-        json_argument = json.dumps(
-            {
-                "port_powers": desired_fndh_port_powers,
-                "stay_on_when_offline": True,
-            }
-        )
-        result, _ = self._fndh_proxy._proxy.SetPortPowers(json_argument)
-        results += result
-        if all(result == ResultCode.OK for result in results):
-            try:
-                # Wait for the smartbox to change state
-                timeout = 120
-                t1 = time.time()
-                self.logger.info(
-                    f"waiting on fndh ports to change in {timeout} seconds ..."
-                )
-                self.wait_for_fndh_port(desired_fndh_port_powers, timeout)
-
-                t2 = time.time()
-                time_taken = int(t2 - t1)
-                timeout -= time_taken
-
-                self.logger.info(
-                    f"waiting on smartboxes to change state in {timeout} seconds ..."
-                )
-
-                self.wait_for_smartbox_device_state(desired_smartbox_power, timeout)
-                t3 = time.time()
-                time_taken = int(t3 - t2)
-                timeout -= time_taken
-
-                # Now the smartbox are all on we can turn on the ports
-                # with unmasked antenna
-                results += self.turn_on_unmasked_smartbox_ports(masked_smartbox_ports)
-                if all(result == ResultCode.OK for result in results):
-                    self.logger.info(
-                        f"waiting on antenna to change state in {timeout} seconds ..."
-                    )
-                    self.wait_for_antenna_powers(masked_smartbox_ports, timeout)
-                else:
-                    failure_log = "Failed to execute `ON` command for smartbox ports, "
-
-            except TimeoutError as e:
-                failure_log = f"Timeout in the On Command {e}, "
-
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                failure_log = f"Unhandled error in the On Command {e}, "
-        else:
-            failure_log = "Failed to execute `SetPortPowers` command on FNDH."
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            failure_log = f"Unhandled error when turning station on {e}, "
 
         if failure_log:
             self.logger.error(f"Failure in the `ON` command -> {failure_log}")
@@ -649,6 +602,84 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             results += result
         return results
 
+    def _turn_on_station(  # noqa: C901
+        self: FieldStationComponentManager,
+        timeout: int,
+    ) -> str:
+        """
+        Turn on this stations unmasked antenna.
+
+        :param timeout: the maximum time to wait in seconds (s)
+
+        :return: A string containing a failure message, empty when no failure.
+        """
+        failure_log = ""
+        assert self._fndh_proxy._proxy
+        masked_smartbox_ports: dict[int, list] = self._get_masked_smartbox_ports()
+        masked_fndh_ports: list = self._get_masked_fndh_ports(masked_smartbox_ports)
+
+        desired_fndh_port_powers: list[bool | None] = [
+            True
+        ] * PasdData.NUMBER_OF_FNDH_PORTS
+        for masked_port in masked_fndh_ports:
+            desired_fndh_port_powers[masked_port - 1] = None
+
+        desired_smartbox_power: list = self._get_masked_smartboxes(
+            desired_fndh_port_powers
+        )
+        json_argument = json.dumps(
+            {
+                "port_powers": desired_fndh_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
+        [set_fndh_port_powers_result], _ = self._fndh_proxy._proxy.SetPortPowers(
+            json_argument
+        )
+        self.logger.error(
+            f"set_fndh_port_powers_result == {set_fndh_port_powers_result}"
+        )
+        if set_fndh_port_powers_result == ResultCode.QUEUED:
+            t1 = time.time()
+            self.logger.info(
+                f"waiting on fndh ports to change in {timeout} seconds ..."
+            )
+            self.wait_for_fndh_port(desired_fndh_port_powers, timeout)
+
+            t2 = time.time()
+            time_taken = int(t2 - t1)
+            timeout -= time_taken
+
+            self.logger.info(
+                f"waiting on smartboxes to change state in {timeout} seconds ..."
+            )
+
+            self.wait_for_smartbox_device_state(desired_smartbox_power, timeout)
+            t3 = time.time()
+            time_taken = int(t3 - t2)
+            timeout -= time_taken
+
+            # Now the smartbox are all on we can turn on the ports
+            # with unmasked antenna
+            results = self.turn_on_unmasked_smartbox_ports(masked_smartbox_ports)
+            if all(result == ResultCode.QUEUED for result in results):
+                self.logger.info(
+                    f"waiting on antenna to change state in {timeout} seconds ..."
+                )
+                self.wait_for_antenna_powers(masked_smartbox_ports, timeout)
+                t4 = time.time()
+                time_taken = int(t4 - t3)
+                timeout -= time_taken
+            else:
+                failure_log = "Failed to execute `ON` command for smartbox ports, "
+        else:
+            failure_log = (
+                "Turning on all antenna in the station Failed, "
+                "Command `fndh_proxy.SetPortPowers` failed, "
+            )
+
+        return failure_log
+
     def wait_for_fndh_port(  # noqa: C901
         self: FieldStationComponentManager, desired: list[Optional[bool]], timeout: int
     ) -> ResultCode:
@@ -658,12 +689,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :param desired: the desired port powers looks like `[False]*28`
         :param timeout: the maximum time to wait in seconds (s)
 
+        :raises TimeoutError: If the fndh port powers did not match the desired state
+            after the timout period
         :return: A ResultCode and a string.
         """
-        failure_registered = False
-        self.fndh_port_change.clear()
 
-        def fndh_ports_match_desired(
+        def _fndh_ports_match_desired(
             current_state: list[Optional[bool]], desired_state: list[Optional[bool]]
         ) -> bool:
             for port_idx, port_state in enumerate(desired_state):
@@ -672,20 +703,29 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                         return False
             return True
 
-        # Wait for port to match the desired state, else report failure
-        if not fndh_ports_match_desired(self.fndh_port_states, desired):
+        # Wait for port to match the desired state, raise Timeout error if
+        # not completed in time.
+        if not _fndh_ports_match_desired(self.fndh_port_states, desired):
             # Wait for a callback.
+            t1 = time.time()
             self.fndh_port_change.wait(timeout)
-            if self.fndh_port_change.is_set():
-                if not fndh_ports_match_desired(self.fndh_port_states, desired):
-                    self.logger.warning(
-                        "Failed to get fndh ports to the correct state."
-                        f"Wanted {desired}, Got {self.fndh_port_states}"
-                    )
-                    failure_registered = True
-        if failure_registered:
-            self.logger.error("On command failed to complete successfully")
-            return ResultCode.FAILED
+            t2 = time.time()
+            time_waited = t2 - t1
+            if (
+                self.fndh_port_change.is_set()
+                and timeout > 0
+                and time_waited <= timeout
+            ):
+                self.fndh_port_change.clear()
+                remaining_time = timeout - int(time_waited)
+                self.wait_for_fndh_port(desired, remaining_time)
+            else:
+                self.logger.error(
+                    "On command failed to complete successfully, "
+                    "Timeout waiting for fndh ports to change state."
+                )
+                raise TimeoutError("The FndhPorts did not change in time")
+
         self.logger.info("All FNDH turned ON successfully")
         return ResultCode.OK
 
@@ -708,7 +748,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         ) -> bool:
             self.logger.error(f"{current_state} != {desired_state}")
             for port_idx, port_state in enumerate(desired_state):
-
                 if port_state is not None:
                     port_power = PowerState.ON if port_state else PowerState.OFF
                     if current_state[port_idx] != port_power:
@@ -722,15 +761,18 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self.smartbox_power_change.wait(timeout)
             t2 = time.time()
             time_waited = t2 - t1
-            if self.smartbox_power_change.is_set():
+            if (
+                self.smartbox_power_change.is_set()
+                and timeout > 0
+                and time_waited <= timeout
+            ):
                 self.smartbox_power_change.clear()
                 remaining_time = timeout - int(time_waited)
-                if remaining_time > 0:
-                    self.wait_for_smartbox_device_state(desired, remaining_time)
-                else:
-                    raise TimeoutError(
-                        "The subservient smartbox devices failed to reach state in time"
-                    )
+                self.wait_for_smartbox_device_state(desired, remaining_time)
+            else:
+                raise TimeoutError(
+                    "The subservient smartbox devices failed to reach state in time"
+                )
         self.logger.info("All smartboxes turned ON successfully")
         return ResultCode.OK
 
@@ -768,15 +810,18 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self.antenna_powers_changed.wait(timeout)
             t2 = time.time()
             time_waited = t2 - t1
-            if self.antenna_powers_changed.is_set():
+            if (
+                self.antenna_powers_changed.is_set()
+                and timeout > 0
+                and time_waited <= timeout
+            ):
                 self.antenna_powers_changed.clear()
                 remaining_time = int(timeout - time_waited)
-                if remaining_time > 0:
-                    self.wait_for_antenna_powers(desired, remaining_time)
-                else:
-                    raise TimeoutError(
-                        "The antenna did not reach the desired states in time"
-                    )
+                self.wait_for_antenna_powers(desired, remaining_time)
+            else:
+                raise TimeoutError(
+                    "The antenna did not reach the desired states in time"
+                )
         self.logger.info("All Antenna turned ON successfully")
         return ResultCode.OK
 
@@ -852,8 +897,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             )
             result, _ = smartbox._proxy.SetPortPowers(json_argument)
             results += result
-
-        if all(result == ResultCode.OK for result in results):
+        if all(result == ResultCode.QUEUED for result in results):
             if task_callback:
                 task_callback(
                     status=TaskStatus.COMPLETED,

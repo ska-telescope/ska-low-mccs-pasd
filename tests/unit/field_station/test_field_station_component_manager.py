@@ -203,7 +203,7 @@ def mock_smartboxes_fixture(
         builder.set_state(tango.DevState.ON)
         builder.add_result_command("PowerOnPort", ResultCode.OK)
         builder.add_result_command("PowerOffPort", ResultCode.OK)
-        builder.add_result_command("SetPortPowers", ResultCode.OK)
+        builder.add_result_command("SetPortPowers", ResultCode.QUEUED)
         port_powers = [False for _ in range(12)]
         if i == on_smartbox_id:
             port_powers[on_smartbox_port - 1] = True
@@ -899,14 +899,14 @@ class TestFieldStationComponentManager:
                     smartbox_name, power=mocked_smartbox_power
                 )
 
-                desired_state = (
+                smartbox_mask_map = (
                     field_station_component_manager._get_masked_smartbox_ports()
                 )
-                ports_to_change = [not expected_state] * 12
-                for smartbox_identity, port_powers in desired_state.items():
+                ports_to_change = [expected_state] * 12
+                for smartbox_identity, masked_ports in smartbox_mask_map.items():
                     if smartbox_no == smartbox_identity:
-                        for port_power in port_powers:
-                            ports_to_change[port_power - 1] = expected_state
+                        for masked_port in masked_ports:
+                            ports_to_change[masked_port - 1] = None
                 field_station_component_manager._on_port_power_change(
                     smartbox_name,
                     "portspowersensed",

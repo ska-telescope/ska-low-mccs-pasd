@@ -248,6 +248,8 @@ def turn_antenna_state(
         field_station_device.PowerOffAntenna(int(antenna_number))
     elif desired_state == "ON":
         field_station_device.PowerOnAntenna(int(antenna_number))
+    else:
+        assert False
 
 
 @then(parsers.parse("antenna {antenna_number} turns {desired_state}"))
@@ -342,7 +344,8 @@ def correct_smartbox_port_turns_off(
         port_has_power = True
     else:
         assert False
-    assert smartbox_under_test.portspowersensed[int(smartbox_port)] == port_has_power
+    smartbox_index = int(smartbox_port) - 1
+    assert smartbox_under_test.portspowersensed[smartbox_index] == port_has_power
 
 
 @when("we check the fieldstations maps", target_fixture="maps")
