@@ -47,7 +47,8 @@ K8S_CHART_PARAMS = \
 	--selector chart=ska-low-mccs-pasd \
 	--selector chart=ska-tango-base \
 	--set image.registry=$(CI_REGISTRY_IMAGE) \
-	--set image.tag=$(VERSION)-dev.c$(CI_COMMIT_SHORT_SHA)
+	--set image.tag=$(VERSION)-dev.c$(CI_COMMIT_SHORT_SHA) \
+	--set global.exposeAllDS=false
 endif
 
 JUNITXML_REPORT_PATH ?= build/reports/functional-tests.xml
