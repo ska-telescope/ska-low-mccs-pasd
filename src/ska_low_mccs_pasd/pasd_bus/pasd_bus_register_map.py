@@ -206,7 +206,7 @@ class PasdBusPortAttribute(PasdBusAttribute):
         """
         super().__init__(address, count, self._parse_port_bitmaps)
         self.desired_info = desired_info
-        self.value = []
+        self.value = [0] * count
 
     # pylint: disable=too-many-branches
     def _parse_port_bitmaps(
@@ -718,8 +718,13 @@ class PasdBusRegisterMap:
             register_info.starting_port_register, len(arguments)
         )
         offset = 0
-        for dson, dsoff in arguments:
-            attribute._set_bitmap_value(offset, dson, dsoff)
+        for desired_power_setting in arguments:
+            if desired_power_setting is None:
+                attribute._set_bitmap_value(offset, None, None)
+            else:
+                attribute._set_bitmap_value(
+                    offset, desired_power_setting[0], desired_power_setting[1]
+                )
             offset = offset + 1
         return attribute
 

@@ -220,7 +220,7 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
                 requested_powers = self._port_power_changes
                 self._port_power_changes = [None] * len(requested_powers)
                 self._ports_status_update_request = True
-                return "SET_PORT_POWERS", self._port_power_changes
+                return "SET_PORT_POWERS", requested_powers
 
         return "NONE", None
 
