@@ -93,6 +93,14 @@ endif
 
 K8S_TEST_RUNNER_WORKING_DIRECTORY ?= /home/tango
 
+k8s-pre-install-chart:  ## TODO: Temporary STS-357 workaround
+	curl -sSL https://github.com/helmfile/helmfile/releases/download/v0.157.0/helmfile_0.157.0_linux_amd64.tar.gz | tar -xzO helmfile > /usr/local/bin/helmfile
+	chmod +x /usr/local/bin/helmfile 
+
+k8s-pre-uninstall-chart:  ## TODO: Temporary STS-357 workaround
+	curl -sSL https://github.com/helmfile/helmfile/releases/download/v0.157.0/helmfile_0.157.0_linux_amd64.tar.gz | tar -xzO helmfile > /usr/local/bin/helmfile
+	chmod +x /usr/local/bin/helmfile 
+
 k8s-do-test:
 	helm -n $(KUBE_NAMESPACE) install --repo $(K8S_TEST_RUNNER_CHART_REGISTRY) \
 		$(K8S_TEST_RUNNER_CHART_RELEASE) $(K8S_TEST_RUNNER_CHART_NAME) \
