@@ -876,7 +876,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         except AssertionError:
             msg = (
                 f"Tried to turn off antenna {antenna_number}, this is mapped to "
-                f"smartbox {smartbox_id}, which is on fndh port port {fndh_port}."
+                f"smartbox {smartbox_id}, which is on fndh port {fndh_port}."
                 " However this port is not powered on."
             )
             self.logger.warning(msg)

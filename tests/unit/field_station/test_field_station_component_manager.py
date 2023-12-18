@@ -620,7 +620,7 @@ class TestFieldStationComponentManager:
                     TaskStatus.REJECTED,
                     (
                         "Tried to turn off antenna 255, this is mapped to smartbox 22, "
-                        "which is on fndh port port 22. However this port is "
+                        "which is on fndh port 22. However this port is "
                         "not powered on."
                     ),
                 ),
