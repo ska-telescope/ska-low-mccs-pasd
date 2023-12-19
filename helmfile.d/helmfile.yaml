@@ -33,18 +33,18 @@ environments:
   aavs3-production:
     kubeContext: aavs3-production
     values:
-      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=28c8505016419170e9249e1d9ae0b7db38834bc0
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=79b40b033beebeed14bed1b5ed5cc4e1c6d178c9
       - pasd/values/values-aavs3.yaml
   aavs3-staging:
     kubeContext: low-itf
     values:
-      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=28c8505016419170e9249e1d9ae0b7db38834bc0
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=79b40b033beebeed14bed1b5ed5cc4e1c6d178c9
       - pasd/values/values-aavs3.yaml
       - pasd/values/values-aavs3-staging.yaml
   aavs3-minikube:
     kubeContext: minikube
     values:
-      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=28c8505016419170e9249e1d9ae0b7db38834bc0
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=79b40b033beebeed14bed1b5ed5cc4e1c6d178c9
       - pasd/values/values-aavs3.yaml
       - platform/minikube.yaml
   low-itf:
@@ -73,7 +73,7 @@ releases:
   - name: ska-low-mccs-pasd
     namespace: ska-low-mccs
     chart: ../charts/ska-low-mccs-pasd
-    version: 0.5.0
+    version: ~0.5.0
     values:
       - values/globals.yaml.gotmpl
       - pasd/templates/fieldstations.yaml.gotmpl
@@ -89,7 +89,7 @@ releases:
   - name: ska-tango-base
     namespace: ska-low-mccs
     chart: skao/ska-tango-base
-    version: 0.4.7
+    version: ~0.4.7
     values:
       - values/globals.yaml.gotmpl
 {{- end}}
@@ -111,7 +111,7 @@ releases:
   - name: taranta-dshbrd
     namespace: ska-low-mccs
     chart: skao/ska-tango-taranta-dashboard
-    version: 1.4.1
+    version: ~1.4.1
     values:
       - ingress:
           enabled: true
@@ -120,12 +120,12 @@ releases:
   - name: taranta-dashboard-pvc
     namespace: ska-low-mccs
     chart: skao/ska-tango-taranta-dashboard-pvc
-    version: 1.4.1
+    version: ~1.4.1
 
   - name: taranta-auth
     namespace: ska-low-mccs
     chart: skao/ska-tango-taranta-auth
-    version: 0.1.9
+    version: ~0.1.9
     values:
       - ingress:
           enabled: true
@@ -135,14 +135,14 @@ releases:
   - name: taranta
     namespace: ska-low-mccs
     chart: skao/ska-tango-taranta
-    version: 2.4.2
+    version: ~2.4.2
     values:
       - values/taranta.yaml
 
   - name: tangogql
     namespace: ska-low-mccs
     chart: skao/ska-tango-tangogql
-    version: 1.3.10
+    version: ~1.3.10
     values:
       - values/globals.yaml.gotmpl
       - ska-tango-base:

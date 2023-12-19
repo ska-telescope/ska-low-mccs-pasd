@@ -47,7 +47,8 @@ K8S_CHART_PARAMS = \
 	--selector chart=ska-low-mccs-pasd \
 	--selector chart=ska-tango-base \
 	--set image.registry=$(CI_REGISTRY_IMAGE) \
-	--set image.tag=$(VERSION)-dev.c$(CI_COMMIT_SHORT_SHA)
+	--set image.tag=$(VERSION)-dev.c$(CI_COMMIT_SHORT_SHA) \
+	--set global.exposeAllDS=false
 endif
 
 JUNITXML_REPORT_PATH ?= build/reports/functional-tests.xml
@@ -92,6 +93,14 @@ K8S_TEST_RUNNER_PIP_INSTALL_COMMAND = pip install ${K8S_TEST_RUNNER_PIP_INSTALL_
 endif
 
 K8S_TEST_RUNNER_WORKING_DIRECTORY ?= /home/tango
+
+k8s-pre-install-chart:  ## TODO: Temporary STS-357 workaround
+	curl -sSL https://github.com/helmfile/helmfile/releases/download/v0.157.0/helmfile_0.157.0_linux_amd64.tar.gz | tar -xzO helmfile > /usr/local/bin/helmfile
+	chmod +x /usr/local/bin/helmfile 
+
+k8s-pre-uninstall-chart:  ## TODO: Temporary STS-357 workaround
+	curl -sSL https://github.com/helmfile/helmfile/releases/download/v0.157.0/helmfile_0.157.0_linux_amd64.tar.gz | tar -xzO helmfile > /usr/local/bin/helmfile
+	chmod +x /usr/local/bin/helmfile 
 
 k8s-do-test:
 	helm -n $(KUBE_NAMESPACE) install --repo $(K8S_TEST_RUNNER_CHART_REGISTRY) \

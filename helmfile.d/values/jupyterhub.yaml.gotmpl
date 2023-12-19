@@ -8,8 +8,7 @@ hub:
   baseUrl: /jupyterhub
 ingress:
   enabled: true
-  annotations:
-    kubernetes.io/ingress.class: nginx
+  ingressClassName: nginx
 singleuser:
   image:
     name: registry.gitlab.com/ska-telescope/sdi/ska-cicd-deploy-low-itf/tango-notebook
