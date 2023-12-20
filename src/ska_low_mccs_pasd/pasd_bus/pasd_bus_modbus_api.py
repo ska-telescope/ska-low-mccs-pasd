@@ -162,11 +162,13 @@ class PasdBusModbusApi:
                 else:
                     reg_vals = values[list_index : list_index + attr.count]
                 if isinstance(attr, PasdBusPortAttribute):
-                    port = starting_address - attr.address
-                    reg_tuple = (attr.convert_value(reg_vals)[0], port)
-                    setattr(self._simulators[device_id], name, reg_tuple)
+                    converted_values = attr.convert_value(values)
+                    start_port = starting_address - attr.address
+                    for port_index, value in enumerate(converted_values):
+                        reg_tuple = (value, start_port + port_index)
+                        setattr(self._simulators[device_id], name, reg_tuple)
                 else:
-                    setattr(self._simulators[device_id], name, reg_vals)
+                    setattr(self._simulators[device_id], name, values)
             except KeyError:
                 self._logger.error(f"Simulator {device_id} not available")
                 return ExceptionResponse(
