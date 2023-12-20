@@ -505,11 +505,6 @@ class TestPasdBusComponentManager:
             )
             desired_stay_on_when_offline = random.choice([True, False])
 
-            print(f"{ports_desired_power_when_online=}")
-            print(f"{ports_desired_power_when_offline=}")
-            print(f"{desired_port_powers=}")
-            print(f"{desired_stay_on_when_offline=}")
-
             expected_desired_power_when_online: list[bool | None] = list(
                 ports_desired_power_when_online
             )
@@ -520,11 +515,21 @@ class TestPasdBusComponentManager:
             for i, desired in enumerate(desired_port_powers):
                 if desired is None:
                     continue
-                expected_desired_power_when_online[i] = desired_port_powers[i]
-                expected_desired_power_when_offline[i] = (
-                    desired_port_powers[i] and desired_stay_on_when_offline
-                )
+                if fndh_simulator.ports_connected[i]:
+                    expected_desired_power_when_online[i] = desired_port_powers[i]
+                    expected_desired_power_when_offline[i] = (
+                        desired_port_powers[i] and desired_stay_on_when_offline
+                    )
+                else:
+                    # Ensure we don't request a port to be changed
+                    # which is not connected
+                    desired_port_powers[i] = None
             expected_ports_power_sensed = list(expected_desired_power_when_online)
+
+            print(f"{ports_desired_power_when_online=}")
+            print(f"{ports_desired_power_when_offline=}")
+            print(f"{desired_port_powers=}")
+            print(f"{desired_stay_on_when_offline=}")
 
             pasd_bus_component_manager.set_fndh_port_powers(
                 desired_port_powers, desired_stay_on_when_offline
