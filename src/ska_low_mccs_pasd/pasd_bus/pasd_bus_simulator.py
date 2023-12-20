@@ -870,13 +870,13 @@ class PasdHardwareSimulator:
         return self._service_led | self._status_led
 
     @led_pattern.setter
-    def led_pattern(self: PasdHardwareSimulator, service_pattern: list[int]) -> None:
+    def led_pattern(self: PasdHardwareSimulator, service_pattern: int) -> None:
         """
         Set the LED pattern.
 
         :param service_pattern: the LED pattern to be set.
         """
-        self.set_led_pattern(service_pattern[0])
+        self.set_led_pattern(service_pattern)
 
     def set_led_pattern(
         self: PasdHardwareSimulator,

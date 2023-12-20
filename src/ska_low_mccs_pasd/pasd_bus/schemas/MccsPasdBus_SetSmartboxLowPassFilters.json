@@ -1,0 +1,29 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://skao.int/MccsPasdBus_SetSmartboxLowPassFilters.json",
+    "title": "MccsPasdBus SetSmartboxLowPassFilters schema",
+    "description": "Schema for MccsPasdBus's SetSmartboxLowPassFilters command",
+    "type": "object",
+    "properties": {
+        "smartbox_number": {
+            "description": "Number of the smartbox being addressed",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 24
+        },
+        "cutoff": {
+            "description": "Cut-off frequency to set for the low-pass filtering",
+            "type": "number",
+            "minimum": 1.0,
+            "maximum": 1000.0
+        },
+        "extra_sensors": {
+            "description": "Write the filter constant to the extra sensors' registers after the LED status register.",
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "smartbox_number",
+        "cutoff"
+    ]
+}

@@ -141,7 +141,10 @@ class PasdBusModbusApi:
                     list_index = 0
                 else:
                     list_index = attr.address - starting_address
-                reg_vals = values[list_index : list_index + attr.count]
+                if attr.count == 1:
+                    reg_vals = values[list_index]
+                else:
+                    reg_vals = values[list_index : list_index + attr.count]
                 if isinstance(attr, PasdBusPortAttribute):
                     port = starting_address - attr.address
                     reg_tuple = (attr.convert_value(reg_vals)[0], port)

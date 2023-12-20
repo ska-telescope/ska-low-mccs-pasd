@@ -752,3 +752,153 @@ class TestPasdBusComponentManager:
             ),
             lookahead=5,  # Full cycle plus one to cover off on race conditions
         )
+
+    def test_low_pass_filters(
+        self: TestPasdBusComponentManager,
+        pasd_bus_component_manager: PasdBusComponentManager,
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test the component manager can set FNDH and smartbox low-pass filter constants.
+
+        :param pasd_bus_component_manager: the PaSD bus component
+            manager under test.
+        :param mock_callbacks: a group of mock callables for the component
+            manager under test to use as callbacks
+        """
+        mock_callbacks.assert_not_called()
+        pasd_bus_component_manager.start_communicating()
+        mock_callbacks.assert_call(
+            "communication_state", CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks.assert_call(
+            "communication_state", CommunicationStatus.ESTABLISHED
+        )
+        mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
+
+        # FNDH reads comprise two initial reads, then a cycle of four.
+        # Let's wait for six calls before proceeding.
+        # These are fully unpacked in test_attribute_updates,
+        # so there's no need for us to unpack them again
+        for _ in range(6):
+            mock_callbacks["pasd_device_state_for_fndh"].assert_against_call()
+
+        lpf_cutoff = 10
+        lpf_constant = 0x2391
+        pasd_bus_component_manager.set_fndh_low_pass_filters(lpf_cutoff)
+
+        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
+            uptime=Anything,
+            sys_address=FndhSimulator.SYS_ADDRESS,
+            status="ALARM",
+            led_pattern="service: OFF, status: REDSLOW",
+            psu48v_voltages=PasdConversionUtility.scale_volts(
+                [lpf_constant, lpf_constant]
+            ),
+            psu48v_current=PasdConversionUtility.scale_48vcurrents([lpf_constant])[0],
+            psu48v_temperatures=PasdConversionUtility.scale_signed_16bit(
+                [lpf_constant, lpf_constant]
+            ),
+            panel_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
+                0
+            ],
+            fncb_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
+                0
+            ],
+            fncb_humidity=lpf_constant,
+            comms_gateway_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE]
+            )[0],
+            power_module_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE]
+            )[0],
+            outside_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
+            )[0],
+            internal_ambient_temperature=(
+                PasdConversionUtility.scale_signed_16bit(
+                    [FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE]
+                )[0]
+            ),
+            lookahead=5,  # Full cycle plus one to cover off on race conditions
+        )
+
+        pasd_bus_component_manager.set_fndh_low_pass_filters(lpf_cutoff, True)
+
+        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
+            uptime=Anything,
+            sys_address=FndhSimulator.SYS_ADDRESS,
+            status="ALARM",
+            led_pattern="service: OFF, status: REDSLOW",
+            psu48v_voltages=PasdConversionUtility.scale_volts(
+                [lpf_constant, lpf_constant]
+            ),
+            psu48v_current=PasdConversionUtility.scale_48vcurrents([lpf_constant])[0],
+            psu48v_temperatures=PasdConversionUtility.scale_signed_16bit(
+                [lpf_constant, lpf_constant]
+            ),
+            panel_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
+                0
+            ],
+            fncb_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
+                0
+            ],
+            fncb_humidity=lpf_constant,
+            comms_gateway_temperature=PasdConversionUtility.scale_signed_16bit(
+                [lpf_constant]
+            )[0],
+            power_module_temperature=PasdConversionUtility.scale_signed_16bit(
+                [lpf_constant]
+            )[0],
+            outside_temperature=PasdConversionUtility.scale_signed_16bit(
+                [lpf_constant]
+            )[0],
+            internal_ambient_temperature=(
+                PasdConversionUtility.scale_signed_16bit([lpf_constant])[0]
+            ),
+            lookahead=5,  # Full cycle plus one to cover off on race conditions
+        )
+
+        smartbox_number = 4
+
+        # Smartbox reads comprise three initial reads, then a cycle of four.
+        # Let's wait for seven calls before proceeding.
+        # These are fully unpacked in test_attribute_updates,
+        # so there's no need for us to unpack them again
+        for _ in range(7):
+            mock_callbacks[
+                f"pasd_device_state_for_smartbox{smartbox_number}"
+            ].assert_against_call()
+
+        pasd_bus_component_manager.set_smartbox_low_pass_filters(
+            smartbox_number, lpf_cutoff
+        )
+
+        mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_number}"].assert_call(
+            uptime=Anything,
+            sys_address=smartbox_number,
+            status=SmartboxSimulator.DEFAULT_STATUS.name,
+            led_pattern="service: OFF, status: YELLOWFAST",
+            input_voltage=PasdConversionUtility.scale_volts([lpf_constant])[0],
+            power_supply_output_voltage=(
+                PasdConversionUtility.scale_volts([lpf_constant])[0]
+            ),
+            power_supply_temperature=PasdConversionUtility.scale_signed_16bit(
+                [lpf_constant]
+            )[0],
+            pcb_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[0],
+            fem_ambient_temperature=PasdConversionUtility.scale_signed_16bit(
+                [lpf_constant]
+            )[0],
+            fem_case_temperatures=(
+                PasdConversionUtility.scale_signed_16bit(
+                    SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+                )
+            ),
+            fem_heatsink_temperatures=(
+                PasdConversionUtility.scale_signed_16bit(
+                    SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+                )
+            ),
+            lookahead=5,  # Full cycle plus one to cover off on race conditions
+        )
