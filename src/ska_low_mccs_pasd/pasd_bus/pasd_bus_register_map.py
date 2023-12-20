@@ -68,6 +68,7 @@ class PortDesiredStateOnline(IntEnum):
 
     OFF = 0x2000
     ON = 0x3000
+    DEFAULT = 0x0000
 
 
 class PortDesiredStateOffline(IntEnum):
@@ -75,6 +76,7 @@ class PortDesiredStateOffline(IntEnum):
 
     OFF = 0x800
     ON = 0xC00
+    DEFAULT = 0x0000
 
 
 class PortOverride(IntEnum):
@@ -256,9 +258,15 @@ class PasdBusPortAttribute(PasdBusAttribute):
             status = int(status_bitmap) & self.desired_info
             match self.desired_info:
                 case PortStatusBits.DSON:
-                    results.append(status == PortDesiredStateOnline.ON)
+                    if status == PortDesiredStateOnline.DEFAULT:
+                        results.append(None)
+                    else:
+                        results.append(status == PortDesiredStateOnline.ON)
                 case PortStatusBits.DSOFF:
-                    results.append(status == PortDesiredStateOffline.ON)
+                    if status == PortDesiredStateOffline.DEFAULT:
+                        results.append(None)
+                    else:
+                        results.append(status == PortDesiredStateOffline.ON)
                 case PortStatusBits.TO:
                     if status == PortOverride.FORCE_OFF:
                         results.append(forcing_map[False])
@@ -718,13 +726,20 @@ class PasdBusRegisterMap:
             register_info.starting_port_register, len(arguments)
         )
         offset = 0
+
         for desired_power_setting in arguments:
             if desired_power_setting is None:
                 attribute._set_bitmap_value(offset, None, None)
             else:
-                attribute._set_bitmap_value(
-                    offset, desired_power_setting[0], desired_power_setting[1]
-                )
+                dson = desired_power_setting[0]
+                dsoff = desired_power_setting[1]
+                if dson:
+                    attribute._set_bitmap_value(offset, dson, dsoff)
+                else:
+                    # We are turning a port OFF, so set the DSOFF value
+                    # also to OFF.
+                    # TODO: Check if this is the correct behaviour
+                    attribute._set_bitmap_value(offset, dson, False)
             offset = offset + 1
         return attribute
 
