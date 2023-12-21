@@ -83,7 +83,7 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
 
         self._initialize_requested: bool = False
         self._led_pattern_requested: str = ""
-        self._low_pass_filter_requested: tuple[int, bool] | None = None
+        self._low_pass_filter_requested: tuple[float, bool] | None = None
         self._alarm_reset_requested: bool = False
         self._warning_reset_requested: bool = False
         self._port_power_changes: list[tuple[bool, bool] | None] = [
@@ -154,7 +154,7 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         """
         self._led_pattern_requested = pattern
 
-    def desire_set_low_pass_filter(self, cutoff: int, extra_sensors: bool) -> None:
+    def desire_set_low_pass_filter(self, cutoff: float, extra_sensors: bool) -> None:
         """
         Register a request to set the device's low pass filter constants.
 
@@ -385,7 +385,7 @@ class PasdBusRequestProvider:
         self._device_request_providers[device_id].desire_led_pattern(pattern)
 
     def desire_set_low_pass_filter(
-        self, device_id: int, cutoff: int, extra_sensors: bool
+        self, device_id: int, cutoff: float, extra_sensors: bool
     ) -> None:
         """
         Register a request to set a device's low pass filter constants.

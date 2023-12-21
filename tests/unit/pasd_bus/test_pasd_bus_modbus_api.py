@@ -503,7 +503,7 @@ class TestPasdBusModbusApiClient:
                 "smartbox_simulator",
                 1,
                 PasdCommandStrings.SET_LOW_PASS_FILTER,
-                (0.99, False),
+                (0.09, False),
                 "input_voltage",
                 SmartboxSimulator.DEFAULT_INPUT_VOLTAGE,
             ),

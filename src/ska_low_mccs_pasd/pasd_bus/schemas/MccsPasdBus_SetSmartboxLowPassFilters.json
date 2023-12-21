@@ -14,7 +14,7 @@
         "cutoff": {
             "description": "Cut-off frequency to set for the low-pass filtering",
             "type": "number",
-            "minimum": 1.0,
+            "minimum": 0.1,
             "maximum": 1000.0
         },
         "extra_sensors": {

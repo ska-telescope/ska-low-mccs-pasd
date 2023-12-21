@@ -527,7 +527,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     @check_communicating
     def set_fndh_low_pass_filters(
         self: PasdBusComponentManager,
-        cutoff: int,
+        cutoff: float,
         extra_sensors: bool = False,
     ) -> None:
         """
@@ -607,7 +607,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     def set_smartbox_low_pass_filters(
         self: PasdBusComponentManager,
         smartbox_id: int,
-        cutoff: int,
+        cutoff: float,
         extra_sensors: bool = False,
     ) -> None:
         """

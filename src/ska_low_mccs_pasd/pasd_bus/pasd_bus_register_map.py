@@ -825,10 +825,10 @@ class PasdBusRegisterMap:
             or None if given cutoff is invalid.
         """
         dt = 0.001  # internal sensor sampling interval in seconds
-        if cutoff * dt > 1 or cutoff < 1:
+        if cutoff * dt > 1 or cutoff < 0.1:
             logger.error(
                 f"Given cut-off frequency ({cutoff}Hz) is higher than sampling rate,"
-                "or lower than 1Hz. Filter constant not set."
+                "or lower than 0.1Hz. Filter constant not set."
             )
             return None
         mantissa_bits = 11

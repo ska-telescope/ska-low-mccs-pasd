@@ -661,7 +661,7 @@ def test_fndh_low_pass_filters(
     change_event_callbacks.assert_change_event("state", tango.DevState.ON)
 
     # Check for validation errors
-    json_argument = json.dumps({"cutoff": 0.9})
+    json_argument = json.dumps({"cutoff": 0.09})
     with pytest.raises(tango.DevFailed) as exception:
         pasd_bus_device.SetFndhLowPassFilters(json_argument)
     assert "jsonschema.exceptions.ValidationError" in str(exception.value)
@@ -980,7 +980,7 @@ def test_smartbox_low_pass_filters(
     change_event_callbacks.assert_change_event("state", tango.DevState.ON)
 
     # Check for validation errors
-    json_argument = json.dumps({"smartbox_number": smartbox_id, "cutoff": 0.9})
+    json_argument = json.dumps({"smartbox_number": smartbox_id, "cutoff": 0.09})
     with pytest.raises(tango.DevFailed) as exception:
         pasd_bus_device.SetSmartboxLowPassFilters(json_argument)
     assert "jsonschema.exceptions.ValidationError" in str(exception.value)
