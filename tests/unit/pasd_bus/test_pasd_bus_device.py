@@ -81,7 +81,9 @@ def pasd_bus_device_fixture(
     harness.set_pasd_bus_simulator(mock_pasd_hw_simulators)
     harness.set_pasd_bus_device(polling_rate=0.05, device_polling_rate=0.1)
     with harness as context:
-        yield context.get_pasd_bus_device()
+        pasd_bus_device = context.get_pasd_bus_device()
+        pasd_bus_device.simulationMode = True
+        yield pasd_bus_device
 
 
 def test_communication(  # pylint: disable=too-many-statements
@@ -649,6 +651,7 @@ def test_fndh_low_pass_filters(
     :param change_event_callbacks: dictionary of mock change event
         callbacks with asynchrony support
     """
+    pasd_bus_device.simulationMode = False
     assert pasd_bus_device.adminMode == AdminMode.OFFLINE
     pasd_bus_device.subscribe_event(
         "state",
@@ -968,6 +971,7 @@ def test_smartbox_low_pass_filters(
     :param change_event_callbacks: dictionary of mock change event
         callbacks with asynchrony support
     """
+    pasd_bus_device.simulationMode = False
     assert pasd_bus_device.adminMode == AdminMode.OFFLINE
     pasd_bus_device.subscribe_event(
         "state",

@@ -783,8 +783,8 @@ class TestPasdBusComponentManager:
         for _ in range(6):
             mock_callbacks["pasd_device_state_for_fndh"].assert_against_call()
 
-        lpf_cutoff = 10
-        lpf_constant = 0x2391
+        lpf_cutoff = 1.5
+        lpf_constant = 0x30C7
         pasd_bus_component_manager.set_fndh_low_pass_filters(lpf_cutoff)
 
         mock_callbacks["pasd_device_state_for_fndh"].assert_call(

@@ -17,17 +17,11 @@ import traceback
 from typing import Any, Final, Optional, cast
 
 import tango.server
-from ska_control_model import (
-    CommunicationStatus,
-    HealthState,
-    PowerState,
-    ResultCode,
-    SimulationMode,
-)
+from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidator
 from tango.device_attribute import ExtractAs
-from tango.server import attribute, command
+from tango.server import command
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
@@ -202,7 +196,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 "warning_flags": f"smartbox{smartbox_number}WarningFlags",
                 "alarm_flags": f"smartbox{smartbox_number}AlarmFlags",
             }
-            for smartbox_number in range(1, 25)
+            for smartbox_number in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
         },
     }
     # ----------
@@ -213,6 +207,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     PollingRate = tango.server.device_property(dtype=float, default_value=0.5)
     DevicePollingRate = tango.server.device_property(dtype=float, default_value=15.0)
     Timeout = tango.server.device_property(dtype=float)
+    LowPassFilterCutoff = tango.server.device_property(dtype=float, default_value=10.0)
 
     # ---------------
     # Initialisation
@@ -230,7 +225,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         self._pasd_state: dict[str, Any] = {}
         self._setup_fndh_attributes()
-        for smartbox_number in range(1, 25):
+        for smartbox_number in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
             self._setup_smartbox_attributes(smartbox_number)
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
@@ -244,6 +239,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             f"\tPollingRate: {self.PollingRate}\n"
             f"\tDevicePollingRate: {self.DevicePollingRate}\n"
             f"\tTimeout: {self.Timeout}\n"
+            f"\tLowPassFilterCutoff: {self.LowPassFilterCutoff}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -567,6 +563,29 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         self._health_model = PasdBusHealthModel(self._health_changed)
         self.set_change_event("healthState", True, False)
 
+    def _set_all_low_pass_filters_of_device(
+        self: MccsPasdBus, pasd_device_number: int
+    ) -> None:
+        """
+        Set all the low-pass filter constants of a given PaSD device.
+
+        :param pasd_device_number: the number of the PaSD device to set.
+            0 refers to the FNDH, otherwise the device number is the
+            smartbox number.
+        """
+        if pasd_device_number == 0:
+            self.component_manager.set_fndh_low_pass_filters(self.LowPassFilterCutoff)
+            self.component_manager.set_fndh_low_pass_filters(
+                self.LowPassFilterCutoff, True
+            )
+        else:
+            self.component_manager.set_smartbox_low_pass_filters(
+                pasd_device_number, self.LowPassFilterCutoff
+            )
+            self.component_manager.set_smartbox_low_pass_filters(
+                pasd_device_number, self.LowPassFilterCutoff, True
+            )
+
     def create_component_manager(
         self: MccsPasdBus,
     ) -> PasdBusComponentManager:
@@ -722,7 +741,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         super()._component_state_changed(fault=fault, power=power)
         self._health_model.update_state(fault=fault, power=power)
 
-    def _pasd_device_state_callback(
+    def _pasd_device_state_callback(  # noqa: C901
         self: MccsPasdBus,
         pasd_device_number: int,
         **kwargs: Any,
@@ -778,6 +797,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 ):
                     # Register a request to read the static info and thresholds
                     self.component_manager.request_startup_info(pasd_device_number)
+                    # Set the device's low-pass filter constants
+                    if self._simulation_mode is False:
+                        self._set_all_low_pass_filters_of_device(pasd_device_number)
 
             if self._pasd_state[tango_attribute_name] != pasd_attribute_value:
                 self._pasd_state[tango_attribute_name] = pasd_attribute_value
@@ -806,36 +828,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     # ----------
     # Attributes
     # ----------
-    @attribute(dtype=SimulationMode, memorized=True, hw_memorized=True)
-    def simulationMode(self: MccsPasdBus) -> int:
-        """
-        Report the simulation mode of the device.
-
-        :return: Return the current simulation mode
-        """
-        return SimulationMode.FALSE
-
-    @simulationMode.write  # type: ignore[no-redef]
-    def simulationMode(  # pylint: disable=arguments-differ
-        self: MccsPasdBus, value: SimulationMode
-    ) -> None:
-        """
-        Set the simulation mode.
-
-        Writing this attribute is deliberately unimplemented.
-        To run this device against a simulator,
-        stand up a PaSD bus simulator,
-        then configure this device
-        with the simulator's IP address and port.
-
-        :param value: The simulation mode, as a SimulationMode value
-        """
-        self.logger.warning(
-            "MccsPasdBus's simulationMode attribute is unimplemented. "
-            "To run this device against a simulator, "
-            "stand up an external PaSD bus simulator, "
-            "then configure this device with the simulator's IP address and port."
-        )
 
     # ----------
     # Commands
@@ -1041,6 +1033,11 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :return: A tuple containing a result code and a human-readable status message.
         """
+        if self._simulation_mode:
+            return (
+                [ResultCode.NOT_ALLOWED],
+                ["SetFndhLowPassFilters is not supported by the simulator"],
+            )
         handler = self.get_command_object("SetFndhLowPassFilters")
         success = handler(argin)
         if success:
@@ -1363,6 +1360,11 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :return: A tuple containing a result code and a human-readable status message.
         """
+        if self._simulation_mode:
+            return (
+                [ResultCode.NOT_ALLOWED],
+                ["SetSmartboxLowPassFilters is not supported by the simulator"],
+            )
         handler = self.get_command_object("SetSmartboxLowPassFilters")
         success = handler(argin)
         if success:

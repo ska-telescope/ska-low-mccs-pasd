@@ -495,9 +495,9 @@ class TestPasdBusModbusApiClient:
                 "fndh_simulator",
                 0,
                 PasdCommandStrings.SET_LOW_PASS_FILTER,
-                (10, True),
+                (10.1, True),
                 "comms_gateway_temperature",
-                0x2391,
+                0x23A3,
             ),
             (
                 "smartbox_simulator",

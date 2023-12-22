@@ -311,6 +311,7 @@ def pasd_bus_device_fixture(
     :yields: A proxy to an instance of MccsPasdBus.
     """
     proxy = functional_test_context.get_pasd_bus_device()
+    proxy.simulationMode = True
     yield subscribe_device_proxy(proxy)
 
 
