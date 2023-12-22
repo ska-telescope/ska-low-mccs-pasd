@@ -7,6 +7,7 @@
 # See LICENSE for more info.
 """This module contains the tests for MccsPasdBus."""
 
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import gc
