@@ -757,7 +757,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         smartbox_id, smartbox_port = self._antenna_mapping[str(antenna_number)]
         try:
             smartbox_proxy = self._smartbox_proxys[smartbox_id - 1]
-        except KeyError:
+        except IndexError:
             msg = (
                 f"Tried to turn on antenna {antenna_number}, this is mapped to "
                 f"smartbox {smartbox_id}, port {smartbox_port}. However this smartbox"
@@ -859,7 +859,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         smartbox_id, smartbox_port = self._antenna_mapping[str(antenna_number)]
         try:
             smartbox_proxy = self._smartbox_proxys[smartbox_id - 1]
-        except KeyError:
+        except IndexError:
             msg = (
                 f"Tried to turn off antenna {antenna_number}, this is mapped to "
                 f"smartbox {smartbox_id}, port {smartbox_port}. However this smartbox"
