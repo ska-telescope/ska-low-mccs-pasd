@@ -255,7 +255,7 @@ class MccsSmartBox(SKABaseDevice):
         """
         Set port powers.
 
-        These ports will not have an antenna attached.
+        These ports may not have an antenna attached.
 
         :param json_argument: desired port powers of unmasked ports with
             smartboxes attached in json form.

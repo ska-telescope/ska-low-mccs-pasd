@@ -15,7 +15,7 @@ from typing import Any, Iterator
 
 import pytest
 import tango
-from ska_control_model import CommunicationStatus, ResultCode, TaskStatus
+from ska_control_model import CommunicationStatus, PowerState, ResultCode, TaskStatus
 from ska_low_mccs_common.testing.mock import MockDeviceBuilder
 from ska_tango_testing.mock import MockCallableGroup
 from ska_tango_testing.mock.placeholders import Anything
@@ -28,6 +28,8 @@ from tests.harness import (
     get_fndh_name,
     get_smartbox_name,
 )
+
+# pylint: disable=too-many-lines
 
 
 @pytest.fixture(name="on_antenna_number")
@@ -203,11 +205,12 @@ def mock_smartboxes_fixture(
         builder.set_state(tango.DevState.ON)
         builder.add_result_command("PowerOnPort", ResultCode.OK)
         builder.add_result_command("PowerOffPort", ResultCode.OK)
-        builder.add_result_command("SetPortPowers", ResultCode.OK)
+        builder.add_result_command("SetPortPowers", ResultCode.QUEUED)
         port_powers = [False for _ in range(12)]
         if i == on_smartbox_id:
             port_powers[on_smartbox_port - 1] = True
         builder.add_attribute("PortsPowerSensed", port_powers)
+        builder.add_attribute("fndhPort", json.dumps(i))
         builder.add_command("dev_name", f"low-mccs/smartbox/ci-1-{i:02d}")
         builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
         smartboxes.append(builder())
@@ -230,7 +233,7 @@ def mock_fndh_fixture(
     builder.set_state(tango.DevState.ON)
     builder.add_result_command("PowerOnPort", ResultCode.OK)
     builder.add_result_command("PowerOffPort", ResultCode.OK)
-    builder.add_result_command("SetPortPowers", ResultCode.OK)
+    builder.add_result_command("SetPortPowers", ResultCode.QUEUED)
     builder.add_attribute("OutsideTemperature", mocked_outside_temperature)
     port_powers = [False for _ in range(28)]
     port_powers[on_fndh_port - 1] = True
@@ -787,7 +790,8 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
-    def test_on_off_commands(  # pylint: disable=too-many-arguments, too-many-locals
+    def test_on_off_commands(  # noqa: C901
+        # pylint: disable=too-many-arguments, too-many-locals, too-many-branches
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         component_manager_command: Any,
@@ -869,6 +873,49 @@ class TestFieldStationComponentManager:
                 field_station_component_manager._fndh_proxy._proxy, proxy_command
             )
             fndh_proxy_command.assert_next_call(fndh_json_arg)
+
+            # Mock a change event in the power of fndh ports
+            field_station_component_manager._on_fndh_port_change(
+                "portspowersensed",
+                desired_fndh_port_powers,
+                tango.AttrQuality.ATTR_VALID,
+            )
+            for smartbox_proxy in field_station_component_manager._smartbox_proxys:
+                smartbox_name = smartbox_proxy._name
+
+                smartbox_no = (
+                    field_station_component_manager._smartbox_name_number_map[
+                        smartbox_name
+                    ]
+                    + 1
+                )
+                fndh_port = field_station_component_manager._smartbox_mapping[
+                    str(smartbox_no)
+                ]
+                if desired_fndh_port_powers[fndh_port - 1]:
+                    mocked_smartbox_power = PowerState.ON
+                else:
+                    mocked_smartbox_power = PowerState.OFF
+
+                field_station_component_manager.smartbox_state_change(
+                    smartbox_name, power=mocked_smartbox_power
+                )
+
+                smartbox_mask_map = (
+                    field_station_component_manager._get_masked_smartbox_ports()
+                )
+                ports_to_change = [expected_state] * 12
+                for smartbox_identity, masked_ports in smartbox_mask_map.items():
+                    if smartbox_no == smartbox_identity:
+                        for masked_port in masked_ports:
+                            ports_to_change[masked_port - 1] = None
+                field_station_component_manager._on_port_power_change(
+                    smartbox_name,
+                    "portspowersensed",
+                    ports_to_change,
+                    tango.AttrQuality.ATTR_VALID,
+                )
+
             for smartbox_no, smartbox in enumerate(
                 field_station_component_manager._smartbox_proxys
             ):

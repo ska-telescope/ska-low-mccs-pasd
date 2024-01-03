@@ -10,12 +10,14 @@ from __future__ import annotations
 
 import gc
 import json
+import time
 from typing import Any, Callable, Final
 
 import jsonschema
 import tango
-from pytest_bdd import given, parsers, scenario, then, when
-from ska_control_model import AdminMode
+from pytest_bdd import given, parsers, scenarios, then, when
+from ska_control_model import AdminMode, PowerState
+from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 gc.disable()
 
@@ -89,22 +91,7 @@ SMARTBOX_MAPPING_SCHEMA: Final = {
     "required": ["smartboxMapping"],
 }
 
-
-@scenario(
-    "features/field_station_mapping.feature",
-    "field station initialises with valid mapping",
-)
-def test_field_station() -> None:
-    """
-    Test that the fieldstation initialised with a mapping.
-
-    This will test that the fieldstation can contact the configuration
-    server, get the configMap and load it into the FieldStation
-    succesfully.
-
-    Any code in this scenario method is run at the *end* of the
-    scenario.
-    """
+scenarios("./features/field_station_mapping.feature")
 
 
 @given(parsers.parse("A {device_ref} which is ready"))
@@ -151,6 +138,214 @@ def get_device_ready(
             state=tango.DevState.ON,
             mode=AdminMode.ONLINE,
         )
+
+
+@then(parsers.parse("smartbox {smartbox_id} is {desired_state}"))
+@given(
+    parsers.parse("smartbox {smartbox_id} is {desired_state}"),
+    target_fixture="smartbox_under_test",
+)
+def set_smartbox_off(
+    smartbox_id: str,
+    set_device_state: Callable,
+    smartboxes_under_test: list[tango.DeviceProxy],
+    station_label: str,
+    state_mapping: dict[str, tango.DevState],
+    desired_state: str,
+) -> None:
+    """
+    Check that the fieldstation exists.
+
+    :param smartbox_id: a list of the smartboxes under test.
+    :param set_device_state: function to set device state.
+    :param smartboxes_under_test: a list of the smartboxes under test.
+    :param station_label: name of the station under test
+    :param state_mapping: mapping from the reference Gherkin state to
+        a `tango.DevState`.
+    :param desired_state: a Gherkin reference state.
+
+    :return: a `tango.DeviceProxy` to the smartbox under test.
+    """
+    for smartbox_proxy in smartboxes_under_test:
+        if (
+            smartbox_proxy.dev_name()
+            == f"low-mccs/smartbox/{station_label}-{int(smartbox_id):02}"
+        ):
+            desired_tango_state = state_mapping[desired_state]
+            if smartbox_proxy.state() != tango.DevState.OFF:
+                set_device_state(
+                    device_proxy=smartbox_proxy,
+                    device_ref="",
+                    state=desired_tango_state,
+                    mode=AdminMode.ONLINE,
+                )
+            return smartbox_proxy
+    assert False, "Device not found"
+
+
+@given(parsers.parse("the smartbox port {smartbox_port} is {desired_state}"))
+def set_smartbox_port_off(
+    smartbox_under_test: tango.DeviceProxy,
+    smartbox_port: str,
+    state_mapping: dict[str, tango.DevState],
+    desired_state: str,
+) -> None:
+    """
+    Check that the fieldstation exists.
+
+    :param smartbox_under_test: the smartbox of interest.
+    :param smartbox_port: the port of interest
+    :param state_mapping: mapping from the reference Gherkin state to
+        a `tango.DevState`.
+    :param desired_state: a Gherkin reference state.
+    """
+    desired_tango_state = state_mapping[desired_state]
+    if desired_tango_state == tango.DevState.OFF:
+        assert not smartbox_under_test.portspowersensed[int(smartbox_port) - 1]
+    else:
+        assert smartbox_under_test.portspowersensed[int(smartbox_port) - 1]
+
+
+@given(parsers.parse("antenna {antenna_no} is {desired_state}"))
+def assert_antenna_on(
+    field_station_device: tango.DeviceProxy,
+    antenna_no: str,
+    state_mapping: dict[str, tango.DevState],
+    desired_state: str,
+) -> None:
+    """
+    Check that the antenna is reported in the correct state.
+
+    :param field_station_device: a proxy to the fieldstation device.
+    :param antenna_no: the logical antenna to check.
+    :param state_mapping: mapping from the reference Gherkin state to
+        a `tango.DevState`.
+    :param desired_state: a Gherkin reference state.
+    """
+    desired_tango_state = state_mapping[desired_state]
+    antenna_power = json.loads(field_station_device.antennapowerstates)[antenna_no]
+
+    if desired_tango_state == tango.DevState.OFF:
+        assert antenna_power == PowerState.OFF
+    else:
+        assert antenna_power == PowerState.ON
+
+
+@when(parsers.parse("we turn {desired_state} antenna {antenna_number}"))
+def turn_antenna_state(
+    field_station_device: tango.DeviceProxy,
+    antenna_number: str,
+    desired_state: str,
+) -> None:
+    """
+    Ask for the port mapping.
+
+    :param field_station_device: a proxy to the field station device.
+    :param antenna_number: the logical antenna to turn on.
+    :param desired_state: a Gherkin reference state.
+    """
+    if desired_state == "OFF":
+        field_station_device.PowerOffAntenna(int(antenna_number))
+    elif desired_state == "ON":
+        field_station_device.PowerOnAntenna(int(antenna_number))
+    else:
+        assert False
+
+
+@then(parsers.parse("antenna {antenna_number} turns {desired_state}"))
+def correct_antenna_turns_on(
+    field_station_device: tango.DeviceProxy,
+    antenna_number: str,
+    desired_state: str,
+) -> None:
+    """
+    Check that the correct antenna turns ON.
+
+    :param field_station_device: a proxy to the field station device.
+    :param antenna_number: the logical antenna to turn on.
+    :param desired_state: a Gherkin reference state.
+    """
+    if desired_state == "OFF":
+        desired_power = PowerState.OFF
+    elif desired_state == "ON":
+        desired_power = PowerState.ON
+
+    ticks = 20
+    tick = 0
+    while tick < ticks:
+        power = json.loads(field_station_device.antennaPowerStates)[antenna_number]
+        if power == desired_power:
+            break
+        time.sleep(3)
+
+    assert power == desired_power
+
+
+@then(parsers.parse("the correct smartbox becomes {desired_state}"))
+def correct_smartbox_turns_on(
+    smartbox_under_test: tango.DeviceProxy,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+    desired_state: str,
+) -> None:
+    """
+    Check the correct smartbox is on.
+
+    :param smartbox_under_test: the smartbox of interest.
+    :param change_event_callbacks: dictionary of Tango change event
+        callbacks with asynchrony support.
+    :param desired_state: a Gherkin reference state.
+    """
+    if desired_state == "OFF":
+        if smartbox_under_test.state() != tango.DevState.OFF:
+            subscription_id = smartbox_under_test.subscribe_event(
+                "state",
+                tango.EventType.CHANGE_EVENT,
+                change_event_callbacks[f"{smartbox_under_test.dev_name()}/state"],
+            )
+            change_event_callbacks[
+                f"{smartbox_under_test.dev_name()}/state"
+            ].assert_change_event(tango.DevState.OFF, lookahead=2)
+            smartbox_under_test.unsubscribe_event(subscription_id)
+
+        assert smartbox_under_test.state() == tango.DevState.OFF
+
+    elif desired_state == "ON":
+        subscription_id = smartbox_under_test.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"{smartbox_under_test.dev_name()}/state"],
+        )
+        change_event_callbacks[
+            f"{smartbox_under_test.dev_name()}/state"
+        ].assert_change_event(tango.DevState.ON, lookahead=2)
+        smartbox_under_test.unsubscribe_event(subscription_id)
+
+        assert smartbox_under_test.state() == tango.DevState.ON
+    else:
+        assert False
+
+
+@then(parsers.parse("smartbox port {smartbox_port} turns {desired_state}"))
+def correct_smartbox_port_turns_off(
+    smartbox_under_test: tango.DeviceProxy,
+    smartbox_port: str,
+    desired_state: str,
+) -> None:
+    """
+    Check that the smartbox under test turns OFF.
+
+    :param smartbox_under_test: the smartbox of interest.
+    :param smartbox_port: the port of interest
+    :param desired_state: a Gherkin reference state.
+    """
+    if desired_state == "OFF":
+        port_has_power = False
+    elif desired_state == "ON":
+        port_has_power = True
+    else:
+        assert False
+    smartbox_index = int(smartbox_port) - 1
+    assert smartbox_under_test.portspowersensed[smartbox_index] == port_has_power
 
 
 @when("we check the fieldstations maps", target_fixture="maps")

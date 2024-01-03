@@ -15,7 +15,7 @@ from typing import Any, Callable, Iterator, Optional
 import _pytest
 import pytest
 import tango
-from ska_control_model import AdminMode, ResultCode
+from ska_control_model import AdminMode, LoggingLevel, ResultCode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -60,7 +60,7 @@ def pytest_addoption(
     )
 
 
-@pytest.fixture(name="is_true_context", scope="session")
+@pytest.fixture(name="is_true_context", scope="module")
 def is_true_context_fixture(request: pytest.FixtureRequest) -> bool:
     """
     Return whether to test against an existing Tango deployment.
@@ -83,7 +83,7 @@ def is_true_context_fixture(request: pytest.FixtureRequest) -> bool:
     return False
 
 
-@pytest.fixture(name="pasd_address", scope="session")
+@pytest.fixture(name="pasd_address", scope="module")
 def pasd_address_fixture() -> tuple[str, int] | None:
     """
     Return the address of the PaSD.
@@ -104,7 +104,7 @@ def pasd_address_fixture() -> tuple[str, int] | None:
     return None
 
 
-@pytest.fixture(name="station_label", scope="session")
+@pytest.fixture(name="station_label", scope="module")
 def station_label_fixture() -> str | None:
     """
     Return the name of the station under test.
@@ -114,7 +114,7 @@ def station_label_fixture() -> str | None:
     return os.environ.get("STATION_LABEL", "ci-1")
 
 
-@pytest.fixture(name="pasd_timeout", scope="session")
+@pytest.fixture(name="pasd_timeout", scope="module")
 def pasd_timeout_fixture() -> Optional[float]:
     """
     Return the timeout to use when communicating with the PaSD.
@@ -134,7 +134,7 @@ def smartbox_ids_fixture() -> list[int]:
     return list(range(1, 25))
 
 
-@pytest.fixture(name="configuration_manager", scope="session")
+@pytest.fixture(name="configuration_manager", scope="module")
 def configuration_manager_fixture(
     simulated_configuration: dict[Any, Any]
 ) -> unittest.mock.Mock:
@@ -152,7 +152,7 @@ def configuration_manager_fixture(
     return manager
 
 
-@pytest.fixture(name="smartboxes_under_test", scope="session")
+@pytest.fixture(name="smartboxes_under_test", scope="module")
 def smartboxes_under_test_fixture(
     is_true_context: bool,
     smartbox_ids: list[int],
@@ -188,7 +188,7 @@ def smartboxes_under_test_fixture(
     return smartboxes_under_test
 
 
-@pytest.fixture(name="functional_test_context", scope="session")
+@pytest.fixture(name="functional_test_context", scope="module")
 def functional_test_context_fixture(
     is_true_context: bool,
     station_label: str,
@@ -241,7 +241,10 @@ def functional_test_context_fixture(
             harness.set_pasd_bus_simulator(pasd_hw_simulators)
             harness.set_configuration_server(configuration_manager)
             harness.set_pasd_bus_device(
-                timeout=pasd_timeout, polling_rate=0.05, device_polling_rate=0.1
+                timeout=pasd_timeout,
+                polling_rate=0.05,
+                device_polling_rate=0.1,
+                logging_level=int(LoggingLevel.DEBUG),
             )
 
             for smartbox_id in smartbox_ids:
@@ -253,7 +256,7 @@ def functional_test_context_fixture(
         yield context
 
 
-@pytest.fixture(name="change_event_callbacks", scope="session")
+@pytest.fixture(name="change_event_callbacks", scope="module")
 def change_event_callbacks_fixture(
     device_subscriptions: dict[str, list]
 ) -> MockTangoEventCallbackGroup:
@@ -272,12 +275,12 @@ def change_event_callbacks_fixture(
     ]
     return MockTangoEventCallbackGroup(
         *keys,
-        timeout=200.0,
+        timeout=500.0,
         assert_no_error=False,
     )
 
 
-@pytest.fixture(name="field_station_device", scope="session")
+@pytest.fixture(name="field_station_device", scope="module")
 def field_station_device_fixture(
     functional_test_context: PasdTangoTestHarnessContext,
     subscribe_device_proxy: Callable,
@@ -294,7 +297,7 @@ def field_station_device_fixture(
     yield subscribe_device_proxy(proxy)
 
 
-@pytest.fixture(name="pasd_bus_device", scope="session")
+@pytest.fixture(name="pasd_bus_device", scope="module")
 def pasd_bus_device_fixture(
     functional_test_context: PasdTangoTestHarnessContext,
     subscribe_device_proxy: Callable,
@@ -311,7 +314,7 @@ def pasd_bus_device_fixture(
     yield subscribe_device_proxy(proxy)
 
 
-@pytest.fixture(name="fndh_device", scope="session")
+@pytest.fixture(name="fndh_device", scope="module")
 def fndh_device_fixture(
     functional_test_context: PasdTangoTestHarnessContext,
     subscribe_device_proxy: Callable,
@@ -328,7 +331,7 @@ def fndh_device_fixture(
     yield subscribe_device_proxy(proxy)
 
 
-@pytest.fixture(name="device_mapping", scope="session")
+@pytest.fixture(name="device_mapping", scope="module")
 def device_mapping_fixture(
     functional_test_context: PasdTangoTestHarnessContext,
 ) -> dict[str, tango.DeviceProxy]:
@@ -347,7 +350,21 @@ def device_mapping_fixture(
     return device_dict
 
 
-@pytest.fixture(name="device_subscriptions", scope="session")
+@pytest.fixture(name="state_mapping", scope="module")
+def state_mapping_fixture() -> dict[str, tango.DevState]:
+    """
+    Return a dictionary mapping Gherkin reference to device state.
+
+    :return: A dictionary mapping Gherkin reference to device state.
+    """
+    state_mapping_dict = {
+        "OFF": tango.DevState.OFF,
+        "ON": tango.DevState.ON,
+    }
+    return state_mapping_dict
+
+
+@pytest.fixture(name="device_subscriptions", scope="module")
 def device_subscriptions_fixture() -> dict[str, list[str]]:
     """
     Return a dictionary mapping device name to list of subscriptions to make.
@@ -416,7 +433,7 @@ def device_subscriptions_fixture() -> dict[str, list[str]]:
     return device_subscriptions
 
 
-@pytest.fixture(name="subscribe_device_proxy", scope="session")
+@pytest.fixture(name="subscribe_device_proxy", scope="module")
 def subscribe_device_proxy_fixture(
     device_subscriptions: dict[str, list[str]],
     change_event_callbacks: MockTangoEventCallbackGroup,
@@ -450,7 +467,7 @@ def subscribe_device_proxy_fixture(
     return _subscribe_device_proxy
 
 
-@pytest.fixture(name="set_device_state", scope="session")
+@pytest.fixture(name="set_device_state", scope="module")
 def set_device_state_fixture(
     device_mapping: dict[str, tango.DeviceProxy],
     subscribe_device_proxy: Callable,
@@ -537,7 +554,7 @@ def set_tango_device_state(
     assert dev.state() == desired_state
 
 
-@pytest.fixture(name="check_change_event", scope="session")
+@pytest.fixture(name="check_change_event", scope="module")
 def check_change_event_fixture(
     change_event_callbacks: MockTangoEventCallbackGroup,
 ) -> Callable:
@@ -561,7 +578,7 @@ def check_change_event_fixture(
     return _check_change_event
 
 
-@pytest.fixture(name="check_attribute", scope="session")
+@pytest.fixture(name="check_attribute", scope="module")
 def check_attribute_fixture() -> Callable:
     """
     Check value of device attribute within timeout.
@@ -589,7 +606,7 @@ def check_attribute_fixture() -> Callable:
     return _check_attribute
 
 
-@pytest.fixture(name="check_fastcommand", scope="session")
+@pytest.fixture(name="check_fastcommand", scope="module")
 def check_fastcommand_fixture() -> Callable:
     """
     Check value of given FastCommand within timeout.

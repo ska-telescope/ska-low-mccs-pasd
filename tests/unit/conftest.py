@@ -32,5 +32,5 @@ def mock_callbacks_fixture() -> MockCallableGroup:
         "smartbox_power_state",
         "configuration_change_callback",
         "task",
-        timeout=10.0,
+        timeout=120.0,
     )

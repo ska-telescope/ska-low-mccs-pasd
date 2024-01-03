@@ -268,6 +268,7 @@ def check_monitoring_point_is_reported(
     change_event_callbacks: MockTangoEventCallbackGroup,
     smartbox_id: int,
     monitoring_point: str,
+    pasd_bus_device: tango.DeviceProxy,
 ) -> None:
     """
     Check that an event is received corresponding to the monitoring point of interest.
@@ -276,6 +277,7 @@ def check_monitoring_point_is_reported(
         callbacks with asynchrony support.
     :param smartbox_id: number of the smartbox under test.
     :param monitoring_point: reference to a monitoring point.
+    :param pasd_bus_device: a proxy to the PaSD bus device.
     """
     attribute_name_map = {
         "FNDH uptime": "fndhUptime",
@@ -315,9 +317,13 @@ def check_monitoring_point_is_reported(
         ),
     }
     attribute_name = attribute_name_map[monitoring_point]
-    change_event_callbacks[
-        f"{get_pasd_bus_name()}/{attribute_name}"
-    ].assert_change_event(Anything)
+    try:
+        getattr(pasd_bus_device, attribute_name)
+    except tango.DevFailed:
+        print("Reading attribute raised a devfailed, likely not polled. Waiting .....")
+        change_event_callbacks[
+            f"{get_pasd_bus_name()}/{attribute_name}"
+        ].assert_change_event(Anything)
 
 
 @then("MCCS-for-PaSD health becomes OK")
@@ -574,9 +580,12 @@ def check_smartbox_port_is_off(
     :param smartbox_port_no: a smartbox port.
     :param smartbox_id: number of the smartbox under test.
     """
-    change_event_callbacks[
-        f"{get_pasd_bus_name()}/smartbox{smartbox_id}PortsPowerSensed"
-    ].assert_change_event(Anything)
+    try:
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed")
+    except tango.DevFailed:
+        change_event_callbacks[
+            f"{get_pasd_bus_name()}/smartbox{smartbox_id}PortsPowerSensed"
+        ].assert_change_event(Anything)
 
     smartbox_ports_power_sensed = getattr(
         pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"

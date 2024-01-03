@@ -199,6 +199,8 @@ class MccsFieldStation(SKABaseDevice):
                     f"power = {power}, "
                     f"fault = {fault}, "
                 )
+                if power is not None:
+                    self.component_manager.smartbox_state_change(device_name, power)
             return
 
         if "outsidetemperature" in kwargs:
