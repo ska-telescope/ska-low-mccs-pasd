@@ -29,6 +29,8 @@ from tests.harness import (
     get_smartbox_name,
 )
 
+# pylint: disable=too-many-lines
+
 
 @pytest.fixture(name="on_antenna_number")
 def on_antenna_number_fixture() -> int:
@@ -231,7 +233,7 @@ def mock_fndh_fixture(
     builder.set_state(tango.DevState.ON)
     builder.add_result_command("PowerOnPort", ResultCode.OK)
     builder.add_result_command("PowerOffPort", ResultCode.OK)
-    builder.add_result_command("SetPortPowers", ResultCode.OK)
+    builder.add_result_command("SetPortPowers", ResultCode.QUEUED)
     builder.add_attribute("OutsideTemperature", mocked_outside_temperature)
     port_powers = [False for _ in range(28)]
     port_powers[on_fndh_port - 1] = True
