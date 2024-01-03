@@ -210,7 +210,7 @@ def mock_smartboxes_fixture(
         if i == on_smartbox_id:
             port_powers[on_smartbox_port - 1] = True
         builder.add_attribute("PortsPowerSensed", port_powers)
-        builder.add_attribute("fndhPort", i)
+        builder.add_attribute("fndhPort", json.dumps(i))
         builder.add_command("dev_name", f"low-mccs/smartbox/ci-1-{i:02d}")
         builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
         smartboxes.append(builder())

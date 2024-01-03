@@ -558,14 +558,20 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 result="All unmasked antennas turned on.",
             )
 
-    def _get_masked_smartboxes(
+    def _get_desired_smartbox_powers(
         self: FieldStationComponentManager,
         desired_fndh_port_powers: list[bool | None],
     ) -> list[bool | None]:
         desired_smartbox_power: list[bool | None] = [None] * len(self._smartbox_proxys)
         for smartbox_idx, smartbox_proxy in enumerate(self._smartbox_proxys):
             assert smartbox_proxy._proxy is not None
-            fndh_port = int(smartbox_proxy._proxy.fndhPort)
+            fndh_port = json.loads(smartbox_proxy._proxy.fndhPort)
+            if fndh_port is None:
+                self.logger.error(
+                    "Unable to determine the smartbox desired power! "
+                    f"smartbox {smartbox_proxy._name} does not know its fndh port"
+                )
+                raise ValueError("Smartbox attribute fndhPort has non integer value.")
             desired_smartbox_power[smartbox_idx] = desired_fndh_port_powers[
                 fndh_port - 1
             ]
@@ -624,7 +630,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         for masked_port in masked_fndh_ports:
             desired_fndh_port_powers[masked_port - 1] = None
 
-        desired_smartbox_power: list = self._get_masked_smartboxes(
+        desired_smartbox_power: list = self._get_desired_smartbox_powers(
             desired_fndh_port_powers
         )
         json_argument = json.dumps(
