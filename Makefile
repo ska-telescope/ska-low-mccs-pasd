@@ -127,6 +127,8 @@ include .make/helm.mk
 
 HELM_CHARTS_TO_PUBLISH = ska-low-mccs-pasd
 
+helm-pre-build:
+	helm repo add skao https://artefact.skao.int/repository/helm-internal
 
 #######################################
 # DOCS
