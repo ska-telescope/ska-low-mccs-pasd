@@ -10,28 +10,30 @@
     {{- $station_enabled := dig "enabled" true $station_spec}}
 
     {{- $pasd_spec := dig "pasd" dict $station_spec}}
-    {{- $pasd_enabled := dig "enabled" $station_enabled $pasd_spec}}
+    {{- if $pasd_spec}}
+      {{- $pasd_enabled := dig "enabled" $station_enabled $pasd_spec}}
 
-    {{- if $pasd_enabled}}
-      {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
+      {{- if $pasd_enabled}}
+        {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
 
-      {{- $pasdbus_instance_configuration := dict}}
-      {{- $_ := set $pasdbus_instance_configuration "configuration_host" (printf "pasd-configuration-server-%s" $station_name)}}
-      {{- $_ := set $pasdbus_instance_configuration "configuration_port" 50034}}
+        {{- $pasdbus_instance_configuration := dict}}
+        {{- $_ := set $pasdbus_instance_configuration "configuration_host" (printf "pasd-configuration-server-%s" $station_name)}}
+        {{- $_ := set $pasdbus_instance_configuration "configuration_port" 50034}}
 
-      {{- $_ := set $pasdbus_instance_configuration "pasd" (dict "smartboxes" dict)}}
-      {{- range $smartbox_id, $smartbox_spec := $pasd_spec.smartboxes}}
-        {{- $_ := set $pasdbus_instance_configuration.pasd.smartboxes $smartbox_id (pick $smartbox_spec "fndh_port")}}
+        {{- $_ := set $pasdbus_instance_configuration "pasd" (dict "smartboxes" dict)}}
+        {{- range $smartbox_id, $smartbox_spec := (dig "smartboxes" dict $pasd_spec)}}
+          {{- $_ := set $pasdbus_instance_configuration.pasd.smartboxes $smartbox_id (pick $smartbox_spec "fndh_port")}}
+        {{- end}}
+
+        {{- $_ := set $pasdbus_instance_configuration "antennas" dict}}
+        {{- range $antenna_id, $antenna_spec := (dig "antennas" dict $station_spec)}}
+          {{- $antenna_config := pick $antenna_spec "smartbox" "smartbox_port"}}
+          {{- $_ := set $antenna_config "masked" (dig "masked" false $antenna_spec)}}
+          {{- $_ := set $pasdbus_instance_configuration.antennas $antenna_id $antenna_config}}
+        {{- end}}
+
+        {{- $_ := set $pasdbus_configuration $station_name $pasdbus_instance_configuration}}
       {{- end}}
-
-      {{- $_ := set $pasdbus_instance_configuration "antennas" dict}}
-      {{- range $antenna_id, $antenna_spec := $station_spec.antennas}}
-        {{- $antenna_config := pick $antenna_spec "smartbox" "smartbox_port"}}
-        {{- $_ := set $antenna_config "masked" (dig "masked" false $antenna_spec)}}
-        {{- $_ := set $pasdbus_instance_configuration.antennas $antenna_id $antenna_config}}
-      {{- end}}
-
-      {{- $_ := set $pasdbus_configuration $station_name $pasdbus_instance_configuration}}
     {{- end}}
   {{- end}}
 {{- end}}
@@ -41,4 +43,3 @@ referenceData:
   pasdconfiguration:
 {{toYaml . | indent 4}}
 {{- end }}
-
