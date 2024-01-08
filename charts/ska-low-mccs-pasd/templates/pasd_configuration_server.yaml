@@ -37,7 +37,7 @@ spec:
       serviceAccountName: config-watcher-acc
       containers:
       - name: {{$value.configuration_host}}
-        image: {{$.Values.image.registry}}/{{$.Values.image.name}}:{{$.Values.image.tag}}
+        image: {{$.Values.image.registry}}/{{$.Values.image.name}}:{{$.Values.image.tag | default $.Chart.AppVersion}}
         imagePullPolicy: IfNotPresent
         command: 
           - "PasdConfigurationServer"

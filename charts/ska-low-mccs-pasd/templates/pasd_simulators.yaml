@@ -36,7 +36,7 @@ spec:
     spec:
       containers:
       - name: simulator-{{$key}}
-        image: {{$.Values.image.registry}}/{{$.Values.image.name}}:{{$.Values.image.tag}}
+        image: {{$.Values.image.registry}}/{{$.Values.image.name}}:{{$.Values.image.tag | default $.Chart.AppVersion}}
         imagePullPolicy: IfNotPresent
         command:
           - "PasdBusSimulatorServer"
