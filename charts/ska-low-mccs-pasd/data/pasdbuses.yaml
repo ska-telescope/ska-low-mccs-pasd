@@ -8,6 +8,8 @@ Define the deployment for MccsSmartbox devices.
           host: 10.137.0.129
           port: 502
           timeout: 10
+          polling_rate: 0.5 # Optional
+          device_polling_rate: 15 # Optional
           logging_level_default: 5
 
 */}}
@@ -41,6 +43,16 @@ server:
                 - name: Timeout
                   values: 
                     - {{quote $this_pasdbus.timeout}}
+{{- with $this_pasdbus.polling_rate}}
+                - name: PollingRate
+                  values: 
+                    - {{quote .}}
+{{- end}}
+{{- with $this_pasdbus.device_polling_rate}}
+                - name: DevicePollingRate
+                  values: 
+                    - {{quote .}}
+{{- end}}
 {{- with $this_pasdbus.logging_level_default}}
                 - name: LoggingLevelDefault
                   values:

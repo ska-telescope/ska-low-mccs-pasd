@@ -22,7 +22,7 @@
       {{- $pasdbus_host := $pasdbus_spec.host}}
       {{- $pasdbus_port := $pasdbus_spec.port}}
 
-      {{- $pasdbus_instance := pick $pasdbus_spec "timeout"}}
+      {{- $pasdbus_instance := pick $pasdbus_spec "timeout" "polling_rate" "device_polling_rate"}}
 
       {{- $pasdbus_logging_level_defaults := pluck "logging_level_default" $pasdbus_spec $defaults}}
       {{- if $pasdbus_logging_level_defaults}}
