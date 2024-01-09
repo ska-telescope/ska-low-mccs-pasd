@@ -259,10 +259,10 @@ def correct_antenna_turns_on(
     desired_state: str,
 ) -> None:
     """
-    Check that the correct antenna turns ON.
+    Check that the correct antenna turns ON or OFF.
 
     :param field_station_device: a proxy to the field station device.
-    :param antenna_number: the logical antenna to turn on.
+    :param antenna_number: the logical antenna to turn on/off.
     :param desired_state: a Gherkin reference state.
     """
     if desired_state == "OFF":
