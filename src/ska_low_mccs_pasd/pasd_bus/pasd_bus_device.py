@@ -581,16 +581,16 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         if pasd_device_number == 0:
             self.component_manager.set_fndh_low_pass_filters(self.LowPassFilterCutoff)
-            # self.component_manager.set_fndh_low_pass_filters(
-            #     self.LowPassFilterCutoff, True
-            # )
+            self.component_manager.set_fndh_low_pass_filters(
+                self.LowPassFilterCutoff, True
+            )
         else:
             self.component_manager.set_smartbox_low_pass_filters(
                 pasd_device_number, self.LowPassFilterCutoff
             )
-            # self.component_manager.set_smartbox_low_pass_filters(
-            #     pasd_device_number, self.LowPassFilterCutoff, True
-            # )
+            self.component_manager.set_smartbox_low_pass_filters(
+                pasd_device_number, self.LowPassFilterCutoff, True
+            )
 
     def create_component_manager(
         self: MccsPasdBus,

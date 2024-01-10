@@ -83,7 +83,8 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
 
         self._initialize_requested: bool = False
         self._led_pattern_requested: str = ""
-        self._low_pass_filter_requested: tuple[float, bool] | None = None
+        self._low_pass_filter_block_1_requested: tuple[float, bool] | None = None
+        self._low_pass_filter_block_2_requested: tuple[float, bool] | None = None
         self._alarm_reset_requested: bool = False
         self._warning_reset_requested: bool = False
         self._port_power_changes: list[tuple[bool, bool] | None] = [
@@ -162,7 +163,10 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         :param extra_sensors: write the constant to the extra sensors' registers after
             the LED status register.
         """
-        self._low_pass_filter_requested = (cutoff, extra_sensors)
+        if extra_sensors:
+            self._low_pass_filter_block_2_requested = (cutoff, True)
+        else:
+            self._low_pass_filter_block_1_requested = (cutoff, False)
 
     def desire_attribute_write(self, attribute_name: str, values: list[Any]) -> None:
         """
@@ -196,9 +200,14 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
             self._attribute_update_requests.append("led_pattern")
             return "LED_PATTERN", pattern
 
-        if self._low_pass_filter_requested is not None:
-            arguments = self._low_pass_filter_requested
-            self._low_pass_filter_requested = None
+        if self._low_pass_filter_block_1_requested is not None:
+            arguments = self._low_pass_filter_block_1_requested
+            self._low_pass_filter_block_1_requested = None
+            return "SET_LOW_PASS_FILTER", arguments
+
+        if self._low_pass_filter_block_2_requested is not None:
+            arguments = self._low_pass_filter_block_2_requested
+            self._low_pass_filter_block_2_requested = None
             return "SET_LOW_PASS_FILTER", arguments
 
         for port, reset in enumerate(self._port_breaker_resets, start=1):
