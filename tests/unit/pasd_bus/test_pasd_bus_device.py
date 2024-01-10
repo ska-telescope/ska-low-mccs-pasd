@@ -16,7 +16,7 @@ import random
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState
+from ska_control_model import AdminMode, HealthState, SimulationMode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
@@ -83,7 +83,7 @@ def pasd_bus_device_fixture(
     harness.set_pasd_bus_device(polling_rate=0.05, device_polling_rate=0.1)
     with harness as context:
         pasd_bus_device = context.get_pasd_bus_device()
-        pasd_bus_device.simulationMode = True
+        pasd_bus_device.simulationMode = SimulationMode.TRUE
         yield pasd_bus_device
 
 
@@ -652,7 +652,7 @@ def test_fndh_low_pass_filters(
     :param change_event_callbacks: dictionary of mock change event
         callbacks with asynchrony support
     """
-    pasd_bus_device.simulationMode = False
+    pasd_bus_device.simulationMode = SimulationMode.FALSE
     assert pasd_bus_device.adminMode == AdminMode.OFFLINE
     pasd_bus_device.subscribe_event(
         "state",
@@ -972,7 +972,7 @@ def test_smartbox_low_pass_filters(
     :param change_event_callbacks: dictionary of mock change event
         callbacks with asynchrony support
     """
-    pasd_bus_device.simulationMode = False
+    pasd_bus_device.simulationMode = SimulationMode.FALSE
     assert pasd_bus_device.adminMode == AdminMode.OFFLINE
     pasd_bus_device.subscribe_event(
         "state",

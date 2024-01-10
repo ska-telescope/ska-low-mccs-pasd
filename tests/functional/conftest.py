@@ -15,7 +15,7 @@ from typing import Any, Callable, Iterator, Optional
 import _pytest
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel, ResultCode
+from ska_control_model import AdminMode, LoggingLevel, ResultCode, SimulationMode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -311,7 +311,7 @@ def pasd_bus_device_fixture(
     :yields: A proxy to an instance of MccsPasdBus.
     """
     proxy = functional_test_context.get_pasd_bus_device()
-    proxy.simulationMode = True
+    proxy.simulationMode = SimulationMode.TRUE
     yield subscribe_device_proxy(proxy)
 
 

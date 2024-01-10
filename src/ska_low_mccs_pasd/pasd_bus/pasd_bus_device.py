@@ -17,7 +17,13 @@ import traceback
 from typing import Any, Final, Optional, cast
 
 import tango.server
-from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
+from ska_control_model import (
+    CommunicationStatus,
+    HealthState,
+    PowerState,
+    ResultCode,
+    SimulationMode,
+)
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidator
 from tango.device_attribute import ExtractAs
@@ -575,16 +581,16 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         if pasd_device_number == 0:
             self.component_manager.set_fndh_low_pass_filters(self.LowPassFilterCutoff)
-            self.component_manager.set_fndh_low_pass_filters(
-                self.LowPassFilterCutoff, True
-            )
+            # self.component_manager.set_fndh_low_pass_filters(
+            #     self.LowPassFilterCutoff, True
+            # )
         else:
             self.component_manager.set_smartbox_low_pass_filters(
                 pasd_device_number, self.LowPassFilterCutoff
             )
-            self.component_manager.set_smartbox_low_pass_filters(
-                pasd_device_number, self.LowPassFilterCutoff, True
-            )
+            # self.component_manager.set_smartbox_low_pass_filters(
+            #     pasd_device_number, self.LowPassFilterCutoff, True
+            # )
 
     def create_component_manager(
         self: MccsPasdBus,
@@ -798,7 +804,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     # Register a request to read the static info and thresholds
                     self.component_manager.request_startup_info(pasd_device_number)
                     # Set the device's low-pass filter constants
-                    if self._simulation_mode is False:
+                    if self._simulation_mode == SimulationMode.FALSE:
                         self._set_all_low_pass_filters_of_device(pasd_device_number)
 
             if self._pasd_state[tango_attribute_name] != pasd_attribute_value:
@@ -1033,7 +1039,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :return: A tuple containing a result code and a human-readable status message.
         """
-        if self._simulation_mode:
+        if self._simulation_mode == SimulationMode.TRUE:
             return (
                 [ResultCode.NOT_ALLOWED],
                 ["SetFndhLowPassFilters is not supported by the simulator"],
@@ -1360,7 +1366,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :return: A tuple containing a result code and a human-readable status message.
         """
-        if self._simulation_mode:
+        if self._simulation_mode == SimulationMode.TRUE:
             return (
                 [ResultCode.NOT_ALLOWED],
                 ["SetSmartboxLowPassFilters is not supported by the simulator"],
