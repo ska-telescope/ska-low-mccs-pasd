@@ -13,9 +13,10 @@ from typing import Any, Generator
 from unittest import mock
 
 import pytest
+from pymodbus.exceptions import ModbusIOException
 from pymodbus.factory import ClientDecoder
 from pymodbus.framer.ascii_framer import ModbusAsciiFramer
-from pymodbus.pdu import ExceptionResponse
+from pymodbus.pdu import ExceptionResponse, ModbusExceptions
 from pymodbus.register_read_message import (
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
@@ -37,6 +38,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     LedServiceMap,
     LedStatusMap,
 )
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_modbus_api import MODBUS_EXCEPTIONS
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import PasdCommandStrings
 from tests.harness import PasdTangoTestHarness
 
@@ -204,9 +206,11 @@ class TestPasdBusModbusApi:
             if isinstance(message, ExceptionResponse):
                 assert message.slave_id == slave
                 assert message.registers == []
-                # Illegal Data Address
-                assert message.function_code == 0x83
-                assert message.exception_code == 0x02
+                assert (
+                    message.function_code
+                    == 0x80 | ReadHoldingRegistersRequest.function_code
+                )
+                assert message.exception_code == ModbusExceptions.IllegalAddress
 
         decoder = ModbusAsciiFramer(ClientDecoder())
         decoder.processIncomingPacket(response_bytes, _handle_reply, slave)
@@ -247,9 +251,11 @@ class TestPasdBusModbusApi:
             if isinstance(message, ExceptionResponse):
                 assert message.slave_id == slave
                 assert message.registers == []
-                # Gateway target device failed to respond
-                assert message.function_code == 0x83
-                assert message.exception_code == 0x0B
+                assert (
+                    message.function_code
+                    == 0x80 | ReadHoldingRegistersRequest.function_code
+                )
+                assert message.exception_code == ModbusExceptions.GatewayNoResponse
 
         decoder = ModbusAsciiFramer(ClientDecoder())
         decoder.processIncomingPacket(response_bytes, _handle_reply, slave)
@@ -332,9 +338,11 @@ class TestPasdBusModbusApi:
             if isinstance(message, ExceptionResponse):
                 assert message.slave_id == slave
                 assert message.registers == []
-                # Illegal Data Address
-                assert message.function_code == 0x90
-                assert message.exception_code == 0x02
+                assert (
+                    message.function_code
+                    == 0x80 | WriteMultipleRegistersRequest.function_code
+                )
+                assert message.exception_code == ModbusExceptions.IllegalAddress
 
         decoder = ModbusAsciiFramer(ClientDecoder())
         decoder.processIncomingPacket(response_bytes, _handle_reply, slave)
@@ -370,7 +378,11 @@ class TestPasdBusModbusApiClient:
     @pytest.mark.parametrize(
         ("slave", "attribute", "expected"),
         [
-            (0, "fncb_temperature", FndhSimulator.DEFAULT_FNCB_TEMPERATURE / 100),
+            (
+                0,
+                "modbus_register_map_revision",
+                FndhSimulator.MODBUS_REGISTER_MAP_REVISION,
+            ),
             (1, "input_voltage", SmartboxSimulator.DEFAULT_INPUT_VOLTAGE / 100),
         ],
     )
@@ -528,9 +540,10 @@ class TestPasdBusModbusApiClient:
 
         :param api: the API under test
         """
-        response = api.execute_command(0, "nonexistent command", 0)
+        response = api.execute_command(0, "DummyCommand", 0)
         assert response["error"]["code"] == "request"
         assert "Invalid command request" in response["error"]["detail"]
+        print("\n" + response["error"]["detail"])
 
     def test_read_nonexistent_attribute(
         self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
@@ -543,6 +556,36 @@ class TestPasdBusModbusApiClient:
         response = api.read_attributes(0, "nonexistent attribute")
         assert response == {}
 
+    def test_read_exception(
+        self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
+    ) -> None:
+        """
+        Test reading attribute that exists in the register map, but not in simulator.
+
+        :param api: the API under test
+        """
+        # TODO: Do we expect this exception from the HW?
+        with pytest.raises(ModbusIOException) as exception:
+            api.read_attributes(0, "dummy_for_test")
+        assert (
+            "Modbus Error: [Input/Output] No Response received from the remote slave/"
+            "Unable to decode response" in str(exception.value)
+        )
+        print("\n" + str(exception.value))
+
+    def test_read_non_contiguous_error(
+        self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
+    ) -> None:
+        """
+        Test exception handling of reading multiple non-contiguous attributes.
+
+        :param api: the API under test
+        """
+        response = api.read_attributes(25, "input_voltage", "pcb_temperature")
+        assert response["error"]["code"] == "request"
+        assert "Non-contiguous registers requested" in response["error"]["detail"]
+        print("\n" + response["error"]["detail"])
+
     def test_read_unresponsive_device(
         self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
     ) -> None:
@@ -553,7 +596,28 @@ class TestPasdBusModbusApiClient:
         """
         response = api.read_attributes(25, "input_voltage")
         assert response["error"]["code"] == "read"
-        assert "GatewayNoResponse" in response["error"]["detail"]
+        assert (
+            MODBUS_EXCEPTIONS[ModbusExceptions.GatewayNoResponse]
+            in response["error"]["detail"]
+        )
+        print("\n" + response["error"]["detail"])
+
+    def test_write_nonexistent_attribute(
+        self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
+    ) -> None:
+        """
+        Test handling of an attribute write request for a nonexistent attribute.
+
+        :param api: the API under test
+        """
+        # TODO: Do we expect this exception from the HW?
+        with pytest.raises(ModbusIOException) as exception:
+            api.write_attribute(0, "dummy_for_test", 1, 2)
+        assert (
+            "Modbus Error: [Input/Output] No Response received from the remote slave/"
+            "Unable to decode response" in str(exception.value)
+        )
+        print("\n" + str(exception.value))
 
     def test_write_read_only_attribute(
         self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
@@ -568,6 +632,7 @@ class TestPasdBusModbusApiClient:
         assert (
             "Non-writeable register requested for write" in response["error"]["detail"]
         )
+        print("\n" + response["error"]["detail"])
 
     def test_write_unresponsive_device(
         self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
@@ -578,6 +643,9 @@ class TestPasdBusModbusApiClient:
         :param api: the API under test
         """
         response = api.write_attribute(25, "input_voltage_thresholds", 4, 3, 2, 1)
-        print(response)
         assert response["error"]["code"] == "write"
-        assert "GatewayNoResponse" in response["error"]["detail"]
+        assert (
+            MODBUS_EXCEPTIONS[ModbusExceptions.GatewayNoResponse]
+            in response["error"]["detail"]
+        )
+        print("\n" + response["error"]["detail"])
