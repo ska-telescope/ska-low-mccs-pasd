@@ -820,6 +820,10 @@ class PasdBusRegisterMap:
         to a Smartbox or FNDH telemetry register to enable low-pass filtering with that
         cut-off frequency.
 
+        TODO: This function was copied from Curtin's codebase and is yet to be confirmed
+        to calculate the correct value. We cannot validate it independently from the
+        original firmware author.
+
         :param cutoff: Low-pass cut-off frequency in Hz.
         :return: 16-bit register value to write to enable filtering,
             or None if given cutoff is invalid.
