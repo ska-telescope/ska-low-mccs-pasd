@@ -317,7 +317,7 @@ class PasdBusModbusApiClient:
         self._client.close()
 
     def _create_error_response(self, error_code: str, message: str) -> dict:
-        self._logger.error(f"{message}")
+        self._logger.error(message)
         return {
             "error": {
                 "code": error_code,
