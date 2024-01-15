@@ -71,7 +71,7 @@ repositories:
 
 releases:
   - name: ska-low-mccs-pasd
-    namespace: ska-low-mccs
+    namespace: {{.Namespace | default "ska-low-mccs"}}
     chart: ../charts/ska-low-mccs-pasd
     version: ~0.5.0
     values:
@@ -87,7 +87,7 @@ releases:
 {{- $tango_host_provided := dig "overrides" "cluster" "services" "tango-base" "tango-host" $_tango_host_provided .Values}}
 {{- if not $tango_host_provided}}
   - name: ska-tango-base
-    namespace: ska-low-mccs
+    namespace: {{.Namespace | default "ska-low-mccs"}}
     chart: skao/ska-tango-base
     version: ~0.4.7
     values:
@@ -98,7 +98,7 @@ releases:
 {{- $jupyterhub_provided := dig "overrides" "cluster" "services" "jupyterhub" $_jupyterhub_provided .Values}}
 {{- if not $jupyterhub_provided}}
   - name: jupyterhub
-    namespace: ska-low-mccs
+    namespace: {{.Namespace | default "ska-low-mccs"}}
     chart: jupyterhub/jupyterhub
     version: 3.0.0
     values:
@@ -109,9 +109,9 @@ releases:
 {{- $taranta_platform_provided := dig "overrides" "cluster" "services" "taranta-platform" $_taranta_platform_provided .Values}}
 {{- if not $taranta_platform_provided}}
   - name: taranta-dshbrd
-    namespace: ska-low-mccs
+    namespace: {{.Namespace | default "ska-low-mccs"}}
     chart: skao/ska-tango-taranta-dashboard
-    version: ~1.4.1
+    version: 1.4.1
     values:
       - ingress:
           enabled: true
@@ -120,10 +120,10 @@ releases:
   - name: taranta-dashboard-pvc
     namespace: ska-low-mccs
     chart: skao/ska-tango-taranta-dashboard-pvc
-    version: ~1.4.1
+    version: 1.4.1
 
   - name: taranta-auth
-    namespace: ska-low-mccs
+    namespace: {{.Namespace | default "ska-low-mccs"}}
     chart: skao/ska-tango-taranta-auth
     version: ~0.1.9
     values:
@@ -133,14 +133,14 @@ releases:
 {{- end}}
 
   - name: taranta
-    namespace: ska-low-mccs
+    namespace: {{.Namespace | default "ska-low-mccs"}}
     chart: skao/ska-tango-taranta
-    version: ~2.4.2
+    version: ~2.5.1
     values:
       - values/taranta.yaml
 
   - name: tangogql
-    namespace: ska-low-mccs
+    namespace: {{.Namespace | default "ska-low-mccs"}}
     chart: skao/ska-tango-tangogql
     version: ~1.3.10
     values:
