@@ -73,7 +73,7 @@ releases:
   - name: ska-low-mccs-pasd
     namespace: {{.Namespace | default "ska-low-mccs"}}
     chart: ../charts/ska-low-mccs-pasd
-    version: ~0.5.0
+    version: ~0.6.0
     values:
       - values/globals.yaml.gotmpl
       - pasd/templates/fieldstations.yaml.gotmpl
