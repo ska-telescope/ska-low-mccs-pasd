@@ -2,14 +2,24 @@
 Feature: Monitoring and control of PaSD
     Test that MCCS subsystem can monitor and control a PaSD system.
 
-    @XTP-20301 @XTP-21594
-    Scenario: Monitor PaSD
+    Scenario: Turn on MCCS-for-PaSD
         Given A MCCS-for-PaSD which is not ready
-        And a smartbox
         And MCCS-for-PaSD is in DISABLE state
         And MCCS-for-PaSD has UNKNOWN health
+        And a smartbox
         When MCCS-for-PaSD adminMode is set to ONLINE
         Then MCCS-for-PaSD reports ON state
+
+    @XTP-20301 @XTP-21594
+    Scenario: Monitor PaSD
+        Given A MCCS-for-PaSD which is ready
+        And MCCS-for-PaSD is in ON state
+        And a smartbox
+        And the FNDH is initialized
+        And a FNDH port
+        And the FNDH port is off
+        When I tell MCCS-for-PaSD to turn the FNDH port on
+        Then the FNDH port turns on
         And MCCS-for-PaSD reports its FNDH uptime
         And MCCS-for-PaSD reports its FNDH status
         And MCCS-for-PaSD reports its FNDH LED pattern
@@ -59,6 +69,9 @@ Feature: Monitoring and control of PaSD
     Scenario: Turn on smartbox port
         Given A MCCS-for-PaSD which is ready
         And MCCS-for-PaSD is in ON state
+        And the FNDH is initialized
+        And a FNDH port
+        And the FNDH port is on
         And a smartbox
         And the smartbox is initialized
         And a smartbox port
@@ -70,6 +83,9 @@ Feature: Monitoring and control of PaSD
     Scenario: Turn off smartbox port
         Given A MCCS-for-PaSD which is ready
         And MCCS-for-PaSD is in ON state
+        And the FNDH is initialized
+        And a FNDH port
+        And the FNDH port is on
         And a smartbox
         And the smartbox is initialized
         And a smartbox port

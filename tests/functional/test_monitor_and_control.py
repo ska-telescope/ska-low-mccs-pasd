@@ -29,6 +29,19 @@ NUMBER_OF_SMARTBOX_PORTS = 12
 
 @scenario(
     "features/monitor_and_control.feature",
+    "Turn on MCCS-for-PaSD",
+)
+def test_set_online() -> None:
+    """
+    Test basic monitoring of a PaSD.
+
+    Any code in this scenario method is run at the *end* of the
+    scenario.
+    """
+
+
+@scenario(
+    "features/monitor_and_control.feature",
     "Monitor PaSD",
 )
 def test_monitoring() -> None:
@@ -141,7 +154,7 @@ def fndh_port_no_fixture() -> int:
 
     :return: the number of the FNDH port under test.
     """
-    return 28
+    return 1
 
 
 @given("a smartbox", target_fixture="smartbox_id")
@@ -343,36 +356,6 @@ def check_health_becomes_okay(
     )
 
 
-@given("a connected FNDH port", target_fixture="connected_fndh_port")
-def find_connected_fndh_port(
-    pasd_bus_device: tango.DeviceProxy,
-    change_event_callbacks: MockTangoEventCallbackGroup,
-) -> int:
-    """
-    Find and return a connected FNDH port.
-
-    :param pasd_bus_device: a proxy to the PaSD bus device.
-    :param change_event_callbacks: dictionary of Tango change event
-        callbacks with asynchrony support.
-
-    :return: the port number of the FNDH port that was checked.
-        This will be a port that has a smartbox connected, so that the
-        port can be turned on and power will be sensed.
-    """
-    try:
-        fndh_connected_ports = list(pasd_bus_device.fndhPortsPowerSensed)
-    except tango.DevFailed:
-        change_event_callbacks[
-            f"{get_pasd_bus_name()}/fndhPortsConnected"
-        ].assert_change_event(
-            Anything,
-        )
-        fndh_connected_ports = list(pasd_bus_device.fndhPortsPowerSensed)
-
-    connected_fndh_port = fndh_connected_ports.index(True) + 1
-    return connected_fndh_port
-
-
 @given("the FNDH port is off")
 def check_fndh_port_is_off(
     pasd_bus_device: tango.DeviceProxy,
@@ -515,53 +498,6 @@ def check_fndh_port_changes_power_state(
     )
     powered = list(pasd_bus_device.fndhPortsPowerSensed)
     assert powered[fndh_port_no - 1] == state_map[state_name]
-
-
-@given("a connected smartbox port", target_fixture="connected_smartbox_port")
-def find_connected_smartbox_port(
-    pasd_bus_device: tango.DeviceProxy,
-    smartbox_id: int,
-    change_event_callbacks: MockTangoEventCallbackGroup,
-) -> int:
-    """
-    Find and return a connected smartbox port.
-
-    :param pasd_bus_device: a proxy to the PaSD bus device.
-    :param smartbox_id: number of the smartbox under test.
-    :param change_event_callbacks: dictionary of Tango change event
-        callbacks with asynchrony support.
-
-    :return: the port number of the smartbox port that was checked.
-        This will be a port that has an antenna connected, so that the
-        port can be turned on and power will be sensed.
-    """
-    smartbox_port_number = 1
-    desired_port_powers: list[bool | None] = [None] * NUMBER_OF_SMARTBOX_PORTS
-    desired_port_powers[smartbox_port_number - 1] = True
-
-    json_argument = json.dumps(
-        {
-            "smartbox_number": smartbox_id,
-            "port_powers": desired_port_powers,
-            "stay_on_when_offline": True,
-        }
-    )
-
-    try:
-        pasd_bus_device.SetSmartboxPortPowers(json_argument)
-        smartbox_connected_ports = list(
-            getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed")
-        )
-    except tango.DevFailed:
-        change_event_callbacks[
-            f"{get_pasd_bus_name()}/smartbox{smartbox_id}PortsConnected"
-        ].assert_change_event(Anything)
-        smartbox_connected_ports = list(
-            getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed")
-        )
-
-    connected_smartbox_port = smartbox_connected_ports.index(True) + 1
-    return connected_smartbox_port
 
 
 @given("the smartbox port is off")

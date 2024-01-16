@@ -189,7 +189,7 @@ def smartboxes_under_test_fixture(
 
 
 @pytest.fixture(name="functional_test_context", scope="module")
-def functional_test_context_fixture(
+def functional_test_context_fixture(  # pylint: disable=too-many-arguments
     is_true_context: bool,
     station_label: str,
     pasd_address: tuple[str, int] | None,
@@ -226,16 +226,12 @@ def functional_test_context_fixture(
             # pylint: disable-next=import-outside-toplevel
             from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import PasdBusSimulator
 
+            # Initialise simulator
             pasd_bus_simulator = PasdBusSimulator(
                 pasd_config_path,
                 station_label,
                 smartboxes_depend_on_attached_ports=True,
             )
-            # Initialize all smartbox simulators
-            fndh_simulator = pasd_bus_simulator.get_fndh()
-            fndh_simulator.initialize()
-            for port_nr in pasd_bus_simulator.get_smartbox_attached_ports():
-                fndh_simulator.turn_port_on(port_nr)
             pasd_hw_simulators = pasd_bus_simulator.get_fndh_and_smartboxes()
             # Set devices for test harness
             harness.set_pasd_bus_simulator(pasd_hw_simulators)
