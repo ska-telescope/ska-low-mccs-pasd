@@ -311,7 +311,6 @@ def pasd_bus_device_fixture(
     :yields: A proxy to an instance of MccsPasdBus.
     """
     proxy = functional_test_context.get_pasd_bus_device()
-    proxy.simulationMode = SimulationMode.TRUE
     yield subscribe_device_proxy(proxy)
 
 
@@ -490,6 +489,7 @@ def set_device_state_fixture(
         device_ref: str,
         state: tango.DevState,
         mode: AdminMode,
+        simulation_mode: SimulationMode,
         device_proxy: Optional[tango.DeviceProxy] = None,
     ) -> None:
         if device_proxy is None:
@@ -500,6 +500,7 @@ def set_device_state_fixture(
 
         admin_mode_callback = change_event_callbacks[f"{device_name}/adminMode"]
         state_callback = change_event_callbacks[f"{device_name}/state"]
+        device_proxy.simulationMode = simulation_mode
         if device_proxy.adminMode != mode:
             device_proxy.adminMode = mode
             admin_mode_callback.assert_change_event(mode)

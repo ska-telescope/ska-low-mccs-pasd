@@ -213,7 +213,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     PollingRate = tango.server.device_property(dtype=float, default_value=0.5)
     DevicePollingRate = tango.server.device_property(dtype=float, default_value=15.0)
     Timeout = tango.server.device_property(dtype=float)
-    LowPassFilterCutoff = tango.server.device_property(dtype=float, default_value=10.0)
+    LowPassFilterCutoff = tango.server.device_property(
+        dtype=float, default_value=10.0, update_db=True
+    )
 
     # ---------------
     # Initialisation
@@ -225,6 +227,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         This is overridden here to change the Tango serialisation model.
         """
         super().init_device()
+        self._init_pasd_devices = True
 
         self._build_state: str = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
@@ -718,6 +721,15 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         self._health_model.update_state(communicating=True)
 
+        if (
+            self._init_pasd_devices
+            and self._simulation_mode == SimulationMode.FALSE
+            and communication_state == CommunicationStatus.ESTABLISHED
+        ):
+            self._init_pasd_devices = False
+            for device_number in range(PasdData.NUMBER_OF_SMARTBOXES + 1):
+                self._set_all_low_pass_filters_of_device(device_number)
+
     def _component_state_callback(
         self: MccsPasdBus,
         fault: Optional[bool] = None,
@@ -730,13 +742,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         This is a callback hook, called by the component manager when
         the state of the component changes.
 
-        Note this the "component" is the PaSD bus itself,
+        Note that this "component" is the PaSD bus itself,
         and the PaSD bus has no monitoring points.
         All we can do is infer that it is powered on and not in fault,
         from the fact that we receive responses to our requests.
 
         The responses themselves deliver information about
-        the state of the devices attached the bus.
+        the state of the devices attached to the bus.
         This payload is handled by a different callback.
 
         :param fault: whether the component is in fault.
@@ -1047,6 +1059,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         handler = self.get_command_object("SetFndhLowPassFilters")
         success = handler(argin)
         if success:
+            self.LowPassFilterCutoff = json.loads(argin)["cutoff"]
             return ([ResultCode.OK], ["SetFndhLowPassFilters succeeded"])
         if success is None:
             return (
@@ -1374,6 +1387,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         handler = self.get_command_object("SetSmartboxLowPassFilters")
         success = handler(argin)
         if success:
+            self.LowPassFilterCutoff = json.loads(argin)["cutoff"]
             return ([ResultCode.OK], ["SetSmartboxLowPassFilters succeeded"])
         if success is None:
             return (

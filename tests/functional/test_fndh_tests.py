@@ -14,7 +14,7 @@ from typing import Callable
 
 import tango
 from pytest_bdd import given, parsers, scenario, then, when
-from ska_control_model import AdminMode, PowerState, ResultCode
+from ska_control_model import AdminMode, PowerState, ResultCode, SimulationMode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from tests.harness import get_pasd_bus_name
@@ -41,7 +41,12 @@ def get_ready_device(device_ref: str, set_device_state: Callable) -> None:
     :param set_device_state: function to set device state.
     """
     print(f"Setting device {device_ref} ready...")
-    set_device_state(device_ref, state=tango.DevState.ON, mode=AdminMode.ONLINE)
+    set_device_state(
+        device_ref,
+        state=tango.DevState.ON,
+        mode=AdminMode.ONLINE,
+        simulation_mode=SimulationMode.TRUE,
+    )
 
 
 @then(

@@ -16,7 +16,7 @@ from typing import Any, Callable, Final
 import jsonschema
 import tango
 from pytest_bdd import given, parsers, scenarios, then, when
-from ska_control_model import AdminMode, PowerState
+from ska_control_model import AdminMode, PowerState, SimulationMode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 gc.disable()
@@ -103,7 +103,12 @@ def get_ready_device(device_ref: str, set_device_state: Callable) -> None:
     :param set_device_state: function to set device state.
     """
     print(f"Setting device {device_ref} ready...")
-    set_device_state(device_ref, state=tango.DevState.ON, mode=AdminMode.ONLINE)
+    set_device_state(
+        device_ref,
+        state=tango.DevState.ON,
+        mode=AdminMode.ONLINE,
+        simulation_mode=SimulationMode.TRUE,
+    )
 
 
 @given("PasdBus is initialised")
@@ -137,6 +142,7 @@ def get_device_ready(
             device_ref="",
             state=tango.DevState.ON,
             mode=AdminMode.ONLINE,
+            simulation_mode=SimulationMode.TRUE,
         )
 
 
@@ -178,6 +184,7 @@ def set_smartbox_off(
                     device_ref="",
                     state=desired_tango_state,
                     mode=AdminMode.ONLINE,
+                    simulation_mode=SimulationMode.TRUE,
                 )
             return smartbox_proxy
     assert False, "Device not found"
