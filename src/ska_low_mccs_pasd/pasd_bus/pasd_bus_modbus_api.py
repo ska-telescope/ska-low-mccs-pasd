@@ -55,7 +55,7 @@ MODBUS_EXCEPTIONS: Final = {
 class PasdBusModbusApi:
     """A Modbus API for a PaSD bus simulator."""
 
-    def __init__(self, simulators: dict, logger: logging.logger) -> None:
+    def __init__(self, simulators: dict, logger: logging.Logger) -> None:
         """
         Initialise a new instance.
 

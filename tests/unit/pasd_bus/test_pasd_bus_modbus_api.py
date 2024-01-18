@@ -111,7 +111,7 @@ class TestPasdBusModbusApi:
             0: backend_fndh,
             1: backend_smartbox,
         }
-        return PasdBusModbusApi(backend_mocks)
+        return PasdBusModbusApi(backend_mocks, logging.getLogger())
 
     # pylint: disable=too-many-arguments
     @pytest.mark.parametrize(
