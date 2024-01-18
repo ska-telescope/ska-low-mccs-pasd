@@ -36,8 +36,6 @@ from .pasd_bus_register_map import (
     PasdWriteError,
 )
 
-logger = logging.getLogger()
-
 FNDH_MODBUS_ADDRESS: Final = 101
 
 # Modbus Function/Exception Codes implemented in PaSD firmware
@@ -57,12 +55,13 @@ MODBUS_EXCEPTIONS: Final = {
 class PasdBusModbusApi:
     """A Modbus API for a PaSD bus simulator."""
 
-    def __init__(self, simulators: dict) -> None:
+    def __init__(self, simulators: dict, logger: logging.logger) -> None:
         """
         Initialise a new instance.
 
         :param simulators: dictionary of simulators (FNDH and smartbox)
             that this API fronts.
+        :param logger: the logger to use
 
         """
         self._simulators = simulators
@@ -70,6 +69,7 @@ class PasdBusModbusApi:
         self._decoder = ModbusAsciiFramer(ServerDecoder(), client=None)
         self.responder_ids = list(range(len(simulators)))
         self._register_map = PasdBusRegisterMap()
+        self._logger = logger
 
     # pylint: disable=too-many-return-statements
     def _convert_value(
@@ -113,14 +113,16 @@ class PasdBusModbusApi:
             try:
                 unconverted_value = getattr(self._simulators[device_id], name)
             except KeyError:
-                logger.error(f"Simulator {device_id} not available")
+                self._logger.error(f"Simulator {device_id} not available")
                 return ExceptionResponse(
                     ReadHoldingRegistersRequest.function_code,
                     ModbusExceptions.GatewayNoResponse,
                     slave=device_id,
                 )
             except AttributeError:
-                logger.error(f"No attribute exists at address {attr.address}: {name}")
+                self._logger.error(
+                    f"No attribute exists at address {attr.address}: {name}"
+                )
                 return ExceptionResponse(
                     ReadHoldingRegistersRequest.function_code,
                     ModbusExceptions.IllegalAddress,
@@ -163,14 +165,16 @@ class PasdBusModbusApi:
                 else:
                     setattr(self._simulators[device_id], name, reg_vals)
             except KeyError:
-                logger.error(f"Simulator {device_id} not available")
+                self._logger.error(f"Simulator {device_id} not available")
                 return ExceptionResponse(
                     WriteMultipleRegistersRequest.function_code,
                     ModbusExceptions.GatewayNoResponse,
                     slave=device_id,
                 )
             except AttributeError:
-                logger.error(f"No attribute exists at address {attr.address}: {name}")
+                self._logger.error(
+                    f"No attribute exists at address {attr.address}: {name}"
+                )
                 return ExceptionResponse(
                     WriteMultipleRegistersRequest.function_code,
                     ModbusExceptions.IllegalAddress,
@@ -179,7 +183,7 @@ class PasdBusModbusApi:
         return None
 
     def _handle_no_match(self, message: Any) -> ExceptionResponse:
-        logger.error(f"No match found for request {message}")
+        self._logger.error(f"No match found for request {message}")
         return ExceptionResponse(
             message.function_code,
             ModbusExceptions.IllegalFunction,
@@ -360,9 +364,9 @@ class PasdBusModbusApiClient:
             + attributes[keys[-1]].count
             - attributes[keys[0]].address
         )
-        logger.debug(
+        self._logger.debug(
             f"Modbus read request: modbus address {modbus_address}, "
-            f"start address {attributes[keys[0]].address}, count {count}"
+            f"start register {attributes[keys[0]].address}, count {count}"
         )
 
         reply = self._client.read_holding_registers(
