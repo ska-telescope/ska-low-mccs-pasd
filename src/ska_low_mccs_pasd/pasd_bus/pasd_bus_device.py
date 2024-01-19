@@ -32,6 +32,7 @@ from tango.server import command
 from ska_low_mccs_pasd.pasd_data import PasdData
 
 from .pasd_bus_component_manager import PasdBusComponentManager
+from .pasd_bus_conversions import FndhStatusMap
 from .pasd_bus_health_model import PasdBusHealthModel
 
 __all__ = ["MccsPasdBus", "main"]
@@ -798,20 +799,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 )
                 # Continue on to allow other attributes to be updated
 
-            if pasd_attribute_name == "uptime":
+            if pasd_attribute_name == "status":
                 # Determine if the device has been reset or powered on since
-                # MCCS was started by checking if the uptime is less than
-                # the previously polled value, or if we don't yet have a
-                # value for the chip ID which is only polled at startup
-                previous_uptime = self._pasd_state[tango_attribute_name]
-                chip_id = (
-                    self._pasd_state["fndhChipId"]
-                    if pasd_device_number == 0
-                    else self._pasd_state[f"smartbox{pasd_device_number}ChipId"]
-                )
-                if chip_id is None or (
-                    previous_uptime is not None
-                    and pasd_attribute_value < previous_uptime
+                # MCCS was started by checking if its status changed to UNINITIALISED
+                previous_status = self._pasd_state[tango_attribute_name]
+                if (
+                    pasd_attribute_value == FndhStatusMap.UNINITIALISED.name
+                    and pasd_attribute_value != previous_status
                 ):
                     # Register a request to read the static info and thresholds
                     self.component_manager.request_startup_info(pasd_device_number)
