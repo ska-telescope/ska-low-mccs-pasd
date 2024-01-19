@@ -329,7 +329,7 @@ class TestSmartBoxPasdBusIntegration:
 
         # Smartbox start communicating without the MccsPaSDBus
         # communicating with PaSD system.
-        smartbox_device.adminMode = 0
+        smartbox_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.UNKNOWN
         )
@@ -338,7 +338,7 @@ class TestSmartBoxPasdBusIntegration:
         # MccsPaSD started communicating
         # The smartbox should change state since it requires
         # only the MccsPasd to determine its state.
-        pasd_bus_device.adminMode = 0
+        pasd_bus_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.UNKNOWN
         )
@@ -352,14 +352,14 @@ class TestSmartBoxPasdBusIntegration:
         # it should transition to ON (always on).
         # The smartbox should not change state,
         # because it does not depend on FNDH device in any way.
-        fndh_device.adminMode = 0
+        fndh_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["fndh_state"].assert_not_called()
         change_event_callbacks["pasd_bus_state"].assert_not_called()
         change_event_callbacks["smartbox_state"].assert_not_called()
 
-        pasd_bus_device.adminMode = 1
+        pasd_bus_device.adminMode = AdminMode.OFFLINE
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.DISABLE
         )
@@ -371,7 +371,7 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["fndh_state"].assert_not_called()
         change_event_callbacks["smartbox_state"].assert_not_called()
 
-        pasd_bus_device.adminMode = 0
+        pasd_bus_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.UNKNOWN
         )
@@ -379,12 +379,12 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
 
-        fndh_device.adminMode = 1
+        fndh_device.adminMode = AdminMode.OFFLINE
         change_event_callbacks["pasd_bus_state"].assert_not_called()
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
         change_event_callbacks["smartbox_state"].assert_not_called()
 
-        fndh_device.adminMode = 0
+        fndh_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["pasd_bus_state"].assert_not_called()
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
