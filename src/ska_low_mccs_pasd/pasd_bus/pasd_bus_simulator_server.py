@@ -89,7 +89,7 @@ class PasdBusSimulatorModbusServer(ApplicationServer):
         :param pasd_hw_simulators: FNDH and Smartbox simulator backends to which this
             server provides access.
         """
-        simulator_api = PasdBusModbusApi(pasd_hw_simulators)
+        simulator_api = PasdBusModbusApi(pasd_hw_simulators, logging.getLogger())
         marshaller = CustomMarshaller(b"\r\n")
         super().__init__(marshaller.unmarshall, marshaller.marshall, simulator_api)
 

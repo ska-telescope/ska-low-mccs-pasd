@@ -522,7 +522,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 if tango_attr_name[0:2].isdigit()
                 else int(tango_attr_name[0])
             )
-        logging.debug(
+        self.logger.debug(
             f"Requesting to write attribute: {pasd_attribute.get_name()} with value"
             f" {pasd_attribute.get_write_value()} for device {device_id}"
         )
