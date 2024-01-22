@@ -24,6 +24,8 @@ from ska_tango_base.commands import (
 )
 from tango.server import attribute, command, device_property
 
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
+
 from .fndh_component_manager import FndhComponentManager
 from .fndh_health_model import FndhHealthModel
 
@@ -70,8 +72,8 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         ("InternalAmbientTemperature", float, None),
         ("FncbHumidity", float, None),
         ("PortForcings", (str,), PORT_COUNT),
-        ("PortsDesiredPowerOnline", (bool,), PORT_COUNT),
-        ("PortsDesiredPowerOffline", (bool,), PORT_COUNT),
+        ("PortsDesiredPowerOnline", (DesiredPowerEnum,), PORT_COUNT),
+        ("PortsDesiredPowerOffline", (DesiredPowerEnum,), PORT_COUNT),
         ("PortsPowerSensed", (bool,), PORT_COUNT),
         ("PortsPowerControl", (bool,), PORT_COUNT),
         ("WarningFlags", str, None),

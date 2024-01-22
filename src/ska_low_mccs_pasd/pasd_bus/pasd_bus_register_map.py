@@ -79,6 +79,18 @@ class PortDesiredStateOffline(IntEnum):
     DEFAULT = 0x0000
 
 
+class DesiredPowerEnum(IntEnum):
+    """Enum type for the DSON and DSOFF attributes.
+
+    Note that DevEnum types must start at 0 and increment by 1
+    """
+
+    DEFAULT = 0
+    OFF = 1
+    ON = 2
+    INVALID = 3
+
+
 class PortOverride(IntEnum):
     """Port override for field maintenance."""
 
@@ -215,7 +227,7 @@ class PasdBusPortAttribute(PasdBusAttribute):
         self: PasdBusPortAttribute,
         values: list[int | bool | str],
         inverse: bool = False,
-    ) -> list[bool | str | None] | list[int]:
+    ) -> list[str] | list[int]:
         """
         Parse the port register bitmap data into the desired port information.
 
@@ -253,20 +265,22 @@ class PasdBusPortAttribute(PasdBusAttribute):
                             bitmap = self.desired_info
                 inv_results.append(bitmap)
             return inv_results
-        results: list[bool | str | None] = []
+        results: list[int | str] = []
         for status_bitmap in values:
             status = int(status_bitmap) & self.desired_info
             match self.desired_info:
                 case PortStatusBits.DSON:
-                    if status == PortDesiredStateOnline.DEFAULT:
-                        results.append(None)
-                    else:
-                        results.append(status == PortDesiredStateOnline.ON)
+                    try:
+                        state = PortDesiredStateOnline(status).name
+                    except ValueError:
+                        state = DesiredPowerEnum.INVALID.name
+                    results.append(DesiredPowerEnum[state].value)
                 case PortStatusBits.DSOFF:
-                    if status == PortDesiredStateOffline.DEFAULT:
-                        results.append(None)
-                    else:
-                        results.append(status == PortDesiredStateOffline.ON)
+                    try:
+                        state = PortDesiredStateOffline(status).name
+                    except ValueError:
+                        state = DesiredPowerEnum.INVALID.name
+                    results.append(DesiredPowerEnum[state].value)
                 case PortStatusBits.TO:
                     if status == PortOverride.FORCE_OFF:
                         results.append(forcing_map[False])
@@ -738,7 +752,6 @@ class PasdBusRegisterMap:
                 else:
                     # We are turning a port OFF, so set the DSOFF value
                     # also to OFF.
-                    # TODO: Check if this is the correct behaviour
                     attribute._set_bitmap_value(offset, dson, False)
             offset = offset + 1
         return attribute

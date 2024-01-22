@@ -34,6 +34,7 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 from .pasd_bus_component_manager import PasdBusComponentManager
 from .pasd_bus_conversions import FndhStatusMap
 from .pasd_bus_health_model import PasdBusHealthModel
+from .pasd_bus_register_map import DesiredPowerEnum
 
 __all__ = ["MccsPasdBus", "main"]
 
@@ -290,13 +291,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("AlarmFlags", str, None, tango.AttrWriteType.READ),
             (
                 "PortsDesiredPowerOnline",
-                (bool,),
+                (DesiredPowerEnum,),
                 PasdData.NUMBER_OF_FNDH_PORTS,
                 tango.AttrWriteType.READ,
             ),
             (
                 "PortsDesiredPowerOffline",
-                (bool,),
+                (DesiredPowerEnum,),
                 PasdData.NUMBER_OF_FNDH_PORTS,
                 tango.AttrWriteType.READ,
             ),
@@ -421,13 +422,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ),
             (
                 "PortsDesiredPowerOnline",
-                (bool,),
+                (DesiredPowerEnum,),
                 PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 tango.AttrWriteType.READ,
             ),
             (
                 "PortsDesiredPowerOffline",
-                (bool,),
+                (DesiredPowerEnum,),
                 PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 tango.AttrWriteType.READ,
             ),
