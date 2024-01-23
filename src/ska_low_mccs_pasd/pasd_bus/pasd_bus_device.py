@@ -217,6 +217,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     LowPassFilterCutoff = tango.server.device_property(
         dtype=float, default_value=10.0, update_db=True
     )
+    # Default low-pass filtering cut-off frequency for sensor readings.
+    # It is automatically written to all sensor registers of the FNDH and smartboxes
+    # after MccsPasdBus is initialised and set ONLINE, and after any of them are powered
+    # on or reset later.
 
     # ---------------
     # Initialisation
@@ -1041,6 +1045,11 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         Set the FNDH's sensors' low pass filter constants.
 
+        The given cut-off frequency is stored as the LowPassFilterCutoff property in the
+        tango database. It is automatically written to all sensor registers of the FNDH
+        and smartboxes after MccsPasdBus is initialised and set ONLINE, and after any of
+        them are powered on or reset later.
+
         :param argin: JSON encoded dictionary of arguments.
 
         :return: A tuple containing a result code and a human-readable status message.
@@ -1368,6 +1377,11 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     ) -> DevVarLongStringArrayType:
         """
         Set a Smartbox's sensors' low pass filter constants.
+
+        The given cut-off frequency is stored as the LowPassFilterCutoff property in the
+        tango database. It is automatically written to all sensor registers of the FNDH
+        and smartboxes after MccsPasdBus is initialised and set ONLINE, and after any of
+        them are powered on or reset later.
 
         :param argin: JSON encoded dictionary of arguments.
 
