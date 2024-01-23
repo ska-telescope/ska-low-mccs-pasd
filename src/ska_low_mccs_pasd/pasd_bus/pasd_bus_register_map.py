@@ -227,7 +227,7 @@ class PasdBusPortAttribute(PasdBusAttribute):
         self: PasdBusPortAttribute,
         values: list[int | bool | str],
         inverse: bool = False,
-    ) -> list[str] | list[int]:
+    ) -> list[int] | list[int | str]:
         """
         Parse the port register bitmap data into the desired port information.
 
