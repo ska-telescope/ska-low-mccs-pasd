@@ -152,15 +152,6 @@ class PasdBusModbusApi:
     ) -> ExceptionResponse | None:
         for name, attr in names.items():
             try:
-                getattr(self._simulators[device_id], name)
-                if attr.address < starting_address:
-                    list_index = 0
-                else:
-                    list_index = attr.address - starting_address
-                if attr.count == 1:
-                    reg_vals = values[list_index]
-                else:
-                    reg_vals = values[list_index : list_index + attr.count]
                 if isinstance(attr, PasdBusPortAttribute):
                     converted_values = attr.convert_value(values)
                     start_port = starting_address - attr.address
