@@ -9,7 +9,10 @@
             "settings": {
                 "terminal.integrated.profiles.linux": {
                     "bash": {
-                        "path": "/bin/bash"
+                        "path": "/bin/bash",
+                        "args": [
+                            "--login"
+                        ]
                     }
                 },
                 "terminal.integration.defaultProfile.linux": "bash",
@@ -37,14 +40,17 @@
             "extensions": [
                 "ms-python.pylint",
                 "ms-python.python",
-                "ryanluker.vscode-coverage-gutters",
                 "ms-python.black-formatter",
                 "ms-python.flake8",
                 "ms-python.isort",
-                "ms-python.mypy-type-checker"
+                "ms-python.mypy-type-checker",
+                "ryanluker.vscode-coverage-gutters",
+                "lextudio.restructuredtext",
+                "trond-snekvik.simple-rst"
             ]
         }
     },
-    "postCreateCommand": "sudo poetry config virtualenvs.create false && sudo poetry install",
+    "postCreateCommand": "sudo poetry config virtualenvs.create false && sudo poetry install && echo 'source /usr/share/bash-completion/completions/git' >> ~/.bashrc && sudo git config --system --add core.editor 'nano -b -r 72' && echo 'source /workspaces/ska-low-mccs-pasd/.devcontainer/make-autocompletion' >> ~/.bashrc",
+    "postStartCommand": "cp .devcontainer/git-pre-commit-hook .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit && make help | sed 's/\\x1B\\[[0-9;]*[mGK]//g' | egrep -o '^[a-z][a-z0-9\\-]+|^[A-Z][A-Z0-9_]+' | egrep -v 'MAKE|SECTION' > .devcontainer/make-autocompletion-list.txt",
     "remoteUser": "tango"
 }
