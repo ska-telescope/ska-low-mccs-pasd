@@ -555,7 +555,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         stay_on_when_offline: bool,
     ) -> None:
         """
-        Set the FNDH port powers.
+        Set the smartbox's port powers.
 
         :param smartbox_id: id of the smartbox being addressed.
         :param port_powers: specification of the desired power of each port.

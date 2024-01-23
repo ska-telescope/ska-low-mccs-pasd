@@ -197,15 +197,12 @@ def configuration_manager_fixture(
 @pytest.fixture(name="test_context")
 def test_context_fixture(
     pasd_hw_simulators: dict[int, PasdHardwareSimulator],
-    smartbox_attached_ports: list[int],
     configuration_manager: unittest.mock.Mock,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
 
     :param pasd_hw_simulators: the FNDH and smartbox simulators against which to test
-    :param smartbox_attached_ports: a list of FNDH port numbers each
-        smartbox is connected to.
     :param configuration_manager: the configuration manager to manage configuration
         for field station.
 
