@@ -766,15 +766,18 @@ class PasdBusRegisterMap:
                 register_info.number_of_extra_sensors,
                 writeable=True,
             )
+            attribute.value = [
+                filter_constant for _ in range(register_info.number_of_extra_sensors)
+            ]
         else:
             attribute = PasdBusAttribute(
                 register_info.first_sensor_register,
                 register_info.number_of_sensors,
                 writeable=True,
             )
-        attribute.value = [
-            filter_constant for _ in range(register_info.number_of_sensors)
-        ]
+            attribute.value = [
+                filter_constant for _ in range(register_info.number_of_sensors)
+            ]
         return attribute
 
     def get_command(
