@@ -50,6 +50,7 @@ unit-tests.xml
 
 # Miscellaneous
 .DS_Store
+make-autocompletion-list.txt
 
 # k8s deployment
 PrivateRules.mak

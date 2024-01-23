@@ -1,0 +1,19 @@
+_makefile_completions()
+{
+    if [ ! -e ./.make/Makefile ]; then
+        return
+    fi
+
+    local options_file="./.devcontainer/make-autocompletion-list.txt"
+    local current_word="${COMP_WORDS[COMP_CWORD]}"
+    COMPREPLY=()
+    if [ -f "$options_file" ]; then
+        local options=($(<"$options_file"))
+        COMPREPLY=($(compgen -W "${options[*]}" -- "$current_word"))
+    fi
+
+    # Append both directory and file suggestions
+    local dirs_and_files=($(compgen -f -d -- "$current_word"))
+    COMPREPLY+=("${dirs_and_files[@]}")
+}
+complete -o nospace -F _makefile_completions make
