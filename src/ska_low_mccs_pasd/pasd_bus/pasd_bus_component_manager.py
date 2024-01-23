@@ -318,6 +318,10 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 request = PasdBusRequest(device_id, None, *spec)
             case (device_id, "LED_PATTERN", pattern):
                 request = PasdBusRequest(device_id, "set_led_pattern", None, [pattern])
+            case (device_id, "SET_LOW_PASS_FILTER", arguments):
+                request = PasdBusRequest(
+                    device_id, "set_low_pass_filter", None, arguments
+                )
             case (device_id, "BREAKER_RESET", port):
                 request = PasdBusRequest(device_id, "reset_port_breaker", None, [port])
             case (device_id, "PORT_POWER", (port, is_on, stay_on_when_offline)):
@@ -521,6 +525,25 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._request_provider.desire_led_pattern(0, pattern)
 
     @check_communicating
+    def set_fndh_low_pass_filters(
+        self: PasdBusComponentManager,
+        cutoff: float,
+        extra_sensors: bool = False,
+    ) -> Optional[bool]:
+        """
+        Set the FNDH's sensors' low pass filter constants.
+
+        :param cutoff: frequency of LPF to set.
+        :param extra_sensors: write the constant to the extra sensors' registers after
+            the LED status register.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        assert self._request_provider is not None
+        return self._request_provider.desire_set_low_pass_filter(
+            0, cutoff, extra_sensors
+        )
+
+    @check_communicating
     def reset_fndh_alarms(self: PasdBusComponentManager) -> None:
         """Reset the FNDH alarms register."""
         assert self._request_provider is not None
@@ -582,6 +605,27 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """
         assert self._request_provider is not None
         self._request_provider.desire_led_pattern(smartbox_id, pattern)
+
+    @check_communicating
+    def set_smartbox_low_pass_filters(
+        self: PasdBusComponentManager,
+        smartbox_id: int,
+        cutoff: float,
+        extra_sensors: bool = False,
+    ) -> Optional[bool]:
+        """
+        Set the Smartbox's sensors' low pass filter constants.
+
+        :param smartbox_id: the smartbox to have its LPF constants set.
+        :param cutoff: frequency of LPF to set.
+        :param extra_sensors: write the constant to the extra sensors' registers after
+            the LED status register.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        assert self._request_provider is not None
+        return self._request_provider.desire_set_low_pass_filter(
+            smartbox_id, cutoff, extra_sensors
+        )
 
     @check_communicating
     def reset_smartbox_alarms(self: PasdBusComponentManager, smartbox_id: int) -> None:

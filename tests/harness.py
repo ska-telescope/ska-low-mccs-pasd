@@ -247,6 +247,7 @@ class PasdTangoTestHarness:
         address: tuple[str, int] | None = None,
         polling_rate: float = 0.5,
         device_polling_rate: float = 15.0,
+        low_pass_filter_cutoff: float = 10.0,
         timeout: float = 1.0,
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsPasdBus",
@@ -263,6 +264,8 @@ class PasdTangoTestHarness:
             on the PaSD bus
         :param device_polling_rate: minimum amount of time between communications
             with the same device.
+        :param low_pass_filter_cutoff: the default cut-off frequency to set for
+            the devices' sensors' low-pass filtering.
         :param timeout: timeout to use when interacting with the PaSD
         :param logging_level: the Tango device's default logging level.
         :param device_class: The device class to use.
@@ -287,6 +290,7 @@ class PasdTangoTestHarness:
             Port=port,
             PollingRate=polling_rate,
             DevicePollingRate=device_polling_rate,
+            LowPassFilterCutoff=low_pass_filter_cutoff,
             Timeout=timeout,
             LoggingLevelDefault=logging_level,
         )

@@ -15,7 +15,7 @@ from typing import Any, Callable, Iterator, Optional
 import _pytest
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel, ResultCode
+from ska_control_model import AdminMode, LoggingLevel, ResultCode, SimulationMode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -485,6 +485,7 @@ def set_device_state_fixture(
         device_ref: str,
         state: tango.DevState,
         mode: AdminMode,
+        simulation_mode: SimulationMode,
         device_proxy: Optional[tango.DeviceProxy] = None,
     ) -> None:
         if device_proxy is None:
@@ -495,6 +496,7 @@ def set_device_state_fixture(
 
         admin_mode_callback = change_event_callbacks[f"{device_name}/adminMode"]
         state_callback = change_event_callbacks[f"{device_name}/state"]
+        device_proxy.simulationMode = simulation_mode
         if device_proxy.adminMode != mode:
             device_proxy.adminMode = mode
             admin_mode_callback.assert_change_event(mode)

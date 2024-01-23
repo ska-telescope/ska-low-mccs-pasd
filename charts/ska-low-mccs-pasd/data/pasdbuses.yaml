@@ -10,6 +10,7 @@ Define the deployment for MccsSmartbox devices.
           timeout: 10
           polling_rate: 0.5 # Optional
           device_polling_rate: 15 # Optional
+          low_pass_filter_cutoff: 10.0 # Optional
           logging_level_default: 5
 
 */}}
@@ -50,6 +51,11 @@ server:
 {{- end}}
 {{- with $this_pasdbus.device_polling_rate}}
                 - name: DevicePollingRate
+                  values: 
+                    - {{quote .}}
+{{- end}}
+{{- with $this_pasdbus.low_pass_filter_cutoff}}
+                - name: LowPassFilterCutoff
                   values: 
                     - {{quote .}}
 {{- end}}

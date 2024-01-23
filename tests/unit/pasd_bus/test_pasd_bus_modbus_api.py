@@ -495,6 +495,54 @@ class TestPasdBusModbusApiClient:
                 "status",
                 FndhStatusMap.OK,
             ),
+            (
+                "fndh_simulator",
+                0,
+                PasdCommandStrings.SET_LOW_PASS_FILTER,
+                (10, False),
+                "psu48v_voltages",
+                [0x2391, 0x2391],
+            ),
+            (
+                "fndh_simulator",
+                0,
+                PasdCommandStrings.SET_LOW_PASS_FILTER,
+                (10.1, True),
+                "comms_gateway_temperature",
+                0x23A3,
+            ),
+            (
+                "smartbox_simulator",
+                1,
+                PasdCommandStrings.SET_LOW_PASS_FILTER,
+                (0.09, False),
+                "input_voltage",
+                SmartboxSimulator.DEFAULT_INPUT_VOLTAGE,
+            ),
+            (
+                "smartbox_simulator",
+                1,
+                PasdCommandStrings.SET_LOW_PASS_FILTER,
+                (1, False),
+                "input_voltage",
+                0x3A64,
+            ),
+            (
+                "smartbox_simulator",
+                1,
+                PasdCommandStrings.SET_LOW_PASS_FILTER,
+                (1000, False),
+                "input_voltage",
+                0x2E6,
+            ),
+            (
+                "smartbox_simulator",
+                1,
+                PasdCommandStrings.SET_LOW_PASS_FILTER,
+                (1001, False),
+                "input_voltage",
+                SmartboxSimulator.DEFAULT_INPUT_VOLTAGE,
+            ),
         ],
     )
     def test_execute_command(
@@ -522,10 +570,9 @@ class TestPasdBusModbusApiClient:
         :param request: pytest FixtureRequest
         """
         if isinstance(arguments, tuple):
-            response = api.execute_command(slave, command, *arguments)
+            api.execute_command(slave, command, *arguments)
         else:
-            response = api.execute_command(slave, command, arguments)
-        assert response is True
+            api.execute_command(slave, command, arguments)
         simulator_values = getattr(request.getfixturevalue(backend), attribute)
         if isinstance(simulator_values, list) and not isinstance(expected, list):
             assert simulator_values[arguments - 1] == expected

@@ -1,0 +1,22 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://skao.int/MccsPasdBus_SetFndhLowPassFilters.json",
+    "title": "MccsPasdBus SetFndhLowPassFilters schema",
+    "description": "Schema for MccsPasdBus's SetFndhLowPassFilters command",
+    "type": "object",
+    "properties": {
+        "cutoff": {
+            "description": "Cut-off frequency to set for the low-pass filtering",
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 1000.0
+        },
+        "extra_sensors": {
+            "description": "Write the filter constant to the extra sensors' registers after the LED status register",
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "cutoff"
+    ]
+}

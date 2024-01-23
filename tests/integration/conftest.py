@@ -16,6 +16,7 @@ from typing import Any, Iterator
 
 import pytest
 import tango
+from ska_control_model import SimulationMode
 
 from ska_low_mccs_pasd.pasd_bus import PasdBusSimulator, PasdHardwareSimulator
 from ska_low_mccs_pasd.pasd_data import PasdData
@@ -234,7 +235,9 @@ def pasd_bus_device_fixture(
 
     :yield: the pasd_bus Tango device under test.
     """
-    yield test_context.get_pasd_bus_device()
+    pasd_bus_device = test_context.get_pasd_bus_device()
+    pasd_bus_device.simulationMode = SimulationMode.TRUE
+    yield pasd_bus_device
 
 
 @pytest.fixture(name="fndh_device")

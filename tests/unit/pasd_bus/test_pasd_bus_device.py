@@ -7,6 +7,7 @@
 # See LICENSE for more info.
 """This module contains the tests for MccsPasdBus."""
 
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import gc
@@ -15,7 +16,7 @@ import random
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState
+from ska_control_model import AdminMode, HealthState, SimulationMode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
@@ -81,7 +82,9 @@ def pasd_bus_device_fixture(
     harness.set_pasd_bus_simulator(mock_pasd_hw_simulators)
     harness.set_pasd_bus_device(polling_rate=0.05, device_polling_rate=0.1)
     with harness as context:
-        yield context.get_pasd_bus_device()
+        pasd_bus_device = context.get_pasd_bus_device()
+        pasd_bus_device.simulationMode = SimulationMode.TRUE
+        yield pasd_bus_device
 
 
 def test_communication(  # pylint: disable=too-many-statements
@@ -638,6 +641,46 @@ def test_fndh_led_pattern(
     )
 
 
+def test_fndh_low_pass_filters(
+    pasd_bus_device: tango.DeviceProxy,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> None:
+    """
+    Test the Tango device can be used to set the FNDH LED pattern.
+
+    :param pasd_bus_device: a proxy to the PaSD bus device under test.
+    :param change_event_callbacks: dictionary of mock change event
+        callbacks with asynchrony support
+    """
+    pasd_bus_device.simulationMode = SimulationMode.FALSE
+    assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+    pasd_bus_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    pasd_bus_device.adminMode = AdminMode.ONLINE
+    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
+    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+
+    # Check for validation errors
+    json_argument = json.dumps({"cutoff": 0.09})
+    with pytest.raises(tango.DevFailed) as exception:
+        pasd_bus_device.SetFndhLowPassFilters(json_argument)
+    assert "jsonschema.exceptions.ValidationError" in str(exception.value)
+    json_argument = json.dumps({"cutoff": 1000.1})
+    with pytest.raises(tango.DevFailed) as exception:
+        pasd_bus_device.SetFndhLowPassFilters(json_argument)
+    assert "jsonschema.exceptions.ValidationError" in str(exception.value)
+
+    # Set correct values
+    json_argument = json.dumps({"cutoff": 10.0})
+    pasd_bus_device.SetFndhLowPassFilters(json_argument)
+    json_argument = json.dumps({"cutoff": 10.0, "extra_sensors": True})
+    pasd_bus_device.SetFndhLowPassFilters(json_argument)
+
+
 def test_fndh_port_faults(
     pasd_bus_device: tango.DeviceProxy,
     fndh_simulator: FndhSimulator,
@@ -914,3 +957,47 @@ def test_smartbox_led_pattern(
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}LedPattern", "service: FAST, status: YELLOWFAST"
     )
+
+
+def test_smartbox_low_pass_filters(
+    pasd_bus_device: tango.DeviceProxy,
+    smartbox_id: int,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> None:
+    """
+    Test the Tango device can be used to set a smartbox's LED pattern.
+
+    :param pasd_bus_device: a proxy to the PaSD bus device under test.
+    :param smartbox_id: id of the smartbox being addressed.
+    :param change_event_callbacks: dictionary of mock change event
+        callbacks with asynchrony support
+    """
+    pasd_bus_device.simulationMode = SimulationMode.FALSE
+    assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+    pasd_bus_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    pasd_bus_device.adminMode = AdminMode.ONLINE
+    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
+    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+
+    # Check for validation errors
+    json_argument = json.dumps({"smartbox_number": smartbox_id, "cutoff": 0.09})
+    with pytest.raises(tango.DevFailed) as exception:
+        pasd_bus_device.SetSmartboxLowPassFilters(json_argument)
+    assert "jsonschema.exceptions.ValidationError" in str(exception.value)
+    json_argument = json.dumps({"smartbox_number": smartbox_id, "cutoff": 1000.1})
+    with pytest.raises(tango.DevFailed) as exception:
+        pasd_bus_device.SetSmartboxLowPassFilters(json_argument)
+    assert "jsonschema.exceptions.ValidationError" in str(exception.value)
+
+    # Set correct values
+    json_argument = json.dumps({"smartbox_number": smartbox_id, "cutoff": 10.0})
+    pasd_bus_device.SetSmartboxLowPassFilters(json_argument)
+    json_argument = json.dumps(
+        {"smartbox_number": smartbox_id, "cutoff": 10.0, "extra_sensors": True}
+    )
+    pasd_bus_device.SetSmartboxLowPassFilters(json_argument)

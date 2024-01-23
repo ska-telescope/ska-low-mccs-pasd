@@ -27,11 +27,12 @@ from ska_control_model import (
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidator
 from tango.device_attribute import ExtractAs
-from tango.server import attribute, command
+from tango.server import command
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
 from .pasd_bus_component_manager import PasdBusComponentManager
+from .pasd_bus_conversions import FndhStatusMap
 from .pasd_bus_health_model import PasdBusHealthModel
 
 __all__ = ["MccsPasdBus", "main"]
@@ -202,7 +203,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 "warning_flags": f"smartbox{smartbox_number}WarningFlags",
                 "alarm_flags": f"smartbox{smartbox_number}AlarmFlags",
             }
-            for smartbox_number in range(1, 25)
+            for smartbox_number in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
         },
     }
     # ----------
@@ -213,6 +214,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     PollingRate = tango.server.device_property(dtype=float, default_value=0.5)
     DevicePollingRate = tango.server.device_property(dtype=float, default_value=15.0)
     Timeout = tango.server.device_property(dtype=float)
+    LowPassFilterCutoff = tango.server.device_property(
+        dtype=float, default_value=10.0, update_db=True
+    )
+    # Default low-pass filtering cut-off frequency for sensor readings.
+    # It is automatically written to all sensor registers of the FNDH and smartboxes
+    # after MccsPasdBus is initialised and set ONLINE, and after any of them are powered
+    # on or reset later.
 
     # ---------------
     # Initialisation
@@ -224,13 +232,14 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         This is overridden here to change the Tango serialisation model.
         """
         super().init_device()
+        self._init_pasd_devices = True
 
         self._build_state: str = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
 
         self._pasd_state: dict[str, Any] = {}
         self._setup_fndh_attributes()
-        for smartbox_number in range(1, 25):
+        for smartbox_number in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
             self._setup_smartbox_attributes(smartbox_number)
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
@@ -244,6 +253,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             f"\tPollingRate: {self.PollingRate}\n"
             f"\tDevicePollingRate: {self.DevicePollingRate}\n"
             f"\tTimeout: {self.Timeout}\n"
+            f"\tLowPassFilterCutoff: {self.LowPassFilterCutoff}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -567,6 +577,29 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         self._health_model = PasdBusHealthModel(self._health_changed)
         self.set_change_event("healthState", True, False)
 
+    def _set_all_low_pass_filters_of_device(
+        self: MccsPasdBus, pasd_device_number: int
+    ) -> None:
+        """
+        Set all the low-pass filter constants of a given PaSD device.
+
+        :param pasd_device_number: the number of the PaSD device to set.
+            0 refers to the FNDH, otherwise the device number is the
+            smartbox number.
+        """
+        if pasd_device_number == 0:
+            self.component_manager.set_fndh_low_pass_filters(self.LowPassFilterCutoff)
+            self.component_manager.set_fndh_low_pass_filters(
+                self.LowPassFilterCutoff, True
+            )
+        else:
+            self.component_manager.set_smartbox_low_pass_filters(
+                pasd_device_number, self.LowPassFilterCutoff
+            )
+            self.component_manager.set_smartbox_low_pass_filters(
+                pasd_device_number, self.LowPassFilterCutoff, True
+            )
+
     def create_component_manager(
         self: MccsPasdBus,
     ) -> PasdBusComponentManager:
@@ -596,18 +629,26 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("InitializeSmartbox", MccsPasdBus._InitializeSmartboxCommand),
             ("SetFndhPortPowers", MccsPasdBus._SetFndhPortPowersCommand),
             ("SetFndhLedPattern", MccsPasdBus._SetFndhLedPatternCommand),
-            ("ResetFndhPortBreaker", MccsPasdBus._ResetFndhPortBreakerCommand),
+            ("SetFndhLowPassFilters", MccsPasdBus._SetFndhLowPassFiltersCommand),
+            ("ResetFndhAlarms", MccsPasdBus._ResetFndhAlarmsCommand),
+            ("ResetFndhWarnings", MccsPasdBus._ResetFndhWarningsCommand),
+            (
+                "ResetFndhPortBreaker",
+                MccsPasdBus._ResetFndhPortBreakerCommand,
+            ),  # REMOVE
             ("SetSmartboxPortPowers", MccsPasdBus._SetSmartboxPortPowersCommand),
             (
                 "SetSmartboxLedPattern",
                 MccsPasdBus._SetSmartboxLedPatternCommand,
             ),
             (
+                "SetSmartboxLowPassFilters",
+                MccsPasdBus._SetSmartboxLowPassFiltersCommand,
+            ),
+            (
                 "ResetSmartboxPortBreaker",
                 MccsPasdBus._ResetSmartboxPortBreakerCommand,
             ),
-            ("ResetFndhAlarms", MccsPasdBus._ResetFndhAlarmsCommand),
-            ("ResetFndhWarnings", MccsPasdBus._ResetFndhWarningsCommand),
             ("ResetSmartboxAlarms", MccsPasdBus._ResetSmartboxAlarmsCommand),
             ("ResetSmartboxWarnings", MccsPasdBus._ResetSmartboxWarningsCommand),
         ]:
@@ -685,6 +726,15 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         self._health_model.update_state(communicating=True)
 
+        if (
+            self._init_pasd_devices
+            and self._simulation_mode == SimulationMode.FALSE
+            and communication_state == CommunicationStatus.ESTABLISHED
+        ):
+            self._init_pasd_devices = False
+            for device_number in range(PasdData.NUMBER_OF_SMARTBOXES + 1):
+                self._set_all_low_pass_filters_of_device(device_number)
+
     def _component_state_callback(
         self: MccsPasdBus,
         fault: Optional[bool] = None,
@@ -697,13 +747,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         This is a callback hook, called by the component manager when
         the state of the component changes.
 
-        Note this the "component" is the PaSD bus itself,
+        Note that this "component" is the PaSD bus itself,
         and the PaSD bus has no monitoring points.
         All we can do is infer that it is powered on and not in fault,
         from the fact that we receive responses to our requests.
 
         The responses themselves deliver information about
-        the state of the devices attached the bus.
+        the state of the devices attached to the bus.
         This payload is handled by a different callback.
 
         :param fault: whether the component is in fault.
@@ -714,7 +764,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         super()._component_state_changed(fault=fault, power=power)
         self._health_model.update_state(fault=fault, power=power)
 
-    def _pasd_device_state_callback(
+    def _pasd_device_state_callback(  # noqa: C901
         self: MccsPasdBus,
         pasd_device_number: int,
         **kwargs: Any,
@@ -753,23 +803,19 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 )
                 # Continue on to allow other attributes to be updated
 
-            if pasd_attribute_name == "uptime":
+            if pasd_attribute_name == "status":
                 # Determine if the device has been reset or powered on since
-                # MCCS was started by checking if the uptime is less than
-                # the previously polled value, or if we don't yet have a
-                # value for the chip ID which is only polled at startup
-                previous_uptime = self._pasd_state[tango_attribute_name]
-                chip_id = (
-                    self._pasd_state["fndhChipId"]
-                    if pasd_device_number == 0
-                    else self._pasd_state[f"smartbox{pasd_device_number}ChipId"]
-                )
-                if chip_id is None or (
-                    previous_uptime is not None
-                    and pasd_attribute_value < previous_uptime
+                # MCCS was started by checking if its status changed to UNINITIALISED
+                previous_status = self._pasd_state[tango_attribute_name]
+                if (
+                    pasd_attribute_value == FndhStatusMap.UNINITIALISED.name
+                    and pasd_attribute_value != previous_status
                 ):
                     # Register a request to read the static info and thresholds
                     self.component_manager.request_startup_info(pasd_device_number)
+                    # Set the device's low-pass filter constants
+                    if self._simulation_mode == SimulationMode.FALSE:
+                        self._set_all_low_pass_filters_of_device(pasd_device_number)
 
             if self._pasd_state[tango_attribute_name] != pasd_attribute_value:
                 self._pasd_state[tango_attribute_name] = pasd_attribute_value
@@ -798,36 +844,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     # ----------
     # Attributes
     # ----------
-    @attribute(dtype=SimulationMode, memorized=True, hw_memorized=True)
-    def simulationMode(self: MccsPasdBus) -> int:
-        """
-        Report the simulation mode of the device.
-
-        :return: Return the current simulation mode
-        """
-        return SimulationMode.FALSE
-
-    @simulationMode.write  # type: ignore[no-redef]
-    def simulationMode(  # pylint: disable=arguments-differ
-        self: MccsPasdBus, value: SimulationMode
-    ) -> None:
-        """
-        Set the simulation mode.
-
-        Writing this attribute is deliberately unimplemented.
-        To run this device against a simulator,
-        stand up a PaSD bus simulator,
-        then configure this device
-        with the simulator's IP address and port.
-
-        :param value: The simulation mode, as a SimulationMode value
-        """
-        self.logger.warning(
-            "MccsPasdBus's simulationMode attribute is unimplemented. "
-            "To run this device against a simulator, "
-            "stand up an external PaSD bus simulator, "
-            "then configure this device with the simulator's IP address and port."
-        )
 
     # ----------
     # Commands
@@ -848,8 +864,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             """
             Initialize an FNDH.
 
-            :return: whether successful, or None if there was nothing to
-                do.
+            :return: whether successful, or None if there was nothing to do.
             """
             return self._component_manager.initialize_fndh()
 
@@ -903,8 +918,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             :param stay_on_when_offline: whether any ports being turned on
                 should remain on if communication with the MCCS is lost.
 
-            :return: whether successful, or None if there was nothing to
-                do.
+            :return: whether successful, or None if there was nothing to do.
             """
             return self._component_manager.set_fndh_port_powers(
                 port_powers, stay_on_when_offline
@@ -964,8 +978,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             Set the FNDH service LED pattern.
 
             :param pattern: name of the service LED pattern.
-            :return: whether successful, or None if there was nothing to
-                do.
+            :return: whether successful, or None if there was nothing to do.
             """
             return self._component_manager.set_fndh_led_pattern(pattern)
 
@@ -989,6 +1002,153 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             )
         return ([ResultCode.FAILED], ["SetFndhLedPattern failed"])
 
+    class _SetFndhLowPassFiltersCommand(FastCommand):
+        SCHEMA: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "MccsPasdBus_SetFndhLowPassFilters.json",
+            )
+        )
+
+        def __init__(
+            self: MccsPasdBus._SetFndhLowPassFiltersCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+
+            validator = JsonValidator("SetFndhLowPassFilters", self.SCHEMA, logger)
+            super().__init__(logger, validator)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._SetFndhLowPassFiltersCommand,
+            cutoff: int,
+            extra_sensors: bool = False,
+        ) -> Optional[bool]:
+            """
+            Set the FNDH's sensors' low pass filter constants.
+
+            :param cutoff: frequency of LPF to set.
+            :param extra_sensors: write the constant to the extra sensors' registers
+                after the LED status register.
+            :return: whether successful, or None if there was nothing to do.
+            """
+            return self._component_manager.set_fndh_low_pass_filters(
+                cutoff, extra_sensors
+            )
+
+    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
+    def SetFndhLowPassFilters(
+        self: MccsPasdBus, argin: str
+    ) -> DevVarLongStringArrayType:
+        """
+        Set the FNDH's sensors' low pass filter constants.
+
+        The given cut-off frequency is stored as the LowPassFilterCutoff property in the
+        tango database. It is automatically written to all sensor registers of the FNDH
+        and smartboxes after MccsPasdBus is initialised and set ONLINE, and after any of
+        them are powered on or reset later.
+
+        :param argin: JSON encoded dictionary of arguments.
+
+        :return: A tuple containing a result code and a human-readable status message.
+        """
+        if self._simulation_mode == SimulationMode.TRUE:
+            return (
+                [ResultCode.NOT_ALLOWED],
+                ["SetFndhLowPassFilters is not supported by the simulator"],
+            )
+        handler = self.get_command_object("SetFndhLowPassFilters")
+        success = handler(argin)
+        if success:
+            self.LowPassFilterCutoff = json.loads(argin)["cutoff"]
+            return ([ResultCode.OK], ["SetFndhLowPassFilters succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["SetFndhLowPassFilters succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["SetFndhLowPassFilters failed"])
+
+    class _ResetFndhAlarmsCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetFndhAlarmsCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetFndhAlarmsCommand,
+        ) -> Optional[bool]:
+            """
+            Reset the FNDH alarms register.
+
+            :return: whether successful, or None if there was nothing to do.
+            """
+            return self._component_manager.reset_fndh_alarms()
+
+    @command(dtype_out="DevVarLongStringArray")
+    def ResetFndhAlarms(self: MccsPasdBus) -> DevVarLongStringArrayType:
+        """
+        Reset the FNDH alarms register.
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetFndhAlarms")
+        success = handler()
+        if success:
+            return ([ResultCode.OK], ["ResetFndhAlarms succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetFndhAlarms succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetFndhAlarms failed"])
+
+    class _ResetFndhWarningsCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetFndhWarningsCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetFndhWarningsCommand,
+        ) -> Optional[bool]:
+            """
+            Reset the FNDH warnings register.
+
+            :return: whether successful, or None if there was nothing to do.
+            """
+            return self._component_manager.reset_fndh_warnings()
+
+    @command(dtype_out="DevVarLongStringArray")
+    def ResetFndhWarnings(self: MccsPasdBus) -> DevVarLongStringArrayType:
+        """
+        Reset the FNDH warnings register.
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetFndhWarnings")
+        success = handler()
+        if success:
+            return ([ResultCode.OK], ["ResetFndhwarnings succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetFndhWarnings succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetFndhWarnings failed"])
+
     class _ResetFndhPortBreakerCommand(FastCommand):
         def __init__(
             self: MccsPasdBus._ResetFndhPortBreakerCommand,
@@ -1008,9 +1168,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
             :param port_number: the number of the port whose breaker is
                 to be reset.
-
-            :return: whether successful, or None if there was nothing to
-                do.
+            :return: whether successful, or None if there was nothing to do.
             """
             return self._component_manager.reset_fndh_port_breaker(port_number)
 
@@ -1054,9 +1212,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             Initialize a Smartbox.
 
             :param smartbox_id: id of the smartbox being addressed.
-
-            :return: whether successful, or None if there was nothing to
-                do.
+            :return: whether successful, or None if there was nothing to do.
             """
             return self._component_manager.initialize_smartbox(smartbox_id)
 
@@ -1106,18 +1262,15 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             stay_on_when_offline: bool,
         ) -> Optional[bool]:
             """
-            Set a smartbox's port powers.
+            Set a Smartbox's port powers.
 
-            :param smartbox_number: number of the smartbox to be
-                addressed
+            :param smartbox_number: number of the smartbox to be addressed.
             :param port_powers: the desired power for each port.
                 True means powered on, False means off,
                 None means no desired change
             :param stay_on_when_offline: whether any ports being turned on
                 should remain on if communication with the MCCS is lost.
-
-            :return: whether successful, or None if there was nothing to
-                do.
+            :return: whether successful, or None if there was nothing to do.
             """
             return self._component_manager.set_smartbox_port_powers(
                 smartbox_number, port_powers, stay_on_when_offline
@@ -1129,7 +1282,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     ) -> DevVarLongStringArrayType:
         # pylint: disable=line-too-long
         """
-        Set a smartbox's port powers.
+        Set a Smartbox's port powers.
 
         This command takes as input a JSON string that conforms to the
         following schema:
@@ -1180,12 +1333,83 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 smartbox_number, pattern
             )
 
+    class _SetSmartboxLowPassFiltersCommand(FastCommand):
+        SCHEMA: Final = json.loads(
+            importlib.resources.read_text(
+                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "MccsPasdBus_SetSmartboxLowPassFilters.json",
+            )
+        )
+
+        def __init__(
+            self: MccsPasdBus._SetSmartboxLowPassFiltersCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+
+            validator = JsonValidator("SetSmartboxLowPassFilters", self.SCHEMA, logger)
+            super().__init__(logger, validator)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._SetSmartboxLowPassFiltersCommand,
+            smartbox_number: int,
+            cutoff: int,
+            extra_sensors: bool = False,
+        ) -> Optional[bool]:
+            """
+            Set a Smartbox's sensors' low pass filter constants.
+
+            :param smartbox_number: number of the smartbox to be addressed.
+            :param cutoff: frequency of LPF to set.
+            :param extra_sensors: write the constant to the extra sensors' registers
+                after the LED status register.
+            :return: whether successful, or None if there was nothing to do.
+            """
+            return self._component_manager.set_smartbox_low_pass_filters(
+                smartbox_number, cutoff, extra_sensors
+            )
+
+    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
+    def SetSmartboxLowPassFilters(
+        self: MccsPasdBus, argin: str
+    ) -> DevVarLongStringArrayType:
+        """
+        Set a Smartbox's sensors' low pass filter constants.
+
+        The given cut-off frequency is stored as the LowPassFilterCutoff property in the
+        tango database. It is automatically written to all sensor registers of the FNDH
+        and smartboxes after MccsPasdBus is initialised and set ONLINE, and after any of
+        them are powered on or reset later.
+
+        :param argin: JSON encoded dictionary of arguments.
+
+        :return: A tuple containing a result code and a human-readable status message.
+        """
+        if self._simulation_mode == SimulationMode.TRUE:
+            return (
+                [ResultCode.NOT_ALLOWED],
+                ["SetSmartboxLowPassFilters is not supported by the simulator"],
+            )
+        handler = self.get_command_object("SetSmartboxLowPassFilters")
+        success = handler(argin)
+        if success:
+            self.LowPassFilterCutoff = json.loads(argin)["cutoff"]
+            return ([ResultCode.OK], ["SetSmartboxLowPassFilters succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["SetSmartboxLowPassFilters succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["SetSmartboxLowPassFilters failed"])
+
     @command(dtype_in="str", dtype_out="DevVarLongStringArray")
     def SetSmartboxLedPattern(
         self: MccsPasdBus, argin: str
     ) -> DevVarLongStringArrayType:
         """
-        Set a smartbox's service LED pattern.
+        Set a Smartbox's service LED pattern.
 
         :param argin: JSON encoded dictionary of arguments.
 
@@ -1227,19 +1451,126 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             port_number: int,
         ) -> Optional[bool]:
             """
-            Reset an FNDH port breaker.
+            Reset a Smartbox's port breaker.
 
-            :param smartbox_number: number of the smartbox to be
-                addressed.
+            :param smartbox_number: number of the smartbox to be addressed.
             :param port_number: the number of the port whose breaker is
                 to be reset.
-
-            :return: whether successful, or None if there was nothing to
-                do.
+            :return: whether successful, or None if there was nothing to do.
             """
             return self._component_manager.reset_smartbox_port_breaker(
                 smartbox_number, port_number
             )
+
+    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
+    def ResetSmartboxPortBreaker(
+        self: MccsPasdBus, argin: str
+    ) -> DevVarLongStringArrayType:
+        """
+        Reset a Smartbox's port's breaker.
+
+        :param argin: arguments to the command in JSON format.
+
+        :return: A tuple containing a result code and a human-readable status message.
+        """
+        handler = self.get_command_object("ResetSmartboxPortBreaker")
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], ["ResetSmartboxPortBreaker succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetSmartboxPortBreaker succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetSmartboxPortBreaker failed"])
+
+    class _ResetSmartboxAlarmsCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetSmartboxAlarmsCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetSmartboxAlarmsCommand,
+            smartbox_number: int,
+        ) -> Optional[bool]:
+            """
+            Reset a Smartbox's alarms register.
+
+            :param smartbox_number: number of the smartbox to be addressed.
+            :return: whether successful, or None if there was nothing to do.
+            """
+            return self._component_manager.reset_smartbox_alarms(smartbox_number)
+
+    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
+    def ResetSmartboxAlarms(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
+        """
+        Reset a Smartbox alarms register.
+
+        :param argin: Smartbox number
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetSmartboxAlarms")
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], ["ResetSmartboxAlarms succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetSmartboxAlarms succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetSmartboxAlarms failed"])
+
+    class _ResetSmartboxWarningsCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetSmartboxWarningsCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetSmartboxWarningsCommand,
+            smartbox_number: int,
+        ) -> Optional[bool]:
+            """
+            Reset a Smartbox's warnings register.
+
+            :param smartbox_number: number of the smartbox to be addressed
+            :return: whether successful, or None if there was nothing to do.
+            """
+            return self._component_manager.reset_smartbox_warnings(smartbox_number)
+
+    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
+    def ResetSmartboxWarnings(
+        self: MccsPasdBus, argin: int
+    ) -> DevVarLongStringArrayType:
+        """
+        Reset a Smartbox warnings register.
+
+        :param argin: Smartbox number
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetSmartboxWarnings")
+        success = handler(argin)
+        if success:
+            return ([ResultCode.OK], ["ResetSmartboxWarnings succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetSmartboxWarnings succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetSmartboxWarnings failed"])
 
     class _GetPasdDeviceSubscriptions(FastCommand):
         """Class for handling the GetRegisterList() command."""
@@ -1285,200 +1616,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         handler = self.get_command_object("GetPasdDeviceSubscriptions")
         return handler(device_number)
-
-    @command(dtype_in=str, dtype_out="DevVarLongStringArray")
-    def ResetSmartboxPortBreaker(
-        self: MccsPasdBus, argin: str
-    ) -> DevVarLongStringArrayType:
-        """
-        Reset a smartbox's port's breaker.
-
-        :param argin: arguments to the command in JSON format.
-
-        :return: A tuple containing a result code and a human-readable status message.
-        """
-        handler = self.get_command_object("ResetSmartboxPortBreaker")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], ["ResetSmartboxPortBreaker succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                ["ResetSmartboxPortBreaker succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], ["ResetSmartboxPortBreaker failed"])
-
-    class _ResetFndhAlarmsCommand(FastCommand):
-        def __init__(
-            self: MccsPasdBus._ResetFndhAlarmsCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-            super().__init__(logger)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._ResetFndhAlarmsCommand,
-        ) -> Optional[bool]:
-            """
-            Reset the FNDH alarms register.
-
-            :return: whether successful, or None if there was nothing to
-                do.
-            """
-            return self._component_manager.reset_fndh_alarms()
-
-    @command(dtype_out="DevVarLongStringArray")
-    def ResetFndhAlarms(self: MccsPasdBus) -> DevVarLongStringArrayType:
-        """
-        Reset the FNDH alarms register.
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("ResetFndhAlarms")
-        success = handler()
-        if success:
-            return ([ResultCode.OK], ["ResetFndhAlarms succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                ["ResetFndhAlarms succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], ["ResetFndhAlarms failed"])
-
-    class _ResetFndhWarningsCommand(FastCommand):
-        def __init__(
-            self: MccsPasdBus._ResetFndhWarningsCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-            super().__init__(logger)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._ResetFndhWarningsCommand,
-        ) -> Optional[bool]:
-            """
-            Reset the FNDH warnings register.
-
-            :return: whether successful, or None if there was nothing to
-                do.
-            """
-            return self._component_manager.reset_fndh_warnings()
-
-    @command(dtype_out="DevVarLongStringArray")
-    def ResetFndhWarnings(self: MccsPasdBus) -> DevVarLongStringArrayType:
-        """
-        Reset the FNDH warnings register.
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("ResetFndhWarnings")
-        success = handler()
-        if success:
-            return ([ResultCode.OK], ["ResetFndhwarnings succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                ["ResetFndhWarnings succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], ["ResetFndhWarnings failed"])
-
-    class _ResetSmartboxAlarmsCommand(FastCommand):
-        def __init__(
-            self: MccsPasdBus._ResetSmartboxAlarmsCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-            super().__init__(logger)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._ResetSmartboxAlarmsCommand,
-            smartbox_number: int,
-        ) -> Optional[bool]:
-            """
-            Reset a Smartbox's alarms register.
-
-            :param smartbox_number: number of the smartbox to be
-                addressed
-            :return: whether successful, or None if there was nothing to
-                do.
-            """
-            return self._component_manager.reset_smartbox_alarms(smartbox_number)
-
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def ResetSmartboxAlarms(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
-        """
-        Reset a Smartbox alarms register.
-
-        :param argin: Smartbox number
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("ResetSmartboxAlarms")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], ["ResetSmartboxAlarms succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                ["ResetSmartboxAlarms succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], ["ResetSmartboxAlarms failed"])
-
-    class _ResetSmartboxWarningsCommand(FastCommand):
-        def __init__(
-            self: MccsPasdBus._ResetSmartboxWarningsCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-            super().__init__(logger)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._ResetSmartboxWarningsCommand,
-            smartbox_number: int,
-        ) -> Optional[bool]:
-            """
-            Reset a Smartbox's warnings register.
-
-            :param smartbox_number: number of the smartbox to be
-                addressed
-            :return: whether successful, or None if there was nothing to
-                do.
-            """
-            return self._component_manager.reset_smartbox_warnings(smartbox_number)
-
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
-    def ResetSmartboxWarnings(
-        self: MccsPasdBus, argin: int
-    ) -> DevVarLongStringArrayType:
-        """
-        Reset a Smartbox warnings register.
-
-        :param argin: Smartbox number
-
-        :return: A tuple containing a result code and a
-            unique id to identify the command in the queue.
-        """
-        handler = self.get_command_object("ResetSmartboxWarnings")
-        success = handler(argin)
-        if success:
-            return ([ResultCode.OK], ["ResetSmartboxWarnings succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                ["ResetSmartboxWarnings succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], ["ResetSmartboxWarnings failed"])
 
 
 # ----------

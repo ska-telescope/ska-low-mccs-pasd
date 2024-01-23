@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 from enum import Enum, IntEnum, IntFlag
 from typing import Any, Callable, Final, Optional, Sequence
@@ -90,6 +91,7 @@ class PasdCommandStrings(Enum):
     TURN_PORT_OFF = "turn_port_off"
     RESET_PORT_BREAKER = "reset_port_breaker"
     SET_LED_PATTERN = "set_led_pattern"
+    SET_LOW_PASS_FILTER = "set_low_pass_filter"
     INITIALIZE = "initialize"
     RESET_ALARMS = "reset_alarms"
     RESET_WARNINGS = "reset_warnings"
@@ -294,6 +296,10 @@ class PasdBusRegisterInfo:
     """Hold register information for a PaSD device."""
 
     register_map: dict[str, PasdBusAttribute]
+    number_of_sensors: int
+    first_sensor_register: int
+    number_of_extra_sensors: int
+    first_extra_sensor_register: int
     number_of_ports: int
     starting_port_register: int
 
@@ -498,12 +504,24 @@ class PasdBusRegisterMap:
     # Map modbus register revision number to the corresponding PasdRegisterInfo
     _FNDH_REGISTER_MAPS: Final = {
         1: PasdBusRegisterInfo(
-            _FNDH_REGISTER_MAP_V1, number_of_ports=28, starting_port_register=35
+            _FNDH_REGISTER_MAP_V1,
+            number_of_sensors=8,
+            first_sensor_register=16,
+            number_of_extra_sensors=4,
+            first_extra_sensor_register=26,
+            number_of_ports=28,
+            starting_port_register=35,
         )
     }
     _SMARTBOX_REGISTER_MAPS: Final = {
         1: PasdBusRegisterInfo(
-            _SMARTBOX_REGISTER_MAP_V1, number_of_ports=12, starting_port_register=35
+            _SMARTBOX_REGISTER_MAP_V1,
+            number_of_sensors=5,
+            first_sensor_register=16,
+            number_of_extra_sensors=4,
+            first_extra_sensor_register=23,
+            number_of_ports=12,
+            starting_port_register=35,
         )
     }
 
@@ -720,16 +738,46 @@ class PasdBusRegisterMap:
 
     def _create_reset_alarms_command(self, device_id: int) -> PasdBusAttribute:
         attribute_map = self._get_register_info(device_id).register_map
-
         attribute = PasdBusAttribute(attribute_map[self.ALARM_FLAGS].address, 1)
         attribute.value = 0
         return attribute
 
     def _create_reset_warnings_command(self, device_id: int) -> PasdBusAttribute:
         attribute_map = self._get_register_info(device_id).register_map
-
         attribute = PasdBusAttribute(attribute_map[self.WARNING_FLAGS].address, 1)
         attribute.value = 0
+        return attribute
+
+    def _create_low_pass_filter_command(
+        self, device_id: int, arguments: Sequence[Any]
+    ) -> Optional[PasdBusAttribute]:
+        if arguments[0]:  # Cut-off frequency
+            filter_constant = self._calculate_filter_decay_constant(arguments[0])
+            if filter_constant is None:
+                # Invalid value given
+                return None
+        else:
+            filter_constant = 0  # Disable filtering
+
+        register_info = self._get_register_info(device_id)
+        if arguments[1]:  # Write extra sensors' registers (block after LED status)
+            attribute = PasdBusAttribute(
+                register_info.first_extra_sensor_register,
+                register_info.number_of_extra_sensors,
+                writeable=True,
+            )
+            attribute.value = [
+                filter_constant for _ in range(register_info.number_of_extra_sensors)
+            ]
+        else:
+            attribute = PasdBusAttribute(
+                register_info.first_sensor_register,
+                register_info.number_of_sensors,
+                writeable=True,
+            )
+            attribute.value = [
+                filter_constant for _ in range(register_info.number_of_sensors)
+            ]
         return attribute
 
     def get_command(
@@ -753,6 +801,8 @@ class PasdBusRegisterMap:
 
         if command == PasdCommandStrings.SET_LED_PATTERN:
             attribute = self._create_led_pattern_command(device_id, arguments)
+        elif command == PasdCommandStrings.SET_LOW_PASS_FILTER:
+            attribute = self._create_low_pass_filter_command(device_id, arguments)
         elif command == PasdCommandStrings.INITIALIZE:
             attribute = self._create_initialize_command(device_id)
         elif command == PasdCommandStrings.RESET_ALARMS:
@@ -764,3 +814,43 @@ class PasdBusRegisterMap:
             attribute = self._create_port_command(device_id, command, arguments)
 
         return attribute
+
+    def _calculate_filter_decay_constant(self, cutoff: float) -> int | None:
+        """
+        Calculate recursive filter decay constant to write to telemetry register.
+
+        A digital low-pass single-pole recursive (IIR) filter is implemented in the PaSD
+        firmware for all polling telemetry. Given a target cut-off frequency in Hz,
+        return a custom unsigned 16-bit floating point format decay constant that can be
+        written to a Smartbox or FNDH telemetry register to enable low-pass filtering
+        with the approximated cut-off frequency.
+
+        NOTE: This function was copied from Curtin's codebase. We cannot validate it
+        independently from the original firmware author. The exponent/mantissa packing
+        was chosen to represent a reasonable range of numbers that are sensible to use,
+        with sufficient precision, and yield a result that fitted within a single
+        16-bit modbus register.
+
+        :param cutoff: Low-pass cut-off frequency in Hz.
+        :return: 16-bit floating point decay constant to write to enable filtering,
+            or None if given cutoff is invalid.
+        """
+        time_delta = 0.001  # internal sensor sampling interval in seconds
+        if cutoff * time_delta > 1 or cutoff < 0.1:
+            logger.error(
+                f"Given cut-off frequency ({cutoff}Hz) is higher than sampling rate,"
+                "or lower than 0.1Hz. Filter decay constant not set."
+            )
+            return None
+        time_constant = 1 / (2 * math.pi * cutoff)
+        alpha = time_delta / (time_constant + time_delta)  # decay constant
+        # Convert to unsigned 5-bit exponent, 11-bit mantissa floating point format
+        base = math.log(alpha) / math.log(2)
+        right_shift = -int(base)  # exponent
+        lower_range = 2 ** (-right_shift)
+        upper_range = 2 ** (-right_shift - 1)
+        mantissa_bits = 11
+        mantissa_step = (lower_range - upper_range) / (2 ** (mantissa_bits - 1))
+        mantissa = int((alpha - upper_range) / mantissa_step)
+        ubinary16 = right_shift * (2**mantissa_bits) + mantissa
+        return ubinary16

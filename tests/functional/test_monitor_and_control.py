@@ -14,7 +14,7 @@ from typing import Callable, Literal
 
 import tango
 from pytest_bdd import given, parsers, scenario, then, when
-from ska_control_model import AdminMode, HealthState, ResultCode
+from ska_control_model import AdminMode, HealthState, ResultCode, SimulationMode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -114,7 +114,12 @@ def get_not_ready_device(device_ref: str, set_device_state: Callable) -> None:
     :param set_device_state: function to set device state.
     """
     print(f"Setting device {device_ref} not ready...")
-    set_device_state(device_ref, state=tango.DevState.DISABLE, mode=AdminMode.OFFLINE)
+    set_device_state(
+        device_ref,
+        state=tango.DevState.DISABLE,
+        mode=AdminMode.OFFLINE,
+        simulation_mode=SimulationMode.TRUE,
+    )
 
 
 @given(parsers.parse("A {device_ref} which is ready"))
@@ -126,7 +131,12 @@ def get_ready_device(device_ref: str, set_device_state: Callable) -> None:
     :param set_device_state: function to set device state.
     """
     print(f"Setting device {device_ref} ready...")
-    set_device_state(device_ref, state=tango.DevState.ON, mode=AdminMode.ONLINE)
+    set_device_state(
+        device_ref,
+        state=tango.DevState.ON,
+        mode=AdminMode.ONLINE,
+        simulation_mode=SimulationMode.TRUE,
+    )
 
 
 @given("the PaSD is available")
