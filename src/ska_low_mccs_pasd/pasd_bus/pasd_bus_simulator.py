@@ -54,6 +54,7 @@ from .pasd_bus_conversions import (
     SmartboxStatusMap,
 )
 from .pasd_bus_modbus_api import FNDH_MODBUS_ADDRESS
+from .pasd_bus_register_map import DesiredPowerEnum
 
 logger = logging.getLogger()
 
@@ -98,8 +99,10 @@ class _PasdPortSimulator(ABC):
         # Simulated PDoC/FEM state registers
         self._enabled: bool = False
         self._online: bool = True  # Redundant, as desribed above
-        self._desired_on_when_online: bool = False
-        self._desired_on_when_offline: bool = False  # Redundant, as desribed above
+        self._desired_on_when_online: DesiredPowerEnum = DesiredPowerEnum.DEFAULT
+        self._desired_on_when_offline: DesiredPowerEnum = (
+            DesiredPowerEnum.DEFAULT
+        )  # Redundant, as desribed above
         self._forcing: Optional[bool] = None
 
     def _update_port_power(self: _PasdPortSimulator) -> None:
@@ -112,8 +115,11 @@ class _PasdPortSimulator(ABC):
         if self._forcing is False:
             self._on = False
         elif (self._forcing or self._enabled) and not self._over_current:
-            if (self._desired_on_when_online and self._online) or (
-                self._desired_on_when_offline and not self._online
+            if (
+                self._desired_on_when_online == DesiredPowerEnum.ON and self._online
+            ) or (
+                self._desired_on_when_offline == DesiredPowerEnum.ON
+                and not self._online
             ):
                 self._on = True
             else:
@@ -204,13 +210,20 @@ class _PasdPortSimulator(ABC):
 
         :return: whether successful, or None if there was nothing to do.
         """
-        if self._desired_on_when_online and (
-            self._desired_on_when_offline == stay_on_when_offline
-        ):
-            return None
+        if self._desired_on_when_online == DesiredPowerEnum.ON:
+            if (
+                self._desired_on_when_offline == DesiredPowerEnum.ON
+                and stay_on_when_offline
+            ) or (
+                self._desired_on_when_offline == DesiredPowerEnum.OFF
+                and not stay_on_when_offline
+            ):
+                return None
 
-        self._desired_on_when_online = True
-        self._desired_on_when_offline = stay_on_when_offline
+        self._desired_on_when_online = DesiredPowerEnum.ON
+        self._desired_on_when_offline = (
+            DesiredPowerEnum.ON if stay_on_when_offline else DesiredPowerEnum.OFF
+        )
         self._update_port_power()
         return True
 
@@ -223,8 +236,8 @@ class _PasdPortSimulator(ABC):
         if not self._desired_on_when_online:
             return None
 
-        self._desired_on_when_online = False
-        self._desired_on_when_offline = False
+        self._desired_on_when_online = DesiredPowerEnum.OFF
+        self._desired_on_when_offline = DesiredPowerEnum.OFF
         self._update_port_power()
         return True
 
@@ -258,7 +271,7 @@ class _PasdPortSimulator(ABC):
         return True
 
     @property
-    def desired_power_when_online(self: _PasdPortSimulator) -> bool:
+    def desired_power_when_online(self: _PasdPortSimulator) -> DesiredPowerEnum:
         """
         Return the desired power mode of the port when the control system is online.
 
@@ -268,7 +281,9 @@ class _PasdPortSimulator(ABC):
         return self._desired_on_when_online
 
     @desired_power_when_online.setter
-    def desired_power_when_online(self: _PasdPortSimulator, power_on: bool) -> None:
+    def desired_power_when_online(
+        self: _PasdPortSimulator, power_on: DesiredPowerEnum
+    ) -> None:
         """
         Set the desired power mode of the port when the control system is online.
 
@@ -277,7 +292,7 @@ class _PasdPortSimulator(ABC):
         self._desired_on_when_online = power_on
 
     @property
-    def desired_power_when_offline(self: _PasdPortSimulator) -> bool:
+    def desired_power_when_offline(self: _PasdPortSimulator) -> DesiredPowerEnum:
         """
         Return the desired power mode of the port when the control system is offline.
 
@@ -287,7 +302,9 @@ class _PasdPortSimulator(ABC):
         return self._desired_on_when_offline
 
     @desired_power_when_offline.setter
-    def desired_power_when_offline(self: _PasdPortSimulator, power_on: bool) -> None:
+    def desired_power_when_offline(
+        self: _PasdPortSimulator, power_on: DesiredPowerEnum
+    ) -> None:
         """
         Set the desired power mode of the port when the control system is offline.
 
@@ -741,7 +758,7 @@ class PasdHardwareSimulator:
     @property
     def ports_desired_power_when_online(
         self: PasdHardwareSimulator,
-    ) -> list[bool]:
+    ) -> list[DesiredPowerEnum]:
         """
         Return the desired power of each port when the device is online.
 
@@ -756,7 +773,7 @@ class PasdHardwareSimulator:
     @ports_desired_power_when_online.setter
     def ports_desired_power_when_online(
         self: PasdHardwareSimulator,
-        desire: tuple[bool | None, int],
+        desire: tuple[DesiredPowerEnum | None, int],
     ) -> None:
         """
         Set the desired power of a port when the device is online.
@@ -770,7 +787,7 @@ class PasdHardwareSimulator:
     @property
     def ports_desired_power_when_offline(
         self: PasdHardwareSimulator,
-    ) -> list[bool]:
+    ) -> list[DesiredPowerEnum]:
         """
         Return the desired power of each port when the device is offline.
 
@@ -785,7 +802,7 @@ class PasdHardwareSimulator:
     @ports_desired_power_when_offline.setter
     def ports_desired_power_when_offline(
         self: PasdHardwareSimulator,
-        desire: tuple[bool | None, int],
+        desire: tuple[DesiredPowerEnum | None, int],
     ) -> None:
         """
         Set the desired power of a port when the device is offline.
