@@ -246,14 +246,14 @@ class PasdBusPortAttribute(PasdBusAttribute):
                 bitmap: int = 0
                 match self.desired_info:
                     case PortStatusBits.DSON:
-                        if value:
+                        if value == DesiredPowerEnum.ON:
                             bitmap = PortDesiredStateOnline.ON
-                        else:
+                        elif value == DesiredPowerEnum.OFF:
                             bitmap = PortDesiredStateOnline.OFF
                     case PortStatusBits.DSOFF:
-                        if value:
+                        if value == DesiredPowerEnum.ON:
                             bitmap = PortDesiredStateOffline.ON
-                        else:
+                        elif value == DesiredPowerEnum.OFF:
                             bitmap = PortDesiredStateOffline.OFF
                     case PortStatusBits.TO:
                         if value == forcing_map[True]:
