@@ -739,9 +739,7 @@ class PasdBusRegisterMap:
         attribute = PasdBusPortAttribute(
             register_info.starting_port_register, len(arguments)
         )
-        offset = 0
-
-        for desired_power_setting in arguments:
+        for offset, desired_power_setting in enumerate(arguments):
             if desired_power_setting is None:
                 attribute._set_bitmap_value(offset, None, None)
             else:
@@ -753,7 +751,6 @@ class PasdBusRegisterMap:
                     # We are turning a port OFF, so set the DSOFF value
                     # also to OFF.
                     attribute._set_bitmap_value(offset, dson, False)
-            offset = offset + 1
         return attribute
 
     def _create_single_port_command(
