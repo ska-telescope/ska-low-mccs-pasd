@@ -215,12 +215,11 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
                 self._port_breaker_resets[port - 1] = False
                 return "BREAKER_RESET", port
 
-        for port, change in enumerate(self._port_power_changes, start=1):
-            if change is not None:
-                requested_powers = self._port_power_changes
-                self._port_power_changes = [None] * len(requested_powers)
-                self._ports_status_update_request = True
-                return "SET_PORT_POWERS", requested_powers
+        if any(change is not None for change in self._port_power_changes):
+            requested_powers = self._port_power_changes
+            self._port_power_changes = [None] * len(requested_powers)
+            self._ports_status_update_request = True
+            return "SET_PORT_POWERS", requested_powers
 
         return "NONE", None
 
