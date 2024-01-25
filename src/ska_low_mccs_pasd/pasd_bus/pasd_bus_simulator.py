@@ -210,15 +210,12 @@ class _PasdPortSimulator(ABC):
 
         :return: whether successful, or None if there was nothing to do.
         """
-        if self._desired_on_when_online == DesiredPowerEnum.ON:
-            if (
-                self._desired_on_when_offline == DesiredPowerEnum.ON
-                and stay_on_when_offline
-            ) or (
-                self._desired_on_when_offline == DesiredPowerEnum.OFF
-                and not stay_on_when_offline
-            ):
-                return None
+        if (
+            self._desired_on_when_online == DesiredPowerEnum.ON
+            and (self._desired_on_when_offline == DesiredPowerEnum.ON)
+            == stay_on_when_offline
+        ):
+            return None
 
         self._desired_on_when_online = DesiredPowerEnum.ON
         self._desired_on_when_offline = (

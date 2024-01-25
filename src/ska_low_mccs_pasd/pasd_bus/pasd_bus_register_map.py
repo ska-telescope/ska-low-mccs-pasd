@@ -80,9 +80,10 @@ class PortDesiredStateOffline(IntEnum):
 
 
 class DesiredPowerEnum(IntEnum):
-    """Enum type for the DSON and DSOFF attributes.
+    """
+    Enum type for the DSON and DSOFF attributes.
 
-    Note that DevEnum types must start at 0 and increment by 1
+    Note that DevEnum types must start at 0 and increment by 1.
     """
 
     DEFAULT = 0
@@ -274,13 +275,13 @@ class PasdBusPortAttribute(PasdBusAttribute):
                         state = PortDesiredStateOnline(status).name
                     except ValueError:
                         state = DesiredPowerEnum.INVALID.name
-                    results.append(DesiredPowerEnum[state].value)
+                    results.append(DesiredPowerEnum[state])
                 case PortStatusBits.DSOFF:
                     try:
                         state = PortDesiredStateOffline(status).name
                     except ValueError:
                         state = DesiredPowerEnum.INVALID.name
-                    results.append(DesiredPowerEnum[state].value)
+                    results.append(DesiredPowerEnum[state])
                 case PortStatusBits.TO:
                     if status == PortOverride.FORCE_OFF:
                         results.append(forcing_map[False])
