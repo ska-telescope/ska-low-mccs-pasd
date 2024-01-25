@@ -6,6 +6,8 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module contains the tests of the PaSD bus component manager."""
+
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 from typing import Any
@@ -21,6 +23,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     SmartboxAlarmFlags,
     SmartboxStatusMap,
 )
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
     FndhSimulator,
     PasdHardwareSimulator,
@@ -67,7 +70,14 @@ class TestPasdBusSimulator:
         """
         assert fndh_simulator.status == FndhStatusMap.OK
         assert fndh_simulator.ports_connected == fndh_config
-        assert fndh_simulator.ports_desired_power_when_online == fndh_config
+        expected_ports_desired_power = [
+            DesiredPowerEnum.ON if port else DesiredPowerEnum.DEFAULT
+            for port in fndh_config
+        ]
+        assert (
+            fndh_simulator.ports_desired_power_when_online
+            == expected_ports_desired_power
+        )
         assert fndh_simulator.ports_power_sensed == fndh_config
         for smartbox_id in list(pasd_hw_simulators.keys())[1:]:
             smartbox_simulator = pasd_hw_simulators[smartbox_id]
@@ -657,11 +667,15 @@ class TestSmartboxSimulator:
         assert smartbox_simulator.initialize()
         assert smartbox_simulator.status == SmartboxStatusMap.OK
 
-        expected_when_online = [False] * SmartboxSimulator.NUMBER_OF_PORTS
+        expected_when_online = [
+            DesiredPowerEnum.DEFAULT
+        ] * SmartboxSimulator.NUMBER_OF_PORTS
         assert (
             smartbox_simulator.ports_desired_power_when_online == expected_when_online
         )
-        expected_when_offline = [False] * SmartboxSimulator.NUMBER_OF_PORTS
+        expected_when_offline = [
+            DesiredPowerEnum.DEFAULT
+        ] * SmartboxSimulator.NUMBER_OF_PORTS
         assert (
             smartbox_simulator.ports_desired_power_when_offline == expected_when_offline
         )
@@ -669,8 +683,8 @@ class TestSmartboxSimulator:
         assert not smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
         assert smartbox_simulator.turn_port_on(connected_smartbox_port)
-        expected_when_online[connected_smartbox_port - 1] = True
-        expected_when_offline[connected_smartbox_port - 1] = True
+        expected_when_online[connected_smartbox_port - 1] = DesiredPowerEnum.ON
+        expected_when_offline[connected_smartbox_port - 1] = DesiredPowerEnum.ON
         assert (
             smartbox_simulator.ports_desired_power_when_online == expected_when_online
         )
@@ -688,7 +702,7 @@ class TestSmartboxSimulator:
         )
 
         assert smartbox_simulator.turn_port_on(connected_smartbox_port, False)
-        expected_when_offline[connected_smartbox_port - 1] = False
+        expected_when_offline[connected_smartbox_port - 1] = DesiredPowerEnum.OFF
         assert (
             smartbox_simulator.ports_desired_power_when_online == expected_when_online
         )
@@ -698,8 +712,8 @@ class TestSmartboxSimulator:
         assert smartbox_simulator.ports_power_sensed[connected_smartbox_port - 1]
 
         assert smartbox_simulator.turn_port_off(connected_smartbox_port)
-        expected_when_online[connected_smartbox_port - 1] = False
-        expected_when_offline[connected_smartbox_port - 1] = False
+        expected_when_online[connected_smartbox_port - 1] = DesiredPowerEnum.OFF
+        expected_when_offline[connected_smartbox_port - 1] = DesiredPowerEnum.OFF
         assert (
             smartbox_simulator.ports_desired_power_when_online == expected_when_online
         )

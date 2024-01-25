@@ -394,17 +394,22 @@ class TestPasdBusComponentManager:
                 lookahead=25,
             )
 
-        expected_fndh_ports_powered = [False] * FndhSimulator.NUMBER_OF_PORTS
+        expected_fndh_ports_power_sensed = [False] * FndhSimulator.NUMBER_OF_PORTS
         for smartbox_config in pasd_config["pasd"]["smartboxes"].values():
-            expected_fndh_ports_powered[smartbox_config["fndh_port"] - 1] = True
+            expected_fndh_ports_power_sensed[smartbox_config["fndh_port"] - 1] = True
+
+        expected_fndh_ports_desired_power = [
+            DesiredPowerEnum.ON if port else DesiredPowerEnum.DEFAULT
+            for port in expected_fndh_ports_power_sensed
+        ]
 
         # Then FNDH port status info
         mock_callbacks.assert_call(
             "pasd_device_state_for_fndh",
             port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
-            ports_desired_power_when_online=expected_fndh_ports_powered,
-            ports_desired_power_when_offline=expected_fndh_ports_powered,
-            ports_power_sensed=expected_fndh_ports_powered,
+            ports_desired_power_when_online=expected_fndh_ports_desired_power,
+            ports_desired_power_when_offline=expected_fndh_ports_desired_power,
+            ports_power_sensed=expected_fndh_ports_power_sensed,
             ports_power_control=[True] * FndhSimulator.NUMBER_OF_PORTS,
             lookahead=25,
         )
@@ -425,9 +430,9 @@ class TestPasdBusComponentManager:
                 f"pasd_device_state_for_smartbox{smartbox_number}",
                 port_forcings=["NONE"] * SmartboxSimulator.NUMBER_OF_PORTS,
                 port_breakers_tripped=[False] * SmartboxSimulator.NUMBER_OF_PORTS,
-                ports_desired_power_when_online=[False]
+                ports_desired_power_when_online=[DesiredPowerEnum.DEFAULT]
                 * SmartboxSimulator.NUMBER_OF_PORTS,
-                ports_desired_power_when_offline=[False]
+                ports_desired_power_when_offline=[DesiredPowerEnum.DEFAULT]
                 * SmartboxSimulator.NUMBER_OF_PORTS,
                 ports_power_sensed=[False] * SmartboxSimulator.NUMBER_OF_PORTS,
                 ports_current_draw=[0] * SmartboxSimulator.NUMBER_OF_PORTS,
@@ -494,10 +499,10 @@ class TestPasdBusComponentManager:
 
         for i in range(1, 5):
             print(f"\nTest iteration {i}")
-            ports_desired_power_when_online = (
+            expected_desired_power_when_online = (
                 fndh_simulator.ports_desired_power_when_online
             )
-            ports_desired_power_when_offline = (
+            expected_desired_power_when_offline = (
                 fndh_simulator.ports_desired_power_when_offline
             )
 
@@ -506,45 +511,27 @@ class TestPasdBusComponentManager:
             )
             desired_stay_on_when_offline = random.choice([True, False])
 
-            expected_desired_power_when_online: list[DesiredPowerEnum | None] = list(
-                ports_desired_power_when_online
-            )
-            expected_desired_power_when_offline: list[DesiredPowerEnum | None] = list(
-                ports_desired_power_when_offline
-            )
-
             for i, desired in enumerate(desired_port_powers):
-                if fndh_simulator.ports_connected[i]:
-                    match desired:
-                        case True:
-                            expected_desired_power_when_online[i] = DesiredPowerEnum.ON
-                            expected_desired_power_when_offline[i] = (
-                                DesiredPowerEnum.ON
-                                if desired_stay_on_when_offline
-                                else DesiredPowerEnum.OFF
-                            )
-                        case False:
-                            expected_desired_power_when_online[i] = DesiredPowerEnum.OFF
-                            expected_desired_power_when_offline[
-                                i
-                            ] = DesiredPowerEnum.OFF
-                        case None:
-                            expected_desired_power_when_online[
-                                i
-                            ] = DesiredPowerEnum.DEFAULT
-                            expected_desired_power_when_offline[
-                                i
-                            ] = DesiredPowerEnum.DEFAULT
+                if desired:
+                    expected_desired_power_when_online[i] = DesiredPowerEnum.ON
+                    expected_desired_power_when_offline[i] = (
+                        DesiredPowerEnum.ON
+                        if desired_stay_on_when_offline
+                        else DesiredPowerEnum.OFF
+                    )
+                elif desired is None:
+                    expected_desired_power_when_online[i] = DesiredPowerEnum.DEFAULT
+                    expected_desired_power_when_offline[i] = DesiredPowerEnum.DEFAULT
                 else:
-                    # Ensure we don't request a port to be changed
-                    # which is not connected
-                    desired_port_powers[i] = None
+                    expected_desired_power_when_online[i] = DesiredPowerEnum.OFF
+                    expected_desired_power_when_offline[i] = DesiredPowerEnum.OFF
+
             expected_ports_power_sensed = [
                 x == DesiredPowerEnum.ON for x in expected_desired_power_when_online
             ]
 
-            print(f"{ports_desired_power_when_online=}")
-            print(f"{ports_desired_power_when_offline=}")
+            print(f"{expected_desired_power_when_online=}")
+            print(f"{expected_desired_power_when_offline=}")
             print(f"{desired_port_powers=}")
             print(f"{desired_stay_on_when_offline=}")
 
@@ -561,7 +548,7 @@ class TestPasdBusComponentManager:
                 lookahead=11,  # Full cycle plus one to cover off on race conditions
             )
 
-    def test_smartbox_port_power_commands(  # pylint: disable=too-many-locals
+    def test_set_smartbox_port_powers(  # pylint: disable=too-many-locals
         self: TestPasdBusComponentManager,
         smartbox_simulator: SmartboxSimulator,
         smartbox_id: int,
@@ -632,22 +619,20 @@ class TestPasdBusComponentManager:
             )
 
             for i, desired in enumerate(desired_port_powers):
-                match desired:
-                    case True:
-                        expected_desired_power_when_online[i] = DesiredPowerEnum.ON
-                        expected_desired_power_when_offline[i] = (
-                            DesiredPowerEnum.ON
-                            if desired_stay_on_when_offline
-                            else DesiredPowerEnum.OFF
-                        )
-                    case False:
-                        expected_desired_power_when_online[i] = DesiredPowerEnum.OFF
-                        expected_desired_power_when_offline[i] = DesiredPowerEnum.OFF
-                    case None:
-                        expected_desired_power_when_online[i] = DesiredPowerEnum.DEFAULT
-                        expected_desired_power_when_offline[
-                            i
-                        ] = DesiredPowerEnum.DEFAULT
+                if desired:
+                    expected_desired_power_when_online[i] = DesiredPowerEnum.ON
+                    expected_desired_power_when_offline[i] = (
+                        DesiredPowerEnum.ON
+                        if desired_stay_on_when_offline
+                        else DesiredPowerEnum.OFF
+                    )
+                elif desired is None:
+                    expected_desired_power_when_online[i] = DesiredPowerEnum.DEFAULT
+                    expected_desired_power_when_offline[i] = DesiredPowerEnum.DEFAULT
+                else:
+                    expected_desired_power_when_online[i] = DesiredPowerEnum.OFF
+                    expected_desired_power_when_offline[i] = DesiredPowerEnum.OFF
+
             expected_ports_current_draw = [
                 SmartboxSimulator.DEFAULT_PORT_CURRENT_DRAW
                 if s == DesiredPowerEnum.ON and c

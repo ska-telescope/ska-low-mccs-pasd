@@ -233,7 +233,7 @@ class _PasdPortSimulator(ABC):
 
         :return: whether successful, or None if there was nothing to do.
         """
-        if not self._desired_on_when_online:
+        if self._desired_on_when_online == DesiredPowerEnum.OFF:
             return None
 
         self._desired_on_when_online = DesiredPowerEnum.OFF
@@ -773,14 +773,14 @@ class PasdHardwareSimulator:
     @ports_desired_power_when_online.setter
     def ports_desired_power_when_online(
         self: PasdHardwareSimulator,
-        desire: tuple[DesiredPowerEnum | None, int],
+        desire: tuple[DesiredPowerEnum, int],
     ) -> None:
         """
         Set the desired power of a port when the device is online.
 
         :param desire: tuple of (desire power when online, port)
         """
-        if desire[0] is not None:
+        if desire[0] != DesiredPowerEnum.DEFAULT:
             self._ports[desire[1]].desired_power_when_online = desire[0]
             self._ports[desire[1]]._update_port_power()
 
@@ -802,14 +802,14 @@ class PasdHardwareSimulator:
     @ports_desired_power_when_offline.setter
     def ports_desired_power_when_offline(
         self: PasdHardwareSimulator,
-        desire: tuple[DesiredPowerEnum | None, int],
+        desire: tuple[DesiredPowerEnum, int],
     ) -> None:
         """
         Set the desired power of a port when the device is offline.
 
         :param desire: tuple of (desire power when offline, port)
         """
-        if desire[0] is not None:
+        if desire[0] != DesiredPowerEnum.DEFAULT:
             self._ports[desire[1]].desired_power_when_offline = desire[0]
             self._ports[desire[1]]._update_port_power()
 
