@@ -31,8 +31,7 @@ from .pasd_bus_register_map import (
     PasdBusAttribute,
     PasdBusPortAttribute,
     PasdBusRegisterMap,
-    PasdReadError,
-    PasdWriteError,
+    PasdBusRequestError,
 )
 
 FNDH_MODBUS_ADDRESS: Final = 101
@@ -350,15 +349,9 @@ class PasdBusModbusApiClient:
             attributes = self._register_map.get_attributes(
                 request["device_id"], request["read"]
             )
-        except PasdReadError as e:
+        except PasdBusRequestError as e:
             return self._create_error_response(
-                "request", f"Exception for slave {modbus_address}: {e}"
-            )
-        if len(attributes) == 0:
-            return self._create_error_response(
-                "request",
-                f"Exception for slave {modbus_address}: No attributes matching "
-                f"{request['read']} in PaSD register map",
+                "request", f"Exception for slave {modbus_address} read request: {e}"
             )
 
         # Retrieve the list of keys (attribute names) in Modbus address order
@@ -492,9 +485,9 @@ class PasdBusModbusApiClient:
             attribute = self._register_map.get_writeable_attribute(
                 request["device_id"], request["write"], list(request["values"])
             )
-        except PasdWriteError as e:
+        except PasdBusRequestError as e:
             return self._create_error_response(
-                "request", f"Exception for slave {modbus_address}: {e}"
+                "request", f"Exception for slave {modbus_address} write request: {e}"
             )
 
         return self._write_registers(modbus_address, attribute.address, attribute.value)
@@ -505,17 +498,13 @@ class PasdBusModbusApiClient:
         )
 
         # Get a PasdBusCommand object for this command
-        command = self._register_map.get_command(
-            request["device_id"], request["execute"], request["arguments"]
-        )
-
-        if not command:
+        try:
+            command = self._register_map.get_command(
+                request["device_id"], request["execute"], request["arguments"]
+            )
+        except PasdBusRequestError as e:
             return self._create_error_response(
-                "request",
-                (
-                    f"Invalid command request for slave {modbus_address}: "
-                    f"Command: {request['execute']}, Arguments: {request['arguments']}"
-                ),
+                "request", f"Exception for slave {modbus_address} command request: {e}"
             )
 
         return self._write_registers(modbus_address, command.address, command.value)
