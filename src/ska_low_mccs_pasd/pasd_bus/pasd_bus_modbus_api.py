@@ -330,6 +330,7 @@ class PasdBusModbusApiClient:
 
     def _create_error_response(self, error_code: str, message: str) -> dict:
         self._logger.error(message)
+        # TODO: What error codes to use? Currently used is [request, read, write]
         return {
             "error": {
                 "code": error_code,
@@ -351,17 +352,14 @@ class PasdBusModbusApiClient:
             )
         except PasdReadError as e:
             return self._create_error_response(
-                "request", f"Exception: {e}"
-            )  # TODO: What error code to use?
-
-        if len(attributes) == 0:
-            # TODO: Should this rather be an error response?
-            # Or could we at least return the warning rather than an empty response?
-            self._logger.warning(
-                f"No attributes matching {request['read']} in PaSD register map for"
-                f" device {request['device_id']}"
+                "request", f"Exception for slave {modbus_address}: {e}"
             )
-            return {"data": {"attributes": {}}}
+        if len(attributes) == 0:
+            return self._create_error_response(
+                "request",
+                f"Exception for slave {modbus_address}: No attributes matching "
+                f"{request['read']} in PaSD register map",
+            )
 
         # Retrieve the list of keys (attribute names) in Modbus address order
         keys = list(attributes)
@@ -373,8 +371,8 @@ class PasdBusModbusApiClient:
             - attributes[keys[0]].address
         )
         self._logger.debug(
-            f"Modbus read request: modbus address {modbus_address}, "
-            f"start register {attributes[keys[0]].address}, count {count}"
+            f"Modbus read request for slave {modbus_address}: "
+            f"Register address {attributes[keys[0]].address}, count {count}"
         )
 
         reply = self._client.read_holding_registers(
@@ -433,15 +431,17 @@ class PasdBusModbusApiClient:
             case ExceptionResponse():
                 response = self._create_error_response(
                     "read",
-                    f"Modbus Exception: "
+                    f"Modbus exception for slave {reply.slave_id}: "
                     f"{MODBUS_EXCEPTIONS.get(reply.exception_code, 'UNKNOWN')}, "
                     f"Function: "
                     f"{MODBUS_FUNCTIONS.get(reply.original_code, 'UNKNOWN')}",
-                )  # TODO: what error code to use?
+                )
             case _:
                 response = self._create_error_response(
-                    "read", f"Unexpected response type: {type(reply)}"
-                )  # TODO: what error code to use?
+                    "read",
+                    f"Unexpected response type for slave {modbus_address}: "
+                    f"{type(reply)}",
+                )
 
         return response
 
@@ -449,8 +449,8 @@ class PasdBusModbusApiClient:
         self, modbus_address: int, start_address: int, values: int | list[int]
     ) -> dict:
         self._logger.debug(
-            f"Modbus write request: modbus address {modbus_address}, "
-            f"register address {start_address}, values {values}"
+            f"Modbus write request for slave {modbus_address}: "
+            f"Register address {start_address}, Values: {values}"
         )
 
         reply = self._client.write_registers(start_address, values, modbus_address)
@@ -468,15 +468,17 @@ class PasdBusModbusApiClient:
             case ExceptionResponse():
                 response = self._create_error_response(
                     "write",
-                    f"Modbus Exception: "
+                    f"Modbus exception for slave {reply.slave_id}: "
                     f"{MODBUS_EXCEPTIONS.get(reply.exception_code, 'UNKNOWN')}, "
                     f"Function: "
                     f"{MODBUS_FUNCTIONS.get(reply.original_code, 'UNKNOWN')}",
-                )  # TODO: what error code to use?
+                )
             case _:
                 response = self._create_error_response(
-                    "write", f"Unexpected response type: {type(reply)}"
-                )  # TODO: what error code to use?
+                    "write",
+                    f"Unexpected response type for slave {modbus_address}: "
+                    f"{type(reply)}",
+                )
 
         return response
 
@@ -492,8 +494,8 @@ class PasdBusModbusApiClient:
             )
         except PasdWriteError as e:
             return self._create_error_response(
-                "request", f"Exception: {e}"
-            )  # TODO: What error code to use?
+                "request", f"Exception for slave {modbus_address}: {e}"
+            )
 
         return self._write_registers(modbus_address, attribute.address, attribute.value)
 
@@ -511,10 +513,10 @@ class PasdBusModbusApiClient:
             return self._create_error_response(
                 "request",
                 (
-                    f"Invalid command request: Device: {request['device_id']}, "
+                    f"Invalid command request for slave {modbus_address}: "
                     f"Command: {request['execute']}, Arguments: {request['arguments']}"
                 ),
-            )  # TODO: what error code to use?
+            )
 
         return self._write_registers(modbus_address, command.address, command.value)
 

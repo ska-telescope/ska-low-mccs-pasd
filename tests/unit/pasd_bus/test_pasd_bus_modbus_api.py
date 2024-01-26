@@ -604,7 +604,9 @@ class TestPasdBusModbusApiClient:
         :param api: the API under test
         """
         response = api.read_attributes(0, "nonexistent attribute")
-        assert response == {}
+        assert response["error"]["code"] == "request"
+        assert "No attributes matching" in response["error"]["detail"]
+        print("\n" + response["error"]["detail"])
 
     def test_read_exception(
         self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
