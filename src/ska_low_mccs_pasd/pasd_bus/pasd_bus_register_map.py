@@ -68,6 +68,7 @@ class PortDesiredStateOnline(IntEnum):
 
     OFF = 0x2000
     ON = 0x3000
+    DEFAULT = 0x0000
 
 
 class PortDesiredStateOffline(IntEnum):
@@ -75,6 +76,20 @@ class PortDesiredStateOffline(IntEnum):
 
     OFF = 0x800
     ON = 0xC00
+    DEFAULT = 0x0000
+
+
+class DesiredPowerEnum(IntEnum):
+    """
+    Enum type for the DSON and DSOFF attributes.
+
+    Note that DevEnum types must start at 0 and increment by 1.
+    """
+
+    DEFAULT = 0
+    OFF = 1
+    ON = 2
+    INVALID = 3
 
 
 class PortOverride(IntEnum):
@@ -89,6 +104,7 @@ class PasdCommandStrings(Enum):
 
     TURN_PORT_ON = "turn_port_on"
     TURN_PORT_OFF = "turn_port_off"
+    SET_PORT_POWERS = "set_port_powers"
     RESET_PORT_BREAKER = "reset_port_breaker"
     SET_LED_PATTERN = "set_led_pattern"
     SET_LOW_PASS_FILTER = "set_low_pass_filter"
@@ -188,7 +204,7 @@ class PasdBusAttribute:
 
 
 class PasdBusPortAttribute(PasdBusAttribute):
-    """Class representing a port status attribute."""
+    """Class representing the power status for one or more ports."""
 
     def __init__(
         self: PasdBusPortAttribute,
@@ -205,13 +221,14 @@ class PasdBusPortAttribute(PasdBusAttribute):
         """
         super().__init__(address, count, self._parse_port_bitmaps)
         self.desired_info = desired_info
+        self.value = [0] * count
 
     # pylint: disable=too-many-branches
     def _parse_port_bitmaps(
         self: PasdBusPortAttribute,
         values: list[int | bool | str],
         inverse: bool = False,
-    ) -> list[bool | str | None] | list[int]:
+    ) -> list[int] | list[int | str]:
         """
         Parse the port register bitmap data into the desired port information.
 
@@ -230,14 +247,14 @@ class PasdBusPortAttribute(PasdBusAttribute):
                 bitmap: int = 0
                 match self.desired_info:
                     case PortStatusBits.DSON:
-                        if value:
+                        if value == DesiredPowerEnum.ON:
                             bitmap = PortDesiredStateOnline.ON
-                        else:
+                        elif value == DesiredPowerEnum.OFF:
                             bitmap = PortDesiredStateOnline.OFF
                     case PortStatusBits.DSOFF:
-                        if value:
+                        if value == DesiredPowerEnum.ON:
                             bitmap = PortDesiredStateOffline.ON
-                        else:
+                        elif value == DesiredPowerEnum.OFF:
                             bitmap = PortDesiredStateOffline.OFF
                     case PortStatusBits.TO:
                         if value == forcing_map[True]:
@@ -249,14 +266,22 @@ class PasdBusPortAttribute(PasdBusAttribute):
                             bitmap = self.desired_info
                 inv_results.append(bitmap)
             return inv_results
-        results: list[bool | str | None] = []
+        results: list[int | str] = []
         for status_bitmap in values:
             status = int(status_bitmap) & self.desired_info
             match self.desired_info:
                 case PortStatusBits.DSON:
-                    results.append(status == PortDesiredStateOnline.ON)
+                    try:
+                        state = PortDesiredStateOnline(status).name
+                    except ValueError:
+                        state = DesiredPowerEnum.INVALID.name
+                    results.append(DesiredPowerEnum[state])
                 case PortStatusBits.DSOFF:
-                    results.append(status == PortDesiredStateOffline.ON)
+                    try:
+                        state = PortDesiredStateOffline(status).name
+                    except ValueError:
+                        state = DesiredPowerEnum.INVALID.name
+                    results.append(DesiredPowerEnum[state])
                 case PortStatusBits.TO:
                     if status == PortOverride.FORCE_OFF:
                         results.append(forcing_map[False])
@@ -268,8 +293,10 @@ class PasdBusPortAttribute(PasdBusAttribute):
                     results.append(bool(status))
         return results
 
+    # pylint: disable=too-many-arguments
     def _set_bitmap_value(
         self: PasdBusPortAttribute,
+        port_number_offset: int,
         desired_on_online: Optional[bool] = None,
         desired_on_offline: Optional[bool] = None,
         reset_breaker: bool = False,
@@ -288,7 +315,8 @@ class PasdBusPortAttribute(PasdBusAttribute):
             value ^= PortOverride.FORCE_OFF
         if reset_breaker:
             value ^= PortStatusBits.PWRSENSE_BREAKER
-        self.value = value
+        assert isinstance(self.value, list)
+        self.value[port_number_offset] = value
 
 
 @dataclass
@@ -701,7 +729,32 @@ class PasdBusRegisterMap:
         attribute.value = 1  # Write any value to initialize the device
         return attribute
 
-    def _create_port_command(
+    def _create_port_powers_command(
+        self, device_id: int, arguments: Sequence[Any]
+    ) -> Optional[PasdBusAttribute]:
+        register_info = self._get_register_info(device_id)
+        if len(arguments) > register_info.number_of_ports:
+            logger.error(f"Too many port status arguments given for device {device_id}")
+            return None
+
+        attribute = PasdBusPortAttribute(
+            register_info.starting_port_register, len(arguments)
+        )
+        for offset, desired_power_setting in enumerate(arguments):
+            if desired_power_setting is None:
+                attribute._set_bitmap_value(offset, None, None)
+            else:
+                dson = desired_power_setting[0]
+                dsoff = desired_power_setting[1]
+                if dson:
+                    attribute._set_bitmap_value(offset, dson, dsoff)
+                else:
+                    # We are turning a port OFF, so set the DSOFF value
+                    # also to OFF.
+                    attribute._set_bitmap_value(offset, dson, False)
+        return attribute
+
+    def _create_single_port_command(
         self, device_id: int, command: PasdCommandStrings, arguments: Sequence[Any]
     ) -> Optional[PasdBusPortAttribute]:
         register_info = self._get_register_info(device_id)
@@ -729,11 +782,11 @@ class PasdBusRegisterMap:
                     desired_on_offline = arguments[1]
                 else:
                     desired_on_offline = True  # default case
-                attribute._set_bitmap_value(True, desired_on_offline)
+                attribute._set_bitmap_value(0, True, desired_on_offline)
             case PasdCommandStrings.TURN_PORT_OFF:
-                attribute._set_bitmap_value(False, False)
+                attribute._set_bitmap_value(0, False, False)
             case PasdCommandStrings.RESET_PORT_BREAKER:
-                attribute._set_bitmap_value(reset_breaker=True)
+                attribute._set_bitmap_value(0, reset_breaker=True)
         return attribute
 
     def _create_reset_alarms_command(self, device_id: int) -> PasdBusAttribute:
@@ -809,9 +862,11 @@ class PasdBusRegisterMap:
             attribute = self._create_reset_alarms_command(device_id)
         elif command == PasdCommandStrings.RESET_WARNINGS:
             attribute = self._create_reset_warnings_command(device_id)
+        elif command == PasdCommandStrings.SET_PORT_POWERS:
+            attribute = self._create_port_powers_command(device_id, arguments)
         else:
-            # All other commands relate to port control
-            attribute = self._create_port_command(device_id, command, arguments)
+            # All other commands relate to individual port control
+            attribute = self._create_single_port_command(device_id, command, arguments)
 
         return attribute
 

@@ -19,6 +19,8 @@ from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
 from tango.server import attribute, command, device_property
 
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
+
 from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
 
@@ -58,8 +60,8 @@ class MccsSmartBox(SKABaseDevice):
         ("FemHeatsinkTemperatures", (float,), 2),
         ("PortForcings", (str,), PORT_COUNT),
         ("PortBreakersTripped", (bool,), PORT_COUNT),
-        ("PortsDesiredPowerOnline", (bool,), PORT_COUNT),
-        ("PortsDesiredPowerOffline", (bool,), PORT_COUNT),
+        ("PortsDesiredPowerOnline", (DesiredPowerEnum,), PORT_COUNT),
+        ("PortsDesiredPowerOffline", (DesiredPowerEnum,), PORT_COUNT),
         ("PortsPowerSensed", (bool,), PORT_COUNT),
         ("PortsCurrentDraw", (float,), PORT_COUNT),
         ("InputVoltageThresholds", (float,), 4),

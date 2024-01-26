@@ -20,6 +20,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     SmartboxStatusMap,
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import (
+    DesiredPowerEnum,
     PasdBusPortAttribute,
     PortStatusBits,
 )
@@ -193,26 +194,38 @@ def test_non_reversible_conversion_function(
         pytest.param(
             PortStatusBits.DSON,
             [(1 << 12) + (1 << 13)],
-            [True],
+            [DesiredPowerEnum.ON],
             id="DSON_11",
         ),
         pytest.param(
             PortStatusBits.DSON,
             [(1 << 13)],
-            [False],
+            [DesiredPowerEnum.OFF],
             id="DSON_10",
+        ),
+        pytest.param(
+            PortStatusBits.DSON,
+            [0],
+            [DesiredPowerEnum.DEFAULT],
+            id="DSON_00",
         ),
         pytest.param(
             PortStatusBits.DSOFF,
             [(1 << 10) + (1 << 11)],
-            [True],
+            [DesiredPowerEnum.ON],
             id="DSOFF_11",
         ),
         pytest.param(
             PortStatusBits.DSOFF,
             [(1 << 11)],
-            [False],
+            [DesiredPowerEnum.OFF],
             id="DSOFF_10",
+        ),
+        pytest.param(
+            PortStatusBits.DSOFF,
+            [0],
+            [DesiredPowerEnum.DEFAULT],
+            id="DSOFF_00",
         ),
         pytest.param(
             PortStatusBits.TO,

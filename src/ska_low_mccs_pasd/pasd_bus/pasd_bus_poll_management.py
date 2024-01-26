@@ -9,7 +9,6 @@
 
 
 import logging
-import threading
 from typing import Any, Callable, Iterator, Optional, Sequence
 
 from ska_low_mccs_pasd.pasd_data import PasdData
@@ -77,8 +76,6 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
             a read request iterator
         :param logger: a logger.
         """
-        self._lock = threading.Lock()
-
         self._logger = logger
 
         self._initialize_requested: bool = False
@@ -132,11 +129,10 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         :param stay_on_when_offline: whether any ports being turned on
             should remain on if MCCS loses its connection with the PaSD.
         """
-        with self._lock:
-            for index, power in enumerate(port_powers):
-                if power is None:
-                    continue
-                self._port_power_changes[index] = (power, stay_on_when_offline)
+        for index, power in enumerate(port_powers):
+            if power is None:
+                continue
+            self._port_power_changes[index] = (power, stay_on_when_offline)
 
     def desire_port_breaker_reset(self, port_number: int) -> None:
         """
@@ -219,14 +215,11 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
                 self._port_breaker_resets[port - 1] = False
                 return "BREAKER_RESET", port
 
-        with self._lock:
-            # TODO: [WOM-149] Support updating port power for many ports at once.
-            for port, change in enumerate(self._port_power_changes, start=1):
-                if change is None:
-                    continue
-                self._port_power_changes[port - 1] = None
-                self._ports_status_update_request = True
-                return "PORT_POWER", (port, *change)
+        if any(change is not None for change in self._port_power_changes):
+            requested_powers = self._port_power_changes
+            self._port_power_changes = [None] * len(requested_powers)
+            self._ports_status_update_request = True
+            return "SET_PORT_POWERS", requested_powers
 
         return "NONE", None
 
@@ -280,8 +273,6 @@ class PasdBusRequestProvider:
             with any given device
         :param logger: a logger.
         """
-        self._lock = threading.Lock()
-
         self._min_ticks = min_ticks
         self._logger = logger
 

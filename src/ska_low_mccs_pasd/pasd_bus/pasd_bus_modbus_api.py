@@ -12,7 +12,6 @@ import logging
 from datetime import datetime
 from typing import Any, Final
 
-import numpy as np
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
 from pymodbus.factory import ServerDecoder
@@ -152,19 +151,25 @@ class PasdBusModbusApi:
     ) -> ExceptionResponse | None:
         for name, attr in names.items():
             try:
+                # This getattr call is to induce an AttributeError for a nonexistent
+                # property in the simulator
                 getattr(self._simulators[device_id], name)
                 if attr.address < starting_address:
                     list_index = 0
                 else:
                     list_index = attr.address - starting_address
+                # Get values from list for current register in loop
                 if attr.count == 1:
                     reg_vals = values[list_index]
                 else:
                     reg_vals = values[list_index : list_index + attr.count]
+                # Set (write) attributes in simulator
                 if isinstance(attr, PasdBusPortAttribute):
-                    port = starting_address - attr.address
-                    reg_tuple = (attr.convert_value(reg_vals)[0], port)
-                    setattr(self._simulators[device_id], name, reg_tuple)
+                    converted_values = attr.convert_value(reg_vals)
+                    start_port = starting_address - attr.address
+                    for port_index, value in enumerate(converted_values):
+                        reg_tuple = (value, start_port + port_index)
+                        setattr(self._simulators[device_id], name, reg_tuple)
                 else:
                     setattr(self._simulators[device_id], name, reg_vals)
             except KeyError:
@@ -400,9 +405,6 @@ class PasdBusModbusApiClient:
                             register_index : register_index + current_attribute.count
                         ]
                     )
-                    # TODO: Why is this necessary?
-                    if isinstance(converted_values, np.ndarray):
-                        converted_values = list(converted_values)
                     results[key] = (
                         converted_values[0]
                         if len(converted_values) == 1

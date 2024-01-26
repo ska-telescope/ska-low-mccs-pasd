@@ -39,7 +39,10 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     LedStatusMap,
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_modbus_api import MODBUS_EXCEPTIONS
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import PasdCommandStrings
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import (
+    DesiredPowerEnum,
+    PasdCommandStrings,
+)
 from tests.harness import PasdTangoTestHarness
 
 
@@ -461,7 +464,7 @@ class TestPasdBusModbusApiClient:
                 PasdCommandStrings.TURN_PORT_ON,
                 2,
                 "ports_desired_power_when_online",
-                True,
+                DesiredPowerEnum.ON,
             ),
             (
                 "fndh_simulator",
@@ -469,7 +472,7 @@ class TestPasdBusModbusApiClient:
                 PasdCommandStrings.TURN_PORT_OFF,
                 1,
                 "ports_desired_power_when_online",
-                False,
+                DesiredPowerEnum.OFF,
             ),
             (
                 "smartbox_simulator",
