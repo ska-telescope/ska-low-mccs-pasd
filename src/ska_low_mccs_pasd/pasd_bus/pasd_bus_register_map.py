@@ -889,9 +889,10 @@ class PasdBusRegisterMap:
         :param arguments: arguments (if any)
 
         :return: PasdBusAttribute object populated with converted value
-            ready to send over Modbus or None if command is invalid
+            ready to send over Modbus
 
         :raises PasdBusRequestError: if the given string does not match any command
+            or the arguments are invalid
         """
         try:
             command = PasdCommandStrings(command_string)
