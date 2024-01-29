@@ -1,12 +1,10 @@
-===================
-SmartBox subpackage
-===================
-
-.. automodule:: ska_low_mccs_pasd.smart_box
-
+====================
+SMART Box subpackage
+====================
 
 .. toctree::
+  :maxdepth: 3
 
-  SmartBox device<smartbox_device>
-  SmartBox component manager<smartbox_component_manager>
-  SmartBox health model<smartbox_health_model>
+  SMART Box device<smartbox_device>
+  SMART Box component manager<smartbox_component_manager>
+  SMART Box health model<smartbox_health_model>

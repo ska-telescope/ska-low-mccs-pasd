@@ -6,12 +6,13 @@ API
   :caption: Device subpackages
   :maxdepth: 2
 
+  Field station<field_station/index>
   PaSD bus<pasd_bus/index>
-  SmartBox<smartbox/index>
   FNDH<fndh/index>
+  SMART Box<smartbox/index>
 
 .. toctree::
   :caption: Other
-  :maxdepth: 2
+  :maxdepth: 1
 
   Command proxy<command_proxy>
