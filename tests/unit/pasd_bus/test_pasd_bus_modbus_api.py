@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Generator
+from typing import Any, Generator, Sequence
 from unittest import mock
 
 import pytest
@@ -548,7 +548,7 @@ class TestPasdBusModbusApiClient:
             ),
         ],
     )
-    def test_execute_command(
+    def test_command(
         self: TestPasdBusModbusApiClient,
         api: PasdBusModbusApiClient,
         backend: str,
@@ -582,17 +582,75 @@ class TestPasdBusModbusApiClient:
         else:
             assert simulator_values == expected
 
-    def test_execute_command_error(
+    def test_command_nonexistent(
         self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
     ) -> None:
         """
-        Test handling of an invalid execute command request.
+        Test handling of a nonexistent command request.
 
         :param api: the API under test
         """
-        response = api.execute_command(0, "DummyCommand", 0)
+        response = api.execute_command(0, "dummy_command", 1, 2, 3)
         assert response["error"]["code"] == "request"
-        assert "Invalid command request" in response["error"]["detail"]
+        assert "No command matching" in response["error"]["detail"]
+        print("\n" + response["error"]["detail"])
+
+    def test_command_missing_argument(
+        self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
+    ) -> None:
+        """
+        Test handling of an invalid command request.
+
+        :param api: the API under test
+        """
+        response = api.execute_command(1, "turn_port_on")
+        assert response["error"]["code"] == "request"
+        assert "Missing argument for command" in response["error"]["detail"]
+        print("\n" + response["error"]["detail"])
+
+    @pytest.mark.parametrize(
+        ("slave", "command", "arguments"),
+        [
+            (
+                1,
+                PasdCommandStrings.TURN_PORT_OFF,
+                [13],
+            ),
+            (
+                2,
+                PasdCommandStrings.SET_LED_PATTERN,
+                ["BLACK"],
+            ),
+            (
+                3,
+                PasdCommandStrings.SET_LOW_PASS_FILTER,
+                [1000.1],
+            ),
+            (
+                4,
+                PasdCommandStrings.SET_PORT_POWERS,
+                [None] * 13,
+            ),
+        ],
+    )
+    def test_command_invalid_argument(
+        self: TestPasdBusModbusApiClient,
+        api: PasdBusModbusApiClient,
+        slave: int,
+        command: str,
+        arguments: Sequence[Any],
+    ) -> None:
+        """
+        Test handling of an invalid command request.
+
+        :param api: the API under test
+        :param slave: id of modbus slave
+        :param command: to execute
+        :param arguments: for command
+        """
+        response = api.execute_command(slave, command, *arguments)
+        assert response["error"]["code"] == "request"
+        assert "Invalid argument(s) for command" in response["error"]["detail"]
         print("\n" + response["error"]["detail"])
 
     def test_read_nonexistent_attribute(
@@ -604,9 +662,11 @@ class TestPasdBusModbusApiClient:
         :param api: the API under test
         """
         response = api.read_attributes(0, "nonexistent attribute")
-        assert response == {}
+        assert response["error"]["code"] == "request"
+        assert "No attributes matching" in response["error"]["detail"]
+        print("\n" + response["error"]["detail"])
 
-    def test_read_exception(
+    def test_read_modbus_exception(
         self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
     ) -> None:
         """
@@ -614,7 +674,6 @@ class TestPasdBusModbusApiClient:
 
         :param api: the API under test
         """
-        # TODO: Do we expect this exception from the HW?
         with pytest.raises(ModbusIOException) as exception:
             api.read_attributes(0, "dummy_for_test")
         assert (
@@ -633,7 +692,7 @@ class TestPasdBusModbusApiClient:
         """
         response = api.read_attributes(25, "input_voltage", "pcb_temperature")
         assert response["error"]["code"] == "request"
-        assert "Non-contiguous registers requested" in response["error"]["detail"]
+        assert "Non-contiguous registers" in response["error"]["detail"]
         print("\n" + response["error"]["detail"])
 
     def test_read_unresponsive_device(
@@ -660,7 +719,19 @@ class TestPasdBusModbusApiClient:
 
         :param api: the API under test
         """
-        # TODO: Do we expect this exception from the HW?
+        response = api.write_attribute(0, "nonexistent attribute", 1, 2)
+        assert response["error"]["code"] == "request"
+        assert "No attributes matching" in response["error"]["detail"]
+        print("\n" + response["error"]["detail"])
+
+    def test_write_modbus_exception(
+        self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
+    ) -> None:
+        """
+        Test writing attribute that exists in the register map, but not in simulator.
+
+        :param api: the API under test
+        """
         with pytest.raises(ModbusIOException) as exception:
             api.write_attribute(0, "dummy_for_test", 1, 2)
         assert (
@@ -669,7 +740,7 @@ class TestPasdBusModbusApiClient:
         )
         print("\n" + str(exception.value))
 
-    def test_write_read_only_attribute(
+    def test_write_read_only_attribute_error(
         self: TestPasdBusModbusApiClient, api: PasdBusModbusApiClient
     ) -> None:
         """
@@ -679,9 +750,7 @@ class TestPasdBusModbusApiClient:
         """
         response = api.write_attribute(1, "input_voltage", 20.0)
         assert response["error"]["code"] == "request"
-        assert (
-            "Non-writeable register requested for write" in response["error"]["detail"]
-        )
+        assert "Non-writeable register" in response["error"]["detail"]
         print("\n" + response["error"]["detail"])
 
     def test_write_unresponsive_device(

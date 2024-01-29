@@ -19,31 +19,44 @@ from .pasd_bus_conversions import LedServiceMap, PasdConversionUtility
 logger = logging.getLogger()
 
 
-class PasdReadError(Exception):
-    """Exception to be raised for invalid read requests."""
+class RequestErrors(Enum):
+    """Type of PaSD bus request errors."""
 
-    def __init__(self: PasdReadError, attribute1: str, attribute2: str):
+    NonExistentAttribute = 1
+    NonContiguousRegisters = 2
+    NonWritableAttribute = 3
+    NonExistentCommand = 4
+    MissingCommandArgument = 5
+    InvalidCommandArgument = 6
+
+
+class PasdBusRequestError(Exception):
+    """Exception to be raised for invalid PaSD bus requests."""
+
+    def __init__(self: PasdBusRequestError, error: RequestErrors, *args: Any):
         """Initialize new instance.
 
-        :param attribute1: name of the first attribute causing the error
-        :param attribute2: name of the second
+        :param error: type of PaSD bus request error.
+        :param args: attributes, command or other arguments in the request.
         """
-        logger.error(f"Non-contiguous registers requested: {attribute1}, {attribute2}")
-        super().__init__(
-            f"Non-contiguous registers requested: {attribute1}, {attribute2}"
-        )
-
-
-class PasdWriteError(Exception):
-    """Exception to be raised for invalid write requests."""
-
-    def __init__(self: PasdWriteError, attribute: str):
-        """Initialize new instance.
-
-        :param attribute: name of the requested attribute
-        """
-        logger.error(f"Non-writeable register requested for write: {attribute}")
-        super().__init__(f"Non-writeable register requested for write: {attribute}")
+        match error:
+            case RequestErrors.NonExistentAttribute:
+                message = f"No attributes matching {args} in register map"
+            case RequestErrors.NonContiguousRegisters:
+                message = f"Non-contiguous registers: {args[0]}, {args[1]}"
+            case RequestErrors.NonWritableAttribute:
+                message = f"Non-writeable register(s): {args}"
+            case RequestErrors.NonExistentCommand:
+                message = f"No command matching '{args[0]}', argument(s): {args[1]}"
+            case RequestErrors.MissingCommandArgument:
+                message = f"Missing argument for command '{args[0]}': {args[1]}"
+            case RequestErrors.InvalidCommandArgument:
+                message = (
+                    f"Invalid argument(s) for command '{args[0]}': "
+                    f"{args[1]} = {args[2]}"
+                )
+        logger.error(message)
+        super().__init__(message)
 
 
 class PortStatusBits(IntFlag):
@@ -590,7 +603,8 @@ class PasdBusRegisterMap:
         """
         Return a PasdAttribute object for a writeable object.
 
-        :raises PasdWriteError: If a non-existing or non-writeable register is requested
+        :raises PasdBusRequestError: If a non-existing or non-writeable register is
+            requested
 
         :param device_id: The ID (address) of the smartbox / FNDH device
         :param attribute_name: name of the attribute
@@ -601,8 +615,14 @@ class PasdBusRegisterMap:
         # Get the register map for the current revision number
         attribute_map = self._get_register_info(device_id).register_map
         attribute = attribute_map.get(attribute_name)
-        if attribute is None or not attribute._writeable:
-            raise PasdWriteError(attribute_name)
+        if attribute is None:
+            raise PasdBusRequestError(
+                RequestErrors.NonExistentAttribute, attribute_name
+            )
+        if attribute._writeable is False:
+            raise PasdBusRequestError(
+                RequestErrors.NonWritableAttribute, attribute_name
+            )
         attribute.value = attribute.convert_write_value(write_values)
         return attribute
 
@@ -612,7 +632,8 @@ class PasdBusRegisterMap:
         """
         Map a list of attribute names to PasdAttribute objects.
 
-        :raises PasdReadError: If non-contiguous set of registers requested
+        :raises PasdBusRequestError: If attributes do not match register map or
+            non-contiguous set of registers requested
 
         :param device_id: the ID (address) of the smartbox / FNDH device
         :param attribute_names: name of the attribute(s)
@@ -635,6 +656,11 @@ class PasdBusRegisterMap:
                 if name in attribute_names
             }
         )
+        if len(attributes) == 0:
+            raise PasdBusRequestError(
+                RequestErrors.NonExistentAttribute, *attribute_names
+            )
+
         # Check a contiguous set of registers has been requested
         last_attr = None
         for name, attr in attributes.items():
@@ -646,7 +672,9 @@ class PasdBusRegisterMap:
                 last_attr = attr
                 last_name = name
                 continue
-            raise PasdReadError(last_name, name)
+            raise PasdBusRequestError(
+                RequestErrors.NonContiguousRegisters, last_name, name
+            )
 
         # Check all attribute names have been found in the map
         for name in attribute_names:
@@ -711,7 +739,7 @@ class PasdBusRegisterMap:
 
     def _create_led_pattern_command(
         self, device_id: int, arguments: Sequence[Any]
-    ) -> Optional[PasdBusAttribute]:
+    ) -> PasdBusAttribute:
         attribute_map = self._get_register_info(device_id).register_map
 
         attribute = PasdBusAttribute(attribute_map[self.LED_PATTERN].address, 1)
@@ -719,9 +747,13 @@ class PasdBusRegisterMap:
             # First argument is the pattern string for the service LED
             attribute.value = LedServiceMap[arguments[0]].value
             return attribute
-        except KeyError:
-            logger.error(f"Unknown LED pattern {arguments[0]}")
-            return None
+        except KeyError as e:
+            raise PasdBusRequestError(
+                RequestErrors.InvalidCommandArgument,
+                PasdCommandStrings.SET_LED_PATTERN.value,
+                "service_pattern",
+                arguments[0],
+            ) from e
 
     def _create_initialize_command(self, device_id: int) -> PasdBusAttribute:
         attribute_map = self._get_register_info(device_id).register_map
@@ -731,11 +763,15 @@ class PasdBusRegisterMap:
 
     def _create_port_powers_command(
         self, device_id: int, arguments: Sequence[Any]
-    ) -> Optional[PasdBusAttribute]:
+    ) -> PasdBusAttribute:
         register_info = self._get_register_info(device_id)
         if len(arguments) > register_info.number_of_ports:
-            logger.error(f"Too many port status arguments given for device {device_id}")
-            return None
+            raise PasdBusRequestError(
+                RequestErrors.InvalidCommandArgument,
+                PasdCommandStrings.SET_PORT_POWERS.value,
+                "Too many ports' statuses",
+                arguments,
+            )
 
         attribute = PasdBusPortAttribute(
             register_info.starting_port_register, len(arguments)
@@ -756,15 +792,16 @@ class PasdBusRegisterMap:
 
     def _create_single_port_command(
         self, device_id: int, command: PasdCommandStrings, arguments: Sequence[Any]
-    ) -> Optional[PasdBusPortAttribute]:
+    ) -> PasdBusPortAttribute:
         register_info = self._get_register_info(device_id)
         first_port_address = register_info.starting_port_register
         last_port_address = first_port_address + register_info.number_of_ports - 1
 
         # First argument is the port number
         if len(arguments) == 0:
-            logger.error(f"Missing port argument for command: {command}")
-            return None
+            raise PasdBusRequestError(
+                RequestErrors.MissingCommandArgument, command.value, "port_number"
+            )
         port_number = arguments[0]
         if (
             not isinstance(port_number, int)
@@ -772,8 +809,12 @@ class PasdBusRegisterMap:
             <= (port_address := first_port_address + port_number - 1)
             <= last_port_address
         ):
-            logger.error(f"Invalid port requested: {port_number}")
-            return None
+            raise PasdBusRequestError(
+                RequestErrors.InvalidCommandArgument,
+                command.value,
+                "port_number",
+                port_number,
+            )
 
         attribute = PasdBusPortAttribute(port_address, 1)
         match command:
@@ -803,12 +844,16 @@ class PasdBusRegisterMap:
 
     def _create_low_pass_filter_command(
         self, device_id: int, arguments: Sequence[Any]
-    ) -> Optional[PasdBusAttribute]:
+    ) -> PasdBusAttribute:
         if arguments[0]:  # Cut-off frequency
             filter_constant = self._calculate_filter_decay_constant(arguments[0])
             if filter_constant is None:
-                # Invalid value given
-                return None
+                raise PasdBusRequestError(
+                    RequestErrors.InvalidCommandArgument,
+                    PasdCommandStrings.SET_LOW_PASS_FILTER.value,
+                    "cutoff",
+                    arguments[0],
+                )
         else:
             filter_constant = 0  # Disable filtering
 
@@ -835,7 +880,7 @@ class PasdBusRegisterMap:
 
     def get_command(
         self, device_id: int, command_string: str, arguments: Sequence[Any]
-    ) -> Optional[PasdBusAttribute]:
+    ) -> PasdBusAttribute:
         """
         Get a PasdBusAttribute object for the specified command.
 
@@ -844,13 +889,17 @@ class PasdBusRegisterMap:
         :param arguments: arguments (if any)
 
         :return: PasdBusAttribute object populated with converted value
-            ready to send over Modbus or None if command is invalid
+            ready to send over Modbus
+
+        :raises PasdBusRequestError: if the given string does not match any command
+            or the arguments are invalid
         """
         try:
             command = PasdCommandStrings(command_string)
-        except ValueError:
-            # No command matching the given string
-            return None
+        except ValueError as e:
+            raise PasdBusRequestError(
+                RequestErrors.NonExistentCommand, command_string, arguments
+            ) from e
 
         if command == PasdCommandStrings.SET_LED_PATTERN:
             attribute = self._create_led_pattern_command(device_id, arguments)
