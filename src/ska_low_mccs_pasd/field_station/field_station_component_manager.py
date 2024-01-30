@@ -160,50 +160,46 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.logger = logger
         self.station_name = station_name
 
-        # TODO add configurability.
-        # This could be as simple as ...
-        # "if i am given a ip / port i am in simulation mode"
-        simulation_mode = True
+        # TODO add ability for helm to configure.
+        use_tcp_configuration_client = True
 
-        try:
-            # Configuration read from the API_CLIENT when in simulation mode
-            # TelModel when interfacing with hardware.
-            if simulation_mode:
-                tcp_client = TcpClient(
-                    (configuration_host, configuration_port), configuration_timeout
-                )
+        # Configuration read from the API_CLIENT when in simulation mode
+        # TelModel when interfacing with hardware.
+        if use_tcp_configuration_client:
+            tcp_client = TcpClient(
+                (configuration_host, configuration_port), configuration_timeout
+            )
 
-                self.logger.debug(r"Creating marshaller with sentinel '\n'...")
-                marshaller = SentinelBytesMarshaller(b"\n")
-                application_client = ApplicationClient[bytes, bytes](
-                    tcp_client, marshaller.marshall, marshaller.unmarshall
-                )
-                self._field_station_configuration_api_client = (
-                    PasdConfigurationJsonApiClient(application_client)
-                )
-                self._field_station_configuration_api_client.connect()
+            self.logger.debug(r"Creating marshaller with sentinel '\n'...")
+            marshaller = SentinelBytesMarshaller(b"\n")
+            application_client = ApplicationClient[bytes, bytes](
+                tcp_client, marshaller.marshall, marshaller.unmarshall
+            )
+            self._field_station_configuration_api_client = (
+                PasdConfigurationJsonApiClient(self.logger, application_client)
+            )
+            self._field_station_configuration_api_client.connect(
+                number_of_attempts=4, wait_time=1
+            )
 
-                configuration = (
-                    self._field_station_configuration_api_client.read_attributes(
-                        self.station_name
-                    )
+            configuration = (
+                self._field_station_configuration_api_client.read_attributes(
+                    self.station_name
                 )
-            else:
-                # TODO: ask for data from TelModel
-                self.logger.error(
-                    "Attempted read from TelModel when functionality not implemented."
-                )
-                raise NotImplementedError(
-                    "Attempted read from TelModel when functionality not implemented."
-                )
+            )
+        else:
+            # TODO: ask for data from TelModel
+            self.logger.error(
+                "Attempted read from TelModel when functionality not implemented."
+            )
+            raise NotImplementedError(
+                "Attempted read from TelModel when functionality not implemented."
+            )
 
-            # Validate configuration before updating.
-            jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)
+        # Validate configuration before updating.
+        jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)
 
-            self._update_mappings(configuration)
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.error(f"Failed to update configuration {e}.")
+        self._update_mappings(configuration)
 
     def _update_mappings(
         self: FieldStationComponentManager,

@@ -11,6 +11,7 @@ from __future__ import annotations
 import importlib.resources
 import json
 import logging
+import time
 from datetime import datetime
 from typing import Any, Final, Optional
 
@@ -216,12 +217,14 @@ class PasdConfigurationJsonApiClient:
 
     def __init__(
         self: PasdConfigurationJsonApiClient,
+        logger: logging.Logger,
         application_client: ApplicationClient[bytes, bytes],
         encoding: str = "utf-8",
     ) -> None:
         """
         Initialise a new instance.
 
+        :param logger: an injected logger.
         :param application_client: the underlying application client,
             used for communication with the server.
         :param encoding: encoding to use for conversion between string
@@ -229,18 +232,35 @@ class PasdConfigurationJsonApiClient:
         """
         self._application_client = application_client
         self._encoding = encoding
-
+        self.logger = logger
         self._session: ApplicationClientSession[bytes, bytes] | None = None
 
-    def connect(self) -> None:
+    def connect(self, number_of_attempts: int, wait_time: int) -> None:
         """
         Establish a connection to the remote API.
 
         This JSON-based API is connectionless:
         a new connection is established for each request-response transaction.
         Therefore this method does nothing.
+
+        :param number_of_attempts: number of attempt to connect
+        :param wait_time: the time to wait between attempting a
+            connection.
+
         """
-        self._session = self._application_client.connect()
+        if number_of_attempts == 1:
+            self._session = self._application_client.connect()
+        else:
+            try:
+                self._session = self._application_client.connect()
+            except ConnectionRefusedError as e:
+                time.sleep(wait_time)
+                self.logger.error(f"Connection refused {e}, retrying...")
+                self.connect(number_of_attempts - 1, wait_time)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                time.sleep(wait_time)
+                self.logger.error(f"Uncaught exception {repr(e)}, retrying...")
+                self.connect(number_of_attempts - 1, wait_time)
 
     def close(self) -> None:
         """
