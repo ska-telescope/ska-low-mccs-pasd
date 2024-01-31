@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* [WOM-248] Improve devcontainer usability
+
 ## 0.7.0
 
 * [WOM-183] Update error log message for modbus exception responses
