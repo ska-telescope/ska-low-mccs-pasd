@@ -16,6 +16,7 @@ from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
 from pymodbus.factory import ServerDecoder
 from pymodbus.framer.ascii_framer import ModbusAsciiFramer
+from pymodbus.logging import pymodbus_apply_logging_config
 from pymodbus.pdu import ExceptionResponse, ModbusExceptions
 from pymodbus.register_read_message import (
     ReadHoldingRegistersRequest,
@@ -315,6 +316,10 @@ class PasdBusModbusApiClient:
         self._client = ModbusTcpClient(host, port, ModbusAsciiFramer, timeout=timeout)
         logger_object.info(f"Created Modbus TCP client for address {host}, port {port}")
         self._logger = logger_object
+        timestamp = datetime.utcnow().strftime("%y%m%d%H%M%S")
+        pymodbus_apply_logging_config(
+            logging.DEBUG, f"/home/tango/pymodbus_{timestamp}.log"
+        )
 
         # Initialise a default register map
         self._register_map = PasdBusRegisterMap()
