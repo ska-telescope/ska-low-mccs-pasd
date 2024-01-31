@@ -288,7 +288,7 @@ def correct_antenna_turns_on(
     assert power == desired_power
 
 
-@then(parsers.parse("the correct smartbox becomes {desired_state}"))
+@then(parsers.parse("the correct smartbox is {desired_state}"))
 def correct_smartbox_turns_on(
     smartbox_under_test: tango.DeviceProxy,
     change_event_callbacks: MockTangoEventCallbackGroup,
