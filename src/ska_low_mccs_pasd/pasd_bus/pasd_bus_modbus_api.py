@@ -12,6 +12,7 @@ import logging
 from datetime import datetime
 from typing import Any, Final
 
+from pymodbus import Framer
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
 from pymodbus.factory import ServerDecoder
@@ -313,7 +314,7 @@ class PasdBusModbusApiClient:
         :param logger_object: the logger to use
         :param timeout: the timeout period in seconds
         """
-        self._client = ModbusTcpClient(host, port, ModbusAsciiFramer, timeout=timeout)
+        self._client = ModbusTcpClient(host, port, Framer.ASCII, timeout=timeout)
         logger_object.info(f"Created Modbus TCP client for address {host}, port {port}")
         self._logger = logger_object
         timestamp = datetime.utcnow().strftime("%y%m%d%H%M%S")
