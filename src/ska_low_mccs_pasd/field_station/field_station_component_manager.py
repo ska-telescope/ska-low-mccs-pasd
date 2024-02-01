@@ -96,13 +96,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._communication_state_callback: Callable[..., None]
         self._component_state_callback: Callable[..., None]
         self.outsideTemperature: Optional[float] = None
-        self._antenna_mask_pretty: dict[str, Any]
-        self._antenna_mapping_pretty: dict[str, Any]
-        self._smartbox_mapping_pretty: dict[str, Any]
         self._antenna_mapping: dict[str, list[int]]
         self._antenna_mask: list[bool]
         self._smartbox_mapping: dict[str, int]
-        self._field_station_configuration_api_client: PasdConfigurationJsonApiClient
         self._antenna_mapping_loaded = False
         self._antenna_masking_loaded = False
         self._smartbox_mapping_loaded = False
@@ -111,6 +107,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.fndh_port_states: list[Optional[bool]] = [
             None
         ] * PasdData.NUMBER_OF_FNDH_PORTS
+        self._field_station_configuration_api_client: Optional[
+            PasdConfigurationJsonApiClient
+        ] = None
+        self._antenna_mask_pretty: Optional[dict[str, Any]] = None
+        self._antenna_mapping_pretty: Optional[dict[str, Any]] = None
+        self._smartbox_mapping_pretty: Optional[dict[str, Any]] = None
         self.fndh_port_change = threading.Event()
         self.antenna_powers_changed = threading.Event()
         self.smartbox_power_change = threading.Event()
@@ -1422,13 +1424,17 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         application_client = ApplicationClient[bytes, bytes](
             tcp_client, marshaller.marshall, marshaller.unmarshall
         )
-        field_station_configuration_api_client = PasdConfigurationJsonApiClient(
-            self.logger, application_client
-        )
-        field_station_configuration_api_client.connect(
+        if self._field_station_configuration_api_client is None:
+            self.logger.info("Initialising API client...")
+            self._field_station_configuration_api_client = (
+                PasdConfigurationJsonApiClient(self.logger, application_client)
+            )
+        self._field_station_configuration_api_client.connect(
             number_of_attempts=configuration_timeout, wait_time=1
         )
-        return field_station_configuration_api_client.read_attributes(self.station_name)
+        return self._field_station_configuration_api_client.read_attributes(
+            self.station_name
+        )
 
     def _field_station_mapping_loaded(
         self: FieldStationComponentManager, command_name: str

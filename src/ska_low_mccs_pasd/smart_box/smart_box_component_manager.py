@@ -319,10 +319,16 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         event_value: str,
         event_quality: tango.AttrQuality,
     ) -> None:
-        self.logger.error(f"Mapping changed to {event_value}")
+        self.logger.warning(f"Mapping changed to {event_value}")
         assert event_name.lower() == "smartboxmapping"
 
         mapping = json.loads(event_value)
+        if mapping is None:
+            self.logger.warning(
+                "Smartbox mapping is not present, "
+                "Check FieldStation `smartboxMapping`."
+            )
+            return
         for smartbox_config in mapping["smartboxMapping"]:
             if "smartboxID" in smartbox_config:
                 if smartbox_config["smartboxID"] == self._smartbox_nr:
