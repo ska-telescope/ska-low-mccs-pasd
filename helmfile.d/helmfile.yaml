@@ -30,8 +30,13 @@ environments:
       - platform/aa0.5/aa0-5-s10-6.yaml
       - pasd/values/values-aa0-5.yaml
       - platform/minikube.yaml
-  aavs3-production:
+  aavs3-deprecated:  # You should be using infra-issued credentials!
     kubeContext: aavs3-production
+    values:
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=79b40b033beebeed14bed1b5ed5cc4e1c6d178c9
+      - pasd/values/values-aavs3.yaml
+  aavs3-production:
+    kubeContext: infra:au-itf-aavs302-k8s
     values:
       - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/helmfile.d/values/aavs3.yaml?ref=79b40b033beebeed14bed1b5ed5cc4e1c6d178c9
       - pasd/values/values-aavs3.yaml
