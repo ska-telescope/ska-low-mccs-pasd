@@ -42,7 +42,7 @@ __all__ = ["MccsPasdBus", "main"]
 DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 
 
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines, too-many-instance-attributes
 class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     """An implementation of a PaSD bus Tango device for MCCS."""
 
