@@ -36,6 +36,7 @@
         {{- $pasdbus_simulator := dict "host" $pasdbus_host "port" $pasdbus_port "configuration_host" $configuration_host "configuration_port" 50034}}
 
         {{- $_ := set $pasdbus_simulators $station_name $pasdbus_simulator}}
+        {{- $_ := set $pasdbus_instance "simulation_config" 1}}
       {{- end }}
 
       {{- $_ := set $pasdbus_instance "host" $pasdbus_host}}

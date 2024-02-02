@@ -45,7 +45,7 @@ resources:
 image:
   registry: artefact.skao.int
   name: ska-low-mccs-pasd
-  tag: ~ # defaults to chart's appVersion when empty
+  tag: 0.6.0-dirty # defaults to chart's appVersion when empty
   pullPolicy: IfNotPresent
 
 deviceServers: {}  # e.g.:
