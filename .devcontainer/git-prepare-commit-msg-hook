@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Get the commit message file and commit SHA
+commit_msg="$1"
+commit_sha="$2"
+
+# Check if the commit is being amended
+if [ -n "$commit_sha" ]; then
+    # Get the parent of the commit
+    parent_commit=$(git rev-parse "${commit_sha}^1" 2>/dev/null)
+
+    # Check if the parent commit exists
+    if [ -n "$parent_commit" ]; then
+        # This is an amended commit, so exit without modifying the commit message
+        exit
+    fi
+fi
+
+# Add link to article on how to write a great commit message:
+echo -e "\n\n\n# How to Write a Git Commit Message: https://cbea.ms/git-commit/#seven-rules\n#$(cat "$commit_msg")" > "$commit_msg"
+
+# Get the current branch name
+current_branch=$(git symbolic-ref --short HEAD)
+
+# Apply a regex to extract the JIRA ticket from the branch name
+jira_ticket=$(echo "$current_branch" | sed -n 's/\([A-Za-z]\+-[0-9]\+\).*/\U\1/p')
+
+# If the regex matched, print the JIRA ticket to the subject line of the commit message file
+if [ "$jira_ticket" ]; then
+  echo -e "[$jira_ticket]$(cat "$commit_msg")" > "$commit_msg"
+fi
