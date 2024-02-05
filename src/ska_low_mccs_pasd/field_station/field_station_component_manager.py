@@ -96,12 +96,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._communication_state_callback: Callable[..., None]
         self._component_state_callback: Callable[..., None]
         self.outsideTemperature: Optional[float] = None
-        self._antenna_mapping: dict[str, list[int]]
-        self._antenna_mask: list[bool]
-        self._smartbox_mapping: dict[str, int]
-        self._antenna_mapping_loaded = False
-        self._antenna_masking_loaded = False
-        self._smartbox_mapping_loaded = False
+        self._antenna_mapping: dict[str, list[int]] = {}
+        self._antenna_mask: list[bool] = []
+        self._smartbox_mapping: dict[str, int] = {}
 
         max_workers = 1
         self.fndh_port_states: list[Optional[bool]] = [
@@ -1230,12 +1227,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         for antenna in antenna_mask:
             antenna_id = antenna["antennaID"]
             masking_state = antenna["maskingState"]
-
             self._antenna_mask[antenna_id] = masking_state
             if not masking_state:
                 all_masked = False
         self._antenna_mask[0] = all_masked
-        self._antenna_masking_loaded = True
         if task_callback:
             task_callback(status=TaskStatus.COMPLETED)
 
@@ -1274,7 +1269,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             smartbox_port = antenna["smartboxPort"]
             if str(antenna_id) in self._antenna_mapping:
                 self._antenna_mapping[str(antenna_id)] = [smartbox_id, smartbox_port]
-                self._antenna_mapping_loaded = True
             else:
                 self.logger.info(f"antenna {str(antenna_id)} not in antenna mapping")
         if task_callback:
@@ -1313,7 +1307,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             smartbox_id = smartbox["smartboxID"]
             fndh_port = smartbox["fndhPort"]
             self._smartbox_mapping[str(smartbox_id)] = fndh_port
-            self._smartbox_mapping_loaded = True
         if task_callback:
             task_callback(status=TaskStatus.COMPLETED)
 
@@ -1378,7 +1371,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     self.configuration_port,
                     self.configuration_timeout,
                 )
-                self.logger.debug("configuration loaded from configuration server")
+                self.logger.info("configuration loaded from configuration server")
             else:
                 # TODO: ask for data from TelModel
                 self.logger.error(
@@ -1392,9 +1385,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)
 
             self._update_mappings(configuration)
-            self._antenna_mapping_loaded = True
-            self._antenna_masking_loaded = True
-            self._smartbox_mapping_loaded = True
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.error(f"Failed to update configuration {repr(e)}.")
@@ -1449,9 +1439,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         """
         if not all(
             [
-                self._antenna_mapping_loaded,
-                self._antenna_masking_loaded,
-                self._smartbox_mapping_loaded,
+                self._antenna_mapping,
+                self._antenna_mask,
+                self._smartbox_mapping,
             ]
         ):
             self.logger.warning(
