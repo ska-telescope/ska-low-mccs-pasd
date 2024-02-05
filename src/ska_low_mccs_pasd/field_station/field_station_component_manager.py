@@ -1419,9 +1419,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self._field_station_configuration_api_client = (
                 PasdConfigurationJsonApiClient(self.logger, application_client)
             )
-        self._field_station_configuration_api_client.connect(
-            number_of_attempts=configuration_timeout, wait_time=1
-        )
+        self._field_station_configuration_api_client.connect()
         return self._field_station_configuration_api_client.read_attributes(
             self.station_name
         )

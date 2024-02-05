@@ -50,6 +50,7 @@ autodoc_mock_imports = [
     "kubernetes",
     "ska_tango_base",
     "tango",
+    "backoff",
     "ska_control_model",
     "ska_low_mccs_common",
     "ska_tango_testing",
@@ -272,5 +273,4 @@ intersphinx_mapping = {
         "https://developer.skao.int/projects/ska-ser-devices/en/0.1.1/",
         None,
     ),
-
 }
