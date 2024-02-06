@@ -63,6 +63,11 @@ server:
                 - name: LoggingLevelDefault
                   values:
                     - {{quote .}}
+{{- with $this_pasdbus.simulation_config}}
+                - name: "SimulationConfig"
+                  values:
+                  - {{quote .}}
+{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}

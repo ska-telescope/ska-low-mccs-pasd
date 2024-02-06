@@ -42,7 +42,7 @@ __all__ = ["MccsPasdBus", "main"]
 DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 
 
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines, too-many-instance-attributes
 class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     """An implementation of a PaSD bus Tango device for MCCS."""
 
@@ -218,6 +218,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     LowPassFilterCutoff = tango.server.device_property(
         dtype=float, default_value=10.0, update_db=True
     )
+    SimulationConfig = tango.server.device_property(
+        dtype=int, default_value=SimulationMode.FALSE
+    )
     # Default low-pass filtering cut-off frequency for sensor readings.
     # It is automatically written to all sensor registers of the FNDH and smartboxes
     # after MccsPasdBus is initialised and set ONLINE, and after any of them are powered
@@ -234,6 +237,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         super().init_device()
         self._init_pasd_devices = True
+
+        self._simulation_mode = self.SimulationConfig
 
         self._build_state: str = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
@@ -255,6 +260,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             f"\tDevicePollingRate: {self.DevicePollingRate}\n"
             f"\tTimeout: {self.Timeout}\n"
             f"\tLowPassFilterCutoff: {self.LowPassFilterCutoff}\n"
+            f"\tSimulationConfig: {self.SimulationConfig}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
