@@ -1419,7 +1419,14 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self._field_station_configuration_api_client = (
                 PasdConfigurationJsonApiClient(self.logger, application_client)
             )
-        self._field_station_configuration_api_client.connect()
+        try:
+            self._field_station_configuration_api_client.connect()
+        except ConnectionRefusedError as e:
+            self.logger.error(f"Failed to connect, connection refused: {repr(e)}")
+            raise e
+        except Exception as e:
+            self.logger.error(f"Failed to connect: {repr(e)}")
+            raise e
         return self._field_station_configuration_api_client.read_attributes(
             self.station_name
         )
