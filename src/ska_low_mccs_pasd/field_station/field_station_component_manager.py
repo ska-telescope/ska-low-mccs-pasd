@@ -1350,7 +1350,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 }
 
         self._smartbox_mapping_pretty = {"smartboxMapping": smartbox_mapping_pretty}
-
+        self._on_configuration_change(self._smartbox_mapping_pretty)
         if task_callback:
             task_callback(status=TaskStatus.COMPLETED)
 
