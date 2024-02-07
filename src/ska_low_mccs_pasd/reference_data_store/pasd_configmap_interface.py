@@ -14,6 +14,7 @@ import logging
 from datetime import datetime
 from typing import Any, Final, Optional
 
+import backoff
 import jsonschema
 import yaml
 from kubernetes import config, dynamic
@@ -216,12 +217,14 @@ class PasdConfigurationJsonApiClient:
 
     def __init__(
         self: PasdConfigurationJsonApiClient,
+        logger: logging.Logger,
         application_client: ApplicationClient[bytes, bytes],
         encoding: str = "utf-8",
     ) -> None:
         """
         Initialise a new instance.
 
+        :param logger: an injected logger.
         :param application_client: the underlying application client,
             used for communication with the server.
         :param encoding: encoding to use for conversion between string
@@ -229,9 +232,17 @@ class PasdConfigurationJsonApiClient:
         """
         self._application_client = application_client
         self._encoding = encoding
-
+        self.logger = logger
         self._session: ApplicationClientSession[bytes, bytes] | None = None
 
+    @backoff.on_exception(
+        backoff.constant,
+        ConnectionRefusedError,
+        jitter=None,
+        interval=1,
+        max_tries=10,
+        raise_on_giveup=True,
+    )
     def connect(self) -> None:
         """
         Establish a connection to the remote API.

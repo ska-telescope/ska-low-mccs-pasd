@@ -91,17 +91,25 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             called when configuration changes.
         :param _fndh_proxy: a injected fndh proxy for purposes of testing only.
         :param _smartbox_proxys: injected smartbox proxys for purposes of testing only.
-
-        :raises NotImplementedError: configuration in TelModel not yet implemented
         """
         self._on_configuration_change = configuration_change_callback
         self._communication_state_callback: Callable[..., None]
         self._component_state_callback: Callable[..., None]
         self.outsideTemperature: Optional[float] = None
+        self._antenna_mapping: dict[str, list[int]] = {}
+        self._antenna_mask: list[bool] = []
+        self._smartbox_mapping: dict[str, int] = {}
+
         max_workers = 1
         self.fndh_port_states: list[Optional[bool]] = [
             None
         ] * PasdData.NUMBER_OF_FNDH_PORTS
+        self._field_station_configuration_api_client: Optional[
+            PasdConfigurationJsonApiClient
+        ] = None
+        self._antenna_mask_pretty: Optional[dict[str, Any]] = None
+        self._antenna_mapping_pretty: Optional[dict[str, Any]] = None
+        self._smartbox_mapping_pretty: Optional[dict[str, Any]] = None
         self.fndh_port_change = threading.Event()
         self.antenna_powers_changed = threading.Event()
         self.smartbox_power_change = threading.Event()
@@ -113,7 +121,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             component_state_changed,
             max_workers=max_workers,
         )
-
+        self.configuration_host: str = configuration_host
+        self.configuration_port: int = configuration_port
+        self.configuration_timeout: int = configuration_timeout
         self._communication_states = {
             fqdn: CommunicationStatus.DISABLED
             for fqdn in [fndh_name] + list(smartbox_names)
@@ -160,50 +170,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.logger = logger
         self.station_name = station_name
 
-        # TODO add configurability.
-        # This could be as simple as ...
-        # "if i am given a ip / port i am in simulation mode"
-        simulation_mode = True
+        # TODO add ability for helm to configure.
+        self.use_tcp_configuration_client = True
 
-        try:
-            # Configuration read from the API_CLIENT when in simulation mode
-            # TelModel when interfacing with hardware.
-            if simulation_mode:
-                tcp_client = TcpClient(
-                    (configuration_host, configuration_port), configuration_timeout
-                )
-
-                self.logger.debug(r"Creating marshaller with sentinel '\n'...")
-                marshaller = SentinelBytesMarshaller(b"\n")
-                application_client = ApplicationClient[bytes, bytes](
-                    tcp_client, marshaller.marshall, marshaller.unmarshall
-                )
-                self._field_station_configuration_api_client = (
-                    PasdConfigurationJsonApiClient(application_client)
-                )
-                self._field_station_configuration_api_client.connect()
-
-                configuration = (
-                    self._field_station_configuration_api_client.read_attributes(
-                        self.station_name
-                    )
-                )
-            else:
-                # TODO: ask for data from TelModel
-                self.logger.error(
-                    "Attempted read from TelModel when functionality not implemented."
-                )
-                raise NotImplementedError(
-                    "Attempted read from TelModel when functionality not implemented."
-                )
-
-            # Validate configuration before updating.
-            jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)
-
-            self._update_mappings(configuration)
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.error(f"Failed to update configuration {e}.")
+        self._load_configuration()
 
     def _update_mappings(
         self: FieldStationComponentManager,
@@ -511,6 +481,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self._on,
             args=[],
             task_callback=task_callback,
+            is_cmd_allowed=functools.partial(self._field_station_mapping_loaded, "On"),
         )
 
     def _on(  # noqa: C901
@@ -862,6 +833,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self._off,
             args=[],
             task_callback=task_callback,
+            is_cmd_allowed=functools.partial(self._field_station_mapping_loaded, "Off"),
         )
 
     def _off(  # pylint: disable=too-many-locals
@@ -1041,6 +1013,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 antenna_number,
             ],
             task_callback=task_callback,
+            is_cmd_allowed=functools.partial(
+                self._field_station_mapping_loaded, "PowerOnAntenna"
+            ),
         )
 
     # All the if(task_callbacks) artificially extend the complexity.
@@ -1142,6 +1117,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 antenna_number,
             ],
             task_callback=task_callback,
+            is_cmd_allowed=functools.partial(
+                self._field_station_mapping_loaded, "PowerOffAntenna"
+            ),
         )
 
     # All the if(task_callbacks) artificially extend the complexity.
@@ -1249,7 +1227,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         for antenna in antenna_mask:
             antenna_id = antenna["antennaID"]
             masking_state = antenna["maskingState"]
-
             self._antenna_mask[antenna_id] = masking_state
             if not masking_state:
                 all_masked = False
@@ -1387,17 +1364,16 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :raises NotImplementedError: configuration in TelModel not yet implemented
         """
         try:
-            self.logger.info("Attempting to load data from configmap.....")
-
-            simulation_mode = True
-            if simulation_mode:
-                configuration = (
-                    self._field_station_configuration_api_client.read_attributes(
-                        self.station_name
-                    )
+            self.logger.info("Attempting to load data from configuration server.....")
+            if self.use_tcp_configuration_client:
+                configuration = self._get_configuration_from_configuration_server(
+                    self.configuration_host,
+                    self.configuration_port,
+                    self.configuration_timeout,
                 )
+                self.logger.info("configuration loaded from configuration server")
             else:
-                # TODO: Add data to TelModel
+                # TODO: ask for data from TelModel
                 self.logger.error(
                     "Attempted read from TelModel when functionality not implemented."
                 )
@@ -1409,10 +1385,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)
 
             self._update_mappings(configuration)
-            self.logger.info("Configuration has been successfully updated.")
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.error(f"Failed to update configuration: {e}")
+            self.logger.error(f"Failed to update configuration {repr(e)}.")
             if task_callback is not None:
                 task_callback(
                     TaskStatus.FAILED,
@@ -1423,3 +1398,59 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 TaskStatus.COMPLETED,
                 result="Configuration has been retreived successfully.",
             )
+
+    def _get_configuration_from_configuration_server(
+        self: FieldStationComponentManager,
+        configuration_host: str,
+        configuration_port: int,
+        configuration_timeout: int,
+    ) -> dict[str, Any]:
+        tcp_client = TcpClient(
+            (configuration_host, configuration_port), configuration_timeout
+        )
+
+        self.logger.debug(r"Creating marshaller with sentinel '\n'...")
+        marshaller = SentinelBytesMarshaller(b"\n")
+        application_client = ApplicationClient[bytes, bytes](
+            tcp_client, marshaller.marshall, marshaller.unmarshall
+        )
+        if self._field_station_configuration_api_client is None:
+            self.logger.info("Initialising API client...")
+            self._field_station_configuration_api_client = (
+                PasdConfigurationJsonApiClient(self.logger, application_client)
+            )
+        try:
+            self._field_station_configuration_api_client.connect()
+        except ConnectionRefusedError as e:
+            self.logger.error(f"Failed to connect, connection refused: {repr(e)}")
+            raise e
+        except Exception as e:
+            self.logger.error(f"Failed to connect: {repr(e)}")
+            raise e
+        return self._field_station_configuration_api_client.read_attributes(
+            self.station_name
+        )
+
+    def _field_station_mapping_loaded(
+        self: FieldStationComponentManager, command_name: str
+    ) -> bool:
+        """
+        Return true if fieldstation has loaded mapping.
+
+        :param command_name: the name of the command that requires this check
+            for logging purposes only.
+
+        :return: True if complete fieldStation mapping is loaded
+        """
+        if not all(
+            [
+                self._antenna_mapping,
+                self._antenna_mask,
+                self._smartbox_mapping,
+            ]
+        ):
+            self.logger.warning(
+                f"Incomplete mapping present, unable to execute command {command_name}"
+            )
+            return False
+        return True

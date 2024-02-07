@@ -448,7 +448,27 @@ def subscribe_device_proxy_fixture(
     def _subscribe_device_proxy(proxy: tango.DeviceProxy) -> tango.DeviceProxy:
         device_name = proxy.dev_name()
         print(f"Creating proxy for {device_name}")
+        print(f"Check device {device_name} replies to ping...")
+        reply_time = 0
+        max_attempts = 20
+        for i in range(max_attempts):
+            try:
+                reply_time = proxy.ping()
+                break
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                # This is reached in stfc-ci. Not seen in minikube.
+                # It will only occur on the first run of a pipeline,
+                # immediatly after a deployment.
+                # Why is a ping failing? is the readiness probe not working?, is there
+                # loads of traffic to a device slowing a reply?
+                print(f"failed to ping {repr(e)}")
+                if i == max_attempts - 1:
+                    raise e
+                time.sleep(1)
+
+        print(f"reply received in {reply_time} microseconds")
         for attribute_name in device_subscriptions[device_name]:
+
             print(f"Subscribing proxy to {device_name}/{attribute_name}...")
             proxy.subscribe_event(
                 attribute_name,

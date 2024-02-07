@@ -552,7 +552,7 @@ class TestFieldStationComponentManager:
         field_station_component_manager._antenna_mask[
             antenna_no
         ] = antenna_masking_state
-
+        assert field_station_component_manager._antenna_mapping_pretty is not None
         smartbox_id = field_station_component_manager._antenna_mapping_pretty[
             "antennaMapping"
         ][antenna_no - 1]["smartboxID"]
@@ -662,7 +662,7 @@ class TestFieldStationComponentManager:
         field_station_component_manager._antenna_mask[
             antenna_no
         ] = antenna_masking_state
-
+        assert field_station_component_manager._antenna_mapping_pretty is not None
         smartbox_id = field_station_component_manager._antenna_mapping_pretty[
             "antennaMapping"
         ][antenna_no - 1]["smartboxID"]
@@ -834,7 +834,7 @@ class TestFieldStationComponentManager:
             )
             == expected_manager_result
         )
-
+        assert field_station_component_manager._antenna_mapping_pretty is not None
         # If we are working with a specific antenna, rather than all antennas,
         # get the smartbox_id and smartbox_port that the antenna is connected to.
         if antenna_no > 0:
