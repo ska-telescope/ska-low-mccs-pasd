@@ -821,9 +821,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             # Mark the quality factor for the attribute(s) as INVALID
             for pasd_attribute_name in kwargs["attributes"]:
                 tango_attribute_name = attribute_map[pasd_attribute_name]
-                self._pasd_state[tango_attribute_name].quality = (
-                    AttrQuality.ATTR_INVALID
-                )
+                self._pasd_state[
+                    tango_attribute_name
+                ].quality = AttrQuality.ATTR_INVALID
                 self._pasd_state[tango_attribute_name].timestamp = timestamp
 
                 self.push_change_event(
