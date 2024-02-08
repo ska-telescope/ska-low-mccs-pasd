@@ -751,7 +751,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         if action is not None:
             self.op_state_model.perform_action(action)
 
-        self._health_model.update_state(communicating=True)
+        if communication_state is CommunicationStatus.ESTABLISHED:
+            self._health_model.update_state(communicating=True)
+        else:
+            self._health_model.update_state(communicating=False)
 
         if (
             self._init_pasd_devices
