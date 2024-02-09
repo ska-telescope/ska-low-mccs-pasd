@@ -91,7 +91,7 @@ source = ["src"]
 [tool.coverage.run]
 data_file = ".coverage/.coverage"
 branch = true
-source = ["ska_low_mccs-pasd"]
+source = ["ska_low_mccs_pasd"]
 
 [tool.coverage.report]
 show_missing = false
