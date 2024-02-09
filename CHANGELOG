@@ -2,6 +2,19 @@
 
 ## unreleased
 
+## 0.7.0
+
+* [WOM-183] Update error log message for modbus exception responses
+* [MCCS-1957] Support namespace override
+* [WOM-240] Remove default logger and ensure correct object used
+* [WOM-184] Refactor functional and smartbox integration tests
+* [WOM-165] Add command to set sensors' low-pass filter cutoff frequency
+* [WOM-149] Add support for setting multiple port powers in a single modbus command
+* [WOM-246] Indicate modbus address in all error messages and refactor request exceptions
+* [MCCS-1966] use infra-issued credentials for AAVS3
+* [MCCS-1973] Update MccsPasdBUs to update SimulationConfig on device creation
+* [MCCS-1963] Add backoff retry for connection to configuration server
+
 ## 0.6.0
 
 * [MCCS-1751] FieldStation Dashboard
