@@ -114,10 +114,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.antenna_powers_changed = threading.Event()
         self.smartbox_power_change = threading.Event()
 
-        self._antenna_mask_pretty: dict[str, list[dict]] = {}
-        self._antenna_mapping_pretty: dict[str, list[dict]] = {}
-        self._smartbox_mapping_pretty: dict[str, list[dict]] = {}
-
         self.has_antenna = False
         super().__init__(
             logger,
