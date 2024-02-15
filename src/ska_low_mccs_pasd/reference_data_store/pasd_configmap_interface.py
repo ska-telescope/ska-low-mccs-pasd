@@ -236,10 +236,9 @@ class PasdConfigurationJsonApiClient:
         self._session: ApplicationClientSession[bytes, bytes] | None = None
 
     @backoff.on_exception(
-        backoff.constant,
+        backoff.expo,
         ConnectionRefusedError,
         jitter=None,
-        interval=1,
         max_tries=10,
         raise_on_giveup=True,
     )
