@@ -2,10 +2,8 @@
 FNDH subpackage
 ===============
 
-.. automodule:: ska_low_mccs_pasd.fndh
-
-
 .. toctree::
+  :maxdepth: 3
 
   FNDH device<fndh_device>
   FNDH component manager<fndh_component_manager>

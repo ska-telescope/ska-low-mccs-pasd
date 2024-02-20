@@ -60,23 +60,22 @@ autodoc_mock_imports = [
 
 
 autodoc_default_options = {
-    "members": True,
     "special-members": "__init__",
 }
 
 
 # -- Project information -----------------------------------------------------
-release_filename = os.path.join("..", "..", "src", "ska_low_mccs.py")
+release_filename = os.path.join("..", "..", "src", "ska_low_mccs_pasd", "__init__.py")
 # version = None
 author = "MCCS team"
-# for line in open(release_filename).readlines():
-#    line = line.strip()
-#    if line.startswith(("author", "version")):
-#        exec(line)
+for line in open(release_filename).readlines():
+    line = line.strip()
+    if line.startswith(("__version__")):
+        exec(line)
 
-project = "MCCS LMC Prototype"
-# release = version
-copyright = "2020, SKA MCCS Team"
+project = "SKA-Low MCCS PaSD prototype"
+release = __version__
+copyright = "2024, SKAO MCCS and Wombat Teams"
 
 # -- General configuration ------------------------------------------------
 nitpicky = True
@@ -91,6 +90,11 @@ nitpick_ignore = [
     ("py:exc", "yaml.YAMLError"),
     ("py:class", "ska_low_mccs_common.health.HealthChangedCallbackProtocol"),
     ("py:class", "ska_low_mccs_common.MccsDeviceProxy"),
+    ("py:class", "ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator._FndhPortSimulator"),
+    (
+        "py:class",
+        "ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator._SmartboxPortSimulator",
+    ),
 ]
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -262,7 +266,7 @@ intersphinx_mapping = {
         None,
     ),
     "ska-tango-base": (
-        "https://developer.skatelescope.org/projects/ska-tango-base/en/0.19.1/",
+        "https://developer.skatelescope.org/projects/ska-tango-base/en/0.19.3/",
         None,
     ),
     "ska-low-mccs-common": (
@@ -270,7 +274,7 @@ intersphinx_mapping = {
         None,
     ),
     "ska-ser-devices": (
-        "https://developer.skao.int/projects/ska-ser-devices/en/0.1.1/",
+        "https://developer.skao.int/projects/ska-ser-devices/en/0.2.0/",
         None,
     ),
 }

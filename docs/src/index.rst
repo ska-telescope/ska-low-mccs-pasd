@@ -1,20 +1,21 @@
-=====================================
-MCCS LMC PASD Prototype documentation
-=====================================
+=========================================
+SKA-Low MCCS PaSD prototype documentation
+=========================================
 
-This project is developing the Local Monitoring and Control (LMC)
-prototype for the `Square Kilometre Array`_.
+This project is developing the Monitoring, Control and Calibration Subsystem (MCCS) 
+prototype for the Power and Signal Distribution (PaSD) of the 
+`SKA-Low`_ radio telescope's field stations.
 
-.. _Square Kilometre Array: https://skatelescope.org/
+.. _SKA-Low: https://www.skao.int/en/explore/telescopes/ska-low
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Guide
+   :maxdepth: 2
+   :caption: Developer guide
 
    guide/deploy
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: API
 
    api/index
