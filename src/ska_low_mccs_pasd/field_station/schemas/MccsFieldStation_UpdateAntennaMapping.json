@@ -21,12 +21,7 @@
                     "smartboxPort": {
                         "type": "integer"
                     }
-                },
-                "required": [
-                    "antennaID",
-                    "smartboxID",
-                    "smartboxPort"
-                ]
+                }
             }
         }
     },

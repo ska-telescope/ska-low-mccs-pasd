@@ -1223,14 +1223,24 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             task_callback(status=TaskStatus.IN_PROGRESS)
         all_masked = True
 
+        antenna_masks_pretty: list[dict] = [{}] * PasdData.NUMBER_OF_ANTENNAS
+
         antenna_mask = kwargs["antennaMask"]
         for antenna in antenna_mask:
-            antenna_id = antenna["antennaID"]
-            masking_state = antenna["maskingState"]
-            self._antenna_mask[antenna_id] = masking_state
-            if not masking_state:
-                all_masked = False
+            antenna_id = antenna.get("antennaID")
+            masking_state = antenna.get("maskingState")
+
+            if antenna_id is not None and masking_state is not None:
+                antenna_masks_pretty[int(antenna_id) - 1] = {
+                    "antennaID": int(antenna_id),
+                    "maskingState": masking_state,
+                }
+
+                self._antenna_mask[antenna_id] = masking_state
+                if not masking_state:
+                    all_masked = False
         self._antenna_mask[0] = all_masked
+        self._antenna_mask_pretty = {"antennaMask": antenna_masks_pretty}
         if task_callback:
             task_callback(status=TaskStatus.COMPLETED)
 
@@ -1262,15 +1272,35 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     ) -> None:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
+
+        antenna_mapping_pretty: list[dict] = [{}] * PasdData.NUMBER_OF_ANTENNAS
         antenna_mapping = kwargs["antennaMapping"]
         for antenna in antenna_mapping:
-            antenna_id = antenna["antennaID"]
-            smartbox_id = antenna["smartboxID"]
-            smartbox_port = antenna["smartboxPort"]
-            if str(antenna_id) in self._antenna_mapping:
-                self._antenna_mapping[str(antenna_id)] = [smartbox_id, smartbox_port]
-            else:
-                self.logger.info(f"antenna {str(antenna_id)} not in antenna mapping")
+            antenna_id = antenna.get("antennaID")
+            smartbox_id = antenna.get("smartboxID")
+            smartbox_port = antenna.get("smartboxPort")
+            if (
+                antenna_id is not None
+                and smartbox_id is not None
+                and smartbox_port is not None
+            ):
+                if str(antenna_id) in self._antenna_mapping:
+                    self._antenna_mapping[str(antenna_id)] = [
+                        smartbox_id,
+                        smartbox_port,
+                    ]
+                else:
+                    self.logger.info(
+                        f"antenna {str(antenna_id)} not in antenna mapping"
+                    )
+
+                antenna_mapping_pretty[int(antenna_id) - 1] = {
+                    "antennaID": int(antenna_id),
+                    "smartboxID": smartbox_id,
+                    "smartboxPort": smartbox_port,
+                }
+
+        self._antenna_mapping_pretty = {"antennaMapping": antenna_mapping_pretty}
         if task_callback:
             task_callback(status=TaskStatus.COMPLETED)
 
@@ -1302,11 +1332,21 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     ) -> None:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
+
+        smartbox_mapping_pretty: list[dict] = [{}] * PasdData.NUMBER_OF_SMARTBOXES
         smartbox_mapping = kwargs["smartboxMapping"]
         for smartbox in smartbox_mapping:
-            smartbox_id = smartbox["smartboxID"]
-            fndh_port = smartbox["fndhPort"]
-            self._smartbox_mapping[str(smartbox_id)] = fndh_port
+            smartbox_id = smartbox.get("smartboxID")
+            fndh_port = smartbox.get("fndhPort")
+            if smartbox_id is not None and fndh_port is not None:
+                self._smartbox_mapping[str(smartbox_id)] = fndh_port
+                smartbox_mapping_pretty[int(smartbox_id) - 1] = {
+                    "smartboxID": int(smartbox_id),
+                    "fndhPort": int(fndh_port),
+                }
+
+        self._smartbox_mapping_pretty = {"smartboxMapping": smartbox_mapping_pretty}
+        self._on_configuration_change(self._smartbox_mapping_pretty)
         if task_callback:
             task_callback(status=TaskStatus.COMPLETED)
 

@@ -18,11 +18,7 @@
                     "maskingState": {
                         "type": "boolean"
                     }
-                },
-                "required": [
-                    "antennaID",
-                    "maskingState"
-                ]
+                }
             }
         }
     },

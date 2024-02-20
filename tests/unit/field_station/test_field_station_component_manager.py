@@ -160,8 +160,8 @@ def _output_antenna_mapping() -> dict:
 
 
 def _input_smartbox_mapping() -> dict:
-    smartbox_mapping: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_FNDH_PORTS)]
-    for fndh_port in range(PasdData.NUMBER_OF_FNDH_PORTS):
+    smartbox_mapping: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_SMARTBOXES)]
+    for fndh_port in range(PasdData.NUMBER_OF_SMARTBOXES):
         smartbox_mapping[fndh_port]["fndhPort"] = fndh_port + 1
         smartbox_mapping[fndh_port]["smartboxID"] = fndh_port + 1
 
@@ -178,7 +178,7 @@ def _input_smartbox_mapping() -> dict:
 def _output_smartbox_mapping() -> dict:
     smartbox_mapping: dict = {
         str(fndh_port): fndh_port
-        for fndh_port in range(1, PasdData.NUMBER_OF_FNDH_PORTS + 1)
+        for fndh_port in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
     }
 
     # Swap two smartboxes
