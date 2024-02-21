@@ -379,7 +379,11 @@ class MccsSmartBox(SKABaseDevice):
             self.push_archive_event("healthState", health)
 
     def _attribute_changed_callback(
-        self: MccsSmartBox, attr_name: str, attr_value: Any
+        self: MccsSmartBox,
+        attr_name: str,
+        attr_value: Any,
+        timestamp: float,
+        attr_quality: tango.AttrQuality,
     ) -> None:
         """
         Handle changes to subscribed attributes.
@@ -392,6 +396,8 @@ class MccsSmartBox(SKABaseDevice):
 
         :param attr_name: the name of the attribute that needs updating
         :param attr_value: the value to update with.
+        :param: timestamp: the timestamp for the current change
+        :param: attr_quality: the quality factor for the attribute
         """
         try:
             assert (
@@ -404,10 +410,15 @@ class MccsSmartBox(SKABaseDevice):
                 )
                 > 0
             )
-
-            self._smartbox_state[attr_name] = attr_value
-            self.push_change_event(attr_name, attr_value)
-            self.push_archive_event(attr_name, attr_value)
+            if attr_value is None:
+                # This happens when the upstream attribute's quality factor has
+                # been set to INVALID. Pushing a change event with None
+                # triggers an exception so we change it to the last known value here
+                attr_value = self._smartbox_state[attr_name]
+            else:
+                self._smartbox_state[attr_name] = attr_value
+            self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
+            self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 
         except AssertionError:
             self.logger.debug(
@@ -423,6 +434,38 @@ class MccsSmartBox(SKABaseDevice):
         :return: the fndh port that the smartbox is attached to.
         """
         return json.dumps(self.component_manager._fndh_port)
+
+    # TODO: Temporary workaround - this method needs to be updated in SKABaseDevice
+    def push_change_event(self: MccsSmartBox, name: str, *args: Any) -> None:
+        """
+        Push a device server change event.
+
+        This is dependent on whether the push_change_event call has been
+        actioned from a native python thread or a tango omni thread
+
+        :param name: the event name
+        :param args: positional arguments
+        """
+        if name.lower() in ["state", "status"]:
+            self._submit_tango_operation("push_change_event", name)
+        else:
+            self._submit_tango_operation("push_change_event", name, *args)
+
+    # TODO: Temporary workaround - this method needs to be updated in SKABaseDevice
+    def push_archive_event(self: MccsSmartBox, name: str, *args: Any) -> None:
+        """
+        Push a device server archive event.
+
+        This is dependent on whether the push_archive_event call has
+        been actioned from a native python thread or a tango omnithread.
+
+        :param name: the event name
+        :param args: positional arguments
+        """
+        if name.lower() in ["state", "status"]:
+            self._submit_tango_operation("push_archive_event", name)
+        else:
+            self._submit_tango_operation("push_archive_event", name, *args)
 
 
 # ----------
