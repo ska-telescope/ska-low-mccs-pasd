@@ -830,18 +830,18 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     self._pasd_state[tango_attribute_name].quality
                     != AttrQuality.ATTR_INVALID
                 ):
-                    self._pasd_state[
-                        tango_attribute_name
-                    ].quality = AttrQuality.ATTR_INVALID
+                    self._pasd_state[tango_attribute_name].quality = (
+                        AttrQuality.ATTR_INVALID
+                    )
                     self.push_change_event(
                         tango_attribute_name,
-                        None,
+                        self._pasd_state[tango_attribute_name].value,
                         timestamp,
                         AttrQuality.ATTR_INVALID,
                     )
                     self.push_archive_event(
                         tango_attribute_name,
-                        None,
+                        self._pasd_state[tango_attribute_name].value,
                         timestamp,
                         AttrQuality.ATTR_INVALID,
                     )
