@@ -672,6 +672,8 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 attr_value = self._fndh_attributes[attr_name].value
             else:
                 self._fndh_attributes[attr_name].value = attr_value
+            self._fndh_attributes[attr_name].quality = attr_quality
+            self._fndh_attributes[attr_name].timestamp = timestamp
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 

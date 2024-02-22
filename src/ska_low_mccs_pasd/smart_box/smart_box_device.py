@@ -432,6 +432,8 @@ class MccsSmartBox(SKABaseDevice):
                 attr_value = self._smartbox_state[attr_name].value
             else:
                 self._smartbox_state[attr_name].value = attr_value
+            self._smartbox_state[attr_name].quality = attr_quality
+            self._smartbox_state[attr_name].timestamp = timestamp
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 
