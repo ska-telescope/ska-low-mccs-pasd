@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from dataclasses import dataclass
 from typing import Any, Final, Optional, cast
 
 import tango
@@ -33,6 +34,15 @@ __all__ = ["MccsFNDH", "main"]
 
 
 DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
+
+
+@dataclass
+class FNDHAttribute:
+    """Class representing the internal state of a Smartbox attribute."""
+
+    value: Any
+    quality: tango.AttrQuality
+    timestamp: float
 
 
 # pylint: disable=too-many-instance-attributes
@@ -127,7 +137,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         super().init_device()
 
         # Setup attributes shared with the MccsPasdBus.
-        self._fndh_attributes: dict[str, Any] = {}
+        self._fndh_attributes: dict[str, FNDHAttribute] = {}
         self._setup_fndh_attributes()
 
         # Attributes for specific ports on the FNDH.
@@ -360,7 +370,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             """
             port_id = args[0]
             attr_name = f"Port{port_id}PowerState"
-            return self._device._fndh_attributes[attr_name.lower()]
+            return self._device._fndh_attributes[attr_name.lower()].value
 
     @command(dtype_in="DevULong", dtype_out="DevULong")
     def PortPowerState(  # type: ignore[override]
@@ -454,7 +464,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         max_dim_x: Optional[int] = None,
         default_value: Optional[Any] = None,
     ) -> None:
-        self._fndh_attributes[attribute_name.lower()] = default_value
+        self._fndh_attributes[attribute_name.lower()] = FNDHAttribute(
+            value=default_value, timestamp=0, quality=tango.AttrQuality.ATTR_INVALID
+        )
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,
@@ -468,8 +480,11 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self.set_archive_event(attribute_name, True, False)
 
     def _read_fndh_attribute(self: MccsFNDH, fndh_attribute: tango.Attribute) -> None:
-        fndh_attribute.set_value(
-            self._fndh_attributes[fndh_attribute.get_name().lower()]
+        attribute_name = fndh_attribute.get_name().lower()
+        fndh_attribute.set_value_date_quality(
+            self._fndh_attributes[attribute_name].value,
+            self._fndh_attributes[attribute_name].timestamp,
+            self._fndh_attributes[attribute_name].quality,
         )
 
     @attribute(dtype="DevDouble", label="Over current threshold", unit="Amp")
@@ -556,10 +571,10 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         assert self.PORT_COUNT == len(power_states)
         for port in range(self.PORT_COUNT):
             attr_name = f"Port{port + 1}PowerState"
-            if self._fndh_attributes[attr_name.lower()] != power_states[port]:
-                self._fndh_attributes[attr_name.lower()] = power_states[port]
+            if self._fndh_attributes[attr_name.lower()].value != power_states[port]:
+                self._fndh_attributes[attr_name.lower()].value = power_states[port]
                 self.push_change_event(
-                    attr_name, self._fndh_attributes[attr_name.lower()]
+                    attr_name, self._fndh_attributes[attr_name.lower()].value
                 )
                 if power_states[port] != PowerState.UNKNOWN:
                     self._port_power_states[port] = power_states[port]
@@ -654,9 +669,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 # This happens when the upstream attribute's quality factor has
                 # been set to INVALID. Pushing a change event with None
                 # triggers an exception so we change it to the last known value here
-                attr_value = self._fndh_attributes[attr_name]
+                attr_value = self._fndh_attributes[attr_name].value
             else:
-                self._fndh_attributes[attr_name] = attr_value
+                self._fndh_attributes[attr_name].value = attr_value
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 
