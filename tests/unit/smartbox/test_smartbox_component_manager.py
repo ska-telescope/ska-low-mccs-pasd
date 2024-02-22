@@ -8,8 +8,10 @@
 """This module contains the tests of the SmartBox component manager."""
 from __future__ import annotations
 
+import datetime
 import json
 import logging
+import time
 import unittest.mock
 from typing import Any, Iterator
 
@@ -140,8 +142,12 @@ class TestPasdBusProxy:
             attr_value=50,
             attr_quality=tango.AttrQuality.ATTR_VALID,
         )
-
-        mock_callbacks["attribute_update"].assert_call(smartbox_attribute, 50)
+        mock_callbacks["attribute_update"].assert_call(
+            smartbox_attribute,
+            50,
+            pytest.approx(time.mktime(datetime.datetime.utcnow().timetuple())),
+            tango.AttrQuality.ATTR_VALID,
+        )
 
 
 class TestSmartBoxComponentManager:
