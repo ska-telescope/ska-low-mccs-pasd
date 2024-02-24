@@ -66,4 +66,4 @@ Deploy the Tango devices. For example,
 {{ template "ska-tango-util.multidevice-job.tpl" $context }}
 {{ template "ska-tango-util.multidevice-svc.tpl" $context }}
 
-{{- end }}  # deviceservers
+{{- end }}
