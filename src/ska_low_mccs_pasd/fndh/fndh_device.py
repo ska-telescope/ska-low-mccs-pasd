@@ -9,8 +9,10 @@
 
 from __future__ import annotations
 
+import datetime
 import logging
 import sys
+import time
 from dataclasses import dataclass
 from typing import Any, Final, Optional, cast
 
@@ -569,12 +571,22 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self: MccsFNDH, power_states: list[PowerState]
     ) -> None:
         assert self.PORT_COUNT == len(power_states)
+        timestamp = time.mktime(datetime.datetime.utcnow().timetuple())
         for port in range(self.PORT_COUNT):
             attr_name = f"Port{port + 1}PowerState"
             if self._fndh_attributes[attr_name.lower()].value != power_states[port]:
                 self._fndh_attributes[attr_name.lower()].value = power_states[port]
+                # Set Quality to VALID as the UNKNOWN value already captures a
+                # faulty communication status
+                self._fndh_attributes[
+                    attr_name.lower()
+                ].quality = tango.AttrQuality.ATTR_VALID
+                self._fndh_attributes[attr_name.lower()].timestamp = timestamp
                 self.push_change_event(
-                    attr_name, self._fndh_attributes[attr_name.lower()].value
+                    attr_name,
+                    self._fndh_attributes[attr_name.lower()].value,
+                    timestamp,
+                    tango.AttrQuality.ATTR_VALID,
                 )
                 if power_states[port] != PowerState.UNKNOWN:
                     self._port_power_states[port] = power_states[port]
