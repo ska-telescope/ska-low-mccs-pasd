@@ -14,7 +14,6 @@ import importlib.resources
 import json
 import logging
 import sys
-import time
 import traceback
 from dataclasses import dataclass
 from typing import Any, Final, Optional, cast
@@ -811,7 +810,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             smartbox number.
         :param kwargs: keyword arguments defining PaSD device state.
         """
-        timestamp = time.mktime(datetime.datetime.utcnow().timetuple())
+        timestamp = datetime.datetime.utcnow().timestamp()
         try:
             attribute_map = self._ATTRIBUTE_MAP[pasd_device_number]
         except KeyError:

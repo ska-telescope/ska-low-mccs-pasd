@@ -8,12 +8,11 @@
 """This module implements the component management for smartbox."""
 from __future__ import annotations
 
-import datetime
 import json
 import logging
 import re
 import threading
-import time
+from datetime import datetime
 from typing import Any, Callable, Optional
 
 import tango
@@ -184,7 +183,7 @@ class _PasdBusProxy(DeviceComponentManager):
             if tango_attribute_name == "status":
                 tango_attribute_name = "pasdstatus"
 
-            timestamp = time.mktime(datetime.datetime.utcnow().timetuple())
+            timestamp = datetime.utcnow().timestamp()
             self._attribute_change_callback(
                 tango_attribute_name, attr_value, timestamp, attr_quality
             )
@@ -417,7 +416,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
     def _evaluate_power(self: SmartBoxComponentManager) -> None:
         """Evaluate the power state of the smartbox device."""
-        timestamp = time.mktime(datetime.datetime.utcnow().timetuple())
+        timestamp = datetime.utcnow().timestamp()
         if self._fndh_port is None:
             self.logger.info(
                 "The fndh port this smartbox is attached to is unknown,"

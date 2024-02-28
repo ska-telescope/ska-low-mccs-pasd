@@ -8,13 +8,12 @@
 """This module implements the component management for fndh."""
 from __future__ import annotations
 
-import datetime
 import functools
 import json
 import logging
 import re
 import threading
-import time
+from datetime import datetime
 from typing import Any, Callable, Optional
 
 import tango
@@ -113,7 +112,7 @@ class _PasdBusProxy(DeviceComponentManager):
             if tango_attribute_name.lower() == "status":
                 tango_attribute_name = "pasdstatus"
 
-            timestamp = time.mktime(datetime.datetime.utcnow().timetuple())
+            timestamp = datetime.utcnow().timestamp()
             self._attribute_change_callback(
                 tango_attribute_name, attr_value, timestamp, attr_quality
             )
