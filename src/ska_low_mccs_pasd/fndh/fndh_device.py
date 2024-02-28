@@ -40,7 +40,7 @@ DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
 
 @dataclass
 class FNDHAttribute:
-    """Class representing the internal state of a Smartbox attribute."""
+    """Class representing the internal state of a FNDH attribute."""
 
     value: Any
     quality: tango.AttrQuality
