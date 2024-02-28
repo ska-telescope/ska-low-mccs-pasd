@@ -417,6 +417,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
     def _evaluate_power(self: SmartBoxComponentManager) -> None:
         """Evaluate the power state of the smartbox device."""
+        timestamp = time.mktime(datetime.datetime.utcnow().timetuple())
         if self._fndh_port is None:
             self.logger.info(
                 "The fndh port this smartbox is attached to is unknown,"
@@ -435,7 +436,12 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                     self._pasd_bus_proxy._proxy,
                     f"smartbox{self._smartbox_nr}portspowersensed",
                 )
-                self._attribute_change_callback("portspowersensed", port_power)
+                self._attribute_change_callback(
+                    "portspowersensed",
+                    port_power,
+                    timestamp,
+                    tango.AttrQuality.ATTR_VALID,
+                )
             except Exception:  # pylint: disable=broad-except
                 self.logger.warning(
                     "Unable to read smartbox port powers"
@@ -446,7 +452,12 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 if port.desire_on:
                     port.turn_on()
         if self._power_state == PowerState.OFF:
-            self._attribute_change_callback("portspowersensed", [False] * 12)
+            self._attribute_change_callback(
+                "portspowersensed",
+                [False] * 12,
+                timestamp,
+                tango.AttrQuality.ATTR_VALID,
+            )
 
         self._update_component_state(power=smartbox_power)
 
