@@ -694,38 +694,6 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 device does not exist in MccsSmartBox"""
             )
 
-    # TODO: Temporary workaround - this method needs to be updated in SKABaseDevice
-    def push_change_event(self: MccsFNDH, name: str, *args: Any) -> None:
-        """
-        Push a device server change event.
-
-        This is dependent on whether the push_change_event call has been
-        actioned from a native python thread or a tango omni thread
-
-        :param name: the event name
-        :param args: positional arguments
-        """
-        if name.lower() in ["state", "status"]:
-            self._submit_tango_operation("push_change_event", name)
-        else:
-            self._submit_tango_operation("push_change_event", name, *args)
-
-    # TODO: Temporary workaround - this method needs to be updated in SKABaseDevice
-    def push_archive_event(self: MccsFNDH, name: str, *args: Any) -> None:
-        """
-        Push a device server archive event.
-
-        This is dependent on whether the push_archive_event call has
-        been actioned from a native python thread or a tango omnithread.
-
-        :param name: the event name
-        :param args: positional arguments
-        """
-        if name.lower() in ["state", "status"]:
-            self._submit_tango_operation("push_archive_event", name)
-        else:
-            self._submit_tango_operation("push_archive_event", name, *args)
-
 
 # ----------
 # Run server
