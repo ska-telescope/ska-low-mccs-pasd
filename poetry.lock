@@ -1555,14 +1555,14 @@ pytest = ">=5.0.0"
 
 [[package]]
 name = "python-dateutil"
-version = "2.8.2"
+version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
 category = "main"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 files = [
-    {file = "python-dateutil-2.8.2.tar.gz", hash = "sha256:0123cacc1627ae19ddf3c27a5de5bd67ee4586fbdd6440d9748f8abb483d3e86"},
-    {file = "python_dateutil-2.8.2-py2.py3-none-any.whl", hash = "sha256:961d03dc3453ebbc59dbdea9e4e11c5651520a876d0f4db161e8674aae935da9"},
+    {file = "python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3"},
+    {file = "python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427"},
 ]
 
 [package.dependencies]
@@ -1959,14 +1959,14 @@ reference = 'ska-nexus'
 
 [[package]]
 name = "ska-tango-base"
-version = "0.20.0"
+version = "0.20.1"
 description = "SKA Tango base classes"
 category = "main"
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "ska_tango_base-0.20.0-py3-none-any.whl", hash = "sha256:02645d645884dafb5a900f79f0540146f5d1d1adac01b83b3558e3b5127ad29c"},
-    {file = "ska_tango_base-0.20.0.tar.gz", hash = "sha256:dc74eea3968949e16ad24fd10342c080e4c9213aae03ae0f56763301c8a9ac8c"},
+    {file = "ska_tango_base-0.20.1-py3-none-any.whl", hash = "sha256:5b4d2e2c6f8aa08afaa78aa96644a42f2e9175dd85d7453dbcc1ddaa1dd4606e"},
+    {file = "ska_tango_base-0.20.1.tar.gz", hash = "sha256:b15f5fcd1e4fe0ad3728be8d2c995c2f19d97e0b2f9ea02b30abdeab88c86f16"},
 ]
 
 [package.dependencies]
@@ -2312,7 +2312,7 @@ files = [
 name = "typing-extensions"
 version = "4.10.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.8"
 files = [
@@ -2458,4 +2458,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "b89a5391ffd85483fd0565ac9cb499390e362e19f80b4caf391632f1bbc0ce5b"
+content-hash = "d7a126b7ab2ef86ed8a8aafe64d54f787fdb5a45fbe3bfcddde7ea1c10872f80"
