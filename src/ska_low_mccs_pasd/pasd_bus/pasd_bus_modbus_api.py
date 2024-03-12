@@ -327,7 +327,21 @@ class PasdBusModbusApiClient:
         """Close the connection to the remote API."""
         self._client.close()
 
-    def _create_error_response(self, error_code: str, message: str) -> dict:
+    def _create_read_error_response(
+        self, error_code: str, attributes: list[str], message: str
+    ) -> dict:
+        self._logger.error(message)
+        # TODO: What error codes to use? Currently used is [request, read, write]
+        return {
+            "error": {
+                "code": error_code,
+                "detail": message,
+            },
+            "attributes": attributes,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+    def _create_write_error_response(self, error_code: str, message: str) -> dict:
         self._logger.error(message)
         # TODO: What error codes to use? Currently used is [request, read, write]
         return {
@@ -350,8 +364,10 @@ class PasdBusModbusApiClient:
                 request["device_id"], request["read"]
             )
         except PasdBusRequestError as e:
-            return self._create_error_response(
-                "request", f"Exception for slave {modbus_address} read request: {e}"
+            return self._create_read_error_response(
+                "request",
+                request["read"],
+                f"Exception for slave {modbus_address} read request: {e}",
             )
 
         # Retrieve the list of keys (attribute names) in Modbus address order
@@ -422,16 +438,18 @@ class PasdBusModbusApiClient:
                 # No reply: pass this exception on up to the caller
                 raise reply
             case ExceptionResponse():
-                response = self._create_error_response(
+                response = self._create_read_error_response(
                     "read",
+                    request["read"],
                     f"Modbus exception for slave {reply.slave_id}: "
                     f"{MODBUS_EXCEPTIONS.get(reply.exception_code, 'UNKNOWN')}, "
                     f"Function: "
                     f"{MODBUS_FUNCTIONS.get(reply.original_code, 'UNKNOWN')}",
                 )
             case _:
-                response = self._create_error_response(
+                response = self._create_read_error_response(
                     "read",
+                    request["read"],
                     f"Unexpected response type for slave {modbus_address}: "
                     f"{type(reply)}",
                 )
@@ -459,7 +477,7 @@ class PasdBusModbusApiClient:
                 # No reply: pass this exception on up to the caller
                 raise reply
             case ExceptionResponse():
-                response = self._create_error_response(
+                response = self._create_write_error_response(
                     "write",
                     f"Modbus exception for slave {reply.slave_id}: "
                     f"{MODBUS_EXCEPTIONS.get(reply.exception_code, 'UNKNOWN')}, "
@@ -467,7 +485,7 @@ class PasdBusModbusApiClient:
                     f"{MODBUS_FUNCTIONS.get(reply.original_code, 'UNKNOWN')}",
                 )
             case _:
-                response = self._create_error_response(
+                response = self._create_write_error_response(
                     "write",
                     f"Unexpected response type for slave {modbus_address}: "
                     f"{type(reply)}",
@@ -486,7 +504,7 @@ class PasdBusModbusApiClient:
                 request["device_id"], request["write"], list(request["values"])
             )
         except PasdBusRequestError as e:
-            return self._create_error_response(
+            return self._create_write_error_response(
                 "request", f"Exception for slave {modbus_address} write request: {e}"
             )
 
@@ -503,7 +521,7 @@ class PasdBusModbusApiClient:
                 request["device_id"], request["execute"], request["arguments"]
             )
         except PasdBusRequestError as e:
-            return self._create_error_response(
+            return self._create_write_error_response(
                 "request", f"Exception for slave {modbus_address} command request: {e}"
             )
 

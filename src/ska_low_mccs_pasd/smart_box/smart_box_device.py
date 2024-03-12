@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import dataclass
 from typing import Any, Final, Optional, cast
 
 import tango
@@ -25,6 +26,15 @@ from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
 
 __all__ = ["MccsSmartBox", "main"]
+
+
+@dataclass
+class SmartboxAttribute:
+    """Class representing the internal state of a Smartbox attribute."""
+
+    value: Any
+    quality: tango.AttrQuality
+    timestamp: float
 
 
 class MccsSmartBox(SKABaseDevice):
@@ -119,7 +129,7 @@ class MccsSmartBox(SKABaseDevice):
         This is overridden here to change the Tango serialisation model.
         """
         super().init_device()
-        self._smartbox_state: dict[str, Any] = {}
+        self._smartbox_state: dict[str, SmartboxAttribute] = {}
         self._setup_smartbox_attributes()
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
@@ -286,7 +296,9 @@ class MccsSmartBox(SKABaseDevice):
         data_type: type | tuple[type],
         max_dim_x: Optional[int] = None,
     ) -> None:
-        self._smartbox_state[attribute_name.lower()] = None
+        self._smartbox_state[attribute_name.lower()] = SmartboxAttribute(
+            value=None, timestamp=0, quality=tango.AttrQuality.ATTR_INVALID
+        )
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,
@@ -300,8 +312,11 @@ class MccsSmartBox(SKABaseDevice):
         self.set_archive_event(attribute_name, True, False)
 
     def _read_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
-        smartbox_attribute.set_value(
-            self._smartbox_state[smartbox_attribute.get_name().lower()]
+        attribute_name = smartbox_attribute.get_name().lower()
+        smartbox_attribute.set_value_date_quality(
+            self._smartbox_state[attribute_name].value,
+            self._smartbox_state[attribute_name].timestamp,
+            self._smartbox_state[attribute_name].quality,
         )
 
     # ----------
@@ -379,7 +394,11 @@ class MccsSmartBox(SKABaseDevice):
             self.push_archive_event("healthState", health)
 
     def _attribute_changed_callback(
-        self: MccsSmartBox, attr_name: str, attr_value: Any
+        self: MccsSmartBox,
+        attr_name: str,
+        attr_value: Any,
+        timestamp: float,
+        attr_quality: tango.AttrQuality,
     ) -> None:
         """
         Handle changes to subscribed attributes.
@@ -392,6 +411,8 @@ class MccsSmartBox(SKABaseDevice):
 
         :param attr_name: the name of the attribute that needs updating
         :param attr_value: the value to update with.
+        :param: timestamp: the timestamp for the current change
+        :param: attr_quality: the quality factor for the attribute
         """
         try:
             assert (
@@ -404,10 +425,17 @@ class MccsSmartBox(SKABaseDevice):
                 )
                 > 0
             )
-
-            self._smartbox_state[attr_name] = attr_value
-            self.push_change_event(attr_name, attr_value)
-            self.push_archive_event(attr_name, attr_value)
+            if attr_value is None:
+                # This happens when the upstream attribute's quality factor has
+                # been set to INVALID. Pushing a change event with None
+                # triggers an exception so we change it to the last known value here
+                attr_value = self._smartbox_state[attr_name].value
+            else:
+                self._smartbox_state[attr_name].value = attr_value
+            self._smartbox_state[attr_name].quality = attr_quality
+            self._smartbox_state[attr_name].timestamp = timestamp
+            self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
+            self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 
         except AssertionError:
             self.logger.debug(

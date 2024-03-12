@@ -153,7 +153,7 @@ def setup_devices_with_subscriptions(
 
 # pylint: disable=inconsistent-return-statements
 def poll_until_command_completed(
-    device: tango.DeviceProxy, command_id: str, no_of_iters: int = 5
+    device: tango.DeviceProxy, command_id: str, no_of_iters: int = 10
 ) -> None:
     """
     Poll until command has completed.
@@ -589,6 +589,7 @@ class TestSmartBoxPasdBusIntegration:
         [return_code], [command_id] = smartbox_device.PowerOnPort(
             smartbox_port_desired_on
         )
+        assert return_code == ResultCode.QUEUED
         poll_until_command_completed(smartbox_device, command_id)
 
         # ======
@@ -699,6 +700,7 @@ class TestSmartBoxPasdBusIntegration:
 
         for port in smartbox_ports_desired_on:
             [return_code], [command_id] = smartbox_device.PowerOnPort(port)
+            assert return_code == ResultCode.QUEUED
             poll_until_command_completed(smartbox_device, command_id)
             expected_smartbox_port_states[port - 1] = True
             change_event_callbacks[

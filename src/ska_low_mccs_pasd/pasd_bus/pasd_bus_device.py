@@ -9,11 +9,13 @@
 
 from __future__ import annotations
 
+import datetime
 import importlib.resources
 import json
 import logging
 import sys
 import traceback
+from dataclasses import dataclass
 from typing import Any, Final, Optional, cast
 
 import tango.server
@@ -26,6 +28,7 @@ from ska_control_model import (
 )
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidator
+from tango import AttrQuality
 from tango.device_attribute import ExtractAs
 from tango.server import command
 
@@ -42,7 +45,16 @@ __all__ = ["MccsPasdBus", "main"]
 DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 
 
-# pylint: disable=too-many-lines, too-many-instance-attributes
+@dataclass
+class PasdAttribute:
+    """Class representing the internal state of a PaSD attribute."""
+
+    value: Any
+    quality: AttrQuality
+    timestamp: float
+
+
+# pylint: disable=too-many-lines, too-many-instance-attributes, too-many-public-methods
 class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     """An implementation of a PaSD bus Tango device for MCCS."""
 
@@ -243,7 +255,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         self._build_state: str = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
 
-        self._pasd_state: dict[str, Any] = {}
+        self._pasd_state: dict[str, PasdAttribute] = {}
         self._setup_fndh_attributes()
         for smartbox_number in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
             self._setup_smartbox_attributes(smartbox_number)
@@ -516,14 +528,18 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
     def _read_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
         attr_name = pasd_attribute.get_name()
-        attr_value = self._pasd_state[attr_name]
+        attr_value = self._pasd_state[attr_name].value
         if attr_value is None:
             msg = f"Attempted read of {attr_name} before it has been polled."
             self.logger.warning(msg)
             raise tango.Except.throw_exception(
                 f"Error: {attr_name} is None", msg, "".join(traceback.format_stack())
             )
-        pasd_attribute.set_value(attr_value)
+        pasd_attribute.set_value_date_quality(
+            attr_value,
+            self._pasd_state[attr_name].timestamp,
+            self._pasd_state[attr_name].quality,
+        )
 
     def _write_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
         # Register the request with the component manager
@@ -562,7 +578,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         max_dim_x: Optional[int] = None,
         access: tango.AttrWriteType = tango.AttrWriteType.READ,
     ) -> None:
-        self._pasd_state[attribute_name] = None
+        # Initialize all attributes as INVALID until read from the h/w
+        self._pasd_state[attribute_name] = PasdAttribute(
+            value=None, timestamp=0, quality=AttrQuality.ATTR_INVALID
+        )
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,
@@ -731,7 +750,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         if action is not None:
             self.op_state_model.perform_action(action)
 
-        self._health_model.update_state(communicating=True)
+        if communication_state is CommunicationStatus.ESTABLISHED:
+            self._health_model.update_state(communicating=True)
+        else:
+            self._health_model.update_state(communicating=False)
 
         if (
             self._init_pasd_devices
@@ -788,6 +810,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             smartbox number.
         :param kwargs: keyword arguments defining PaSD device state.
         """
+        timestamp = datetime.datetime.utcnow().timestamp()
         try:
             attribute_map = self._ATTRIBUTE_MAP[pasd_device_number]
         except KeyError:
@@ -797,7 +820,31 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             return
 
         if "error" in kwargs:
-            # TODO: handle error response from API for known device
+            # Mark the quality factor for the attribute(s) as INVALID
+            for pasd_attribute_name in kwargs["attributes"]:
+                tango_attribute_name = attribute_map[pasd_attribute_name]
+                self._pasd_state[tango_attribute_name].timestamp = timestamp
+                # Only push out a change event if the attribute was previously valid
+                if (
+                    self._pasd_state[tango_attribute_name].quality
+                    != AttrQuality.ATTR_INVALID
+                ):
+                    self._pasd_state[
+                        tango_attribute_name
+                    ].quality = AttrQuality.ATTR_INVALID
+                    self.push_change_event(
+                        tango_attribute_name,
+                        self._pasd_state[tango_attribute_name].value,
+                        timestamp,
+                        AttrQuality.ATTR_INVALID,
+                    )
+                    self.push_archive_event(
+                        tango_attribute_name,
+                        self._pasd_state[tango_attribute_name].value,
+                        timestamp,
+                        AttrQuality.ATTR_INVALID,
+                    )
+
             return
 
         for pasd_attribute_name, pasd_attribute_value in kwargs.items():
@@ -810,10 +857,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 )
                 # Continue on to allow other attributes to be updated
 
+            # Update the timestamp
+            self._pasd_state[tango_attribute_name].timestamp = timestamp
+
             if pasd_attribute_name == "status":
                 # Determine if the device has been reset or powered on since
                 # MCCS was started by checking if its status changed to UNINITIALISED
-                previous_status = self._pasd_state[tango_attribute_name]
+                previous_status = self._pasd_state[tango_attribute_name].value
                 if (
                     pasd_attribute_value == FndhStatusMap.UNINITIALISED.name
                     and pasd_attribute_value != previous_status
@@ -824,10 +874,21 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     if self._simulation_mode == SimulationMode.FALSE:
                         self._set_all_low_pass_filters_of_device(pasd_device_number)
 
-            if self._pasd_state[tango_attribute_name] != pasd_attribute_value:
-                self._pasd_state[tango_attribute_name] = pasd_attribute_value
-                self.push_change_event(tango_attribute_name, pasd_attribute_value)
-                self.push_archive_event(tango_attribute_name, pasd_attribute_value)
+            if self._pasd_state[tango_attribute_name].value != pasd_attribute_value:
+                self._pasd_state[tango_attribute_name].value = pasd_attribute_value
+                self._pasd_state[tango_attribute_name].quality = AttrQuality.ATTR_VALID
+                self.push_change_event(
+                    tango_attribute_name,
+                    pasd_attribute_value,
+                    timestamp,
+                    AttrQuality.ATTR_VALID,
+                )
+                self.push_archive_event(
+                    tango_attribute_name,
+                    pasd_attribute_value,
+                    timestamp,
+                    AttrQuality.ATTR_VALID,
+                )
 
     def _health_changed(
         self: MccsPasdBus,
