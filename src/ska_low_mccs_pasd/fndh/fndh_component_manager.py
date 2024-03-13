@@ -138,6 +138,18 @@ class _PasdBusProxy(DeviceComponentManager):
         self._proxy.InitializeFndh()
         return self._proxy.SetFndhPortPowers(json_argument)
 
+    def write_attribute(
+        self: _PasdBusProxy, tango_attribute_name: str, value: Any
+    ) -> None:
+        """
+        Proxy for the generic write attribute function.
+
+        :param tango_attribute_name: the name of the Tango attribute.
+        :param value: the value to write.
+        """
+        assert self._proxy
+        setattr(self._proxy, "fndh" + tango_attribute_name, value)
+
 
 # pylint: disable-next=abstract-method
 class FndhComponentManager(TaskExecutorComponentManager):
@@ -407,3 +419,17 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 result="Set port powers success",
             )
         return result_code, unique_id
+
+    @check_communicating
+    def write_attribute(
+        self: FndhComponentManager,
+        attribute_name: str,
+        value: Any,
+    ) -> None:
+        """
+        Request to write an attribute via the proxy.
+
+        :param attribute_name: the name of the Tango attribute.
+        :param value: the value to write.
+        """
+        self._pasd_bus_proxy.write_attribute(attribute_name, value)

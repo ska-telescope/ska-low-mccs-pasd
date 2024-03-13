@@ -18,6 +18,7 @@ import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
+from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
 
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
@@ -52,51 +53,86 @@ class MccsSmartBox(SKABaseDevice):
     # TODO: MCCS-1480: create a yaml file containing
     # coupled MccsSmartBox MccsPasdBus attributes.
     ATTRIBUTES = [
-        ("ModbusRegisterMapRevisionNumber", int, None),
-        ("PcbRevisionNumber", int, None),
-        ("CpuId", str, None),
-        ("ChipId", str, None),
-        ("FirmwareVersion", str, None),
-        ("Uptime", int, None),
-        ("PasdStatus", str, None),
-        ("SysAddress", int, None),
-        ("LedPattern", str, None),
-        ("InputVoltage", float, None),
-        ("PowerSupplyOutputVoltage", float, None),
-        ("PowerSupplyTemperature", float, None),
-        ("PcbTemperature", float, None),
-        ("FemAmbientTemperature", float, None),
-        ("FemCaseTemperatures", (float,), 2),
-        ("FemHeatsinkTemperatures", (float,), 2),
-        ("PortForcings", (str,), PORT_COUNT),
-        ("PortBreakersTripped", (bool,), PORT_COUNT),
-        ("PortsDesiredPowerOnline", (DesiredPowerEnum,), PORT_COUNT),
-        ("PortsDesiredPowerOffline", (DesiredPowerEnum,), PORT_COUNT),
-        ("PortsPowerSensed", (bool,), PORT_COUNT),
-        ("PortsCurrentDraw", (float,), PORT_COUNT),
-        ("InputVoltageThresholds", (float,), 4),
-        ("PowerSupplyOutputVoltageThresholds", (float,), 4),
-        ("PowerSupplyTemperatureThresholds", (float,), 4),
-        ("PcbTemperatureThresholds", (float,), 4),
-        ("FemAmbientTemperatureThresholds", (float,), 4),
-        ("FemCaseTemperature1Thresholds", (float,), 4),
-        ("FemCaseTemperature2Thresholds", (float,), 4),
-        ("FemHeatsinkTemperature1Thresholds", (float,), 4),
-        ("FemHeatsinkTemperature2Thresholds", (float,), 4),
-        ("Fem1CurrentTripThreshold", int, None),
-        ("Fem2CurrentTripThreshold", int, None),
-        ("Fem3CurrentTripThreshold", int, None),
-        ("Fem4CurrentTripThreshold", int, None),
-        ("Fem5CurrentTripThreshold", int, None),
-        ("Fem6CurrentTripThreshold", int, None),
-        ("Fem7CurrentTripThreshold", int, None),
-        ("Fem8CurrentTripThreshold", int, None),
-        ("Fem9CurrentTripThreshold", int, None),
-        ("Fem10CurrentTripThreshold", int, None),
-        ("Fem11CurrentTripThreshold", int, None),
-        ("Fem12CurrentTripThreshold", int, None),
-        ("WarningFlags", str, None),
-        ("AlarmFlags", str, None),
+        ("ModbusRegisterMapRevisionNumber", int, None, tango.AttrWriteType.READ),
+        ("PcbRevisionNumber", int, None, tango.AttrWriteType.READ),
+        ("CpuId", str, None, tango.AttrWriteType.READ),
+        ("ChipId", str, None, tango.AttrWriteType.READ),
+        ("FirmwareVersion", str, None, tango.AttrWriteType.READ),
+        ("Uptime", int, None, tango.AttrWriteType.READ),
+        ("PasdStatus", str, None, tango.AttrWriteType.READ),
+        ("SysAddress", int, None, tango.AttrWriteType.READ),
+        ("LedPattern", str, None, tango.AttrWriteType.READ),
+        ("InputVoltage", float, None, tango.AttrWriteType.READ),
+        ("PowerSupplyOutputVoltage", float, None, tango.AttrWriteType.READ),
+        ("PowerSupplyTemperature", float, None, tango.AttrWriteType.READ),
+        ("PcbTemperature", float, None, tango.AttrWriteType.READ),
+        ("FemAmbientTemperature", float, None, tango.AttrWriteType.READ),
+        ("FemCaseTemperatures", (float,), 2, tango.AttrWriteType.READ),
+        ("FemHeatsinkTemperatures", (float,), 2, tango.AttrWriteType.READ),
+        ("PortForcings", (str,), PORT_COUNT, tango.AttrWriteType.READ),
+        ("PortBreakersTripped", (bool,), PORT_COUNT, tango.AttrWriteType.READ),
+        (
+            "PortsDesiredPowerOnline",
+            (DesiredPowerEnum,),
+            PORT_COUNT,
+            tango.AttrWriteType.READ,
+        ),
+        (
+            "PortsDesiredPowerOffline",
+            (DesiredPowerEnum,),
+            PORT_COUNT,
+            tango.AttrWriteType.READ,
+        ),
+        ("PortsPowerSensed", (bool,), PORT_COUNT, tango.AttrWriteType.READ),
+        ("PortsCurrentDraw", (float,), PORT_COUNT, tango.AttrWriteType.READ_WRITE),
+        ("InputVoltageThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
+        (
+            "PowerSupplyOutputVoltageThresholds",
+            (float,),
+            4,
+            tango.AttrWriteType.READ_WRITE,
+        ),
+        (
+            "PowerSupplyTemperatureThresholds",
+            (float,),
+            4,
+            tango.AttrWriteType.READ_WRITE,
+        ),
+        ("PcbTemperatureThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
+        (
+            "FemAmbientTemperatureThresholds",
+            (float,),
+            4,
+            tango.AttrWriteType.READ_WRITE,
+        ),
+        ("FemCaseTemperature1Thresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
+        ("FemCaseTemperature2Thresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
+        (
+            "FemHeatsinkTemperature1Thresholds",
+            (float,),
+            4,
+            tango.AttrWriteType.READ_WRITE,
+        ),
+        (
+            "FemHeatsinkTemperature2Thresholds",
+            (float,),
+            4,
+            tango.AttrWriteType.READ_WRITE,
+        ),
+        ("Fem1CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+        ("Fem2CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+        ("Fem3CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+        ("Fem4CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+        ("Fem5CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+        ("Fem6CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+        ("Fem7CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+        ("Fem8CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+        ("Fem9CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+        ("Fem10CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+        ("Fem11CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+        ("Fem12CurrentTripThreshold", int, None, tango.AttrWriteType.READ_WRITE),
+        ("WarningFlags", str, None, tango.AttrWriteType.READ),
+        ("AlarmFlags", str, None, tango.AttrWriteType.READ),
     ]
 
     # ---------------
@@ -283,10 +319,16 @@ class MccsSmartBox(SKABaseDevice):
     # Attributes
     # ----------
     def _setup_smartbox_attributes(self: MccsSmartBox) -> None:
-        for slug, data_type, length in self.ATTRIBUTES:
+        for (
+            slug,
+            data_type,
+            length,
+            access,
+        ) in self.ATTRIBUTES:
             self._setup_smartbox_attribute(
                 f"{slug}",
                 cast(type | tuple[type], data_type),
+                access,
                 max_dim_x=length,
             )
 
@@ -294,6 +336,7 @@ class MccsSmartBox(SKABaseDevice):
         self: MccsSmartBox,
         attribute_name: str,
         data_type: type | tuple[type],
+        access_type: tango.AttrWriteType,
         max_dim_x: Optional[int] = None,
     ) -> None:
         self._smartbox_state[attribute_name.lower()] = SmartboxAttribute(
@@ -302,12 +345,15 @@ class MccsSmartBox(SKABaseDevice):
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,
-            access=tango.AttrWriteType.READ,
+            access=access_type,
             label=attribute_name,
             max_dim_x=max_dim_x,
-            fread="_read_smartbox_attribute",
+            fget=self._read_smartbox_attribute,
+            fset=self._write_smartbox_attribute,
         ).to_attr()
-        self.add_attribute(attr, self._read_smartbox_attribute, None, None)
+        self.add_attribute(
+            attr, self._read_smartbox_attribute, self._write_smartbox_attribute, None
+        )
         self.set_change_event(attribute_name, True, False)
         self.set_archive_event(attribute_name, True, False)
 
@@ -318,6 +364,16 @@ class MccsSmartBox(SKABaseDevice):
             self._smartbox_state[attribute_name].timestamp,
             self._smartbox_state[attribute_name].quality,
         )
+
+    def _write_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
+        # Register the request with the component manager
+        tango_attr_name = smartbox_attribute.get_name()
+        value = smartbox_attribute.get_write_value(ExtractAs.List)
+        self.logger.debug(
+            f"Requesting to write smartbox {self.SmartBoxNumber} "
+            f"attribute: {tango_attr_name} with value {value}"
+        )
+        self.component_manager.write_attribute(tango_attr_name, value)
 
     # ----------
     # Callbacks
@@ -419,7 +475,7 @@ class MccsSmartBox(SKABaseDevice):
                 len(
                     [
                         attr
-                        for (attr, _, _) in self.ATTRIBUTES
+                        for (attr, _, _, _) in self.ATTRIBUTES
                         if attr == attr_name or attr.lower() == attr_name
                     ]
                 )
