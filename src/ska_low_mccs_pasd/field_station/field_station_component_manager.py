@@ -28,6 +28,7 @@ from ska_ser_devices.client_server import (
 from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
+from ska_telmodel.data import TMData  # type: ignore
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
@@ -61,6 +62,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         station_name: str,
         fndh_name: str,
         smartbox_names: list[str],
+        config_details: str,
         communication_state_callback: Callable[..., None],
         component_state_changed: Callable[..., None],
         configuration_change_callback: Callable[..., None],
@@ -82,6 +84,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             encompasses
         :param smartbox_names: the names of the smartboxes this field station
             encompasses
+        :param config_details: default location and filepath of the config in telmodel
         :param communication_state_callback: callback to be
             called when the status of the communications channel between
             the component manager and its component changes
@@ -152,10 +155,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                         logger,
                         max_workers,
                         functools.partial(
-                            self._device_communication_state_changed, smartbox_name
+                            self._device_communication_state_changed,
+                            smartbox_name,
                         ),
                         functools.partial(
-                            self._component_state_callback, device_name=smartbox_name
+                            self._component_state_callback,
+                            device_name=smartbox_name,
                         ),
                     )
                 )
@@ -170,10 +175,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.logger = logger
         self.station_name = station_name
 
-        # TODO add ability for helm to configure.
-        self.use_tcp_configuration_client = True
-
-        self._load_configuration()
+        self._load_configuration(config_details)
 
     def _update_mappings(
         self: FieldStationComponentManager,
@@ -208,7 +210,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 "smartboxID": smartbox_id,
                 "smartboxPort": smartbox_port,
             }
-            antenna_mapping_logical[str(antenna_id)] = [smartbox_id, smartbox_port]
+            antenna_mapping_logical[str(antenna_id)] = [
+                smartbox_id,
+                smartbox_port,
+            ]
 
             antenna_masks_pretty[int(antenna_id) - 1] = {
                 "antennaID": int(antenna_id),
@@ -413,7 +418,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.fndh_port_change.set()
 
     def smartbox_state_change(
-        self: FieldStationComponentManager, smartbox_name: str, power: PowerState
+        self: FieldStationComponentManager,
+        smartbox_name: str,
+        power: PowerState,
     ) -> None:
         """
         Register a state change for a smartbox.
@@ -435,7 +442,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 match fqdn:
                     case self._fndh_name:
                         self.subscribe_to_attribute(
-                            fqdn, "OutsideTemperature", self._on_field_conditions_change
+                            fqdn,
+                            "OutsideTemperature",
+                            self._on_field_conditions_change,
                         )
                         self.subscribe_to_attribute(
                             fqdn, "PortsPowerSensed", self._on_fndh_port_change
@@ -465,7 +474,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self._update_communication_state(CommunicationStatus.ESTABLISHED)
 
     def on(
-        self: FieldStationComponentManager, task_callback: Optional[Callable] = None
+        self: FieldStationComponentManager,
+        task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
         Turn on the FieldStation.
@@ -549,7 +559,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         return desired_smartbox_power
 
     def turn_on_unmasked_smartbox_ports(
-        self: FieldStationComponentManager, masked_smartbox_ports: dict[int, list]
+        self: FieldStationComponentManager,
+        masked_smartbox_ports: dict[int, list],
     ) -> list[ResultCode]:
         """
         Turn on all smartbox ports that are not masked.
@@ -668,15 +679,23 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     ) -> list[PowerState | None]:
         desired_power: list[PowerState | None] = [None] * PasdData.NUMBER_OF_ANTENNAS
         # Set the desired power states for unmasked antenna with a mapping.
-        for antenna_id, (smartbox_id, smartbox_port) in self._antenna_mapping.items():
-            for masked_smartbox_id, masked_ports in masked_smartbox_ports.items():
+        for antenna_id, (
+            smartbox_id,
+            smartbox_port,
+        ) in self._antenna_mapping.items():
+            for (
+                masked_smartbox_id,
+                masked_ports,
+            ) in masked_smartbox_ports.items():
                 if int(masked_smartbox_id) == int(smartbox_id):
                     if int(smartbox_port) not in masked_ports:
                         desired_power[int(antenna_id) - 1] = desired_power_state
         return desired_power
 
     def wait_for_fndh_port(  # noqa: C901
-        self: FieldStationComponentManager, desired: list[Optional[bool]], timeout: int
+        self: FieldStationComponentManager,
+        desired: list[Optional[bool]],
+        timeout: int,
     ) -> ResultCode:
         """
         Wait for the fndh ports to change state to a desired state.
@@ -690,7 +709,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         """
 
         def _fndh_ports_match_desired(
-            current_state: list[Optional[bool]], desired_state: list[Optional[bool]]
+            current_state: list[Optional[bool]],
+            desired_state: list[Optional[bool]],
         ) -> bool:
             for port_idx, port_state in enumerate(desired_state):
                 if port_state is not None:
@@ -724,7 +744,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         return ResultCode.OK
 
     def wait_for_smartbox_device_state(  # noqa: C901
-        self: FieldStationComponentManager, desired: list[Optional[bool]], timeout: int
+        self: FieldStationComponentManager,
+        desired: list[Optional[bool]],
+        timeout: int,
     ) -> ResultCode:
         """
         Wait for the smartbox devices to change state.
@@ -738,7 +760,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         """
 
         def _smartbox_power_as_desired(
-            current_state: list[PowerState], desired_state: list[Optional[bool]]
+            current_state: list[PowerState],
+            desired_state: list[Optional[bool]],
         ) -> bool:
             for port_idx, port_state in enumerate(desired_state):
                 if port_state is not None:
@@ -817,7 +840,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         return ResultCode.OK
 
     def off(
-        self: FieldStationComponentManager, task_callback: Optional[Callable] = None
+        self: FieldStationComponentManager,
+        task_callback: Optional[Callable] = None,
     ) -> tuple[TaskStatus, str]:
         """
         Turn off the FieldStation.
@@ -983,7 +1007,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 smartbox_ports[antennas_smartbox_port - 1] = True
         return smartbox_ports
 
-    def _get_fndh_ports_with_smartboxes(self: FieldStationComponentManager) -> list:
+    def _get_fndh_ports_with_smartboxes(
+        self: FieldStationComponentManager,
+    ) -> list:
         fndh_ports = [False] * PasdData.NUMBER_OF_FNDH_PORTS
         for fndh_port in list(self._smartbox_mapping.values()):
             fndh_ports[fndh_port - 1] = True
@@ -1371,6 +1397,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
     def load_configuration(
         self: FieldStationComponentManager,
+        config_uri: str,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[TaskStatus, str]:
@@ -1380,32 +1407,33 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         This method returns immediately after it is submitted for
         execution.
 
+        :param config_uri: Location of the config in telmodel
         :param task_callback: Update task state, defaults to None
         :param task_abort_event: Check for abort, defaults to None
         :return: Task status and response message
         """
         return self.submit_task(
             self._load_configuration,
-            args=[],
+            args=[config_uri],
             task_callback=task_callback,
         )
 
     def _load_configuration(
         self: FieldStationComponentManager,
+        config_details: str,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> None:
         """
         Get the configuration from the configuration server.
 
+        :param config_details: Location of the config in telmodel
         :param task_callback: Update task state, defaults to None
         :param task_abort_event: Check for abort, defaults to None
-
-        :raises NotImplementedError: configuration in TelModel not yet implemented
         """
         try:
             self.logger.info("Attempting to load data from configuration server.....")
-            if self.use_tcp_configuration_client:
+            if config_details == "":
                 configuration = self._get_configuration_from_configuration_server(
                     self.configuration_host,
                     self.configuration_port,
@@ -1413,13 +1441,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 )
                 self.logger.info("configuration loaded from configuration server")
             else:
-                # TODO: ask for data from TelModel
-                self.logger.error(
-                    "Attempted read from TelModel when functionality not implemented."
-                )
-                raise NotImplementedError(
-                    "Attempted read from TelModel when functionality not implemented."
-                )
+                config_uri = config_details[0]
+                config_filepath = config_details[1]
+
+                tmdata = TMData([config_uri])
+                configuration = tmdata[config_filepath].get_dict()
 
             # Validate configuration before updating.
             jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)

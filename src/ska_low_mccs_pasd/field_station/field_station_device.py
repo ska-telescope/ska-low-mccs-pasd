@@ -40,6 +40,7 @@ class MccsFieldStation(SKABaseDevice):
     ConfigurationPort = device_property(dtype=(int), mandatory=True)
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), default_value=[])
+    ConfigURI = device_property(dtype=(str,), default_value="")
     ConfigurationTimeout = device_property(dtype=(int), default_value=15)
     # --------------
     # Initialisation
@@ -56,6 +57,7 @@ class MccsFieldStation(SKABaseDevice):
             "Initialised MccsFieldStation device with properties:\n"
             f"\tFndhFQDN: {self.FndhFQDN}\n"
             f"\tSmartBoxFQDNs: {self.SmartBoxFQDNs}\n"
+            f"\tCongigUri: {self.CongigUri}\n"
             f"\tConfigurationHost: {self.ConfigurationHost}\n"
             f"\tConfigurationPort: {self.ConfigurationPort}\n"
             f"\tConfigurationTimeout: {self.ConfigurationTimeout}\n"
@@ -79,6 +81,7 @@ class MccsFieldStation(SKABaseDevice):
             self.StationName,
             self.FndhFQDN,
             self.SmartBoxFQDNs,
+            self.ConfigURI,
             self._communication_state_callback,
             self._component_state_callback,
             self._on_configuration_change,
@@ -122,7 +125,11 @@ class MccsFieldStation(SKABaseDevice):
             ("PowerOnAntenna", "turn_on_antenna", None),
             ("PowerOffAntenna", "turn_off_antenna", None),
             ("UpdateAntennaMask", "update_antenna_mask", mask_schema),
-            ("UpdateAntennaMapping", "update_antenna_mapping", antenna_mapping_schema),
+            (
+                "UpdateAntennaMapping",
+                "update_antenna_mapping",
+                antenna_mapping_schema,
+            ),
             (
                 "UpdateSmartboxMapping",
                 "update_smartbox_mapping",
@@ -257,16 +264,19 @@ class MccsFieldStation(SKABaseDevice):
     @command(dtype_out="DevVarLongStringArray")
     def LoadConfiguration(
         self: MccsFieldStation,
+        config_uri: str = "",
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
         """
         Power up a antenna.
+
+        :param config_uri: Location of the config in telmodel.
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
             only.
         """
         handler = self.get_command_object("LoadConfiguration")
-        (return_code, message) = handler()
+        (return_code, message) = handler(config_uri)
         return ([return_code], [message])
 
     @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
@@ -375,7 +385,9 @@ class MccsFieldStation(SKABaseDevice):
         return ([return_code], [message])
 
     @command(dtype_out="DevVarLongStringArray")
-    def UpdateConfiguration(self: MccsFieldStation) -> DevVarLongStringArrayType:
+    def UpdateConfiguration(
+        self: MccsFieldStation,
+    ) -> DevVarLongStringArrayType:
         """
         Update the configuration of the FieldStation.
 
