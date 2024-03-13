@@ -31,6 +31,7 @@ pymodbus = "~3.5.4"
 typing-extensions = "^4.6.1"
 fastapi = "^0.110.1"
 uvicorn = {extras = ["standard"], version = "^0.29.0"}
+ska-telmodel = "^1.14.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.20.0"

@@ -409,6 +409,7 @@ class TestFieldStationComponentManager:
                 get_smartbox_name(smartbox_id)
                 for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
             ],
+            [],
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
             mock_callbacks["configuration_change_callback"],
