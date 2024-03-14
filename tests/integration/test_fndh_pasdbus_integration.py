@@ -326,6 +326,22 @@ class TestfndhPasdBusIntegration:
                     getattr(fndh_device, f"Port{port}PowerState") == PowerState.UNKNOWN
                 )
 
+        # When we write an attribute, check the simulator gets updated
+        fndh_device.subscribe_event(
+            "OutsideTemperatureThresholds",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["outsideTemperatureThresholds"],
+        )
+        setattr(
+            fndh_device,
+            "OutsideTemperatureThresholds",
+            [40.2, 35.5, 10.5, 5],
+        )
+        change_event_callbacks["outsideTemperatureThresholds"].assert_change_event(
+            [40.2, 35.5, 10.5, 5], lookahead=2
+        )
+        assert fndh_simulator.outside_temperature_thresholds == [4020, 3550, 1050, 500]
+
     # pylint: disable=too-many-arguments
     def test_port_power(
         self: TestfndhPasdBusIntegration,
@@ -445,6 +461,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "smartbox24AlarmFlags",
         "fndhPortPowerState",
         "fndhPort2PowerState",
+        "outsideTemperatureThresholds",
         timeout=26.0,
         assert_no_error=False,
     )

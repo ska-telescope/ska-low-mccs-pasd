@@ -728,6 +728,7 @@ class TestSmartBoxPasdBusIntegration:
         with the MccsPasdBus
         - Can MccsSmartBox handle a changing attribute event pushed from the
         MccsPasdBus.
+        - Can MccsSmartBox write an attribute with READ/WRITE permissions.
 
         :param on_smartbox_device: fixture that provides a
             :py:class:`tango.DeviceProxy` to the device under test, in a
@@ -1137,6 +1138,22 @@ class TestSmartBoxPasdBusIntegration:
         )
         assert (smartbox_device.FemHeatsinkTemperatures == [51.00, 50.00]).all()
 
+        # When we write an attribute, check the simulator gets updated
+        smartbox_device.subscribe_event(
+            "PcbTemperatureThresholds",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{smartbox_id}pcbtemperaturethresholds"],
+        )
+        setattr(
+            smartbox_device,
+            "PcbTemperatureThresholds",
+            [40.2, 35.5, 10.5, 5],
+        )
+        change_event_callbacks[
+            f"smartbox{smartbox_id}pcbtemperaturethresholds"
+        ].assert_change_event([40.2, 35.5, 10.5, 5], lookahead=2)
+        assert smartbox_simulator.pcb_temperature_thresholds == [4020, 3550, 1050, 500]
+
     def test_set_port_powers(
         self: TestSmartBoxPasdBusIntegration,
         on_smartbox_device: tango.DeviceProxy,
@@ -1245,6 +1262,7 @@ def change_event_callbacks_fixture(
         f"smartbox{on_smartbox_id}femcasetemperatures",
         f"smartbox{on_smartbox_id}femheatsinktemperatures",
         f"smartbox{on_smartbox_id}status",
+        f"smartbox{on_smartbox_id}pcbtemperaturethresholds",
         f"smartbox{off_smartbox_id}portpowersensed",
         f"smartbox{off_smartbox_id}status",
         "fndhportpowerstate",
