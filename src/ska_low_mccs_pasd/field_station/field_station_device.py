@@ -40,7 +40,7 @@ class MccsFieldStation(SKABaseDevice):
     ConfigurationPort = device_property(dtype=(int), mandatory=True)
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), default_value=[])
-    ConfigURI = device_property(dtype=(str,), default_value="")
+    ConfigURI = device_property(dtype=(str,), default_value=[])
     ConfigurationTimeout = device_property(dtype=(int), default_value=15)
     # --------------
     # Initialisation
@@ -57,7 +57,7 @@ class MccsFieldStation(SKABaseDevice):
             "Initialised MccsFieldStation device with properties:\n"
             f"\tFndhFQDN: {self.FndhFQDN}\n"
             f"\tSmartBoxFQDNs: {self.SmartBoxFQDNs}\n"
-            f"\tCongigUri: {self.CongigUri}\n"
+            f"\tConfigURI: {self.ConfigURI}\n"
             f"\tConfigurationHost: {self.ConfigurationHost}\n"
             f"\tConfigurationPort: {self.ConfigurationPort}\n"
             f"\tConfigurationTimeout: {self.ConfigurationTimeout}\n"
@@ -264,7 +264,7 @@ class MccsFieldStation(SKABaseDevice):
     @command(dtype_out="DevVarLongStringArray")
     def LoadConfiguration(
         self: MccsFieldStation,
-        config_uri: str = "",
+        config_uri: list[str],
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
         """
         Power up a antenna.

@@ -62,7 +62,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         station_name: str,
         fndh_name: str,
         smartbox_names: list[str],
-        config_details: str,
+        config_details: list[str],
         communication_state_callback: Callable[..., None],
         component_state_changed: Callable[..., None],
         configuration_change_callback: Callable[..., None],
@@ -1397,7 +1397,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
     def load_configuration(
         self: FieldStationComponentManager,
-        config_uri: str,
+        config_uri: list[str],
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[TaskStatus, str]:
@@ -1420,7 +1420,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
     def _load_configuration(
         self: FieldStationComponentManager,
-        config_details: str,
+        config_details: list[str],
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> None:
@@ -1433,7 +1433,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         """
         try:
             self.logger.info("Attempting to load data from configuration server.....")
-            if config_details == "":
+            if config_details == []:
                 configuration = self._get_configuration_from_configuration_server(
                     self.configuration_host,
                     self.configuration_port,
