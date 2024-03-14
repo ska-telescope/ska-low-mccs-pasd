@@ -2098,14 +2098,14 @@ reference = 'ska-nexus'
 
 [[package]]
 name = "ska-ser-logging"
-version = "0.4.2"
+version = "0.4.3"
 description = "Square Kilometre Array logging configuration library"
 category = "main"
 optional = false
-python-versions = ">=3.10,<3.11"
+python-versions = ">=3.10,<4.0"
 files = [
-    {file = "ska_ser_logging-0.4.2-py3-none-any.whl", hash = "sha256:86c66cbbe0ccc5b35e13704ce3e3121ef4fa2c0f35423635b77ffce80da70578"},
-    {file = "ska_ser_logging-0.4.2.tar.gz", hash = "sha256:3626b5f04ff32e547100bc771549544a8efda3730ff7b96c9b3e05e1d16adc16"},
+    {file = "ska_ser_logging-0.4.3-py3-none-any.whl", hash = "sha256:06a337e4e726f36d24b86087ec106fbb9e65be4566fe328eb56f56f2310322f8"},
+    {file = "ska_ser_logging-0.4.3.tar.gz", hash = "sha256:a94aa51db54ad2a88af4c320c850c766c1733d9f8534381dd67f993e8e4f5d11"},
 ]
 
 [package.source]
@@ -2674,4 +2674,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "c81f14a79e614b3fd9e7d7495a976f9ad0b3b3f0c039c7163b483fc747f5ae5b"
+content-hash = "df50341e68b547545ac0187631f974667c642a4eed0479efcf9453eac032529b"

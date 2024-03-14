@@ -63,6 +63,7 @@ sphinx-autodoc-typehints = "^1.19"
 ska-ser-devices = "^0.2.0"
 sphinxcontrib-plantuml = "^0.25"
 typing-extensions = "^4.6.1"       # undeclared dependency-dependency
+ska-telmodel = "^1.14.0"
 
 [tool.poetry.scripts]
 MccsPasdBus = "ska_low_mccs_pasd.pasd_bus.pasd_bus_device:main"
