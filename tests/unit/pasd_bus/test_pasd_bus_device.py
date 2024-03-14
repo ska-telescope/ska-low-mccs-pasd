@@ -57,10 +57,12 @@ def change_event_callbacks_fixture(
         "fndhLedPattern",
         "fndhPortsPowerSensed",
         "fndhPortsPowerControl",
+        "fndhOutsideTemperatureThresholds",
         f"smartbox{smartbox_id}LedPattern",
         f"smartbox{smartbox_id}PortBreakersTripped",
         f"smartbox{smartbox_id}PortsPowerSensed",
         f"smartbox{smartbox_id}AlarmFlags",
+        f"smartbox{smartbox_id}PcbTemperatureThresholds",
         timeout=23.0,
         assert_no_error=False,
     )
@@ -1001,3 +1003,89 @@ def test_smartbox_low_pass_filters(
         {"smartbox_number": smartbox_id, "cutoff": 10.0, "extra_sensors": True}
     )
     pasd_bus_device.SetSmartboxLowPassFilters(json_argument)
+
+
+def test_set_fndh_thresholds(
+    pasd_bus_device: tango.DeviceProxy,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> None:
+    """
+    Test the Tango device can be used to set an FNDH's alarm thresholds.
+
+    :param pasd_bus_device: a proxy to the PaSD bus device under test.
+    :param change_event_callbacks: dictionary of mock change event
+        callbacks with asynchrony support
+    """
+    assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+
+    pasd_bus_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+
+    pasd_bus_device.subscribe_event(
+        "fndhOutsideTemperatureThresholds",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["fndhOutsideTemperatureThresholds"],
+    )
+    change_event_callbacks.assert_change_event("fndhOutsideTemperatureThresholds", None)
+
+    pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+
+    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
+    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+
+    pasd_bus_device.fndhOutsideTemperatureThresholds = [80, 70, 40, 30]
+
+    change_event_callbacks.assert_change_event(
+        "fndhOutsideTemperatureThresholds", [80, 70, 40, 30]
+    )
+
+
+def test_set_smartbox_thresholds(
+    pasd_bus_device: tango.DeviceProxy,
+    smartbox_id: int,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> None:
+    """
+    Test the Tango device can be used to set a smartbox's alarm thresholds.
+
+    :param pasd_bus_device: a proxy to the PaSD bus device under test.
+    :param smartbox_id: id of the smartbox being addressed.
+    :param change_event_callbacks: dictionary of mock change event
+        callbacks with asynchrony support
+    """
+    assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+
+    pasd_bus_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+
+    pasd_bus_device.subscribe_event(
+        f"smartbox{smartbox_id}PcbTemperatureThresholds",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks[f"smartbox{smartbox_id}PcbTemperatureThresholds"],
+    )
+    change_event_callbacks.assert_change_event(
+        f"smartbox{smartbox_id}PcbTemperatureThresholds", None
+    )
+
+    pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+
+    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
+    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+
+    setattr(
+        pasd_bus_device,
+        f"smartbox{smartbox_id}PcbTemperatureThresholds",
+        [55, 50, 20, 0],
+    )
+
+    change_event_callbacks.assert_change_event(
+        f"smartbox{smartbox_id}PcbTemperatureThresholds", [55, 50, 20, 0]
+    )
