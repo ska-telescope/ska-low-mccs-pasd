@@ -67,7 +67,7 @@ server:
                 - name: "StationName"
                   values:
                     - {{$server_key}}
-                - name: "ConfigURI"
+                - name: "TMConfigURI"
                   values:
 {{- toYaml $this_fieldstation.config_uri | nindent 20}}
                 - name: "FndhFQDN"

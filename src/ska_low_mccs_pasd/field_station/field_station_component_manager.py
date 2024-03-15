@@ -62,7 +62,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         station_name: str,
         fndh_name: str,
         smartbox_names: list[str],
-        config_details: list[str],
+        tm_config_details: list[str],
         communication_state_callback: Callable[..., None],
         component_state_changed: Callable[..., None],
         configuration_change_callback: Callable[..., None],
@@ -84,7 +84,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             encompasses
         :param smartbox_names: the names of the smartboxes this field station
             encompasses
-        :param config_details: default location and filepath of the config in telmodel
+        :param tm_config_details: default location and filepath of the
+            config in telmodel
         :param communication_state_callback: callback to be
             called when the status of the communications channel between
             the component manager and its component changes
@@ -175,7 +176,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.logger = logger
         self.station_name = station_name
 
-        self._load_configuration(config_details)
+        self._load_configuration(tm_config_details)
 
     def _update_mappings(
         self: FieldStationComponentManager,
@@ -1397,7 +1398,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
     def load_configuration(
         self: FieldStationComponentManager,
-        config_uri: list[str],
+        tm_config_details: list[str],
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[TaskStatus, str]:
@@ -1407,33 +1408,33 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         This method returns immediately after it is submitted for
         execution.
 
-        :param config_uri: Location of the config in telmodel
+        :param tm_config_details: Location of the config in telmodel
         :param task_callback: Update task state, defaults to None
         :param task_abort_event: Check for abort, defaults to None
         :return: Task status and response message
         """
         return self.submit_task(
             self._load_configuration,
-            args=[config_uri],
+            args=[tm_config_details],
             task_callback=task_callback,
         )
 
     def _load_configuration(
         self: FieldStationComponentManager,
-        config_details: list[str],
+        tm_config_details: list[str],
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> None:
         """
         Get the configuration from the configuration server.
 
-        :param config_details: Location of the config in telmodel
+        :param tm_config_details: Location of the config in telmodel
         :param task_callback: Update task state, defaults to None
         :param task_abort_event: Check for abort, defaults to None
         """
         try:
             self.logger.info("Attempting to load data from configuration server.....")
-            if config_details == []:
+            if tm_config_details == []:
                 configuration = self._get_configuration_from_configuration_server(
                     self.configuration_host,
                     self.configuration_port,
@@ -1441,8 +1442,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 )
                 self.logger.info("configuration loaded from configuration server")
             else:
-                config_uri = config_details[0]
-                config_filepath = config_details[1]
+                config_uri = tm_config_details[0]
+                config_filepath = tm_config_details[1]
 
                 tmdata = TMData([config_uri])
                 configuration = tmdata[config_filepath].get_dict()

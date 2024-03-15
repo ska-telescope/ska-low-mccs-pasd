@@ -74,6 +74,12 @@
                   },
                   "maxLength": 24
                 },
+                "config_uri": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "logging_level_default": {
                   "type": "integer",
                   "minimum": 0,

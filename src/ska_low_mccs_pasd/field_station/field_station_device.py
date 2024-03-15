@@ -40,7 +40,7 @@ class MccsFieldStation(SKABaseDevice):
     ConfigurationPort = device_property(dtype=(int), mandatory=True)
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), default_value=[])
-    ConfigURI = device_property(dtype=(str,), default_value=[])
+    TMConfigURI = device_property(dtype=(str,), default_value=[])
     ConfigurationTimeout = device_property(dtype=(int), default_value=15)
     # --------------
     # Initialisation
@@ -57,7 +57,7 @@ class MccsFieldStation(SKABaseDevice):
             "Initialised MccsFieldStation device with properties:\n"
             f"\tFndhFQDN: {self.FndhFQDN}\n"
             f"\tSmartBoxFQDNs: {self.SmartBoxFQDNs}\n"
-            f"\tConfigURI: {self.ConfigURI}\n"
+            f"\tTMConfigURI: {self.TMConfigURI}\n"
             f"\tConfigurationHost: {self.ConfigurationHost}\n"
             f"\tConfigurationPort: {self.ConfigurationPort}\n"
             f"\tConfigurationTimeout: {self.ConfigurationTimeout}\n"
@@ -81,7 +81,7 @@ class MccsFieldStation(SKABaseDevice):
             self.StationName,
             self.FndhFQDN,
             self.SmartBoxFQDNs,
-            self.ConfigURI,
+            self.TMConfigURI,
             self._communication_state_callback,
             self._component_state_callback,
             self._on_configuration_change,
@@ -264,19 +264,19 @@ class MccsFieldStation(SKABaseDevice):
     @command(dtype_out="DevVarLongStringArray")
     def LoadConfiguration(
         self: MccsFieldStation,
-        config_uri: list[str],
+        tm_config_details: list[str],
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
         """
         Power up a antenna.
 
-        :param config_uri: Location of the config in telmodel.
+        :param tm_config_details: Location of the config in telmodel.
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
             only.
         """
         handler = self.get_command_object("LoadConfiguration")
-        (return_code, message) = handler(config_uri)
+        (return_code, message) = handler(tm_config_details)
         return ([return_code], [message])
 
     @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
