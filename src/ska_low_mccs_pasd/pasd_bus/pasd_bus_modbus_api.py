@@ -35,6 +35,7 @@ from .pasd_bus_register_map import (
 )
 
 FNDH_MODBUS_ADDRESS: Final = 101
+FNCC_MODBUS_ADDRESS: Final = 100
 
 # Modbus Function/Exception Codes implemented in PaSD firmware
 MODBUS_FUNCTIONS: Final = {
@@ -57,7 +58,7 @@ class PasdBusModbusApi:
         """
         Initialise a new instance.
 
-        :param simulators: dictionary of simulators (FNDH and smartbox)
+        :param simulators: dictionary of simulators (FNDH, FNCC and smartbox)
             that this API fronts.
         :param logger: the logger to use
 

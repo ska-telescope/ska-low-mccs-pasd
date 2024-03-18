@@ -29,3 +29,9 @@ class PasdData:  # pylint: disable=too-few-public-methods
 
     NUMBER_OF_FNDH_PORTS: Final = 28
     """The number of ports on a FNDH instance."""
+
+    FNDH_DEVICE_ID = 0
+    """The device identifier for an FNDH"""
+
+    FNCC_DEVICE_ID = 100
+    """The device identifier for an FNCC"""

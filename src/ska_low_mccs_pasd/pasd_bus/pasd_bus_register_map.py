@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from enum import Enum, IntEnum, IntFlag
 from typing import Any, Callable, Final, Optional, Sequence
 
+from ska_low_mccs_pasd.pasd_data import PasdData
+
 from .pasd_bus_conversions import LedServiceMap, PasdConversionUtility
 
 logger = logging.getLogger()
@@ -355,7 +357,7 @@ class PasdBusRegisterMap:
     WARNING_FLAGS = "warning_flags"
 
     # Register map for the 'info' registers, guaranteed to be the same
-    # across versions. Used for both the FNDH and smartboxes.
+    # across versions. Used for the FNDH, FNCC and smartboxes.
     _INFO_REGISTER_MAP: Final = {
         MODBUS_REGISTER_MAP_REVISION: PasdBusAttribute(0, 1),
         "pcb_revision": PasdBusAttribute(1, 1),
@@ -542,6 +544,13 @@ class PasdBusRegisterMap:
         ),
     }
 
+    _FNCC_REGISTER_MAP_V1: Final = {
+        "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
+        "sys_address": PasdBusAttribute(15, 1),
+        STATUS: PasdBusAttribute(16, 1, PasdConversionUtility.convert_fncc_status),
+        "field_node_number": PasdBusAttribute(17, 1),
+    }
+
     # Map modbus register revision number to the corresponding PasdRegisterInfo
     _FNDH_REGISTER_MAPS: Final = {
         1: PasdBusRegisterInfo(
@@ -563,6 +572,17 @@ class PasdBusRegisterMap:
             first_extra_sensor_register=23,
             number_of_ports=12,
             starting_port_register=35,
+        )
+    }
+    _FNCC_REGISTER_MAPS: Final = {
+        1: PasdBusRegisterInfo(
+            _FNCC_REGISTER_MAP_V1,
+            number_of_sensors=0,
+            first_sensor_register=0,
+            number_of_extra_sensors=0,
+            first_extra_sensor_register=0,
+            number_of_ports=0,
+            starting_port_register=0,
         )
     }
 
@@ -593,8 +613,10 @@ class PasdBusRegisterMap:
         self._revision_number = value
 
     def _get_register_info(self, device_id: int) -> PasdBusRegisterInfo:
-        if device_id == 0:
+        if device_id == PasdData.FNDH_DEVICE_ID:
             return self._FNDH_REGISTER_MAPS[self.revision_number]
+        if device_id == PasdData.FNCC_DEVICE_ID:
+            return self._FNCC_REGISTER_MAPS[self.revision_number]
         return self._SMARTBOX_REGISTER_MAPS[self.revision_number]
 
     def get_writeable_attribute(

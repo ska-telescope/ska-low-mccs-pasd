@@ -62,7 +62,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     # Because Tango devices define attributes in init_device.
 
     _ATTRIBUTE_MAP: dict[int, dict[str, str]] = {
-        0: {
+        PasdData.FNDH_DEVICE_ID: {
             "modbus_register_map_revision": "fndhModbusRegisterMapRevisionNumber",
             "pcb_revision": "fndhPcbRevisionNumber",
             "cpu_id": "fndhCpuId",
@@ -107,6 +107,17 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ),
             "warning_flags": "fndhWarningFlags",
             "alarm_flags": "fndhAlarmFlags",
+        },
+        PasdData.FNCC_DEVICE_ID: {
+            "modbus_register_map_revision": "fnccModbusRegisterMapRevisionNumber",
+            "pcb_revision": "fnccPcbRevisionNumber",
+            "cpu_id": "fnccCpuId",
+            "chip_id": "fnccChipId",
+            "firmware_version": "fnccFirmwareVersion",
+            "uptime": "fnccUptime",
+            "sys_address": "fnccSysAddress",
+            "status": "fnccStatus",
+            "field_node_number": "fnccFieldNodeNumber",
         },
         **{
             smartbox_number: {
@@ -257,6 +268,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         self._pasd_state: dict[str, PasdAttribute] = {}
         self._setup_fndh_attributes()
+        self._setup_fncc_attributes()
         for smartbox_number in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
             self._setup_smartbox_attributes(smartbox_number)
 
@@ -401,6 +413,25 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         ]:
             self._setup_pasd_attribute(
                 f"fndh{slug}",
+                cast(type | tuple[type], data_type),
+                max_dim_x=length,
+                access=access,
+            )
+
+    def _setup_fncc_attributes(self: MccsPasdBus) -> None:
+        for slug, data_type, length, access in [
+            ("ModbusRegisterMapRevisionNumber", int, None, tango.AttrWriteType.READ),
+            ("PcbRevisionNumber", int, None, tango.AttrWriteType.READ),
+            ("CpuId", str, None, tango.AttrWriteType.READ),
+            ("ChipId", str, None, tango.AttrWriteType.READ),
+            ("FirmwareVersion", str, None, tango.AttrWriteType.READ),
+            ("Uptime", int, None, tango.AttrWriteType.READ),
+            ("SysAddress", int, None, tango.AttrWriteType.READ),
+            ("Status", str, None, tango.AttrWriteType.READ),
+            ("FieldNodeNumber", int, None, tango.AttrWriteType.READ),
+        ]:
+            self._setup_pasd_attribute(
+                f"fncc{slug}",
                 cast(type | tuple[type], data_type),
                 max_dim_x=length,
                 access=access,
@@ -829,9 +860,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     self._pasd_state[tango_attribute_name].quality
                     != AttrQuality.ATTR_INVALID
                 ):
-                    self._pasd_state[
-                        tango_attribute_name
-                    ].quality = AttrQuality.ATTR_INVALID
+                    self._pasd_state[tango_attribute_name].quality = (
+                        AttrQuality.ATTR_INVALID
+                    )
                     self.push_change_event(
                         tango_attribute_name,
                         self._pasd_state[tango_attribute_name].value,

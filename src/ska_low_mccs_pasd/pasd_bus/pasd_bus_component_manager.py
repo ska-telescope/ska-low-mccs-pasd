@@ -16,6 +16,8 @@ from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_tango_base.base import check_communicating
 from ska_tango_base.poller import PollingComponentManager
 
+from ska_low_mccs_pasd.pasd_data import PasdData
+
 from .pasd_bus_modbus_api import PasdBusModbusApiClient
 from .pasd_bus_poll_management import PasdBusRequestProvider
 
@@ -106,6 +108,13 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         "power_module_temperature_thresholds",
         "outside_temperature_thresholds",
         "internal_ambient_temperature_thresholds",
+    )
+
+    FNCC_STATUS_ATTRIBUTES: Final = (
+        "uptime",
+        "sys_address",
+        "status",
+        "field_node_number",
     )
 
     SMARTBOX_STATUS_ATTRIBUTES: Final = (
@@ -340,22 +349,43 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 request = PasdBusRequest(
                     device_id, None, None, list(self.STATIC_INFO_ATTRIBUTES)
                 )
-            case (0, "STATUS", None):
+            case (PasdData.FNDH_DEVICE_ID, "STATUS", None):
                 request = PasdBusRequest(
-                    0, None, None, list(self.FNDH_STATUS_ATTRIBUTES)
+                    PasdData.FNDH_DEVICE_ID,
+                    None,
+                    None,
+                    list(self.FNDH_STATUS_ATTRIBUTES),
                 )
-            case (0, "PORTS", None):
+            case (PasdData.FNDH_DEVICE_ID, "PORTS", None):
                 request = PasdBusRequest(
-                    0, None, None, list(self.FNDH_PORTS_STATUS_ATTRIBUTES)
+                    PasdData.FNDH_DEVICE_ID,
+                    None,
+                    None,
+                    list(self.FNDH_PORTS_STATUS_ATTRIBUTES),
                 )
-            case (0, "THRESHOLDS", None):
+            case (PasdData.FNDH_DEVICE_ID, "THRESHOLDS", None):
                 request = PasdBusRequest(
-                    0, None, None, list(self.FNDH_THRESHOLD_ATTRIBUTES)
+                    PasdData.FNDH_DEVICE_ID,
+                    None,
+                    None,
+                    list(self.FNDH_THRESHOLD_ATTRIBUTES),
                 )
-            case (0, "ALARM_FLAGS", None):
-                request = PasdBusRequest(0, None, None, [self.ALARM_FLAGS_ATTRIBUTE])
-            case (0, "WARNING_FLAGS", None):
-                request = PasdBusRequest(0, None, None, [self.WARNING_FLAGS_ATTRIBUTE])
+            case (PasdData.FNDH_DEVICE_ID, "ALARM_FLAGS", None):
+                request = PasdBusRequest(
+                    PasdData.FNDH_DEVICE_ID, None, None, [self.ALARM_FLAGS_ATTRIBUTE]
+                )
+            case (PasdData.FNDH_DEVICE_ID, "WARNING_FLAGS", None):
+                request = PasdBusRequest(
+                    PasdData.FNDH_DEVICE_ID, None, None, [self.WARNING_FLAGS_ATTRIBUTE]
+                )
+
+            case (PasdData.FNCC_DEVICE_ID, "STATUS", None):
+                request = PasdBusRequest(
+                    PasdData.FNCC_DEVICE_ID,
+                    None,
+                    None,
+                    list(self.FNCC_STATUS_ATTRIBUTES),
+                )
 
             case (smartbox_id, "STATUS", None):
                 request = PasdBusRequest(
@@ -462,7 +492,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     def request_startup_info(self: PasdBusComponentManager, device_id: int) -> None:
         """Read the registers normally just polled at startup.
 
-        :param: device_id: 0 for the FNDH, else a smartbox id
+        :param: device_id: 0 for the FNDH, 100 for the FNCC, else a smartbox id
         """
         assert self._request_provider is not None
         self._request_provider.desire_read_startup_info(device_id)
@@ -471,7 +501,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     def initialize_fndh(self: PasdBusComponentManager) -> None:
         """Initialize the FNDH by writing to its status register."""
         assert self._request_provider is not None
-        self._request_provider.desire_initialize(0)
+        self._request_provider.desire_initialize(PasdData.FNDH_DEVICE_ID)
 
     @check_communicating
     def initialize_smartbox(self: PasdBusComponentManager, smartbox_id: int) -> None:
@@ -494,7 +524,9 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param port_number: the number of the port to reset.
         """
         assert self._request_provider is not None
-        self._request_provider.desire_port_breaker_reset(0, port_number)
+        self._request_provider.desire_port_breaker_reset(
+            PasdData.FNDH_DEVICE_ID, port_number
+        )
 
     @check_communicating
     def set_fndh_port_powers(
@@ -511,7 +543,9 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             should remain on if MCCS loses its connection with the PaSD.
         """
         assert self._request_provider is not None
-        self._request_provider.desire_port_powers(0, port_powers, stay_on_when_offline)
+        self._request_provider.desire_port_powers(
+            PasdData.FNDH_DEVICE_ID, port_powers, stay_on_when_offline
+        )
 
     @check_communicating
     def set_fndh_led_pattern(
@@ -524,7 +558,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param pattern: name of the service LED pattern.
         """
         assert self._request_provider is not None
-        self._request_provider.desire_led_pattern(0, pattern)
+        self._request_provider.desire_led_pattern(PasdData.FNDH_DEVICE_ID, pattern)
 
     @check_communicating
     def set_fndh_low_pass_filters(
@@ -542,20 +576,20 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """
         assert self._request_provider is not None
         return self._request_provider.desire_set_low_pass_filter(
-            0, cutoff, extra_sensors
+            PasdData.FNDH_DEVICE_ID, cutoff, extra_sensors
         )
 
     @check_communicating
     def reset_fndh_alarms(self: PasdBusComponentManager) -> None:
         """Reset the FNDH alarms register."""
         assert self._request_provider is not None
-        self._request_provider.desire_alarm_reset(0)
+        self._request_provider.desire_alarm_reset(PasdData.FNDH_DEVICE_ID)
 
     @check_communicating
     def reset_fndh_warnings(self: PasdBusComponentManager) -> None:
         """Reset the FNDH warnings register."""
         assert self._request_provider is not None
-        self._request_provider.desire_warning_reset(0)
+        self._request_provider.desire_warning_reset(PasdData.FNDH_DEVICE_ID)
 
     @check_communicating
     def reset_smartbox_port_breaker(
