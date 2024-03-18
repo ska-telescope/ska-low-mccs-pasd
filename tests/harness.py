@@ -362,7 +362,7 @@ class PasdTangoTestHarness:
             ConfigurationTimeout=5,
             FndhFQDN=get_fndh_name(),
             SmartBoxFQDNs=smartbox_names,
-            TMConfigURI=[],
+            TMConfigURI=["uri/path", "file/path"],
             LoggingLevelDefault=logging_level,
         )
 
