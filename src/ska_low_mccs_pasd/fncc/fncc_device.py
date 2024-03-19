@@ -33,7 +33,6 @@ class FNCCAttribute:
     timestamp: float
 
 
-# pylint: disable=too-many-instance-attributes
 class MccsFNCC(SKABaseDevice[FnccComponentManager]):
     """An implementation of the FNCC device for MCCS."""
 

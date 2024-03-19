@@ -54,7 +54,7 @@ class PasdAttribute:
     timestamp: float
 
 
-# pylint: disable=too-many-lines, too-many-instance-attributes, too-many-public-methods
+# pylint: disable=too-many-lines, too-many-instance-attributes
 class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     """An implementation of a PaSD bus Tango device for MCCS."""
 
@@ -860,9 +860,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     self._pasd_state[tango_attribute_name].quality
                     != AttrQuality.ATTR_INVALID
                 ):
-                    self._pasd_state[tango_attribute_name].quality = (
-                        AttrQuality.ATTR_INVALID
-                    )
+                    self._pasd_state[
+                        tango_attribute_name
+                    ].quality = AttrQuality.ATTR_INVALID
                     self.push_change_event(
                         tango_attribute_name,
                         self._pasd_state[tango_attribute_name].value,
