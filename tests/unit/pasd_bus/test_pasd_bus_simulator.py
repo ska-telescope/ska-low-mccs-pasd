@@ -14,6 +14,7 @@ from typing import Any
 
 import pytest
 
+from ska_low_mccs_pasd import PasdData
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     FndhAlarmFlags,
     FndhStatusMap,
@@ -64,7 +65,8 @@ class TestPasdBusSimulator:
 
         :param fndh_simulator: the FNDH simulator under test
         :param fndh_config: a list indicating which FNDH ports are connected
-        :param pasd_hw_simulators: dict of FNDH and smartbox simulators under test
+        :param pasd_hw_simulators: dict of FNDH, FNCC and smartbox simulators
+            under test
         :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
             is connected to.
         """
@@ -79,7 +81,9 @@ class TestPasdBusSimulator:
             == expected_ports_desired_power
         )
         assert fndh_simulator.ports_power_sensed == fndh_config
-        for smartbox_id in list(pasd_hw_simulators.keys())[1:]:
+        for smartbox_id in list(pasd_hw_simulators.keys())[
+            1 : PasdData.NUMBER_OF_SMARTBOXES
+        ]:
             smartbox_simulator = pasd_hw_simulators[smartbox_id]
             port_nr = smartbox_attached_ports[smartbox_id - 1]
             assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
@@ -105,12 +109,14 @@ class TestPasdBusSimulator:
             to the order of configuration.
 
         :param fndh_simulator: the FNDH simulator under test
-        :param pasd_hw_simulators: dict of FNDH and smartbox simulators under test
+        :param pasd_hw_simulators: dict of FNDH, FNCC and smartbox simulators under test
         """
         fndh_uptime = PasdConversionUtility.convert_uptime(fndh_simulator.uptime)[0]
         assert fndh_uptime > 0
         previous_smartbox_uptime = 0
-        for smartbox_simulator in list(pasd_hw_simulators.values())[1:]:
+        for smartbox_simulator in list(pasd_hw_simulators.values())[
+            1 : PasdData.NUMBER_OF_SMARTBOXES
+        ]:
             smartbox_uptime = PasdConversionUtility.convert_uptime(
                 smartbox_simulator.uptime
             )[0]
