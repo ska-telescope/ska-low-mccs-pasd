@@ -33,6 +33,20 @@ def fndh_read_request_iterator() -> Iterator[str]:
         yield "ALARM_FLAGS"
 
 
+def fncc_read_request_iterator() -> Iterator[str]:
+    """
+    Return an iterator that says what attributes should be read next on the FNCC.
+
+    It starts by reading static information attributes
+    and then loops forever to read the status.
+
+    :yields: the name of an attribute group to be read from the device.
+    """
+    yield "INFO"
+    while True:
+        yield "STATUS"
+
+
 def smartbox_read_request_iterator() -> Iterator[str]:
     """
     Return an iterator that says what attributes should be read next on a smartbox.
@@ -276,32 +290,42 @@ class PasdBusRequestProvider:
         self._min_ticks = min_ticks
         self._logger = logger
 
+        # Instantiate ticks dict in the order the devices will be polled:
+        # First FNDH, then FNCC, then all Smartboxes
         self._ticks = {
-            device_number: self._min_ticks
-            for device_number in range(PasdData.NUMBER_OF_SMARTBOXES + 1)
+            PasdData.FNDH_DEVICE_ID: min_ticks,
+            PasdData.FNCC_DEVICE_ID: min_ticks,
         }
+        self._ticks.update(
+            {
+                device_number: self._min_ticks
+                for device_number in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
+            }
+        )
 
         fndh_request_provider = DeviceRequestProvider(
             PasdData.NUMBER_OF_FNDH_PORTS, fndh_read_request_iterator, logger
         )
-        smartbox_request_providers = [
-            DeviceRequestProvider(
+        fncc_request_provider = DeviceRequestProvider(
+            0, fncc_read_request_iterator, logger
+        )
+        self._device_request_providers: dict[int, DeviceRequestProvider] = {
+            smartbox_id: DeviceRequestProvider(
                 PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 smartbox_read_request_iterator,
                 logger,
             )
-            for _ in range(PasdData.NUMBER_OF_SMARTBOXES)
-        ]
-        self._device_request_providers = [
-            fndh_request_provider
-        ] + smartbox_request_providers
+            for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
+        }
+        self._device_request_providers[PasdData.FNDH_DEVICE_ID] = fndh_request_provider
+        self._device_request_providers[PasdData.FNCC_DEVICE_ID] = fncc_request_provider
 
     def desire_read_startup_info(self, device_id: int) -> None:
         """
         Register a request to read the information usually just read at startup.
 
         :param device_id: the device number.
-            This is 0 for the FNDH, otherwise a smartbox number.
+            This is 0 for the FNDH and 100 for the FNCC, otherwise a smartbox number.
         """
         self._device_request_providers[device_id].desire_read_startup_info()
 
