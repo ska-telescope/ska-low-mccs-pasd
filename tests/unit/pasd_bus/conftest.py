@@ -112,7 +112,7 @@ def pasd_hw_simulators_fixture(
     fndh_simulator.initialize()
     for port_nr in smartbox_attached_ports:
         fndh_simulator.turn_port_on(port_nr)
-    return pasd_bus_simulator.get_fndh_and_smartboxes()
+    return pasd_bus_simulator.get_all_devices()
 
 
 @pytest.fixture(name="mock_pasd_hw_simulators")

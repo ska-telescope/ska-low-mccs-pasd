@@ -232,7 +232,7 @@ def functional_test_context_fixture(  # pylint: disable=too-many-arguments
                 station_label,
                 smartboxes_depend_on_attached_ports=True,
             )
-            pasd_hw_simulators = pasd_bus_simulator.get_fndh_and_smartboxes()
+            pasd_hw_simulators = pasd_bus_simulator.get_all_devices()
             # Set devices for test harness
             harness.set_pasd_bus_simulator(pasd_hw_simulators)
             harness.set_configuration_server(configuration_manager)
