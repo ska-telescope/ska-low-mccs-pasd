@@ -46,6 +46,7 @@ import yaml
 from ska_low_mccs_pasd.pasd_data import PasdData
 
 from .pasd_bus_conversions import (
+    FnccStatusMap,
     FndhAlarmFlags,
     FndhStatusMap,
     LedServiceMap,
@@ -423,7 +424,9 @@ class PasdHardwareSimulator:
     # pylint: disable=too-many-instance-attributes
 
     DEFAULT_LED_PATTERN: int = LedServiceMap.OFF | LedStatusMap.YELLOWFAST
-    DEFAULT_STATUS: FndhStatusMap | SmartboxStatusMap = FndhStatusMap.UNINITIALISED
+    DEFAULT_STATUS: FndhStatusMap | SmartboxStatusMap | FnccStatusMap = (
+        FndhStatusMap.UNINITIALISED
+    )
     DEFAULT_UPTIME: Final = [0, 1]
     DEFAULT_FLAGS: int = 0x0
     DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
@@ -838,14 +841,11 @@ class PasdHardwareSimulator:
     @property
     def status(self: PasdHardwareSimulator) -> int:
         """
-        Return the status of the FNDH/smartbox.
+        Return the status of the FNDH/FNCC/smartbox.
 
         :return: an overall status.
-            "OK" means all sensors are within thresholds.
-            "WARNING" means one or more sensors are over/under warning thresholds.
-            "ALARM" means one or more sensors are over/under alarm thresholds.
-            "RECOVERY" means all sensors are back within alarm thresholds after
-            being in alarm state previously. "OK" status must be requested.
+            See FnccStatusMap, FndhStatusMap and SmartboxMap
+            for details
         """
         return self._status
 
@@ -1171,6 +1171,7 @@ class FnccSimulator(PasdHardwareSimulator):
     SYS_ADDRESS: Final = FNCC_MODBUS_ADDRESS
     FIELD_NODE_NUMBER: Final = 1
 
+    DEFAULT_STATUS: FnccStatusMap = FnccStatusMap.OK
     DEFAULT_FIRMWARE_VERSION: Final = 259
 
     def __init__(
