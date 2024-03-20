@@ -1533,14 +1533,16 @@ class PasdBusSimulator:
         self._time_multiplier: int = time_multiplier
 
         if smartboxes_depend_on_attached_ports:
-            self._hw_simulators[0] = FndhSimulator(
+            self._hw_simulators[PasdData.FNDH_DEVICE_ID] = FndhSimulator(
                 time_multiplier, self._instantiate_smartbox, self._delete_smartbox
             )
         else:
-            self._hw_simulators[0] = FndhSimulator(time_multiplier)
+            self._hw_simulators[PasdData.FNDH_DEVICE_ID] = FndhSimulator(
+                time_multiplier
+            )
         logger.info(f"Initialised FNDH simulator for station {station_label}.")
 
-        self._hw_simulators[FNCC_MODBUS_ADDRESS] = FnccSimulator(time_multiplier)
+        self._hw_simulators[PasdData.FNCC_DEVICE_ID] = FnccSimulator(time_multiplier)
         logger.info(f"Initialised FNCC simulator for station {station_label}.")
 
         self._load_config(pasd_configuration_path)
@@ -1560,7 +1562,7 @@ class PasdBusSimulator:
 
         :return: the FNDH simulator.
         """
-        return self._hw_simulators[0]
+        return self._hw_simulators[PasdData.FNDH_DEVICE_ID]
 
     def get_fncc(self: PasdBusSimulator) -> PasdHardwareSimulator:
         """
@@ -1568,7 +1570,7 @@ class PasdBusSimulator:
 
         :return: the FNCC simulator.
         """
-        return self._hw_simulators[FNCC_MODBUS_ADDRESS]
+        return self._hw_simulators[PasdData.FNCC_DEVICE_ID]
 
     def get_all_devices(
         self: PasdBusSimulator,

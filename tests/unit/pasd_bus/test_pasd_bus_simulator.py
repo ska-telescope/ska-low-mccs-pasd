@@ -81,7 +81,7 @@ class TestPasdBusSimulator:
             == expected_ports_desired_power
         )
         assert fndh_simulator.ports_power_sensed == fndh_config
-        for smartbox_id in list(pasd_hw_simulators.keys())[
+        for smartbox_id in sorted(list(pasd_hw_simulators.keys()))[
             1 : PasdData.NUMBER_OF_SMARTBOXES
         ]:
             smartbox_simulator = pasd_hw_simulators[smartbox_id]

@@ -254,6 +254,20 @@ def fndh_device_fixture(
     yield test_context.get_fndh_device()
 
 
+@pytest.fixture(name="fncc_device")
+def fncc_device_fixture(
+    test_context: PasdTangoTestHarnessContext,
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns the FNCC Tango device under test.
+
+    :param test_context: context in which the integration tests will run.
+
+    :yield: the FNCC Tango device under test.
+    """
+    yield test_context.get_fncc_device()
+
+
 @pytest.fixture(name="field_station_device")
 def field_station_device_fixture(
     test_context: PasdTangoTestHarnessContext,
