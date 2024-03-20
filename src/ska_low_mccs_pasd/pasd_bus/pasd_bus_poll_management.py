@@ -432,7 +432,7 @@ class PasdBusRequestProvider:
             cutoff, extra_sensors
         )
 
-    def get_request(self) -> tuple[int, str, Any] | None:
+    def get_request(self) -> tuple[int, str, Any] | None:  # noqa: C901
         """
         Get a description of the next communication with the PaSD bus.
 
