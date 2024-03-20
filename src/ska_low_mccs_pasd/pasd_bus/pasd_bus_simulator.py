@@ -38,7 +38,7 @@ import importlib.resources
 import logging
 from abc import ABC
 from datetime import datetime
-from typing import Callable, Final, Optional, Sequence
+from typing import Any, Callable, Final, Optional, Sequence
 
 import yaml
 
@@ -960,6 +960,53 @@ class _Sensor:
         obj._update_system_status()
         obj._update_ports_state()
 
+class _VariableSensor(_Sensor):
+    """
+    Data descriptor for sensor attributes which can vary over multiple reads.
+    
+    This is done by having a list of values which are cycled through.
+    """
+    def __init__(self: _VariableSensor) -> None:
+        """Initialise the variable sensor."""
+        self._index = 0
+        super().__init__()
+    
+    def __get__(
+        self: _Sensor, obj: PasdHardwareSimulator, objtype: type
+    ) -> None | int | list[int]:
+        """
+        Get the value of the sensor attribute from the instance.
+
+        :param obj: The instance of the class where the descriptor is being used.
+        :param objtype: The type of the instance (usually the class).
+        :returns: Sensor value stored in the instance's __dict__.
+        """
+        value_list = obj.__dict__.get(self.name)
+        if value_list is None:
+            return None
+        self._index += 1
+        if self._index > len(value_list):
+            self._index = 0
+        return value_list[self._index]
+
+    def __set__(
+        self: _Sensor, obj: PasdHardwareSimulator, value: int | list[int] | list[list[int]]
+    ) -> None:
+        """
+        Set the value of the sensor attribute for the instance.
+
+        Then update the system and ports status.
+
+        :param obj: The instance of the class where the descriptor is being used.
+        :param value: The value to be set for the sensor attribute.
+        """
+        if isinstance(value, int):
+            super().__set__(obj, value)
+            return
+        obj.__dict__[self.name] = value
+        obj._update_sensor_status(self.name.removesuffix("_thresholds"))
+        obj._update_system_status()
+        obj._update_ports_state()
 
 class FndhSimulator(PasdHardwareSimulator):
     """
@@ -988,7 +1035,7 @@ class FndhSimulator(PasdHardwareSimulator):
     DEFAULT_FNCB_HUMIDITY: Final = 5020
     DEFAULT_COMMS_GATEWAY_TEMPERATURE: Final = 3930
     DEFAULT_POWER_MODULE_TEMPERATURE: Final = 4580
-    DEFAULT_OUTSIDE_TEMPERATURE: Final = 3250
+    DEFAULT_OUTSIDE_TEMPERATURES: Final = [3250, 4250]
     DEFAULT_INTERNAL_AMBIENT_TEMPERATURE: Final = 3600
 
     ALARM_MAPPING = {
@@ -1031,8 +1078,8 @@ class FndhSimulator(PasdHardwareSimulator):
     power_module_temperature = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     power_module_temperature_thresholds = _Sensor()
-    outside_temperature = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    outside_temperature = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     outside_temperature_thresholds = _Sensor()
     internal_ambient_temperature = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
@@ -1066,7 +1113,7 @@ class FndhSimulator(PasdHardwareSimulator):
         self.fncb_humidity = self.DEFAULT_FNCB_HUMIDITY
         self.comms_gateway_temperature = self.DEFAULT_COMMS_GATEWAY_TEMPERATURE
         self.power_module_temperature = self.DEFAULT_POWER_MODULE_TEMPERATURE
-        self.outside_temperature = self.DEFAULT_OUTSIDE_TEMPERATURE
+        self.outside_temperature = self.DEFAULT_OUTSIDE_TEMPERATURES
         self.internal_ambient_temperature = self.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
         # Aliases for some thresholds, which are separate sets in HW
         self.psu48v_voltage_1_thresholds = self.psu48v_voltages_thresholds
