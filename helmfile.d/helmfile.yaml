@@ -88,6 +88,7 @@ releases:
       - values/globals.yaml.gotmpl
       - pasd/templates/fieldstations.yaml.gotmpl
       - pasd/templates/fndhs.yaml.gotmpl
+      - pasd/templates/fnccs.yaml.gotmpl
       - pasd/templates/pasdbuses.yaml.gotmpl
       - pasd/templates/smartboxes.yaml.gotmpl
       - pasd/templates/pasdconfiguration.yaml.gotmpl

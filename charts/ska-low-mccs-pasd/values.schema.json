@@ -13,13 +13,18 @@
         },
         "tag": {
           "oneOf": [
-            {"type": "null"},
+            {
+              "type": "null"
+            },
             {
               "type": "string",
               "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)((-dev\\.c[0-9a-f]{8})|(-dirty))?$"
             }
           ],
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "pullPolicy": {
           "type": "string",
@@ -46,6 +51,10 @@
               "type": "object",
               "properties": {
                 "fndh_name": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                },
+                "fncc_name": {
                   "type": "string",
                   "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
                 },
@@ -106,7 +115,41 @@
                   "maximum": 5
                 }
               },
-              "required": ["pasdbus_name"],
+              "required": [
+                "pasdbus_name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "fnccs": {
+          "type": "object",
+          "propertyNames": {
+            "$comment": "Slug used to construct server name, k8s pods, etc",
+            "format": "hostname"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "propertyNames": {
+              "$comment": "device TRL",
+              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "pasdbus_name": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                },
+                "logging_level_default": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5
+                }
+              },
+              "required": [
+                "pasdbus_name"
+              ],
               "additionalProperties": false
             }
           }
@@ -250,7 +293,10 @@
                 "exclusiveMinimum": 0
               }
             },
-            "required": ["host", "port"],
+            "required": [
+              "host",
+              "port"
+            ],
             "additionalProperties": false
           }
         }
@@ -292,14 +338,18 @@
                               "maximum": 28
                             }
                           },
-                          "required": ["fndh_port"],
+                          "required": [
+                            "fndh_port"
+                          ],
                           "additionalProperties": false
                         }
                       }
                     }
                   }
                 },
-                "required": ["smartboxes"],
+                "required": [
+                  "smartboxes"
+                ],
                 "additionalProperties": false
               },
               "antennas": {
@@ -307,7 +357,9 @@
                 "additionalProperties": {
                   "type": "object",
                   "properties": {
-                    "smartbox": {"type": "string"},
+                    "smartbox": {
+                      "type": "string"
+                    },
                     "smartbox_port": {
                       "type": "integer",
                       "minimum": 1,
@@ -317,12 +369,18 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["smartbox", "smartbox_port"],
+                  "required": [
+                    "smartbox",
+                    "smartbox_port"
+                  ],
                   "additionalProperties": false
                 }
               }
             },
-            "required": ["configuration_host", "configuration_port"],
+            "required": [
+              "configuration_host",
+              "configuration_port"
+            ],
             "additionalProperties": false
           }
         }
@@ -330,4 +388,3 @@
     }
   }
 }
-

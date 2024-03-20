@@ -6,6 +6,7 @@ Deploy the Tango devices. For example,
       s8-1:
         low-mccs/fieldstation/s8-1:
           fndh_name: low-mccs/fndh/s8-1
+          fncc_name: low-mccs/fncc/s8-1
           smartbox_names:
             - low-mccs/smartbox/s8-1-01
             - low-mccs/smartbox/s8-1-02
@@ -42,6 +43,11 @@ Deploy the Tango devices. For example,
     fndhs:
       s8-1:
         low-mccs/fndh/s8-1:
+          pasdbus_name: low-mccs/pasdbus/s8-1
+          logging_level_default: 5
+    fnccs:
+      s8-1:
+        low-mccs/fncc/s8-1:
           pasdbus_name: low-mccs/pasdbus/s8-1
           logging_level_default: 5
     smartboxes:
