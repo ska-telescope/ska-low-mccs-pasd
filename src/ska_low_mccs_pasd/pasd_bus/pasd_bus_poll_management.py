@@ -43,6 +43,9 @@ def fncc_read_request_iterator() -> Iterator[str]:
     :yields: the name of an attribute group to be read from the device.
     """
     yield "INFO"
+    # Delay starting the status loop until all other info has been read
+    for _ in range(6):
+        yield ""
     while True:
         yield "STATUS"
 
@@ -466,12 +469,19 @@ class PasdBusRequestProvider:
                 return device_id, *expedited_read_request
 
         # No outstanding reads/writes remaining, so cycle through the polling list.
+        fncc_skip = False
         for device_id, tick in self._ticks.items():
             if tick < self._min_ticks:
                 break
             read_request = self._device_request_providers[device_id].get_read()
+            if read_request == "":
+                fncc_skip = True
+                continue
             del self._ticks[device_id]  # see comment above
             self._ticks[device_id] = 0
+            if fncc_skip:
+                del self._ticks[PasdData.FNCC_DEVICE_ID]
+                self._ticks[PasdData.FNCC_DEVICE_ID] = 0
             return device_id, read_request, None
 
         return None
