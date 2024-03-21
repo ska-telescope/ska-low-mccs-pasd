@@ -387,6 +387,28 @@ class PasdTangoTestHarness:
             LoggingLevelDefault=logging_level,
         )
 
+    def set_fncc_device(
+        self: PasdTangoTestHarness,
+        logging_level: int = int(LoggingLevel.DEBUG),
+        device_class: type[Device] | str = "ska_low_mccs_pasd.MccsFNCC",
+    ) -> None:
+        """
+        Set the FNCC Tango device in the test harness.
+
+        This test harness currently only permits one FNCC device.
+
+        :param logging_level: the Tango device's default logging level.
+        :param device_class: The device class to use.
+            This may be used to override the usual device class,
+            for example with a patched subclass.
+        """
+        self._tango_test_harness.add_device(
+            get_fncc_name(self._station_label),
+            device_class,
+            PasdFQDN=get_pasd_bus_name(),
+            LoggingLevelDefault=logging_level,
+        )
+
     def set_mock_field_station_device(
         self: PasdTangoTestHarness,
         mock: tango.DeviceProxy,
