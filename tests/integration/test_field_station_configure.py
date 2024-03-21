@@ -303,7 +303,7 @@ class TestFieldStationIntegration:
         # Check both fndh and FieldStation agree value of outsideTemperature
         default_simulator_outside_temperature = (
             PasdConversionUtility.scale_signed_16bit(
-                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
+                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURES[0]]
             )[0]
         )
         fndh_device.subscribe_event(

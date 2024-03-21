@@ -304,7 +304,7 @@ class TestPasdBusComponentManager:
                 [FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE]
             )[0],
             outside_temperature=PasdConversionUtility.scale_signed_16bit(
-                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
+                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURES[0]]
             )[0],
             internal_ambient_temperature=(
                 PasdConversionUtility.scale_signed_16bit(
@@ -695,7 +695,7 @@ class TestPasdBusComponentManager:
                 [FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE]
             )[0],
             outside_temperature=PasdConversionUtility.scale_signed_16bit(
-                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
+                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURES[1]]
             )[0],
             internal_ambient_temperature=(
                 PasdConversionUtility.scale_signed_16bit(
@@ -813,7 +813,7 @@ class TestPasdBusComponentManager:
                 [FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE]
             )[0],
             outside_temperature=PasdConversionUtility.scale_signed_16bit(
-                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
+                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURES[1]]
             )[0],
             internal_ambient_temperature=(
                 PasdConversionUtility.scale_signed_16bit(

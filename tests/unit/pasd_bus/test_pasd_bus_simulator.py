@@ -504,7 +504,10 @@ class TestFndhSimulator:
         setattr(fndh_simulator, sensor_name, simulated_value)
         assert getattr(fndh_simulator, sensor_name) == simulated_value
         assert fndh_simulator.status == FndhStatusMap[expected_status].value
-        default_value = getattr(fndh_simulator, "DEFAULT_" + sensor_name.upper())
+        if sensor_name != "outside_temperature":
+            default_value = getattr(fndh_simulator, "DEFAULT_" + sensor_name.upper())
+        else:
+            default_value = getattr(fndh_simulator, f"DEFAULT_{sensor_name.upper()}S")
         setattr(fndh_simulator, sensor_name, default_value)
         if expected_status == "ALARM":
             assert fndh_simulator.status == FndhStatusMap.RECOVERY
@@ -518,6 +521,27 @@ class TestFndhSimulator:
         if expected_status == "OK":
             setattr(fndh_simulator, sensor_name + "_thresholds", [0, 0, 0, 0])
             assert fndh_simulator.status == FndhStatusMap.ALARM
+
+    def test_variable_outside_temperature(
+        self: TestFndhSimulator, fndh_simulator: FndhSimulator
+    ) -> None:
+        """
+        Test the variable output of the outside temperature.
+
+        :param fndh_simulator: the FNDH simulator under test
+        """
+        assert (
+            fndh_simulator.outside_temperature
+            == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURES[0]
+        )
+        assert (
+            fndh_simulator.outside_temperature
+            == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURES[1]
+        )
+        assert (
+            fndh_simulator.outside_temperature
+            == FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURES[0]
+        )
 
     def test_warning_and_alarm_flags(
         self: TestFndhSimulator,

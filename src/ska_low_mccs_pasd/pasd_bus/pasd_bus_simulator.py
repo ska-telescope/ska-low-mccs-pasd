@@ -38,7 +38,7 @@ import importlib.resources
 import logging
 from abc import ABC
 from datetime import datetime
-from typing import Any, Callable, Final, Optional, Sequence
+from typing import Callable, Final, Optional, Sequence
 
 import yaml
 
@@ -945,7 +945,9 @@ class _Sensor:
         return obj.__dict__.get(self.name)
 
     def __set__(
-        self: _Sensor, obj: PasdHardwareSimulator, value: int | list[int]
+        self: _Sensor,
+        obj: PasdHardwareSimulator,
+        value: int | list[int],
     ) -> None:
         """
         Set the value of the sensor attribute for the instance.
@@ -960,53 +962,55 @@ class _Sensor:
         obj._update_system_status()
         obj._update_ports_state()
 
+
 class _VariableSensor(_Sensor):
     """
     Data descriptor for sensor attributes which can vary over multiple reads.
-    
+
     This is done by having a list of values which are cycled through.
     """
+
     def __init__(self: _VariableSensor) -> None:
         """Initialise the variable sensor."""
         self._index = 0
         super().__init__()
-    
+
     def __get__(
-        self: _Sensor, obj: PasdHardwareSimulator, objtype: type
+        self: _VariableSensor, obj: PasdHardwareSimulator, objtype: type
     ) -> None | int | list[int]:
         """
-        Get the value of the sensor attribute from the instance.
+        Get the next value of the sensor attribute from the instance.
 
         :param obj: The instance of the class where the descriptor is being used.
         :param objtype: The type of the instance (usually the class).
         :returns: Sensor value stored in the instance's __dict__.
         """
-        value_list = obj.__dict__.get(self.name)
-        if value_list is None:
+        value = super().__get__(obj, objtype)
+        if value is None:
             return None
+        if isinstance(value, int):
+            return value
         self._index += 1
-        if self._index > len(value_list):
+        if self._index >= len(value):
             self._index = 0
-        return value_list[self._index]
+        return value[self._index]
 
     def __set__(
-        self: _Sensor, obj: PasdHardwareSimulator, value: int | list[int] | list[list[int]]
+        self: _VariableSensor,
+        obj: PasdHardwareSimulator,
+        value: int | list[int],
     ) -> None:
         """
-        Set the value of the sensor attribute for the instance.
-
-        Then update the system and ports status.
+        Set the value(s) of the sensor attribute for the instance.
 
         :param obj: The instance of the class where the descriptor is being used.
         :param value: The value to be set for the sensor attribute.
         """
         if isinstance(value, int):
+            super().__set__(obj, [value])
+        else:
             super().__set__(obj, value)
-            return
-        obj.__dict__[self.name] = value
-        obj._update_sensor_status(self.name.removesuffix("_thresholds"))
-        obj._update_system_status()
-        obj._update_ports_state()
+
 
 class FndhSimulator(PasdHardwareSimulator):
     """

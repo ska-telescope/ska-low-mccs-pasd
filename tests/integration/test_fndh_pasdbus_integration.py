@@ -232,9 +232,9 @@ class TestfndhPasdBusIntegration:
         )
         assert (
             fndh_device.OutsideTemperature
-            == PasdConversionUtility.scale_signed_16bit(
-                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
-            )[0]
+            in PasdConversionUtility.scale_signed_16bit(
+                FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURES
+            )
         )
         assert (
             fndh_device.InternalAmbientTemperature

@@ -216,7 +216,7 @@ def test_communication(  # pylint: disable=too-many-statements
     assert (
         pasd_bus_device.fndhOutsideTemperature
         == PasdConversionUtility.scale_signed_16bit(
-            [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
+            [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURES[0]]
         )[0]
     )
     assert (
