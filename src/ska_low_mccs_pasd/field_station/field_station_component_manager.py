@@ -62,7 +62,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         station_name: str,
         fndh_name: str,
         smartbox_names: list[str],
-        tm_config_details: list[str],
+        tm_config_details: Optional[list[str]],
         communication_state_callback: Callable[..., None],
         component_state_changed: Callable[..., None],
         configuration_change_callback: Callable[..., None],
@@ -176,7 +176,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.logger = logger
         self.station_name = station_name
 
-        self._load_configuration(tm_config_details)
+        if tm_config_details:
+            self._load_configuration_uri(tm_config_details)
+        else:
+            self._load_configuration()
 
     def _update_mappings(
         self: FieldStationComponentManager,
@@ -1398,12 +1401,33 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
     def load_configuration(
         self: FieldStationComponentManager,
-        tm_config_details: list[str],
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[TaskStatus, str]:
         """
         Submit the LoadConfiguration slow command.
+
+        This method returns immediately after it is submitted for
+        execution.
+
+        :param task_callback: Update task state, defaults to None
+        :param task_abort_event: Check for abort, defaults to None
+        :return: Task status and response message
+        """
+        return self.submit_task(
+            self._load_configuration,
+            args=[],
+            task_callback=task_callback,
+        )
+
+    def load_configuration_uri(
+        self: FieldStationComponentManager,
+        tm_config_details: Optional[list[str]],
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Submit the LoadConfigurationUri slow command.
 
         This method returns immediately after it is submitted for
         execution.
@@ -1414,12 +1438,50 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :return: Task status and response message
         """
         return self.submit_task(
-            self._load_configuration,
+            self._load_configuration_uri,
             args=[tm_config_details],
             task_callback=task_callback,
         )
 
     def _load_configuration(
+        self: FieldStationComponentManager,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
+        """
+        Get the configuration from the configuration server.
+
+        :param task_callback: Update task state, defaults to None
+        :param task_abort_event: Check for abort, defaults to None
+        """
+        try:
+            self.logger.info("Attempting to load data from configuration server.....")
+            configuration = self._get_configuration_from_configuration_server(
+                self.configuration_host,
+                self.configuration_port,
+                self.configuration_timeout,
+            )
+            self.logger.info("configuration loaded from configuration server")
+
+            # Validate configuration before updating.
+            jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)
+
+            self._update_mappings(configuration)
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.error(f"Failed to update configuration {repr(e)}.")
+            if task_callback is not None:
+                task_callback(
+                    TaskStatus.FAILED,
+                    result="Failed to load configuration.",
+                )
+        if task_callback is not None:
+            task_callback(
+                TaskStatus.COMPLETED,
+                result="Configuration has been retreived successfully.",
+            )
+
+    def _load_configuration_uri(
         self: FieldStationComponentManager,
         tm_config_details: list[str],
         task_callback: Optional[Callable] = None,
@@ -1433,20 +1495,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :param task_abort_event: Check for abort, defaults to None
         """
         try:
-            self.logger.info("Attempting to load data from configuration server.....")
-            if tm_config_details == []:
-                configuration = self._get_configuration_from_configuration_server(
-                    self.configuration_host,
-                    self.configuration_port,
-                    self.configuration_timeout,
-                )
-                self.logger.info("configuration loaded from configuration server")
-            else:
-                config_uri = tm_config_details[0]
-                config_filepath = tm_config_details[1]
+            config_uri = tm_config_details[0]
+            config_filepath = tm_config_details[1]
 
-                tmdata = TMData([config_uri])
-                configuration = tmdata[config_filepath].get_dict()
+            tmdata = TMData([config_uri])
+            configuration = tmdata[config_filepath].get_dict()
 
             # Validate configuration before updating.
             jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)

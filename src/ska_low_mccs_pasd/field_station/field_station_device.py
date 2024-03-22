@@ -136,6 +136,7 @@ class MccsFieldStation(SKABaseDevice):
                 smartbox_mapping_schema,
             ),
             ("LoadConfiguration", "load_configuration", None),
+            ("LoadConfigurationUri", "load_configuration_uri", None),
             ("Configure", "configure", configure_schema),
         ]:
             validator = (
@@ -264,10 +265,25 @@ class MccsFieldStation(SKABaseDevice):
     @command(dtype_out="DevVarLongStringArray")
     def LoadConfiguration(
         self: MccsFieldStation,
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Load configuration from configuration server.
+
+        :return: A tuple containing a return code and a string message
+            indicating status. The message is for information purposes
+            only.
+        """
+        handler = self.get_command_object("LoadConfiguration")
+        (return_code, message) = handler()
+        return ([return_code], [message])
+
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def LoadConfigurationUri(
+        self: MccsFieldStation,
         tm_config_details: list[str],
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
         """
-        Power up a antenna.
+        Load configuration from telmodel.
 
         :param tm_config_details: Location of the config in telmodel.
 
@@ -275,7 +291,7 @@ class MccsFieldStation(SKABaseDevice):
             indicating status. The message is for information purposes
             only.
         """
-        handler = self.get_command_object("LoadConfiguration")
+        handler = self.get_command_object("LoadConfigurationUri")
         (return_code, message) = handler(tm_config_details)
         return ([return_code], [message])
 
