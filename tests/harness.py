@@ -77,7 +77,7 @@ def get_smartbox_name(smartbox_id: int, station_label: str | None = None) -> str
 
     :return: the smartbox's Tango device name
     """
-    slug = f"{station_label or DEFAULT_STATION_LABEL}-{smartbox_id:02}"
+    slug = f"{station_label or DEFAULT_STATION_LABEL}-sb{smartbox_id:02}"
     return f"low-mccs/smartbox/{slug}"
 
 
