@@ -387,6 +387,11 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                     list(self.FNCC_STATUS_ATTRIBUTES),
                 )
 
+            case (PasdData.FNCC_DEVICE_ID, "RESET_STATUS", None):
+                request = PasdBusRequest(
+                    PasdData.FNCC_DEVICE_ID, "reset_status", None, []
+                )
+
             case (smartbox_id, "STATUS", None):
                 request = PasdBusRequest(
                     smartbox_id, None, None, list(self.SMARTBOX_STATUS_ATTRIBUTES)
@@ -590,6 +595,12 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """Reset the FNDH warnings register."""
         assert self._request_provider is not None
         self._request_provider.desire_warning_reset(PasdData.FNDH_DEVICE_ID)
+
+    @check_communicating
+    def reset_fncc_status(self: PasdBusComponentManager) -> None:
+        """Reset the FNCC status register."""
+        assert self._request_provider is not None
+        self._request_provider.desire_status_reset(PasdData.FNCC_DEVICE_ID)
 
     @check_communicating
     def reset_smartbox_port_breaker(

@@ -101,6 +101,7 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         self._low_pass_filter_block_2_requested: tuple[float, bool] | None = None
         self._alarm_reset_requested: bool = False
         self._warning_reset_requested: bool = False
+        self._status_reset_requested: bool = False
         self._port_power_changes: list[tuple[bool, bool] | None] = [
             None
         ] * number_of_ports
@@ -130,6 +131,10 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
     def desire_warning_reset(self) -> None:
         """Register a request to reset the warning state."""
         self._warning_reset_requested = True
+
+    def desire_status_reset(self) -> None:
+        """Register a request to reset the status register."""
+        self._status_reset_requested = True
 
     def desire_port_powers(
         self,
@@ -237,6 +242,10 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
             self._port_power_changes = [None] * len(requested_powers)
             self._ports_status_update_request = True
             return "SET_PORT_POWERS", requested_powers
+
+        if self._status_reset_requested:
+            self._status_reset_requested = False
+            return "RESET_STATUS", None
 
         return "NONE", None
 
@@ -371,6 +380,14 @@ class PasdBusRequestProvider:
             This is 0 for the FNDH, otherwise a smartbox number.
         """
         self._device_request_providers[device_id].desire_warning_reset()
+
+    def desire_status_reset(self, device_id: int) -> None:
+        """
+        Register a request to reset the FNCC status register.
+
+        :param device_id: the device number.
+        """
+        self._device_request_providers[device_id].desire_status_reset()
 
     def desire_port_powers(
         self,

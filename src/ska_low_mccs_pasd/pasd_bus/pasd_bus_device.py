@@ -684,6 +684,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         for command_name, command_class in [
             ("InitializeFndh", MccsPasdBus._InitializeFndhCommand),
             ("InitializeSmartbox", MccsPasdBus._InitializeSmartboxCommand),
+            ("ResetFnccStatus", MccsPasdBus._ResetFnccStatusCommand),
             ("SetFndhPortPowers", MccsPasdBus._SetFndhPortPowersCommand),
             ("SetFndhLedPattern", MccsPasdBus._SetFndhLedPatternCommand),
             ("SetFndhLowPassFilters", MccsPasdBus._SetFndhLowPassFiltersCommand),
@@ -1670,6 +1671,45 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 ["ResetSmartboxWarnings succeeded: nothing to do"],
             )
         return ([ResultCode.FAILED], ["ResetSmartboxWarnings failed"])
+
+    @command(dtype_out="DevVarLongStringArray")
+    def ResetFnccStatus(self: MccsPasdBus) -> DevVarLongStringArrayType:
+        """
+        Reset the FNCC status register.
+
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        handler = self.get_command_object("ResetFnccStatus")
+        success = handler()
+        if success:
+            return ([ResultCode.OK], ["ResetFnccStatus succeeded"])
+        if success is None:
+            return (
+                [ResultCode.OK],
+                ["ResetFnccSucceeded succeeded: nothing to do"],
+            )
+        return ([ResultCode.FAILED], ["ResetFnccStatus failed"])
+
+    class _ResetFnccStatusCommand(FastCommand):
+        def __init__(
+            self: MccsPasdBus._ResetFnccStatusCommand,
+            component_manager: PasdBusComponentManager,
+            logger: logging.Logger,
+        ):
+            self._component_manager = component_manager
+            super().__init__(logger)
+
+        # pylint: disable-next=arguments-differ
+        def do(  # type: ignore[override]
+            self: MccsPasdBus._ResetFnccStatusCommand,
+        ) -> Optional[bool]:
+            """
+            Reset the FNCC status register.
+
+            :return: whether successful, or None if there was nothing to do.
+            """
+            return self._component_manager.reset_fncc_status()
 
     class _GetPasdDeviceSubscriptions(FastCommand):
         """Class for handling the GetRegisterList() command."""

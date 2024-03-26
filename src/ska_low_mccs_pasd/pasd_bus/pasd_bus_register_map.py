@@ -124,6 +124,7 @@ class PasdCommandStrings(Enum):
     SET_LED_PATTERN = "set_led_pattern"
     SET_LOW_PASS_FILTER = "set_low_pass_filter"
     INITIALIZE = "initialize"
+    RESET_STATUS = "reset_status"
     RESET_ALARMS = "reset_alarms"
     RESET_WARNINGS = "reset_warnings"
 
@@ -783,6 +784,12 @@ class PasdBusRegisterMap:
         attribute.value = 1  # Write any value to initialize the device
         return attribute
 
+    def _create_reset_status_command(self, device_id: int) -> PasdBusAttribute:
+        attribute_map = self._get_register_info(device_id).register_map
+        attribute = PasdBusAttribute(attribute_map[self.STATUS].address, 1)
+        attribute.value = 1  # Write any value to reset the STATUS register
+        return attribute
+
     def _create_port_powers_command(
         self, device_id: int, arguments: Sequence[Any]
     ) -> PasdBusAttribute:
@@ -929,6 +936,8 @@ class PasdBusRegisterMap:
             attribute = self._create_low_pass_filter_command(device_id, arguments)
         elif command == PasdCommandStrings.INITIALIZE:
             attribute = self._create_initialize_command(device_id)
+        elif command == PasdCommandStrings.RESET_STATUS:
+            attribute = self._create_reset_status_command(device_id)
         elif command == PasdCommandStrings.RESET_ALARMS:
             attribute = self._create_reset_alarms_command(device_id)
         elif command == PasdCommandStrings.RESET_WARNINGS:
