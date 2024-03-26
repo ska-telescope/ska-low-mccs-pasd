@@ -844,7 +844,7 @@ class PasdHardwareSimulator:
         Return the status of the FNDH/FNCC/smartbox.
 
         :return: an overall status.
-            See FnccStatusMap, FndhStatusMap and SmartboxMap
+            See FnccStatusMap, FndhStatusMap and SmartboxStatusMap
             for details
         """
         return self._status
