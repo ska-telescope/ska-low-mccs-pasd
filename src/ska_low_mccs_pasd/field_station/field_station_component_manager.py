@@ -1481,6 +1481,25 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 result="Configuration has been retreived successfully.",
             )
 
+    def _find_by_key(
+        self: FieldStationComponentManager, data: dict, target: str
+    ) -> dict:
+        """
+        Traverse nested dictionary, yield next value for given target.
+
+        :param data: generic nested dictionary to traverse through.
+        :param target: key to find the next value of.
+
+        :return: the value for given key.
+        :raises KeyError: Unable to find the given key in dict
+        """
+        for key, value in data.items():
+            if key == target:
+                return value
+            if isinstance(value, dict):
+                return self._find_by_key(value, target)
+        raise KeyError("Couldn't find key in dict")
+
     def _load_configuration_uri(
         self: FieldStationComponentManager,
         tm_config_details: list[str],
@@ -1497,9 +1516,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         try:
             config_uri = tm_config_details[0]
             config_filepath = tm_config_details[1]
+            station_cluster = tm_config_details[2]
 
             tmdata = TMData([config_uri])
-            configuration = tmdata[config_filepath].get_dict()
+            full_dict = tmdata[config_filepath].get_dict()
+
+            configuration = self._find_by_key(full_dict, station_cluster)
 
             # Validate configuration before updating.
             jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)

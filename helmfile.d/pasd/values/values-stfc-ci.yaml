@@ -7,9 +7,9 @@ overrides:
             id: 1
             pasd:
               config_uri:
-                uri: "car:ska-low-deployment?main"
-                path: "helmfile.d/values/low/s8-1.yaml"
-                # Warning: Pulling configuration from different station cluster. We are pulling station cluster "a1" and deploying station cluster "ci"
+                uri: "gitlab://gitlab.com/ska-telescope/mccs/ska-low-mccs?maintmdata"
+                path: "instrument/mccs-configuration/values-stfc-ci.yaml"
+                station_cluster: "ci"
               fndh:
                 gateway:
                   simulated: true

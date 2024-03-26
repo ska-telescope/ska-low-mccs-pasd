@@ -8,6 +8,7 @@ Define the deployment for MccsFieldStation devices.
           config_uri:
           - "car:ska-low-deployment?main"
           - "helmfile.d/values/low/s8-1.yaml"
+          - "s8-1"
           fndh_name: low-mccs/fndh/s8-1
           smartbox_names:
             - low-mccs/smartbox/s8-1-01

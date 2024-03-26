@@ -30,7 +30,12 @@
           {{- if $config_uri_path}}
             {{- $config_uri_list = append $config_uri_list $config_uri_path}}
           {{- end}}
+        {{- $config_uri_station_cluster := dig "pasd" "config_uri" "station_cluster" "" $station_spec}}
+          {{- if $config_uri_station_cluster}}
+            {{- $config_uri_list = append $config_uri_list $config_uri_station_cluster}}
+          {{- end}}
       {{- end}}
+
 
       {{- $configuration_host := printf "pasd-configuration-service-%s" $station_name}}
       {{- $fieldstation_instance := dict "configuration_host" $configuration_host "configuration_port" 50034 "fndh_name" $fndh_name "config_uri" $config_uri_list}}
