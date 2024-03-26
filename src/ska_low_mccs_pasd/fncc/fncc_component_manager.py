@@ -2,7 +2,7 @@
 #
 # This file is part of the SKA Low MCCS project
 #
-# functoolsF
+#
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module implements the component management for fncc."""
@@ -151,7 +151,6 @@ class FnccComponentManager(TaskExecutorComponentManager):
             attribute_change_callback,
         )
         self.logger = logger
-        self._pasd_device_number = PasdData.FNCC_DEVICE_ID
         super().__init__(
             logger,
             communication_state_callback,
