@@ -12,7 +12,7 @@ import functools
 import logging
 import re
 from datetime import datetime, timezone
-from typing import Any, Callable, Final, Optional
+from typing import Any, Callable, Optional
 
 import tango
 from ska_control_model import CommunicationStatus
@@ -20,9 +20,9 @@ from ska_low_mccs_common import MccsDeviceProxy
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.executor import TaskExecutorComponentManager
 
-__all__ = ["FnccComponentManager", "_PasdBusProxy"]
+from ska_low_mccs_pasd.pasd_data import PasdData
 
-FNCC_DEVICE_ID: Final = 100
+__all__ = ["FnccComponentManager", "_PasdBusProxy"]
 
 
 class _PasdBusProxy(DeviceComponentManager):
@@ -50,7 +50,7 @@ class _PasdBusProxy(DeviceComponentManager):
             on the pasdbus changes.
         """
         self._attribute_change_callback = attribute_change_callback
-        self._pasd_device = FNCC_DEVICE_ID
+        self._pasd_device = PasdData.FNCC_DEVICE_ID
         max_workers = 1
 
         super().__init__(
@@ -151,7 +151,7 @@ class FnccComponentManager(TaskExecutorComponentManager):
             attribute_change_callback,
         )
         self.logger = logger
-        self._pasd_device_number = FNCC_DEVICE_ID
+        self._pasd_device_number = PasdData.FNCC_DEVICE_ID
         super().__init__(
             logger,
             communication_state_callback,
