@@ -55,6 +55,18 @@ def get_fndh_name(station_label: str | None = None) -> str:
     return f"low-mccs/fndh/{station_label or DEFAULT_STATION_LABEL}"
 
 
+def get_fncc_name(station_label: str | None = None) -> str:
+    """
+    Return the FNCC Tango device name.
+
+    :param station_label: name of the station under test.
+        Defaults to None, in which case the module default is used.
+
+    :return: the FNCC Tango device name
+    """
+    return f"low-mccs/fncc/{station_label or DEFAULT_STATION_LABEL}"
+
+
 def get_smartbox_name(smartbox_id: int, station_label: str | None = None) -> str:
     """
     Return a smartbox's  Tango device name.
@@ -114,6 +126,14 @@ class PasdTangoTestHarnessContext:
         :returns: a proxy to the FNDH Tango device.
         """
         return self._tango_context.get_device(get_fndh_name(self._station_label))
+
+    def get_fncc_device(self: PasdTangoTestHarnessContext) -> tango.DeviceProxy:
+        """
+        Get a proxy to the FNCC Tango device.
+
+        :returns: a proxy to the FNCC Tango device.
+        """
+        return self._tango_context.get_device(get_fncc_name(self._station_label))
 
     def get_pasd_bus_address(self: PasdTangoTestHarnessContext) -> tuple[str, int]:
         """
@@ -362,6 +382,28 @@ class PasdTangoTestHarness:
         """
         self._tango_test_harness.add_device(
             get_fndh_name(self._station_label),
+            device_class,
+            PasdFQDN=get_pasd_bus_name(),
+            LoggingLevelDefault=logging_level,
+        )
+
+    def set_fncc_device(
+        self: PasdTangoTestHarness,
+        logging_level: int = int(LoggingLevel.DEBUG),
+        device_class: type[Device] | str = "ska_low_mccs_pasd.MccsFNCC",
+    ) -> None:
+        """
+        Set the FNCC Tango device in the test harness.
+
+        This test harness currently only permits one FNCC device.
+
+        :param logging_level: the Tango device's default logging level.
+        :param device_class: The device class to use.
+            This may be used to override the usual device class,
+            for example with a patched subclass.
+        """
+        self._tango_test_harness.add_device(
+            get_fncc_name(self._station_label),
             device_class,
             PasdFQDN=get_pasd_bus_name(),
             LoggingLevelDefault=logging_level,

@@ -1,0 +1,56 @@
+{{- /*
+Define the deployment for MccsFncc devices.
+
+  deviceServers:
+    fnccs:
+      s8-1:
+        low-mccs/fndh/s8-1:
+          pasdbus_name: low-mccs/pasdbus/s8-1
+          logging_level_default: 5
+
+*/}}
+{{- $fnccs := dig "fnccs" dict .Values.deviceServers}}
+{{- if $fnccs}}
+name: "fncc-{{.Release.Name}}"
+function: ska-low-mccs-pasd-fncc
+domain: ska-low-mccs-pasd-fncc
+instances:
+{{- range $server_key := keys $fnccs}}
+  - {{printf "fncc-%s" $server_key}}
+{{- end}}
+command: MccsFNCC
+server: 
+  name: MccsFncc
+  instances:
+{{- range $server_key, $this_server := $fnccs}}
+    - name: {{printf "fncc-%s" $server_key}}
+      classes:
+        - name: MccsFncc
+          devices:
+{{- range $fncc_name, $this_fncc := $this_server}}
+            - name: {{$fncc_name}}
+              properties:
+                - name: PasdFQDN
+                  values: 
+                    - {{quote $this_fncc.pasdbus_name}}
+{{- with $this_fncc.logging_level_default}}
+                - name: LoggingLevelDefault
+                  values:
+                    - {{quote .}}
+{{- end}}
+{{- end}}
+{{- end}}
+depends_on:
+  - device: sys/database/2
+image:
+{{- with .Values.image}}
+  registry: {{.registry | quote}}
+  image: {{.name | quote}}
+  tag: {{.tag | default $.Chart.AppVersion | quote}}
+  pullPolicy: {{.pullPolicy | quote}}
+{{- end}}
+livenessProbe:
+{{ toYaml .Values.livenessProbe | indent 2 }}
+readinessProbe:
+{{ toYaml .Values.readinessProbe | indent 2 }}
+{{- end}}

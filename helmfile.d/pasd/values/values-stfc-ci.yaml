@@ -17,6 +17,9 @@ overrides:
                   low_pass_filter_cutoff: 1.0 # Optional
                 controller:
                   modbus_id: 101
+              fncc:
+                controller:
+                  modbus_id: 100
               smartboxes:
                 "1":
                   fndh_port: 1

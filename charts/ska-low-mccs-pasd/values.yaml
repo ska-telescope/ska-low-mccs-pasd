@@ -64,6 +64,11 @@ deviceServers: {}  # e.g.:
   #     low-mccs/fndh/s8-1:
   #       pasdbus_name: low-mccs/pasdbus/s8-1
   #       logging_level_default: 5
+  # fnccs:
+  #   s8-1:
+  #     low-mccs/fncc/s8-1:
+  #       pasdbus_name: low-mccs/pasdbus/s8-1
+  #       logging_level_default: 5
   # smartboxes:
   #   s8-1-01:
   #     low-mccs/smartbox/s8-1-01:

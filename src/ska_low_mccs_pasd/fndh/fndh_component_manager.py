@@ -58,7 +58,7 @@ class _PasdBusProxy(DeviceComponentManager):
         """
         self._update_port_power_states = update_port_power_states
         self._attribute_change_callback = attribute_change_callback
-        self._pasd_device = 0
+        self._pasd_device = PasdData.FNDH_DEVICE_ID
         max_workers = 1
 
         super().__init__(
@@ -201,7 +201,6 @@ class FndhComponentManager(TaskExecutorComponentManager):
             update_port_power_states,
         )
         self.logger = logger
-        self._pasd_device_number = 0
         super().__init__(
             logger,
             communication_state_callback,

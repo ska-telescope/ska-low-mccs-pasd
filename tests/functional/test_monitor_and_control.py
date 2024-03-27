@@ -318,6 +318,7 @@ def check_monitoring_point_is_reported(
         "FNDH power module enclosure temperature": "fndhPowerModuleTemperature",
         "FNDH ouside ambient reference temperature": "fndhOutsideTemperature",
         "FNDH internal ambient reference temperature": "fndhInternalAmbientTemperature",
+        "FNCC status": "fnccStatus",
         "smartbox uptime": f"smartbox{smartbox_id}Uptime",
         "smartbox status": f"smartbox{smartbox_id}Status",
         "smartbox LED pattern": f"smartbox{smartbox_id}LedPattern",

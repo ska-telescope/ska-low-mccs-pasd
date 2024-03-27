@@ -43,6 +43,7 @@ Feature: Monitoring and control of PaSD
         And MCCS-for-PaSD reports its smartbox FEM package ambient temperature
         And MCCS-for-PaSD reports its smartbox FEM 6 & 12 case temperatures
         And MCCS-for-PaSD reports its smartbox FEM heatsink temperatures
+        And MCCS-for-PaSD reports its FNCC status
         And MCCS-for-PaSD health becomes OK
 
     @XTP-21514 @XTP-21594

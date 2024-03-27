@@ -17,7 +17,9 @@ from ska_control_model import CommunicationStatus, PowerState
 from ska_tango_testing.mock import MockCallableGroup
 from ska_tango_testing.mock.placeholders import Anything
 
+from ska_low_mccs_pasd import PasdData
 from ska_low_mccs_pasd.pasd_bus import (
+    FnccSimulator,
     FndhSimulator,
     PasdBusComponentManager,
     PasdHardwareSimulator,
@@ -51,6 +53,7 @@ def mock_callbacks_fixture() -> MockCallableGroup:
         "communication_state",
         "component_state",
         "pasd_device_state_for_fndh",
+        "pasd_device_state_for_fncc",
         *smartbox_callback_names,
         timeout=20.0,
     )
@@ -66,7 +69,7 @@ def pasd_bus_component_manager_fixture(
     Return a PaSD bus component manager, running against a PaSD bus simulator.
 
     :param mock_pasd_hw_simulators:
-        the FNDH and smartbox simulator backends that the TCP server will front,
+        the FNDH, FNCC and smartbox simulator backends that the TCP server will front,
         each wrapped with a mock so that we can assert calls.
     :param logger: the logger to be used by this object.
     :param mock_callbacks: a group of mock callables for the component
@@ -76,7 +79,12 @@ def pasd_bus_component_manager_fixture(
     """
 
     def _pasd_device_state_splitter(device_id: int, **kwargs: Any) -> None:
-        device_name = "fndh" if device_id == 0 else f"smartbox{device_id}"
+        if device_id == PasdData.FNDH_DEVICE_ID:
+            device_name = "fndh"
+        elif device_id == PasdData.FNCC_DEVICE_ID:
+            device_name = "fncc"
+        else:
+            device_name = f"smartbox{device_id}"
         mock_callbacks[f"pasd_device_state_for_{device_name}"](**kwargs)
 
     harness = PasdTangoTestHarness()
@@ -116,6 +124,7 @@ class TestPasdBusComponentManager:
         pasd_config: dict,
         pasd_bus_component_manager: PasdBusComponentManager,
         fndh_simulator: FndhSimulator,
+        fncc_simulator: FnccSimulator,
         smartbox_simulator: SmartboxSimulator,
         mock_callbacks: MockCallableGroup,
     ) -> None:
@@ -127,6 +136,7 @@ class TestPasdBusComponentManager:
         :param pasd_bus_component_manager: the PaSD bus component
             manager under test.
         :param fndh_simulator: the FNDH simulator under test.
+        :param fncc_simulator: the FNCC simulator under test.
         :param smartbox_simulator: the smartbox simulator under test.
         :param mock_callbacks: a group of mock callables for the component
             manager under test to use as callbacks
@@ -157,8 +167,21 @@ class TestPasdBusComponentManager:
             firmware_version=PasdConversionUtility.convert_firmware_version(
                 [FndhSimulator.DEFAULT_FIRMWARE_VERSION]
             )[0],
-            lookahead=25,
         )
+
+        # Then the FNCC
+        mock_callbacks.assert_call(
+            "pasd_device_state_for_fncc",
+            modbus_register_map_revision=FnccSimulator.MODBUS_REGISTER_MAP_REVISION,
+            pcb_revision=FnccSimulator.PCB_REVISION,
+            cpu_id=PasdConversionUtility.convert_cpu_id(FnccSimulator.CPU_ID)[0],
+            chip_id=PasdConversionUtility.convert_chip_id(FnccSimulator.CHIP_ID)[0],
+            firmware_version=PasdConversionUtility.convert_firmware_version(
+                [FnccSimulator.DEFAULT_FIRMWARE_VERSION]
+            )[0],
+        )
+
+        # Then the smartboxes
         for smartbox_number in range(1, 25):
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
@@ -175,8 +198,8 @@ class TestPasdBusComponentManager:
                 firmware_version=PasdConversionUtility.convert_firmware_version(
                     [SmartboxSimulator.DEFAULT_FIRMWARE_VERSION]
                 )[0],
-                lookahead=25,
             )
+
         # and then the FNDH sensor thresholds
         mock_callbacks.assert_call(
             "pasd_device_state_for_fndh",
@@ -227,6 +250,7 @@ class TestPasdBusComponentManager:
                 )
             ),
         )
+
         for smartbox_number in range(1, 25):
             # smartbox sensor thresholds
             mock_callbacks.assert_call(
@@ -355,6 +379,25 @@ class TestPasdBusComponentManager:
                 ),
             )
 
+        # Then FNDH port status info
+        expected_fndh_ports_power_sensed = [False] * FndhSimulator.NUMBER_OF_PORTS
+        for smartbox_config in pasd_config["pasd"]["smartboxes"].values():
+            expected_fndh_ports_power_sensed[smartbox_config["fndh_port"] - 1] = True
+
+        expected_fndh_ports_desired_power = [
+            DesiredPowerEnum.ON if port else DesiredPowerEnum.DEFAULT
+            for port in expected_fndh_ports_power_sensed
+        ]
+
+        mock_callbacks.assert_call(
+            "pasd_device_state_for_fndh",
+            port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
+            ports_desired_power_when_online=expected_fndh_ports_desired_power,
+            ports_desired_power_when_offline=expected_fndh_ports_desired_power,
+            ports_power_sensed=expected_fndh_ports_power_sensed,
+            ports_power_control=[True] * FndhSimulator.NUMBER_OF_PORTS,
+        )
+
         for smartbox_number in range(1, 25):
             # Then the smartbox status info
             mock_callbacks[
@@ -391,40 +434,15 @@ class TestPasdBusComponentManager:
                         SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
                     )
                 ),
-                lookahead=25,
             )
 
-        expected_fndh_ports_power_sensed = [False] * FndhSimulator.NUMBER_OF_PORTS
-        for smartbox_config in pasd_config["pasd"]["smartboxes"].values():
-            expected_fndh_ports_power_sensed[smartbox_config["fndh_port"] - 1] = True
-
-        expected_fndh_ports_desired_power = [
-            DesiredPowerEnum.ON if port else DesiredPowerEnum.DEFAULT
-            for port in expected_fndh_ports_power_sensed
-        ]
-
-        # Then FNDH port status info
-        mock_callbacks.assert_call(
-            "pasd_device_state_for_fndh",
-            port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
-            ports_desired_power_when_online=expected_fndh_ports_desired_power,
-            ports_desired_power_when_offline=expected_fndh_ports_desired_power,
-            ports_power_sensed=expected_fndh_ports_power_sensed,
-            ports_power_control=[True] * FndhSimulator.NUMBER_OF_PORTS,
-            lookahead=25,
-        )
-        # and FNDH warning and alarm flags
+        # FNDH warning flags
         mock_callbacks.assert_call(
             "pasd_device_state_for_fndh",
             warning_flags=FndhAlarmFlags.NONE.name,
-            lookahead=25,
-        )
-        mock_callbacks.assert_call(
-            "pasd_device_state_for_fndh",
-            alarm_flags=FndhAlarmFlags.NONE.name,
-            lookahead=25,
         )
 
+        # Smartbox port status
         for smartbox_number in range(1, 25):
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
@@ -436,19 +454,36 @@ class TestPasdBusComponentManager:
                 * SmartboxSimulator.NUMBER_OF_PORTS,
                 ports_power_sensed=[False] * SmartboxSimulator.NUMBER_OF_PORTS,
                 ports_current_draw=[0] * SmartboxSimulator.NUMBER_OF_PORTS,
-                lookahead=25,
             )
-            # and smartbox warning and alarm flags
+
+        # FNDH alarm flags
+        mock_callbacks.assert_call(
+            "pasd_device_state_for_fndh",
+            alarm_flags=FndhAlarmFlags.NONE.name,
+        )
+
+        # Smartbox warning and alarm flags
+        for smartbox_number in range(1, 25):
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
                 warning_flags=SmartboxAlarmFlags.NONE.name,
-                lookahead=25,
             )
+        for smartbox_number in range(1, 25):
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
                 alarm_flags=SmartboxAlarmFlags.NONE.name,
-                lookahead=50,
+                lookahead=2,  # FNDH status comes again in between
+                consume_nonmatches=True,
             )
+
+        # Then finally the FNCC status
+        mock_callbacks["pasd_device_state_for_fncc"].assert_call(
+            uptime=Anything,
+            sys_address=fncc_simulator.SYS_ADDRESS,
+            status="OK",
+            field_node_number=fncc_simulator.FIELD_NODE_NUMBER,
+            lookahead=26,
+        )
 
         # TODO: Once we have a poller, extend this test to cover spontaneous changes
         # in the simulator
@@ -615,9 +650,11 @@ class TestPasdBusComponentManager:
                     expected_ports_power_sensed[i] = False
 
             expected_ports_current_draw = [
-                SmartboxSimulator.DEFAULT_PORT_CURRENT_DRAW
-                if s == DesiredPowerEnum.ON and c
-                else 0.0
+                (
+                    SmartboxSimulator.DEFAULT_PORT_CURRENT_DRAW
+                    if s == DesiredPowerEnum.ON and c
+                    else 0.0
+                )
                 for s, c in zip(expected_desired_power_when_online, ports_connected)
             ]
 

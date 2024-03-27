@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from enum import Enum, IntEnum, IntFlag
 from typing import Any, Callable, Final, Optional, Sequence
 
+from ska_low_mccs_pasd.pasd_data import PasdData
+
 from .pasd_bus_conversions import LedServiceMap, PasdConversionUtility
 
 logger = logging.getLogger()
@@ -122,6 +124,7 @@ class PasdCommandStrings(Enum):
     SET_LED_PATTERN = "set_led_pattern"
     SET_LOW_PASS_FILTER = "set_low_pass_filter"
     INITIALIZE = "initialize"
+    RESET_STATUS = "reset_status"
     RESET_ALARMS = "reset_alarms"
     RESET_WARNINGS = "reset_warnings"
 
@@ -355,7 +358,7 @@ class PasdBusRegisterMap:
     WARNING_FLAGS = "warning_flags"
 
     # Register map for the 'info' registers, guaranteed to be the same
-    # across versions. Used for both the FNDH and smartboxes.
+    # across versions. Used for the FNDH, FNCC and smartboxes.
     _INFO_REGISTER_MAP: Final = {
         MODBUS_REGISTER_MAP_REVISION: PasdBusAttribute(0, 1),
         "pcb_revision": PasdBusAttribute(1, 1),
@@ -542,6 +545,13 @@ class PasdBusRegisterMap:
         ),
     }
 
+    _FNCC_REGISTER_MAP_V1: Final = {
+        "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
+        "sys_address": PasdBusAttribute(15, 1),
+        STATUS: PasdBusAttribute(16, 1, PasdConversionUtility.convert_fncc_status),
+        "field_node_number": PasdBusAttribute(17, 1),
+    }
+
     # Map modbus register revision number to the corresponding PasdRegisterInfo
     _FNDH_REGISTER_MAPS: Final = {
         1: PasdBusRegisterInfo(
@@ -563,6 +573,17 @@ class PasdBusRegisterMap:
             first_extra_sensor_register=23,
             number_of_ports=12,
             starting_port_register=35,
+        )
+    }
+    _FNCC_REGISTER_MAPS: Final = {
+        1: PasdBusRegisterInfo(
+            _FNCC_REGISTER_MAP_V1,
+            number_of_sensors=0,
+            first_sensor_register=0,
+            number_of_extra_sensors=0,
+            first_extra_sensor_register=0,
+            number_of_ports=0,
+            starting_port_register=0,
         )
     }
 
@@ -593,8 +614,10 @@ class PasdBusRegisterMap:
         self._revision_number = value
 
     def _get_register_info(self, device_id: int) -> PasdBusRegisterInfo:
-        if device_id == 0:
+        if device_id == PasdData.FNDH_DEVICE_ID:
             return self._FNDH_REGISTER_MAPS[self.revision_number]
+        if device_id == PasdData.FNCC_DEVICE_ID:
+            return self._FNCC_REGISTER_MAPS[self.revision_number]
         return self._SMARTBOX_REGISTER_MAPS[self.revision_number]
 
     def get_writeable_attribute(
@@ -761,6 +784,12 @@ class PasdBusRegisterMap:
         attribute.value = 1  # Write any value to initialize the device
         return attribute
 
+    def _create_reset_status_command(self, device_id: int) -> PasdBusAttribute:
+        attribute_map = self._get_register_info(device_id).register_map
+        attribute = PasdBusAttribute(attribute_map[self.STATUS].address, 1)
+        attribute.value = 1  # Write any value to reset the STATUS register
+        return attribute
+
     def _create_port_powers_command(
         self, device_id: int, arguments: Sequence[Any]
     ) -> PasdBusAttribute:
@@ -907,6 +936,8 @@ class PasdBusRegisterMap:
             attribute = self._create_low_pass_filter_command(device_id, arguments)
         elif command == PasdCommandStrings.INITIALIZE:
             attribute = self._create_initialize_command(device_id)
+        elif command == PasdCommandStrings.RESET_STATUS:
+            attribute = self._create_reset_status_command(device_id)
         elif command == PasdCommandStrings.RESET_ALARMS:
             attribute = self._create_reset_alarms_command(device_id)
         elif command == PasdCommandStrings.RESET_WARNINGS:

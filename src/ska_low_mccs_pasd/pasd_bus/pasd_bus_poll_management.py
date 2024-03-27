@@ -33,6 +33,23 @@ def fndh_read_request_iterator() -> Iterator[str]:
         yield "ALARM_FLAGS"
 
 
+def fncc_read_request_iterator() -> Iterator[str]:
+    """
+    Return an iterator that says what attributes should be read next on the FNCC.
+
+    It starts by reading static information attributes
+    and then loops forever to read the status.
+
+    :yields: the name of an attribute group to be read from the device.
+    """
+    yield "INFO"
+    # Delay starting the status loop until all other info has been read
+    for _ in range(6):
+        yield ""
+    while True:
+        yield "STATUS"
+
+
 def smartbox_read_request_iterator() -> Iterator[str]:
     """
     Return an iterator that says what attributes should be read next on a smartbox.
@@ -84,6 +101,7 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         self._low_pass_filter_block_2_requested: tuple[float, bool] | None = None
         self._alarm_reset_requested: bool = False
         self._warning_reset_requested: bool = False
+        self._status_reset_requested: bool = False
         self._port_power_changes: list[tuple[bool, bool] | None] = [
             None
         ] * number_of_ports
@@ -113,6 +131,10 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
     def desire_warning_reset(self) -> None:
         """Register a request to reset the warning state."""
         self._warning_reset_requested = True
+
+    def desire_status_reset(self) -> None:
+        """Register a request to reset the status register."""
+        self._status_reset_requested = True
 
     def desire_port_powers(
         self,
@@ -221,6 +243,10 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
             self._ports_status_update_request = True
             return "SET_PORT_POWERS", requested_powers
 
+        if self._status_reset_requested:
+            self._status_reset_requested = False
+            return "RESET_STATUS", None
+
         return "NONE", None
 
     def get_read(self) -> str:
@@ -276,32 +302,42 @@ class PasdBusRequestProvider:
         self._min_ticks = min_ticks
         self._logger = logger
 
+        # Instantiate ticks dict in the order the devices will be polled:
+        # First FNDH, then FNCC, then all Smartboxes
         self._ticks = {
-            device_number: self._min_ticks
-            for device_number in range(PasdData.NUMBER_OF_SMARTBOXES + 1)
+            PasdData.FNDH_DEVICE_ID: min_ticks,
+            PasdData.FNCC_DEVICE_ID: min_ticks,
         }
+        self._ticks.update(
+            {
+                device_number: self._min_ticks
+                for device_number in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
+            }
+        )
 
         fndh_request_provider = DeviceRequestProvider(
             PasdData.NUMBER_OF_FNDH_PORTS, fndh_read_request_iterator, logger
         )
-        smartbox_request_providers = [
-            DeviceRequestProvider(
+        fncc_request_provider = DeviceRequestProvider(
+            0, fncc_read_request_iterator, logger
+        )
+        self._device_request_providers: dict[int, DeviceRequestProvider] = {
+            smartbox_id: DeviceRequestProvider(
                 PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 smartbox_read_request_iterator,
                 logger,
             )
-            for _ in range(PasdData.NUMBER_OF_SMARTBOXES)
-        ]
-        self._device_request_providers = [
-            fndh_request_provider
-        ] + smartbox_request_providers
+            for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
+        }
+        self._device_request_providers[PasdData.FNDH_DEVICE_ID] = fndh_request_provider
+        self._device_request_providers[PasdData.FNCC_DEVICE_ID] = fncc_request_provider
 
     def desire_read_startup_info(self, device_id: int) -> None:
         """
         Register a request to read the information usually just read at startup.
 
         :param device_id: the device number.
-            This is 0 for the FNDH, otherwise a smartbox number.
+            This is 0 for the FNDH and 100 for the FNCC, otherwise a smartbox number.
         """
         self._device_request_providers[device_id].desire_read_startup_info()
 
@@ -344,6 +380,14 @@ class PasdBusRequestProvider:
             This is 0 for the FNDH, otherwise a smartbox number.
         """
         self._device_request_providers[device_id].desire_warning_reset()
+
+    def desire_status_reset(self, device_id: int) -> None:
+        """
+        Register a request to reset the FNCC status register.
+
+        :param device_id: the device number.
+        """
+        self._device_request_providers[device_id].desire_status_reset()
 
     def desire_port_powers(
         self,
@@ -405,7 +449,7 @@ class PasdBusRequestProvider:
             cutoff, extra_sensors
         )
 
-    def get_request(self) -> tuple[int, str, Any] | None:
+    def get_request(self) -> tuple[int, str, Any] | None:  # noqa: C901
         """
         Get a description of the next communication with the PaSD bus.
 
@@ -442,12 +486,19 @@ class PasdBusRequestProvider:
                 return device_id, *expedited_read_request
 
         # No outstanding reads/writes remaining, so cycle through the polling list.
+        fncc_skip = False
         for device_id, tick in self._ticks.items():
             if tick < self._min_ticks:
                 break
             read_request = self._device_request_providers[device_id].get_read()
+            if read_request == "":
+                fncc_skip = True
+                continue
             del self._ticks[device_id]  # see comment above
             self._ticks[device_id] = 0
+            if fncc_skip:
+                del self._ticks[PasdData.FNCC_DEVICE_ID]
+                self._ticks[PasdData.FNCC_DEVICE_ID] = 0
             return device_id, read_request, None
 
         return None
