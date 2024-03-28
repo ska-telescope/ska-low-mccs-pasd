@@ -613,7 +613,7 @@
       "_id": "655641f5f195b900192d6af0",
       "name": "SmartboxNo",
       "class": "MccsSmartbox",
-      "device": "low-mccs/smartbox/ci-1-01"
+      "device": "low-mccs/smartbox/ci-1-sb01"
     }
   ]
 }

@@ -6,43 +6,40 @@
 {{- $pasdbus_instances := dict}}
 {{- $pasdbus_simulators := dict}}
 
-{{- range $station_cluster_id, $station_cluster_spec := $platform.array.station_clusters}}
-  {{- range $station_id, $station_spec := $station_cluster_spec.stations}}
-    {{- $station_enabled := dig "enabled" true $station_spec}}
+{{- range $station_name, $station_spec := $platform.array.stations}}
+  {{- $station_enabled := dig "enabled" true $station_spec}}
 
-    {{- $pasd_spec := dig "pasd" (dict "enabled" false) $station_spec}}
-    {{- $pasd_enabled := dig "enabled" $station_enabled $pasd_spec}}
+  {{- $pasd_spec := dig "pasd" (dict "enabled" false) $station_spec}}
+  {{- $pasd_enabled := dig "enabled" $station_enabled $pasd_spec}}
 
-    {{- $pasdbus_spec := dig "fndh" "gateway" (dict "enabled" false) $pasd_spec}}
-    {{- $pasdbus_enabled := dig "enabled" $pasd_enabled $pasdbus_spec}}
+  {{- $pasdbus_spec := dig "fndh" "gateway" (dict "enabled" false) $pasd_spec}}
+  {{- $pasdbus_enabled := dig "enabled" $pasd_enabled $pasdbus_spec}}
 
-    {{- if $pasdbus_enabled}}
-      {{- $station_name := dig "name" (printf "%s-%s" $station_cluster_id $station_id) $station_spec}}
-      {{- $pasdbus_name := printf "low-mccs/pasdbus/%s" $station_name}}
-      {{- $pasdbus_host := $pasdbus_spec.host}}
-      {{- $pasdbus_port := $pasdbus_spec.port}}
+  {{- if $pasdbus_enabled}}
+    {{- $pasdbus_name := printf "low-mccs/pasdbus/%s" $station_name}}
+    {{- $pasdbus_host := $pasdbus_spec.host}}
+    {{- $pasdbus_port := $pasdbus_spec.port}}
 
-      {{- $pasdbus_instance := pick $pasdbus_spec "timeout" "polling_rate" "device_polling_rate" "low_pass_filter_cutoff"}}
+    {{- $pasdbus_instance := pick $pasdbus_spec "timeout" "polling_rate" "device_polling_rate" "low_pass_filter_cutoff"}}
 
-      {{- $pasdbus_logging_level_defaults := pluck "logging_level_default" $pasdbus_spec $defaults}}
-      {{- if $pasdbus_logging_level_defaults}}
-        {{- $_ := set $pasdbus_instance "logging_level_default" (first $pasdbus_logging_level_defaults)}}
-      {{- end }}
+    {{- $pasdbus_logging_level_defaults := pluck "logging_level_default" $pasdbus_spec $defaults}}
+    {{- if $pasdbus_logging_level_defaults}}
+      {{- $_ := set $pasdbus_instance "logging_level_default" (first $pasdbus_logging_level_defaults)}}
+    {{- end }}
 
-      {{- $pasdbus_simulated := dig "simulated" false $pasdbus_spec}}
-      {{- if $pasdbus_simulated}}
-        {{- $pasdbus_host = printf "pasd-simulator-%s" $station_name}}
-        {{- $configuration_host := printf "pasd-configuration-service-%s" $station_name}}
-        {{- $pasdbus_simulator := dict "host" $pasdbus_host "port" $pasdbus_port "configuration_host" $configuration_host "configuration_port" 50034}}
+    {{- $pasdbus_simulated := dig "simulated" false $pasdbus_spec}}
+    {{- if $pasdbus_simulated}}
+      {{- $pasdbus_host = printf "pasd-simulator-%s" $station_name}}
+      {{- $configuration_host := printf "pasd-configuration-service-%s" $station_name}}
+      {{- $pasdbus_simulator := dict "host" $pasdbus_host "port" $pasdbus_port "configuration_host" $configuration_host "configuration_port" 50034}}
 
-        {{- $_ := set $pasdbus_simulators $station_name $pasdbus_simulator}}
-        {{- $_ := set $pasdbus_instance "simulation_config" 1}}
-      {{- end }}
+      {{- $_ := set $pasdbus_simulators $station_name $pasdbus_simulator}}
+      {{- $_ := set $pasdbus_instance "simulation_config" 1}}
+    {{- end }}
 
-      {{- $_ := set $pasdbus_instance "host" $pasdbus_host}}
-      {{- $_ := set $pasdbus_instance "port" $pasdbus_port}}
-      {{- $_ := set $pasdbus_instances $station_name (dict $pasdbus_name $pasdbus_instance)}}
-    {{- end}}
+    {{- $_ := set $pasdbus_instance "host" $pasdbus_host}}
+    {{- $_ := set $pasdbus_instance "port" $pasdbus_port}}
+    {{- $_ := set $pasdbus_instances $station_name (dict $pasdbus_name $pasdbus_instance)}}
   {{- end}}
 {{- end}}
 

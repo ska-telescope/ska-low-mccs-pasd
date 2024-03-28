@@ -3,8 +3,8 @@ Define the deployment for MccsSmartbox devices.
 
   deviceServers:
     smartboxes:
-      s8-1-01:
-        low-mccs/smartbox/s8-1-01:
+      s8-1-sb01:
+        low-mccs/smartbox/s8-1-sb01:
           pasdbus_name: "low-mccs/pasdbus/s8-1"
           fndh_name: "low-mccs/fndh/s8-1"
           smartbox_number: 1

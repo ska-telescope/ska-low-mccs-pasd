@@ -7,30 +7,30 @@ Define the deployment for MccsFieldStation devices.
         low-mccs/fieldstation/s8-1:
           fndh_name: low-mccs/fndh/s8-1
           smartbox_names:
-            - low-mccs/smartbox/s8-1-01
-            - low-mccs/smartbox/s8-1-02
-            - low-mccs/smartbox/s8-1-03
-            - low-mccs/smartbox/s8-1-04
-            - low-mccs/smartbox/s8-1-05
-            - low-mccs/smartbox/s8-1-06
-            - low-mccs/smartbox/s8-1-07
-            - low-mccs/smartbox/s8-1-08
-            - low-mccs/smartbox/s8-1-09
-            - low-mccs/smartbox/s8-1-10
-            - low-mccs/smartbox/s8-1-11
-            - low-mccs/smartbox/s8-1-12
-            - low-mccs/smartbox/s8-1-13
-            - low-mccs/smartbox/s8-1-14
-            - low-mccs/smartbox/s8-1-15
-            - low-mccs/smartbox/s8-1-16
-            - low-mccs/smartbox/s8-1-17
-            - low-mccs/smartbox/s8-1-18
-            - low-mccs/smartbox/s8-1-19
-            - low-mccs/smartbox/s8-1-20
-            - low-mccs/smartbox/s8-1-21
-            - low-mccs/smartbox/s8-1-22
-            - low-mccs/smartbox/s8-1-23
-            - low-mccs/smartbox/s8-1-24
+            - low-mccs/smartbox/s8-1-sb01
+            - low-mccs/smartbox/s8-1-sb02
+            - low-mccs/smartbox/s8-1-sb03
+            - low-mccs/smartbox/s8-1-sb04
+            - low-mccs/smartbox/s8-1-sb05
+            - low-mccs/smartbox/s8-1-sb06
+            - low-mccs/smartbox/s8-1-sb07
+            - low-mccs/smartbox/s8-1-sb08
+            - low-mccs/smartbox/s8-1-sb09
+            - low-mccs/smartbox/s8-1-sb10
+            - low-mccs/smartbox/s8-1-sb11
+            - low-mccs/smartbox/s8-1-sb12
+            - low-mccs/smartbox/s8-1-sb13
+            - low-mccs/smartbox/s8-1-sb14
+            - low-mccs/smartbox/s8-1-sb15
+            - low-mccs/smartbox/s8-1-sb16
+            - low-mccs/smartbox/s8-1-sb17
+            - low-mccs/smartbox/s8-1-sb18
+            - low-mccs/smartbox/s8-1-sb19
+            - low-mccs/smartbox/s8-1-sb20
+            - low-mccs/smartbox/s8-1-sb21
+            - low-mccs/smartbox/s8-1-sb22
+            - low-mccs/smartbox/s8-1-sb23
+            - low-mccs/smartbox/s8-1-sb24
           logging_level_default: 5
 
 */}}
@@ -63,7 +63,7 @@ server:
                     - {{quote $this_fieldstation.configuration_port}}
                 - name: "StationName"
                   values: 
-                    - {{$server_key}}
+                    - {{quote $server_key}}
                 - name: "FndhFQDN"
                   values: 
                     - {{quote $this_fieldstation.fndh_name}}
