@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 import logging
+import math
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Final, Optional
 
@@ -220,7 +222,9 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._pasd_bus_device_state_callback = pasd_device_state_callback
 
         self._min_ticks = int(device_polling_rate / polling_rate)
+        self._polling_rate = polling_rate
         self._request_provider: PasdBusRequestProvider | None = None
+        self._last_request_timestamp: float = 0
 
         super().__init__(
             logger,
@@ -303,7 +307,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """
         Return the action/s to be taken in the next poll.
 
-        :raises AssertionError: if an unrecognosed poll option is
+        :raises AssertionError: if an unrecognised poll option is
             returned by the provider
 
         :return: attributes to be read and commands to be executed in
@@ -315,7 +319,22 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         stay_on_when_offline: bool  # for the type checker
         is_on: bool  # for the type checker
 
-        request_spec = self._request_provider.get_request()
+        # If the last request took a long time (e.g. due to a timeout),
+        # we need to inform the request manager to increment the
+        # ticks accordingly
+        timestamp = time.time()
+        if (
+            self._last_request_timestamp != 0
+            and (elapsed_time := timestamp - self._last_request_timestamp)
+            > self._polling_rate
+        ):
+            request_spec = self._request_provider.get_request(
+                math.floor(elapsed_time / self._polling_rate)
+            )
+        else:
+            request_spec = self._request_provider.get_request(1)
+        self._last_request_timestamp = timestamp
+
         if request_spec is None:
             return None
         match request_spec:

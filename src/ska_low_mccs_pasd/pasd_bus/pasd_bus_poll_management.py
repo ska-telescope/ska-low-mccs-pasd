@@ -449,15 +449,20 @@ class PasdBusRequestProvider:
             cutoff, extra_sensors
         )
 
-    def get_request(self) -> tuple[int, str, Any] | None:  # noqa: C901
+    def get_request(  # noqa: C901
+        self, tick_increment: int
+    ) -> tuple[int, str, Any] | None:
         """
         Get a description of the next communication with the PaSD bus.
 
+        :param tick_increment: the number of ticks to increment by.
+            This is usually 1, but can be higher if more than the usual
+            polling period has elapsed since the last request.
         :return: a tuple consisting of the name of the communication
             and any arguments or extra information.
         """
         for device_id, tick in self._ticks.items():
-            self._ticks[device_id] = tick + 1
+            self._ticks[device_id] = tick + tick_increment
 
         for device_id, tick in self._ticks.items():
             if tick < self._min_ticks:
