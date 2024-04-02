@@ -175,7 +175,7 @@ def set_smartbox_off(
     for smartbox_proxy in smartboxes_under_test:
         if (
             smartbox_proxy.dev_name()
-            == f"low-mccs/smartbox/{station_label}-{int(smartbox_id):02}"
+            == f"low-mccs/smartbox/{station_label}-sb{int(smartbox_id):02}"
         ):
             desired_tango_state = state_mapping[desired_state]
             if smartbox_proxy.state() != tango.DevState.OFF:

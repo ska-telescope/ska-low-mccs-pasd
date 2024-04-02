@@ -17,6 +17,7 @@ import unittest.mock
 import pytest
 import yaml
 
+from ska_low_mccs_pasd import PasdData
 from ska_low_mccs_pasd.pasd_bus import PasdBusSimulator, PasdHardwareSimulator
 
 
@@ -80,6 +81,21 @@ def fndh_simulator_fixture(
     return pasd_bus_simulator.get_fndh()
 
 
+@pytest.fixture(name="fncc_simulator")
+def fncc_simulator_fixture(
+    pasd_bus_simulator: PasdBusSimulator,
+) -> PasdHardwareSimulator:
+    """
+    Return an FNCC simulator.
+
+    :param pasd_bus_simulator: a real PaSD bus simulator whose FNCC
+        simulator is to be returned.
+
+    :return: an FNDH simulator
+    """
+    return pasd_bus_simulator.get_fncc()
+
+
 @pytest.fixture(name="smartbox_attached_ports")
 def smartbox_attached_ports_fixture(
     pasd_bus_simulator: PasdBusSimulator,
@@ -112,7 +128,7 @@ def pasd_hw_simulators_fixture(
     fndh_simulator.initialize()
     for port_nr in smartbox_attached_ports:
         fndh_simulator.turn_port_on(port_nr)
-    return pasd_bus_simulator.get_fndh_and_smartboxes()
+    return pasd_bus_simulator.get_all_devices()
 
 
 @pytest.fixture(name="mock_pasd_hw_simulators")
@@ -127,7 +143,8 @@ def mock_pasd_hw_simulators_fixture(
     but we can access it as a mock too, for example assert calls.
 
     :param pasd_hw_simulators:
-        the FNDH and smartbox simulator backends that the TCP server will front.
+        the FNDH, FNCC and smartbox simulator backends that the
+        TCP server will front.
 
     :return: a sequence of mock smartbox simulators
     """
@@ -146,7 +163,7 @@ def mock_pasd_hw_simulators_fixture(
 
         # "wraps" doesn't handle properties -- we have to add them manually
         property_name: str
-        if sim_id == 0:
+        if sim_id == PasdData.FNDH_DEVICE_ID:
             for property_name in [
                 "port_forcings",
                 "ports_desired_power_when_online",
@@ -180,6 +197,26 @@ def mock_pasd_hw_simulators_fixture(
                 "internal_ambient_temperature_thresholds",
                 "warning_flags",
                 "alarm_flags",
+                "modbus_register_map_revision",
+                "pcb_revision",
+                "cpu_id",
+                "chip_id",
+                "firmware_version",
+                "uptime",
+                "status",
+            ]:
+                side_effect_partial = functools.partial(
+                    side_effect, simulator, property_name
+                )
+                setattr(
+                    type(mock_simulator),
+                    property_name,
+                    unittest.mock.PropertyMock(side_effect=side_effect_partial),
+                )
+        elif sim_id == PasdData.FNCC_DEVICE_ID:
+            for property_name in [
+                "sys_address",
+                "field_node_number",
                 "modbus_register_map_revision",
                 "pcb_revision",
                 "cpu_id",

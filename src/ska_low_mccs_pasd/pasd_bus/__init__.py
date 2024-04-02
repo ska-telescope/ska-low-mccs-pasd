@@ -18,6 +18,7 @@ __all__ = [
     "MccsPasdBus",
     "PasdHardwareSimulator",
     "FndhSimulator",
+    "FnccSimulator",
     "SmartboxSimulator",
 ]
 
@@ -26,6 +27,7 @@ from .pasd_bus_device import MccsPasdBus
 from .pasd_bus_health_model import PasdBusHealthModel
 from .pasd_bus_modbus_api import PasdBusModbusApi, PasdBusModbusApiClient
 from .pasd_bus_simulator import (
+    FnccSimulator,
     FndhSimulator,
     PasdBusSimulator,
     PasdHardwareSimulator,

@@ -116,7 +116,7 @@ def main() -> None:
         smartboxes_depend_on_attached_ports=True,
         time_multiplier=time_multiplier,
     )
-    pasd_hw_simulators = pasd_bus_simulator.get_fndh_and_smartboxes()
+    pasd_hw_simulators = pasd_bus_simulator.get_all_devices()
     simulator_server = PasdBusSimulatorModbusServer(pasd_hw_simulators)
     server = TcpServer(host, port, simulator_server)
     with server:

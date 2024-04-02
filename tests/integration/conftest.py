@@ -70,6 +70,21 @@ def fndh_simulator_fixture(
     return pasd_bus_simulator.get_fndh()
 
 
+@pytest.fixture(name="fncc_simulator")
+def fncc_simulator_fixture(
+    pasd_bus_simulator: PasdBusSimulator,
+) -> PasdHardwareSimulator:
+    """
+    Return an FNCC simulator.
+
+    :param pasd_bus_simulator: a real PaSD bus simulator whose FNCC
+        simulator is to be returned.
+
+    :return: an FNCC simulator
+    """
+    return pasd_bus_simulator.get_fncc()
+
+
 @pytest.fixture(name="smartbox_attached_ports")
 def smartbox_attached_ports_fixture(
     pasd_bus_simulator: PasdBusSimulator,
@@ -105,7 +120,7 @@ def pasd_hw_simulators_fixture(
     for port_nr in smartbox_attached_ports:
         fndh_simulator.turn_port_on(port_nr)
     fndh_simulator.turn_port_off(smartbox_attached_ports[off_smartbox_id - 1])
-    return pasd_bus_simulator.get_fndh_and_smartboxes()
+    return pasd_bus_simulator.get_all_devices()
 
 
 @pytest.fixture(name="smartbox_simulator")
@@ -214,6 +229,7 @@ def test_context_fixture(
     harness.set_pasd_bus_simulator(pasd_hw_simulators)
     harness.set_pasd_bus_device(polling_rate=0.05, device_polling_rate=0.1)
     harness.set_fndh_device()
+    harness.set_fncc_device()
 
     for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
         harness.add_smartbox_device(smartbox_id)
@@ -252,6 +268,20 @@ def fndh_device_fixture(
     :yield: the FNDH Tango device under test.
     """
     yield test_context.get_fndh_device()
+
+
+@pytest.fixture(name="fncc_device")
+def fncc_device_fixture(
+    test_context: PasdTangoTestHarnessContext,
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns the FNCC Tango device under test.
+
+    :param test_context: context in which the integration tests will run.
+
+    :yield: the FNCC Tango device under test.
+    """
+    yield test_context.get_fncc_device()
 
 
 @pytest.fixture(name="field_station_device")

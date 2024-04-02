@@ -26,6 +26,17 @@ class FndhStatusMap(IntEnum):
     # then go through full powerup sequence
 
 
+class FnccStatusMap(IntEnum):
+    """Enum type for FNCC health status strings."""
+
+    UNDEFINED = -1  # We should never receive an undefined status
+    OK = 0  # Normal operation, comms links are open
+    RESET = 1  # WIZNet converter being reset
+    FRAME_ERROR = 2  # UART3 framing error
+    MODBUS_STUCK = 3  # Smartbox receive line held low too long
+    FRAME_ERROR_MODBUS_STUCK = 4  # Both error 2 and 3 have occurred
+
+
 class SmartboxStatusMap(IntEnum):
     """Enum type for SmartBox health status strings."""
 
@@ -336,6 +347,33 @@ class PasdConversionUtility:
         except ValueError:
             logger.error(f"Invalid FNDH status value received: {value_list[0]}")
             return [FndhStatusMap.UNDEFINED.name]
+
+    @classmethod
+    def convert_fncc_status(
+        cls,
+        value_list: list,
+        inverse: bool = False,
+    ) -> list:
+        """
+        Convert the raw register value to a string status.
+
+        :param value_list: raw register contents
+
+        :param inverse: Boolean, True to perform physical->raw conversion
+            instead of raw->physical
+
+        :return: string status representation
+        """
+        try:
+            if inverse:
+                return [
+                    FnccStatusMap[v].value if isinstance(v, str) else v.value
+                    for v in value_list
+                ]
+            return [FnccStatusMap(value_list[0]).name]
+        except ValueError:
+            logger.error(f"Invalid FNCC status value received: {value_list[0]}")
+            return [FnccStatusMap.UNDEFINED.name]
 
     @classmethod
     def convert_smartbox_status(

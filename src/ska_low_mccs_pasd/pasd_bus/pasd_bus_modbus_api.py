@@ -27,6 +27,8 @@ from pymodbus.register_write_message import (
     WriteSingleRegisterRequest,
 )
 
+from ska_low_mccs_pasd.pasd_data import PasdData
+
 from .pasd_bus_register_map import (
     PasdBusAttribute,
     PasdBusPortAttribute,
@@ -35,6 +37,7 @@ from .pasd_bus_register_map import (
 )
 
 FNDH_MODBUS_ADDRESS: Final = 101
+FNCC_MODBUS_ADDRESS: Final = 100
 
 # Modbus Function/Exception Codes implemented in PaSD firmware
 MODBUS_FUNCTIONS: Final = {
@@ -57,7 +60,7 @@ class PasdBusModbusApi:
         """
         Initialise a new instance.
 
-        :param simulators: dictionary of simulators (FNDH and smartbox)
+        :param simulators: dictionary of simulators (FNDH, FNCC and smartbox)
             that this API fronts.
         :param logger: the logger to use
 
@@ -197,6 +200,14 @@ class PasdBusModbusApi:
             slave=message.slave_id,
         )
 
+    def _get_device_id(self, modbus_address: int) -> int:
+        if modbus_address == FNDH_MODBUS_ADDRESS:
+            return PasdData.FNDH_DEVICE_ID
+        if modbus_address == FNCC_MODBUS_ADDRESS:
+            return PasdData.FNCC_DEVICE_ID
+        # Smartbox Modbus addresses are the same as their device ids
+        return modbus_address
+
     def _handle_modbus(self, modbus_request_str: bytes) -> bytes:
         response: (
             ReadHoldingRegistersResponse
@@ -207,9 +218,7 @@ class PasdBusModbusApi:
 
         def handle_request(message: Any) -> None:
             nonlocal response
-            device_id = (
-                0 if message.slave_id == FNDH_MODBUS_ADDRESS else message.slave_id
-            )
+            device_id = self._get_device_id(message.slave_id)
             match message:
                 case ReadHoldingRegistersRequest():
                     filtered_register_map = (
@@ -352,10 +361,16 @@ class PasdBusModbusApiClient:
             "timestamp": datetime.utcnow().isoformat(),
         }
 
+    def _get_modbus_address(self, device_id: int) -> int:
+        if device_id == PasdData.FNDH_DEVICE_ID:
+            return FNDH_MODBUS_ADDRESS
+        if device_id == PasdData.FNCC_DEVICE_ID:
+            return FNCC_MODBUS_ADDRESS
+        # Smartbox Modbus addresses are the same as their device ids
+        return device_id
+
     def _do_read_request(self, request: dict) -> dict:
-        modbus_address = (
-            FNDH_MODBUS_ADDRESS if request["device_id"] == 0 else request["device_id"]
-        )
+        modbus_address = self._get_modbus_address(request["device_id"])
 
         # Get a dictionary mapping the requested attribute names to
         # PasdBusAttributes
@@ -494,9 +509,7 @@ class PasdBusModbusApiClient:
         return response
 
     def _do_write_request(self, request: dict) -> dict:
-        modbus_address = (
-            FNDH_MODBUS_ADDRESS if request["device_id"] == 0 else request["device_id"]
-        )
+        modbus_address = self._get_modbus_address(request["device_id"])
 
         # Get a PasdBusAttribute object for this request
         try:
@@ -511,9 +524,7 @@ class PasdBusModbusApiClient:
         return self._write_registers(modbus_address, attribute.address, attribute.value)
 
     def _do_command_request(self, request: dict) -> dict:
-        modbus_address = (
-            FNDH_MODBUS_ADDRESS if request["device_id"] == 0 else request["device_id"]
-        )
+        modbus_address = self._get_modbus_address(request["device_id"])
 
         # Get a PasdBusCommand object for this command
         try:

@@ -18,10 +18,10 @@ __all__ = ["PasdData"]
 class PasdData:  # pylint: disable=too-few-public-methods
     """This class contain data/facts about PaSD that are needed by multiple classes."""
 
-    NUMBER_OF_SMARTBOXES = 24
+    NUMBER_OF_SMARTBOXES: Final = 24
     """The number of smartboxes in a Station."""
 
-    NUMBER_OF_ANTENNAS = 256
+    NUMBER_OF_ANTENNAS: Final = 256
     """The number of antenna in a Station."""
 
     NUMBER_OF_SMARTBOX_PORTS: Final = 12
@@ -29,3 +29,9 @@ class PasdData:  # pylint: disable=too-few-public-methods
 
     NUMBER_OF_FNDH_PORTS: Final = 28
     """The number of ports on a FNDH instance."""
+
+    FNDH_DEVICE_ID: Final = 0
+    """The device identifier for an FNDH"""
+
+    FNCC_DEVICE_ID: Final = 100
+    """The device identifier for an FNCC"""

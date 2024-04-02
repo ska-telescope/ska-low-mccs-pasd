@@ -246,7 +246,7 @@ For example:
          low-mccs/fieldstation/ci-1:
            fndh_name: low-mccs/fndh/ci-1
            smartbox_names:
-           - low-mccs/smartbox/ci-1-01
+           - low-mccs/smartbox/ci-1-sb01
            logging_level_default: 5
      fndhs:
        ci-1:
@@ -254,8 +254,8 @@ For example:
            pasdbus_name: low-mccs/pasdbus/ci-1
            logging_level_default: 5
      smartboxes:
-       ci-1-01:
-         low-mccs/smartbox/ci-1-01:
+       ci-1-sb01:
+         low-mccs/smartbox/ci-1-sb01:
            smartbox_number: 1
            fndh_name: low-mccs/fndh/ci-1
            fndh_port: 1

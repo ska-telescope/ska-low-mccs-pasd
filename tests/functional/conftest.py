@@ -181,7 +181,7 @@ def smartboxes_under_test_fixture(
         db = tango.Database()
         devices_exported = db.get_device_exported("*")
         for device_name in devices_exported:
-            if f"low-mccs/smartbox/{station_label}" in device_name:
+            if f"low-mccs/smartbox/{station_label}-sb" in device_name:
                 smartbox_proxy = tango.DeviceProxy(device_name)
                 smartboxes_under_test.append(smartbox_proxy)
 
@@ -232,7 +232,7 @@ def functional_test_context_fixture(  # pylint: disable=too-many-arguments
                 station_label,
                 smartboxes_depend_on_attached_ports=True,
             )
-            pasd_hw_simulators = pasd_bus_simulator.get_fndh_and_smartboxes()
+            pasd_hw_simulators = pasd_bus_simulator.get_all_devices()
             # Set devices for test harness
             harness.set_pasd_bus_simulator(pasd_hw_simulators)
             harness.set_configuration_server(configuration_manager)
@@ -246,6 +246,7 @@ def functional_test_context_fixture(  # pylint: disable=too-many-arguments
             for smartbox_id in smartbox_ids:
                 harness.add_smartbox_device(smartbox_id=smartbox_id)
             harness.set_fndh_device()
+            harness.set_fncc_device()
             harness.set_field_station_device(smartbox_numbers=smartbox_ids)
 
     with harness as context:
@@ -327,6 +328,23 @@ def fndh_device_fixture(
     yield subscribe_device_proxy(proxy)
 
 
+@pytest.fixture(name="fncc_device", scope="module")
+def fncc_device_fixture(
+    functional_test_context: PasdTangoTestHarnessContext,
+    subscribe_device_proxy: Callable,
+) -> Iterator[tango.DeviceProxy]:
+    """
+    Return a DeviceProxy to an instance of MccsFNCC.
+
+    :param functional_test_context: context in which the functional tests run.
+    :param subscribe_device_proxy: cached fixture for setting up device proxy.
+
+    :yields: A proxy to an instance of MccsFNCC.
+    """
+    proxy = functional_test_context.get_fncc_device()
+    yield subscribe_device_proxy(proxy)
+
+
 @pytest.fixture(name="device_mapping", scope="module")
 def device_mapping_fixture(
     functional_test_context: PasdTangoTestHarnessContext,
@@ -340,6 +358,7 @@ def device_mapping_fixture(
     """
     device_dict = {
         "MccsFndh": functional_test_context.get_fndh_device(),
+        "MccsFncc": functional_test_context.get_fncc_device(),
         "MCCS-for-PaSD": functional_test_context.get_pasd_bus_device(),
         "MccsFieldStation": functional_test_context.get_field_station_device(),
     }
@@ -390,6 +409,7 @@ def device_subscriptions_fixture() -> dict[str, list[str]]:
             "fndhPortsDesiredPowerOffline",
             "fndhPortsPowerSensed",
             "fndhPortsPowerControl",
+            "fnccStatus",
             "smartbox1Uptime",
             "smartbox1Status",
             "smartbox1LedPattern",

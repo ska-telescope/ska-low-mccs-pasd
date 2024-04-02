@@ -1,0 +1,34 @@
+{{- /* Configure the FNCC Tango devices. */}}
+{{- $overrides := .Values | get "overrides" dict}}
+{{- $platform := mergeOverwrite .Values.platform $overrides}}
+{{- $defaults := .Values.defaults}}
+
+{{- $fncc_instances := dict}}
+
+{{- range $station_name, $station_spec := $platform.array.stations}}
+  {{- $station_enabled := dig "enabled" true $station_spec}}
+
+  {{- $pasd_spec := dig "pasd" (dict "enabled" false) $station_spec}}
+  {{- $pasd_enabled := dig "enabled" $station_enabled $pasd_spec}}
+
+  {{- $fncc_spec := dig "fncc" "controller" (dict "enabled" false) $pasd_spec}}
+  {{- $fncc_enabled := dig "enabled" $pasd_enabled $fncc_spec}}
+
+  {{- if $fncc_enabled}}
+    {{- $fncc_name := printf "low-mccs/fncc/%s" $station_name}}
+    {{- $fncc_instance := dict "pasdbus_name" (printf "low-mccs/pasdbus/%s" $station_name)}}
+
+    {{- $fncc_logging_level_defaults := pluck "logging_level_default" $fncc_spec $defaults}}
+    {{- if $fncc_logging_level_defaults}}
+      {{- $_ := set $fncc_instance "logging_level_default" (first $fncc_logging_level_defaults)}}
+    {{- end}}
+
+    {{- $_ := set $fncc_instances $station_name (dict $fncc_name $fncc_instance)}}
+  {{- end}}
+{{- end}}
+
+{{- with $fncc_instances}}
+deviceServers:
+  fnccs:
+{{toYaml . | indent 4}}
+{{- end}}

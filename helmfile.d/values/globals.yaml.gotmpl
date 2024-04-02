@@ -1,6 +1,9 @@
 {{- /* Configure global chart values. */}}
 {{- $overrides := .Values | get "overrides" dict}}
 {{- $platform := mergeOverwrite .Values.platform $overrides}}
+{{- if (not (hasPrefix "0.1." $platform.metadata.version))}}
+{{- fail (printf "Unsupported platform spec version %s" .Values.platform.metadata.version)}}
+{{- end}}
 global:
   cluster_domain: {{dig "cluster" "domain" "cluster.local" $platform}}
   minikube: {{dig "cluster" "minikube" false $platform}}
