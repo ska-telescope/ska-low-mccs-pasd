@@ -1,6 +1,4 @@
 overrides:
-  metadata:
-    version: 0.1.0
   array:
     stations:
       "ci-1":

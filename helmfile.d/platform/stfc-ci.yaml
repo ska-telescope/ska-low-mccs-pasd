@@ -3,7 +3,7 @@ platform:
     version: 0.1.0
   cluster:
     minikube: true
-    domain: cluster.local
+    domain: techops.internal.skao.int
     services:
       jupyterhub: false  # Not a platform service
       taranta-platform: false  # Not a platform service
