@@ -344,9 +344,14 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self: FieldStationComponentManager,
         smartbox_name: str,
         event_name: str,
-        event_value: list[bool],
+        event_value: list[bool] | None,
         event_quality: tango.AttrQuality,
     ) -> None:
+        if event_value is None:
+            self.logger.info(
+                "Discarding empty port power changed event for smartbox {smartbox_name}"
+            )
+            return
         if smartbox_name not in self._smartbox_name_number_map:
             self.logger.error(
                 f"An unrecognised smartbox {smartbox_name}"
