@@ -10,6 +10,7 @@
 # pylint: disable=too-many-lines
 from __future__ import annotations
 
+from math import isclose
 from typing import Any
 
 import pytest
@@ -27,6 +28,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
     FndhSimulator,
+    PasdBusSimulator,
     PasdHardwareSimulator,
     SmartboxSimulator,
 )
@@ -439,12 +441,12 @@ class TestFndhSimulator:
     @pytest.mark.parametrize(
         ("sensor_name", "simulated_value", "expected_status"),
         [
-            ("psu48v_voltages", [5300, 4800], "ALARM"),
+            ("psu48v_voltages", [5500, 4800], "ALARM"),
             ("psu48v_voltages", [4800, 5100], "WARNING"),
             ("psu48v_voltages", [4800, 4800], "OK"),
-            ("psu48v_voltages", [4400, 4800], "WARNING"),
-            ("psu48v_voltages", [4800, 3900], "ALARM"),
-            ("psu48v_temperatures", [10100, 6000], "ALARM"),
+            ("psu48v_voltages", [4250, 4800], "WARNING"),
+            ("psu48v_voltages", [4800, 3700], "ALARM"),
+            ("psu48v_temperatures", [11000, 6000], "ALARM"),
             ("psu48v_temperatures", [6000, 8600], "WARNING"),
             ("psu48v_temperatures", [6000, 6000], "OK"),
             ("psu48v_temperatures", [-100, 6000], "WARNING"),
@@ -490,7 +492,7 @@ class TestFndhSimulator:
         self: TestFndhSimulator,
         fndh_simulator: FndhSimulator,
         sensor_name: str,
-        simulated_value: float,
+        simulated_value: float | list[float],
         expected_status: str,
     ) -> None:
         """
@@ -504,11 +506,17 @@ class TestFndhSimulator:
         :param simulated_value: value to set the sensor to.
         :param expected_status: the expected status of the sensor and FNDH.
         """
+        PasdBusSimulator.set_global_sensor_variability(1.0)
         assert fndh_simulator.status == FndhSimulator.DEFAULT_STATUS
         assert fndh_simulator.initialize()
         assert fndh_simulator.status == FndhStatusMap.OK
         setattr(fndh_simulator, sensor_name, simulated_value)
-        assert getattr(fndh_simulator, sensor_name) == simulated_value
+        sensor_value = getattr(fndh_simulator, sensor_name)
+        if isinstance(simulated_value, list):
+            for get_value, expected_value in zip(sensor_value, simulated_value):
+                assert isclose(get_value, expected_value, rel_tol=0.01)
+        else:
+            assert isclose(sensor_value, simulated_value, rel_tol=0.01)
         assert fndh_simulator.status == FndhStatusMap[expected_status].value
         default_value = getattr(fndh_simulator, "DEFAULT_" + sensor_name.upper())
         setattr(fndh_simulator, sensor_name, default_value)
@@ -896,14 +904,14 @@ class TestSmartboxSimulator:
         [
             ("input_voltage", 5100, "ALARM"),
             ("input_voltage", 4950, "WARNING"),
-            ("input_voltage", 4800, "OK"),
+            ("input_voltage", 4700, "OK"),
             ("input_voltage", 4400, "WARNING"),
             ("input_voltage", 3900, "ALARM"),
             ("power_supply_output_voltage", 510, "ALARM"),
-            ("power_supply_output_voltage", 490, "WARNING"),
-            ("power_supply_output_voltage", 480, "OK"),
-            ("power_supply_output_voltage", 430, "WARNING"),
-            ("power_supply_output_voltage", 390, "ALARM"),
+            ("power_supply_output_voltage", 495, "WARNING"),
+            ("power_supply_output_voltage", 465, "OK"),
+            ("power_supply_output_voltage", 420, "WARNING"),
+            ("power_supply_output_voltage", 380, "ALARM"),
             ("power_supply_temperature", 9000, "ALARM"),
             ("power_supply_temperature", 7500, "WARNING"),
             ("power_supply_temperature", 5000, "OK"),
@@ -935,7 +943,7 @@ class TestSmartboxSimulator:
         self: TestSmartboxSimulator,
         smartbox_simulator: SmartboxSimulator,
         sensor_name: str,
-        simulated_value: float,
+        simulated_value: float | list[float],
         expected_status: str,
     ) -> None:
         """
@@ -949,11 +957,18 @@ class TestSmartboxSimulator:
         :param simulated_value: value to set the sensor to.
         :param expected_status: the expected status of the sensor and smartbox.
         """
+        PasdBusSimulator.set_global_sensor_variability(1.0)
         assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
         assert smartbox_simulator.initialize()
         assert smartbox_simulator.status == SmartboxStatusMap.OK
         setattr(smartbox_simulator, sensor_name, simulated_value)
-        assert getattr(smartbox_simulator, sensor_name) == simulated_value
+        sensor_value = getattr(smartbox_simulator, sensor_name)
+        print(sensor_value)
+        if isinstance(simulated_value, list):
+            for get_value, expected_value in zip(sensor_value, simulated_value):
+                assert isclose(get_value, expected_value, rel_tol=0.01)
+        else:
+            assert isclose(sensor_value, simulated_value, rel_tol=0.01)
         assert smartbox_simulator.status == SmartboxStatusMap[expected_status].value
         default_value = getattr(smartbox_simulator, "DEFAULT_" + sensor_name.upper())
         setattr(smartbox_simulator, sensor_name, default_value)

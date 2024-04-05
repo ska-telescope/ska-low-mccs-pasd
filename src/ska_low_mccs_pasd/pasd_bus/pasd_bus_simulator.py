@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import importlib.resources
 import logging
+import random
 from abc import ABC
 from datetime import datetime
 from typing import Callable, Final, Optional, Sequence
@@ -922,8 +923,6 @@ class _Sensor:
     within the context of a FNDH/Smartbox simulator class.
     """
 
-    # pylint: disable=attribute-defined-outside-init
-
     def __set_name__(self: _Sensor, owner: PasdHardwareSimulator, name: str) -> None:
         """
         Set the name of the sensor attribute.
@@ -931,6 +930,7 @@ class _Sensor:
         :param owner: The owner object.
         :param name: The name of the object created in the instance.
         """
+        # pylint: disable=attribute-defined-outside-init
         self.name = name
 
     def __get__(
@@ -962,6 +962,46 @@ class _Sensor:
         obj._update_ports_state()
 
 
+global_sensor_variability: float | None = None
+"""
+Global variable to control sensor variability: *float | None*
+
+If not set to None, get sensor values randomly vary relative to their set value
+with this global as a percentage.
+"""
+MIN_SENSOR_VARIABILITY: Final = 0.5
+
+
+# pylint: disable=too-few-public-methods
+class _VariableSensor(_Sensor):
+    def __get__(
+        self: _Sensor, obj: PasdHardwareSimulator, objtype: type
+    ) -> None | int | list[int]:
+        """
+        Get the value of the sensor attribute from the instance.
+
+        :param obj: The instance of the class where the descriptor is being used.
+        :param objtype: The type of the instance (usually the class).
+        :returns: Sensor value stored in the instance's __dict__.
+        """
+
+        def random_variation(value: float, percent: float) -> float:
+            percentage = 100 + (
+                random.uniform(MIN_SENSOR_VARIABILITY, percent) * random.choice([-1, 1])
+            )
+            return value * percentage / 100
+
+        set_value: None | int | list[int] = obj.__dict__.get(self.name)
+        if set_value is not None and global_sensor_variability is not None:
+            if isinstance(set_value, list):
+                return [
+                    int(random_variation(value, global_sensor_variability))
+                    for value in set_value
+                ]
+            return int(random_variation(set_value, global_sensor_variability))
+        return set_value
+
+
 class FndhSimulator(PasdHardwareSimulator):
     """
     A simple simulator of a Field Node Distribution Hub.
@@ -981,15 +1021,15 @@ class FndhSimulator(PasdHardwareSimulator):
     SYS_ADDRESS: Final = FNDH_MODBUS_ADDRESS
 
     DEFAULT_FIRMWARE_VERSION: Final = 257
-    DEFAULT_PSU48V_VOLTAGES: Final = [4790, 4810]
-    DEFAULT_PSU48V_CURRENT: Final = 1510
-    DEFAULT_PSU48V_TEMPERATURES: Final = [4120, 4290]
-    DEFAULT_PANEL_TEMPERATURE: Final = 3720
-    DEFAULT_FNCB_TEMPERATURE: Final = 4150
-    DEFAULT_FNCB_HUMIDITY: Final = 5020
-    DEFAULT_COMMS_GATEWAY_TEMPERATURE: Final = 3930
-    DEFAULT_POWER_MODULE_TEMPERATURE: Final = 4580
-    DEFAULT_OUTSIDE_TEMPERATURE: Final = 3250
+    DEFAULT_PSU48V_VOLTAGES: Final = [4700, 4800]
+    DEFAULT_PSU48V_CURRENT: Final = 1500
+    DEFAULT_PSU48V_TEMPERATURES: Final = [4100, 4200]
+    DEFAULT_PANEL_TEMPERATURE: Final = 3700
+    DEFAULT_FNCB_TEMPERATURE: Final = 4100
+    DEFAULT_FNCB_HUMIDITY: Final = 5000
+    DEFAULT_COMMS_GATEWAY_TEMPERATURE: Final = 3900
+    DEFAULT_POWER_MODULE_TEMPERATURE: Final = 4500
+    DEFAULT_OUTSIDE_TEMPERATURE: Final = 3200
     DEFAULT_INTERNAL_AMBIENT_TEMPERATURE: Final = 3600
 
     ALARM_MAPPING = {
@@ -1008,35 +1048,35 @@ class FndhSimulator(PasdHardwareSimulator):
     }
 
     # Instantiate sensor data descriptors
-    psu48v_voltages = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    psu48v_voltages = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     psu48v_voltages_thresholds = _Sensor()
-    psu48v_current = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    psu48v_current = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     psu48v_current_thresholds = _Sensor()
-    psu48v_temperatures = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    psu48v_temperatures = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     psu48v_temperatures_thresholds = _Sensor()
-    panel_temperature = _Sensor()  # Not implemented in hardware?
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    panel_temperature = _VariableSensor()  # Not implemented in hardware?
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     panel_temperature_thresholds = _Sensor()
-    fncb_temperature = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    fncb_temperature = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     fncb_temperature_thresholds = _Sensor()
-    fncb_humidity = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    fncb_humidity = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     fncb_humidity_thresholds = _Sensor()
-    comms_gateway_temperature = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    comms_gateway_temperature = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     comms_gateway_temperature_thresholds = _Sensor()
-    power_module_temperature = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    power_module_temperature = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     power_module_temperature_thresholds = _Sensor()
-    outside_temperature = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    outside_temperature = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     outside_temperature_thresholds = _Sensor()
-    internal_ambient_temperature = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    internal_ambient_temperature = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     internal_ambient_temperature_thresholds = _Sensor()
 
     def __init__(
@@ -1265,13 +1305,13 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_SYS_ADDRESS: Final = 1
     DEFAULT_FIRMWARE_VERSION: Final = 258
     # Address
-    DEFAULT_INPUT_VOLTAGE: Final = 4800
-    DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE: Final = 480
-    DEFAULT_POWER_SUPPLY_TEMPERATURE: Final = 4210
-    DEFAULT_PCB_TEMPERATURE: Final = 3860  # Not implemented in hardware?
-    DEFAULT_FEM_AMBIENT_TEMPERATURE: Final = 4010
-    DEFAULT_FEM_CASE_TEMPERATURES: Final = [4440, 4460]
-    DEFAULT_FEM_HEATSINK_TEMPERATURES: Final = [4280, 4250]
+    DEFAULT_INPUT_VOLTAGE: Final = 4700
+    DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE: Final = 465
+    DEFAULT_POWER_SUPPLY_TEMPERATURE: Final = 4200
+    DEFAULT_PCB_TEMPERATURE: Final = 3800  # Not implemented in hardware?
+    DEFAULT_FEM_AMBIENT_TEMPERATURE: Final = 3200
+    DEFAULT_FEM_CASE_TEMPERATURES: Final = [3400, 3500]
+    DEFAULT_FEM_HEATSINK_TEMPERATURES: Final = [3600, 3700]
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
     DEFAULT_PORT_CURRENT_THRESHOLD: Final = 496
 
@@ -1288,26 +1328,26 @@ class SmartboxSimulator(PasdHardwareSimulator):
     }
 
     # Instantiate sensor data descriptors
-    input_voltage = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    input_voltage = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     input_voltage_thresholds = _Sensor()
-    power_supply_output_voltage = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    power_supply_output_voltage = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     power_supply_output_voltage_thresholds = _Sensor()
-    power_supply_temperature = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    power_supply_temperature = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     power_supply_temperature_thresholds = _Sensor()
-    pcb_temperature = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    pcb_temperature = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     pcb_temperature_thresholds = _Sensor()
-    fem_ambient_temperature = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    fem_ambient_temperature = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     fem_ambient_temperature_thresholds = _Sensor()
-    fem_case_temperatures = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    fem_case_temperatures = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     fem_case_temperatures_thresholds = _Sensor()
-    fem_heatsink_temperatures = _Sensor()
-    """Public attribute as _Sensor() data descriptor: *int*"""
+    fem_heatsink_temperatures = _VariableSensor()
+    """Public attribute as _VariableSensor() data descriptor: *int*"""
     fem_heatsink_temperatures_thresholds = _Sensor()
 
     def __init__(
@@ -1589,6 +1629,22 @@ class PasdBusSimulator:
         :return: a list of FNDH port numbers each smartbox is attached to.
         """
         return self._smartbox_attached_ports
+
+    @staticmethod
+    def set_global_sensor_variability(variability: float | None) -> None:
+        """
+        Set the value of the global sensor variability.
+
+        :param variability: percentage sensors will randomly vary relative to set value.
+            Minimum value is 0.5. Setting too high will trigger WARNING/ALARM status if
+            default thresholds are not widened. Set to None to disable variability.
+        """
+        # pylint: disable=global-statement
+        global global_sensor_variability
+        if variability is not None and variability < MIN_SENSOR_VARIABILITY:
+            global_sensor_variability = MIN_SENSOR_VARIABILITY
+        else:
+            global_sensor_variability = variability
 
     def _instantiate_smartbox(
         self: PasdBusSimulator, port_number: int
