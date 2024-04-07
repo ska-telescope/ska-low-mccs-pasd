@@ -9,9 +9,9 @@ metadata:
     component: pasd-configuration-service-{{$key}}
 spec:
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: {{$value.configuration_port}}
-      targetPort: 8081
   type: ClusterIP
   selector:
     component: pasd-configuration-service-{{$key}}

@@ -20,11 +20,6 @@ import jsonschema
 import tango
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_mccs_common.component import DeviceComponentManager
-from ska_ser_devices.client_server import (
-    ApplicationClient,
-    SentinelBytesMarshaller,
-    TcpClient,
-)
 from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
@@ -32,9 +27,7 @@ from ska_tango_base.executor import TaskExecutorComponentManager
 from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..command_proxy import MccsCommandProxy
-from ..reference_data_store.pasd_configmap_interface import (
-    PasdConfigurationJsonApiClient,
-)
+from ..reference_data_store.pasd_config_client_server import PasdConfigurationClient
 
 __all__ = ["FieldStationComponentManager"]
 
@@ -104,9 +97,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.fndh_port_states: list[Optional[bool]] = [
             None
         ] * PasdData.NUMBER_OF_FNDH_PORTS
-        self._field_station_configuration_api_client: Optional[
-            PasdConfigurationJsonApiClient
-        ] = None
+        self._configuration_client = PasdConfigurationClient(
+            configuration_host,
+            configuration_port,
+            station_name,
+        )
         self._antenna_mask_pretty: Optional[dict[str, Any]] = None
         self._antenna_mapping_pretty: Optional[dict[str, Any]] = None
         self._smartbox_mapping_pretty: Optional[dict[str, Any]] = None
@@ -121,9 +116,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             component_state_changed,
             max_workers=max_workers,
         )
-        self.configuration_host: str = configuration_host
-        self.configuration_port: int = configuration_port
-        self.configuration_timeout: int = configuration_timeout
         self._communication_states = {
             fqdn: CommunicationStatus.DISABLED
             for fqdn in [fndh_name] + list(smartbox_names)
@@ -171,7 +163,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.station_name = station_name
 
         # TODO add ability for helm to configure.
-        self.use_tcp_configuration_client = True
+        self.use_http_configuration_client = True
 
         self._load_configuration()
 
@@ -1410,12 +1402,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         """
         try:
             self.logger.info("Attempting to load data from configuration server.....")
-            if self.use_tcp_configuration_client:
-                configuration = self._get_configuration_from_configuration_server(
-                    self.configuration_host,
-                    self.configuration_port,
-                    self.configuration_timeout,
-                )
+            if self.use_http_configuration_client:
+                configuration = self._configuration_client.get_config()
                 self.logger.info("configuration loaded from configuration server")
             else:
                 # TODO: ask for data from TelModel
@@ -1443,38 +1431,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 TaskStatus.COMPLETED,
                 result="Configuration has been retreived successfully.",
             )
-
-    def _get_configuration_from_configuration_server(
-        self: FieldStationComponentManager,
-        configuration_host: str,
-        configuration_port: int,
-        configuration_timeout: int,
-    ) -> dict[str, Any]:
-        tcp_client = TcpClient(
-            (configuration_host, configuration_port), configuration_timeout
-        )
-
-        self.logger.debug(r"Creating marshaller with sentinel '\n'...")
-        marshaller = SentinelBytesMarshaller(b"\n")
-        application_client = ApplicationClient[bytes, bytes](
-            tcp_client, marshaller.marshall, marshaller.unmarshall
-        )
-        if self._field_station_configuration_api_client is None:
-            self.logger.info("Initialising API client...")
-            self._field_station_configuration_api_client = (
-                PasdConfigurationJsonApiClient(self.logger, application_client)
-            )
-        try:
-            self._field_station_configuration_api_client.connect()
-        except ConnectionRefusedError as e:
-            self.logger.error(f"Failed to connect, connection refused: {repr(e)}")
-            raise e
-        except Exception as e:
-            self.logger.error(f"Failed to connect: {repr(e)}")
-            raise e
-        return self._field_station_configuration_api_client.read_attributes(
-            self.station_name
-        )
 
     def _field_station_mapping_loaded(
         self: FieldStationComponentManager, command_name: str

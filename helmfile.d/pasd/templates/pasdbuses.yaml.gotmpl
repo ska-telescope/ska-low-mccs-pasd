@@ -31,7 +31,7 @@
     {{- if $pasdbus_simulated}}
       {{- $pasdbus_host = printf "pasd-simulator-%s" $station_name}}
       {{- $configuration_host := printf "pasd-configuration-service-%s" $station_name}}
-      {{- $pasdbus_simulator := dict "host" $pasdbus_host "port" $pasdbus_port "configuration_host" $configuration_host "configuration_port" 50034}}
+      {{- $pasdbus_simulator := dict "host" $pasdbus_host "port" $pasdbus_port "configuration_host" $configuration_host "configuration_port" 8081}}
 
       {{- $_ := set $pasdbus_simulators $station_name $pasdbus_simulator}}
       {{- $_ := set $pasdbus_instance "simulation_config" 1}}
