@@ -10,6 +10,7 @@ API
   PaSD bus<pasd_bus/index>
   FNDH<fndh/index>
   SMART Box<smartbox/index>
+  FNCC<fncc/index>
 
 .. toctree::
   :caption: Other
