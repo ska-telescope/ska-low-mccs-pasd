@@ -5,7 +5,11 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
-"""This module provides a JSON API to the Pasd Configuration."""
+"""
+This module provides a PaSD Configuration service.
+
+It is fronted by the server defined in the `pasd_config_client_server` module.
+"""
 from __future__ import annotations
 
 import logging
