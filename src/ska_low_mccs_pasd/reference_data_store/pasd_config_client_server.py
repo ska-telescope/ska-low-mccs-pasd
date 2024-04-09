@@ -88,7 +88,7 @@ async def get_config(
         raise HTTPException(status_code=500) from e
 
 
-@router.get("{path:path}")
+@router.get("{path}")
 async def get_bad_path(path: str) -> None:
     """
     Handle a GET request for any path not handled by one of the above routes.
