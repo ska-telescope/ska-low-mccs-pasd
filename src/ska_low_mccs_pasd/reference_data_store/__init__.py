@@ -9,13 +9,13 @@
 
 
 __all__ = [
-    "PasdConfigurationJsonServer",
-    "PasdConfigurationInterface",
-    "PasdConfigurationJsonApiClient",
+    "PasdConfigurationClient",
+    "PasdConfigurationServerContextManager",
+    "PasdConfigurationService",
 ]
 
-from .pasd_configmap_interface import (
-    PasdConfigurationInterface,
-    PasdConfigurationJsonApiClient,
+from .pasd_config_client_server import (
+    PasdConfigurationClient,
+    PasdConfigurationServerContextManager,
 )
-from .pasd_configuration_server import PasdConfigurationJsonServer
+from .pasd_config_service import PasdConfigurationService

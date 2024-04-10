@@ -250,16 +250,20 @@ class PasdTangoTestHarness:
         # This ensures that we can use this harness to run tests against a real cluster,
         # from within a pod that does not have ska_low_mccs_pasd installed.
         # pylint: disable-next=import-outside-toplevel
-        from ska_low_mccs_pasd.reference_data_store import PasdConfigurationJsonServer
-
-        logger: logging.Logger = logging.getLogger()
-        configuration_server = PasdConfigurationJsonServer(
-            logger, self._station_label, "ska-low-mccs", config_manager
+        from ska_low_mccs_pasd.reference_data_store import (
+            PasdConfigurationServerContextManager,
+            PasdConfigurationService,
         )
 
+        logger: logging.Logger = logging.getLogger()
+        configuration_service = PasdConfigurationService(
+            "ska-low-mccs", self._station_label, logger, config_manager
+        )
+        configuration_server = PasdConfigurationServerContextManager(
+            configuration_service
+        )
         self._tango_test_harness.add_context_manager(
-            "configuration_manager",
-            server_context_manager_factory(configuration_server),
+            "configuration_manager", configuration_server
         )
 
     def set_pasd_bus_device(  # pylint: disable=too-many-arguments
