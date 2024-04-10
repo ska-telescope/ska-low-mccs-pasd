@@ -906,7 +906,11 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     if self._simulation_mode == SimulationMode.FALSE:
                         self._set_all_low_pass_filters_of_device(pasd_device_number)
 
-            if self._pasd_state[tango_attribute_name].value != pasd_attribute_value:
+            if (
+                self._pasd_state[tango_attribute_name].value != pasd_attribute_value
+                or self._pasd_state[tango_attribute_name].quality
+                != AttrQuality.ATTR_VALID
+            ):
                 self._pasd_state[tango_attribute_name].value = pasd_attribute_value
                 self._pasd_state[tango_attribute_name].quality = AttrQuality.ATTR_VALID
                 self.push_change_event(
