@@ -84,7 +84,7 @@ class MccsSmartBox(SKABaseDevice):
             tango.AttrWriteType.READ,
         ),
         ("PortsPowerSensed", (bool,), PORT_COUNT, tango.AttrWriteType.READ),
-        ("PortsCurrentDraw", (float,), PORT_COUNT, tango.AttrWriteType.READ_WRITE),
+        ("PortsCurrentDraw", (float,), PORT_COUNT, tango.AttrWriteType.READ),
         ("InputVoltageThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
         (
             "PowerSupplyOutputVoltageThresholds",
