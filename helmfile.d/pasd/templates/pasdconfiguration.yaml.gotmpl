@@ -2,10 +2,10 @@
 {{- $overrides := .Values | get "overrides" dict}}
 {{- $platform := mergeOverwrite .Values.platform $overrides}}
 
-{{- $pasdbus_configuration := dict}}
+{{- $pasd_servers := dict}}
+{{- $pasd_config := dict}}
 
 {{- range $station_name, $station_spec := $platform.array.stations}}
-
   {{- $station_enabled := dig "enabled" true $station_spec}}
 
   {{- $pasd_spec := dig "pasd" dict $station_spec}}
@@ -14,28 +14,32 @@
 
     {{- if $pasd_enabled}}
 
-      {{- $pasdbus_instance_configuration := dict}}
-      {{- $_ := set $pasdbus_instance_configuration "configuration_host" (printf "pasd-configuration-server-%s" $station_name)}}
-      {{- $_ := set $pasdbus_instance_configuration "configuration_port" 8081}}
+      {{- $_ := set $pasd_servers $station_name (dict "host" (printf "pasd-configuration-server-%s" $station_name) "port" 8081)}}
 
-      {{- $_ := set $pasdbus_instance_configuration "pasd" (dict "smartboxes" dict)}}
+      {{- $pasd_config_instance := dict}}
+      {{- $_ := set $pasd_config_instance "pasd" (dict "smartboxes" dict)}}
       {{- range $smartbox_name, $smartbox_spec := (dig "smartboxes" dict $pasd_spec)}}
-        {{- $_ := set $pasdbus_instance_configuration.pasd.smartboxes (int $smartbox_spec.modbus_id | toString) (pick $smartbox_spec "fndh_port")}}
+        {{- $_ := set $pasd_config_instance.pasd.smartboxes (int $smartbox_spec.modbus_id | toString) (pick $smartbox_spec "fndh_port")}}
       {{- end}}
 
-      {{- $_ := set $pasdbus_instance_configuration "antennas" dict}}
+      {{- $_ := set $pasd_config_instance "antennas" dict}}
       {{- range $antenna_name, $antenna_spec := (dig "antennas" dict $station_spec)}}
         {{- $antenna_config := pick $antenna_spec "smartbox_port"}}
         {{- $_ := set $antenna_config "smartbox" ($antenna_spec.smartbox | trimPrefix "sb" | trimPrefix "0")}}
         {{- $_ := set $antenna_config "masked" (dig "masked" false $antenna_spec)}}
-        {{- $_ := set $pasdbus_instance_configuration.antennas (int $antenna_spec.eep | toString) $antenna_config}}
+        {{- $_ := set $pasd_config_instance.antennas (int $antenna_spec.eep | toString) $antenna_config}}
       {{- end}}
-      {{- $_ := set $pasdbus_configuration $station_name $pasdbus_instance_configuration}}
+      {{- $_ := set $pasd_config $station_name $pasd_config_instance}}
     {{- end}}
   {{- end}}
 {{- end}}
 
-{{- with $pasdbus_configuration}}
+{{- with $pasd_servers}}
+configServers:
+{{toYaml . | indent 2}}
+{{- end }}
+
+{{- with $pasd_config}}
 referenceData:
   pasdconfiguration:
 {{toYaml . | indent 4}}

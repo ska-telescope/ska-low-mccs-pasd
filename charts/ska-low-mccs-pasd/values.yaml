@@ -104,12 +104,15 @@ simulators: {}  # e.g.:
   #     port: 8502  # optional, defaults to 502
   #     time_multiplier: 1  # optional, defaults to 1
 
+configServers: {}  # e.g.:
+  # s8-1:
+  #   host: pasd-configuration-server-s8-1
+  #   port: 50053
+
 # Reference data from Helm. (mainly used for simulator configuration.)
 referenceData: {}
   # pasdconfiguration:
   #   s8-1:
-  #     configuration_host: pasd-configuration-server-s8-1
-  #     configuration_port: 50053
   #     pasd:
   #       smartboxes:
   #         "1":

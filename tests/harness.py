@@ -257,7 +257,7 @@ class PasdTangoTestHarness:
 
         logger: logging.Logger = logging.getLogger()
         configuration_service = PasdConfigurationService(
-            "ska-low-mccs", self._station_label, logger, config_manager
+            "ska-low-mccs", logger, config_manager
         )
         configuration_server = PasdConfigurationServerContextManager(
             configuration_service
