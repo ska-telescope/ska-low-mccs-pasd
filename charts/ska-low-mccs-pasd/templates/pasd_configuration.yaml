@@ -6,9 +6,10 @@ kind: ConfigMap
 metadata:
   name: pasd-configuration-{{$key}}
   namespace: {{$.Release.Namespace}}
-{{- with $labels}}
   labels:
-    findme: "configmap-to-watch"
+    platform_spec: pasd
+    station: {{$key}}
+{{- with $labels}}
 {{ toYaml . | indent 4 }}
 {{- end}}
 data:

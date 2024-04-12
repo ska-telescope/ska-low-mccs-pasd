@@ -302,6 +302,28 @@
         }
       }
     },
+    "configServers": {
+      "type": "object",
+      "propertyNames": {
+        "$comment": "Slug used to construct server name, k8s pods, etc",
+        "format": "hostname"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "format": "hostname"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": ["host", "port"],
+        "additionalProperties": false
+      }
+    },
     "referenceData": {
       "type": "object",
       "properties": {
@@ -313,14 +335,6 @@
           "additionalProperties": {
             "type": "object",
             "properties": {
-              "configuration_host": {
-                "type": "string",
-                "format": "hostname"
-              },
-              "configuration_port": {
-                "type": "integer",
-                "minimum": 1
-              },
               "pasd": {
                 "type": "object",
                 "properties": {
@@ -377,14 +391,11 @@
                 }
               }
             },
-            "required": [
-              "configuration_host",
-              "configuration_port"
-            ],
             "additionalProperties": false
           }
         }
       }
     }
-  }
+  },
+  "required": ["deviceServers", "configServers", "simulators", "referenceData"]
 }

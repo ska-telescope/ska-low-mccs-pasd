@@ -1,4 +1,4 @@
-{{- range $key, $value := ((.Values.referenceData).pasdconfiguration)}}
+{{- range $key, $value := .Values.configServers}}
 ---
 apiVersion: v1
 kind: Service
@@ -11,7 +11,7 @@ spec:
   ports:
     - name: http
       protocol: TCP
-      port: {{$value.configuration_port}}
+      port: {{$value.port}}
   type: ClusterIP
   selector:
     component: pasd-configuration-service-{{$key}}
@@ -19,7 +19,7 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{$value.configuration_host}}
+  name: {{$value.host}}
   namespace: {{$.Release.Namespace}}
   labels:
     component: pasd-configuration-service-{{$key}}
@@ -36,14 +36,12 @@ spec:
     spec:
       serviceAccountName: config-watcher-acc
       containers:
-      - name: {{$value.configuration_host}}
+      - name: {{$value.host}}
         image: {{$.Values.image.registry}}/{{$.Values.image.name}}:{{$.Values.image.tag | default $.Chart.AppVersion}}
         imagePullPolicy: IfNotPresent
         command: 
           - "PasdConfigurationServer"
         env:
-          - name: STATION_NAME
-            value: {{$key}}
           - name: NAMESPACE
             value: {{$.Release.Namespace}}
 

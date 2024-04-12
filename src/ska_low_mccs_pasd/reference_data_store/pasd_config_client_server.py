@@ -72,20 +72,9 @@ async def get_config(
     :param station: name of the station for which PaSD config is requested.
 
     :return: a result dictionary
-
-    :raises HTTPException: if the request could not be handled
     """
     service = request.app.state.backend
-
-    try:
-        return service.get_config(station)
-    except PermissionError as pe:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Only station '{station}' can access its config",
-        ) from pe
-    except Exception as e:
-        raise HTTPException(status_code=500) from e
+    return service.get_config(station)
 
 
 @router.get("{path}")
@@ -225,13 +214,9 @@ def main() -> None:
     if namespace is None:
         raise ValueError("NAMESPACE environment variable must be set.")
 
-    station_name = os.getenv("STATION_NAME")
-    if station_name is None:
-        raise ValueError("STATION_NAME environment variable must be set.")
-
     logger = logging.getLogger()
 
-    configuration_service = PasdConfigurationService(namespace, station_name, logger)
+    configuration_service = PasdConfigurationService(namespace, logger)
 
     port = int(os.getenv("PASD_CONFIGURATION_SERVER_PORT", "8081"))
     run_server_forever(configuration_service, port)
