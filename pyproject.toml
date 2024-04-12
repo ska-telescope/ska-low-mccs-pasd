@@ -10,9 +10,11 @@ documentation = "https://developer.skatelescope.org/projects/ska-low-mccs-pasd"
 [[tool.poetry.source]]
 name = 'ska-nexus'
 url = 'https://artefact.skao.int/repository/pypi-internal/simple'
+secondary=true
 [[tool.poetry.source]]
 name = "PyPI-public"
 url = 'https://pypi.org/simple'
+secondary=true
 
 [tool.poetry.dependencies]
 python = "~3.10"
