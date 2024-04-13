@@ -2,7 +2,6 @@
 {{- $overrides := .Values | get "overrides" dict}}
 {{- $platform := mergeOverwrite .Values.platform $overrides}}
 
-{{- $pasd_servers := dict}}
 {{- $pasd_config := dict}}
 
 {{- range $station_name, $station_spec := $platform.array.stations}}
@@ -13,9 +12,6 @@
     {{- $pasd_enabled := dig "enabled" $station_enabled $pasd_spec}}
 
     {{- if $pasd_enabled}}
-
-      {{- $_ := set $pasd_servers $station_name (dict "host" (printf "pasd-configuration-server-%s" $station_name) "port" 8081)}}
-
       {{- $pasd_config_instance := dict}}
       {{- $_ := set $pasd_config_instance "pasd" (dict "smartboxes" dict)}}
       {{- range $smartbox_name, $smartbox_spec := (dig "smartboxes" dict $pasd_spec)}}
@@ -34,12 +30,12 @@
   {{- end}}
 {{- end}}
 
-{{- with $pasd_servers}}
-configServers:
-{{toYaml . | indent 2}}
-{{- end }}
-
 {{- with $pasd_config}}
+configServers:
+  {{$platform.array | get "name" "array"}}:
+    host: pasd-configuration-service
+    port: 8081
+
 referenceData:
   pasdconfiguration:
 {{toYaml . | indent 4}}
