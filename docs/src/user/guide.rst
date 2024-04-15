@@ -63,9 +63,9 @@ the additional required key:
 
 - *smartbox_number* - Device id of the Smartbox being addressed
 
-**IMPORTANT NOTE**: The specified cut-off frequency is peristed to the Tango database (overwriting the value in
+**IMPORTANT NOTE**: The specified cut-off frequency is persisted to the Tango database (overwriting the value in
 the deployment configuration) and the calculated constant is automatically written to *ALL* sensor registers
-of the FNDH and smartboxes after MccsPasdBus is initialised and set ONLINE, and after any of them are
+of the FNDH and Smartboxes after MccsPasdBus is initialised and set ONLINE, and after any of them are
 powered on (regardless of which command was used).
 
 Resetting Breakers
