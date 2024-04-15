@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: pasd-configuration-service-{{$key}}
+  name: {{$value.host}}
   namespace: {{$.Release.Namespace}}
   labels:
     component: pasd-configuration-service-{{$key}}

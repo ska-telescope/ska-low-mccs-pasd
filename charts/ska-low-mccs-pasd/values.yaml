@@ -53,7 +53,7 @@ deviceServers: {}  # e.g.:
   #   s8-1:
   #     low-mccs/fieldstations/s8-1:
   #       fndh_name: low-mccs/fndh/s8-1
-  #       configuration_host: "pasd-configuration-service-s8-1"
+  #       configuration_host: "pasd-configuration-service"
   #       configuration_port: 8081
   #       smartbox_names:
   #         - low-mccs/smartbox/s8-1-sb01
@@ -105,9 +105,9 @@ simulators: {}  # e.g.:
   #     time_multiplier: 1  # optional, defaults to 1
 
 configServers: {}  # e.g.:
-  # s8-1:
-  #   host: pasd-configuration-server-s8-1
-  #   port: 50053
+  # ska-low:
+  #   host: pasd-configuration-service
+  #   port: 8081
 
 # Reference data from Helm. (mainly used for simulator configuration.)
 referenceData: {}
