@@ -44,6 +44,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             "MccsFieldStation_Updateconfiguration.json",
         )
     )
+    CONFIGURATION_SCHEMA_TELMODEL: Final = json.loads(
+        importlib.resources.read_text(
+            "ska_low_mccs_pasd.field_station.schemas",
+            "MccsFieldStation_UpdateConfiguration_Telmodel.json",
+        )
+    )
 
     # pylint: disable=too-many-arguments, too-many-locals
     def __init__(
@@ -1469,7 +1475,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 return value
             if isinstance(value, dict):
                 return self._find_by_key(value, target)
-        raise KeyError("Couldn't find key in dict")
+        raise KeyError(f"Couldn't find key in dict, {target} missing")
 
     def _load_configuration_uri(
         self: FieldStationComponentManager,
@@ -1498,7 +1504,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             station_one = stations["1"]
 
             # Validate configuration before updating.
-            jsonschema.validate(station_one, self.CONFIGURATION_SCHEMA)
+            jsonschema.validate(station_one, self.CONFIGURATION_SCHEMA_TELMODEL)
 
             self._update_mappings(station_one)
 
