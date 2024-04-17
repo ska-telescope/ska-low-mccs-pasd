@@ -1433,12 +1433,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         """
         try:
             self.logger.info("Attempting to load data from configuration server.....")
-            configuration = self._get_configuration_from_configuration_server(
-                self.configuration_host,
-                self.configuration_port,
-                self.configuration_timeout,
-            )
-            self.logger.info("configuration loaded from configuration server")
+            configuration = self._configuration_client.get_config()
+            self.logger.info("Configuration loaded from configuration server")
 
             # Validate configuration before updating.
             jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)
@@ -1520,38 +1516,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 TaskStatus.COMPLETED,
                 result="Configuration has been retreived successfully.",
             )
-
-    def _get_configuration_from_configuration_server(
-        self: FieldStationComponentManager,
-        configuration_host: str,
-        configuration_port: int,
-        configuration_timeout: int,
-    ) -> dict[str, Any]:
-        tcp_client = TcpClient(
-            (configuration_host, configuration_port), configuration_timeout
-        )
-
-        self.logger.debug(r"Creating marshaller with sentinel '\n'...")
-        marshaller = SentinelBytesMarshaller(b"\n")
-        application_client = ApplicationClient[bytes, bytes](
-            tcp_client, marshaller.marshall, marshaller.unmarshall
-        )
-        if self._field_station_configuration_api_client is None:
-            self.logger.info("Initialising API client...")
-            self._field_station_configuration_api_client = (
-                PasdConfigurationJsonApiClient(self.logger, application_client)
-            )
-        try:
-            self._field_station_configuration_api_client.connect()
-        except ConnectionRefusedError as e:
-            self.logger.error(f"Failed to connect, connection refused: {repr(e)}")
-            raise e
-        except Exception as e:
-            self.logger.error(f"Failed to connect: {repr(e)}")
-            raise e
-        return self._field_station_configuration_api_client.read_attributes(
-            self.station_name
-        )
 
     def _field_station_mapping_loaded(
         self: FieldStationComponentManager, command_name: str

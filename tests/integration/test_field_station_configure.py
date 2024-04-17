@@ -358,6 +358,7 @@ class TestFieldStationIntegration:
         :param change_event_callbacks: group of Tango change event
             callbacks with asynchrony support
         """
+        print("JOEHARVEY GETS HERE")
         # Setup and confirm initial state of FNDH
         assert fndh_device.adminMode == AdminMode.OFFLINE
 
