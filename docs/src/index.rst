@@ -11,14 +11,15 @@ prototype for the Power and Signal Distribution (PaSD) of the
 .. toctree::
    :maxdepth: 2
    :caption: User guide
+   :titlesonly:
 
-   user/guide
+   user/index
 
 .. toctree::
    :maxdepth: 2
    :caption: Developer guide
 
-   guide/deploy
+   developer/deploy
 
 .. toctree::
    :maxdepth: 2
