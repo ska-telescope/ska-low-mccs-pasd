@@ -1088,13 +1088,17 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
     @command(dtype_in=str, dtype_out="DevVarLongStringArray")
     def SetFndhLedPattern(self: MccsPasdBus, argin: str) -> DevVarLongStringArrayType:
+        # pylint: disable=line-too-long
         """
         Set the FNDH service LED pattern.
 
-        :param argin: JSON encoded dictionary of arguments.
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetFndhLedPattern.json
+           :language: json
+
+        :param argin: a JSON string specifying the request.
 
         :return: A tuple containing a result code and a human-readable status message.
-        """
+        """  # noqa: E501
         handler = self.get_command_object("SetFndhLedPattern")
         success = handler(argin)
         if success:
@@ -1146,6 +1150,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     def SetFndhLowPassFilters(
         self: MccsPasdBus, argin: str
     ) -> DevVarLongStringArrayType:
+        # pylint: disable=line-too-long
         """
         Set the FNDH's sensors' low pass filter constants.
 
@@ -1154,10 +1159,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         and smartboxes after MccsPasdBus is initialised and set ONLINE, and after any of
         them are powered on or reset later.
 
-        :param argin: JSON encoded dictionary of arguments.
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetFndhLowPassFilters.json
+           :language: json
+
+        :param argin: a JSON string specifying the request.
 
         :return: A tuple containing a result code and a human-readable status message.
-        """
+        """  # noqa: E501
         if self._simulation_mode == SimulationMode.TRUE:
             return (
                 [ResultCode.NOT_ALLOWED],
@@ -1479,6 +1487,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     def SetSmartboxLowPassFilters(
         self: MccsPasdBus, argin: str
     ) -> DevVarLongStringArrayType:
+        # pylint: disable=line-too-long
         """
         Set a Smartbox's sensors' low pass filter constants.
 
@@ -1487,10 +1496,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         and smartboxes after MccsPasdBus is initialised and set ONLINE, and after any of
         them are powered on or reset later.
 
-        :param argin: JSON encoded dictionary of arguments.
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetSmartboxLowPassFilters.json
+           :language: json
+
+        :param argin: arguments encoded as a JSON string
 
         :return: A tuple containing a result code and a human-readable status message.
-        """
+        """  # noqa: E501
         if self._simulation_mode == SimulationMode.TRUE:
             return (
                 [ResultCode.NOT_ALLOWED],
@@ -1512,13 +1524,17 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     def SetSmartboxLedPattern(
         self: MccsPasdBus, argin: str
     ) -> DevVarLongStringArrayType:
+        # pylint: disable=line-too-long
         """
         Set a Smartbox's service LED pattern.
 
-        :param argin: JSON encoded dictionary of arguments.
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetSmartboxLedPattern.json
+           :language: json
+
+        :param argin: arguments encoded as a JSON string
 
         :return: A tuple containing a result code and a human-readable status message.
-        """
+        """  # noqa: E501
         handler = self.get_command_object("SetSmartboxLedPattern")
         success = handler(argin)
         if success:
@@ -1570,13 +1586,17 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     def ResetSmartboxPortBreaker(
         self: MccsPasdBus, argin: str
     ) -> DevVarLongStringArrayType:
+        # pylint: disable=line-too-long
         """
         Reset a Smartbox's port's breaker.
 
-        :param argin: arguments to the command in JSON format.
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_ResetSmartboxPortBreaker.json
+           :language: json
+
+        :param argin: arguments encoded as a JSON string
 
         :return: A tuple containing a result code and a human-readable status message.
-        """
+        """  # noqa: E501
         handler = self.get_command_object("ResetSmartboxPortBreaker")
         success = handler(argin)
         if success:

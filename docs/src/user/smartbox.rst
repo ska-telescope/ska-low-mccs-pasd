@@ -140,10 +140,10 @@ Alarm recovery procedure
 When the SMART Box ``PasdStatus`` attribute indicates an ALARM, WARNING or RECOVERY state, the
 ``WarningFlags`` and ``AlarmFlags`` attributes can be interrogated to find out which
 sensors have gone outside their threshold values. These registers need to be manually
-cleared by issuing the ``ResetSmartboxAlarms(<smartbox_number>)`` and
-``ResetSmartboxWarnings(<smartbox_number>)`` commands after reading.
+cleared by issuing the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.ResetSmartboxAlarms` and
+:py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.ResetSmartboxWarnings` commands after reading.
 
 SMART Boxes automatically transition to the RECOVERY state when the relevant
 sensor values return to within their alarm thresholds. To return a SMART Box to an operational
-state after such an event, the ``initialiseSmartbox(<smartbox_number>)`` command must
+state after such an event, the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.InitializeSmartbox` command must
 be executed.

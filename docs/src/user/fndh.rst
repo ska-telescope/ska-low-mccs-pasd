@@ -128,9 +128,10 @@ Alarm recovery procedure
 When the FNDH ``PasdStatus`` attribute indicates an ALARM, WARNING or RECOVERY state, the
 ``WarningFlags`` and ``AlarmFlags`` attributes can be interrogated to find out which
 sensors have gone outside their threshold values. These registers need to be manually
-cleared by issuing the ``ResetFndhAlarms()`` and ``ResetFndhWarnings()`` commands after
+cleared by issuing the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.ResetFndhAlarms` 
+and :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.ResetFndhWarnings` commands after
 reading.
 
 The PaSD automatically transitions to the RECOVERY state when the relevant
 sensor values return to within their alarm thresholds. To return the FNDH to an operational
-state after such an event, the ``initialiseFNDH()`` command must be executed.
+state after such an event, the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.InitializeFndh` command must be executed.

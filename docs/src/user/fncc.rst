@@ -45,4 +45,5 @@ The FNCC ``PasdStatus`` attribute should be interpreted as follows:
 | FRAME_ERROR_MODBUS_STUCK        | Both framing error and timeout have occurred    |
 +---------------------------------+-------------------------------------------------+
 
-After an error has occurred, the status register can be reset by issuing the ``ResetFnccStatus()`` command on the MccsPasdBus.
+After an error has occurred, the status register can be reset by issuing the 
+:py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.ResetFnccStatus` command on the MccsPasdBus.
