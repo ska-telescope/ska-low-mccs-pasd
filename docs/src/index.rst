@@ -1,6 +1,6 @@
-=========================================
-SKA-Low MCCS PaSD prototype documentation
-=========================================
+===============================
+SKA-Low MCCS PaSD documentation
+===============================
 
 This project is developing the Monitoring, Control and Calibration Subsystem (MCCS) 
 prototype for the Power and Signal Distribution (PaSD) of the 
@@ -10,9 +10,16 @@ prototype for the Power and Signal Distribution (PaSD) of the
 
 .. toctree::
    :maxdepth: 2
+   :caption: User guide
+   :titlesonly:
+
+   user/index
+
+.. toctree::
+   :maxdepth: 2
    :caption: Developer guide
 
-   guide/deploy
+   developer/deploy
 
 .. toctree::
    :maxdepth: 2

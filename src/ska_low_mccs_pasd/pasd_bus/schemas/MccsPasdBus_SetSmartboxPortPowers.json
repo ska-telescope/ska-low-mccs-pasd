@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://skao.int/SetSmartboxPortPowers.json",
+    "$id": "https://skao.int/MccsPasdBus_SetSmartboxPortPowers.json",
     "title": "MccsPasdBus SetSmartboxPortPowers schema",
     "description": "Schema for MccsPasdBus's SetSmartboxPortPowers command",
     "type": "object",
