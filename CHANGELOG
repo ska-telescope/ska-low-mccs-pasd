@@ -2,6 +2,27 @@
 
 ## unreleased
 
+## 0.8.0
+
+* [WOM-244]: Support for reading the FNCC registers
+* [WOM-249,WOM-317]: User documentation
+* [WOM-112]: Mark attributes as invalid when a device doesn't respond
+* [MCCS-1978]: infra-managed Low ITF credentials
+* [MCCS-1963]: Change backoff to exponential
+* [MCCS-1995]: Chart values schema
+* [MCCS-2070]: String keys
+* [MCCS-2083]: use HTTP for PaSD config server
+* [MCCS-2091]: refactor configuration server
+* [MCCS-2093]: one PaSD config server
+* [MCCS-2090]: Remove placeholder code, causing incorrect health reporting
+* [MCCS-2094]: remove unused access
+* [WOM-326]: Delays in executing commands
+* [WOM-329]: Change in attribute quality does not push change event
+* [WOM-318]: Make threshold attributes writeable
+* [MCCS-1968]: Fix manual config commands
+* [MCCS-2081]: Fix empty port power change event bug
+* [MCCS-2060]: Add eda_config.yaml with all pasd attributes
+
 ## 0.7.0
 
 * [WOM-183] Update error log message for modbus exception responses
