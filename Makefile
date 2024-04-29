@@ -115,7 +115,8 @@ k8s-do-test:
     EXIT_CODE=$$? ; \
 	kubectl -n $(KUBE_NAMESPACE) cp ska-low-mccs-k8s-test-runner:$(K8S_TEST_RUNNER_WORKING_DIRECTORY)/build/ ./build/ ; \
 	helm  -n $(KUBE_NAMESPACE) uninstall $(K8S_TEST_RUNNER_CHART_RELEASE) ; \
-    exit $$EXIT_CODE
+	echo $$EXIT_CODE > build/status
+	exit $$EXIT_CODE
 
 
 #######################################
