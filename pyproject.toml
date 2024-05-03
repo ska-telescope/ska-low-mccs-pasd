@@ -30,6 +30,7 @@ ska-ser-devices = "^0.2.0"
 pymodbus = "~3.5.4"
 typing-extensions = "^4.6.1"
 fastapi = "^0.110.1"
+ska-telmodel = "^1.14.0"
 uvicorn = {extras = ["standard"], version = "^0.29.0"}
 
 [tool.poetry.group.dev.dependencies]
@@ -70,6 +71,7 @@ sphinx-autodoc-typehints = "^1.19"
 ska-ser-devices = "^0.2.0"
 sphinxcontrib-plantuml = "^0.25"
 typing-extensions = "^4.6.1"       # undeclared dependency-dependency
+ska-telmodel = "^1.14.0"
 uvicorn = {extras = ["standard"], version = "^0.29.0"}
 
 [tool.poetry.scripts]

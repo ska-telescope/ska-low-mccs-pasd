@@ -23,6 +23,7 @@ from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
+from ska_telmodel.data import TMData  # type: ignore
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
@@ -43,6 +44,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             "MccsFieldStation_Updateconfiguration.json",
         )
     )
+    CONFIGURATION_SCHEMA_TELMODEL: Final = json.loads(
+        importlib.resources.read_text(
+            "ska_low_mccs_pasd.field_station.schemas",
+            "MccsFieldStation_UpdateConfiguration_Telmodel.json",
+        )
+    )
 
     # pylint: disable=too-many-arguments, too-many-locals
     def __init__(
@@ -54,6 +61,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         station_name: str,
         fndh_name: str,
         smartbox_names: list[str],
+        tm_config_details: Optional[list[str]],
         communication_state_callback: Callable[..., None],
         component_state_changed: Callable[..., None],
         configuration_change_callback: Callable[..., None],
@@ -75,6 +83,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             encompasses
         :param smartbox_names: the names of the smartboxes this field station
             encompasses
+        :param tm_config_details: default location and filepath of the
+            config in telmodel
         :param communication_state_callback: callback to be
             called when the status of the communications channel between
             the component manager and its component changes
@@ -162,10 +172,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self.logger = logger
         self.station_name = station_name
 
-        # TODO add ability for helm to configure.
-        self.use_http_configuration_client = True
-
-        self._load_configuration()
+        if tm_config_details:
+            self._load_configuration_uri(tm_config_details)
+        else:
+            self._load_configuration()
 
     def _update_mappings(
         self: FieldStationComponentManager,
@@ -1387,6 +1397,29 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             task_callback=task_callback,
         )
 
+    def load_configuration_uri(
+        self: FieldStationComponentManager,
+        tm_config_details: Optional[list[str]],
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Submit the LoadConfigurationUri slow command.
+
+        This method returns immediately after it is submitted for
+        execution.
+
+        :param tm_config_details: Location of the config in telmodel
+        :param task_callback: Update task state, defaults to None
+        :param task_abort_event: Check for abort, defaults to None
+        :return: Task status and response message
+        """
+        return self.submit_task(
+            self._load_configuration_uri,
+            args=[tm_config_details],
+            task_callback=task_callback,
+        )
+
     def _load_configuration(
         self: FieldStationComponentManager,
         task_callback: Optional[Callable] = None,
@@ -1397,22 +1430,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         :param task_callback: Update task state, defaults to None
         :param task_abort_event: Check for abort, defaults to None
-
-        :raises NotImplementedError: configuration in TelModel not yet implemented
         """
         try:
             self.logger.info("Attempting to load data from configuration server.....")
-            if self.use_http_configuration_client:
-                configuration = self._configuration_client.get_config()
-                self.logger.info("configuration loaded from configuration server")
-            else:
-                # TODO: ask for data from TelModel
-                self.logger.error(
-                    "Attempted read from TelModel when functionality not implemented."
-                )
-                raise NotImplementedError(
-                    "Attempted read from TelModel when functionality not implemented."
-                )
+            configuration = self._configuration_client.get_config()
+            self.logger.info("Configuration loaded from configuration server")
 
             # Validate configuration before updating.
             jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA)
@@ -1425,6 +1447,69 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 task_callback(
                     TaskStatus.FAILED,
                     result="Failed to load configuration.",
+                )
+        if task_callback is not None:
+            task_callback(
+                TaskStatus.COMPLETED,
+                result="Configuration has been retreived successfully.",
+            )
+
+    def _find_by_key(
+        self: FieldStationComponentManager, data: dict, target: str
+    ) -> dict:
+        """
+        Traverse nested dictionary, yield next value for given target.
+
+        :param data: generic nested dictionary to traverse through.
+        :param target: key to find the next value of.
+
+        :return: the value for given key.
+        :raises KeyError: Unable to find the given key in dict
+        """
+        for key, value in data.items():
+            if key == target:
+                return value
+            if isinstance(value, dict):
+                return self._find_by_key(value, target)
+        raise KeyError(f"Couldn't find key in dict, {target} missing")
+
+    def _load_configuration_uri(
+        self: FieldStationComponentManager,
+        tm_config_details: list[str],
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
+        """
+        Get the configuration from the configuration server.
+
+        :param tm_config_details: Location of the config in telmodel
+        :param task_callback: Update task state, defaults to None
+        :param task_abort_event: Check for abort, defaults to None
+        """
+        try:
+            config_uri = tm_config_details[0]
+            config_filepath = tm_config_details[1]
+            station_cluster = tm_config_details[2]
+
+            tmdata = TMData([config_uri])
+            full_dict = tmdata[config_filepath].get_dict()
+
+            configuration = self._find_by_key(full_dict, station_cluster)
+            stations = configuration["stations"]
+
+            station_one = stations["1"]
+
+            # Validate configuration before updating.
+            jsonschema.validate(station_one, self.CONFIGURATION_SCHEMA_TELMODEL)
+
+            self._update_mappings(station_one)
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.error(f"Failed to update configuration from URI {repr(e)}.")
+            if task_callback is not None:
+                task_callback(
+                    TaskStatus.FAILED,
+                    result="Failed to load configuration from URI.",
                 )
         if task_callback is not None:
             task_callback(
