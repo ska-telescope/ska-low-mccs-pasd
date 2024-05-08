@@ -1489,20 +1489,17 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         try:
             config_uri = tm_config_details[0]
             config_filepath = tm_config_details[1]
-            station_cluster = tm_config_details[2]
+            station_name = tm_config_details[2]
 
             tmdata = TMData([config_uri])
             full_dict = tmdata[config_filepath].get_dict()
 
-            configuration = self._find_by_key(full_dict, station_cluster)
-            stations = configuration["stations"]
-
-            station_one = stations["1"]
+            configuration = self._find_by_key(full_dict, station_name)
 
             # Validate configuration before updating.
-            jsonschema.validate(station_one, self.CONFIGURATION_SCHEMA_TELMODEL)
+            jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA_TELMODEL)
 
-            self._update_mappings(station_one)
+            self._update_mappings(configuration)
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.error(f"Failed to update configuration from URI {repr(e)}.")

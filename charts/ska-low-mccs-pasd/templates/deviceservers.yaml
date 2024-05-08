@@ -36,7 +36,7 @@ Deploy the Tango devices. For example,
           config_uri:
             - "reference/data/url"
             - "internal/path/config.yaml"
-            - "station_cluster"
+            - "station_name"
     pasdbuses:
       s8-1:
         low-mccs/pasdbus/s8-1:

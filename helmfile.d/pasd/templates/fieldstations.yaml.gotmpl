@@ -18,8 +18,6 @@
 
     {{- $fieldstation_name := printf "low-mccs/fieldstation/%s" $station_name}}
     {{- $fndh_name := printf "low-mccs/fndh/%s" $station_name}}
-    {{- $configuration_host := printf "pasd-configuration-service-%s" $station_name}}
-
     {{- $config_uri_list := list}}
     {{- $config_uri := dig "pasd" "config_uri" "uri" "" $station_spec}}
     {{- if $config_uri}}
@@ -28,9 +26,9 @@
         {{- if $config_uri_path}}
           {{- $config_uri_list = append $config_uri_list $config_uri_path}}
         {{- end}}
-      {{- $config_uri_station_cluster := dig "pasd" "config_uri" "station_cluster" "" $station_spec}}
-        {{- if $config_uri_station_cluster}}
-          {{- $config_uri_list = append $config_uri_list $config_uri_station_cluster}}
+      {{- $config_uri_station_name := dig "pasd" "config_uri" "station_name" "" $station_spec}}
+        {{- if $config_uri_station_name}}
+          {{- $config_uri_list = append $config_uri_list $config_uri_station_name}}
         {{- end}}
     {{- end}}
     {{- $fieldstation_instance := dict "configuration_host" "pasd-configuration-service" "configuration_port" 8081 "fndh_name" $fndh_name "config_uri" $config_uri_list}}

@@ -7,8 +7,7 @@ overrides:
           config_uri: # Config uri currently breaks the functional tests
             uri: "gitlab://gitlab.com/ska-telescope/mccs/ska-low-mccs?main#tmdata"
             path: "instrument/mccs-configuration/values-stfc-ci.yaml"
-            station_cluster: "ci"
-            # Warning: Pulling configuration from different station cluster. We are pulling station cluster "a1" and deploying station cluster "ci"
+            station_name: "ci-1"
           fndh:
             gateway:
               simulated: true
