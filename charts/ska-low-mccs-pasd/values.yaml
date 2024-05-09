@@ -95,6 +95,10 @@ deviceServers: {}  # e.g.:
   #       polling_rate: 1.0  # optional; defaults to 0.5
   #       device_polling_rate: 20.0  # optional; defaults to 15.0
   #       low_pass_filter_cutoff: 9.0  # optional; defaults to 10.0
+  #       available_smartboxes: # optional; defaults to range(1,25)
+  #         - 1
+  #         - 2
+  #         - 3
   #       logging_level_default: 5
 
 simulators: {}  # e.g.:

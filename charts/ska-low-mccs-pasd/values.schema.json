@@ -261,6 +261,13 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 5
+                },
+                "available_smartboxes": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "maxLength": 24
                 }
               },
               "required": [
@@ -326,7 +333,10 @@
             "minimum": 1
           }
         },
-        "required": ["host", "port"],
+        "required": [
+          "host",
+          "port"
+        ],
         "additionalProperties": false
       }
     },
@@ -403,5 +413,10 @@
       }
     }
   },
-  "required": ["deviceServers", "configServers", "simulators", "referenceData"]
+  "required": [
+    "deviceServers",
+    "configServers",
+    "simulators",
+    "referenceData"
+  ]
 }
