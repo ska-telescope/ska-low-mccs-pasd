@@ -47,6 +47,12 @@ environments:
       - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/tmdata/instrument/mccs-configuration/aavs3.yaml?ref=a8d7b124d965a0fa399bd7ab5462bc1bbacddedd
       - pasd/values/values-aavs3.yaml
       - platform/minikube.yaml
+  aavs3-minikube-telmodel:
+    kubeContext: minikube
+    values:
+      - git::https://gitlab.com/ska-telescope/ska-low-aavs3.git@/tmdata/instrument/mccs-configuration/aavs3.yaml?ref=a8d7b124d965a0fa399bd7ab5462bc1bbacddedd
+      - pasd/values/values-aavs3-telmodel.yaml
+      - platform/minikube.yaml
   low-itf:
     kubeContext: infra:au-itf-k8s-master01-k8s
     values:

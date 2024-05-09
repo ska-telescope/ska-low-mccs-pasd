@@ -100,7 +100,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._component_state_callback: Callable[..., None]
         self.outsideTemperature: Optional[float] = None
         self._antenna_mapping: dict[str, list[int]] = {}
+        self._all_masked = False
         self._antenna_mask: list[bool] = []
+        self._antenna_mask_telmodel: dict = {}
         self._smartbox_mapping: dict[str, int] = {}
 
         max_workers = 1
@@ -237,6 +239,75 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._antenna_mapping_pretty = {"antennaMapping": antenna_mapping_pretty}
 
         self._antenna_mask = antenna_masks_logical
+        self._smartbox_mapping = smartbox_mappings_logical
+        self._antenna_mapping = antenna_mapping_logical
+
+        self.logger.info("Configuration has been successfully updated.")
+        self._on_configuration_change(self._smartbox_mapping_pretty)
+
+        if self._antenna_mapping:
+            self.has_antenna = True
+
+    def _update_mappings_telmodel(
+        self: FieldStationComponentManager,
+        reference_data: dict[str, Any],
+    ) -> None:
+        """
+        Update the internal maps from the reference data.
+
+        This method is used to load validated data from the reference source
+        and update the internal mappings.
+
+        :param reference_data: the single source of truth for the
+            field station port mapping information.
+        """
+        antenna_masks_pretty: dict = {}
+        antenna_mapping_pretty: dict = {}
+        smartbox_mapping_pretty: dict = {}
+
+        antenna_masks_logical: dict = {}
+        antenna_mapping_logical: dict[str, list[int]] = {}
+        smartbox_mappings_logical: dict[str, int] = {}
+
+        all_masked = True
+
+        for antenna_id, antenna_config in reference_data["antennas"].items():
+            smartbox_id = antenna_config["smartbox"]
+            smartbox_port = int(antenna_config["smartbox_port"])
+            masked_state = antenna_config.get("masked") or False
+
+            antenna_mapping_pretty[antenna_id] = {
+                "antennaID": antenna_id,
+                "smartboxID": smartbox_id,
+                "smartboxPort": smartbox_port,
+            }
+            antenna_mapping_logical[antenna_id] = [smartbox_id, smartbox_port]
+
+            antenna_masks_pretty[antenna_id] = {
+                "antennaID": antenna_id,
+                "maskingState": masked_state,
+            }
+            if not masked_state:
+                all_masked = False
+
+            antenna_masks_logical[antenna_id] = masked_state
+
+        for smartbox_id, smartbox_config in reference_data["pasd"][
+            "smartboxes"
+        ].items():
+            smartbox_mapping_pretty[smartbox_id] = {
+                "smartboxID": smartbox_id,
+                "fndhPort": smartbox_config["fndh_port"],
+            }
+            smartbox_mappings_logical[smartbox_id] = smartbox_config["fndh_port"]
+
+        self._all_masked = all_masked
+
+        self._antenna_mask_pretty = {"antennaMask": antenna_masks_pretty}
+        self._smartbox_mapping_pretty = {"smartboxMapping": smartbox_mapping_pretty}
+        self._antenna_mapping_pretty = {"antennaMapping": antenna_mapping_pretty}
+
+        self._antenna_mask_telmodel = antenna_masks_logical
         self._smartbox_mapping = smartbox_mappings_logical
         self._antenna_mapping = antenna_mapping_logical
 
@@ -1456,7 +1527,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
     def _find_by_key(
         self: FieldStationComponentManager, data: dict, target: str
-    ) -> dict:
+    ) -> Optional[dict]:
         """
         Traverse nested dictionary, yield next value for given target.
 
@@ -1464,14 +1535,15 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :param target: key to find the next value of.
 
         :return: the value for given key.
-        :raises KeyError: Unable to find the given key in dict
         """
         for key, value in data.items():
             if key == target:
                 return value
             if isinstance(value, dict):
-                return self._find_by_key(value, target)
-        raise KeyError(f"Couldn't find key in dict, {target} missing")
+                item = self._find_by_key(value, target)
+                if item is not None:
+                    return item
+        return None
 
     def _load_configuration_uri(
         self: FieldStationComponentManager,
@@ -1485,7 +1557,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :param tm_config_details: Location of the config in telmodel
         :param task_callback: Update task state, defaults to None
         :param task_abort_event: Check for abort, defaults to None
+
+        :raises ValueError: If the station name key cant be found.
         """
+        self.logger.error("load config uri")
         try:
             config_uri = tm_config_details[0]
             config_filepath = tm_config_details[1]
@@ -1494,12 +1569,17 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             tmdata = TMData([config_uri])
             full_dict = tmdata[config_filepath].get_dict()
 
-            configuration = self._find_by_key(full_dict, station_name)
+            configuration = self._find_by_key(full_dict, str(station_name))
+
+            if configuration is None:
+                raise ValueError("Key not found in config")
 
             # Validate configuration before updating.
             jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA_TELMODEL)
 
-            self._update_mappings(configuration)
+            self.logger.error("about to update mappings")
+
+            self._update_mappings_telmodel(configuration)
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.error(f"Failed to update configuration from URI {repr(e)}.")

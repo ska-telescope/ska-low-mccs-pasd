@@ -5,9 +5,11 @@ overrides:
         id: 1
         pasd:
           config_uri: # Config uri currently breaks the functional tests
-            uri: "gitlab://gitlab.com/ska-telescope/mccs/ska-low-mccs?main#tmdata"
-            path: "instrument/mccs-configuration/values-stfc-ci.yaml"
-            station_name: "ci-1"
+            # This is the wrong data for this configuration,
+            # however the values-ci file no longer exists on the telmodel
+            # uri: "gitlab://gitlab.com/ska-telescope/ska-low-aavs3?main#tmdata"
+            # path: "instrument/mccs-configuration/aavs3.yaml"
+            # station_name: "aavs3"
           fndh:
             gateway:
               simulated: true
