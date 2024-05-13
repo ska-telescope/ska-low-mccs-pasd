@@ -1560,7 +1560,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         :raises ValueError: If the station name key cant be found.
         """
-        self.logger.error("load config uri")
         try:
             config_uri = tm_config_details[0]
             config_filepath = tm_config_details[1]
@@ -1574,12 +1573,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             if configuration is None:
                 raise ValueError("Key not found in config")
 
+            config_converted = self._convert_config(configuration)
+
             # Validate configuration before updating.
-            jsonschema.validate(configuration, self.CONFIGURATION_SCHEMA_TELMODEL)
+            jsonschema.validate(config_converted, self.CONFIGURATION_SCHEMA)
 
-            self.logger.error("about to update mappings")
-
-            self._update_mappings_telmodel(configuration)
+            self._update_mappings(configuration)
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.error(f"Failed to update configuration from URI {repr(e)}.")
@@ -1593,6 +1592,46 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 TaskStatus.COMPLETED,
                 result="Configuration has been retreived successfully.",
             )
+
+    def _convert_config(
+        self: FieldStationComponentManager, telmodel_config: dict
+    ) -> dict:
+        """
+        Convert telmodel mapping into compatible mapping.
+
+        :param telmodel_config: config from telmodel.
+
+        :return: Converted config that matches old format.
+        """
+        new_config: dict = {}
+        new_config["antennas"] = {}
+
+        for i, antenna_id in enumerate(telmodel_config["antennas"]):
+            new_config["antennas"][str(i + 1)] = {}
+            new_config["antennas"][str(i + 1)]["smartbox"] = telmodel_config[
+                "antennas"
+            ][antenna_id]["smartbox"]
+            new_config["antennas"][str(i + 1)]["smartbox_port"] = telmodel_config[
+                "antennas"
+            ][antenna_id]["smartbox_port"]
+
+            new_config["antennas"][str(i + 1)]["masked"] = (
+                telmodel_config["antennas"][antenna_id].get("masked") or False
+            )
+
+        new_config["pasd"] = {}
+
+        pasd = telmodel_config["pasd"]
+        converted_smart_boxes: dict = {}
+        for i, smartbox_id in enumerate(pasd["smartboxes"]):
+            converted_smart_boxes[str(i)] = {}
+            converted_smart_boxes[str(i)]["fndh_port"] = pasd["smartboxes"][
+                smartbox_id
+            ]["fndh_port"]
+
+        new_config["pasd"]["smartboxes"] = converted_smart_boxes
+
+        return new_config
 
     def _field_station_mapping_loaded(
         self: FieldStationComponentManager, command_name: str
