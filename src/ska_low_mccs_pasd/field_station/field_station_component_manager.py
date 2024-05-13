@@ -1578,7 +1578,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             # Validate configuration before updating.
             jsonschema.validate(config_converted, self.CONFIGURATION_SCHEMA)
 
-            self._update_mappings(configuration)
+            self._update_mappings(config_converted)
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.error(f"Failed to update configuration from URI {repr(e)}.")
@@ -1603,6 +1603,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         :return: Converted config that matches old format.
         """
+        # TODO MCCS-2115 This converts the telmodel format to version 0.2.0 format,
+        # this should all be changed to use the format from the telmodel directly
         new_config: dict = {}
         new_config["antennas"] = {}
 
@@ -1610,7 +1612,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             new_config["antennas"][str(i + 1)] = {}
             new_config["antennas"][str(i + 1)]["smartbox"] = telmodel_config[
                 "antennas"
-            ][antenna_id]["smartbox"]
+            ][antenna_id]["smartbox"][-2:]
             new_config["antennas"][str(i + 1)]["smartbox_port"] = telmodel_config[
                 "antennas"
             ][antenna_id]["smartbox_port"]
