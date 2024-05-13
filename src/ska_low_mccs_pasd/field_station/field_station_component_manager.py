@@ -1603,8 +1603,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         :return: Converted config that matches old format.
         """
-        # TODO: MCCS-2115 This converts the telmodel format to version 0.2.0 format,
-        # this should all be changed to use the format from the telmodel directly
+        # TODO: MCCS-2115 This convert function is only required until we
+        # rewrite the antenna mappings. This will make the antenna mappings
+        # reference from a dict of antenna ids, rather than index of a list
+        # In this work it will also rewrite the .yaml.gotmpl file to convert
+        # the old format into the new format
         new_config: dict = {}
         new_config["antennas"] = {}
 
