@@ -102,6 +102,7 @@ def pasd_bus_component_manager_fixture(
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
             _pasd_device_state_splitter,
+            list(range(1, 25)),
         )
         yield component_manager
 

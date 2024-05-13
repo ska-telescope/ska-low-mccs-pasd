@@ -291,43 +291,54 @@ class PasdBusRequestProvider:
       given the above constraints
     """
 
-    def __init__(self, min_ticks: int, logger: logging.Logger) -> None:
+    def __init__(
+        self, min_ticks: int, logger: logging.Logger, available_smartboxes: list[int]
+    ) -> None:
         """
         Initialise a new instance.
 
         :param min_ticks: minimum number of ticks between communications
             with any given device
         :param logger: a logger.
+        :param available_smartboxes: list of available smartbox ids to poll
         """
         self._min_ticks = min_ticks
         self._logger = logger
+        self._available_smartboxes = available_smartboxes
+        self.initialise()
 
+    def initialise(self) -> None:
+        """Initialise the PasdBusRequestProvider.
+
+        This may be called when the device is taken offline to reset
+        all the request providers.
+        """
         # Instantiate ticks dict in the order the devices will be polled:
         # First FNDH, then FNCC, then all Smartboxes
         self._ticks = {
-            PasdData.FNDH_DEVICE_ID: min_ticks,
-            PasdData.FNCC_DEVICE_ID: min_ticks,
+            PasdData.FNDH_DEVICE_ID: self._min_ticks,
+            PasdData.FNCC_DEVICE_ID: self._min_ticks,
         }
         self._ticks.update(
             {
                 device_number: self._min_ticks
-                for device_number in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
+                for device_number in self._available_smartboxes
             }
         )
 
         fndh_request_provider = DeviceRequestProvider(
-            PasdData.NUMBER_OF_FNDH_PORTS, fndh_read_request_iterator, logger
+            PasdData.NUMBER_OF_FNDH_PORTS, fndh_read_request_iterator, self._logger
         )
         fncc_request_provider = DeviceRequestProvider(
-            0, fncc_read_request_iterator, logger
+            0, fncc_read_request_iterator, self._logger
         )
         self._device_request_providers: dict[int, DeviceRequestProvider] = {
             smartbox_id: DeviceRequestProvider(
                 PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 smartbox_read_request_iterator,
-                logger,
+                self._logger,
             )
-            for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
+            for smartbox_id in self._available_smartboxes
         }
         self._device_request_providers[PasdData.FNDH_DEVICE_ID] = fndh_request_provider
         self._device_request_providers[PasdData.FNCC_DEVICE_ID] = fncc_request_provider

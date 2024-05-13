@@ -244,6 +244,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     SimulationConfig = tango.server.device_property(
         dtype=int, default_value=SimulationMode.FALSE
     )
+    AvailableSmartboxes = tango.server.device_property(
+        dtype="DevVarShortArray",
+        default_value=range(1, PasdData.NUMBER_OF_SMARTBOXES + 1),
+    )
     # Default low-pass filtering cut-off frequency for sensor readings.
     # It is automatically written to all sensor registers of the FNDH and smartboxes
     # after MccsPasdBus is initialised and set ONLINE, and after any of them are powered
@@ -269,7 +273,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         self._pasd_state: dict[str, PasdAttribute] = {}
         self._setup_fndh_attributes()
         self._setup_fncc_attributes()
-        for smartbox_number in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+        for smartbox_number in self.AvailableSmartboxes:
             self._setup_smartbox_attributes(smartbox_number)
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
@@ -285,6 +289,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             f"\tTimeout: {self.Timeout}\n"
             f"\tLowPassFilterCutoff: {self.LowPassFilterCutoff}\n"
             f"\tSimulationConfig: {self.SimulationConfig}\n"
+            f"\tAvailableSmartboxes: {self.AvailableSmartboxes}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -675,6 +680,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self._communication_state_callback,
             self._component_state_callback,
             self._pasd_device_state_callback,
+            self.AvailableSmartboxes,
         )
 
     def init_command_objects(self: MccsPasdBus) -> None:
@@ -793,7 +799,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             and communication_state == CommunicationStatus.ESTABLISHED
         ):
             self._init_pasd_devices = False
-            for device_number in range(PasdData.NUMBER_OF_SMARTBOXES + 1):
+            for device_number in self.AvailableSmartboxes:
                 self._set_all_low_pass_filters_of_device(device_number)
 
     def _component_state_callback(
@@ -861,9 +867,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     self._pasd_state[tango_attribute_name].quality
                     != AttrQuality.ATTR_INVALID
                 ):
-                    self._pasd_state[
-                        tango_attribute_name
-                    ].quality = AttrQuality.ATTR_INVALID
+                    self._pasd_state[tango_attribute_name].quality = (
+                        AttrQuality.ATTR_INVALID
+                    )
                     self.push_change_event(
                         tango_attribute_name,
                         self._pasd_state[tango_attribute_name].value,
