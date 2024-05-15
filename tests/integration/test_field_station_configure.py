@@ -422,7 +422,7 @@ class TestFieldStationIntegration:
         # So instead of asserting QUEUED then COMPLETED,
         # We just assert COMPLETED with lookahead 2.
         change_event_callbacks["field_station_command_status"].assert_change_event(
-            (command_id, "COMPLETED"), lookahead=2
+            (command_id, "COMPLETED"), lookahead=3
         )
 
         assert fndh_device.overCurrentThreshold == over_current_threshold

@@ -1,0 +1,145 @@
+overrides:
+  array:
+    stations:
+      "ci-1":
+        id: 1
+        pasd:
+          config_uri: # Config uri currently breaks the functional tests
+            # This is the wrong data for this configuration,
+            # however the values-ci file no longer exists on the telmodel
+            # uri: "gitlab://gitlab.com/ska-telescope/ska-low-aavs3?main#tmdata"
+            # path: "instrument/mccs-configuration/aavs3.yaml"
+            # station_name: "aavs3"
+          fndh:
+            gateway:
+              simulated: true
+              host: whatever
+              port: 9502 # >1024 so that simulator server can run unprivileged
+              timeout: 10.0
+              polling_rate: 0.3 # Optional
+              device_polling_rate: 3.0 # Optional
+              low_pass_filter_cutoff: 1.0 # Optional
+            controller:
+              modbus_id: 101
+          fncc:
+            controller:
+              modbus_id: 100
+          smartboxes:
+            sb01:
+              fndh_port: 1
+              modbus_id: 1
+            sb02:
+              fndh_port: 2
+              modbus_id: 2
+        antennas:
+          sb01-05:
+            location_offset:
+              east: -3.25
+              north: 11.478
+              up: 0.023
+            eep: 100
+            smartbox: sb01
+            smartbox_port: 5
+            tpm: tpm01
+            tpm_input: 5
+          sb01-07:
+            location_offset:
+              east: -0.746
+              north: 12.648
+              up: 0.019
+            eep: 113
+            smartbox: sb01
+            smartbox_port: 7
+            tpm: tpm01
+            tpm_input: 7
+          sb01-04:
+            location_offset:
+              east: -5.231
+              north: 12.066
+              up: 0.018
+            eep: 121
+            smartbox: sb01
+            smartbox_port: 4
+            tpm: tpm01
+            tpm_input: 4
+          sb01-06:
+            location_offset:
+              east: -2.658
+              north: 13.574
+              up: 0.028
+            eep: 134
+            smartbox: sb01
+            smartbox_port: 6
+            tpm: tpm01
+            tpm_input: 6
+          sb01-03:
+            location_offset:
+              east: -4.752
+              north: 14.09
+              up: 0.004
+            eep: 155
+            smartbox: sb01
+            smartbox_port: 3
+            tpm: tpm01
+            tpm_input: 3
+          sb01-08:
+            location_offset:
+              east: -1.715
+              north: 15.36
+              up: 0.019
+            eep: 168
+            smartbox: sb01
+            smartbox_port: 8
+            tpm: tpm01
+            tpm_input: 8
+          sb01-02:
+            location_offset:
+              east: -3.975
+              north: 15.948
+              up: 0.016
+            eep: 189
+            smartbox: sb01
+            smartbox_port: 2
+            tpm: tpm01
+            tpm_input: 2
+          sb01-09:
+            location_offset:
+              east: -0.511
+              north: 16.966
+              up: 0.037
+            eep: 202
+            smartbox: sb01
+            smartbox_port: 9
+            tpm: tpm01
+            tpm_input: 9
+          sb01-10:
+            location_offset:
+              east: -2.864
+              north: 17.596
+              up: 0.011
+            eep: 223
+            smartbox: sb01
+            smartbox_port: 10
+            tpm: tpm01
+            tpm_input: 10
+          sb01-01:
+            location_offset:
+              east: -5.422
+              north: 17.79
+              up: 0.008
+            eep: 244
+            smartbox: sb01
+            smartbox_port: 1
+            tpm: tpm01
+            tpm_input: 1
+
+defaults:
+  logging_level_default: 5
+# Use helm_values to set arbitrary helm values.
+# These are passed through to the helm values file as-is.
+# For example,
+#
+# helm_values:
+#   image:
+#     registry: registry.gitlab.com/ska-telescope/mccs/ska-low-mccs-pasd
+#     tag: 0.11.0-dev.cae7b6bc2

@@ -5,6 +5,10 @@ Define the deployment for MccsFieldStation devices.
     fieldstations:
       s8-1:
         low-mccs/fieldstation/s8-1:
+          config_uri:
+            - "car:ska-low-deployment?main"
+            - "helmfile.d/values/low/s8-1.yaml"
+            - "s8-1"
           fndh_name: low-mccs/fndh/s8-1
           smartbox_names:
             - low-mccs/smartbox/s8-1-sb01
@@ -44,7 +48,7 @@ instances:
   - {{printf "fieldstation-%s" $server_key}}
 {{- end}}
 command: MccsFieldStation
-server: 
+server:
   name: MccsFieldStation
   instances:
 {{- range $server_key, $this_server := $fieldstations}}
@@ -56,19 +60,22 @@ server:
             - name: {{$fieldstation_name}}
               properties:
                 - name: "ConfigurationHost"
-                  values: 
+                  values:
                     - {{quote $this_fieldstation.configuration_host}}
                 - name: "ConfigurationPort"
-                  values: 
+                  values:
                     - {{quote $this_fieldstation.configuration_port}}
                 - name: "StationName"
-                  values: 
+                  values:
                     - {{quote $server_key}}
+                - name: "TMConfigURI"
+                  values:
+{{- toYaml $this_fieldstation.config_uri | nindent 20}}
                 - name: "FndhFQDN"
-                  values: 
+                  values:
                     - {{quote $this_fieldstation.fndh_name}}
                 - name: "SmartBoxFQDNs"
-                  values: 
+                  values:
 {{toYaml $this_fieldstation.smartbox_names | indent 20}}
 {{- with $this_fieldstation.logging_level_default}}
                 - name: "LoggingLevelDefault"
