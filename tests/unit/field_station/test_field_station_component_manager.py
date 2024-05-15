@@ -112,7 +112,7 @@ def _output_antenna_mask() -> list:
 
 def _input_antenna_mapping() -> dict:
     antenna_mapping: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_ANTENNAS)]
-    for smartbox_no in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
             try:
                 antenna_no = (
@@ -141,7 +141,7 @@ def _output_antenna_mapping() -> dict:
         str(antenna_id): [0, 0]
         for antenna_id in range(1, PasdData.NUMBER_OF_ANTENNAS + 1)
     }
-    for smartbox_no in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
             try:
                 antenna_no = (
@@ -160,8 +160,10 @@ def _output_antenna_mapping() -> dict:
 
 
 def _input_smartbox_mapping() -> dict:
-    smartbox_mapping: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_SMARTBOXES)]
-    for fndh_port in range(PasdData.NUMBER_OF_SMARTBOXES):
+    smartbox_mapping: list[dict] = [
+        {} for _ in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
+    ]
+    for fndh_port in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION):
         smartbox_mapping[fndh_port]["fndhPort"] = fndh_port + 1
         smartbox_mapping[fndh_port]["smartboxID"] = fndh_port + 1
 
@@ -178,7 +180,7 @@ def _input_smartbox_mapping() -> dict:
 def _output_smartbox_mapping() -> dict:
     smartbox_mapping: dict = {
         str(fndh_port): fndh_port
-        for fndh_port in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
+        for fndh_port in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
     }
 
     # Swap two smartboxes
@@ -258,7 +260,7 @@ def test_context_fixture(
     """
     harness = PasdTangoTestHarness()
     harness.set_mock_fndh_device(mock_fndh)
-    for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+    for smartbox_id in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         harness.set_mock_smartbox_device(mock_smartboxes[smartbox_id - 1], smartbox_id)
     with harness as context:
         yield context
@@ -287,7 +289,7 @@ def mock_antenna_mapping_fixture() -> dict[int, list]:
         smartbox_no * PasdData.NUMBER_OF_SMARTBOX_PORTS
         + smartbox_port
         + 1: [smartbox_no + 1, smartbox_port + 1]
-        for smartbox_no in range(0, PasdData.NUMBER_OF_SMARTBOXES)
+        for smartbox_no in range(0, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
         for smartbox_port in range(0, PasdData.NUMBER_OF_SMARTBOX_PORTS)
         if smartbox_no * PasdData.NUMBER_OF_SMARTBOX_PORTS + smartbox_port + 1 < 257
         # For sanity's sake we assign all ports antennas, this is not realistic
@@ -306,7 +308,10 @@ def mock_smartbox_mapping_fixture() -> dict[int, int]:
 
     :returns: a default set of fndh port mappings
     """
-    return {port: port for port in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)}
+    return {
+        port: port
+        for port in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
+    }
 
 
 @pytest.fixture(name="simulated_configuration")
@@ -407,7 +412,9 @@ class TestFieldStationComponentManager:
             get_fndh_name(),
             [
                 get_smartbox_name(smartbox_id)
-                for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
+                for smartbox_id in range(
+                    1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+                )
             ],
             [],
             mock_callbacks["communication_state"],
@@ -479,7 +486,7 @@ class TestFieldStationComponentManager:
         )
         # two smartboxes have no antenna attached. Therefore a update in the
         # the port powers has no antenna callback.
-        for i in range(PasdData.NUMBER_OF_SMARTBOXES):
+        for i in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION):
             mock_callbacks["component_state"].assert_call(
                 antenna_powers=Anything, lookahead=30
             )

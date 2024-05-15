@@ -231,7 +231,7 @@ def test_context_fixture(
     harness.set_fndh_device()
     harness.set_fncc_device()
 
-    for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+    for smartbox_id in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         harness.add_smartbox_device(smartbox_id)
     harness.set_configuration_server(configuration_manager)
     harness.set_field_station_device()
@@ -342,6 +342,6 @@ def smartbox_proxys_fixture(
     :return: the list of smartbox Tango devices.
     """
     smartbox_devices = []
-    for i in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+    for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         smartbox_devices.append(test_context.get_smartbox_device(i))
     return smartbox_devices

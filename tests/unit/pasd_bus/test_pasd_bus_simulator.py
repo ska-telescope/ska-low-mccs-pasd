@@ -82,7 +82,7 @@ class TestPasdBusSimulator:
         )
         assert fndh_simulator.ports_power_sensed == fndh_config
         for smartbox_id in sorted(list(pasd_hw_simulators.keys()))[
-            1 : PasdData.NUMBER_OF_SMARTBOXES
+            1 : PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
         ]:
             smartbox_simulator = pasd_hw_simulators[smartbox_id]
             port_nr = smartbox_attached_ports[smartbox_id - 1]
@@ -115,7 +115,7 @@ class TestPasdBusSimulator:
         assert fndh_uptime > 0
         previous_smartbox_uptime = 0
         for smartbox_simulator in list(pasd_hw_simulators.values())[
-            1 : PasdData.NUMBER_OF_SMARTBOXES
+            1 : PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
         ]:
             smartbox_uptime = PasdConversionUtility.convert_uptime(
                 smartbox_simulator.uptime

@@ -54,7 +54,7 @@ def _bad_antenna_mask_arg() -> str:
 
 def _antenna_mapping_arg() -> str:
     antenna_mapping: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_ANTENNAS)]
-    for smartbox_no in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
             try:
                 antenna_no = (
@@ -97,8 +97,10 @@ def _bad_antenna_mapping_arg() -> str:
 
 
 def _smartbox_mapping_arg() -> str:
-    smartbox_mapping: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_SMARTBOXES)]
-    for fndh_port in range(PasdData.NUMBER_OF_SMARTBOXES):
+    smartbox_mapping: list[dict] = [
+        {} for _ in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
+    ]
+    for fndh_port in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION):
         smartbox_mapping[fndh_port]["fndhPort"] = fndh_port + 1
         smartbox_mapping[fndh_port]["smartboxID"] = fndh_port + 1
 

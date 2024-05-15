@@ -18,8 +18,8 @@ __all__ = ["PasdData"]
 class PasdData:  # pylint: disable=too-few-public-methods
     """This class contain data/facts about PaSD that are needed by multiple classes."""
 
-    NUMBER_OF_SMARTBOXES: Final = 24
-    """The number of smartboxes in a Station."""
+    MAX_NUMBER_OF_SMARTBOXES_PER_STATION: Final = 24
+    """The maximum number of smartboxes in a Station."""
 
     NUMBER_OF_ANTENNAS: Final = 256
     """The number of antenna in a Station."""

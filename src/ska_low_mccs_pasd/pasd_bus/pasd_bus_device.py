@@ -227,7 +227,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 "warning_flags": f"smartbox{smartbox_number}WarningFlags",
                 "alarm_flags": f"smartbox{smartbox_number}AlarmFlags",
             }
-            for smartbox_number in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1)
+            for smartbox_number in range(
+                1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+            )
         },
     }
     # ----------
@@ -246,7 +248,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     )
     AvailableSmartboxes = tango.server.device_property(
         dtype="DevVarShortArray",
-        default_value=range(1, PasdData.NUMBER_OF_SMARTBOXES + 1),
+        default_value=range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1),
     )
     # Default low-pass filtering cut-off frequency for sensor readings.
     # It is automatically written to all sensor registers of the FNDH and smartboxes

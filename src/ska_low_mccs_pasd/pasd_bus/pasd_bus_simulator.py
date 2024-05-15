@@ -1529,7 +1529,9 @@ class PasdBusSimulator:
 
         self._hw_simulators: dict[int, PasdHardwareSimulator] = {}
         self._smartboxes_ports_connected: list[list[bool]] = []
-        self._smartbox_attached_ports: list[int] = [0] * PasdData.NUMBER_OF_SMARTBOXES
+        self._smartbox_attached_ports: list[int] = [
+            0
+        ] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
         self._time_multiplier: int = time_multiplier
 
         if smartboxes_depend_on_attached_ports:
@@ -1658,7 +1660,7 @@ class PasdBusSimulator:
 
         self._smartboxes_ports_connected = [
             [False] * SmartboxSimulator.NUMBER_OF_PORTS
-            for _ in range(PasdData.NUMBER_OF_SMARTBOXES)
+            for _ in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
         ]
         for antenna_config in config["antennas"].values():
             smartbox_id = int(antenna_config["smartbox"])

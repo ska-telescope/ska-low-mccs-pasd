@@ -201,7 +201,7 @@ class TestFieldStationIntegration:
 
         # Initialise the station subdevices.
         pasd_bus_device.initializefndh()
-        for i in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+        for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
             pasd_bus_device.initializesmartbox(i)
 
         # set adminMode online for all smartbox.
@@ -266,7 +266,7 @@ class TestFieldStationIntegration:
         change_event_callbacks["field_station_state"].assert_change_event(
             tango.DevState.OFF
         )
-        for i in range(PasdData.NUMBER_OF_SMARTBOXES):
+        for i in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION):
             change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
         change_event_callbacks["antenna_power_states"].assert_not_called()
 
