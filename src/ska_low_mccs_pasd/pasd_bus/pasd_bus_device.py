@@ -799,7 +799,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             and communication_state == CommunicationStatus.ESTABLISHED
         ):
             self._init_pasd_devices = False
-            for device_number in self.AvailableSmartboxes:
+            for device_number in self.AvailableSmartboxes + [PasdData.FNDH_DEVICE_ID]:
                 self._set_all_low_pass_filters_of_device(device_number)
 
     def _component_state_callback(
