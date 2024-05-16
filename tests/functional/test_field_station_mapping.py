@@ -21,7 +21,7 @@ from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 gc.disable()
 
-NUMBER_OF_SMARTBOX = 24
+NUMBER_OF_SMARTBOX = 2
 
 ANTENNA_MAPPING_SCHEMA: Final = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -397,9 +397,9 @@ def check_the_mapping_is_valid(
         if "smartboxID" in smartbox_config:
             number_of_configured_smartboxes += 1
     if is_true_context:
-        # Currently the store if configured with the deployed configuration from
+        # Currently the store is configured with the deployed configuration from
         # helm. We check that for the devices deployed we have a configuration.
         assert number_of_configured_smartboxes == len(smartboxes_under_test)
     else:
-        # We have mocked the store with a configuration for all 24 smartbox
+        # We have mocked the store with a configuration for 2 smartboxes
         assert number_of_configured_smartboxes == NUMBER_OF_SMARTBOX

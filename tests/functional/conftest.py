@@ -29,7 +29,7 @@ from tests.harness import (
 )
 
 NUMBER_OF_ANTENNA = 256
-NUMBER_OF_SMARTBOX = 24
+NUMBER_OF_SMARTBOX = 2
 NUMBER_OF_SMARTBOX_PORTS = 12
 
 
@@ -421,7 +421,7 @@ def device_subscriptions_fixture() -> dict[str, list[str]]:
             "smartbox1FemCaseTemperatures",
             "smartbox1FemHeatsinkTemperatures",
             "smartbox1PortsPowerSensed",
-            "smartbox24AlarmFlags",
+            "smartbox2AlarmFlags",
         ],
         get_fndh_name(): [
             "state",
