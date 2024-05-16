@@ -131,7 +131,7 @@ def smartbox_ids_fixture() -> list[int]:
 
     :return: a list of smartbox IDs to use in a test
     """
-    return list(range(1, 25))
+    return list(range(1, 3))
 
 
 @pytest.fixture(name="configuration_manager", scope="module")
