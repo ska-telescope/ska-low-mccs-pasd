@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* [WOM-276]: Only poll deployed smartboxes
+
 ## 0.8.0
 
 * [WOM-244]: Support for reading the FNCC registers
