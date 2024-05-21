@@ -13,7 +13,7 @@
                 "type": "object",
                 "properties": {
                     "antennaID": {
-                        "type": "integer"
+                        "type": "string"
                     },
                     "maskingState": {
                         "type": "boolean"

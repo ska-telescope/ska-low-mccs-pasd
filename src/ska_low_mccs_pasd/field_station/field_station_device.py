@@ -263,10 +263,9 @@ class MccsFieldStation(SKABaseDevice):
             self._antenna_power_json = None
             antenna_powers = kwargs["antenna_powers"]  # dict[str, PowerState]
             for antenna_id in self.component_manager._antenna_mapping:
-                antenna_number = int(antenna_id)
                 antenna_masks = self.component_manager._antenna_mask
 
-                if not antenna_masks[antenna_number]:
+                if not antenna_masks[antenna_id]:
                     if antenna_powers[antenna_id] != PowerState.ON:
                         component_state_on = False
 
@@ -292,7 +291,7 @@ class MccsFieldStation(SKABaseDevice):
         super()._component_state_changed(fault=fault, power=power)
 
     def _on_configuration_change(
-        self: MccsFieldStation, smartbox_mapping: dict[int, PowerState]
+        self: MccsFieldStation, smartbox_mapping: dict[str, PowerState]
     ) -> None:
         """
         Handle a change in the field station configuration.
@@ -370,9 +369,9 @@ class MccsFieldStation(SKABaseDevice):
         (return_code, message) = handler(argin)
         return ([return_code], [message])
 
-    @command(dtype_in="DevShort", dtype_out="DevVarLongStringArray")
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
     def PowerOnAntenna(
-        self: MccsFieldStation, antenna_no: int
+        self: MccsFieldStation, antenna_no: str
     ) -> DevVarLongStringArrayType:
         """
         Turn on an antenna.
@@ -387,9 +386,9 @@ class MccsFieldStation(SKABaseDevice):
         (return_code, message) = handler(antenna_no)
         return ([return_code], [message])
 
-    @command(dtype_in="DevShort", dtype_out="DevVarLongStringArray")
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
     def PowerOffAntenna(
-        self: MccsFieldStation, antenna_no: int
+        self: MccsFieldStation, antenna_no: str
     ) -> DevVarLongStringArrayType:
         """
         Turn off an antenna.
@@ -486,7 +485,7 @@ class MccsFieldStation(SKABaseDevice):
 
         :return: antenna mask
         """
-        return json.dumps(self.component_manager._antenna_mask_pretty)
+        return json.dumps(self.component_manager._antenna_mask)
 
     @attribute(dtype="DevString", label="AntennaMapping")
     def antennaMapping(self: MccsFieldStation) -> str:
@@ -495,7 +494,7 @@ class MccsFieldStation(SKABaseDevice):
 
         :return: antenna mappping
         """
-        return json.dumps(self.component_manager._antenna_mapping_pretty)
+        return json.dumps(self.component_manager._antenna_mapping)
 
     @attribute(dtype="DevString", label="SmartboxMapping")
     def smartboxMapping(self: MccsFieldStation) -> str:
@@ -504,7 +503,7 @@ class MccsFieldStation(SKABaseDevice):
 
         :return: smartbox mapping
         """
-        return json.dumps(self.component_manager._smartbox_mapping_pretty)
+        return json.dumps(self.component_manager._smartbox_mapping)
 
     @attribute(dtype="DevString", label="antennaPowerStates")
     def antennaPowerStates(self: MccsFieldStation) -> str:
