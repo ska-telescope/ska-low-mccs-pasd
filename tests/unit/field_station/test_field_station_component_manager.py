@@ -90,15 +90,17 @@ def on_fndh_port_fixture(
 
 
 def _input_antenna_mask() -> dict:
-    antenna_mask: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_ANTENNAS)]
-    for antenna_no in range(PasdData.NUMBER_OF_ANTENNAS):
-        antenna_mask[antenna_no]["antennaID"] = antenna_no + 1
-        antenna_mask[antenna_no]["maskingState"] = False
+    antenna_mask: dict = {}
+    for i in range(PasdData.NUMBER_OF_ANTENNAS):
+        antenna_id = "sb-" + str(i)
+        antenna_mask[antenna_id] = {}
+        antenna_mask[antenna_id]["maskingState"] = False
     # Mask the first 12 antennas
-    for antenna_no in range(PasdData.NUMBER_OF_SMARTBOX_PORTS):
-        antenna_mask[antenna_no]["maskingState"] = True
+    for i in range(PasdData.NUMBER_OF_SMARTBOX_PORTS):
+        antenna_id = "sb-" + str(i)
+        antenna_mask[antenna_id]["maskingState"] = True
     # The 94th element in this list will have antennaID = 95
-    antenna_mask[94]["maskingState"] = True
+    antenna_mask["sb-94"]["maskingState"] = True
     return {"antennaMask": antenna_mask}
 
 
@@ -504,14 +506,14 @@ class TestFieldStationComponentManager:
 
     @pytest.mark.parametrize(
         (
-            "antenna_no",
+            "antenna_id",
             "antenna_masking_state",
             "expected_manager_result",
             "command_tracked_result",
         ),
         [
             (
-                255,
+                "sb18-01",
                 True,  # antenna is masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
@@ -523,7 +525,7 @@ class TestFieldStationComponentManager:
                 ),
             ),
             (
-                256,
+                "sb18-01",
                 False,  # antenna is not masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (TaskStatus.COMPLETED, "turn on antenna 256 success."),
@@ -533,7 +535,7 @@ class TestFieldStationComponentManager:
     def test_antenna_power_on(  # pylint: disable=too-many-arguments
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
-        antenna_no: int,
+        antenna_id: str,
         antenna_masking_state: bool,
         expected_manager_result: tuple[TaskStatus, str],
         command_tracked_result: tuple[TaskStatus, str],
@@ -544,7 +546,7 @@ class TestFieldStationComponentManager:
 
         :param field_station_component_manager: A FieldStation component manager
             with communication established.
-        :param antenna_no: antenna number under test.
+        :param antenna_id: antenna number under test.
         :param antenna_masking_state: whether the antenna is masked.
         :param expected_manager_result: expected response from the call
         :param command_tracked_result: The result of the command.
@@ -559,22 +561,22 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        field_station_component_manager._antenna_mask[
-            antenna_no
-        ] = antenna_masking_state
+        field_station_component_manager._antenna_mask[antenna_id] = (
+            antenna_masking_state
+        )
         assert field_station_component_manager._antenna_mapping_pretty is not None
         smartbox_id = field_station_component_manager._antenna_mapping_pretty[
             "antennaMapping"
-        ][antenna_no - 1]["smartboxID"]
+        ][antenna_id]["smartboxID"]
         smartbox_port = field_station_component_manager._antenna_mapping_pretty[
             "antennaMapping"
-        ][antenna_no - 1]["smartboxPort"]
+        ][antenna_id]["smartboxPort"]
 
         fndh_port = field_station_component_manager._smartbox_mapping[str(smartbox_id)]
 
         assert (
             field_station_component_manager.turn_on_antenna(
-                antenna_no, mock_callbacks["task"]
+                antenna_id, mock_callbacks["task"]
             )
             == expected_manager_result
         )
@@ -604,14 +606,14 @@ class TestFieldStationComponentManager:
 
     @pytest.mark.parametrize(
         (
-            "antenna_no",
+            "antenna_id",
             "antenna_masking_state",
             "expected_manager_result",
             "command_tracked_result",
         ),
         [
             (
-                1,
+                "sb18-01",
                 True,  # antenna is masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
@@ -620,13 +622,13 @@ class TestFieldStationComponentManager:
                 ),
             ),
             (
-                123,
+                "sb18-11",
                 False,  # antenna is not masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (TaskStatus.COMPLETED, "turn off antenna 123 success."),
             ),
             (
-                255,
+                "sb18-11",
                 False,  # antenna is not masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
@@ -643,7 +645,7 @@ class TestFieldStationComponentManager:
     def test_antenna_power_off(  # pylint: disable=too-many-arguments
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
-        antenna_no: int,
+        antenna_id: str,
         antenna_masking_state: bool,
         expected_manager_result: tuple[TaskStatus, str],
         command_tracked_result: tuple[TaskStatus, str],
@@ -654,7 +656,7 @@ class TestFieldStationComponentManager:
 
         :param field_station_component_manager: A FieldStation component manager
             with communication established.
-        :param antenna_no: antenna number under test.
+        :param antenna_id: antenna number under test.
         :param antenna_masking_state: whether the antenna is masked.
         :param expected_manager_result: expected response from the call
         :param command_tracked_result: The result of the command.
@@ -669,20 +671,20 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        field_station_component_manager._antenna_mask[
-            antenna_no
-        ] = antenna_masking_state
+        field_station_component_manager._antenna_mask[antenna_id] = (
+            antenna_masking_state
+        )
         assert field_station_component_manager._antenna_mapping_pretty is not None
         smartbox_id = field_station_component_manager._antenna_mapping_pretty[
             "antennaMapping"
-        ][antenna_no - 1]["smartboxID"]
+        ][antenna_id]["smartboxID"]
         smartbox_port = field_station_component_manager._antenna_mapping_pretty[
             "antennaMapping"
-        ][antenna_no - 1]["smartboxPort"]
+        ][antenna_id]["smartboxPort"]
 
         assert (
             field_station_component_manager.turn_off_antenna(
-                antenna_no, mock_callbacks["task"]
+                antenna_id, mock_callbacks["task"]
             )
             == expected_manager_result
         )
@@ -714,7 +716,7 @@ class TestFieldStationComponentManager:
         (
             "component_manager_command",
             "proxy_command",
-            "antenna_no",
+            "antenna_id",
             "antenna_masking_state",
             "expected_manager_result",
             "command_tracked_result",
@@ -834,9 +836,9 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        field_station_component_manager._antenna_mask[
-            antenna_no
-        ] = antenna_masking_state
+        field_station_component_manager._antenna_mask[antenna_no] = (
+            antenna_masking_state
+        )
 
         assert (
             getattr(field_station_component_manager, component_manager_command)(
