@@ -39,6 +39,8 @@ coverage.xml
 **/.pydevproject
 **/.settings
 
+resources/git-hooks
+
 # Ansible
 *.retry
 

@@ -44,6 +44,16 @@ include:
   - project: 'ska-telescope/templates-repository'
     file: 'gitlab-ci/includes/k8s.gitlab-ci.yml'
 
+  # Notebooks
+  - project: 'ska-telescope/templates-repository'
+    file: gitlab-ci/includes/notebook.gitlab-ci.yml
+
+notebook-lint:
+  when: manual
+
+notebook-test:
+  when: manual
+
 # TODO: For now this manual step deploys to the STFC cloud just like the
 # automatic step does.
 # In future, we'll set it to deploy to an environment with PaSD hardware
