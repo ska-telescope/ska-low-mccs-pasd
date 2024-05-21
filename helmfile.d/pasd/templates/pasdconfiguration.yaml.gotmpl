@@ -15,7 +15,7 @@
       {{- $pasd_config_instance := dict}}
       {{- $_ := set $pasd_config_instance "pasd" (dict "smartboxes" dict)}}
       {{- range $smartbox_name, $smartbox_spec := (dig "smartboxes" dict $pasd_spec)}}
-        {{- $_ := set $pasd_config_instance.pasd.smartboxes (int $smartbox_spec.modbus_id | toString) (pick $smartbox_spec "fndh_port")}}
+        {{- $_ := set $pasd_config_instance.pasd.smartboxes $smartbox_name $smartbox_spec}}
       {{- end}}
 
       {{- $_ := set $pasd_config_instance "antennas" dict}}
@@ -23,7 +23,7 @@
         {{- $antenna_config := pick $antenna_spec "smartbox_port"}}
         {{- $_ := set $antenna_config "smartbox" ($antenna_spec.smartbox | trimPrefix "sb" | trimPrefix "0")}}
         {{- $_ := set $antenna_config "masked" (dig "masked" false $antenna_spec)}}
-        {{- $_ := set $pasd_config_instance.antennas (int $antenna_spec.eep | toString) $antenna_config}}
+        {{- $_ := set $pasd_config_instance.antennas $antenna_name $antenna_config}}
       {{- end}}
       {{- $_ := set $pasd_config $station_name $pasd_config_instance}}
     {{- end}}

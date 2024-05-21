@@ -11,6 +11,10 @@ environments:
     values:
       - platform/stfc-ci.yaml
       - pasd/values/values-ci.yaml
+  stfc-ci-telmodel:
+    values:
+      - platform/minikube.yaml
+      - pasd/values/values-ci-telmodel.yaml
   aa0.5-production:
     kubeContext: infra:au-aa-mccs-cloud01-k8s
     values:
