@@ -13,7 +13,7 @@ from ska_control_model import LoggingLevel, SimulationMode
 from ska_tango_testing.harness import TangoTestHarness, TangoTestHarnessContext
 from tango.server import Device
 
-from ska_low_mccs_pasd.pasd_data import PasdData
+from tests.conftest import MAX_NUMBER_OF_SMARTBOXES_PER_STATION
 
 if TYPE_CHECKING:
     from ska_low_mccs_pasd.pasd_bus import PasdHardwareSimulator
@@ -314,7 +314,7 @@ class PasdTangoTestHarness:
 
         if available_smartboxes is None:
             available_smartboxes = list(
-                range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
+                range(1, MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
             )
 
         self._tango_test_harness.add_device(
@@ -362,9 +362,7 @@ class PasdTangoTestHarness:
             for example with a patched subclass.
         """
         if smartbox_numbers is None:
-            smartbox_numbers = list(
-                range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
-            )
+            smartbox_numbers = list(range(1, MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1))
 
         def port(context: dict[str, Any]) -> int:
             return context["configuration_manager"][1]

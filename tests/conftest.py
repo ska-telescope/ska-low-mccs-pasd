@@ -21,9 +21,10 @@ import tango
 import yaml
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-NUMBER_OF_ANTENNA = 256
-NUMBER_OF_SMARTBOX = 24
-NUMBER_OF_SMARTBOX_PORTS = 12
+MAX_NUMBER_OF_SMARTBOXES_PER_STATION: Final = 24
+NUMBER_OF_ANTENNAS: Final = 256
+NUMBER_OF_SMARTBOX_PORTS: Final = 12
+NUMBER_OF_FNDH_PORTS: Final = 28
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:

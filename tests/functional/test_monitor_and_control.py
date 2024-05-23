@@ -18,13 +18,10 @@ from ska_control_model import AdminMode, HealthState, ResultCode, SimulationMode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
+from tests.conftest import NUMBER_OF_FNDH_PORTS, NUMBER_OF_SMARTBOX_PORTS
 from tests.harness import get_pasd_bus_name
 
 gc.disable()
-
-
-NUMBER_OF_FNDH_PORTS = 28
-NUMBER_OF_SMARTBOX_PORTS = 12
 
 
 @scenario(

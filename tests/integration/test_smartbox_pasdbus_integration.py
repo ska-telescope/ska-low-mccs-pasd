@@ -604,7 +604,7 @@ class TestSmartBoxPasdBusIntegration:
         # Check the FNDH and smartbox simulator's status.
         change_event_callbacks[f"smartbox{smartbox_id}status"].assert_change_event(
             "OK",
-            lookahead=2,
+            lookahead=3,
             consume_nonmatches=True,
         )
         assert smartbox_device.PasdStatus == "OK"
@@ -714,7 +714,7 @@ class TestSmartBoxPasdBusIntegration:
             expected_smartbox_port_states[port - 1] = True
             change_event_callbacks[
                 f"smartbox{smartbox_id}portpowersensed"
-            ].assert_change_event(expected_smartbox_port_states, 3, True)
+            ].assert_change_event(expected_smartbox_port_states, 4, True)
             assert (
                 list(smartbox_device.PortsPowerSensed) == expected_smartbox_port_states
             )

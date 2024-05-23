@@ -19,9 +19,9 @@ from pytest_bdd import given, parsers, scenarios, then, when
 from ska_control_model import AdminMode, PowerState, SimulationMode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-gc.disable()
+from tests.functional.conftest import NUMBER_OF_SMARTBOX
 
-NUMBER_OF_SMARTBOX = 2
+gc.disable()
 
 ANTENNA_MAPPING_SCHEMA: Final = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -401,5 +401,5 @@ def check_the_mapping_is_valid(
         # helm. We check that for the devices deployed we have a configuration.
         assert number_of_configured_smartboxes == len(smartboxes_under_test)
     else:
-        # We have mocked the store with a configuration for 2 smartboxes
+        # We have mocked the store with a configuration for all 24 smartboxes
         assert number_of_configured_smartboxes == NUMBER_OF_SMARTBOX

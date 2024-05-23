@@ -19,6 +19,7 @@ from ska_control_model import AdminMode, LoggingLevel, ResultCode, SimulationMod
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
+# from tests.conftest import NUMBER_OF_ANTENNAS, NUMBER_OF_SMARTBOX_PORTS
 from tests.harness import (
     PasdTangoTestHarness,
     PasdTangoTestHarnessContext,
@@ -28,9 +29,7 @@ from tests.harness import (
     get_smartbox_name,
 )
 
-NUMBER_OF_ANTENNA = 256
-NUMBER_OF_SMARTBOX = 2
-NUMBER_OF_SMARTBOX_PORTS = 12
+NUMBER_OF_SMARTBOX = 24
 
 
 # TODO: https://github.com/pytest-dev/pytest-forked/issues/67
@@ -275,7 +274,7 @@ def change_event_callbacks_fixture(
     ]
     return MockTangoEventCallbackGroup(
         *keys,
-        timeout=500.0,
+        timeout=120.0,
         assert_no_error=False,
     )
 
@@ -590,7 +589,7 @@ def set_tango_device_state(
     print(f"Command queued on {dev.dev_name()}: {command_id}")
     if initial_state != desired_state:
         change_event_callbacks[f"{dev.dev_name()}/state"].assert_change_event(
-            desired_state, lookahead=3, consume_nonmatches=True
+            desired_state
         )
     assert dev.state() == desired_state
 
