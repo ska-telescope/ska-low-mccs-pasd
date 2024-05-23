@@ -240,20 +240,20 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     PollingRate = tango.server.device_property(dtype=float, default_value=0.5)
     DevicePollingRate = tango.server.device_property(dtype=float, default_value=15.0)
     Timeout = tango.server.device_property(dtype=float)
+    # Default low-pass filtering cut-off frequency for sensor readings.
+    # It is automatically written to all sensor registers of the FNDH and smartboxes
+    # after MccsPasdBus is initialised and set ONLINE, and after any of them are powered
+    # on or reset later.
     LowPassFilterCutoff = tango.server.device_property(
         dtype=float, default_value=10.0, update_db=True
     )
     SimulationConfig = tango.server.device_property(
         dtype=int, default_value=SimulationMode.FALSE
     )
-    AvailableSmartboxes = tango.server.device_property(
+    AvailableSmartboxes: list[int] = tango.server.device_property(
         dtype="DevVarShortArray",
-        default_value=range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1),
+        default_value=list(range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)),
     )
-    # Default low-pass filtering cut-off frequency for sensor readings.
-    # It is automatically written to all sensor registers of the FNDH and smartboxes
-    # after MccsPasdBus is initialised and set ONLINE, and after any of them are powered
-    # on or reset later.
 
     # ---------------
     # Initialisation

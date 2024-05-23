@@ -46,7 +46,8 @@ def mock_callbacks_fixture() -> MockCallableGroup:
     :return: a group of callables ith asynchrony support.
     """
     smartbox_callback_names = [
-        f"pasd_device_state_for_smartbox{i}" for i in range(1, 25)
+        f"pasd_device_state_for_smartbox{i}"
+        for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
     ]
 
     return MockCallableGroup(
@@ -102,7 +103,7 @@ def pasd_bus_component_manager_fixture(
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
             _pasd_device_state_splitter,
-            list(range(1, 25)),
+            list(range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)),
         )
         yield component_manager
 
@@ -155,7 +156,9 @@ class TestPasdBusComponentManager:
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
 
         pasd_bus_component_manager.initialize_fndh()
-        for smartbox_number in range(1, 25):
+        for smartbox_number in range(
+            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+        ):
             pasd_bus_component_manager.initialize_smartbox(smartbox_number)
 
         # First we'll receive static info about the FNDH
@@ -183,7 +186,9 @@ class TestPasdBusComponentManager:
         )
 
         # Then the smartboxes
-        for smartbox_number in range(1, 25):
+        for smartbox_number in range(
+            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+        ):
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
                 modbus_register_map_revision=(
@@ -252,7 +257,9 @@ class TestPasdBusComponentManager:
             ),
         )
 
-        for smartbox_number in range(1, 25):
+        for smartbox_number in range(
+            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+        ):
             # smartbox sensor thresholds
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
@@ -338,7 +345,9 @@ class TestPasdBusComponentManager:
             ),
         )
 
-        for smartbox_number in range(1, 25):
+        for smartbox_number in range(
+            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+        ):
             # smartbox ports current trip thresholds
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
@@ -399,7 +408,9 @@ class TestPasdBusComponentManager:
             ports_power_control=[True] * FndhSimulator.NUMBER_OF_PORTS,
         )
 
-        for smartbox_number in range(1, 25):
+        for smartbox_number in range(
+            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+        ):
             # Then the smartbox status info
             mock_callbacks[
                 f"pasd_device_state_for_smartbox{smartbox_number}"
@@ -444,7 +455,9 @@ class TestPasdBusComponentManager:
         )
 
         # Smartbox port status
-        for smartbox_number in range(1, 25):
+        for smartbox_number in range(
+            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+        ):
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
                 port_forcings=["NONE"] * SmartboxSimulator.NUMBER_OF_PORTS,
@@ -464,12 +477,16 @@ class TestPasdBusComponentManager:
         )
 
         # Smartbox warning and alarm flags
-        for smartbox_number in range(1, 25):
+        for smartbox_number in range(
+            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+        ):
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
                 warning_flags=SmartboxAlarmFlags.NONE.name,
             )
-        for smartbox_number in range(1, 25):
+        for smartbox_number in range(
+            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+        ):
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
                 alarm_flags=SmartboxAlarmFlags.NONE.name,

@@ -16,10 +16,9 @@ from typing import Any, Iterator
 
 import pytest
 import tango
-from ska_control_model import SimulationMode
+from ska_control_model import LoggingLevel, SimulationMode
 
 from ska_low_mccs_pasd.pasd_bus import PasdBusSimulator, PasdHardwareSimulator
-from ska_low_mccs_pasd.pasd_data import PasdData
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 
@@ -140,14 +139,36 @@ def smartbox_simulator_fixture(
     return pasd_hw_simulators[on_smartbox_id]
 
 
-@pytest.fixture(name="on_smartbox_id")
-def on_smartbox_id_fixture() -> int:
+@pytest.fixture(name="smartbox_ids_to_test", scope="session")
+def smartbox_ids_to_test_fixture() -> list[int]:
+    """
+    Return a list of smartbox IDs to use in a test.
+
+    :return: a list of smartbox IDs to use in a test
+    """
+    return [1, 2]
+
+
+@pytest.fixture(scope="session")
+def last_smartbox_id(smartbox_ids_to_test: list[int]) -> int:
+    """
+    Return the ID of the last smartbox of the list which are tested.
+
+    :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
+    :return: a list of smartbox IDs to use in a test
+    """
+    return max(smartbox_ids_to_test)
+
+
+@pytest.fixture(name="on_smartbox_id", scope="session")
+def on_smartbox_id_fixture(smartbox_ids_to_test: list[int]) -> int:
     """
     Return the id of a powered smartbox to be used in testing.
 
+    :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
     :return: the id of a powered smartbox to be used in testing.
     """
-    return 1
+    return smartbox_ids_to_test[0]
 
 
 @pytest.fixture(name="on_smartbox_attached_port")
@@ -166,14 +187,15 @@ def on_smartbox_attached_port_fixture(
     return smartbox_attached_ports[on_smartbox_id - 1]
 
 
-@pytest.fixture(name="off_smartbox_id")
-def off_smartbox_id_fixture() -> int:
+@pytest.fixture(name="off_smartbox_id", scope="session")
+def off_smartbox_id_fixture(smartbox_ids_to_test: list[int]) -> int:
     """
     Return the id of an off smartbox to be used in testing.
 
+    :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
     :return: the id of an off smartbox to be used in testing.
     """
-    return 2
+    return smartbox_ids_to_test[1]
 
 
 @pytest.fixture(name="off_smartbox_attached_port")
@@ -214,6 +236,7 @@ def configuration_manager_fixture(
 def test_context_fixture(
     pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     configuration_manager: unittest.mock.Mock,
+    smartbox_ids_to_test: list[int],
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
@@ -221,20 +244,24 @@ def test_context_fixture(
     :param pasd_hw_simulators: the FNDH and smartbox simulators against which to test
     :param configuration_manager: the configuration manager to manage configuration
         for field station.
-
+    :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
     :yield: a test context in which to run the integration tests.
     """
     harness = PasdTangoTestHarness()
 
     harness.set_pasd_bus_simulator(pasd_hw_simulators)
-    harness.set_pasd_bus_device(polling_rate=0.05, device_polling_rate=0.1)
-    harness.set_fndh_device()
-    harness.set_fncc_device()
-
-    for smartbox_id in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
-        harness.add_smartbox_device(smartbox_id)
+    harness.set_pasd_bus_device(
+        polling_rate=0.05,
+        device_polling_rate=0.1,
+        available_smartboxes=smartbox_ids_to_test,
+        logging_level=int(LoggingLevel.FATAL),
+    )
+    harness.set_fndh_device(int(LoggingLevel.ERROR))
+    harness.set_fncc_device(int(LoggingLevel.ERROR))
+    for smartbox_id in smartbox_ids_to_test:
+        harness.add_smartbox_device(smartbox_id, int(LoggingLevel.ERROR))
     harness.set_configuration_server(configuration_manager)
-    harness.set_field_station_device()
+    harness.set_field_station_device(smartbox_ids_to_test, int(LoggingLevel.ERROR))
 
     with harness as context:
         yield context
@@ -333,15 +360,16 @@ def off_smartbox_device_fixture(
 @pytest.fixture(name="smartbox_proxys")
 def smartbox_proxys_fixture(
     test_context: PasdTangoTestHarnessContext,
+    smartbox_ids_to_test: list[int],
 ) -> list[tango.DeviceProxy]:
     """
     Fixture that returns a list of smartbox Tango devices.
 
     :param test_context: context in which the integration tests will run.
-
+    :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
     :return: the list of smartbox Tango devices.
     """
     smartbox_devices = []
-    for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
-        smartbox_devices.append(test_context.get_smartbox_device(i))
+    for smartbox_id in smartbox_ids_to_test:
+        smartbox_devices.append(test_context.get_smartbox_device(smartbox_id))
     return smartbox_devices

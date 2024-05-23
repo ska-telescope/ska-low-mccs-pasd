@@ -124,14 +124,14 @@ def pasd_timeout_fixture() -> Optional[float]:
     return 5.0
 
 
-@pytest.fixture(name="smartbox_ids", scope="session")
-def smartbox_ids_fixture() -> list[int]:
+@pytest.fixture(name="smartbox_ids_to_test", scope="session")
+def smartbox_ids_to_test_fixture() -> list[int]:
     """
     Return a list of smartbox IDs to use in a test.
 
     :return: a list of smartbox IDs to use in a test
     """
-    return list(range(1, 3))
+    return list(range(1, NUMBER_OF_SMARTBOX + 1))
 
 
 @pytest.fixture(name="configuration_manager", scope="module")
@@ -155,7 +155,7 @@ def configuration_manager_fixture(
 @pytest.fixture(name="smartboxes_under_test", scope="module")
 def smartboxes_under_test_fixture(
     is_true_context: bool,
-    smartbox_ids: list[int],
+    smartbox_ids_to_test: list[int],
     station_label: str,
     functional_test_context: PasdTangoTestHarnessContext,
 ) -> list[tango.DeviceProxy]:
@@ -164,7 +164,7 @@ def smartboxes_under_test_fixture(
 
     :param is_true_context: whether to test against an existing Tango
         deployment
-    :param smartbox_ids: a list of the smarbox id's used in this test.
+    :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
     :param station_label: name of the station under test.
     :param functional_test_context: context in which the functional tests run.
 
@@ -173,7 +173,7 @@ def smartboxes_under_test_fixture(
     smartboxes_under_test = []
 
     if not is_true_context:
-        for smartbox_id in smartbox_ids:
+        for smartbox_id in smartbox_ids_to_test:
             smartboxes_under_test.append(
                 functional_test_context.get_smartbox_device(smartbox_id)
             )
@@ -195,7 +195,7 @@ def functional_test_context_fixture(  # pylint: disable=too-many-arguments
     pasd_address: tuple[str, int] | None,
     pasd_config_path: str,
     pasd_timeout: float,
-    smartbox_ids: list[int],
+    smartbox_ids_to_test: list[int],
     configuration_manager: unittest.mock.Mock,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
@@ -208,7 +208,7 @@ def functional_test_context_fixture(  # pylint: disable=too-many-arguments
     :param pasd_config_path: configuration file from which to configure
         a simulator if necessary
     :param pasd_timeout: timeout to use with the PaSD
-    :param smartbox_ids: a list of the smarbox id's used in this test.
+    :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
     :param configuration_manager: a mock configuration manager to manage a
         configuration for the field station
 
@@ -240,14 +240,17 @@ def functional_test_context_fixture(  # pylint: disable=too-many-arguments
                 timeout=pasd_timeout,
                 polling_rate=0.05,
                 device_polling_rate=0.1,
-                logging_level=int(LoggingLevel.DEBUG),
+                logging_level=int(LoggingLevel.FATAL),
+                available_smartboxes=smartbox_ids_to_test,
             )
 
-            for smartbox_id in smartbox_ids:
-                harness.add_smartbox_device(smartbox_id=smartbox_id)
-            harness.set_fndh_device()
-            harness.set_fncc_device()
-            harness.set_field_station_device(smartbox_numbers=smartbox_ids)
+            for smartbox_id in smartbox_ids_to_test:
+                harness.add_smartbox_device(smartbox_id, int(LoggingLevel.ERROR))
+            harness.set_fndh_device(int(LoggingLevel.ERROR))
+            harness.set_fncc_device(int(LoggingLevel.ERROR))
+            harness.set_field_station_device(
+                smartbox_ids_to_test, int(LoggingLevel.ERROR)
+            )
 
     with harness as context:
         yield context
@@ -421,7 +424,7 @@ def device_subscriptions_fixture() -> dict[str, list[str]]:
             "smartbox1FemCaseTemperatures",
             "smartbox1FemHeatsinkTemperatures",
             "smartbox1PortsPowerSensed",
-            "smartbox2AlarmFlags",
+            f"smartbox{NUMBER_OF_SMARTBOX}AlarmFlags",
         ],
         get_fndh_name(): [
             "state",
@@ -587,7 +590,7 @@ def set_tango_device_state(
     print(f"Command queued on {dev.dev_name()}: {command_id}")
     if initial_state != desired_state:
         change_event_callbacks[f"{dev.dev_name()}/state"].assert_change_event(
-            desired_state
+            desired_state, lookahead=3, consume_nonmatches=True
         )
     assert dev.state() == desired_state
 

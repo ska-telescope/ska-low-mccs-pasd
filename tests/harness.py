@@ -9,9 +9,11 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, Iterator
 
 import tango
-from ska_control_model import LoggingLevel
+from ska_control_model import LoggingLevel, SimulationMode
 from ska_tango_testing.harness import TangoTestHarness, TangoTestHarnessContext
 from tango.server import Device
+
+from ska_low_mccs_pasd.pasd_data import PasdData
 
 if TYPE_CHECKING:
     from ska_low_mccs_pasd.pasd_bus import PasdHardwareSimulator
@@ -275,6 +277,7 @@ class PasdTangoTestHarness:
         timeout: float = 1.0,
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsPasdBus",
+        available_smartboxes: list[int] | None = None,
     ) -> None:
         """
         Set the PaSD bus Tango device in the test harness.
@@ -295,6 +298,8 @@ class PasdTangoTestHarness:
         :param device_class: The device class to use.
             This may be used to override the usual device class,
             for example with a patched subclass.
+        :param available_smartboxes: Optional list of smartbox IDs that the PaSD bus
+            device should poll.
         """
         port: Callable[[dict[str, Any]], int] | int  # for the type checker
 
@@ -307,6 +312,11 @@ class PasdTangoTestHarness:
         else:
             (host, port) = address
 
+        if available_smartboxes is None:
+            available_smartboxes = list(
+                range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
+            )
+
         self._tango_test_harness.add_device(
             get_pasd_bus_name(self._station_label),
             device_class,
@@ -314,8 +324,10 @@ class PasdTangoTestHarness:
             Port=port,
             PollingRate=polling_rate,
             DevicePollingRate=device_polling_rate,
-            LowPassFilterCutoff=low_pass_filter_cutoff,
             Timeout=timeout,
+            LowPassFilterCutoff=low_pass_filter_cutoff,
+            SimulationConfig=int(SimulationMode.TRUE),
+            AvailableSmartboxes=available_smartboxes,
             LoggingLevelDefault=logging_level,
         )
 
@@ -350,7 +362,9 @@ class PasdTangoTestHarness:
             for example with a patched subclass.
         """
         if smartbox_numbers is None:
-            smartbox_numbers = list(range(1, 25))
+            smartbox_numbers = list(
+                range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
+            )
 
         def port(context: dict[str, Any]) -> int:
             return context["configuration_manager"][1]

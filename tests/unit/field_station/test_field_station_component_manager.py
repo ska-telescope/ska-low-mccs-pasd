@@ -202,7 +202,7 @@ def mock_smartboxes_fixture(
     :return: a mock MccsSmartBox device.
     """
     smartboxes = []
-    for i in range(1, 25):
+    for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         builder = MockDeviceBuilder()
         builder.set_state(tango.DevState.ON)
         builder.add_result_command("PowerOnPort", ResultCode.OK)
@@ -333,7 +333,7 @@ def simulated_configuration_fixture(mock_antenna_mapping: Any) -> dict[Any, Any]
             "masked": False,
         }
 
-    for i in range(1, 25):
+    for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         smartboxes[str(i)] = {"fndh_port": i}
 
     configuration = {
@@ -395,7 +395,7 @@ class TestFieldStationComponentManager:
         """
         harness = PasdTangoTestHarness()
         harness.set_mock_fndh_device(mock_fndh)
-        for smartbox_id in range(1, 25):
+        for smartbox_id in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
             harness.set_mock_smartbox_device(
                 mock_smartboxes[smartbox_id - 1], smartbox_id
             )

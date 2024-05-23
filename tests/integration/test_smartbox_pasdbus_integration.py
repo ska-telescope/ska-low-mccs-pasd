@@ -7,7 +7,7 @@
 # See LICENSE for more info.
 """This module contains the integration tests for MccsPasdBus with MccsSmartBox."""
 
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines,too-many-arguments
 from __future__ import annotations
 
 import gc
@@ -34,6 +34,7 @@ def turn_pasd_devices_online(
     pasd_bus_device: tango.DeviceProxy,
     fndh_device: tango.DeviceProxy,
     change_event_callbacks: MockTangoEventCallbackGroup,
+    last_smartbox_id: int,
     smartbox_on: bool = True,
 ) -> None:
     """
@@ -50,6 +51,7 @@ def turn_pasd_devices_online(
         :py:class:`tango.test_context.DeviceTestContext`.
     :param change_event_callbacks: group of Tango change event
         callback with asynchrony support
+    :param last_smartbox_id: ID of the last smartbox polled
     :param smartbox_on: expected Tango state of smartbox device
     """
     # This is a bit of a cheat.
@@ -59,20 +61,20 @@ def turn_pasd_devices_online(
     # once we have an updated value for this attribute,
     # we have an updated value for all of them.
     pasd_bus_device.subscribe_event(
-        "smartbox24AlarmFlags",
+        f"smartbox{last_smartbox_id}AlarmFlags",
         tango.EventType.CHANGE_EVENT,
-        change_event_callbacks["smartbox24AlarmFlags"],
+        change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
     )
-    change_event_callbacks.assert_change_event("smartbox24AlarmFlags", None)
+    change_event_callbacks.assert_change_event(
+        f"smartbox{last_smartbox_id}AlarmFlags", Anything
+    )
 
     pasd_bus_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.UNKNOWN)
-    # TODO: Do we want to enter On state here?
     change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
     change_event_callbacks["pasd_bus_state"].assert_not_called()
     change_event_callbacks.assert_change_event("healthState", HealthState.OK)
     assert pasd_bus_device.healthState == HealthState.OK
-    change_event_callbacks.assert_change_event("smartbox24AlarmFlags", Anything)
 
     # ---------------------
     # FNDH adminMode online
@@ -390,7 +392,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["smartbox_state"].assert_not_called()
 
-    # pylint: disable=too-many-arguments
     @pytest.mark.xfail(
         reason=(
             "Cannot unsubscribe from proxy so event received,"
@@ -404,6 +405,7 @@ class TestSmartBoxPasdBusIntegration:
         off_smartbox_device: tango.DeviceProxy,
         off_smartbox_attached_port: int,
         change_event_callbacks: MockTangoEventCallbackGroup,
+        last_smartbox_id: int,
     ) -> None:
         """
         Test the integration of smartbox, pasdBus and FNDH.
@@ -423,6 +425,7 @@ class TestSmartBoxPasdBusIntegration:
              smartbox-under-test is attached to.
         :param change_event_callbacks: group of Tango change event
              callback with asynchrony support
+        :param last_smartbox_id: ID of the last smartbox polled
         """
         # ==========
         # PaSD SETUP
@@ -441,6 +444,7 @@ class TestSmartBoxPasdBusIntegration:
             pasd_bus_device,
             fndh_device,
             change_event_callbacks,
+            last_smartbox_id,
             smartbox_on=False,
         )
         fndh_port_power_state = fndh_device.PortPowerState(smartbox_attached_port)
@@ -492,7 +496,6 @@ class TestSmartBoxPasdBusIntegration:
         assert smartbox_device.state() == tango.DevState.ON
 
     def test_turn_on_mccs_smartbox_antenna_port_when_smartbox_under_test_is_off(
-        # pylint: disable=too-many-arguments
         self: TestSmartBoxPasdBusIntegration,
         pasd_bus_device: tango.DeviceProxy,
         fndh_device: tango.DeviceProxy,
@@ -500,6 +503,7 @@ class TestSmartBoxPasdBusIntegration:
         off_smartbox_id: int,
         off_smartbox_attached_port: int,
         change_event_callbacks: MockTangoEventCallbackGroup,
+        last_smartbox_id: int,
     ) -> None:
         """
         Test we can turn on a smartbox antenna port when a smartbox-under-test is off.
@@ -530,6 +534,7 @@ class TestSmartBoxPasdBusIntegration:
             smartbox-under-test is attached to.
         :param change_event_callbacks: group of Tango change event
             callback with asynchrony support
+        :param last_smartbox_id: ID of the last smartbox polled
         """
         smartbox_device = off_smartbox_device
         smartbox_id = off_smartbox_id
@@ -550,6 +555,7 @@ class TestSmartBoxPasdBusIntegration:
             pasd_bus_device,
             fndh_device,
             change_event_callbacks,
+            last_smartbox_id,
             smartbox_on=False,
         )
 
@@ -623,7 +629,7 @@ class TestSmartBoxPasdBusIntegration:
         assert smartbox_device.PortsPowerSensed[smartbox_port_desired_on - 1]
         # This can take some time for the callback to be called.
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-locals
     def test_turn_on_multiple_mccs_smartbox_antenna_ports(
         self: TestSmartBoxPasdBusIntegration,
         pasd_bus_device: tango.DeviceProxy,
@@ -632,6 +638,7 @@ class TestSmartBoxPasdBusIntegration:
         off_smartbox_id: int,
         off_smartbox_attached_port: int,
         change_event_callbacks: MockTangoEventCallbackGroup,
+        last_smartbox_id: int,
     ) -> None:
         """
         Test we can turn on multiple smartbox antennas when smartbox-under-test is off.
@@ -650,6 +657,7 @@ class TestSmartBoxPasdBusIntegration:
             smartbox-under-test is attached to.
         :param change_event_callbacks: group of Tango change event
             callback with asynchrony support
+        :param last_smartbox_id: ID of the last smartbox polled
         """
         smartbox_device = off_smartbox_device
         smartbox_id = off_smartbox_id
@@ -667,6 +675,7 @@ class TestSmartBoxPasdBusIntegration:
             pasd_bus_device,
             fndh_device,
             change_event_callbacks,
+            last_smartbox_id,
             smartbox_on=False,
         )
 
@@ -705,12 +714,12 @@ class TestSmartBoxPasdBusIntegration:
             expected_smartbox_port_states[port - 1] = True
             change_event_callbacks[
                 f"smartbox{smartbox_id}portpowersensed"
-            ].assert_change_event(expected_smartbox_port_states, 2, True)
+            ].assert_change_event(expected_smartbox_port_states, 3, True)
             assert (
                 list(smartbox_device.PortsPowerSensed) == expected_smartbox_port_states
             )
 
-    # pylint: disable-next=too-many-arguments,too-many-statements
+    # pylint: disable-next=too-many-statements
     def test_smartbox_pasd_integration(
         self: TestSmartBoxPasdBusIntegration,
         pasd_bus_device: tango.DeviceProxy,
@@ -719,6 +728,7 @@ class TestSmartBoxPasdBusIntegration:
         on_smartbox_id: int,
         smartbox_simulator: SmartboxSimulator,
         change_event_callbacks: MockTangoEventCallbackGroup,
+        last_smartbox_id: int,
     ) -> None:
         """
         Test the integration of smartbox with the pasdBus.
@@ -743,6 +753,7 @@ class TestSmartBoxPasdBusIntegration:
         :param on_smartbox_id: the smartbox of interest in this test.
         :param change_event_callbacks: group of Tango change event
             callback with asynchrony support
+        :param last_smartbox_id: ID of the last smartbox polled
         """
         smartbox_device = on_smartbox_device
         smartbox_id = on_smartbox_id
@@ -810,6 +821,7 @@ class TestSmartBoxPasdBusIntegration:
             pasd_bus_device,
             fndh_device,
             change_event_callbacks,
+            last_smartbox_id,
         )
 
         # Check that the smartbox has updated its values from the smartbox simulator.
@@ -1237,6 +1249,7 @@ class TestSmartBoxPasdBusIntegration:
 def change_event_callbacks_fixture(
     on_smartbox_id: int,
     off_smartbox_id: int,
+    last_smartbox_id: int,
 ) -> MockTangoEventCallbackGroup:
     """
     Return a dictionary of callables to be used as Tango change event callbacks.
@@ -1245,6 +1258,7 @@ def change_event_callbacks_fixture(
     :param off_smartbox_id: the number of the unpowered smartbox under test.
     :return: a dictionary of callables to be used as tango change event
         callbacks.
+    :param last_smartbox_id: ID of the last smartbox polled
     """
     return MockTangoEventCallbackGroup(
         "smartbox_state",
@@ -1252,7 +1266,7 @@ def change_event_callbacks_fixture(
         "fndh_state",
         "healthState",
         "fndhstatus",
-        "smartbox24AlarmFlags",
+        f"smartbox{last_smartbox_id}AlarmFlags",
         f"smartbox{on_smartbox_id}portpowersensed",
         f"smartbox{on_smartbox_id}inputvoltage",
         f"smartbox{on_smartbox_id}psuoutput",
