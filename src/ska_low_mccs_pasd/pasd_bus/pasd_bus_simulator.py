@@ -1520,9 +1520,7 @@ class PasdBusSimulator:
             int, FndhSimulator | FnccSimulator | SmartboxSimulator
         ] = {}
         self._smartboxes_ports_connected: list[list[bool]] = []
-        self._smartbox_attached_ports: list[int] = [
-            0
-        ] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
+        self._smartbox_attached_ports: dict[str, int] = {}
         self._time_multiplier: int = time_multiplier
 
         if smartboxes_depend_on_attached_ports:
@@ -1545,7 +1543,7 @@ class PasdBusSimulator:
         )
 
         if not smartboxes_depend_on_attached_ports:
-            for port_number in self._smartbox_attached_ports:
+            for port_number in self._smartbox_attached_ports.values():
                 self._instantiate_smartbox(port_number)
         logger.info(f"Initialised PaSD bus simulator for station {station_label}.")
 
@@ -1575,11 +1573,11 @@ class PasdBusSimulator:
         """
         return self._hw_simulators
 
-    def get_smartbox_attached_ports(self: PasdBusSimulator) -> list[int]:
+    def get_smartbox_attached_ports(self: PasdBusSimulator) -> dict[str, int]:
         """
-        Return a list of FNDH port numbers each smartbox is attached to.
+        Return a dict of FNDH port numbers each smartbox is attached to.
 
-        :return: a list of FNDH port numbers each smartbox is attached to.
+        :return: a dict of FNDH port numbers each smartbox is attached to.
         """
         return self._smartbox_attached_ports
 
@@ -1593,14 +1591,18 @@ class PasdBusSimulator:
         :return: whether successful, or None if there was nothing to do.
         """
         try:
-            smartbox_id = self._smartbox_attached_ports.index(port_number) + 1
-            self._hw_simulators[smartbox_id] = SmartboxSimulator(
-                self._time_multiplier, smartbox_id
+            smartbox_id = list(self._smartbox_attached_ports.keys())[
+                list(self._smartbox_attached_ports.values()).index(port_number)
+            ]
+            smartbox_number = int(re.findall(r"\d+", smartbox_id)[0])
+
+            self._hw_simulators[smartbox_number] = SmartboxSimulator(
+                self._time_multiplier, smartbox_number
             )
-            self._hw_simulators[smartbox_id].configure(  # type: ignore
-                self._smartboxes_ports_connected[smartbox_id - 1]
+            self._hw_simulators[smartbox_number].configure(
+                self._smartboxes_ports_connected[smartbox_number - 1]
             )
-            logger.debug(f"Initialised Smartbox simulator {smartbox_id}.")
+            logger.debug(f"Initialised Smartbox simulator {smartbox_number}.")
             return True
         except ValueError:
             return None
@@ -1613,8 +1615,11 @@ class PasdBusSimulator:
         :return: whether successful, or None if there was nothing to do.
         """
         try:
-            smartbox_id = self._smartbox_attached_ports.index(port_number) + 1
-            del self._hw_simulators[smartbox_id]
+            smartbox_id = list(self._smartbox_attached_ports.keys())[
+                list(self._smartbox_attached_ports.values()).index(port_number)
+            ]
+            smartbox_number = int(re.findall(r"\d+", smartbox_id)[0])
+            del self._hw_simulators[smartbox_number]
             logger.debug(f"Deleted Smartbox simulator {smartbox_id}.")
             return True
         except ValueError:
@@ -1643,11 +1648,10 @@ class PasdBusSimulator:
 
         fndh_ports_is_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
         for smartbox_id, smartbox_config in pasd_config["smartboxes"].items():
-            smartbox_id = int(smartbox_id)
             fndh_port = smartbox_config["fndh_port"]
-            self._smartbox_attached_ports[smartbox_id - 1] = fndh_port
+            self._smartbox_attached_ports[smartbox_id] = fndh_port
             fndh_ports_is_connected[fndh_port - 1] = True
-        self._hw_simulators[0].configure(fndh_ports_is_connected)  # type: ignore
+        self._hw_simulators[0].configure(fndh_ports_is_connected)
 
         self._smartboxes_ports_connected = [
             [False] * SmartboxSimulator.NUMBER_OF_PORTS
