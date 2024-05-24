@@ -66,7 +66,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         component_state_changed: Callable[..., None],
         configuration_change_callback: Callable[..., None],
         _fndh_proxy: Optional[DeviceComponentManager] = None,
-        _smartbox_proxys: Optional[list[DeviceComponentManager]] = None,
+        _smartbox_proxys: Optional[dict[str, DeviceComponentManager]] = None,
     ) -> None:
         """
         Initialise a new instance.
@@ -137,29 +137,27 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             functools.partial(self._device_communication_state_changed, fndh_name),
             functools.partial(self._component_state_callback, device_name=fndh_name),
         )
-        self._smartbox_power_state = []
-        self._smartbox_proxys = []
+        self._smartbox_power_state = {}
+        self._smartbox_proxys = {}
         smartbox_count = 0
-        self._smartbox_name_number_map: dict[str, int] = {}
+        self._smartbox_name_number_map: dict[str, str] = {}
         if _smartbox_proxys:
             self._smartbox_proxys = _smartbox_proxys
         else:
             for smartbox_name in smartbox_names:
-                self._smartbox_power_state.append(PowerState.UNKNOWN)
-                self._smartbox_proxys.append(
-                    DeviceComponentManager(
-                        smartbox_name,
-                        logger,
-                        max_workers,
-                        functools.partial(
-                            self._device_communication_state_changed, smartbox_name
-                        ),
-                        functools.partial(
-                            self._component_state_callback, device_name=smartbox_name
-                        ),
-                    )
+                self._smartbox_power_state[smartbox_name] = PowerState.UNKNOWN
+                self._smartbox_proxys[smartbox_name] = DeviceComponentManager(
+                    smartbox_name,
+                    logger,
+                    max_workers,
+                    functools.partial(
+                        self._device_communication_state_changed, smartbox_name
+                    ),
+                    functools.partial(
+                        self._component_state_callback, device_name=smartbox_name
+                    ),
                 )
-                self._smartbox_name_number_map.update({smartbox_name: smartbox_count})
+                self._smartbox_name_number_map.update({smartbox_name: smartbox_name})
                 smartbox_count += 1
 
         # initialise the power
@@ -231,13 +229,13 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
 
         self._fndh_proxy.start_communicating()
-        for proxy in self._smartbox_proxys:
+        for proxy in self._smartbox_proxys.values():
             proxy.start_communicating()
 
     def stop_communicating(self: FieldStationComponentManager) -> None:
         """Break off communication with the PasdData."""
         self._fndh_proxy.stop_communicating()
-        for proxy in self._smartbox_proxys:
+        for proxy in self._smartbox_proxys.values():
             proxy.stop_communicating()
 
         if self.communication_state == CommunicationStatus.DISABLED:
@@ -336,7 +334,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 "had a change in its port powers"
             )
             return
-        smartbox_number = self._smartbox_name_number_map[smartbox_name] + 1
+        smartbox_number = self._smartbox_name_number_map[smartbox_name]
         assert event_name.lower() == "portspowersensed"
         port_powers = [PowerState.UNKNOWN] * PasdData.NUMBER_OF_SMARTBOX_PORTS
 
@@ -513,9 +511,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     def _get_desired_smartbox_powers(
         self: FieldStationComponentManager,
         desired_fndh_port_powers: list[bool | None],
-    ) -> list[bool | None]:
-        desired_smartbox_power: list[bool | None] = [None] * len(self._smartbox_proxys)
-        for smartbox_idx, smartbox_proxy in enumerate(self._smartbox_proxys):
+    ) -> dict[str, bool | None]:
+        desired_smartbox_power: dict[str, bool | None] = {}
+        for smartbox_idx, smartbox_proxy in self._smartbox_proxys.items():
             assert smartbox_proxy._proxy is not None
             fndh_port = json.loads(smartbox_proxy._proxy.fndhPort)
             if fndh_port is None:
@@ -530,7 +528,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         return desired_smartbox_power
 
     def turn_on_unmasked_smartbox_ports(
-        self: FieldStationComponentManager, masked_smartbox_ports: dict[int, list]
+        self: FieldStationComponentManager, masked_smartbox_ports: dict[str, list]
     ) -> list[ResultCode]:
         """
         Turn on all smartbox ports that are not masked.
@@ -542,7 +540,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         """
         results = []
         masked_ports = []
-        for smartbox_no, smartbox in enumerate(self._smartbox_proxys, start=1):
+        for smartbox_no, smartbox in self._smartbox_proxys.items():
             assert smartbox._proxy
             desired_smartbox_port_powers: list[bool | None] = [
                 True
@@ -835,7 +833,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
         # Smartbox_id : [List of masked ports on that smartbox]
-        masked_smartbox_ports: dict[int, list] = self._get_masked_smartbox_ports()
+        masked_smartbox_ports: dict[str, list] = self._get_masked_smartbox_ports()
         results = []
         assert self._fndh_proxy._proxy
         masked_fndh_ports: list = self._get_masked_fndh_ports(masked_smartbox_ports)
@@ -854,7 +852,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         result, _ = self._fndh_proxy._proxy.SetPortPowers(json_argument)
         results += result
         masked_ports = []
-        for smartbox_no, smartbox in enumerate(self._smartbox_proxys, start=1):
+        for smartbox_no, smartbox in self._smartbox_proxys.items():
             assert smartbox._proxy
             desired_smartbox_port_powers: list[int | None] = [
                 False
@@ -1007,6 +1005,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> TaskStatus:
+        self.logger.error(f"TURN ON ANTENNA {antenna_id}")
         assert self._fndh_proxy._proxy is not None
         if not ignore_mask and (self._antenna_mask[antenna_id]):
             msg = (
@@ -1022,7 +1021,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self.logger.warning("Turning on masked antenna")
         smartbox_id, smartbox_port = self._antenna_mapping[antenna_id]
         try:
-            smartbox_proxy = self._smartbox_proxys[smartbox_id - 1]
+            smartbox_proxy = self._smartbox_proxys[smartbox_id]
         except IndexError:
             msg = (
                 f"Tried to turn on antenna {antenna_id}, this is mapped to "
@@ -1127,7 +1126,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         smartbox_id, smartbox_port = self._antenna_mapping[antenna_id]
         try:
-            smartbox_proxy = self._smartbox_proxys[smartbox_id - 1]
+            smartbox_proxy = self._smartbox_proxys[smartbox_id]
         except IndexError:
             msg = (
                 f"Tried to turn off antenna {antenna_id}, this is mapped to "
