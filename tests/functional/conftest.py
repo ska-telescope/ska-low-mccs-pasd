@@ -19,7 +19,7 @@ from ska_control_model import AdminMode, LoggingLevel, ResultCode, SimulationMod
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-# from tests.conftest import NUMBER_OF_ANTENNAS, NUMBER_OF_SMARTBOX_PORTS
+from tests.conftest import MAX_NUMBER_OF_SMARTBOXES_PER_STATION
 from tests.harness import (
     PasdTangoTestHarness,
     PasdTangoTestHarnessContext,
@@ -28,8 +28,6 @@ from tests.harness import (
     get_pasd_bus_name,
     get_smartbox_name,
 )
-
-NUMBER_OF_SMARTBOX = 24
 
 
 # TODO: https://github.com/pytest-dev/pytest-forked/issues/67
@@ -123,14 +121,24 @@ def pasd_timeout_fixture() -> Optional[float]:
     return 5.0
 
 
-@pytest.fixture(name="smartbox_ids_to_test", scope="session")
-def smartbox_ids_to_test_fixture() -> list[int]:
+@pytest.fixture(name="smartbox_ids", scope="session")
+def smartbox_ids_fixture() -> list[int]:
     """
     Return a list of smartbox IDs to use in a test.
 
     :return: a list of smartbox IDs to use in a test
     """
-    return list(range(1, NUMBER_OF_SMARTBOX + 1))
+    return list(range(1, MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1))
+
+
+@pytest.fixture(name="smartbox_id", scope="session")
+def smartbox_id_under_test_fixture() -> int:
+    """
+    Return the number of the smartbox under test.
+
+    :return: the number of the smartbox under test.
+    """
+    return 1
 
 
 @pytest.fixture(name="configuration_manager", scope="module")
@@ -154,7 +162,7 @@ def configuration_manager_fixture(
 @pytest.fixture(name="smartboxes_under_test", scope="module")
 def smartboxes_under_test_fixture(
     is_true_context: bool,
-    smartbox_ids_to_test: list[int],
+    smartbox_ids: list[int],
     station_label: str,
     functional_test_context: PasdTangoTestHarnessContext,
 ) -> list[tango.DeviceProxy]:
@@ -163,7 +171,7 @@ def smartboxes_under_test_fixture(
 
     :param is_true_context: whether to test against an existing Tango
         deployment
-    :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
+    :param smartbox_ids: a list of the smarbox id's used in this test.
     :param station_label: name of the station under test.
     :param functional_test_context: context in which the functional tests run.
 
@@ -172,7 +180,7 @@ def smartboxes_under_test_fixture(
     smartboxes_under_test = []
 
     if not is_true_context:
-        for smartbox_id in smartbox_ids_to_test:
+        for smartbox_id in smartbox_ids:
             smartboxes_under_test.append(
                 functional_test_context.get_smartbox_device(smartbox_id)
             )
@@ -194,7 +202,7 @@ def functional_test_context_fixture(  # pylint: disable=too-many-arguments
     pasd_address: tuple[str, int] | None,
     pasd_config_path: str,
     pasd_timeout: float,
-    smartbox_ids_to_test: list[int],
+    smartbox_ids: list[int],
     configuration_manager: unittest.mock.Mock,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
@@ -207,7 +215,7 @@ def functional_test_context_fixture(  # pylint: disable=too-many-arguments
     :param pasd_config_path: configuration file from which to configure
         a simulator if necessary
     :param pasd_timeout: timeout to use with the PaSD
-    :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
+    :param smartbox_ids: a list of the smarbox id's used in this test.
     :param configuration_manager: a mock configuration manager to manage a
         configuration for the field station
 
@@ -240,16 +248,14 @@ def functional_test_context_fixture(  # pylint: disable=too-many-arguments
                 polling_rate=0.05,
                 device_polling_rate=0.1,
                 logging_level=int(LoggingLevel.FATAL),
-                available_smartboxes=smartbox_ids_to_test,
+                available_smartboxes=smartbox_ids,
             )
 
-            for smartbox_id in smartbox_ids_to_test:
+            for smartbox_id in smartbox_ids:
                 harness.add_smartbox_device(smartbox_id, int(LoggingLevel.ERROR))
             harness.set_fndh_device(int(LoggingLevel.ERROR))
             harness.set_fncc_device(int(LoggingLevel.ERROR))
-            harness.set_field_station_device(
-                smartbox_ids_to_test, int(LoggingLevel.ERROR)
-            )
+            harness.set_field_station_device(smartbox_ids, int(LoggingLevel.ERROR))
 
     with harness as context:
         yield context
@@ -382,10 +388,11 @@ def state_mapping_fixture() -> dict[str, tango.DevState]:
 
 
 @pytest.fixture(name="device_subscriptions", scope="module")
-def device_subscriptions_fixture() -> dict[str, list[str]]:
+def device_subscriptions_fixture(smartbox_id: int) -> dict[str, list[str]]:
     """
     Return a dictionary mapping device name to list of subscriptions to make.
 
+    :param smartbox_id: number of the smartbox under test.
     :return: A dictionary mapping device name to list of subscriptions to make.
     """
     device_subscriptions = {
@@ -412,18 +419,17 @@ def device_subscriptions_fixture() -> dict[str, list[str]]:
             "fndhPortsPowerSensed",
             "fndhPortsPowerControl",
             "fnccStatus",
-            "smartbox1Uptime",
-            "smartbox1Status",
-            "smartbox1LedPattern",
-            "smartbox1InputVoltage",
-            "smartbox1PowerSupplyOutputVoltage",
-            "smartbox1PowerSupplyTemperature",
-            "smartbox1PcbTemperature",
-            "smartbox1FemAmbientTemperature",
-            "smartbox1FemCaseTemperatures",
-            "smartbox1FemHeatsinkTemperatures",
-            "smartbox1PortsPowerSensed",
-            f"smartbox{NUMBER_OF_SMARTBOX}AlarmFlags",
+            f"smartbox{smartbox_id}Uptime",
+            f"smartbox{smartbox_id}Status",
+            f"smartbox{smartbox_id}LedPattern",
+            f"smartbox{smartbox_id}InputVoltage",
+            f"smartbox{smartbox_id}PowerSupplyOutputVoltage",
+            f"smartbox{smartbox_id}PowerSupplyTemperature",
+            f"smartbox{smartbox_id}PcbTemperature",
+            f"smartbox{smartbox_id}FemAmbientTemperature",
+            f"smartbox{smartbox_id}FemCaseTemperatures",
+            f"smartbox{smartbox_id}FemHeatsinkTemperatures",
+            f"smartbox{smartbox_id}PortsPowerSensed",
         ],
         get_fndh_name(): [
             "state",
@@ -437,7 +443,7 @@ def device_subscriptions_fixture() -> dict[str, list[str]]:
         ],
     }
 
-    for i in range(1, NUMBER_OF_SMARTBOX + 1):
+    for i in range(1, MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         device_subscriptions.update(
             {
                 get_smartbox_name(i): [
@@ -589,7 +595,7 @@ def set_tango_device_state(
     print(f"Command queued on {dev.dev_name()}: {command_id}")
     if initial_state != desired_state:
         change_event_callbacks[f"{dev.dev_name()}/state"].assert_change_event(
-            desired_state
+            desired_state, lookahead=6, consume_nonmatches=True
         )
     assert dev.state() == desired_state
 
@@ -682,3 +688,16 @@ def clipboard() -> dict:
     :return: a dictionary to be used to store contextual information across steps.
     """
     return {}
+
+
+def is_running_in_kubernetes() -> bool:
+    """
+    Check if test is running in kubernetes.
+
+    :return: if test is running in kubernetes.
+    """
+    # Check for Kubernetes environment variable
+    kubernetes_service_host = os.getenv("KUBERNETES_SERVICE_HOST")
+    # Check for Kubernetes service account files
+    service_account_path = "/var/run/secrets/kubernetes.io/serviceaccount"
+    return kubernetes_service_host is not None and os.path.exists(service_account_path)

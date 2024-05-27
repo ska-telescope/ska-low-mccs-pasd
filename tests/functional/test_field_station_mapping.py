@@ -19,7 +19,7 @@ from pytest_bdd import given, parsers, scenarios, then, when
 from ska_control_model import AdminMode, PowerState, SimulationMode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-from tests.functional.conftest import NUMBER_OF_SMARTBOX
+from tests.conftest import MAX_NUMBER_OF_SMARTBOXES_PER_STATION
 
 gc.disable()
 
@@ -112,16 +112,15 @@ def get_ready_device(device_ref: str, set_device_state: Callable) -> None:
 
 
 @given("PasdBus is initialised")
-def pasd_is_initialised(pasd_bus_device: tango.DeviceProxy) -> None:
+def pasd_is_initialised(pasd_bus_device: tango.DeviceProxy, smartbox_id: int) -> None:
     """
     Get PaSD devices initialised.
 
-    :param pasd_bus_device: A `tango.DeviceProxy` to the PaSD
-        device.
+    :param pasd_bus_device: A `tango.DeviceProxy` to the PaSD device.
+    :param smartbox_id: number of the smartbox under test.
     """
     pasd_bus_device.initializefndh()
-    for i in range(1, NUMBER_OF_SMARTBOX + 1):
-        pasd_bus_device.initializesmartbox(i)
+    pasd_bus_device.initializesmartbox(smartbox_id)
 
 
 @given("the smartboxes are ready")
@@ -402,4 +401,4 @@ def check_the_mapping_is_valid(
         assert number_of_configured_smartboxes == len(smartboxes_under_test)
     else:
         # We have mocked the store with a configuration for all 24 smartboxes
-        assert number_of_configured_smartboxes == NUMBER_OF_SMARTBOX
+        assert number_of_configured_smartboxes == MAX_NUMBER_OF_SMARTBOXES_PER_STATION
