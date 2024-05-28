@@ -24,6 +24,8 @@ server:
   instances:
 {{- range $server_key, $this_server := $fnccs}}
     - name: {{printf "fncc-%s" $server_key}}
+      depends_on:
+        - {{$this_fncc.pasdbus_name}}
       classes:
         - name: MccsFncc
           devices:

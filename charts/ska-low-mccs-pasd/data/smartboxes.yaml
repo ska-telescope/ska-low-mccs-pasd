@@ -27,6 +27,8 @@ server:
   instances:
 {{- range $server_key, $this_server := $smartboxes}}
     - name: {{printf "smartbox-%s" $server_key}}
+      depends_on:
+        - {{$this_smartbox.pasdbus_name}}
       classes:
         - name: "MccsSmartbox"
           devices:
