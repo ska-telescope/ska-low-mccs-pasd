@@ -12,6 +12,10 @@ Define the deployment for MccsSmartbox devices.
           device_polling_rate: 15 # Optional
           low_pass_filter_cutoff: 10.0 # Optional
           logging_level_default: 5
+          available_smartboxes: # Optional
+            - 1
+            - 2
+            - 3
 
 */}}
 {{- $pasdbuses := dig "pasdbuses" dict .Values.deviceServers}}
@@ -68,6 +72,11 @@ server:
                   values:
                   - {{quote .}}
 {{- end}}
+                - name: AvailableSmartboxes
+                  values:
+{{- range $this_pasdbus.available_smartboxes }}
+                    - {{. | quote}}
+{{- end }}
 {{- end}}
 {{- end}}
 {{- end}}

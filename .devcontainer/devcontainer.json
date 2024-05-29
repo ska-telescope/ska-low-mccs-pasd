@@ -1,50 +1,56 @@
 {
-    "name": "ska-low-mccs-pasd devcontainer",
-    "build": {
-        "dockerfile": "Dockerfile",
-        "context": ".."
-    },
-    "customizations": {
-        "vscode": {
-            "settings": {
-                "terminal.integrated.profiles.linux": {
-                    "bash": {
-                        "path": "/bin/bash"
-                    }
-                },
-                "terminal.integration.defaultProfile.linux": "bash",
-                "editor.formatOnSave": true,
-                "editor.codeActionsOnSave": {
-                    "source.organizeImports": true
-                },
-                "python.pythonPath": "/usr/bin/python3",
-                "python.testing.pytestEnabled": true,
-                "pylint.path": [
-                    "/usr/local/bin/pylint"
-                ],
-                "[python]": {
-                    "editor.defaultFormatter": "ms-python.black-formatter"
-                },
-                "isort.args": [
-                    "--profile",
-                    "black"
-                ],
-                "coverage-gutters.manualCoverageFilePaths": [
-                    "/workspaces/ska-low-mccs-pasd/build/reports/code-coverage.xml"
-                ],
-                "coverage-gutters.showLineCoverage": true
-            },
-            "extensions": [
-                "ms-python.pylint",
-                "ms-python.python",
-                "ryanluker.vscode-coverage-gutters",
-                "ms-python.black-formatter",
-                "ms-python.flake8",
-                "ms-python.isort",
-                "ms-python.mypy-type-checker"
+  "name": "ska-low-mccs-pasd devcontainer",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "/bin/bash",
+            "args": [
+              "--login"
             ]
-        }
-    },
-    "postCreateCommand": "sudo poetry config virtualenvs.create false && sudo poetry install",
-    "remoteUser": "tango"
+          }
+        },
+        "terminal.integration.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        },
+        "python.pythonPath": "/usr/bin/python3",
+        "python.testing.pytestEnabled": true,
+        "pylint.path": [
+          "/usr/local/bin/pylint"
+        ],
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.black-formatter"
+        },
+        "isort.args": [
+          "--profile",
+          "black"
+        ],
+        "coverage-gutters.manualCoverageFilePaths": [
+          "${containerWorkspaceFolder}/build/reports/code-coverage.xml"
+        ],
+        "coverage-gutters.showLineCoverage": true
+      },
+      "extensions": [
+        "lextudio.restructuredtext",
+        "ms-python.black-formatter",
+        "ms-python.flake8",
+        "ms-python.isort",
+        "ms-python.mypy-type-checker",
+        "ms-python.pylint",
+        "ms-python.python",
+        "ryanluker.vscode-coverage-gutters",
+        "tamasfe.even-better-toml",
+        "trond-snekvik.simple-rst"
+      ]
+    }
+  },
+  "postCreateCommand": "sudo poetry config virtualenvs.create false && sudo poetry install",
+  "remoteUser": "tango"
 }

@@ -6,7 +6,6 @@ Feature: Monitoring and control of PaSD
         Given A MCCS-for-PaSD which is not ready
         And MCCS-for-PaSD is in DISABLE state
         And MCCS-for-PaSD has UNKNOWN health
-        And a smartbox
         When MCCS-for-PaSD adminMode is set to ONLINE
         Then MCCS-for-PaSD reports ON state
 
@@ -14,7 +13,6 @@ Feature: Monitoring and control of PaSD
     Scenario: Monitor PaSD
         Given A MCCS-for-PaSD which is ready
         And MCCS-for-PaSD is in ON state
-        And a smartbox
         And the FNDH is initialized
         And a FNDH port
         And the FNDH port is off
@@ -73,7 +71,6 @@ Feature: Monitoring and control of PaSD
         And the FNDH is initialized
         And a FNDH port
         And the FNDH port is on
-        And a smartbox
         And the smartbox is initialized
         And a smartbox port
         And the smartbox port is off
@@ -87,7 +84,6 @@ Feature: Monitoring and control of PaSD
         And the FNDH is initialized
         And a FNDH port
         And the FNDH port is on
-        And a smartbox
         And the smartbox is initialized
         And a smartbox port
         And the smartbox port is on

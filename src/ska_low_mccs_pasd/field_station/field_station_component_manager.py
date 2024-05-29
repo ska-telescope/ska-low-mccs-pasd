@@ -188,7 +188,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         """
         antenna_masks_pretty: list[dict] = [{}] * PasdData.NUMBER_OF_ANTENNAS
         antenna_mapping_pretty: list[dict] = [{}] * PasdData.NUMBER_OF_ANTENNAS
-        smartbox_mapping_pretty: list[dict] = [{}] * PasdData.NUMBER_OF_SMARTBOXES
+        smartbox_mapping_pretty: list[dict] = [
+            {}
+        ] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
 
         antenna_masks_logical: list[bool] = [False] * (PasdData.NUMBER_OF_ANTENNAS + 1)
         antenna_mapping_logical: dict[str, list[int]] = {}
@@ -962,7 +964,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 masked_smartbox_ports[smartbox_id].append(smartbox_port)
 
         # mask all smartbox ports with no antenna attached.
-        for smartbox_id in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+        for smartbox_id in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
             for smartbox_port, port_has_antenna in enumerate(
                 self._get_smartbox_ports_with_antennas(smartbox_id), start=1
             ):
@@ -1336,7 +1338,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
-        smartbox_mapping_pretty: list[dict] = [{}] * PasdData.NUMBER_OF_SMARTBOXES
+        smartbox_mapping_pretty: list[dict] = [
+            {}
+        ] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
         smartbox_mapping = kwargs["smartboxMapping"]
         for smartbox in smartbox_mapping:
             smartbox_id = smartbox.get("smartboxID")

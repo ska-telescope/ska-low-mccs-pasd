@@ -185,6 +185,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         communication_state_callback: Callable[[CommunicationStatus], None],
         component_state_callback: Callable[..., None],
         pasd_device_state_callback: Callable[..., None],
+        available_smartboxes: list[int],
     ) -> None:
         """
         Initialise a new instance.
@@ -214,16 +215,17 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             the device number (0 for FNDH, otherwise the smartbox
             number), and keyword arguments representing the state
             changes.
+        :param available_smartboxes: a list of available smartbox ids to poll.
         """
         self._logger = logger
         self._pasd_bus_api_client = PasdBusModbusApiClient(
             host, port, logger, timeout=timeout
         )
         self._pasd_bus_device_state_callback = pasd_device_state_callback
-
-        self._min_ticks = int(device_polling_rate / polling_rate)
         self._polling_rate = polling_rate
-        self._request_provider: PasdBusRequestProvider | None = None
+        self._request_provider = PasdBusRequestProvider(
+            int(device_polling_rate / polling_rate), self._logger, available_smartboxes
+        )
         self._last_request_timestamp: float = 0
 
         super().__init__(
@@ -289,15 +291,13 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     def polling_started(self: PasdBusComponentManager) -> None:
         """Define actions to be taken when polling starts."""
         self._logger.info("Connecting to server and commencing to poll...")
-
-        self._request_provider = PasdBusRequestProvider(self._min_ticks, self._logger)
+        self._request_provider.initialise()
         self._pasd_bus_api_client.connect()
 
     def polling_stopped(self: PasdBusComponentManager) -> None:
         """Define actions to be taken when polling stops."""
         self._logger.info("Stopping polling and closing connection to the server...")
         self._pasd_bus_api_client.close()
-        self._request_provider = None
         super().polling_stopped()
 
     # TODO: None return is reasonable and should be supported by ska-tango-base
@@ -313,8 +313,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :return: attributes to be read and commands to be executed in
             the next poll.
         """
-        assert self._request_provider is not None
-
         port: int  # for the type checker
         stay_on_when_offline: bool  # for the type checker
         is_on: bool  # for the type checker
@@ -501,7 +499,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param poll_response: response to the pool, including any values
             read.
         """
-        self.logger.info("Handling results of successful poll.")
+        self._logger.info("Handling results of successful poll.")
         super().poll_succeeded(poll_response)
 
         self._update_component_state(power=PowerState.ON, fault=False)
@@ -518,13 +516,11 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
         :param: device_id: 0 for the FNDH, 100 for the FNCC, else a smartbox id
         """
-        assert self._request_provider is not None
         self._request_provider.desire_read_startup_info(device_id)
 
     @check_communicating
     def initialize_fndh(self: PasdBusComponentManager) -> None:
         """Initialize the FNDH by writing to its status register."""
-        assert self._request_provider is not None
         self._request_provider.desire_initialize(PasdData.FNDH_DEVICE_ID)
 
     @check_communicating
@@ -534,7 +530,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
         :param: smartbox_id: id of the smartbox being addressed
         """
-        assert self._request_provider is not None
         self._request_provider.desire_initialize(smartbox_id)
 
     @check_communicating
@@ -547,7 +542,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
         :param port_number: the number of the port to reset.
         """
-        assert self._request_provider is not None
         self._request_provider.desire_port_breaker_reset(
             PasdData.FNDH_DEVICE_ID, port_number
         )
@@ -566,7 +560,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param stay_on_when_offline: whether any ports being turned on
             should remain on if MCCS loses its connection with the PaSD.
         """
-        assert self._request_provider is not None
         self._request_provider.desire_port_powers(
             PasdData.FNDH_DEVICE_ID, port_powers, stay_on_when_offline
         )
@@ -581,7 +574,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
         :param pattern: name of the service LED pattern.
         """
-        assert self._request_provider is not None
         self._request_provider.desire_led_pattern(PasdData.FNDH_DEVICE_ID, pattern)
 
     @check_communicating
@@ -598,7 +590,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             the LED status register.
         :return: whether successful, or None if there was nothing to do.
         """
-        assert self._request_provider is not None
         return self._request_provider.desire_set_low_pass_filter(
             PasdData.FNDH_DEVICE_ID, cutoff, extra_sensors
         )
@@ -606,19 +597,16 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     @check_communicating
     def reset_fndh_alarms(self: PasdBusComponentManager) -> None:
         """Reset the FNDH alarms register."""
-        assert self._request_provider is not None
         self._request_provider.desire_alarm_reset(PasdData.FNDH_DEVICE_ID)
 
     @check_communicating
     def reset_fndh_warnings(self: PasdBusComponentManager) -> None:
         """Reset the FNDH warnings register."""
-        assert self._request_provider is not None
         self._request_provider.desire_warning_reset(PasdData.FNDH_DEVICE_ID)
 
     @check_communicating
     def reset_fncc_status(self: PasdBusComponentManager) -> None:
         """Reset the FNCC status register."""
-        assert self._request_provider is not None
         self._request_provider.desire_status_reset(PasdData.FNCC_DEVICE_ID)
 
     @check_communicating
@@ -633,7 +621,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param smartbox_id: id of the smartbox being addressed.
         :param port_number: the number of the port to reset.
         """
-        assert self._request_provider is not None
         self._request_provider.desire_port_breaker_reset(smartbox_id, port_number)
 
     @check_communicating
@@ -652,7 +639,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param stay_on_when_offline: whether any ports being turned on
             should remain on if MCCS loses its connection with the PaSD.
         """
-        assert self._request_provider is not None
         self._request_provider.desire_port_powers(
             smartbox_id, port_powers, stay_on_when_offline
         )
@@ -669,7 +655,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param smartbox_id: the smartbox to have its LEDs' pattern set.
         :param pattern: name of the service LED pattern.
         """
-        assert self._request_provider is not None
         self._request_provider.desire_led_pattern(smartbox_id, pattern)
 
     @check_communicating
@@ -688,7 +673,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             the LED status register.
         :return: whether successful, or None if there was nothing to do.
         """
-        assert self._request_provider is not None
         return self._request_provider.desire_set_low_pass_filter(
             smartbox_id, cutoff, extra_sensors
         )
@@ -699,7 +683,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
         :param smartbox_id: the smartbox to have its alarms reset
         """
-        assert self._request_provider is not None
         self._request_provider.desire_alarm_reset(smartbox_id)
 
     @check_communicating
@@ -710,7 +693,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
         :param smartbox_id: the smartbox to have its warnings reset
         """
-        assert self._request_provider is not None
         self._request_provider.desire_warning_reset(smartbox_id)
 
     @check_communicating
@@ -727,5 +709,4 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param attribute_name: the name of the attribute to write
         :param value: the new value to write
         """
-        assert self._request_provider is not None
         self._request_provider.desire_attribute_write(device_id, attribute_name, value)

@@ -19,10 +19,12 @@ from typing import Any, Final
 import pytest
 import tango
 import yaml
+from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-NUMBER_OF_ANTENNA = 256
-NUMBER_OF_SMARTBOX = 24
-NUMBER_OF_SMARTBOX_PORTS = 12
+MAX_NUMBER_OF_SMARTBOXES_PER_STATION: Final = 24
+NUMBER_OF_ANTENNAS: Final = 256
+NUMBER_OF_SMARTBOX_PORTS: Final = 12
+NUMBER_OF_FNDH_PORTS: Final = 28
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
@@ -89,3 +91,25 @@ def simulated_configuration_fixture(pasd_config_path: str) -> dict[Any, Any]:
         "pasd": {"smartboxes": smartbox_mapping},
     }
     return configuration
+
+
+# pylint: disable=too-few-public-methods
+class Helpers:
+    """Static helper functions for tests."""
+
+    @staticmethod
+    def print_change_event_queue(
+        change_event_callbacks: MockTangoEventCallbackGroup,
+        attr_name: str,
+    ) -> None:
+        """
+        Print the change event callback queue of the given attribute for debugging.
+
+        :param change_event_callbacks: dictionary of mock change event callbacks
+        :param attr_name: attribute in the change event callback group to print
+        """
+        print(f"{attr_name} change event queue:")
+        for node in change_event_callbacks[
+            attr_name
+        ]._callable._consumer_view._iterable:
+            print(node.payload["attribute_value"])
