@@ -533,20 +533,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._request_provider.desire_initialize(smartbox_id)
 
     @check_communicating
-    def reset_fndh_port_breaker(
-        self: PasdBusComponentManager,
-        port_number: int,
-    ) -> None:
-        """
-        Reset an FNDH port breaker.
-
-        :param port_number: the number of the port to reset.
-        """
-        self._request_provider.desire_port_breaker_reset(
-            PasdData.FNDH_DEVICE_ID, port_number
-        )
-
-    @check_communicating
     def set_fndh_port_powers(
         self: PasdBusComponentManager,
         port_powers: list[bool | None],
