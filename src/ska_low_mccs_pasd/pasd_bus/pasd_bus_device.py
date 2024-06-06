@@ -698,10 +698,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             ("SetFndhLowPassFilters", MccsPasdBus._SetFndhLowPassFiltersCommand),
             ("ResetFndhAlarms", MccsPasdBus._ResetFndhAlarmsCommand),
             ("ResetFndhWarnings", MccsPasdBus._ResetFndhWarningsCommand),
-            (
-                "ResetFndhPortBreaker",
-                MccsPasdBus._ResetFndhPortBreakerCommand,
-            ),  # REMOVE
             ("SetSmartboxPortPowers", MccsPasdBus._SetSmartboxPortPowersCommand),
             (
                 "SetSmartboxLedPattern",
@@ -1268,52 +1264,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 ["ResetFndhWarnings succeeded: nothing to do"],
             )
         return ([ResultCode.FAILED], ["ResetFndhWarnings failed"])
-
-    class _ResetFndhPortBreakerCommand(FastCommand):
-        def __init__(
-            self: MccsPasdBus._ResetFndhPortBreakerCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-            super().__init__(logger)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._ResetFndhPortBreakerCommand,
-            port_number: int,
-        ) -> Optional[bool]:
-            """
-            Reset an FNDH port breaker.
-
-            :param port_number: the number of the port whose breaker is
-                to be reset.
-            :return: whether successful, or None if there was nothing to do.
-            """
-            return self._component_manager.reset_fndh_port_breaker(port_number)
-
-    @command(dtype_in=int, dtype_out="DevVarLongStringArray")
-    def ResetFndhPortBreaker(
-        self: MccsPasdBus, port_number: int
-    ) -> DevVarLongStringArrayType:
-        """
-        Reset an FNDH port's breaker.
-
-        :param port_number: number of the port whose breaker is to be
-            reset.
-
-        :return: A tuple containing a result code and a human-readable status message.
-        """
-        handler = self.get_command_object("ResetFndhPortBreaker")
-        success = handler(port_number)
-        if success:
-            return ([ResultCode.OK], ["ResetFndhPortBreaker succeeded"])
-        if success is None:
-            return (
-                [ResultCode.OK],
-                ["ResetFndhPortBreaker succeeded: nothing to do"],
-            )
-        return ([ResultCode.FAILED], ["ResetFndhPortBreaker failed"])
 
     class _InitializeSmartboxCommand(FastCommand):
         def __init__(
