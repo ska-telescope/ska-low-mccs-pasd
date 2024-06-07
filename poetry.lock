@@ -269,6 +269,18 @@ files = [
 ]
 
 [[package]]
+name = "cerberus"
+version = "1.3.5"
+description = "Lightweight, extensible schema and data validation tool for Pythondictionaries."
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "Cerberus-1.3.5-py3-none-any.whl", hash = "sha256:7649a5815024d18eb7c6aa5e7a95355c649a53aacfc9b050e9d0bf6bfa2af372"},
+    {file = "Cerberus-1.3.5.tar.gz", hash = "sha256:81011e10266ef71b6ec6d50e60171258a5b134d69f8fb387d16e4936d0d47642"},
+]
+
+[[package]]
 name = "certifi"
 version = "2024.6.2"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -3464,4 +3476,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "0360d6a273553a82ca848bd09cb176fa095d930eb7f39f17fb7a31ff5d155c1a"
+content-hash = "2669d3825d5c01a1817bd005f2a879e1d9d130cf9be1e839a2236f92c48986fc"
