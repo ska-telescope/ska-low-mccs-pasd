@@ -104,6 +104,7 @@ CONTROLLER_SCHEMA = {
             "allowed": ["fncc", "fndh", "smartbox"],
         },
         "modbus_address": {"type": "integer", "min": 0, "max": 255},
+        "pasd_number": {"type": "integer", "min": 0, "max": 255},
         "number_of_ports": {"type": "integer"},
         "registers": REGISTER_SCHEMA,
     },
