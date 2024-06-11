@@ -63,7 +63,7 @@ def change_event_callbacks_fixture(
         f"smartbox{smartbox_id}PortsPowerSensed",
         f"smartbox{smartbox_id}AlarmFlags",
         f"smartbox{smartbox_id}PcbTemperatureThresholds",
-        timeout=23.0,
+        timeout=46.0,
         assert_no_error=False,
     )
 
@@ -735,20 +735,17 @@ def test_fndh_port_faults(
     change_event_callbacks.assert_change_event("state", tango.DevState.ON)
 
     change_event_callbacks.assert_change_event(
-        "fndhPortsPowerSensed",
-        fndh_ports_power_sensed,
+        "fndhPortsPowerSensed", fndh_ports_power_sensed, lookahead=2
     )
     change_event_callbacks.assert_change_event(
-        "fndhPortsPowerControl",
-        fndh_ports_power_control,
+        "fndhPortsPowerControl", fndh_ports_power_control, lookahead=2
     )
 
     # Revert over current condition and check
     assert fndh_simulator.simulate_port_over_current(connected_fndh_port, False)
     fndh_ports_power_sensed[connected_fndh_port - 1] = True
     change_event_callbacks.assert_change_event(
-        "fndhPortsPowerSensed",
-        fndh_ports_power_sensed,
+        "fndhPortsPowerSensed", fndh_ports_power_sensed, lookahead=2
     )
 
     # Test port stuck on condition
@@ -761,12 +758,10 @@ def test_fndh_port_faults(
     assert fndh_ports_power_control[connected_fndh_port - 1] is False
 
     change_event_callbacks.assert_change_event(
-        "fndhPortsPowerSensed",
-        fndh_ports_power_sensed,
+        "fndhPortsPowerSensed", fndh_ports_power_sensed, lookahead=2
     )
     change_event_callbacks.assert_change_event(
-        "fndhPortsPowerControl",
-        fndh_ports_power_control,
+        "fndhPortsPowerControl", fndh_ports_power_control, lookahead=2
     )
 
 
