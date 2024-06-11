@@ -29,7 +29,7 @@ from tango.server import attribute, command, device_property
 
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
 
-from ..pasd_controllers_configuration import PasdControllersConfig
+from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .fndh_component_manager import FndhComponentManager
 from .fndh_health_model import FndhHealthModel
 
@@ -55,13 +55,13 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
     # -----------------
     # Device Properties
     # -----------------
-    PasdFQDN = device_property(dtype=(str), mandatory=True)
+    PasdFQDN: Final = device_property(dtype=(str), mandatory=True)
 
     # ---------
     # Constants
     # ---------
-    CONFIG: Final = PasdControllersConfig.get_fndh()
-    TYPES: Final = {
+    CONFIG: Final[ControllerDict] = PasdControllersConfig.get_fndh()
+    TYPES: Final[dict[str, type]] = {
         "int": int,
         "float": float,
         "str": str,
@@ -412,7 +412,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
     # Attributes
     # -----------
     def _setup_fndh_attributes(self: MccsFNDH) -> None:
-        for register in self.CONFIG["registers"]:
+        for register in self.CONFIG["registers"].values():
             data_type = self.TYPES[register["data_type"]]
             self._setup_fndh_attribute(
                 register["tango_attr_name"],
@@ -658,7 +658,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 len(
                     [
                         register["tango_attr_name"]
-                        for register in self.CONFIG["registers"]
+                        for register in self.CONFIG["registers"].values()
                         if register["tango_attr_name"] == attr_name
                     ]
                 )

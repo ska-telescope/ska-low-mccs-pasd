@@ -18,7 +18,7 @@ from ska_control_model import CommunicationStatus, HealthState, PowerState
 from ska_tango_base.base import SKABaseDevice
 from tango.server import device_property
 
-from ..pasd_controllers_configuration import PasdControllersConfig
+from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .fncc_component_manager import FnccComponentManager
 from .fncc_health_model import FnccHealthModel
 
@@ -40,13 +40,13 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
     # -----------------
     # Device Properties
     # -----------------
-    PasdFQDN = device_property(dtype=(str), mandatory=True)
+    PasdFQDN: Final = device_property(dtype=(str), mandatory=True)
 
     # ---------
     # Constants
     # ---------
-    CONFIG: Final = PasdControllersConfig.get_fncc()
-    TYPES: Final = {"int": int, "str": str}
+    CONFIG: Final[ControllerDict] = PasdControllersConfig.get_fncc()
+    TYPES: Final[dict[str, type]] = {"int": int, "str": str}
 
     # ---------------
     # Initialisation
@@ -119,7 +119,7 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
     # Attributes
     # ----------
     def _setup_fncc_attributes(self: MccsFNCC) -> None:
-        for register in self.CONFIG["registers"]:
+        for register in self.CONFIG["registers"].values():
             data_type = self.TYPES[register["data_type"]]
             self._setup_fncc_attribute(
                 register["tango_attr_name"],
@@ -270,7 +270,7 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
                 len(
                     [
                         register["tango_attr_name"]
-                        for register in self.CONFIG["registers"]
+                        for register in self.CONFIG["registers"].values()
                         if register["tango_attr_name"] == attr_name
                     ]
                 )

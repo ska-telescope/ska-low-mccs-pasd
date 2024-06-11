@@ -34,7 +34,7 @@ from tango.server import command
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
-from ..pasd_controllers_configuration import PasdControllersConfig
+from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .pasd_bus_component_manager import PasdBusComponentManager
 from .pasd_bus_conversions import FndhStatusMap
 from .pasd_bus_health_model import PasdBusHealthModel
@@ -65,22 +65,24 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     # ----------
     # Properties
     # ----------
-    Host = tango.server.device_property(dtype=str)
-    Port = tango.server.device_property(dtype=int)
-    PollingRate = tango.server.device_property(dtype=float, default_value=0.5)
-    DevicePollingRate = tango.server.device_property(dtype=float, default_value=15.0)
-    Timeout = tango.server.device_property(dtype=float)
+    Host: Final = tango.server.device_property(dtype=str)
+    Port: Final = tango.server.device_property(dtype=int)
+    PollingRate: Final = tango.server.device_property(dtype=float, default_value=0.5)
+    DevicePollingRate: Final = tango.server.device_property(
+        dtype=float, default_value=15.0
+    )
+    Timeout: Final = tango.server.device_property(dtype=float)
     # Default low-pass filtering cut-off frequency for sensor readings.
     # It is automatically written to all sensor registers of the FNDH and smartboxes
     # after MccsPasdBus is initialised and set ONLINE, and after any of them are powered
     # on or reset later.
-    LowPassFilterCutoff = tango.server.device_property(
+    LowPassFilterCutoff: int = tango.server.device_property(
         dtype=float, default_value=10.0, update_db=True
     )
-    SimulationConfig = tango.server.device_property(
+    SimulationConfig: Final = tango.server.device_property(
         dtype=int, default_value=SimulationMode.FALSE
     )
-    AvailableSmartboxes: list[int] = tango.server.device_property(
+    AvailableSmartboxes: Final[list[int]] = tango.server.device_property(
         dtype="DevVarShortArray",
         default_value=list(range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)),
     )
@@ -88,8 +90,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     # ---------
     # Constants
     # ---------
-    CONFIG: Final = PasdControllersConfig.get_all()
-    TYPES: Final = {
+    CONFIG: Final[
+        PasdControllersConfig.AllCtrllrsDict
+    ] = PasdControllersConfig.get_all()
+    TYPES: Final[dict[str, type]] = {
         "int": int,
         "float": float,
         "str": str,
@@ -115,12 +119,12 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
 
         self._pasd_state: dict[str, PasdAttribute] = {}
-        for controller, config in self.CONFIG.items():
-            if controller == "FNSC":
+        for key, controller in self.CONFIG.items():
+            if key == "FNSC":
                 for smartbox_number in self.AvailableSmartboxes:
-                    self._setup_controller_attributes(config, str(smartbox_number))
+                    self._setup_controller_attributes(controller, str(smartbox_number))
             else:
-                self._setup_controller_attributes(config)
+                self._setup_controller_attributes(controller)
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
@@ -142,9 +146,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         )
 
     def _setup_controller_attributes(
-        self: MccsPasdBus, controller_config: dict, id_no: str = ""
+        self: MccsPasdBus, controller_config: ControllerDict, id_no: str = ""
     ) -> None:
-        for register in controller_config["registers"]:
+        for register in controller_config["registers"].values():
             data_type = self.TYPES[register["data_type"]]
             if register["tango_attr_name"] == "PasdStatus":
                 register["tango_attr_name"] = "Status"
@@ -204,12 +208,12 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             f"Requesting to write attribute: {pasd_attribute.get_name()} with value"
             f" {pasd_attribute.get_write_value()} for device {device_id}"
         )
-        # Get the name of the attribute as understood by the Modbus API
-        for register in controller_config["registers"]:
+        # Get the name of the attribute (dict key) as understood by the Modbus API
+        for key, register in controller_config["registers"].items():
             if register["tango_attr_name"] == tango_attr_name:
                 self.component_manager.write_attribute(
                     device_id,
-                    register["name"],
+                    key,
                     pasd_attribute.get_write_value(ExtractAs.List),
                 )
                 break
@@ -465,13 +469,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         def _get_tango_attribute_name(
             pasd_device_number: int, pasd_attribute_name: str
         ) -> str:
-            for _, config in self.CONFIG.items():
-                if config.get("pasd_number") == pasd_device_number:
-                    for register in config["registers"]:
-                        if register["name"] == pasd_attribute_name:
-                            return config["prefix"] + register["tango_attr_name"]
-            for register in self.CONFIG["FNSC"]["registers"]:
-                if register["name"] == pasd_attribute_name:
+            for controller in self.CONFIG.values():
+                if controller.get("pasd_number") == pasd_device_number:
+                    for key, register in controller["registers"].items():
+                        if key == pasd_attribute_name:
+                            return controller["prefix"] + register["tango_attr_name"]
+            for key, register in self.CONFIG["FNSC"]["registers"].items():
+                if key == pasd_attribute_name:
                     return (
                         self.CONFIG["FNSC"]["prefix"]
                         + str(pasd_device_number)
@@ -1347,18 +1351,18 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
             :return: a list of the subscriptions for this device.
             """
-            for _, config in self._device.CONFIG.items():
-                if config.get("pasd_number") == pasd_device_number:
+            for controller in self._device.CONFIG.values():
+                if controller.get("pasd_number") == pasd_device_number:
                     return [
-                        config["prefix"] + register["tango_attr_name"]
-                        for register in config["registers"]
+                        controller["prefix"] + register["tango_attr_name"]
+                        for register in controller["registers"].values()
                     ]
             if pasd_device_number in self._device.AvailableSmartboxes:
                 return [
                     self._device.CONFIG["FNSC"]["prefix"]
                     + str(pasd_device_number)
                     + register["tango_attr_name"]
-                    for register in self._device.CONFIG["FNSC"]["registers"]
+                    for register in self._device.CONFIG["FNSC"]["registers"].values()
                 ]
             return []
 

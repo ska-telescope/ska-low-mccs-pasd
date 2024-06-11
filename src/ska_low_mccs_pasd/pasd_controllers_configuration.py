@@ -7,23 +7,35 @@
 # See LICENSE for more info.
 """Module provides utilities to read and validate PaSD controllers configuration."""
 from pathlib import Path
-from pprint import pprint  # TODO
+from pprint import pprint
+from typing import Final, TypedDict
 
 import yaml
 from cerberus import Validator  # type: ignore[import-untyped]
 
-# Define the schemas
-REGISTER_SCHEMA = {
-    "type": "list",
+
+class RegisterDict(TypedDict, total=False):
+    """TypedDict that must match REGISTER_SCHEMA."""
+
+    address: int
+    data_type: str
+    size: int
+    tango_dim_x: int
+    conversion_function: str
+    writable: bool
+    modbus_class: str
+    tango_attr_name: str
+    desired_info: str
+    default_thresholds: dict[str, int]
+
+
+REGISTER_SCHEMA: Final = {
+    "type": "dict",
     "required": True,
-    "schema": {
+    "keysrules": {"type": "string", "regex": "^[a-z0-9]+(?:_[a-z12]+)*$"},
+    "valuesrules": {
         "type": "dict",
         "schema": {
-            "name": {
-                "type": "string",
-                "required": True,
-                "regex": "^[a-z0-9]+(?:_[a-z12]+)*$",
-            },
             "address": {
                 "type": "integer",
                 "required": True,
@@ -59,7 +71,7 @@ REGISTER_SCHEMA = {
                 "regex": "^[a-z]+(?:_[a-z,0-9]+)*$",
             },
             "writable": {"type": "boolean", "default": False},
-            "class": {
+            "modbus_class": {
                 "type": "string",
                 "default": "PasdBusAttribute",
                 "allowed": [
@@ -94,7 +106,19 @@ REGISTER_SCHEMA = {
     },
 }
 
-CONTROLLER_SCHEMA = {
+
+class ControllerDict(TypedDict, total=False):
+    """TypedDict that must match CONTROLLER_SCHEMA."""
+
+    full_name: str
+    prefix: str
+    modbus_address: int
+    pasd_number: int
+    number_of_ports: int
+    registers: dict[str, RegisterDict]
+
+
+CONTROLLER_SCHEMA: Final = {
     "type": "dict",
     "schema": {
         "full_name": {"type": "string"},
@@ -110,7 +134,7 @@ CONTROLLER_SCHEMA = {
     },
 }
 
-CONFIGURATION_SCHEMA = {
+CONFIGURATION_SCHEMA: Final = {
     "PaSD_controllers": {
         "type": "dict",
         "schema": {
@@ -159,8 +183,12 @@ CONFIGURATION_SCHEMA = {
 class PasdControllersConfig:
     """Read and validate PaSD controller configuration from YAML."""
 
+    AllCtrllrsDict = dict[str, ControllerDict]
+    FirmwaresDict = dict[str, AllCtrllrsDict]
+    LoadedYaml = dict[str, FirmwaresDict]
+
     @staticmethod
-    def _load_configuration_yaml() -> dict:
+    def _load_configuration_yaml() -> LoadedYaml:
         """
         Load and process the configuration YAML file.
 
@@ -171,27 +199,21 @@ class PasdControllersConfig:
         while not (src_dir / "ska_low_mccs_pasd").exists():
             src_dir = src_dir.parent
         with open(src_dir / file_path, "r", encoding="UTF-8") as file:
-            config: dict = yaml.safe_load(file)
+            config: PasdControllersConfig.LoadedYaml = yaml.safe_load(file)
 
         def _snake_to_pascal_case(snake_string: str) -> str:
             return "".join(word.capitalize() for word in snake_string.split("_"))
 
-        for name in config["PaSD_controllers"]["base_firmware"]:
-            controller = config["PaSD_controllers"]["base_firmware"][name]
-            if isinstance(controller["registers"][0], list):
-                controller["registers"] = [
-                    *controller["registers"][0],
-                    *controller["registers"][1:],
-                ]
-            for regs in controller["registers"]:
-                if "tango_attr_name" not in regs:
-                    regs["tango_attr_name"] = _snake_to_pascal_case(regs["name"])
+        for controller in config["PaSD_controllers"]["base_firmware"].values():
+            for name, info in controller["registers"].items():
+                if "tango_attr_name" not in info:
+                    info["tango_attr_name"] = _snake_to_pascal_case(name)
 
         del config["common_registers"]
         return config
 
     @staticmethod
-    def _validate_configuration(config: dict) -> dict:
+    def _validate_configuration(config: LoadedYaml) -> FirmwaresDict:
         """
         Validate and apply defaults to the given PaSD controller's configuration.
 
@@ -206,60 +228,60 @@ class PasdControllersConfig:
             return v.normalized(config)["PaSD_controllers"]
         raise ValueError(f"PaSD controllers' config validation errors: {v.errors}")
 
-    @staticmethod
-    def get_all() -> dict:
+    @classmethod
+    def get_all(cls) -> AllCtrllrsDict:
         """
         Get all PaSD controllers' configuration.
 
         :return: validated configuration dictionary.
         """
-        config = PasdControllersConfig._load_configuration_yaml()
-        validated = PasdControllersConfig._validate_configuration(config)
+        config = cls._load_configuration_yaml()
+        validated = cls._validate_configuration(config)
         return validated["base_firmware"]
 
-    @staticmethod
-    def get_fncc() -> dict:
+    @classmethod
+    def get_fncc(cls) -> ControllerDict:
         """
         Get the Field Node Communications Controller configuration.
 
         :return: validated configuration dictionary.
         """
-        config = PasdControllersConfig._load_configuration_yaml()
-        validated = PasdControllersConfig._validate_configuration(config)
+        config = cls._load_configuration_yaml()
+        validated = cls._validate_configuration(config)
         return validated["base_firmware"]["FNCC"]
 
-    @staticmethod
-    def get_fndh() -> dict:
+    @classmethod
+    def get_fndh(cls) -> ControllerDict:
         """
         Get the Field Node Peripheral Controller (or FNDH) configuration.
 
         :return: validated configuration dictionary.
         """
-        config = PasdControllersConfig._load_configuration_yaml()
-        validated = PasdControllersConfig._validate_configuration(config)
+        config = cls._load_configuration_yaml()
+        validated = cls._validate_configuration(config)
         return validated["base_firmware"]["FNPC"]
 
-    @staticmethod
-    def get_smartbox() -> dict:
+    @classmethod
+    def get_smartbox(cls) -> ControllerDict:
         """
         Get the Field Node SMART Box Controller configuration.
 
         :return: validated configuration dictionary.
         """
-        config = PasdControllersConfig._load_configuration_yaml()
-        validated = PasdControllersConfig._validate_configuration(config)
+        config = cls._load_configuration_yaml()
+        validated = cls._validate_configuration(config)
         return validated["base_firmware"]["FNSC"]
 
-    @staticmethod
-    def get_firmware_revisions() -> dict | None:
+    @classmethod
+    def get_firmware_revisions(cls) -> FirmwaresDict | None:
         """
         Get all PaSD controllers' firmware revisions changes.
 
         :return: validated configuration dictionary.
         """
-        config = PasdControllersConfig._load_configuration_yaml()
-        validated = PasdControllersConfig._validate_configuration(config)
-        return validated.get("firmware_revisions")
+        config = cls._load_configuration_yaml()
+        validated = cls._validate_configuration(config)
+        return validated.get("firmware_revisions")  # type: ignore
 
 
 if __name__ == "__main__":

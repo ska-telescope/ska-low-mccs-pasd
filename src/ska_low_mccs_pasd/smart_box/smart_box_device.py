@@ -23,7 +23,7 @@ from tango.server import attribute, command, device_property
 
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
 
-from ..pasd_controllers_configuration import PasdControllersConfig
+from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
 
@@ -45,12 +45,12 @@ class MccsSmartBox(SKABaseDevice):
     # -----------------
     # Device Properties
     # -----------------
-    FieldStationName = device_property(dtype=(str), mandatory=True)
-    PasdFQDN = device_property(dtype=(str), mandatory=True)
-    SmartBoxNumber = device_property(dtype=int, mandatory=True)
+    FieldStationName: Final = device_property(dtype=(str), mandatory=True)
+    PasdFQDN: Final = device_property(dtype=(str), mandatory=True)
+    SmartBoxNumber: Final = device_property(dtype=int, mandatory=True)
 
-    CONFIG: Final = PasdControllersConfig.get_smartbox()
-    TYPES: Final = {
+    CONFIG: Final[ControllerDict] = PasdControllersConfig.get_smartbox()
+    TYPES: Final[dict[str, type]] = {
         "int": int,
         "float": float,
         "str": str,
@@ -242,7 +242,7 @@ class MccsSmartBox(SKABaseDevice):
     # Attributes
     # ----------
     def _setup_smartbox_attributes(self: MccsSmartBox) -> None:
-        for register in self.CONFIG["registers"]:
+        for register in self.CONFIG["registers"].values():
             data_type = self.TYPES[register["data_type"]]
             self._setup_smartbox_attribute(
                 register["tango_attr_name"],
@@ -401,7 +401,7 @@ class MccsSmartBox(SKABaseDevice):
                 len(
                     [
                         register["tango_attr_name"]
-                        for register in self.CONFIG["registers"]
+                        for register in self.CONFIG["registers"].values()
                         if register["tango_attr_name"] == attr_name
                     ]
                 )
