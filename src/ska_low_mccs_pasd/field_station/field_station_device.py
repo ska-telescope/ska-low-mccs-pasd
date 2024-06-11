@@ -13,12 +13,13 @@ import importlib.resources
 import json
 from typing import Any, Final, Optional
 
-from ska_control_model import CommunicationStatus, PowerState, ResultCode
+from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import JsonValidator, SubmittedSlowCommand
 from tango.server import attribute, command, device_property
 
 from .field_station_component_manager import FieldStationComponentManager
+from .field_station_health_model import FieldStationHealthModel
 
 __all__ = ["MccsFieldStation", "main"]
 
@@ -46,6 +47,25 @@ class MccsFieldStation(SKABaseDevice):
     # Initialisation
     # --------------
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """
+        Initialise this device object.
+
+        :param args: positional args to the init
+        :param kwargs: keyword args to the init
+        """
+        # We aren't supposed to define initialisation methods for Tango
+        # devices; we are only supposed to define an `init_device` method. But
+        # we insist on doing so here, just so that we can define some
+        # attributes, thereby stopping the linters from complaining about
+        # "attribute-defined-outside-init" etc. We still need to make sure that
+        # `init_device` re-initialises any values defined in here.
+        super().__init__(*args, **kwargs)
+
+        self.component_manager: FieldStationComponentManager
+        self._health_state: HealthState = HealthState.UNKNOWN
+        self._health_model: FieldStationHealthModel
+
     def init_device(self: MccsFieldStation) -> None:
         """Initialise the device."""
         self._antenna_power_json: Optional[str] = None
@@ -64,6 +84,14 @@ class MccsFieldStation(SKABaseDevice):
             f"\tStationName: {self.StationName}\n"
         )
         self.logger.info(message)
+
+    def _init_state_model(self: MccsFieldStation) -> None:
+        super()._init_state_model()
+
+        self._health_state = HealthState.UNKNOWN
+        self._health_model = FieldStationHealthModel(
+            self.FndhFQDN, self.SmartBoxFQDNs, self._health_changed
+        )
 
     def create_component_manager(
         self: MccsFieldStation,
@@ -172,11 +200,16 @@ class MccsFieldStation(SKABaseDevice):
     ) -> None:
         # We need to subscribe and re-emit change events.
         super()._communication_state_changed(communication_state)
+        self._health_model.update_state(
+            communicating=communication_state == CommunicationStatus.ESTABLISHED
+        )
 
+    # pylint: disable=too-many-branches
     def _component_state_callback(  # noqa: C901
         self: MccsFieldStation,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,
+        health: Optional[HealthState] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -186,29 +219,36 @@ class MccsFieldStation(SKABaseDevice):
         the state of the component changes.
 
         :param fault: whether the component is in fault.
-        :param power: the power state of the component
+        :param power: the power state of the component.
+        :param health: the health state of the component.
         :param kwargs: additional keyword arguments defining component
             state.
         """
         if "device_name" in kwargs:
             device_name = kwargs["device_name"]
             device_family = device_name.split("/")[1]
-
+            health_status = HealthState(health).name if health is not None else health
             if device_family == "fndh":
                 self.logger.debug(
                     f"FNDH {device_name} changed state to "
                     f"power = {power}, "
                     f"fault = {fault}, "
+                    f"health = {health_status} "
                 )
+                if health is not None:
+                    self._health_model.fndh_health_changed(device_name, health)
             else:
                 assert device_family == "smartbox"
                 self.logger.debug(
                     f"Smartbox {device_name} changed state to "
                     f"power = {power}, "
                     f"fault = {fault}, "
+                    f"health = {health_status} "
                 )
                 if power is not None:
                     self.component_manager.smartbox_state_change(device_name, power)
+                if health is not None:
+                    self._health_model.smartbox_health_changed(device_name, health)
             return
 
         if "outsidetemperature" in kwargs:
@@ -237,12 +277,14 @@ class MccsFieldStation(SKABaseDevice):
                         "FieldStation transitioning to `ON` state ...."
                     )
                     self._component_state_callback(power=PowerState.ON)
+                    self._health_model.update_state(power=PowerState.ON, fault=fault)
                 else:
                     self.logger.info(
                         "Not all unmasked Antenna are `ON`,"
                         "FieldStation transitioning to `OFF` state ...."
                     )
                     self._component_state_callback(power=PowerState.OFF)
+                    self._health_model.update_state(power=PowerState.OFF, fault=fault)
 
             self.push_change_event("antennaPowerStates", json.dumps(antenna_powers))
 
@@ -257,6 +299,21 @@ class MccsFieldStation(SKABaseDevice):
         :param smartbox_mapping: a dictionary containing the smartboxMapping.
         """
         self.push_change_event("smartboxMapping", json.dumps(smartbox_mapping))
+
+    def _health_changed(self: MccsFieldStation, health: HealthState) -> None:
+        """
+        Handle change in this device's health state.
+
+        This is a callback hook, called whenever the HealthModel's
+        evaluated health state changes. It is responsible for updating
+        the tango side of things i.e. making sure the attribute is up to
+        date, and events are pushed.
+
+        :param health: the new health value
+        """
+        if self._health_state != health:
+            self._health_state = health
+            self.push_change_event("healthState", health)
 
     # --------
     # Commands
@@ -466,8 +523,21 @@ class MccsFieldStation(SKABaseDevice):
         Return the OutsideTemperature.
 
         :return: the OutsideTemperature.
+        :raises ValueError: if outside temperature not read yet.
         """
+        if self.component_manager.outsideTemperature is None:
+            self.logger.warning("Outside temperature not read yet")
+            raise ValueError("Outside temperature not read yet")
         return self.component_manager.outsideTemperature
+
+    @attribute(dtype="DevString")
+    def healthReport(self: MccsFieldStation) -> str:
+        """
+        Get the health report.
+
+        :return: the health report.
+        """
+        return self._health_model.health_report
 
 
 # ----------

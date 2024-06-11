@@ -11,7 +11,11 @@
 __all__ = [
     "MccsFieldStation",
     "FieldStationComponentManager",
+    "FieldStationHealthModel",
+    "FieldStationHealthRules",
 ]
 
 from .field_station_component_manager import FieldStationComponentManager
 from .field_station_device import MccsFieldStation
+from .field_station_health_model import FieldStationHealthModel
+from .field_station_health_rules import FieldStationHealthRules
