@@ -251,8 +251,8 @@ def test_context_fixture(
 
     harness.set_pasd_bus_simulator(pasd_hw_simulators)
     harness.set_pasd_bus_device(
-        polling_rate=0.1,
-        device_polling_rate=0.1,
+        polling_rate=0.2,
+        device_polling_rate=0.2,
         available_smartboxes=smartbox_ids_to_test,
         logging_level=int(LoggingLevel.FATAL),
     )
