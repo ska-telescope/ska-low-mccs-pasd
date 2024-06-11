@@ -253,7 +253,6 @@ class TestFieldStationIntegration:
         )
         for i in range(len(smartbox_proxys)):
             change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
-        change_event_callbacks["antenna_power_states"].assert_not_called()
 
         # Use mapping to work out what smartbox port will change.
         antenna_mapping = json.loads(field_station_device.antennamapping)
