@@ -513,7 +513,7 @@ class PasdBusModbusApiClient:
 
         # Get a PasdBusAttribute object for this request
         try:
-            attribute = self._register_map.get_writeable_attribute(
+            attribute = self._register_map.get_writable_attribute(
                 request["device_id"], request["write"], list(request["values"])
             )
         except PasdBusRequestError as e:

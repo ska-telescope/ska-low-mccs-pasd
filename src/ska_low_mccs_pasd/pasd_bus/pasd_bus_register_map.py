@@ -16,6 +16,7 @@ from typing import Any, Callable, Final, Optional, Sequence
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
+from ..pasd_controllers_configuration import PasdControllersConfig, RegisterDict
 from .pasd_bus_conversions import LedServiceMap, PasdConversionUtility
 
 logger = logging.getLogger()
@@ -47,7 +48,7 @@ class PasdBusRequestError(Exception):
             case RequestErrors.NonContiguousRegisters:
                 message = f"Non-contiguous registers: {args[0]}, {args[1]}"
             case RequestErrors.NonWritableAttribute:
-                message = f"Non-writeable register(s): {args}"
+                message = f"Non-writable register(s): {args}"
             case RequestErrors.NonExistentCommand:
                 message = f"No command matching '{args[0]}', argument(s): {args[1]}"
             case RequestErrors.MissingCommandArgument:
@@ -146,19 +147,19 @@ class PasdBusAttribute:
         address: int,
         count: int,
         conversion_function: Callable = PasdConversionUtility.default_conversion,
-        writeable: bool = False,
+        writable: bool = False,
     ):
         """Initialise a new instance.
 
         :param address: starting register address
         :param count: number of registers containing the attribute
         :param conversion_function: callable function to scale the value
-        :param writeable: True if the attribute is read/write
+        :param writable: True if the attribute is read/write
         """
         self._address = address
         self._count = count
         self._conversion_function = conversion_function
-        self._writeable = writeable
+        self._writable = writable
 
     @property
     def address(self: PasdBusAttribute) -> int:
@@ -339,253 +340,30 @@ class PasdBusPortAttribute(PasdBusAttribute):
 class PasdBusRegisterInfo:
     """Hold register information for a PaSD device."""
 
-    register_map: dict[str, PasdBusAttribute]
-    number_of_sensors: int
-    first_sensor_register: int
-    number_of_extra_sensors: int
-    first_extra_sensor_register: int
-    number_of_ports: int
-    starting_port_register: int
+    register_map: dict[str, PasdBusAttribute | PasdBusPortAttribute]
+    number_of_sensors: int = 0
+    first_sensor_register: int = 0
+    number_of_extra_sensors: int = 0
+    first_extra_sensor_register: int = 0
+    number_of_ports: int = 0
+    starting_port_register: int = 0
 
 
+# pylint: disable=too-many-instance-attributes
 class PasdBusRegisterMap:
     """A register mapping utility for the PaSD."""
 
-    MODBUS_REGISTER_MAP_REVISION = "modbus_register_map_revision"
-    LED_PATTERN = "led_pattern"
-    STATUS = "status"
-    ALARM_FLAGS = "alarm_flags"
-    WARNING_FLAGS = "warning_flags"
-
-    # Register map for the 'info' registers, guaranteed to be the same
-    # across versions. Used for the FNDH, FNCC and smartboxes.
-    _INFO_REGISTER_MAP: Final = {
-        MODBUS_REGISTER_MAP_REVISION: PasdBusAttribute(0, 1),
-        "pcb_revision": PasdBusAttribute(1, 1),
-        "cpu_id": PasdBusAttribute(2, 2, PasdConversionUtility.convert_cpu_id),
-        "chip_id": PasdBusAttribute(4, 8, PasdConversionUtility.convert_chip_id),
-        "firmware_version": PasdBusAttribute(
-            12, 1, PasdConversionUtility.convert_firmware_version
-        ),
-    }
-
-    # Inverse dictionary mapping register number (address) to
-    # attribute name, to be used by the server simulation
-    _INFO_REGISTER_INVERSE_MAP: Final = {
-        v.address: k for k, v in _INFO_REGISTER_MAP.items()
-    }
-
-    # Register maps for the attributes which might change across versions
-    # NB: The attributes must be inserted in register number order
-    _FNDH_REGISTER_MAP_V1: Final = {
-        "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
-        "sys_address": PasdBusAttribute(15, 1),
-        "psu48v_voltages": PasdBusAttribute(16, 2, PasdConversionUtility.scale_volts),
-        "psu48v_current": PasdBusAttribute(
-            18, 1, PasdConversionUtility.scale_48vcurrents
-        ),
-        "psu48v_temperatures": PasdBusAttribute(
-            19, 2, PasdConversionUtility.scale_signed_16bit
-        ),
-        "panel_temperature": PasdBusAttribute(
-            21, 1, PasdConversionUtility.scale_signed_16bit
-        ),
-        "fncb_temperature": PasdBusAttribute(
-            22, 1, PasdConversionUtility.scale_signed_16bit
-        ),
-        "fncb_humidity": PasdBusAttribute(23, 1),
-        STATUS: PasdBusAttribute(24, 1, PasdConversionUtility.convert_fndh_status),
-        LED_PATTERN: PasdBusAttribute(25, 1, PasdConversionUtility.convert_led_status),
-        "comms_gateway_temperature": PasdBusAttribute(
-            26, 1, PasdConversionUtility.scale_signed_16bit
-        ),
-        "power_module_temperature": PasdBusAttribute(
-            27, 1, PasdConversionUtility.scale_signed_16bit
-        ),
-        "outside_temperature": PasdBusAttribute(
-            28, 1, PasdConversionUtility.scale_signed_16bit
-        ),
-        "internal_ambient_temperature": PasdBusAttribute(
-            29, 1, PasdConversionUtility.scale_signed_16bit
-        ),
-        "port_forcings": PasdBusPortAttribute(35, 28, PortStatusBits.TO),
-        "ports_desired_power_when_online": PasdBusPortAttribute(
-            35, 28, PortStatusBits.DSON
-        ),
-        "ports_desired_power_when_offline": PasdBusPortAttribute(
-            35, 28, PortStatusBits.DSOFF
-        ),
-        "ports_power_sensed": PasdBusPortAttribute(
-            35, 28, PortStatusBits.PWRSENSE_BREAKER
-        ),
-        "ports_power_control": PasdBusPortAttribute(35, 28, PortStatusBits.POWER),
-        "psu48v_voltage_1_thresholds": PasdBusAttribute(
-            1000, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "psu48v_voltage_2_thresholds": PasdBusAttribute(
-            1004, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "psu48v_current_thresholds": PasdBusAttribute(
-            1008, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "psu48v_temperature_1_thresholds": PasdBusAttribute(
-            1012, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "psu48v_temperature_2_thresholds": PasdBusAttribute(
-            1016, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "panel_temperature_thresholds": PasdBusAttribute(
-            1020, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "fncb_temperature_thresholds": PasdBusAttribute(
-            1024, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "fncb_humidity_thresholds": PasdBusAttribute(1028, 4, writeable=True),
-        "comms_gateway_temperature_thresholds": PasdBusAttribute(
-            1032, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "power_module_temperature_thresholds": PasdBusAttribute(
-            1036, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "outside_temperature_thresholds": PasdBusAttribute(
-            1040, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "internal_ambient_temperature_thresholds": PasdBusAttribute(
-            1044, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "dummy_for_test": PasdBusAttribute(1100, 4, writeable=True),
-        WARNING_FLAGS: PasdBusAttribute(
-            10129, 1, PasdConversionUtility.convert_fndh_alarm_status
-        ),
-        ALARM_FLAGS: PasdBusAttribute(
-            10131, 1, PasdConversionUtility.convert_fndh_alarm_status
-        ),
-    }
-
-    _SMARTBOX_REGISTER_MAP_V1: Final = {
-        "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
-        "sys_address": PasdBusAttribute(15, 1),
-        "input_voltage": PasdBusAttribute(16, 1, PasdConversionUtility.scale_volts),
-        "power_supply_output_voltage": PasdBusAttribute(
-            17, 1, PasdConversionUtility.scale_volts
-        ),
-        "power_supply_temperature": PasdBusAttribute(
-            18, 1, PasdConversionUtility.scale_signed_16bit
-        ),
-        "pcb_temperature": PasdBusAttribute(
-            19, 1, PasdConversionUtility.scale_signed_16bit
-        ),
-        "fem_ambient_temperature": PasdBusAttribute(
-            20, 1, PasdConversionUtility.scale_signed_16bit
-        ),
-        STATUS: PasdBusAttribute(21, 1, PasdConversionUtility.convert_smartbox_status),
-        LED_PATTERN: PasdBusAttribute(22, 1, PasdConversionUtility.convert_led_status),
-        "fem_case_temperatures": PasdBusAttribute(
-            23, 2, PasdConversionUtility.scale_signed_16bit
-        ),
-        "fem_heatsink_temperatures": PasdBusAttribute(
-            25, 2, PasdConversionUtility.scale_signed_16bit
-        ),
-        "port_forcings": PasdBusPortAttribute(35, 12, PortStatusBits.TO),
-        "port_breakers_tripped": PasdBusPortAttribute(
-            35, 12, PortStatusBits.PWRSENSE_BREAKER
-        ),
-        "ports_desired_power_when_online": PasdBusPortAttribute(
-            35, 12, PortStatusBits.DSON
-        ),
-        "ports_desired_power_when_offline": PasdBusPortAttribute(
-            35, 12, PortStatusBits.DSOFF
-        ),
-        "ports_power_sensed": PasdBusPortAttribute(35, 12, PortStatusBits.POWER),
-        "ports_current_draw": PasdBusAttribute(47, 12),
-        "input_voltage_thresholds": PasdBusAttribute(
-            1000, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "power_supply_output_voltage_thresholds": PasdBusAttribute(
-            1004, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "power_supply_temperature_thresholds": PasdBusAttribute(
-            1008, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "pcb_temperature_thresholds": PasdBusAttribute(
-            1012, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "fem_ambient_temperature_thresholds": PasdBusAttribute(
-            1016, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "fem_case_temperature_1_thresholds": PasdBusAttribute(
-            1020, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "fem_case_temperature_2_thresholds": PasdBusAttribute(
-            1024, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "fem_heatsink_temperature_1_thresholds": PasdBusAttribute(
-            1028, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "fem_heatsink_temperature_2_thresholds": PasdBusAttribute(
-            1032, 4, PasdConversionUtility.scale_signed_16bit, writeable=True
-        ),
-        "fem1_current_trip_threshold": PasdBusAttribute(1068, 1, writeable=True),
-        "fem2_current_trip_threshold": PasdBusAttribute(1069, 1, writeable=True),
-        "fem3_current_trip_threshold": PasdBusAttribute(1070, 1, writeable=True),
-        "fem4_current_trip_threshold": PasdBusAttribute(1071, 1, writeable=True),
-        "fem5_current_trip_threshold": PasdBusAttribute(1072, 1, writeable=True),
-        "fem6_current_trip_threshold": PasdBusAttribute(1073, 1, writeable=True),
-        "fem7_current_trip_threshold": PasdBusAttribute(1074, 1, writeable=True),
-        "fem8_current_trip_threshold": PasdBusAttribute(1075, 1, writeable=True),
-        "fem9_current_trip_threshold": PasdBusAttribute(1076, 1, writeable=True),
-        "fem10_current_trip_threshold": PasdBusAttribute(1077, 1, writeable=True),
-        "fem11_current_trip_threshold": PasdBusAttribute(1078, 1, writeable=True),
-        "fem12_current_trip_threshold": PasdBusAttribute(1079, 1, writeable=True),
-        WARNING_FLAGS: PasdBusAttribute(
-            10129, 1, PasdConversionUtility.convert_smartbox_alarm_status
-        ),
-        ALARM_FLAGS: PasdBusAttribute(
-            10131, 1, PasdConversionUtility.convert_smartbox_alarm_status
-        ),
-    }
-
-    _FNCC_REGISTER_MAP_V1: Final = {
-        "uptime": PasdBusAttribute(13, 2, PasdConversionUtility.convert_uptime),
-        "sys_address": PasdBusAttribute(15, 1),
-        STATUS: PasdBusAttribute(16, 1, PasdConversionUtility.convert_fncc_status),
-        "field_node_number": PasdBusAttribute(17, 1),
-    }
-
-    # Map modbus register revision number to the corresponding PasdRegisterInfo
-    _FNDH_REGISTER_MAPS: Final = {
-        1: PasdBusRegisterInfo(
-            _FNDH_REGISTER_MAP_V1,
-            number_of_sensors=8,
-            first_sensor_register=16,
-            number_of_extra_sensors=4,
-            first_extra_sensor_register=26,
-            number_of_ports=28,
-            starting_port_register=35,
-        )
-    }
-    _SMARTBOX_REGISTER_MAPS: Final = {
-        1: PasdBusRegisterInfo(
-            _SMARTBOX_REGISTER_MAP_V1,
-            number_of_sensors=5,
-            first_sensor_register=16,
-            number_of_extra_sensors=4,
-            first_extra_sensor_register=23,
-            number_of_ports=12,
-            starting_port_register=35,
-        )
-    }
-    _FNCC_REGISTER_MAPS: Final = {
-        1: PasdBusRegisterInfo(
-            _FNCC_REGISTER_MAP_V1,
-            number_of_sensors=0,
-            first_sensor_register=0,
-            number_of_extra_sensors=0,
-            first_extra_sensor_register=0,
-            number_of_ports=0,
-            starting_port_register=0,
-        )
-    }
+    CONFIG_BASE: Final[
+        PasdControllersConfig.AllCtrllrsDict
+    ] = PasdControllersConfig.get_all()
+    CONFIG_FW_REVS: Final[
+        PasdControllersConfig.FirmwaresDict | None
+    ] = PasdControllersConfig.get_firmware_revisions()
+    MODBUS_REGISTER_MAP_REVISION: Final = "modbus_register_map_revision"
+    LED_PATTERN: Final = "led_pattern"
+    STATUS: Final = "status"
+    ALARM_FLAGS: Final = "alarm_flags"
+    WARNING_FLAGS: Final = "warning_flags"
 
     def __init__(self, revision_number: int = 1):
         """
@@ -596,6 +374,126 @@ class PasdBusRegisterMap:
             the h/w)
         """
         self._revision_number = revision_number
+
+        # Register maps for the attributes which might change across versions
+        # NB: The attributes must be inserted in register number order
+        self._FNCC_REGISTER_MAP_V1 = self._create_register_map(
+            self.CONFIG_BASE["FNCC"]["registers"]
+        )
+        self._FNDH_REGISTER_MAP_V1 = self._create_register_map(
+            self.CONFIG_BASE["FNPC"]["registers"]
+        )
+        self._FNDH_REGISTER_MAP_V1["dummy_for_test"] = PasdBusAttribute(
+            1100, 4, writable=True
+        )
+        self._SMARTBOX_REGISTER_MAP_V1 = self._create_register_map(
+            self.CONFIG_BASE["FNSC"]["registers"]
+        )
+
+        # Map modbus register revision number to the corresponding PasdRegisterInfo
+        self._FNCC_REGISTER_MAPS: Final = {
+            1: PasdBusRegisterInfo(self._FNCC_REGISTER_MAP_V1)
+        }
+        self._FNDH_REGISTER_MAPS: Final = {
+            1: PasdBusRegisterInfo(
+                self._FNDH_REGISTER_MAP_V1,
+                number_of_sensors=8,
+                first_sensor_register=16,
+                number_of_extra_sensors=4,
+                first_extra_sensor_register=26,
+                number_of_ports=28,
+                starting_port_register=35,
+            )
+        }
+        self._SMARTBOX_REGISTER_MAPS: Final = {
+            1: PasdBusRegisterInfo(
+                self._SMARTBOX_REGISTER_MAP_V1,
+                number_of_sensors=5,
+                first_sensor_register=16,
+                number_of_extra_sensors=4,
+                first_extra_sensor_register=23,
+                number_of_ports=12,
+                starting_port_register=35,
+            )
+        }
+
+        # TODO: This part is supposed to generate revision register maps if they exist,
+        # but cannot be tested currently as the simulator and tests are not setup for
+        # firmware revisions - So this is not guaranteed to be correct.
+        if self.CONFIG_FW_REVS is not None and self._revision_number > 1:
+            for revision in range(2, self._revision_number):
+                for key, changes in self.CONFIG_FW_REVS[f"v{revision}"].items():
+                    merged = self._merge_dicts(
+                        self.CONFIG_BASE[key]["registers"], changes["registers"]
+                    )
+                    if key == "FNCC":
+                        self._FNCC_REGISTER_MAPS[revision] = PasdBusRegisterInfo(
+                            self._create_register_map(merged)
+                        )
+                    elif key == "FNPC":
+                        self._FNDH_REGISTER_MAPS[revision] = PasdBusRegisterInfo(
+                            self._create_register_map(merged),
+                            number_of_sensors=8,
+                            first_sensor_register=16,
+                            number_of_extra_sensors=4,
+                            first_extra_sensor_register=26,
+                            number_of_ports=28,
+                            starting_port_register=35,
+                        )
+                    elif key == "FNSC":
+                        self._FNDH_REGISTER_MAPS[revision] = PasdBusRegisterInfo(
+                            self._create_register_map(merged),
+                            number_of_sensors=5,
+                            first_sensor_register=16,
+                            number_of_extra_sensors=4,
+                            first_extra_sensor_register=23,
+                            number_of_ports=12,
+                            starting_port_register=35,
+                        )
+
+    @staticmethod
+    def _create_register_map(
+        registers: dict[str, RegisterDict]
+    ) -> dict[str, PasdBusAttribute | PasdBusPortAttribute]:
+        def _instantiate_attribute(
+            class_name: str, *args: Any, **kwargs: Any
+        ) -> PasdBusAttribute | PasdBusPortAttribute:
+            cls = globals().get(class_name)
+            if cls is None:
+                raise ValueError(f"Class {class_name} not found.")
+            return cls(*args, **kwargs)
+
+        register_map = {}
+        for key, register in registers.items():
+            if register["modbus_class"] == "PasdBusAttribute":
+                register_map[key] = _instantiate_attribute(
+                    register["modbus_class"],
+                    register["address"],
+                    register["size"],
+                    getattr(PasdConversionUtility, register["conversion_function"]),
+                    register["writable"],
+                )
+            elif register["modbus_class"] == "PasdBusPortAttribute":
+                register_map[key] = _instantiate_attribute(
+                    register["modbus_class"],
+                    register["address"],
+                    register["size"],
+                    getattr(
+                        PortStatusBits,
+                        register.get("desired_info", "NONE"),
+                    ),
+                )
+        return register_map
+
+    @classmethod
+    def _merge_dicts(cls, base: dict, changes: dict) -> dict:
+        result = base.copy()
+        for key, value in changes.items():
+            if isinstance(value, dict) and key in result:
+                result[key] = cls._merge_dicts(result[key], value)
+            else:
+                result[key] = value
+        return result
 
     @property
     def revision_number(self) -> int:
@@ -620,13 +518,13 @@ class PasdBusRegisterMap:
             return self._FNCC_REGISTER_MAPS[self.revision_number]
         return self._SMARTBOX_REGISTER_MAPS[self.revision_number]
 
-    def get_writeable_attribute(
+    def get_writable_attribute(
         self, device_id: int, attribute_name: str, write_values: list[Any]
     ) -> PasdBusAttribute:
         """
-        Return a PasdAttribute object for a writeable object.
+        Return a PasdAttribute object for a writable object.
 
-        :raises PasdBusRequestError: If a non-existing or non-writeable register is
+        :raises PasdBusRequestError: If a non-existing or non-writable register is
             requested
 
         :param device_id: The ID (address) of the smartbox / FNDH device
@@ -642,7 +540,7 @@ class PasdBusRegisterMap:
             raise PasdBusRequestError(
                 RequestErrors.NonExistentAttribute, attribute_name
             )
-        if attribute._writeable is False:
+        if attribute._writable is False:
             raise PasdBusRequestError(
                 RequestErrors.NonWritableAttribute, attribute_name
             )
@@ -666,19 +564,11 @@ class PasdBusRegisterMap:
         """
         # Get the register map for the current revision number
         attribute_map = self._get_register_info(device_id).register_map
-
         attributes = {
             name: attr
-            for name, attr in self._INFO_REGISTER_MAP.items()
+            for name, attr in attribute_map.items()
             if name in attribute_names
         }
-        attributes.update(
-            {
-                name: attr
-                for name, attr in attribute_map.items()
-                if name in attribute_names
-            }
-        )
         if len(attributes) == 0:
             raise PasdBusRequestError(
                 RequestErrors.NonExistentAttribute, *attribute_names
@@ -715,16 +605,12 @@ class PasdBusRegisterMap:
 
         :return: A list of the corresponding string attribute names
         """
-        names = [self._INFO_REGISTER_INVERSE_MAP[address] for address in addresses]
         register_map = self._get_register_info(device_id).register_map
-        names.extend(
-            [
-                name
-                for name, attribute in register_map.items()
-                if attribute.address in addresses
-            ]
-        )
-        return names
+        return [
+            name
+            for name, attribute in register_map.items()
+            if attribute.address in addresses
+        ]
 
     def get_attributes_from_address_and_count(
         self, device_id: int, first_address: int, count: int
@@ -739,17 +625,8 @@ class PasdBusRegisterMap:
         :return: A dictionary of the corresponding string attribute names and attribute
             instances
         """
-        attributes = {
-            name: attribute
-            for name, attribute in self._INFO_REGISTER_MAP.items()
-            if first_address <= attribute.address < first_address + count
-            or (
-                attribute.address <= first_address
-                and first_address + count <= attribute.address + attribute.count
-            )
-        }
         register_map = self._get_register_info(device_id).register_map
-        attributes |= {
+        attributes = {
             name: attribute
             for name, attribute in register_map.items()
             if first_address <= attribute.address < first_address + count
@@ -891,7 +768,7 @@ class PasdBusRegisterMap:
             attribute = PasdBusAttribute(
                 register_info.first_extra_sensor_register,
                 register_info.number_of_extra_sensors,
-                writeable=True,
+                writable=True,
             )
             attribute.value = [
                 filter_constant for _ in range(register_info.number_of_extra_sensors)
@@ -900,7 +777,7 @@ class PasdBusRegisterMap:
             attribute = PasdBusAttribute(
                 register_info.first_sensor_register,
                 register_info.number_of_sensors,
-                writeable=True,
+                writable=True,
             )
             attribute.value = [
                 filter_constant for _ in range(register_info.number_of_sensors)

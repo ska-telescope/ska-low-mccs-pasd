@@ -389,7 +389,6 @@ PaSD_controllers:
           desired_info: POWER
         ports_current_draw:
           data_type: float
-          modbus_class: PasdBusPortAttribute
           address: 47
           size: *number_of_smartbox_ports
           tango_dim_x: *number_of_smartbox_ports

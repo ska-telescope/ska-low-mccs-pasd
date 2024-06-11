@@ -750,7 +750,7 @@ class TestPasdBusModbusApiClient:
         """
         response = api.write_attribute(1, "input_voltage", 20.0)
         assert response["error"]["code"] == "request"
-        assert "Non-writeable register" in response["error"]["detail"]
+        assert "Non-writable register" in response["error"]["detail"]
         print("\n" + response["error"]["detail"])
 
     def test_write_unresponsive_device(
