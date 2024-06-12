@@ -19,7 +19,7 @@ __all__ = ["FieldStationHealthModel"]
 
 
 class FieldStationHealthModel(BaseHealthModel):
-    """A health model for a Sps station."""
+    """A health model for a field station."""
 
     def __init__(
         self: FieldStationHealthModel,
@@ -31,7 +31,7 @@ class FieldStationHealthModel(BaseHealthModel):
         """
         Initialise a new instance.
 
-        :param fndh_fqdn: the FQDN of this station's FNDH
+        :param fndh_fqdn: the FQDN of this station's FNDH.
         :param smartbox_fqdns: the FQDNs of this station's smartboxes
         :param health_changed_callback: callback to be called whenever
             there is a change to this this health model's evaluated
@@ -41,9 +41,11 @@ class FieldStationHealthModel(BaseHealthModel):
         self._smartbox_health: dict[str, Optional[HealthState]] = {
             smartbox_fqdn: HealthState.UNKNOWN for smartbox_fqdn in smartbox_fqdns
         }
-        self._fndh_health: dict[str, Optional[HealthState]] = {
-            fndh_fqdn: HealthState.UNKNOWN
-        }
+        self._fndh_health: Optional[HealthState]
+        if fndh_fqdn == "":
+            self._fndh_health = None
+        else:
+            self._fndh_health = HealthState.UNKNOWN
         self._health_rules = FieldStationHealthRules(thresholds)
         super().__init__(health_changed_callback)
 
@@ -55,13 +57,13 @@ class FieldStationHealthModel(BaseHealthModel):
         """
         Handle a change in fndh health.
 
-        :param fndh_fqdn: the FQDN of the smartbox whose health has changed
+        :param fndh_fqdn: the FQDN of the fndh whose health has changed
         :param fndh_health: the health state of the specified smartbox, or
             None if the fndh's admin mode indicates that its health
             should not be rolled up.
         """
-        if self._fndh_health.get(fndh_fqdn) != fndh_health:
-            self._fndh_health[fndh_fqdn] = fndh_health
+        if self._fndh_health != fndh_health:
+            self._fndh_health = fndh_health
             self.update_health()
 
     def smartbox_health_changed(

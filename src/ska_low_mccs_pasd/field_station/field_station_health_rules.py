@@ -20,7 +20,7 @@ class FieldStationHealthRules(HealthRules):
 
     def unknown_rule(  # type: ignore[override]
         self: FieldStationHealthRules,
-        fndh_health: dict[str, HealthState | None],
+        fndh_health: HealthState | None,
         smartbox_healths: dict[str, HealthState | None],
     ) -> tuple[bool, str]:
         """
@@ -32,7 +32,7 @@ class FieldStationHealthRules(HealthRules):
         :return: True if UNKNOWN is a valid state, along with a text report.
         """
         result = (
-            HealthState.UNKNOWN in fndh_health.values()
+            fndh_health == HealthState.UNKNOWN
             or HealthState.UNKNOWN in smartbox_healths.values()
         )
         if result:
@@ -41,14 +41,14 @@ class FieldStationHealthRules(HealthRules):
                 for trl, health in smartbox_healths.items()
                 if health is None or health == HealthState.UNKNOWN
             ]
-            fndh_states = [
-                trl
-                for trl, health in fndh_health.items()
-                if health is None or health == HealthState.UNKNOWN
-            ]
+            fndh_report = (
+                HealthState(fndh_health).name
+                if fndh_health is not None
+                else fndh_health
+            )
             report = (
                 "Some devices are unknown: "
-                f"Smartboxes: {smartbox_states} FNDHs: {fndh_states}."
+                f"Smartboxes: {smartbox_states} FNDH: {fndh_report}"
             )
         else:
             report = ""
@@ -56,7 +56,7 @@ class FieldStationHealthRules(HealthRules):
 
     def failed_rule(  # type: ignore[override]
         self: FieldStationHealthRules,
-        fndh_health: dict[str, HealthState | None],
+        fndh_health: HealthState,
         smartbox_healths: dict[str, HealthState | None],
     ) -> tuple[bool, str]:
         """
@@ -70,8 +70,7 @@ class FieldStationHealthRules(HealthRules):
         result = (
             self.get_fraction_in_states(smartbox_healths, DEGRADED_STATES, default=0)
             >= self._thresholds["smartbox_failed"]
-            or self.get_fraction_in_states(fndh_health, DEGRADED_STATES, default=0)
-            >= self._thresholds["fndh_failed"]
+            or fndh_health == HealthState.FAILED
         )
         if result:
             smartbox_states = [
@@ -79,14 +78,14 @@ class FieldStationHealthRules(HealthRules):
                 for trl, health in smartbox_healths.items()
                 if health is not None and health in DEGRADED_STATES
             ]
-            fndh_states = [
-                f"{trl} - {HealthState(health).name}"
-                for trl, health in fndh_health.items()
-                if health is not None and health in DEGRADED_STATES
-            ]
+            fndh_report = (
+                HealthState(fndh_health).name
+                if fndh_health is not None
+                else fndh_health
+            )
             report = (
                 "Too many subdevices are in a bad state: "
-                f"Smartboxes: {smartbox_states} FNDHs: {fndh_states}"
+                f"Smartboxes: {smartbox_states} FNDH: {fndh_report}"
             )
         else:
             report = ""
@@ -94,7 +93,7 @@ class FieldStationHealthRules(HealthRules):
 
     def degraded_rule(  # type: ignore[override]
         self: FieldStationHealthRules,
-        fndh_health: dict[str, HealthState | None],
+        fndh_health: HealthState,
         smartbox_healths: dict[str, HealthState | None],
     ) -> tuple[bool, str]:
         """
@@ -108,8 +107,7 @@ class FieldStationHealthRules(HealthRules):
         result = (
             self.get_fraction_in_states(smartbox_healths, DEGRADED_STATES, default=0)
             >= self._thresholds["smartbox_degraded"]
-            or self.get_fraction_in_states(fndh_health, DEGRADED_STATES, default=0)
-            >= self._thresholds["fndh_degraded"]
+            or fndh_health == HealthState.DEGRADED
         )
         if result:
             smartbox_states = [
@@ -117,14 +115,14 @@ class FieldStationHealthRules(HealthRules):
                 for trl, health in smartbox_healths.items()
                 if health is not None and health in DEGRADED_STATES
             ]
-            fndh_states = [
-                f"{trl} - {HealthState(health).name}"
-                for trl, health in fndh_health.items()
-                if health is not None and health in DEGRADED_STATES
-            ]
+            fndh_report = (
+                HealthState(fndh_health).name
+                if fndh_health is not None
+                else fndh_health
+            )
             report = (
                 "Too many subdevices are in a bad state: "
-                f"Smartboxes: {smartbox_states} FNDHs: {fndh_states}"
+                f"Smartboxes: {smartbox_states} FNDH: {fndh_report}"
             )
         else:
             report = ""
@@ -132,7 +130,7 @@ class FieldStationHealthRules(HealthRules):
 
     def healthy_rule(  # type: ignore[override]
         self: FieldStationHealthRules,
-        fndh_health: dict[str, HealthState | None],
+        fndh_health: HealthState,
         smartbox_healths: dict[str, HealthState | None],
     ) -> tuple[bool, str]:
         """
@@ -146,8 +144,7 @@ class FieldStationHealthRules(HealthRules):
         result = (
             self.get_fraction_in_states(smartbox_healths, DEGRADED_STATES, default=0)
             < self._thresholds["smartbox_degraded"]
-            and self.get_fraction_in_states(fndh_health, DEGRADED_STATES, default=0)
-            < self._thresholds["fndh_degraded"]
+            and fndh_health == HealthState.OK
         )
         if not result:
             smartbox_states = [
@@ -155,14 +152,14 @@ class FieldStationHealthRules(HealthRules):
                 for trl, health in smartbox_healths.items()
                 if health is not None and health in DEGRADED_STATES
             ]
-            fndh_states = [
-                f"{trl} - {HealthState(health).name}"
-                for trl, health in fndh_health.items()
-                if health is not None and health in DEGRADED_STATES
-            ]
+            fndh_report = (
+                HealthState(fndh_health).name
+                if fndh_health is not None
+                else fndh_health
+            )
             report = (
                 "Too many subdevices are in a bad state: "
-                f"Smartboxes: {smartbox_states} FNDHs: {fndh_states}"
+                f"Smartboxes: {smartbox_states} FNDH: {fndh_report}"
             )
         else:
             report = ""
@@ -176,8 +173,6 @@ class FieldStationHealthRules(HealthRules):
         :return: the default thresholds
         """
         return {
-            "fndh_degraded": 0.05,
-            "fndh_failed": 0.2,
-            "smartbox_degraded": 0.05,
+            "smartbox_degraded": 0.04,
             "smartbox_failed": 0.2,
         }
