@@ -53,6 +53,7 @@ REGISTER_SCHEMA: Final = {
                     "DesiredPowerEnum",
                 ],
             },
+            "static": {"type": "boolean"},
             "size": {
                 "type": "integer",
                 "default": 1,
@@ -93,6 +94,7 @@ REGISTER_SCHEMA: Final = {
                     "POWER",
                 ],
             },
+            "default_value": {"type": "integer"},
             "default_thresholds": {
                 "type": "dict",
                 "schema": {
@@ -138,7 +140,7 @@ CONFIGURATION_SCHEMA: Final = {
     "PaSD_controllers": {
         "type": "dict",
         "schema": {
-            "base_firmware": {
+            "base_register_maps": {
                 "type": "dict",
                 "required": True,
                 "schema": {
@@ -159,7 +161,7 @@ CONFIGURATION_SCHEMA: Final = {
                     },
                 },
             },
-            "firmware_revisions": {
+            "register_map_revisions": {
                 "type": "dict",
                 "required": False,
                 "keysrules": {"type": "string", "regex": "v([2-9]\\b|[1-9][0-9]+)"},
@@ -184,8 +186,8 @@ class PasdControllersConfig:
     """Read and validate PaSD controller configuration from YAML."""
 
     AllCtrllrsDict = dict[str, ControllerDict]
-    FirmwaresDict = dict[str, AllCtrllrsDict]
-    LoadedYaml = dict[str, FirmwaresDict]
+    RegMapRevsDict = dict[str, AllCtrllrsDict]
+    LoadedYaml = dict[str, RegMapRevsDict]
 
     @staticmethod
     def _load_configuration_yaml() -> LoadedYaml:
@@ -204,7 +206,7 @@ class PasdControllersConfig:
         def _snake_to_pascal_case(snake_string: str) -> str:
             return "".join(word.capitalize() for word in snake_string.split("_"))
 
-        for controller in config["PaSD_controllers"]["base_firmware"].values():
+        for controller in config["PaSD_controllers"]["base_register_maps"].values():
             for name, info in controller["registers"].items():
                 if "tango_attr_name" not in info:
                     info["tango_attr_name"] = _snake_to_pascal_case(name)
@@ -213,7 +215,7 @@ class PasdControllersConfig:
         return config
 
     @staticmethod
-    def _validate_configuration(config: LoadedYaml) -> FirmwaresDict:
+    def _validate_configuration(config: LoadedYaml) -> RegMapRevsDict:
         """
         Validate and apply defaults to the given PaSD controller's configuration.
 
@@ -237,7 +239,7 @@ class PasdControllersConfig:
         """
         config = cls._load_configuration_yaml()
         validated = cls._validate_configuration(config)
-        return validated["base_firmware"]
+        return validated["base_register_maps"]
 
     @classmethod
     def get_fncc(cls) -> ControllerDict:
@@ -248,7 +250,7 @@ class PasdControllersConfig:
         """
         config = cls._load_configuration_yaml()
         validated = cls._validate_configuration(config)
-        return validated["base_firmware"]["FNCC"]
+        return validated["base_register_maps"]["FNCC"]
 
     @classmethod
     def get_fndh(cls) -> ControllerDict:
@@ -259,7 +261,7 @@ class PasdControllersConfig:
         """
         config = cls._load_configuration_yaml()
         validated = cls._validate_configuration(config)
-        return validated["base_firmware"]["FNPC"]
+        return validated["base_register_maps"]["FNPC"]
 
     @classmethod
     def get_smartbox(cls) -> ControllerDict:
@@ -270,22 +272,22 @@ class PasdControllersConfig:
         """
         config = cls._load_configuration_yaml()
         validated = cls._validate_configuration(config)
-        return validated["base_firmware"]["FNSC"]
+        return validated["base_register_maps"]["FNSC"]
 
     @classmethod
-    def get_firmware_revisions(cls) -> FirmwaresDict | None:
+    def get_register_map_revisions(cls) -> RegMapRevsDict | None:
         """
-        Get all PaSD controllers' firmware revisions changes.
+        Get all PaSD controllers' register map revisions changes.
 
         :return: validated configuration dictionary.
         """
         config = cls._load_configuration_yaml()
         validated = cls._validate_configuration(config)
-        return validated.get("firmware_revisions")  # type: ignore
+        return validated.get("register_map_revisions")  # type: ignore
 
 
 if __name__ == "__main__":
     print("Validated configurations with defaults applied:")
     pprint(PasdControllersConfig.get_all())
-    print("Validated firmware revisions with defaults applied:")
-    pprint(PasdControllersConfig.get_firmware_revisions())
+    print("Validated register map revisions with defaults applied:")
+    pprint(PasdControllersConfig.get_register_map_revisions())

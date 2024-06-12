@@ -10,23 +10,28 @@ common_registers: &common_registers
     tango_attr_name: ModbusRegisterMapRevisionNumber
     data_type: int
     address: 0
+    static: true
   pcb_revision:
     tango_attr_name: PcbRevisionNumber
     data_type: int
     address: 1
+    static: true
   cpu_id:
     data_type: str
     address: 2
     size: 2
+    static: true
     conversion_function: convert_cpu_id
   chip_id:
     data_type: str
     address: 4
     size: 8
+    static: true
     conversion_function: convert_chip_id
   firmware_version:
     data_type: str
     address: 12
+    static: true
     conversion_function: convert_firmware_version
   uptime:
     data_type: int
@@ -38,7 +43,7 @@ common_registers: &common_registers
     address: 15
 
 PaSD_controllers:
-  base_firmware: # The version 1 register map is created from this.
+  base_register_maps: # The version 1 register maps are created from this.
     FNCC:
       full_name: Field Node Communications Controller
       prefix: fncc
@@ -504,50 +509,62 @@ PaSD_controllers:
           data_type: int
           address: 1068
           writable: true
+          default_value: 496
         fem2_current_trip_threshold:
           data_type: int
           address: 1069
           writable: true
+          default_value: 496
         fem3_current_trip_threshold:
           data_type: int
           address: 1070
           writable: true
+          default_value: 496
         fem4_current_trip_threshold:
           data_type: int
           address: 1071
           writable: true
+          default_value: 496
         fem5_current_trip_threshold:
           data_type: int
           address: 1072
           writable: true
+          default_value: 496
         fem6_current_trip_threshold:
           data_type: int
           address: 1073
           writable: true
+          default_value: 496
         fem7_current_trip_threshold:
           data_type: int
           address: 1074
           writable: true
+          default_value: 496
         fem8_current_trip_threshold:
           data_type: int
           address: 1075
           writable: true
+          default_value: 496
         fem9_current_trip_threshold:
           data_type: int
           address: 1076
           writable: true
+          default_value: 496
         fem10_current_trip_threshold:
           data_type: int
           address: 1077
           writable: true
+          default_value: 496
         fem11_current_trip_threshold:
           data_type: int
           address: 1078
           writable: true
+          default_value: 496
         fem12_current_trip_threshold:
           data_type: int
           address: 1079
           writable: true
+          default_value: 496
         warning_flags:
           data_type: str
           address: 10129
@@ -556,8 +573,8 @@ PaSD_controllers:
           data_type: str
           address: 10131
           conversion_function: convert_smartbox_alarm_status        
-  # Subsequent firmware versions only need to contain changes to merge with the base, for example:
-  # firmware_revisions:
+# Subsequent modbus register map versions only need to contain changes to merge with the base, for example:
+  # register_map_revisions:
   #   v2: # This should be an integer that matches the SYS_MBRV register value of the firmware.
   #     FNPC:
   #       registers:

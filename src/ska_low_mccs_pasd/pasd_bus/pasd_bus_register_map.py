@@ -356,9 +356,9 @@ class PasdBusRegisterMap:
     CONFIG_BASE: Final[
         PasdControllersConfig.AllCtrllrsDict
     ] = PasdControllersConfig.get_all()
-    CONFIG_FW_REVS: Final[
-        PasdControllersConfig.FirmwaresDict | None
-    ] = PasdControllersConfig.get_firmware_revisions()
+    CONFIG_REVISIONS: Final[
+        PasdControllersConfig.RegMapRevsDict | None
+    ] = PasdControllersConfig.get_register_map_revisions()
     MODBUS_REGISTER_MAP_REVISION: Final = "modbus_register_map_revision"
     LED_PATTERN: Final = "led_pattern"
     STATUS: Final = "status"
@@ -420,9 +420,9 @@ class PasdBusRegisterMap:
         # TODO: This part is supposed to generate revision register maps if they exist,
         # but cannot be tested currently as the simulator and tests are not setup for
         # firmware revisions - So this is not guaranteed to be correct.
-        if self.CONFIG_FW_REVS is not None and self._revision_number > 1:
+        if self.CONFIG_REVISIONS is not None and self._revision_number > 1:
             for revision in range(2, self._revision_number):
-                for key, changes in self.CONFIG_FW_REVS[f"v{revision}"].items():
+                for key, changes in self.CONFIG_REVISIONS[f"v{revision}"].items():
                     merged = self._merge_dicts(
                         self.CONFIG_BASE[key]["registers"], changes["registers"]
                     )

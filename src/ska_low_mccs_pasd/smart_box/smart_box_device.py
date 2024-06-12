@@ -402,7 +402,7 @@ class MccsSmartBox(SKABaseDevice):
                     [
                         register["tango_attr_name"]
                         for register in self.CONFIG["registers"].values()
-                        if register["tango_attr_name"] == attr_name
+                        if register["tango_attr_name"].lower() == attr_name.lower()
                     ]
                 )
                 > 0
