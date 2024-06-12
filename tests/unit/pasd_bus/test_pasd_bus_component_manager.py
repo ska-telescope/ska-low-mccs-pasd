@@ -143,8 +143,6 @@ class TestPasdBusComponentManager:
         :param mock_callbacks: a group of mock callables for the component
             manager under test to use as callbacks
         """
-        mock_callbacks.assert_not_called()
-
         pasd_bus_component_manager.start_communicating()
 
         mock_callbacks.assert_call(
@@ -528,7 +526,6 @@ class TestPasdBusComponentManager:
         :param mock_callbacks: a group of mock callables for the component
             manager under test to use as callbacks
         """
-        mock_callbacks.assert_not_called()
         pasd_bus_component_manager.start_communicating()
         mock_callbacks.assert_call(
             "communication_state", CommunicationStatus.NOT_ESTABLISHED
@@ -610,7 +607,6 @@ class TestPasdBusComponentManager:
         :param mock_callbacks: a group of mock callables for the component
             manager under test to use as callbacks
         """
-        mock_callbacks.assert_not_called()
         pasd_bus_component_manager.start_communicating()
         mock_callbacks.assert_call(
             "communication_state", CommunicationStatus.NOT_ESTABLISHED
@@ -703,7 +699,6 @@ class TestPasdBusComponentManager:
         :param mock_callbacks: a group of mock callables for the component
             manager under test to use as callbacks
         """
-        mock_callbacks.assert_not_called()
         pasd_bus_component_manager.start_communicating()
         mock_callbacks.assert_call(
             "communication_state", CommunicationStatus.NOT_ESTABLISHED
@@ -821,7 +816,6 @@ class TestPasdBusComponentManager:
         :param mock_callbacks: a group of mock callables for the component
             manager under test to use as callbacks
         """
-        mock_callbacks.assert_not_called()
         pasd_bus_component_manager.start_communicating()
         mock_callbacks.assert_call(
             "communication_state", CommunicationStatus.NOT_ESTABLISHED

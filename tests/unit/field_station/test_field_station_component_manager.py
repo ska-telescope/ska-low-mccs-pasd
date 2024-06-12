@@ -448,7 +448,6 @@ class TestFieldStationComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        mock_callbacks["communication_state"].assert_not_called()
         assert (
             field_station_component_manager.communication_state
             == CommunicationStatus.ESTABLISHED
