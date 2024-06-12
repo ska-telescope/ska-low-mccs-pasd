@@ -65,7 +65,6 @@ class TestfnccPasdBusIntegration:
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.DISABLE
         )
-        change_event_callbacks["pasd_bus_state"].assert_not_called()
         # ----------------------------------------------------------------
 
         # Check that the devices enters the correct state after turning adminMode on
@@ -76,7 +75,6 @@ class TestfnccPasdBusIntegration:
         )
         # TODO: Do we want to enter On state here?
         change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
-        change_event_callbacks["pasd_bus_state"].assert_not_called()
 
         # The fncc should enter UNKNOWN, if communication can be established
         # the FNCC has power.

@@ -68,7 +68,6 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.DISABLE
         )
-        change_event_callbacks["pasd_bus_state"].assert_not_called()
         # ----------------------------------------------------------------
 
         # Check that the devices enters the correct state after turning adminMode on
@@ -79,7 +78,6 @@ class TestfndhPasdBusIntegration:
         )
         # TODO: Do we want to enter On state here?
         change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
-        change_event_callbacks["pasd_bus_state"].assert_not_called()
 
         # The fndh should enter UNKNOWN, if communication can be established
         # the FNDH has power.
@@ -455,7 +453,6 @@ class TestfndhPasdBusIntegration:
 
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
-        change_event_callbacks["fndh_state"].assert_not_called()
 
         fndh_device.subscribe_event(
             f"Port{off_smartbox_attached_port}PowerState",

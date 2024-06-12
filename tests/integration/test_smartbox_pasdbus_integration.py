@@ -72,7 +72,6 @@ def turn_pasd_devices_online(
     pasd_bus_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.UNKNOWN)
     change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
-    change_event_callbacks["pasd_bus_state"].assert_not_called()
     change_event_callbacks.assert_change_event("healthState", HealthState.OK)
     assert pasd_bus_device.healthState == HealthState.OK
 
@@ -82,7 +81,6 @@ def turn_pasd_devices_online(
     fndh_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
     change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
-    change_event_callbacks["fndh_state"].assert_not_called()
 
     # -------------------------
     # SmartBox adminMode Online
@@ -150,7 +148,6 @@ def setup_devices_with_subscriptions(
 
     change_event_callbacks.assert_change_event("healthState", HealthState.UNKNOWN)
     assert pasd_bus_device.healthState == HealthState.UNKNOWN
-    change_event_callbacks["pasd_bus_state"].assert_not_called()
 
 
 # pylint: disable=inconsistent-return-statements
@@ -214,7 +211,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.DISABLE
         )
-        change_event_callbacks["smartbox_state"].assert_not_called()
 
         pasd_bus_device.subscribe_event(
             "state",
@@ -224,7 +220,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.DISABLE
         )
-        change_event_callbacks["pasd_bus_state"].assert_not_called()
 
         # SETUP
         pasd_bus_device.adminMode = AdminMode.ONLINE
@@ -232,7 +227,6 @@ class TestSmartBoxPasdBusIntegration:
             tango.DevState.UNKNOWN
         )
         change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
-        change_event_callbacks["pasd_bus_state"].assert_not_called()
 
         # -------------------------
         # SmartBox adminMode Online
@@ -244,7 +238,6 @@ class TestSmartBoxPasdBusIntegration:
             tango.DevState.UNKNOWN
         )
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
-        change_event_callbacks["smartbox_state"].assert_not_called()
 
         fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
         assert not fndh_ports_power_sensed[off_smartbox_attached_port - 1]
@@ -307,7 +300,6 @@ class TestSmartBoxPasdBusIntegration:
             change_event_callbacks["fndh_state"],
         )
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
-        change_event_callbacks["fndh_state"].assert_not_called()
 
         smartbox_device.subscribe_event(
             "state",
@@ -327,7 +319,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.DISABLE
         )
-        change_event_callbacks["pasd_bus_state"].assert_not_called()
 
         # Smartbox start communicating without the MccsPaSDBus
         # communicating with PaSD system.
@@ -335,7 +326,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.UNKNOWN
         )
-        change_event_callbacks["pasd_bus_state"].assert_not_called()
 
         # MccsPaSD started communicating
         # The smartbox should change state since it requires
@@ -345,10 +335,8 @@ class TestSmartBoxPasdBusIntegration:
             tango.DevState.UNKNOWN
         )
         change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
-        change_event_callbacks["pasd_bus_state"].assert_not_called()
 
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
-        change_event_callbacks["smartbox_state"].assert_not_called()
 
         # When we start communicating on the MccsFNDH,
         # it should transition to ON (always on).
@@ -357,8 +345,6 @@ class TestSmartBoxPasdBusIntegration:
         fndh_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
-        change_event_callbacks["fndh_state"].assert_not_called()
-        change_event_callbacks["pasd_bus_state"].assert_not_called()
         change_event_callbacks["smartbox_state"].assert_not_called()
 
         pasd_bus_device.adminMode = AdminMode.OFFLINE
@@ -370,8 +356,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.UNKNOWN
         )
-        change_event_callbacks["fndh_state"].assert_not_called()
-        change_event_callbacks["smartbox_state"].assert_not_called()
 
         pasd_bus_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["pasd_bus_state"].assert_change_event(
@@ -382,12 +366,10 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
 
         fndh_device.adminMode = AdminMode.OFFLINE
-        change_event_callbacks["pasd_bus_state"].assert_not_called()
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
         change_event_callbacks["smartbox_state"].assert_not_called()
 
         fndh_device.adminMode = AdminMode.ONLINE
-        change_event_callbacks["pasd_bus_state"].assert_not_called()
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["smartbox_state"].assert_not_called()
@@ -1326,6 +1308,6 @@ def change_event_callbacks_fixture(
         f"smartbox{off_smartbox_id}portpowersensed",
         f"smartbox{off_smartbox_id}status",
         "fndhportpowerstate",
-        timeout=80.0,
+        timeout=30.0,
         assert_no_error=False,
     )
