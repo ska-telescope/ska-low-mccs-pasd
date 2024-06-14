@@ -1,5 +1,5 @@
 #
-# Project makefile for a SKA-Low MCCS PaSD project. 
+# Project makefile for a SKA-Low MCCS PaSD project.
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE.txt for more info.
@@ -8,6 +8,7 @@ PROJECT = ska-low-mccs-pasd
 
 include .make/raw.mk
 include .make/base.mk
+include .make/tmdata.mk
 
 -include PrivateRules.mak
 
@@ -103,7 +104,7 @@ K8S_TEST_RUNNER_WORKING_DIRECTORY ?= /home/tango
 k8s-do-test:
 	helm -n $(KUBE_NAMESPACE) install --repo $(K8S_TEST_RUNNER_CHART_REGISTRY) \
 		$(K8S_TEST_RUNNER_CHART_RELEASE) $(K8S_TEST_RUNNER_CHART_NAME) \
-		--version $(K8S_TEST_RUNNER_CHART_TAG) $(K8S_TEST_RUNNER_CHART_OVERRIDES) 
+		--version $(K8S_TEST_RUNNER_CHART_TAG) $(K8S_TEST_RUNNER_CHART_OVERRIDES)
 	kubectl -n $(KUBE_NAMESPACE) wait pod ska-low-mccs-k8s-test-runner \
 		--for=condition=ready --timeout=$(K8S_TIMEOUT)
 	kubectl -n $(KUBE_NAMESPACE) cp tests/ ska-low-mccs-k8s-test-runner:$(K8S_TEST_RUNNER_WORKING_DIRECTORY)/tests

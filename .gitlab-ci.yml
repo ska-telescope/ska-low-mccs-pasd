@@ -48,6 +48,10 @@ include:
   - project: 'ska-telescope/templates-repository'
     file: gitlab-ci/includes/notebook.gitlab-ci.yml
 
+  # Telescope model data job
+  - project: 'ska-telescope/templates-repository'
+    file: 'gitlab-ci/includes/tmdata.gitlab-ci.yml'
+
 notebook-lint:
   when: manual
 
