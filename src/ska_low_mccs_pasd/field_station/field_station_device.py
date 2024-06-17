@@ -64,6 +64,7 @@ class MccsFieldStation(SKABaseDevice):
             f"\tStationName: {self.StationName}\n"
         )
         self.logger.info(message)
+        self.logger.error("antenna mapping CHANGE")
 
     def create_component_manager(
         self: MccsFieldStation,
