@@ -236,7 +236,9 @@ class MccsFieldStation(SKABaseDevice):
                     f"health = {health_status} "
                 )
                 if health is not None:
-                    self._health_model.fndh_health_changed(device_name, health)
+                    self._health_model.fndh_health_changed(
+                        device_name, HealthState(health)
+                    )
             else:
                 assert device_family == "smartbox"
                 self.logger.debug(
@@ -248,7 +250,9 @@ class MccsFieldStation(SKABaseDevice):
                 if power is not None:
                     self.component_manager.smartbox_state_change(device_name, power)
                 if health is not None:
-                    self._health_model.smartbox_health_changed(device_name, health)
+                    self._health_model.smartbox_health_changed(
+                        device_name, HealthState(health)
+                    )
             return
 
         if "outsidetemperature" in kwargs:

@@ -30,7 +30,9 @@ class TestFieldStationHealthModel:
 
         :return: Health model to be used.
         """
-        health_model = FieldStationHealthModel("fndh", ["smartbox"], MockCallable())
+        health_model = FieldStationHealthModel(
+            get_fndh_name(), [get_smartbox_name(1)], MockCallable()
+        )
         health_model.update_state(communicating=True, power=PowerState.ON)
 
         return health_model

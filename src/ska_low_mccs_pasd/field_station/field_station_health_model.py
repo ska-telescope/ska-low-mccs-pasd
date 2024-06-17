@@ -46,6 +46,7 @@ class FieldStationHealthModel(BaseHealthModel):
             self._fndh_health = None
         else:
             self._fndh_health = HealthState.UNKNOWN
+        self._fndh_fqdn = fndh_fqdn
         self._health_rules = FieldStationHealthRules(thresholds)
         super().__init__(health_changed_callback)
 
@@ -62,7 +63,7 @@ class FieldStationHealthModel(BaseHealthModel):
             None if the fndh's admin mode indicates that its health
             should not be rolled up.
         """
-        if self._fndh_health != fndh_health:
+        if self._fndh_health != fndh_health and fndh_fqdn == self._fndh_fqdn:
             self._fndh_health = fndh_health
             self.update_health()
 
@@ -79,7 +80,10 @@ class FieldStationHealthModel(BaseHealthModel):
             None if the smartbox's admin mode indicates that its health
             should not be rolled up.
         """
-        if self._smartbox_health.get(smartbox_fqdn) != smartbox_health:
+        if (
+            self._smartbox_health.get(smartbox_fqdn) != smartbox_health
+            and smartbox_fqdn in self._smartbox_health
+        ):
             self._smartbox_health[smartbox_fqdn] = smartbox_health
             self.update_health()
 

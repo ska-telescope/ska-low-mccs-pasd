@@ -41,11 +41,7 @@ class FieldStationHealthRules(HealthRules):
                 for trl, health in smartbox_healths.items()
                 if health is None or health == HealthState.UNKNOWN
             ]
-            fndh_report = (
-                HealthState(fndh_health).name
-                if fndh_health is not None
-                else fndh_health
-            )
+            fndh_report = fndh_health.name if fndh_health is not None else fndh_health
             report = (
                 "Some devices are unknown: "
                 f"Smartboxes: {smartbox_states} FNDH: {fndh_report}"
@@ -74,15 +70,11 @@ class FieldStationHealthRules(HealthRules):
         )
         if result:
             smartbox_states = [
-                f"{trl} - {HealthState(health).name}"
+                f"{trl} - {health.name}"
                 for trl, health in smartbox_healths.items()
                 if health is not None and health in DEGRADED_STATES
             ]
-            fndh_report = (
-                HealthState(fndh_health).name
-                if fndh_health is not None
-                else fndh_health
-            )
+            fndh_report = fndh_health.name if fndh_health is not None else fndh_health
             report = (
                 "Too many subdevices are in a bad state: "
                 f"Smartboxes: {smartbox_states} FNDH: {fndh_report}"
@@ -111,15 +103,11 @@ class FieldStationHealthRules(HealthRules):
         )
         if result:
             smartbox_states = [
-                f"{trl} - {HealthState(health).name}"
+                f"{trl} - {health.name}"
                 for trl, health in smartbox_healths.items()
                 if health is not None and health in DEGRADED_STATES
             ]
-            fndh_report = (
-                HealthState(fndh_health).name
-                if fndh_health is not None
-                else fndh_health
-            )
+            fndh_report = fndh_health.name if fndh_health is not None else fndh_health
             report = (
                 "Too many subdevices are in a bad state: "
                 f"Smartboxes: {smartbox_states} FNDH: {fndh_report}"
@@ -148,15 +136,11 @@ class FieldStationHealthRules(HealthRules):
         )
         if not result:
             smartbox_states = [
-                f"{trl} - {HealthState(health).name}"
+                f"{trl} - {health.name}"
                 for trl, health in smartbox_healths.items()
                 if health is not None and health in DEGRADED_STATES
             ]
-            fndh_report = (
-                HealthState(fndh_health).name
-                if fndh_health is not None
-                else fndh_health
-            )
+            fndh_report = fndh_health.name if fndh_health is not None else fndh_health
             report = (
                 "Too many subdevices are in a bad state: "
                 f"Smartboxes: {smartbox_states} FNDH: {fndh_report}"
