@@ -81,6 +81,7 @@ class MccsFieldStation(SKABaseDevice):
             f"\tStationName: {self.StationName}\n"
         )
         self.logger.info(message)
+        self.logger.error("antenna mapping CHANGE")
 
     def _init_state_model(self: MccsFieldStation) -> None:
         super()._init_state_model()
