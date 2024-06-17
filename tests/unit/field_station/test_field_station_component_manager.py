@@ -545,21 +545,31 @@ class TestFieldStationComponentManager:
         :param command_tracked_result: The result of the command.
         :param mock_callbacks: mock callables.
         """
+        print("START TEST HERE")
         field_station_component_manager.start_communicating()
+        print("1")
 
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.NOT_ESTABLISHED
         )
+        print("2")
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
+        print("3")
 
         field_station_component_manager._antenna_mask[antenna_id] = (
             antenna_masking_state
         )
+        print("4")
         assert field_station_component_manager._antenna_mapping is not None
+        print("5")
+        print(f"mapping == {field_station_component_manager._antenna_mapping}")
         smartbox_id = field_station_component_manager._antenna_mapping[antenna_id][0]
         smartbox_port = field_station_component_manager._antenna_mapping[antenna_id][1]
+
+        print(f"smartbox_id == {smartbox_id}")
+        print(f"smartbox_port == {smartbox_port}")
 
         fndh_port = field_station_component_manager._smartbox_mapping[str(smartbox_id)]
 
