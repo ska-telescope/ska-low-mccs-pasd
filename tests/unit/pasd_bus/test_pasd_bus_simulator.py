@@ -522,7 +522,11 @@ class TestFndhSimulator:
             assert fndh_simulator.initialize()
         assert fndh_simulator.status == FndhStatusMap.OK
         if expected_status == "OK":
-            setattr(fndh_simulator, sensor_name + "_thresholds", [0, 0, 0, 0])
+            if isinstance(simulated_value, list):
+                setattr(fndh_simulator, sensor_name[:-1] + "_1_thresholds", [0] * 4)
+                setattr(fndh_simulator, sensor_name[:-1] + "_2_thresholds", [0] * 4)
+            else:
+                setattr(fndh_simulator, sensor_name + "_thresholds", [0] * 4)
             assert fndh_simulator.status == FndhStatusMap.ALARM
 
     def test_warning_and_alarm_flags(
@@ -967,7 +971,11 @@ class TestSmartboxSimulator:
             assert smartbox_simulator.initialize()
         assert smartbox_simulator.status == SmartboxStatusMap.OK
         if expected_status == "OK":
-            setattr(smartbox_simulator, sensor_name + "_thresholds", [0, 0, 0, 0])
+            if isinstance(simulated_value, list):
+                setattr(smartbox_simulator, sensor_name[:-1] + "_1_thresholds", [0] * 4)
+                setattr(smartbox_simulator, sensor_name[:-1] + "_2_thresholds", [0] * 4)
+            else:
+                setattr(smartbox_simulator, sensor_name + "_thresholds", [0] * 4)
             assert smartbox_simulator.status == SmartboxStatusMap.ALARM
 
     def test_warning_and_alarm_flags(

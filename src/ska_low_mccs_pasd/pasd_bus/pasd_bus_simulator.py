@@ -36,6 +36,7 @@ PasdBusSimulator class should be considered public.
 from __future__ import annotations
 
 import logging
+import re
 from abc import ABC
 from datetime import datetime
 from typing import Callable, Final, Optional, Sequence
@@ -477,35 +478,37 @@ class PasdHardwareSimulator:
             ]
             setattr(self, key, thresholds_list)
 
-    def _update_sensor_status(self: PasdHardwareSimulator, sensor_name: str) -> None:
+    def _update_sensor_status(self: PasdHardwareSimulator, sensor: str) -> None:
         """
         Update the sensor status based on the thresholds.
 
-        :param sensor_name: Base name string of the sensor's attributes
+        :param sensor: name of the _Sensor instance (can be thresholds).
         """
-        try:
-            thresholds = getattr(self, sensor_name + "_thresholds")
-            high_alarm = thresholds[0]
-            high_warning = thresholds[1]
-            low_warning = thresholds[2]
-            low_alarm = thresholds[3]
-        except TypeError:
-            logger.error(
-                f"PaSD bus simulator: {sensor_name} has no thresholds defined!"
-            )
-            return
+
+        def _check_thresholds_and_set_status(sensor_name: str, value: int) -> None:
+            try:
+                thresholds = getattr(self, sensor_name + "_thresholds")
+                high_alarm = thresholds[0]
+                high_warning = thresholds[1]
+                low_warning = thresholds[2]
+                low_alarm = thresholds[3]
+            except TypeError:
+                logger.error(
+                    f"PaSD bus simulator: {sensor_name} has no thresholds defined!"
+                )
+                return
+            if value >= high_alarm or value <= low_alarm:
+                self._set_sensor_alarm(sensor_name)
+            elif value >= high_warning or value <= low_warning:
+                self._set_sensor_warning(sensor_name)
+            else:
+                self._sensors_status[sensor_name] = "OK"
+
+        sensor_name = re.sub(r"_([0-9])$", "s", sensor.removesuffix("_thresholds"))
         sensor_value = getattr(self, sensor_name)
         # Return if default value has not been set yet in instance's __init__()
         if sensor_value is None:
             return
-
-        def _check_thresholds_and_set_status(sensor: str, value: int) -> None:
-            if value >= high_alarm or value <= low_alarm:
-                self._set_sensor_alarm(sensor)
-            elif value >= high_warning or value <= low_warning:
-                self._set_sensor_warning(sensor)
-            else:
-                self._sensors_status[sensor] = "OK"
 
         # Check single sensor value or
         if not isinstance(sensor_value, list):
@@ -513,7 +516,7 @@ class PasdHardwareSimulator:
             return
         # loop through multiple sensor values
         for i, value in enumerate(sensor_value, 1):
-            numbered_name = sensor_name[:-1] + "_" + str(i)
+            numbered_name = sensor_name.rstrip("s") + "_" + str(i)
             _check_thresholds_and_set_status(numbered_name, value)
 
     def _set_sensor_alarm(self: PasdHardwareSimulator, sensor_name: str) -> None:
@@ -938,7 +941,7 @@ class _Sensor:
         :param value: The value to be set for the sensor attribute.
         """
         obj.__dict__[self.name] = value
-        obj._update_sensor_status(self.name.removesuffix("_thresholds"))
+        obj._update_sensor_status(self.name)
         obj._update_system_status()
         obj._update_ports_state()
 
@@ -991,17 +994,15 @@ class FndhSimulator(PasdHardwareSimulator):
     # Instantiate sensor data descriptors
     psu48v_voltages = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
-    psu48v_voltages_thresholds = _Sensor()
-    psu48v_voltage_1_thresholds: list[int]
-    psu48v_voltage_2_thresholds: list[int]
+    psu48v_voltage_1_thresholds = _Sensor()
+    psu48v_voltage_2_thresholds = _Sensor()
     psu48v_current = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     psu48v_current_thresholds = _Sensor()
     psu48v_temperatures = _Sensor()
-    psu48v_temperature_1_thresholds: list[int]
-    psu48v_temperature_2_thresholds: list[int]
     """Public attribute as _Sensor() data descriptor: *int*"""
-    psu48v_temperatures_thresholds = _Sensor()
+    psu48v_temperature_1_thresholds = _Sensor()
+    psu48v_temperature_2_thresholds = _Sensor()
     panel_temperature = _Sensor()  # Not implemented in hardware?
     """Public attribute as _Sensor() data descriptor: *int*"""
     panel_temperature_thresholds = _Sensor()
@@ -1288,14 +1289,12 @@ class SmartboxSimulator(PasdHardwareSimulator):
     fem_ambient_temperature_thresholds = _Sensor()
     fem_case_temperatures = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
-    fem_case_temperatures_thresholds = _Sensor()
-    fem_case_temperature_1_thresholds: list[int]
-    fem_case_temperature_2_thresholds: list[int]
+    fem_case_temperature_1_thresholds = _Sensor()
+    fem_case_temperature_2_thresholds = _Sensor()
     fem_heatsink_temperatures = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
-    fem_heatsink_temperatures_thresholds = _Sensor()
-    fem_heatsink_temperature_1_thresholds: list[int]
-    fem_heatsink_temperature_2_thresholds: list[int]
+    fem_heatsink_temperature_1_thresholds = _Sensor()
+    fem_heatsink_temperature_2_thresholds = _Sensor()
 
     def __init__(
         self: SmartboxSimulator,
