@@ -2,8 +2,9 @@
 # component managers' properties and Tango attributes.
 # Its purpose is to contain all the required class, function, type and other definitions 
 # needed to construct the Tango device and Modbus API classes, in order to avoid any 
-# duplication of names and magic numbers. Implementing multiple firmware versions should 
-# be simple and easy to see from this file. The values are also validated against a schema.
+# duplication of names and magic numbers. Implementing multiple Modbus register map 
+# revisions should be simple and easy to see from this file. 
+# The values are also validated against a schema.
 
 common_registers: &common_registers
   modbus_register_map_revision:

@@ -35,7 +35,6 @@ PasdBusSimulator class should be considered public.
 
 from __future__ import annotations
 
-import importlib.resources
 import logging
 from abc import ABC
 from datetime import datetime
@@ -45,6 +44,7 @@ import yaml
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
+from ..pasd_controllers_configuration import PasdControllersConfig
 from .pasd_bus_conversions import (
     FnccStatusMap,
     FndhAlarmFlags,
@@ -429,9 +429,11 @@ class PasdHardwareSimulator:
     )
     DEFAULT_UPTIME: Final = [0, 1]
     DEFAULT_FLAGS: int = 0x0
-    DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
     ALARM_MAPPING: dict[str, FndhAlarmFlags | SmartboxAlarmFlags] = {}
+    CONFIG_BASE: Final[
+        PasdControllersConfig.AllCtrllrsDict
+    ] = PasdControllersConfig.get_all()
 
     def __init__(
         self: PasdHardwareSimulator,
@@ -454,47 +456,26 @@ class PasdHardwareSimulator:
         self._service_led: int = LedServiceMap.OFF
         self._status_led: int = LedStatusMap.YELLOWFAST
 
-    def _load_thresholds(
-        self: PasdHardwareSimulator, file_path: str, device: str
-    ) -> bool:
+    def _load_thresholds(self: PasdHardwareSimulator, controller: str) -> None:
         """
         Load PaSD sensor thresholds from a file into this simulator.
 
-        :param file_path: path to sensor thresholds YAML file
-        :param device: device thresholds to load - fndh/smartbox
-        :return: whether successful
-        :raises yaml.YAMLError: if the config file cannot be parsed.
+        :param controller: thresholds to load - FNPC/FNSC
         """
-        config_data = importlib.resources.read_text(
-            "ska_low_mccs_pasd.pasd_bus",
-            file_path,
+        sensor_thresholds = dict(
+            filter(
+                lambda key_val: "default_thresholds" in key_val[1],
+                self.CONFIG_BASE[controller]["registers"].items(),
+            )
         )
-
-        assert config_data is not None  # for the type-checker
-
-        try:
-            loaded_data = yaml.safe_load(config_data)
-        except yaml.YAMLError as exception:
-            logger.error(
-                f"PaSD hardware simulator could not load thresholds: {exception}."
-            )
-            raise
-
-        try:
-            sensor_thresholds = loaded_data[device]["default_thresholds"]
-            for sensor, thresholds in sensor_thresholds.items():
-                thresholds_list = [
-                    thresholds.get("high_alarm", None),
-                    thresholds.get("high_warning", None),
-                    thresholds.get("low_warning", None),
-                    thresholds.get("low_alarm", None),
-                ]
-                setattr(self, sensor + "_thresholds", thresholds_list)
-        except KeyError as exception:
-            logger.error(
-                f"PaSD hardware simulator missing thresholds for {sensor}: {exception}."
-            )
-        return True
+        for key, register in sensor_thresholds.items():
+            thresholds_list = [
+                register["default_thresholds"]["high_alarm"],
+                register["default_thresholds"]["high_warning"],
+                register["default_thresholds"]["low_warning"],
+                register["default_thresholds"]["low_alarm"],
+            ]
+            setattr(self, key, thresholds_list)
 
     def _update_sensor_status(self: PasdHardwareSimulator, sensor_name: str) -> None:
         """
@@ -1011,10 +992,14 @@ class FndhSimulator(PasdHardwareSimulator):
     psu48v_voltages = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     psu48v_voltages_thresholds = _Sensor()
+    psu48v_voltage_1_thresholds: list[int]
+    psu48v_voltage_2_thresholds: list[int]
     psu48v_current = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     psu48v_current_thresholds = _Sensor()
     psu48v_temperatures = _Sensor()
+    psu48v_temperature_1_thresholds: list[int]
+    psu48v_temperature_2_thresholds: list[int]
     """Public attribute as _Sensor() data descriptor: *int*"""
     psu48v_temperatures_thresholds = _Sensor()
     panel_temperature = _Sensor()  # Not implemented in hardware?
@@ -1058,7 +1043,7 @@ class FndhSimulator(PasdHardwareSimulator):
         ]
         super().__init__(ports, time_multiplier)
         # Sensors
-        super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "fndh")
+        super()._load_thresholds("FNPC")
         self.psu48v_voltages = self.DEFAULT_PSU48V_VOLTAGES
         self.psu48v_current = self.DEFAULT_PSU48V_CURRENT
         self.psu48v_temperatures = self.DEFAULT_PSU48V_TEMPERATURES
@@ -1069,11 +1054,9 @@ class FndhSimulator(PasdHardwareSimulator):
         self.power_module_temperature = self.DEFAULT_POWER_MODULE_TEMPERATURE
         self.outside_temperature = self.DEFAULT_OUTSIDE_TEMPERATURE
         self.internal_ambient_temperature = self.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
-        # Aliases for some thresholds, which are separate sets in HW
-        self.psu48v_voltage_1_thresholds = self.psu48v_voltages_thresholds
-        self.psu48v_voltage_2_thresholds = self.psu48v_voltages_thresholds
-        self.psu48v_temperature_1_thresholds = self.psu48v_temperatures_thresholds
-        self.psu48v_temperature_2_thresholds = self.psu48v_temperatures_thresholds
+        # TODO: Aliases for some thresholds, which are separate sets in HW
+        self.psu48v_voltages_thresholds = self.psu48v_voltage_1_thresholds
+        self.psu48v_temperatures_thresholds = self.psu48v_temperature_1_thresholds
 
     @property
     def sys_address(self: FndhSimulator) -> int:
@@ -1306,9 +1289,13 @@ class SmartboxSimulator(PasdHardwareSimulator):
     fem_case_temperatures = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     fem_case_temperatures_thresholds = _Sensor()
+    fem_case_temperature_1_thresholds: list[int]
+    fem_case_temperature_2_thresholds: list[int]
     fem_heatsink_temperatures = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     fem_heatsink_temperatures_thresholds = _Sensor()
+    fem_heatsink_temperature_1_thresholds: list[int]
+    fem_heatsink_temperature_2_thresholds: list[int]
 
     def __init__(
         self: SmartboxSimulator,
@@ -1329,7 +1316,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self._status = SmartboxStatusMap.UNINITIALISED
         self._sys_address = address
         # Sensors
-        super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
+        super()._load_thresholds("FNSC")
         self.input_voltage = self.DEFAULT_INPUT_VOLTAGE
         self.power_supply_output_voltage = self.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
         self.power_supply_temperature = self.DEFAULT_POWER_SUPPLY_TEMPERATURE
@@ -1337,14 +1324,10 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self.fem_ambient_temperature = self.DEFAULT_FEM_AMBIENT_TEMPERATURE
         self.fem_case_temperatures = self.DEFAULT_FEM_CASE_TEMPERATURES
         self.fem_heatsink_temperatures = self.DEFAULT_FEM_HEATSINK_TEMPERATURES
-        # Aliases for some thresholds, which are separate sets in HW
-        self.fem_case_temperature_1_thresholds = self.fem_case_temperatures_thresholds
-        self.fem_case_temperature_2_thresholds = self.fem_case_temperatures_thresholds
-        self.fem_heatsink_temperature_1_thresholds = (
-            self.fem_heatsink_temperatures_thresholds
-        )
-        self.fem_heatsink_temperature_2_thresholds = (
-            self.fem_heatsink_temperatures_thresholds
+        # TODO: Aliases for some thresholds, which are separate sets in HW
+        self.fem_case_temperatures_thresholds = self.fem_case_temperature_1_thresholds
+        self.fem_heatsink_temperatures_thresholds = (
+            self.fem_heatsink_temperature_1_thresholds
         )
         # TODO: Make each current trip threshold separate R/W property?
         self.fem1_current_trip_threshold = self.ports_current_trip_threshold

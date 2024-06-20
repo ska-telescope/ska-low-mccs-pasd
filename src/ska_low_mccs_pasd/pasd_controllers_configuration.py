@@ -98,10 +98,10 @@ REGISTER_SCHEMA: Final = {
             "default_thresholds": {
                 "type": "dict",
                 "schema": {
-                    "high_alarm": {"type": "integer"},
-                    "high_warning": {"type": "integer"},
-                    "low_warning": {"type": "integer"},
-                    "low_alarm": {"type": "integer"},
+                    "high_alarm": {"type": "integer", "required": True},
+                    "high_warning": {"type": "integer", "required": True},
+                    "low_warning": {"type": "integer", "required": True},
+                    "low_alarm": {"type": "integer", "required": True},
                 },
             },
         },
@@ -287,7 +287,9 @@ class PasdControllersConfig:
 
 
 if __name__ == "__main__":
+    CONFIG_BASE = PasdControllersConfig.get_all()
+    CONFIG_REVISIONS = PasdControllersConfig.get_register_map_revisions()
     print("Validated configurations with defaults applied:")
-    pprint(PasdControllersConfig.get_all())
+    pprint(CONFIG_BASE)
     print("Validated register map revisions with defaults applied:")
-    pprint(PasdControllersConfig.get_register_map_revisions())
+    pprint(CONFIG_REVISIONS)

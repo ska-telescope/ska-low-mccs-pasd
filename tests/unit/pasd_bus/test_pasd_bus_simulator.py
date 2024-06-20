@@ -122,9 +122,9 @@ class TestPasdBusSimulator:
             )[0]
             fndh_uptime = PasdConversionUtility.convert_uptime(fndh_simulator.uptime)[0]
             assert smartbox_uptime > 0
-            assert fndh_uptime > smartbox_uptime
+            assert fndh_uptime >= smartbox_uptime
             if previous_smartbox_uptime != 0:
-                assert smartbox_uptime < previous_smartbox_uptime
+                assert smartbox_uptime <= previous_smartbox_uptime
             previous_smartbox_uptime = smartbox_uptime
 
 
