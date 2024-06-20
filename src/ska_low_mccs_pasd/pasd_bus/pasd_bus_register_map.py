@@ -351,12 +351,8 @@ class PasdBusRegisterInfo:
 class PasdBusRegisterMap:
     """A register mapping utility for the PaSD."""
 
-    CONFIG_BASE: Final[
-        PasdControllersConfig.AllCtrllrsDict
-    ] = PasdControllersConfig.get_all()
-    CONFIG_REVISIONS: Final[
-        PasdControllersConfig.RegMapRevsDict | None
-    ] = PasdControllersConfig.get_register_map_revisions()
+    CONFIG_BASE: Final = PasdControllersConfig.get_all()
+    CONFIG_REVISIONS: Final = PasdControllersConfig.get_register_map_revisions()
     FNCC_MODBUS_ADDRESS: Final = CONFIG_BASE["FNCC"]["modbus_address"]
     FNDH_MODBUS_ADDRESS: Final = CONFIG_BASE["FNPC"]["modbus_address"]
     FNCC_DEVICE_ID: Final = CONFIG_BASE["FNCC"]["pasd_number"]
@@ -403,7 +399,7 @@ class PasdBusRegisterMap:
                 first_sensor_register=16,
                 number_of_extra_sensors=4,
                 first_extra_sensor_register=26,
-                number_of_ports=28,
+                number_of_ports=self.CONFIG_BASE["FNPC"]["number_of_ports"],
                 starting_port_register=35,
             )
         }
@@ -414,7 +410,7 @@ class PasdBusRegisterMap:
                 first_sensor_register=16,
                 number_of_extra_sensors=4,
                 first_extra_sensor_register=23,
-                number_of_ports=12,
+                number_of_ports=self.CONFIG_BASE["FNSC"]["number_of_ports"],
                 starting_port_register=35,
             )
         }
@@ -439,7 +435,7 @@ class PasdBusRegisterMap:
                             first_sensor_register=16,
                             number_of_extra_sensors=4,
                             first_extra_sensor_register=26,
-                            number_of_ports=28,
+                            number_of_ports=self.CONFIG_BASE["FNPC"]["number_of_ports"],
                             starting_port_register=35,
                         )
                     elif key == "FNSC":
@@ -449,7 +445,7 @@ class PasdBusRegisterMap:
                             first_sensor_register=16,
                             number_of_extra_sensors=4,
                             first_extra_sensor_register=23,
-                            number_of_ports=12,
+                            number_of_ports=self.CONFIG_BASE["FNSC"]["number_of_ports"],
                             starting_port_register=35,
                         )
 

@@ -469,7 +469,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         if self._power_state == PowerState.OFF:
             self._attribute_change_callback(
                 "portspowersensed",
-                [False] * 12,
+                [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 timestamp,
                 tango.AttrQuality.ATTR_VALID,
             )

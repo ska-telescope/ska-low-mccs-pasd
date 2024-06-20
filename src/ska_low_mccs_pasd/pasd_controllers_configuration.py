@@ -15,7 +15,36 @@ from cerberus import Validator  # type: ignore[import-untyped]
 
 
 class RegisterDict(TypedDict, total=False):
-    """TypedDict that must match REGISTER_SCHEMA."""
+    """
+    TypedDict that matches the register schema.
+
+    address (int):
+        The register starting address.
+    data_type (str):
+        The python type of the data stored in the register.
+    size (int):
+        The size of the register, i.e. the number of 16-bit integers. Defaults to 1.
+    tango_dim_x (int):
+        Tango attribute dimension x. Defaults to 1.
+    conversion_function (str):
+        The Modbus API function used for data conversion.
+    writable (bool):
+        Indicates if the register is writable. Defaults to False.
+    modbus_class (str):
+        The Modbus API class of the register. Defaults to 'PasdBusAttribute'.
+    tango_attr_name (str):
+        The Tango attribute name for the register.
+    static (bool):
+        Indicates if the register contents is static (hard-coded in FW). Optional key.
+    desired_info (str):
+        Desired port status info (bits) from the register. Optional key.
+    default_value (int):
+        The default start-up value of the register. Optional key.
+    default_thresholds (dict[str, int]):
+        Default thresholds for alarms and warnings.
+        Contains keys 'high_alarm', 'high_warning', 'low_warning', and 'low_alarm',
+        all of which are integers. Optional key.
+    """
 
     address: int
     data_type: str
@@ -25,7 +54,9 @@ class RegisterDict(TypedDict, total=False):
     writable: bool
     modbus_class: str
     tango_attr_name: str
+    static: bool
     desired_info: str
+    default_value: int
     default_thresholds: dict[str, int]
 
 
@@ -53,7 +84,6 @@ REGISTER_SCHEMA: Final = {
                     "DesiredPowerEnum",
                 ],
             },
-            "static": {"type": "boolean"},
             "size": {
                 "type": "integer",
                 "default": 1,
@@ -84,6 +114,7 @@ REGISTER_SCHEMA: Final = {
                 "type": "string",
                 "regex": "^([A-Z][a-z0-9]+)+$",
             },
+            "static": {"type": "boolean"},
             "desired_info": {
                 "type": "string",
                 "allowed": [
@@ -110,7 +141,21 @@ REGISTER_SCHEMA: Final = {
 
 
 class ControllerDict(TypedDict, total=False):
-    """TypedDict that must match CONTROLLER_SCHEMA."""
+    """TypedDict that matches the controller schema.
+
+    full_name (str):
+        The full name of the controller. Optional key.
+    prefix (str):
+        The controller prefix used for PaSD bus Tango attributes.
+    modbus_address (int):
+        The Modbus address of the controller. Optional key.
+    pasd_number (int):
+        The PaSD device ID, starting from 0. Optional key.
+    number_of_ports (int):
+        The number of ports on the controller. Optional key.
+    registers (dict[str, RegisterDict]):
+        A dictionary of register definitions.
+    """
 
     full_name: str
     prefix: str
@@ -181,13 +226,12 @@ CONFIGURATION_SCHEMA: Final = {
     }
 }
 
+AllControllersDict = dict[str, ControllerDict]
+LoadedYaml = dict[str, dict[str, AllControllersDict]]
+
 
 class PasdControllersConfig:
     """Read and validate PaSD controller configuration from YAML."""
-
-    AllCtrllrsDict = dict[str, ControllerDict]
-    RegMapRevsDict = dict[str, AllCtrllrsDict]
-    LoadedYaml = dict[str, RegMapRevsDict]
 
     @staticmethod
     def _load_configuration_yaml() -> LoadedYaml:
@@ -201,7 +245,7 @@ class PasdControllersConfig:
         while not (src_dir / "ska_low_mccs_pasd").exists():
             src_dir = src_dir.parent
         with open(src_dir / file_path, "r", encoding="UTF-8") as file:
-            config: PasdControllersConfig.LoadedYaml = yaml.safe_load(file)
+            config: LoadedYaml = yaml.safe_load(file)
 
         def _snake_to_pascal_case(snake_string: str) -> str:
             return "".join(word.capitalize() for word in snake_string.split("_"))
@@ -215,7 +259,7 @@ class PasdControllersConfig:
         return config
 
     @staticmethod
-    def _validate_configuration(config: LoadedYaml) -> RegMapRevsDict:
+    def _validate_configuration(config: LoadedYaml) -> dict[str, AllControllersDict]:
         """
         Validate and apply defaults to the given PaSD controller's configuration.
 
@@ -231,7 +275,7 @@ class PasdControllersConfig:
         raise ValueError(f"PaSD controllers' config validation errors: {v.errors}")
 
     @classmethod
-    def get_all(cls) -> AllCtrllrsDict:
+    def get_all(cls) -> AllControllersDict:
         """
         Get all PaSD controllers' configuration.
 
@@ -275,7 +319,7 @@ class PasdControllersConfig:
         return validated["base_register_maps"]["FNSC"]
 
     @classmethod
-    def get_register_map_revisions(cls) -> RegMapRevsDict | None:
+    def get_register_map_revisions(cls) -> dict[str, AllControllersDict] | None:
         """
         Get all PaSD controllers' register map revisions changes.
 

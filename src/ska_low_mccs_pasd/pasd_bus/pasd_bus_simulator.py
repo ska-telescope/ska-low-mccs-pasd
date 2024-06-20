@@ -45,7 +45,6 @@ import yaml
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
-from ..pasd_controllers_configuration import PasdControllersConfig
 from .pasd_bus_conversions import (
     FnccStatusMap,
     FndhAlarmFlags,
@@ -418,9 +417,6 @@ class BaseControllerSimulator:
     """A base class for all the PaSD controllers' simulators."""
 
     DEFAULT_UPTIME: Final = [0, 1]
-    CONFIG_BASE: Final[
-        PasdControllersConfig.AllCtrllrsDict
-    ] = PasdControllersConfig.get_all()
 
     def __init__(
         self: BaseControllerSimulator,
@@ -493,7 +489,7 @@ class PasdHardwareSimulator(BaseControllerSimulator):
         sensor_thresholds = dict(
             filter(
                 lambda key_val: "default_thresholds" in key_val[1],
-                self.CONFIG_BASE[controller]["registers"].items(),
+                PasdData.CONTROLLERS_CONFIG[controller]["registers"].items(),
             )
         )
         for key, register in sensor_thresholds.items():
@@ -966,13 +962,13 @@ class FndhSimulator(PasdHardwareSimulator):
 
     # pylint: disable=too-many-instance-attributes
 
-    NUMBER_OF_PORTS: Final = 28
+    NUMBER_OF_PORTS: Final = PasdData.NUMBER_OF_FNDH_PORTS
 
     MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
     CPU_ID: Final = [1, 2]
     CHIP_ID: Final = [1, 2, 3, 4, 5, 6, 7, 8]
-    SYS_ADDRESS: Final = 100
+    SYS_ADDRESS: Final = PasdData.CONTROLLERS_CONFIG["FNPC"]["modbus_address"]
 
     DEFAULT_FIRMWARE_VERSION: Final = 257
     DEFAULT_PSU48V_VOLTAGES: Final = [4790, 4810]
@@ -1162,7 +1158,7 @@ class FnccSimulator(BaseControllerSimulator):
     PCB_REVISION: Final = 31
     CPU_ID: Final = [8, 7]
     CHIP_ID: Final = [5, 3, 7, 2, 1, 9, 9, 0]
-    SYS_ADDRESS: Final = 101
+    SYS_ADDRESS: Final = PasdData.CONTROLLERS_CONFIG["FNCC"]["modbus_address"]
     FIELD_NODE_NUMBER: Final = 1
 
     DEFAULT_FIRMWARE_VERSION: Final = 259
@@ -1259,7 +1255,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
     # pylint: disable=too-many-instance-attributes
 
-    NUMBER_OF_PORTS: Final = 12
+    NUMBER_OF_PORTS: Final = PasdData.NUMBER_OF_SMARTBOX_PORTS
 
     MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21

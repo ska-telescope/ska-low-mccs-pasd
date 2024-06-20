@@ -4,7 +4,11 @@
 # needed to construct the Tango device and Modbus API classes, in order to avoid any 
 # duplication of names and magic numbers. Implementing multiple Modbus register map 
 # revisions should be simple and easy to see from this file. 
-# The values are also validated against a schema.
+#
+# Values are loaded and validated against a schema with the PasdControllersConfig class.
+# When making changes to this file, check if it's still valid by running the script:
+#   'python src/ska_low_mccs_pasd/pasd_controllers_configuration.py'
+# Validation errors need to be fixed before trying to run or deploy anything!
 
 common_registers: &common_registers
   modbus_register_map_revision:
@@ -120,7 +124,7 @@ PaSD_controllers:
           data_type: float 
           address: 29 
           conversion_function: scale_signed_16bit
-        port_forcings :
+        port_forcings:
           data_type: str
           modbus_class: PasdBusPortAttribute
           address: 35
@@ -135,7 +139,7 @@ PaSD_controllers:
           size: *number_of_fndh_ports
           tango_dim_x: *number_of_fndh_ports
           desired_info: DSON
-        ports_desired_power_when_offline :
+        ports_desired_power_when_offline:
           tango_attr_name: PortsDesiredPowerOffline
           data_type: DesiredPowerEnum
           modbus_class: PasdBusPortAttribute
@@ -143,7 +147,7 @@ PaSD_controllers:
           size: *number_of_fndh_ports
           tango_dim_x: *number_of_fndh_ports
           desired_info: DSOFF
-        ports_power_sensed :
+        ports_power_sensed:
           data_type: bool
           modbus_class: PasdBusPortAttribute
           address: 35
@@ -301,11 +305,11 @@ PaSD_controllers:
             high_warning: 7000
             low_warning:  0
             low_alarm:    -500
-        warning_flags :
+        warning_flags:
           data_type: str
           address: 10129 
           conversion_function: convert_fndh_alarm_status
-        alarm_flags :
+        alarm_flags:
           data_type: str
           address: 10131 
           conversion_function: convert_fndh_alarm_status
@@ -340,17 +344,17 @@ PaSD_controllers:
           data_type: str
           address: 21
           conversion_function: convert_smartbox_status
-        led_pattern :
+        led_pattern:
           data_type: str
           address: 22
           conversion_function: convert_led_status
-        fem_case_temperatures :
+        fem_case_temperatures:
           data_type: float
           address: 23
           size: 2
           tango_dim_x: 2
           conversion_function: scale_signed_16bit        
-        fem_heatsink_temperatures :
+        fem_heatsink_temperatures:
           data_type: float
           address: 25
           size: 2

@@ -34,7 +34,7 @@ from tango.server import command
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
-from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
+from ..pasd_controllers_configuration import ControllerDict
 from .pasd_bus_component_manager import PasdBusComponentManager
 from .pasd_bus_conversions import FndhStatusMap
 from .pasd_bus_health_model import PasdBusHealthModel
@@ -90,9 +90,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     # ---------
     # Constants
     # ---------
-    CONFIG: Final[
-        PasdControllersConfig.AllCtrllrsDict
-    ] = PasdControllersConfig.get_all()
     TYPES: Final[dict[str, type]] = {
         "int": int,
         "float": float,
@@ -119,7 +116,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
 
         self._pasd_state: dict[str, PasdAttribute] = {}
-        for key, controller in self.CONFIG.items():
+        for key, controller in PasdData.CONTROLLERS_CONFIG.items():
             if key == "FNSC":
                 for smartbox_number in self.AvailableSmartboxes:
                     self._setup_controller_attributes(controller, str(smartbox_number))
@@ -187,11 +184,11 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         if tango_attr_name.startswith("fndh"):
             tango_attr_name = tango_attr_name.removeprefix("fndh")
             device_id = PasdData.FNDH_DEVICE_ID
-            controller_config = self.CONFIG["FNPC"]
+            controller_config = PasdData.CONTROLLERS_CONFIG["FNPC"]
         elif tango_attr_name.startswith("fncc"):
             tango_attr_name = tango_attr_name.removeprefix("fncc")
             device_id = PasdData.FNCC_DEVICE_ID
-            controller_config = self.CONFIG["FNCC"]
+            controller_config = PasdData.CONTROLLERS_CONFIG["FNCC"]
         else:
             # Obtain smartbox number after 'smartbox' prefix
             # This could be 1 or 2 digits
@@ -202,7 +199,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 else int(tango_attr_name[0])
             )
             tango_attr_name = tango_attr_name.lstrip("0123456789")
-            controller_config = self.CONFIG["FNSC"]
+            controller_config = PasdData.CONTROLLERS_CONFIG["FNSC"]
 
         self.logger.debug(
             f"Requesting to write attribute: {pasd_attribute.get_name()} with value"
@@ -469,15 +466,17 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         def _get_tango_attribute_name(
             pasd_device_number: int, pasd_attribute_name: str
         ) -> str:
-            for controller in self.CONFIG.values():
+            for controller in PasdData.CONTROLLERS_CONFIG.values():
                 if controller.get("pasd_number") == pasd_device_number:
                     for key, register in controller["registers"].items():
                         if key == pasd_attribute_name:
                             return controller["prefix"] + register["tango_attr_name"]
-            for key, register in self.CONFIG["FNSC"]["registers"].items():
+            for key, register in PasdData.CONTROLLERS_CONFIG["FNSC"][
+                "registers"
+            ].items():
                 if key == pasd_attribute_name:
                     return (
-                        self.CONFIG["FNSC"]["prefix"]
+                        PasdData.CONTROLLERS_CONFIG["FNSC"]["prefix"]
                         + str(pasd_device_number)
                         + register["tango_attr_name"]
                     )
@@ -1351,7 +1350,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
             :return: a list of the subscriptions for this device.
             """
-            for controller in self._device.CONFIG.values():
+            for controller in PasdData.CONTROLLERS_CONFIG.values():
                 if controller.get("pasd_number") == pasd_device_number:
                     return [
                         controller["prefix"] + register["tango_attr_name"]
@@ -1359,10 +1358,12 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     ]
             if pasd_device_number in self._device.AvailableSmartboxes:
                 return [
-                    self._device.CONFIG["FNSC"]["prefix"]
+                    PasdData.CONTROLLERS_CONFIG["FNSC"]["prefix"]
                     + str(pasd_device_number)
                     + register["tango_attr_name"]
-                    for register in self._device.CONFIG["FNSC"]["registers"].values()
+                    for register in PasdData.CONTROLLERS_CONFIG["FNSC"][
+                        "registers"
+                    ].values()
                 ]
             return []
 

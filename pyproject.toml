@@ -87,6 +87,9 @@ MccsFNDH = "ska_low_mccs_pasd.fndh.fndh_device:main"
 MccsFNCC = "ska_low_mccs_pasd.fncc.fncc_device:main"
 MccsFieldStation = "ska_low_mccs_pasd.field_station.field_station_device:main"
 
+[tool.black]
+line-length = 88
+
 [tool.pytest.ini_options]
 testpaths = "tests/"
 addopts = "--json-report --json-report-file=build/reports/report.json --cov-report html:build/htmlcov --cov-report xml:build/reports/code-coverage.xml --cov-report term:skip-covered --cov=ska_low_mccs_pasd --junitxml=build/reports/unit-tests.xml --verbose"

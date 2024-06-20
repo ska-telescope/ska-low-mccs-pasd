@@ -20,7 +20,6 @@ from ska_tango_base.poller import PollingComponentManager
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
-from ..pasd_controllers_configuration import PasdControllersConfig
 from .pasd_bus_modbus_api import PasdBusModbusApiClient
 from .pasd_bus_poll_management import PasdBusRequestProvider
 
@@ -65,10 +64,6 @@ class PasdBusResponse:
 class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusResponse]):
     """A component manager for a PaSD bus."""
 
-    CONFIG_BASE: Final[
-        PasdControllersConfig.AllCtrllrsDict
-    ] = PasdControllersConfig.get_all()
-
     # The warning and alarm flag attributes are the same for both FNDH and Smartboxes
     # but are non-contiguous
     WARNING_FLAGS_ATTRIBUTE: Final = "warning_flags"
@@ -76,7 +71,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
     STATIC_INFO_ATTRIBUTES: Final[list[str]] = []
     FNCC_STATUS_ATTRIBUTES: Final[list[str]] = []
-    for key, register in CONFIG_BASE["FNCC"]["registers"].items():
+    for key, register in PasdData.CONTROLLERS_CONFIG["FNCC"]["registers"].items():
         if register.get("static", False):
             STATIC_INFO_ATTRIBUTES.append(key)
         else:
@@ -85,7 +80,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     FNDH_STATUS_ATTRIBUTES: Final[list[str]] = []
     FNDH_PORTS_STATUS_ATTRIBUTES: Final[list[str]] = []
     FNDH_THRESHOLD_ATTRIBUTES: Final[list[str]] = []
-    for key, register in CONFIG_BASE["FNPC"]["registers"].items():
+    for key, register in PasdData.CONTROLLERS_CONFIG["FNPC"]["registers"].items():
         if register["modbus_class"] == "PasdBusPortAttribute":
             FNDH_PORTS_STATUS_ATTRIBUTES.append(key)
         elif "default_thresholds" in register:
@@ -100,7 +95,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     SMARTBOX_PORTS_STATUS_ATTRIBUTES: Final[list[str]] = []
     SMARTBOX_THRESHOLD_ATTRIBUTES: Final[list[str]] = []
     SMARTBOX_CURRENT_TRIP_THRESHOLD_ATTRIBUTES: Final = []
-    for key, register in CONFIG_BASE["FNSC"]["registers"].items():
+    for key, register in PasdData.CONTROLLERS_CONFIG["FNSC"]["registers"].items():
         if (
             key == "ports_current_draw"
             or register["modbus_class"] == "PasdBusPortAttribute"

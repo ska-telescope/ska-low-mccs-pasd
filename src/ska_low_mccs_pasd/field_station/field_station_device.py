@@ -26,9 +26,6 @@ __all__ = ["MccsFieldStation", "main"]
 
 DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
 
-SMARTBOX_NUMBER = 24
-SMARTBOX_PORTS = 12
-
 
 class MccsFieldStation(SKABaseDevice):
     """An implementation of the FieldStation device."""

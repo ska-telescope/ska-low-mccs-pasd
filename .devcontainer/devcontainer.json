@@ -28,6 +28,7 @@
         "[python]": {
           "editor.defaultFormatter": "ms-python.black-formatter"
         },
+        "black-formatter.importStrategy": "fromEnvironment",
         "isort.args": [
           "--profile",
           "black"
