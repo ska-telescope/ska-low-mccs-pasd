@@ -14,8 +14,6 @@ from dataclasses import dataclass
 from enum import Enum, IntEnum, IntFlag
 from typing import Any, Callable, Final, Optional, Sequence
 
-from ska_low_mccs_pasd.pasd_data import PasdData
-
 from ..pasd_controllers_configuration import PasdControllersConfig, RegisterDict
 from .pasd_bus_conversions import LedServiceMap, PasdConversionUtility
 
@@ -359,6 +357,10 @@ class PasdBusRegisterMap:
     CONFIG_REVISIONS: Final[
         PasdControllersConfig.RegMapRevsDict | None
     ] = PasdControllersConfig.get_register_map_revisions()
+    FNCC_MODBUS_ADDRESS: Final = CONFIG_BASE["FNCC"]["modbus_address"]
+    FNDH_MODBUS_ADDRESS: Final = CONFIG_BASE["FNPC"]["modbus_address"]
+    FNCC_DEVICE_ID: Final = CONFIG_BASE["FNCC"]["pasd_number"]
+    FNDH_DEVICE_ID: Final = CONFIG_BASE["FNPC"]["pasd_number"]
     MODBUS_REGISTER_MAP_REVISION: Final = "modbus_register_map_revision"
     LED_PATTERN: Final = "led_pattern"
     STATUS: Final = "status"
@@ -512,9 +514,9 @@ class PasdBusRegisterMap:
         self._revision_number = value
 
     def _get_register_info(self, device_id: int) -> PasdBusRegisterInfo:
-        if device_id == PasdData.FNDH_DEVICE_ID:
+        if device_id == self.FNDH_DEVICE_ID:
             return self._FNDH_REGISTER_MAPS[self.revision_number]
-        if device_id == PasdData.FNCC_DEVICE_ID:
+        if device_id == self.FNCC_DEVICE_ID:
             return self._FNCC_REGISTER_MAPS[self.revision_number]
         return self._SMARTBOX_REGISTER_MAPS[self.revision_number]
 

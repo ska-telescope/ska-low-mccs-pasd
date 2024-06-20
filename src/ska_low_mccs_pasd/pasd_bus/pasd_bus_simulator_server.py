@@ -20,7 +20,12 @@ from ska_ser_devices.client_server import (
 )
 
 from .pasd_bus_modbus_api import PasdBusModbusApi
-from .pasd_bus_simulator import PasdBusSimulator, PasdHardwareSimulator
+from .pasd_bus_simulator import (
+    FnccSimulator,
+    FndhSimulator,
+    PasdBusSimulator,
+    SmartboxSimulator,
+)
 
 
 class CustomMarshaller(SentinelBytesMarshaller):
@@ -81,7 +86,9 @@ class PasdBusSimulatorModbusServer(ApplicationServer):
 
     def __init__(
         self: PasdBusSimulatorModbusServer,
-        pasd_hw_simulators: dict[int, PasdHardwareSimulator],
+        pasd_hw_simulators: dict[
+            int, FndhSimulator | FnccSimulator | SmartboxSimulator
+        ],
     ) -> None:
         """
         Initialise a new instance.

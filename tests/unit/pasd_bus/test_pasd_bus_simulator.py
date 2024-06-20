@@ -15,6 +15,7 @@ from typing import Any
 import pytest
 
 from ska_low_mccs_pasd import PasdData
+from ska_low_mccs_pasd.pasd_bus import FnccSimulator, FndhSimulator, SmartboxSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     FndhAlarmFlags,
     FndhStatusMap,
@@ -25,11 +26,6 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     SmartboxStatusMap,
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
-    FndhSimulator,
-    PasdHardwareSimulator,
-    SmartboxSimulator,
-)
 
 
 @pytest.fixture(name="fndh_config")
@@ -53,7 +49,9 @@ class TestPasdBusSimulator:
     def test_smartboxes_depend_on_fndh_ports(
         self: TestPasdBusSimulator,
         fndh_simulator: FndhSimulator,
-        pasd_hw_simulators: dict[int, PasdHardwareSimulator],
+        pasd_hw_simulators: dict[
+            int, FndhSimulator | FnccSimulator | SmartboxSimulator
+        ],
         fndh_config: list[bool],
         smartbox_attached_ports: list[int],
     ) -> None:
@@ -87,7 +85,7 @@ class TestPasdBusSimulator:
             smartbox_simulator = pasd_hw_simulators[smartbox_id]
             port_nr = smartbox_attached_ports[smartbox_id - 1]
             assert smartbox_simulator.status == SmartboxSimulator.DEFAULT_STATUS
-            assert smartbox_simulator.initialize()
+            assert smartbox_simulator.initialize()  # type: ignore
             assert smartbox_simulator.status == FndhStatusMap.OK
             assert fndh_simulator.turn_port_off(port_nr)
             assert fndh_simulator.ports_power_sensed[port_nr - 1] is False
@@ -100,7 +98,9 @@ class TestPasdBusSimulator:
     def test_uptimes(
         self: TestPasdBusSimulator,
         fndh_simulator: FndhSimulator,
-        pasd_hw_simulators: dict[int, PasdHardwareSimulator],
+        pasd_hw_simulators: dict[
+            int, FndhSimulator | FnccSimulator | SmartboxSimulator
+        ],
     ) -> None:
         """
         Test the uptimes of a PaSD bus simulator.

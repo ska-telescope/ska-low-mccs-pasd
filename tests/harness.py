@@ -16,7 +16,11 @@ from tango.server import Device
 from tests.conftest import MAX_NUMBER_OF_SMARTBOXES_PER_STATION
 
 if TYPE_CHECKING:
-    from ska_low_mccs_pasd.pasd_bus import PasdHardwareSimulator
+    from ska_low_mccs_pasd.pasd_bus import (
+        FnccSimulator,
+        FndhSimulator,
+        SmartboxSimulator,
+    )
 
 DEFAULT_STATION_LABEL = "ci-1"  # station 1 of cluster "ci"
 
@@ -216,7 +220,9 @@ class PasdTangoTestHarness:
 
     def set_pasd_bus_simulator(
         self: PasdTangoTestHarness,
-        pasd_hw_simulators: dict[int, PasdHardwareSimulator],
+        pasd_hw_simulators: dict[
+            int, FndhSimulator | FnccSimulator | SmartboxSimulator
+        ],
     ) -> None:
         """
         Set the PaSD bus simulator server for the test harness.

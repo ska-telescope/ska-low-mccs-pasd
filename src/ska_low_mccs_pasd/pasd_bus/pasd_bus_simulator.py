@@ -15,8 +15,8 @@ that bus:
 * MccsAntenna instances use the bus to monitor and control their
   antennas;
 * MccsSmartbox instances use the bus to monitor and control their
-  smartboxes;
-* The MccsFndh instance uses the bus to monitor and control the FNDH
+  smartboxes (FNSC);
+* The MccsFndh instance uses the bus to monitor and control the FNPC
 * The MccsFncc instance uses the bus to monitor the FNCC
 
 To arbitrate access and prevent collisions/congestion, the MccsPasdBus
@@ -27,7 +27,7 @@ To that end, MccsPasdBus needs a PasdBusComponentManager that talks to
 the PaSD bus using MODBUS-over-TCP.
 
 The Pasd bus simulator class is provided below. To help manage
-complexity, it is composed of separate FNDH and FNCC simulators and a number
+complexity, it is composed of separate FNDH(FNPC) and FNCC simulators and a number
 of smartbox simulators, which in turn make use of port simulators. Only the
 PasdBusSimulator class should be considered public.
 """
@@ -56,7 +56,6 @@ from .pasd_bus_conversions import (
     SmartboxAlarmFlags,
     SmartboxStatusMap,
 )
-from .pasd_bus_modbus_api import FNCC_MODBUS_ADDRESS, FNDH_MODBUS_ADDRESS
 from .pasd_bus_register_map import DesiredPowerEnum
 
 logger = logging.getLogger()
@@ -414,7 +413,44 @@ class _SmartboxPortSimulator(_PasdPortSimulator):
         return self._over_current
 
 
-class PasdHardwareSimulator:
+# pylint: disable=too-few-public-methods
+class BaseControllerSimulator:
+    """A base class for all the PaSD controllers' simulators."""
+
+    DEFAULT_UPTIME: Final = [0, 1]
+    CONFIG_BASE: Final[
+        PasdControllersConfig.AllCtrllrsDict
+    ] = PasdControllersConfig.get_all()
+
+    def __init__(
+        self: BaseControllerSimulator,
+        time_multiplier: int,
+    ) -> None:
+        """
+        Initialise a new instance.
+
+        :param time_multiplier: to differentiate uptime in test context without delays.
+        """
+        self._boot_on_time: datetime | None = datetime.now()
+        self._time_multiplier: int = time_multiplier
+
+    @property
+    def uptime(self: BaseControllerSimulator) -> list[int]:
+        """
+        Return the uptime as an integer in seconds, or fractions of a second for tests.
+
+        :return: the uptime.
+        """
+        if self._boot_on_time is None:
+            return self.DEFAULT_UPTIME
+        uptime_val = int(
+            (datetime.now().timestamp() - self._boot_on_time.timestamp())
+            * self._time_multiplier
+        )
+        return PasdConversionUtility.convert_uptime([uptime_val], inverse=True)
+
+
+class PasdHardwareSimulator(BaseControllerSimulator):
     """
     A class that captures commonality between FNDH and smartbox simulators.
 
@@ -422,19 +458,11 @@ class PasdHardwareSimulator:
     which can be switched on and off, locally forced, etc.
     """
 
-    # pylint: disable=too-many-instance-attributes
-
     DEFAULT_LED_PATTERN: int = LedServiceMap.OFF | LedStatusMap.YELLOWFAST
-    DEFAULT_STATUS: FndhStatusMap | SmartboxStatusMap | FnccStatusMap = (
-        FndhStatusMap.UNINITIALISED
-    )
-    DEFAULT_UPTIME: Final = [0, 1]
+    DEFAULT_STATUS: FndhStatusMap | SmartboxStatusMap = FndhStatusMap.UNINITIALISED
     DEFAULT_FLAGS: int = 0x0
 
     ALARM_MAPPING: dict[str, FndhAlarmFlags | SmartboxAlarmFlags] = {}
-    CONFIG_BASE: Final[
-        PasdControllersConfig.AllCtrllrsDict
-    ] = PasdControllersConfig.get_all()
 
     def __init__(
         self: PasdHardwareSimulator,
@@ -447,9 +475,8 @@ class PasdHardwareSimulator:
         :param ports: instantiated ports for the simulator.
         :param time_multiplier: to differentiate uptime in test context without delays.
         """
+        super().__init__(time_multiplier)
         self._ports = ports
-        self._boot_on_time: datetime | None = datetime.now()
-        self._time_multiplier: int = time_multiplier
         self._sensors_status: dict = {}
         self._warning_flags: int = self.DEFAULT_FLAGS
         self._alarm_flags: int = self.DEFAULT_FLAGS
@@ -808,37 +835,20 @@ class PasdHardwareSimulator:
         return [port.power_sensed for port in self._ports]
 
     @property
-    def uptime(self: PasdHardwareSimulator) -> list[int]:
-        """
-        Return the uptime as an integer in seconds, or fractions of a second for tests.
-
-        :return: the uptime.
-        """
-        if self._boot_on_time is None:
-            return self.DEFAULT_UPTIME
-        uptime_val = int(
-            (datetime.now().timestamp() - self._boot_on_time.timestamp())
-            * self._time_multiplier
-        )
-        return PasdConversionUtility.convert_uptime([uptime_val], inverse=True)
-
-    @property
     def status(self: PasdHardwareSimulator) -> int:
         """
-        Return the status of the FNDH/FNCC/smartbox.
+        Return the status of the controller.
 
-        :return: an overall status.
-            See FnccStatusMap, FndhStatusMap and SmartboxStatusMap
-            for details
+        :return: an overall status. See FndhStatusMap and SmartboxStatusMap for details.
         """
         return self._status
 
     @status.setter
     def status(self: PasdHardwareSimulator, _: int) -> None:
         """
-        Set the status of the FNDH/smartbox.
+        Set the status of the controller.
 
-        This indicates the smartbox should be initialised, no matter the input value.
+        This indicates the controller should be initialised, no matter the input value.
         """
         self.initialize()
 
@@ -948,10 +958,10 @@ class _Sensor:
 
 class FndhSimulator(PasdHardwareSimulator):
     """
-    A simple simulator of a Field Node Distribution Hub.
+    A simple simulator of a Field Node Peripheral Controller inside the FNDH.
 
-    This FNDH simulator will never be used as a standalone simulator. It
-    will only be used as a component of a PaSD bus simulator.
+    This simulator will never be used as a standalone simulator.
+    It will only be used as a component of a PaSD bus simulator.
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -962,7 +972,7 @@ class FndhSimulator(PasdHardwareSimulator):
     PCB_REVISION: Final = 21
     CPU_ID: Final = [1, 2]
     CHIP_ID: Final = [1, 2, 3, 4, 5, 6, 7, 8]
-    SYS_ADDRESS: Final = FNDH_MODBUS_ADDRESS
+    SYS_ADDRESS: Final = 100
 
     DEFAULT_FIRMWARE_VERSION: Final = 257
     DEFAULT_PSU48V_VOLTAGES: Final = [4790, 4810]
@@ -1140,9 +1150,9 @@ class FndhSimulator(PasdHardwareSimulator):
         return self._ports[port_number - 1].simulate_stuck_on(state)
 
 
-class FnccSimulator(PasdHardwareSimulator):
+class FnccSimulator(BaseControllerSimulator):
     """
-    A simple simulator of a Field Node Communications Controller.
+    A simple simulator of a Field Node Communications Controller inside the FNDH.
 
     This FNCC simulator will never be used as a standalone simulator. It
     will only be used as a component of a PaSD bus simulator.
@@ -1152,11 +1162,11 @@ class FnccSimulator(PasdHardwareSimulator):
     PCB_REVISION: Final = 31
     CPU_ID: Final = [8, 7]
     CHIP_ID: Final = [5, 3, 7, 2, 1, 9, 9, 0]
-    SYS_ADDRESS: Final = FNCC_MODBUS_ADDRESS
+    SYS_ADDRESS: Final = 101
     FIELD_NODE_NUMBER: Final = 1
 
-    DEFAULT_STATUS: FnccStatusMap = FnccStatusMap.OK
     DEFAULT_FIRMWARE_VERSION: Final = 259
+    DEFAULT_STATUS: FnccStatusMap = FnccStatusMap.OK
 
     def __init__(
         self: FnccSimulator,
@@ -1167,16 +1177,9 @@ class FnccSimulator(PasdHardwareSimulator):
 
         :param time_multiplier: to differentiate uptime in test context without delays.
         """
-        super().__init__([], time_multiplier)
-
-    @property
-    def sys_address(self: FnccSimulator) -> int:
-        """
-        Return the system address.
-
-        :return: the system address.
-        """
-        return self.SYS_ADDRESS
+        super().__init__(time_multiplier)
+        self._boot_on_time: datetime | None = datetime.now()
+        self._time_multiplier: int = time_multiplier
 
     @property
     def modbus_register_map_revision(self: FnccSimulator) -> int:
@@ -1224,6 +1227,24 @@ class FnccSimulator(PasdHardwareSimulator):
         return self.DEFAULT_FIRMWARE_VERSION
 
     @property
+    def sys_address(self: FnccSimulator) -> int:
+        """
+        Return the system address.
+
+        :return: the system address.
+        """
+        return self.SYS_ADDRESS
+
+    @property
+    def status(self: FnccSimulator) -> int:
+        """
+        Return the status of the FNCC.
+
+        :return: an overall status.
+        """
+        return self.DEFAULT_STATUS
+
+    @property
     def field_node_number(self: FnccSimulator) -> int:
         """
         Return the field node number.
@@ -1234,7 +1255,7 @@ class FnccSimulator(PasdHardwareSimulator):
 
 
 class SmartboxSimulator(PasdHardwareSimulator):
-    """A simulator for a PaSD smartbox."""
+    """A simulator for a Field Node SMART Box Controller."""
 
     # pylint: disable=too-many-instance-attributes
 
@@ -1509,7 +1530,9 @@ class PasdBusSimulator:
             f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}."
         )
 
-        self._hw_simulators: dict[int, PasdHardwareSimulator] = {}
+        self._hw_simulators: dict[
+            int, FndhSimulator | FnccSimulator | SmartboxSimulator
+        ] = {}
         self._smartboxes_ports_connected: list[list[bool]] = []
         self._smartbox_attached_ports: list[int] = [
             0
@@ -1540,25 +1563,25 @@ class PasdBusSimulator:
                 self._instantiate_smartbox(port_number)
         logger.info(f"Initialised PaSD bus simulator for station {station_label}.")
 
-    def get_fndh(self: PasdBusSimulator) -> PasdHardwareSimulator:
+    def get_fndh(self: PasdBusSimulator) -> FndhSimulator:
         """
         Return only the FNDH simulator.
 
         :return: the FNDH simulator.
         """
-        return self._hw_simulators[PasdData.FNDH_DEVICE_ID]
+        return self._hw_simulators[PasdData.FNDH_DEVICE_ID]  # type: ignore
 
-    def get_fncc(self: PasdBusSimulator) -> PasdHardwareSimulator:
+    def get_fncc(self: PasdBusSimulator) -> FnccSimulator:
         """
         Return only the FNCC simulator.
 
         :return: the FNCC simulator.
         """
-        return self._hw_simulators[PasdData.FNCC_DEVICE_ID]
+        return self._hw_simulators[PasdData.FNCC_DEVICE_ID]  # type: ignore
 
     def get_all_devices(
         self: PasdBusSimulator,
-    ) -> dict[int, PasdHardwareSimulator]:
+    ) -> dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator]:
         """
         Return a dictionary of the FNDH, FNCC and Smartbox simulators.
 
@@ -1588,7 +1611,7 @@ class PasdBusSimulator:
             self._hw_simulators[smartbox_id] = SmartboxSimulator(
                 self._time_multiplier, smartbox_id
             )
-            self._hw_simulators[smartbox_id].configure(
+            self._hw_simulators[smartbox_id].configure(  # type: ignore
                 self._smartboxes_ports_connected[smartbox_id - 1]
             )
             logger.debug(f"Initialised Smartbox simulator {smartbox_id}.")
@@ -1638,7 +1661,7 @@ class PasdBusSimulator:
             fndh_port = smartbox_config["fndh_port"]
             self._smartbox_attached_ports[smartbox_id - 1] = fndh_port
             fndh_ports_is_connected[fndh_port - 1] = True
-        self._hw_simulators[0].configure(fndh_ports_is_connected)
+        self._hw_simulators[0].configure(fndh_ports_is_connected)  # type: ignore
 
         self._smartboxes_ports_connected = [
             [False] * SmartboxSimulator.NUMBER_OF_PORTS

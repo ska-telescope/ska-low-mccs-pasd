@@ -18,7 +18,12 @@ import pytest
 import yaml
 
 from ska_low_mccs_pasd import PasdData
-from ska_low_mccs_pasd.pasd_bus import PasdBusSimulator, PasdHardwareSimulator
+from ska_low_mccs_pasd.pasd_bus import (
+    FnccSimulator,
+    FndhSimulator,
+    PasdBusSimulator,
+    SmartboxSimulator,
+)
 
 
 @pytest.fixture(name="station_label")
@@ -69,7 +74,7 @@ def pasd_bus_simulator_fixture(
 @pytest.fixture(name="fndh_simulator")
 def fndh_simulator_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-) -> PasdHardwareSimulator:
+) -> FndhSimulator:
     """
     Return an FNDH simulator.
 
@@ -84,7 +89,7 @@ def fndh_simulator_fixture(
 @pytest.fixture(name="fncc_simulator")
 def fncc_simulator_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-) -> PasdHardwareSimulator:
+) -> FnccSimulator:
     """
     Return an FNCC simulator.
 
@@ -112,9 +117,9 @@ def smartbox_attached_ports_fixture(
 @pytest.fixture(name="pasd_hw_simulators")
 def pasd_hw_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-    fndh_simulator: PasdHardwareSimulator,
+    fndh_simulator: FndhSimulator,
     smartbox_attached_ports: list[int],
-) -> dict[int, PasdHardwareSimulator]:
+) -> dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator]:
     """
     Return the smartbox simulators.
 
@@ -133,7 +138,7 @@ def pasd_hw_simulators_fixture(
 
 @pytest.fixture(name="mock_pasd_hw_simulators")
 def mock_pasd_hw_simulators_fixture(
-    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
+    pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
 ) -> dict[int, unittest.mock.Mock]:
     """
     Return the mock smartbox simulators.
@@ -307,9 +312,9 @@ def smartbox_id_fixture() -> int:
 
 @pytest.fixture(name="smartbox_simulator")
 def smartbox_simulator_fixture(
-    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
+    pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
     smartbox_id: int,
-) -> PasdHardwareSimulator:
+) -> SmartboxSimulator:
     """
     Return a smartbox simulator for testing.
 
@@ -319,4 +324,4 @@ def smartbox_simulator_fixture(
 
     :return: a smartbox simulator, wrapped in a mock.
     """
-    return pasd_hw_simulators[smartbox_id]
+    return pasd_hw_simulators[smartbox_id]  # type: ignore

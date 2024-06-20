@@ -27,10 +27,10 @@ from pymodbus.register_write_message import (
 )
 
 from ska_low_mccs_pasd.pasd_bus import (
+    FnccSimulator,
     FndhSimulator,
     PasdBusModbusApi,
     PasdBusModbusApiClient,
-    PasdHardwareSimulator,
     SmartboxSimulator,
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
@@ -358,7 +358,9 @@ class TestPasdBusModbusApiClient:
     @pytest.fixture(name="api")
     def api_fixture(
         self: TestPasdBusModbusApiClient,
-        pasd_hw_simulators: dict[int, PasdHardwareSimulator],
+        pasd_hw_simulators: dict[
+            int, FndhSimulator | FnccSimulator | SmartboxSimulator
+        ],
         logger: logging.Logger,
     ) -> Generator:
         """
