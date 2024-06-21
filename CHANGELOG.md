@@ -5,6 +5,11 @@
 
 ## 0.9.0
 
+* [MCCS-2175] Add HealthState to FieldStation
+* [MCCS-2153] Add MCCS schemas to TelModel
+* [WOM-381]: Always push change events from pasdbus
+* [MCCS-2029]: Pull TMData to pasd
+* [MCCS-2107]: Remove deprecated environments
 * [WOM-276]: Only poll deployed smartboxes
 * [WOM-331]: Remove resetFndhPortBreakers cmd
 
