@@ -2,6 +2,9 @@
 
 ## unreleased
 
+
+## 0.9.0
+
 * [WOM-276]: Only poll deployed smartboxes
 * [WOM-331]: Remove resetFndhPortBreakers cmd
 
