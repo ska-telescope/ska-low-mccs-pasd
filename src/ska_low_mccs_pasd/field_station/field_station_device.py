@@ -99,6 +99,7 @@ class MccsFieldStation(SKABaseDevice):
 
         :return: a component manager for this device.
         """
+        self.logger.error("create comp manager")
         return FieldStationComponentManager(
             self.logger,
             self.ConfigurationHost,
@@ -115,6 +116,7 @@ class MccsFieldStation(SKABaseDevice):
 
     def init_command_objects(self: MccsFieldStation) -> None:
         """Initialise the command handlers for commands supported by this device."""
+        self.logger.error("init command obkcts 1")
         super().init_command_objects()
 
         configure_schema: Final = {
@@ -183,9 +185,11 @@ class MccsFieldStation(SKABaseDevice):
                     validator=validator,
                 ),
             )
+        self.logger.error("init command obkcts 2")
         self.set_change_event("antennaPowerStates", True, False)
         self.set_change_event("smartboxMapping", True, False)
         self.set_change_event("outsideTemperature", True, False)
+        self.logger.error("init command obkcts 3")
 
     # ----------
     # Callbacks
@@ -383,6 +387,7 @@ class MccsFieldStation(SKABaseDevice):
             message indicating status. The message is for
             information purpose only.
         """
+        self.logger.error("TEST GETS HERE antenna ")
         handler = self.get_command_object("PowerOnAntenna")
         (return_code, message) = handler(antenna_no)
         return ([return_code], [message])
@@ -454,6 +459,7 @@ class MccsFieldStation(SKABaseDevice):
             message indicating status. The message is for
             information purpose only.
         """
+        self.logger.error("TEST GETS HERE smartbox")
         handler = self.get_command_object("UpdateSmartboxMapping")
         (return_code, message) = handler(argin)
         return ([return_code], [message])

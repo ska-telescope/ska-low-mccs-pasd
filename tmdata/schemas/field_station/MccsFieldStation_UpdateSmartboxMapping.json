@@ -6,18 +6,14 @@
     "type": "object",
     "properties": {
         "smartboxMapping": {
-            "type": "array",
-            "minItems": 24,
-            "maxItems": 24,
-            "items": {
-                "type": "object",
-                "properties": {
-                    "smartboxID": {
-                        "type": "integer"
-                    },
-                    "fndhPort": {
-                        "type": "integer"
-                    }
+            "description": "the smartbox mappings",
+            "type": "object",
+            "minProperties": 0,
+            "maxProperties": 24,
+            "patternProperties": {
+                "[a-zA-Z0-9_]+": {
+                    "description": "fqdns",
+                    "type": "int"
                 }
             }
         }
