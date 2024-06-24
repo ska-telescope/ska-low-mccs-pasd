@@ -347,7 +347,6 @@ class PasdBusRegisterInfo:
     starting_port_register: int = 0
 
 
-# pylint: disable=too-many-instance-attributes
 class PasdBusRegisterMap:
     """A register mapping utility for the PaSD."""
 
@@ -574,6 +573,7 @@ class PasdBusRegisterMap:
 
         # Check a contiguous set of registers has been requested
         last_attr = None
+        last_name = None
         for name, attr in attributes.items():
             if (
                 not last_attr

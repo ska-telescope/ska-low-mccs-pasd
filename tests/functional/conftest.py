@@ -496,7 +496,6 @@ def subscribe_device_proxy_fixture(
 
         print(f"reply received in {reply_time} microseconds")
         for attribute_name in device_subscriptions[device_name]:
-
             print(f"Subscribing proxy to {device_name}/{attribute_name}...")
             proxy.subscribe_event(
                 attribute_name,
