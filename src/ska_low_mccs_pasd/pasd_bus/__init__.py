@@ -16,7 +16,6 @@ __all__ = [
     "PasdBusSimulator",
     "PasdBusSimulatorModbusServer",
     "MccsPasdBus",
-    "PasdHardwareSimulator",
     "FndhSimulator",
     "FnccSimulator",
     "SmartboxSimulator",
@@ -30,7 +29,6 @@ from .pasd_bus_simulator import (
     FnccSimulator,
     FndhSimulator,
     PasdBusSimulator,
-    PasdHardwareSimulator,
     SmartboxSimulator,
 )
 from .pasd_bus_simulator_server import PasdBusSimulatorModbusServer

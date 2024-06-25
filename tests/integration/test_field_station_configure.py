@@ -262,7 +262,7 @@ class TestFieldStationIntegration:
                 smartbox_id = antenna_config["smartboxID"]
                 smartbox_port = antenna_config["smartboxPort"]
 
-        # Check initial state.
+        # Check initial state. pylint: disable=possibly-used-before-assignment
         assert not smartbox_proxys[smartbox_id - 1].portspowersensed[smartbox_port - 1]
 
         antenna_power_states = json.loads(field_station_device.antennapowerstates)

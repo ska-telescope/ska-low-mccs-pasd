@@ -22,7 +22,6 @@ from ska_low_mccs_pasd.pasd_bus import (
     FnccSimulator,
     FndhSimulator,
     PasdBusComponentManager,
-    PasdHardwareSimulator,
     SmartboxSimulator,
 )
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
@@ -62,7 +61,9 @@ def mock_callbacks_fixture() -> MockCallableGroup:
 
 @pytest.fixture(name="pasd_bus_component_manager")
 def pasd_bus_component_manager_fixture(
-    mock_pasd_hw_simulators: dict[int, PasdHardwareSimulator],
+    mock_pasd_hw_simulators: dict[
+        int, FndhSimulator | FnccSimulator | SmartboxSimulator
+    ],
     logger: logging.Logger,
     mock_callbacks: MockCallableGroup,
 ) -> Iterator[PasdBusComponentManager]:

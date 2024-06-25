@@ -19,15 +19,11 @@ import tango
 from ska_control_model import AdminMode, HealthState, SimulationMode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-from ska_low_mccs_pasd.pasd_bus import FndhSimulator
+from ska_low_mccs_pasd.pasd_bus import FnccSimulator, FndhSimulator, SmartboxSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     FndhAlarmFlags,
     PasdConversionUtility,
     SmartboxAlarmFlags,
-)
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
-    PasdHardwareSimulator,
-    SmartboxSimulator,
 )
 from tests.harness import PasdTangoTestHarness
 
@@ -70,7 +66,9 @@ def change_event_callbacks_fixture(
 
 @pytest.fixture(name="pasd_bus_device")
 def pasd_bus_device_fixture(
-    mock_pasd_hw_simulators: dict[int, PasdHardwareSimulator],
+    mock_pasd_hw_simulators: dict[
+        int, FndhSimulator | FnccSimulator | SmartboxSimulator
+    ],
 ) -> tango.DeviceProxy:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.

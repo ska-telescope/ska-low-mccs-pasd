@@ -18,7 +18,12 @@ import pytest
 import tango
 from ska_control_model import LoggingLevel, SimulationMode
 
-from ska_low_mccs_pasd.pasd_bus import PasdBusSimulator, PasdHardwareSimulator
+from ska_low_mccs_pasd.pasd_bus import (
+    FnccSimulator,
+    FndhSimulator,
+    PasdBusSimulator,
+    SmartboxSimulator,
+)
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 
@@ -57,7 +62,7 @@ def pasd_bus_simulator_fixture(
 @pytest.fixture(name="fndh_simulator")
 def fndh_simulator_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-) -> PasdHardwareSimulator:
+) -> FndhSimulator:
     """
     Return an FNDH simulator.
 
@@ -72,7 +77,7 @@ def fndh_simulator_fixture(
 @pytest.fixture(name="fncc_simulator")
 def fncc_simulator_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-) -> PasdHardwareSimulator:
+) -> FnccSimulator:
     """
     Return an FNCC simulator.
 
@@ -100,10 +105,10 @@ def smartbox_attached_ports_fixture(
 @pytest.fixture(name="pasd_hw_simulators")
 def pasd_hw_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
-    fndh_simulator: PasdHardwareSimulator,
+    fndh_simulator: FndhSimulator,
     smartbox_attached_ports: list[int],
     off_smartbox_id: int,
-) -> dict[int, PasdHardwareSimulator]:
+) -> dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator]:
     """
     Return the smartbox simulators.
 
@@ -124,9 +129,9 @@ def pasd_hw_simulators_fixture(
 
 @pytest.fixture(name="smartbox_simulator")
 def smartbox_simulator_fixture(
-    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
+    pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
     on_smartbox_id: int,
-) -> PasdHardwareSimulator:
+) -> SmartboxSimulator:
     """
     Return a smartbox simulator for testing.
 
@@ -136,7 +141,7 @@ def smartbox_simulator_fixture(
 
     :return: a smartbox simulator, wrapped in a mock.
     """
-    return pasd_hw_simulators[on_smartbox_id]
+    return pasd_hw_simulators[on_smartbox_id]  # type: ignore
 
 
 @pytest.fixture(name="smartbox_ids_to_test", scope="session")
@@ -234,7 +239,7 @@ def configuration_manager_fixture(
 
 @pytest.fixture(name="test_context")
 def test_context_fixture(
-    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
+    pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
     configuration_manager: unittest.mock.Mock,
     smartbox_ids_to_test: list[int],
 ) -> Iterator[PasdTangoTestHarnessContext]:

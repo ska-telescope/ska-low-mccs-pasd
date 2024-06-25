@@ -29,6 +29,7 @@ from tango.server import attribute, command, device_property
 
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
 
+from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .fndh_component_manager import FndhComponentManager
 from .fndh_health_model import FndhHealthModel
 
@@ -54,80 +55,19 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
     # -----------------
     # Device Properties
     # -----------------
-    PasdFQDN = device_property(dtype=(str), mandatory=True)
+    PasdFQDN: Final = device_property(dtype=(str), mandatory=True)
 
-    PORT_COUNT: Final = 28
-
-    # TODO: create a single YAML file with the fndh attributes.
-    # We want attributes on Mccsfndh to match the MccsPasdBus.
-    # Therefore, the proposed solution is for both to read from
-    # a 'YAML' file.
-    ATTRIBUTES = [
-        ("ModbusRegisterMapRevisionNumber", int, None, tango.AttrWriteType.READ),
-        ("PcbRevisionNumber", int, None, tango.AttrWriteType.READ),
-        ("CpuId", str, None, tango.AttrWriteType.READ),
-        ("ChipId", str, None, tango.AttrWriteType.READ),
-        ("FirmwareVersion", str, None, tango.AttrWriteType.READ),
-        ("Uptime", int, None, tango.AttrWriteType.READ),
-        ("SysAddress", int, None, tango.AttrWriteType.READ),
-        ("PasdStatus", str, None, tango.AttrWriteType.READ),
-        ("LedPattern", str, None, tango.AttrWriteType.READ),
-        ("Psu48vVoltages", (float,), 2, tango.AttrWriteType.READ),
-        ("Psu48vCurrent", float, None, tango.AttrWriteType.READ),
-        ("Psu48vTemperatures", (float,), 2, tango.AttrWriteType.READ),
-        ("PanelTemperature", float, None, tango.AttrWriteType.READ),
-        ("FncbTemperature", float, None, tango.AttrWriteType.READ),
-        ("FncbHumidity", float, None, tango.AttrWriteType.READ),
-        ("CommsGatewayTemperature", float, None, tango.AttrWriteType.READ),
-        ("PowerModuleTemperature", float, None, tango.AttrWriteType.READ),
-        ("OutsideTemperature", float, None, tango.AttrWriteType.READ),
-        ("InternalAmbientTemperature", float, None, tango.AttrWriteType.READ),
-        ("FncbHumidity", float, None, tango.AttrWriteType.READ),
-        ("PortForcings", (str,), PORT_COUNT, tango.AttrWriteType.READ),
-        (
-            "PortsDesiredPowerOnline",
-            (DesiredPowerEnum,),
-            PORT_COUNT,
-            tango.AttrWriteType.READ,
-        ),
-        (
-            "PortsDesiredPowerOffline",
-            (DesiredPowerEnum,),
-            PORT_COUNT,
-            tango.AttrWriteType.READ,
-        ),
-        ("PortsPowerSensed", (bool,), PORT_COUNT, tango.AttrWriteType.READ),
-        ("PortsPowerControl", (bool,), PORT_COUNT, tango.AttrWriteType.READ),
-        ("WarningFlags", str, None, tango.AttrWriteType.READ),
-        ("AlarmFlags", str, None, tango.AttrWriteType.READ),
-        ("Psu48vVoltage1Thresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
-        ("Psu48vVoltage2Thresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
-        ("Psu48vCurrentThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
-        ("Psu48vTemperature1Thresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
-        ("Psu48vTemperature2Thresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
-        ("PanelTemperatureThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
-        ("FncbTemperatureThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
-        ("HumidityThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
-        ("OutsideTemperatureThresholds", (float,), 4, tango.AttrWriteType.READ_WRITE),
-        (
-            "CommsGatewayTemperatureThresholds",
-            (float,),
-            4,
-            tango.AttrWriteType.READ_WRITE,
-        ),
-        (
-            "PowerModuleTemperatureThresholds",
-            (float,),
-            4,
-            tango.AttrWriteType.READ_WRITE,
-        ),
-        (
-            "InternalAmbientTemperatureThresholds",
-            (float,),
-            4,
-            tango.AttrWriteType.READ_WRITE,
-        ),
-    ]
+    # ---------
+    # Constants
+    # ---------
+    CONFIG: Final[ControllerDict] = PasdControllersConfig.get_fndh()
+    TYPES: Final[dict[str, type]] = {
+        "int": int,
+        "float": float,
+        "str": str,
+        "bool": bool,
+        "DesiredPowerEnum": DesiredPowerEnum,
+    }
 
     # ---------------
     # Initialisation
@@ -148,7 +88,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         super().__init__(*args, **kwargs)
 
         # Initialise with unknown.
-        self._port_power_states = [PowerState.UNKNOWN] * self.PORT_COUNT
+        self._port_power_states = [PowerState.UNKNOWN] * self.CONFIG["number_of_ports"]
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: FndhHealthModel
         self._overCurrentThreshold: float
@@ -171,7 +111,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         # These attributes are a breakdown of the portPowerSensed
         # attribute. The reason is to allow smartbox's to subscribe to
         # their power state.
-        for port in range(1, self.PORT_COUNT + 1):
+        for port in range(1, self.CONFIG["number_of_ports"] + 1):
             attr_name = f"Port{port}PowerState"
             self._setup_fndh_attribute(
                 attr_name, PowerState, tango.AttrWriteType.READ, 1, PowerState.UNKNOWN
@@ -196,33 +136,6 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
 
-    # ----------
-    # Properties
-    # ----------
-
-    class InitCommand(DeviceInitCommand):
-        """Initialisation command class for this base device."""
-
-        def do(
-            self: MccsFNDH.InitCommand, *args: Any, **kwargs: Any
-        ) -> tuple[ResultCode, str]:
-            """
-            Initialise the attributes of this MccsFNDH.
-
-            :param args: additional positional arguments; unused here
-            :param kwargs: additional keyword arguments; unused here
-
-            :return: a resultcode, message tuple
-            """
-            self._device._isAlive = True
-            self._device._overCurrentThreshold = 0.0
-            self._device._overVoltageThreshold = 0.0
-            self._device._humidityThreshold = 0.0
-            return (ResultCode.OK, "Init command completed OK")
-
-    # --------------
-    # Initialization
-    # --------------
     def create_component_manager(self: MccsFNDH) -> FndhComponentManager:
         """
         Create and return a component manager for this device.
@@ -270,6 +183,26 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
     # ----------
     # Commands
     # ----------
+    class InitCommand(DeviceInitCommand):
+        """Initialisation command class for this base device."""
+
+        def do(
+            self: MccsFNDH.InitCommand, *args: Any, **kwargs: Any
+        ) -> tuple[ResultCode, str]:
+            """
+            Initialise the attributes of this MccsFNDH.
+
+            :param args: additional positional arguments; unused here
+            :param kwargs: additional keyword arguments; unused here
+
+            :return: a resultcode, message tuple
+            """
+            self._device._isAlive = True
+            self._device._overCurrentThreshold = 0.0
+            self._device._overVoltageThreshold = 0.0
+            self._device._humidityThreshold = 0.0
+            return (ResultCode.OK, "Init command completed OK")
+
     class ConfigureCommand(FastCommand):
         """
         Class for handling the Configure() command.
@@ -476,15 +409,23 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         return ([result_code], [message])
 
     # -----------
-    # ATTRIBUTES
+    # Attributes
     # -----------
     def _setup_fndh_attributes(self: MccsFNDH) -> None:
-        for slug, data_type, length, access in self.ATTRIBUTES:
+        for register in self.CONFIG["registers"].values():
+            data_type = self.TYPES[register["data_type"]]
             self._setup_fndh_attribute(
-                f"{slug}",
-                cast(type | tuple[type], data_type),
-                access,
-                max_dim_x=length,
+                register["tango_attr_name"],
+                cast(
+                    type | tuple[type],
+                    (data_type if register["tango_dim_x"] == 1 else (data_type,)),
+                ),
+                (
+                    tango.AttrWriteType.READ_WRITE
+                    if register["writable"]
+                    else tango.AttrWriteType.READ
+                ),
+                max_dim_x=register["tango_dim_x"],
             )
 
     # pylint: disable=too-many-arguments
@@ -603,7 +544,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             communication_state.name,
         )
         if communication_state != CommunicationStatus.ESTABLISHED:
-            self._update_port_power_states([PowerState.UNKNOWN] * self.PORT_COUNT)
+            self._update_port_power_states(
+                [PowerState.UNKNOWN] * self.CONFIG["number_of_ports"]
+            )
             self._component_state_changed_callback(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._component_state_changed_callback(power=PowerState.ON)
@@ -616,9 +559,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
     def _update_port_power_states(
         self: MccsFNDH, power_states: list[PowerState]
     ) -> None:
-        assert self.PORT_COUNT == len(power_states)
+        assert self.CONFIG["number_of_ports"] == len(power_states)
         timestamp = datetime.utcnow().timestamp()
-        for port in range(self.PORT_COUNT):
+        for port in range(self.CONFIG["number_of_ports"]):
             attr_name = f"Port{port + 1}PowerState"
             if self._fndh_attributes[attr_name.lower()].value != power_states[port]:
                 self._fndh_attributes[attr_name.lower()].value = power_states[port]
@@ -714,9 +657,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             assert (
                 len(
                     [
-                        attr
-                        for (attr, _, _, _) in self.ATTRIBUTES
-                        if attr == attr_name or attr.lower() == attr_name
+                        register["tango_attr_name"]
+                        for register in self.CONFIG["registers"].values()
+                        if register["tango_attr_name"].lower() == attr_name.lower()
                     ]
                 )
                 > 0

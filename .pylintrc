@@ -19,4 +19,5 @@ ignored-classes = socket
 # W0212 protected-access
 # W0613 unused-argument
 # W0612 unused variable
-disable = W0212, W0613, W0612
+# W4902 deprecated method in python 3.11: read_text()
+disable = W0212, W0613, W0612, W4902

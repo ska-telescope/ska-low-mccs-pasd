@@ -27,17 +27,12 @@ from pymodbus.register_write_message import (
     WriteSingleRegisterRequest,
 )
 
-from ska_low_mccs_pasd.pasd_data import PasdData
-
 from .pasd_bus_register_map import (
     PasdBusAttribute,
     PasdBusPortAttribute,
     PasdBusRegisterMap,
     PasdBusRequestError,
 )
-
-FNDH_MODBUS_ADDRESS: Final = 101
-FNCC_MODBUS_ADDRESS: Final = 100
 
 # Modbus Function/Exception Codes implemented in PaSD firmware
 MODBUS_FUNCTIONS: Final = {
@@ -201,10 +196,10 @@ class PasdBusModbusApi:
         )
 
     def _get_device_id(self, modbus_address: int) -> int:
-        if modbus_address == FNDH_MODBUS_ADDRESS:
-            return PasdData.FNDH_DEVICE_ID
-        if modbus_address == FNCC_MODBUS_ADDRESS:
-            return PasdData.FNCC_DEVICE_ID
+        if modbus_address == PasdBusRegisterMap.FNDH_MODBUS_ADDRESS:
+            return PasdBusRegisterMap.FNDH_DEVICE_ID
+        if modbus_address == PasdBusRegisterMap.FNCC_MODBUS_ADDRESS:
+            return PasdBusRegisterMap.FNCC_DEVICE_ID
         # Smartbox Modbus addresses are the same as their device ids
         return modbus_address
 
@@ -362,10 +357,10 @@ class PasdBusModbusApiClient:
         }
 
     def _get_modbus_address(self, device_id: int) -> int:
-        if device_id == PasdData.FNDH_DEVICE_ID:
-            return FNDH_MODBUS_ADDRESS
-        if device_id == PasdData.FNCC_DEVICE_ID:
-            return FNCC_MODBUS_ADDRESS
+        if device_id == PasdBusRegisterMap.FNDH_DEVICE_ID:
+            return PasdBusRegisterMap.FNDH_MODBUS_ADDRESS
+        if device_id == PasdBusRegisterMap.FNCC_DEVICE_ID:
+            return PasdBusRegisterMap.FNCC_MODBUS_ADDRESS
         # Smartbox Modbus addresses are the same as their device ids
         return device_id
 
@@ -513,7 +508,7 @@ class PasdBusModbusApiClient:
 
         # Get a PasdBusAttribute object for this request
         try:
-            attribute = self._register_map.get_writeable_attribute(
+            attribute = self._register_map.get_writable_attribute(
                 request["device_id"], request["write"], list(request["values"])
             )
         except PasdBusRequestError as e:

@@ -11,13 +11,14 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from typing import Any, Optional, cast
+from typing import Any, Final, Optional, cast
 
 import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState
 from ska_tango_base.base import SKABaseDevice
 from tango.server import device_property
 
+from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .fncc_component_manager import FnccComponentManager
 from .fncc_health_model import FnccHealthModel
 
@@ -39,23 +40,13 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
     # -----------------
     # Device Properties
     # -----------------
-    PasdFQDN = device_property(dtype=(str), mandatory=True)
+    PasdFQDN: Final = device_property(dtype=(str), mandatory=True)
 
-    # TODO: create a single YAML file with the fncc attributes.
-    # We want attributes on Mccsfncc to match the MccsPasdBus.
-    # Therefore, the proposed solution is for both to read from
-    # a 'YAML' file.
-    ATTRIBUTES = [
-        ("ModbusRegisterMapRevisionNumber", int, None, tango.AttrWriteType.READ),
-        ("PcbRevisionNumber", int, None, tango.AttrWriteType.READ),
-        ("CpuId", str, None, tango.AttrWriteType.READ),
-        ("ChipId", str, None, tango.AttrWriteType.READ),
-        ("FirmwareVersion", str, None, tango.AttrWriteType.READ),
-        ("Uptime", int, None, tango.AttrWriteType.READ),
-        ("SysAddress", int, None, tango.AttrWriteType.READ),
-        ("PasdStatus", str, None, tango.AttrWriteType.READ),
-        ("FieldNodeNumber", int, None, tango.AttrWriteType.READ),
-    ]
+    # ---------
+    # Constants
+    # ---------
+    CONFIG: Final[ControllerDict] = PasdControllersConfig.get_fncc()
+    TYPES: Final[dict[str, type]] = {"int": int, "str": str}
 
     # ---------------
     # Initialisation
@@ -110,9 +101,6 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
 
-    # --------------
-    # Initialization
-    # --------------
     def create_component_manager(self: MccsFNCC) -> FnccComponentManager:
         """
         Create and return a component manager for this device.
@@ -127,16 +115,24 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
             self.PasdFQDN,
         )
 
-    # -----------
-    # ATTRIBUTES
-    # -----------
+    # ----------
+    # Attributes
+    # ----------
     def _setup_fncc_attributes(self: MccsFNCC) -> None:
-        for slug, data_type, length, access in self.ATTRIBUTES:
+        for register in self.CONFIG["registers"].values():
+            data_type = self.TYPES[register["data_type"]]
             self._setup_fncc_attribute(
-                f"{slug}",
-                cast(type | tuple[type], data_type),
-                access,
-                max_dim_x=length,
+                register["tango_attr_name"],
+                cast(
+                    type | tuple[type],
+                    (data_type if register["tango_dim_x"] == 1 else (data_type,)),
+                ),
+                (
+                    tango.AttrWriteType.READ_WRITE
+                    if register["writable"]
+                    else tango.AttrWriteType.READ
+                ),
+                max_dim_x=register["tango_dim_x"],
             )
 
     # pylint: disable=too-many-arguments
@@ -273,9 +269,9 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
             assert (
                 len(
                     [
-                        attr
-                        for (attr, _, _, _) in self.ATTRIBUTES
-                        if attr == attr_name or attr.lower() == attr_name
+                        register["tango_attr_name"]
+                        for register in self.CONFIG["registers"].values()
+                        if register["tango_attr_name"].lower() == attr_name.lower()
                     ]
                 )
                 > 0

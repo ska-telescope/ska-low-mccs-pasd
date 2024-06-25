@@ -64,115 +64,52 @@ class PasdBusResponse:
 class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusResponse]):
     """A component manager for a PaSD bus."""
 
-    STATIC_INFO_ATTRIBUTES: Final = (
-        "modbus_register_map_revision",
-        "pcb_revision",
-        "cpu_id",
-        "chip_id",
-        "firmware_version",
-    )
-
-    FNDH_STATUS_ATTRIBUTES: Final = (
-        "uptime",
-        "sys_address",
-        "psu48v_voltages",
-        "psu48v_current",
-        "psu48v_temperatures",
-        "panel_temperature",
-        "fncb_temperature",
-        "fncb_humidity",
-        "status",
-        "led_pattern",
-        "comms_gateway_temperature",
-        "power_module_temperature",
-        "outside_temperature",
-        "internal_ambient_temperature",
-    )
-
-    FNDH_PORTS_STATUS_ATTRIBUTES: Final = (
-        "port_forcings",  # Register STATE[9:8] - TO
-        "ports_desired_power_when_online",  # Register STATE[13:12] - DSON
-        "ports_desired_power_when_offline",  # Register STATE[11:10] - DSOFF
-        "ports_power_sensed",  # Register STATE[7] - PWRSENSE
-        "ports_power_control",  # Register STATE[6] - POWER
-    )
-
-    FNDH_THRESHOLD_ATTRIBUTES: Final = (
-        "psu48v_voltage_1_thresholds",
-        "psu48v_voltage_2_thresholds",
-        "psu48v_current_thresholds",
-        "psu48v_temperature_1_thresholds",
-        "psu48v_temperature_2_thresholds",
-        "panel_temperature_thresholds",
-        "fncb_temperature_thresholds",
-        "fncb_humidity_thresholds",
-        "comms_gateway_temperature_thresholds",
-        "power_module_temperature_thresholds",
-        "outside_temperature_thresholds",
-        "internal_ambient_temperature_thresholds",
-    )
-
-    FNCC_STATUS_ATTRIBUTES: Final = (
-        "uptime",
-        "sys_address",
-        "status",
-        "field_node_number",
-    )
-
-    SMARTBOX_STATUS_ATTRIBUTES: Final = (
-        "uptime",
-        "sys_address",
-        "input_voltage",
-        "power_supply_output_voltage",
-        "power_supply_temperature",
-        "pcb_temperature",
-        "fem_ambient_temperature",
-        "status",
-        "led_pattern",
-        "fem_case_temperatures",
-        "fem_heatsink_temperatures",
-    )
-
-    SMARTBOX_PORTS_STATUS_ATTRIBUTES: Final = (
-        "port_forcings",  # Register STATE[9:8] - TO
-        "port_breakers_tripped",  # Register STATE[7] - BREAKER
-        "ports_desired_power_when_online",  # Register STATE[13:12] - DSON
-        "ports_desired_power_when_offline",  # Register STATE[11:10] - DSOFF
-        "ports_power_sensed",  # Register STATE[6] - POWER
-        "ports_current_draw",  # Register CURRENT
-    )
-
-    SMARTBOX_THRESHOLD_ATTRIBUTES: Final = (
-        "input_voltage_thresholds",
-        "power_supply_output_voltage_thresholds",
-        "power_supply_temperature_thresholds",
-        "pcb_temperature_thresholds",
-        "fem_ambient_temperature_thresholds",
-        "fem_case_temperature_1_thresholds",
-        "fem_case_temperature_2_thresholds",
-        "fem_heatsink_temperature_1_thresholds",
-        "fem_heatsink_temperature_2_thresholds",
-    )
-
-    SMARTBOX_CURRENT_TRIP_THRESHOLD_ATTRIBUTES: Final = (
-        "fem1_current_trip_threshold",
-        "fem2_current_trip_threshold",
-        "fem3_current_trip_threshold",
-        "fem4_current_trip_threshold",
-        "fem5_current_trip_threshold",
-        "fem6_current_trip_threshold",
-        "fem7_current_trip_threshold",
-        "fem8_current_trip_threshold",
-        "fem9_current_trip_threshold",
-        "fem10_current_trip_threshold",
-        "fem11_current_trip_threshold",
-        "fem12_current_trip_threshold",
-    )
-
     # The warning and alarm flag attributes are the same for both FNDH and Smartboxes
     # but are non-contiguous
     WARNING_FLAGS_ATTRIBUTE: Final = "warning_flags"
     ALARM_FLAGS_ATTRIBUTE: Final = "alarm_flags"
+
+    STATIC_INFO_ATTRIBUTES: Final[list[str]] = []
+    FNCC_STATUS_ATTRIBUTES: Final[list[str]] = []
+    for key, register in PasdData.CONTROLLERS_CONFIG["FNCC"]["registers"].items():
+        if register.get("static", False):
+            STATIC_INFO_ATTRIBUTES.append(key)
+        else:
+            FNCC_STATUS_ATTRIBUTES.append(key)
+
+    FNDH_STATUS_ATTRIBUTES: Final[list[str]] = []
+    FNDH_PORTS_STATUS_ATTRIBUTES: Final[list[str]] = []
+    FNDH_THRESHOLD_ATTRIBUTES: Final[list[str]] = []
+    for key, register in PasdData.CONTROLLERS_CONFIG["FNPC"]["registers"].items():
+        if register["modbus_class"] == "PasdBusPortAttribute":
+            FNDH_PORTS_STATUS_ATTRIBUTES.append(key)
+        elif "default_thresholds" in register:
+            FNDH_THRESHOLD_ATTRIBUTES.append(key)
+        elif not register.get("static", False) and key not in [
+            WARNING_FLAGS_ATTRIBUTE,
+            ALARM_FLAGS_ATTRIBUTE,
+        ]:
+            FNDH_STATUS_ATTRIBUTES.append(key)
+
+    SMARTBOX_STATUS_ATTRIBUTES: Final[list[str]] = []
+    SMARTBOX_PORTS_STATUS_ATTRIBUTES: Final[list[str]] = []
+    SMARTBOX_THRESHOLD_ATTRIBUTES: Final[list[str]] = []
+    SMARTBOX_CURRENT_TRIP_THRESHOLD_ATTRIBUTES: Final = []
+    for key, register in PasdData.CONTROLLERS_CONFIG["FNSC"]["registers"].items():
+        if (
+            key == "ports_current_draw"
+            or register["modbus_class"] == "PasdBusPortAttribute"
+        ):
+            SMARTBOX_PORTS_STATUS_ATTRIBUTES.append(key)
+        elif "default_thresholds" in register:
+            SMARTBOX_THRESHOLD_ATTRIBUTES.append(key)
+        elif "threshold" in key:
+            SMARTBOX_CURRENT_TRIP_THRESHOLD_ATTRIBUTES.append(key)
+        elif not register.get("static", False) and key not in [
+            WARNING_FLAGS_ATTRIBUTE,
+            ALARM_FLAGS_ATTRIBUTE,
+        ]:
+            SMARTBOX_STATUS_ATTRIBUTES.append(key)
 
     def __init__(  # pylint: disable=too-many-arguments
         self: PasdBusComponentManager,
@@ -364,28 +301,22 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                     request = PasdBusRequest(device_id, "turn_port_off", None, [port])
             case (device_id, "INFO", None):
                 request = PasdBusRequest(
-                    device_id, None, None, list(self.STATIC_INFO_ATTRIBUTES)
+                    device_id, None, None, self.STATIC_INFO_ATTRIBUTES
                 )
             case (PasdData.FNDH_DEVICE_ID, "STATUS", None):
                 request = PasdBusRequest(
-                    PasdData.FNDH_DEVICE_ID,
-                    None,
-                    None,
-                    list(self.FNDH_STATUS_ATTRIBUTES),
+                    PasdData.FNDH_DEVICE_ID, None, None, self.FNDH_STATUS_ATTRIBUTES
                 )
             case (PasdData.FNDH_DEVICE_ID, "PORTS", None):
                 request = PasdBusRequest(
                     PasdData.FNDH_DEVICE_ID,
                     None,
                     None,
-                    list(self.FNDH_PORTS_STATUS_ATTRIBUTES),
+                    self.FNDH_PORTS_STATUS_ATTRIBUTES,
                 )
             case (PasdData.FNDH_DEVICE_ID, "THRESHOLDS", None):
                 request = PasdBusRequest(
-                    PasdData.FNDH_DEVICE_ID,
-                    None,
-                    None,
-                    list(self.FNDH_THRESHOLD_ATTRIBUTES),
+                    PasdData.FNDH_DEVICE_ID, None, None, self.FNDH_THRESHOLD_ATTRIBUTES
                 )
             case (PasdData.FNDH_DEVICE_ID, "ALARM_FLAGS", None):
                 request = PasdBusRequest(
@@ -398,10 +329,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
             case (PasdData.FNCC_DEVICE_ID, "STATUS", None):
                 request = PasdBusRequest(
-                    PasdData.FNCC_DEVICE_ID,
-                    None,
-                    None,
-                    list(self.FNCC_STATUS_ATTRIBUTES),
+                    PasdData.FNCC_DEVICE_ID, None, None, self.FNCC_STATUS_ATTRIBUTES
                 )
 
             case (PasdData.FNCC_DEVICE_ID, "RESET_STATUS", None):
@@ -411,25 +339,22 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
             case (smartbox_id, "STATUS", None):
                 request = PasdBusRequest(
-                    smartbox_id, None, None, list(self.SMARTBOX_STATUS_ATTRIBUTES)
+                    smartbox_id, None, None, self.SMARTBOX_STATUS_ATTRIBUTES
                 )
             case (smartbox_id, "PORTS", None):
                 request = PasdBusRequest(
-                    smartbox_id,
-                    None,
-                    None,
-                    list(self.SMARTBOX_PORTS_STATUS_ATTRIBUTES),
+                    smartbox_id, None, None, self.SMARTBOX_PORTS_STATUS_ATTRIBUTES
                 )
             case (smartbox_id, "THRESHOLDS", None):
                 request = PasdBusRequest(
-                    smartbox_id, None, None, list(self.SMARTBOX_THRESHOLD_ATTRIBUTES)
+                    smartbox_id, None, None, self.SMARTBOX_THRESHOLD_ATTRIBUTES
                 )
             case (smartbox_id, "CURRENT_TRIP_THRESHOLDS", None):
                 request = PasdBusRequest(
                     smartbox_id,
                     None,
                     None,
-                    list(self.SMARTBOX_CURRENT_TRIP_THRESHOLD_ATTRIBUTES),
+                    self.SMARTBOX_CURRENT_TRIP_THRESHOLD_ATTRIBUTES,
                 )
             case (smartbox_id, "ALARM_FLAGS", None):
                 request = PasdBusRequest(

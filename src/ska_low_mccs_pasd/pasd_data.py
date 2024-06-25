@@ -12,11 +12,16 @@ from __future__ import annotations  # allow forward references in type hints
 
 from typing import Final
 
+from .pasd_controllers_configuration import PasdControllersConfig
+
 __all__ = ["PasdData"]
 
 
 class PasdData:  # pylint: disable=too-few-public-methods
     """This class contain data/facts about PaSD that are needed by multiple classes."""
+
+    CONTROLLERS_CONFIG: Final = PasdControllersConfig.get_all()
+    """The validated PaSD controllers' configuration."""
 
     MAX_NUMBER_OF_SMARTBOXES_PER_STATION: Final = 24
     """The maximum number of smartboxes in a Station."""
@@ -24,14 +29,14 @@ class PasdData:  # pylint: disable=too-few-public-methods
     NUMBER_OF_ANTENNAS: Final = 256
     """The number of antenna in a Station."""
 
-    NUMBER_OF_SMARTBOX_PORTS: Final = 12
+    NUMBER_OF_SMARTBOX_PORTS: Final = CONTROLLERS_CONFIG["FNSC"]["number_of_ports"]
     """The number of ports on a smartbox instance."""
 
-    NUMBER_OF_FNDH_PORTS: Final = 28
+    NUMBER_OF_FNDH_PORTS: Final = CONTROLLERS_CONFIG["FNPC"]["number_of_ports"]
     """The number of ports on a FNDH instance."""
 
-    FNDH_DEVICE_ID: Final = 0
+    FNDH_DEVICE_ID: Final = CONTROLLERS_CONFIG["FNPC"]["pasd_number"]
     """The device identifier for an FNDH"""
 
-    FNCC_DEVICE_ID: Final = 100
+    FNCC_DEVICE_ID: Final = CONTROLLERS_CONFIG["FNCC"]["pasd_number"]
     """The device identifier for an FNCC"""

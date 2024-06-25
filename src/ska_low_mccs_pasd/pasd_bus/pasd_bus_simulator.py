@@ -15,8 +15,8 @@ that bus:
 * MccsAntenna instances use the bus to monitor and control their
   antennas;
 * MccsSmartbox instances use the bus to monitor and control their
-  smartboxes;
-* The MccsFndh instance uses the bus to monitor and control the FNDH
+  smartboxes (FNSC);
+* The MccsFndh instance uses the bus to monitor and control the FNPC
 * The MccsFncc instance uses the bus to monitor the FNCC
 
 To arbitrate access and prevent collisions/congestion, the MccsPasdBus
@@ -27,7 +27,7 @@ To that end, MccsPasdBus needs a PasdBusComponentManager that talks to
 the PaSD bus using MODBUS-over-TCP.
 
 The Pasd bus simulator class is provided below. To help manage
-complexity, it is composed of separate FNDH and FNCC simulators and a number
+complexity, it is composed of separate FNDH(FNPC) and FNCC simulators and a number
 of smartbox simulators, which in turn make use of port simulators. Only the
 PasdBusSimulator class should be considered public.
 """
@@ -35,8 +35,8 @@ PasdBusSimulator class should be considered public.
 
 from __future__ import annotations
 
-import importlib.resources
 import logging
+import re
 from abc import ABC
 from datetime import datetime
 from typing import Callable, Final, Optional, Sequence
@@ -55,7 +55,6 @@ from .pasd_bus_conversions import (
     SmartboxAlarmFlags,
     SmartboxStatusMap,
 )
-from .pasd_bus_modbus_api import FNCC_MODBUS_ADDRESS, FNDH_MODBUS_ADDRESS
 from .pasd_bus_register_map import DesiredPowerEnum
 
 logger = logging.getLogger()
@@ -413,7 +412,41 @@ class _SmartboxPortSimulator(_PasdPortSimulator):
         return self._over_current
 
 
-class PasdHardwareSimulator:
+# pylint: disable=too-few-public-methods
+class BaseControllerSimulator:
+    """A base class for all the PaSD controllers' simulators."""
+
+    DEFAULT_UPTIME: Final = [0, 1]
+
+    def __init__(
+        self: BaseControllerSimulator,
+        time_multiplier: int,
+    ) -> None:
+        """
+        Initialise a new instance.
+
+        :param time_multiplier: to differentiate uptime in test context without delays.
+        """
+        self._boot_on_time: datetime | None = datetime.now()
+        self._time_multiplier: int = time_multiplier
+
+    @property
+    def uptime(self: BaseControllerSimulator) -> list[int]:
+        """
+        Return the uptime as an integer in seconds, or fractions of a second for tests.
+
+        :return: the uptime.
+        """
+        if self._boot_on_time is None:
+            return self.DEFAULT_UPTIME
+        uptime_val = int(
+            (datetime.now().timestamp() - self._boot_on_time.timestamp())
+            * self._time_multiplier
+        )
+        return PasdConversionUtility.convert_uptime([uptime_val], inverse=True)
+
+
+class PasdHardwareSimulator(BaseControllerSimulator):
     """
     A class that captures commonality between FNDH and smartbox simulators.
 
@@ -421,15 +454,9 @@ class PasdHardwareSimulator:
     which can be switched on and off, locally forced, etc.
     """
 
-    # pylint: disable=too-many-instance-attributes
-
     DEFAULT_LED_PATTERN: int = LedServiceMap.OFF | LedStatusMap.YELLOWFAST
-    DEFAULT_STATUS: FndhStatusMap | SmartboxStatusMap | FnccStatusMap = (
-        FndhStatusMap.UNINITIALISED
-    )
-    DEFAULT_UPTIME: Final = [0, 1]
+    DEFAULT_STATUS: FndhStatusMap | SmartboxStatusMap = FndhStatusMap.UNINITIALISED
     DEFAULT_FLAGS: int = 0x0
-    DEFAULT_THRESHOLDS_PATH = "pasd_default_thresholds.yaml"
 
     ALARM_MAPPING: dict[str, FndhAlarmFlags | SmartboxAlarmFlags] = {}
 
@@ -444,9 +471,8 @@ class PasdHardwareSimulator:
         :param ports: instantiated ports for the simulator.
         :param time_multiplier: to differentiate uptime in test context without delays.
         """
+        super().__init__(time_multiplier)
         self._ports = ports
-        self._boot_on_time: datetime | None = datetime.now()
-        self._time_multiplier: int = time_multiplier
         self._sensors_status: dict = {}
         self._warning_flags: int = self.DEFAULT_FLAGS
         self._alarm_flags: int = self.DEFAULT_FLAGS
@@ -454,77 +480,58 @@ class PasdHardwareSimulator:
         self._service_led: int = LedServiceMap.OFF
         self._status_led: int = LedStatusMap.YELLOWFAST
 
-    def _load_thresholds(
-        self: PasdHardwareSimulator, file_path: str, device: str
-    ) -> bool:
+    def _load_thresholds(self: PasdHardwareSimulator, controller: str) -> None:
         """
         Load PaSD sensor thresholds from a file into this simulator.
 
-        :param file_path: path to sensor thresholds YAML file
-        :param device: device thresholds to load - fndh/smartbox
-        :return: whether successful
-        :raises yaml.YAMLError: if the config file cannot be parsed.
+        :param controller: thresholds to load - FNPC/FNSC
         """
-        config_data = importlib.resources.read_text(
-            "ska_low_mccs_pasd.pasd_bus",
-            file_path,
+        sensor_thresholds = dict(
+            filter(
+                lambda key_val: "default_thresholds" in key_val[1],
+                PasdData.CONTROLLERS_CONFIG[controller]["registers"].items(),
+            )
         )
+        for key, register in sensor_thresholds.items():
+            thresholds_list = [
+                register["default_thresholds"]["high_alarm"],
+                register["default_thresholds"]["high_warning"],
+                register["default_thresholds"]["low_warning"],
+                register["default_thresholds"]["low_alarm"],
+            ]
+            setattr(self, key, thresholds_list)
 
-        assert config_data is not None  # for the type-checker
-
-        try:
-            loaded_data = yaml.safe_load(config_data)
-        except yaml.YAMLError as exception:
-            logger.error(
-                f"PaSD hardware simulator could not load thresholds: {exception}."
-            )
-            raise
-
-        try:
-            sensor_thresholds = loaded_data[device]["default_thresholds"]
-            for sensor, thresholds in sensor_thresholds.items():
-                thresholds_list = [
-                    thresholds.get("high_alarm", None),
-                    thresholds.get("high_warning", None),
-                    thresholds.get("low_warning", None),
-                    thresholds.get("low_alarm", None),
-                ]
-                setattr(self, sensor + "_thresholds", thresholds_list)
-        except KeyError as exception:
-            logger.error(
-                f"PaSD hardware simulator missing thresholds for {sensor}: {exception}."
-            )
-        return True
-
-    def _update_sensor_status(self: PasdHardwareSimulator, sensor_name: str) -> None:
+    def _update_sensor_status(self: PasdHardwareSimulator, sensor: str) -> None:
         """
         Update the sensor status based on the thresholds.
 
-        :param sensor_name: Base name string of the sensor's attributes
+        :param sensor: name of the _Sensor instance (can be thresholds).
         """
-        try:
-            thresholds = getattr(self, sensor_name + "_thresholds")
-            high_alarm = thresholds[0]
-            high_warning = thresholds[1]
-            low_warning = thresholds[2]
-            low_alarm = thresholds[3]
-        except TypeError:
-            logger.error(
-                f"PaSD bus simulator: {sensor_name} has no thresholds defined!"
-            )
-            return
+
+        def _check_thresholds_and_set_status(sensor_name: str, value: int) -> None:
+            try:
+                thresholds = getattr(self, sensor_name + "_thresholds")
+                high_alarm = thresholds[0]
+                high_warning = thresholds[1]
+                low_warning = thresholds[2]
+                low_alarm = thresholds[3]
+            except TypeError:
+                logger.error(
+                    f"PaSD bus simulator: {sensor_name} has no thresholds defined!"
+                )
+                return
+            if value >= high_alarm or value <= low_alarm:
+                self._set_sensor_alarm(sensor_name)
+            elif value >= high_warning or value <= low_warning:
+                self._set_sensor_warning(sensor_name)
+            else:
+                self._sensors_status[sensor_name] = "OK"
+
+        sensor_name = re.sub(r"_([0-9])$", "s", sensor.removesuffix("_thresholds"))
         sensor_value = getattr(self, sensor_name)
         # Return if default value has not been set yet in instance's __init__()
         if sensor_value is None:
             return
-
-        def _check_thresholds_and_set_status(sensor: str, value: int) -> None:
-            if value >= high_alarm or value <= low_alarm:
-                self._set_sensor_alarm(sensor)
-            elif value >= high_warning or value <= low_warning:
-                self._set_sensor_warning(sensor)
-            else:
-                self._sensors_status[sensor] = "OK"
 
         # Check single sensor value or
         if not isinstance(sensor_value, list):
@@ -532,7 +539,7 @@ class PasdHardwareSimulator:
             return
         # loop through multiple sensor values
         for i, value in enumerate(sensor_value, 1):
-            numbered_name = sensor_name[:-1] + "_" + str(i)
+            numbered_name = sensor_name.rstrip("s") + "_" + str(i)
             _check_thresholds_and_set_status(numbered_name, value)
 
     def _set_sensor_alarm(self: PasdHardwareSimulator, sensor_name: str) -> None:
@@ -824,37 +831,20 @@ class PasdHardwareSimulator:
         return [port.power_sensed for port in self._ports]
 
     @property
-    def uptime(self: PasdHardwareSimulator) -> list[int]:
-        """
-        Return the uptime as an integer in seconds, or fractions of a second for tests.
-
-        :return: the uptime.
-        """
-        if self._boot_on_time is None:
-            return self.DEFAULT_UPTIME
-        uptime_val = int(
-            (datetime.now().timestamp() - self._boot_on_time.timestamp())
-            * self._time_multiplier
-        )
-        return PasdConversionUtility.convert_uptime([uptime_val], inverse=True)
-
-    @property
     def status(self: PasdHardwareSimulator) -> int:
         """
-        Return the status of the FNDH/FNCC/smartbox.
+        Return the status of the controller.
 
-        :return: an overall status.
-            See FnccStatusMap, FndhStatusMap and SmartboxStatusMap
-            for details
+        :return: an overall status. See FndhStatusMap and SmartboxStatusMap for details.
         """
         return self._status
 
     @status.setter
     def status(self: PasdHardwareSimulator, _: int) -> None:
         """
-        Set the status of the FNDH/smartbox.
+        Set the status of the controller.
 
-        This indicates the smartbox should be initialised, no matter the input value.
+        This indicates the controller should be initialised, no matter the input value.
         """
         self.initialize()
 
@@ -957,28 +947,28 @@ class _Sensor:
         :param value: The value to be set for the sensor attribute.
         """
         obj.__dict__[self.name] = value
-        obj._update_sensor_status(self.name.removesuffix("_thresholds"))
+        obj._update_sensor_status(self.name)
         obj._update_system_status()
         obj._update_ports_state()
 
 
 class FndhSimulator(PasdHardwareSimulator):
     """
-    A simple simulator of a Field Node Distribution Hub.
+    A simple simulator of a Field Node Peripheral Controller inside the FNDH.
 
-    This FNDH simulator will never be used as a standalone simulator. It
-    will only be used as a component of a PaSD bus simulator.
+    This simulator will never be used as a standalone simulator.
+    It will only be used as a component of a PaSD bus simulator.
     """
 
     # pylint: disable=too-many-instance-attributes
 
-    NUMBER_OF_PORTS: Final = 28
+    NUMBER_OF_PORTS: Final = PasdData.NUMBER_OF_FNDH_PORTS
 
     MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
     CPU_ID: Final = [1, 2]
     CHIP_ID: Final = [1, 2, 3, 4, 5, 6, 7, 8]
-    SYS_ADDRESS: Final = FNDH_MODBUS_ADDRESS
+    SYS_ADDRESS: Final = PasdData.CONTROLLERS_CONFIG["FNPC"]["modbus_address"]
 
     DEFAULT_FIRMWARE_VERSION: Final = 257
     DEFAULT_PSU48V_VOLTAGES: Final = [4790, 4810]
@@ -1010,13 +1000,15 @@ class FndhSimulator(PasdHardwareSimulator):
     # Instantiate sensor data descriptors
     psu48v_voltages = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
-    psu48v_voltages_thresholds = _Sensor()
+    psu48v_voltage_1_thresholds = _Sensor()
+    psu48v_voltage_2_thresholds = _Sensor()
     psu48v_current = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     psu48v_current_thresholds = _Sensor()
     psu48v_temperatures = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
-    psu48v_temperatures_thresholds = _Sensor()
+    psu48v_temperature_1_thresholds = _Sensor()
+    psu48v_temperature_2_thresholds = _Sensor()
     panel_temperature = _Sensor()  # Not implemented in hardware?
     """Public attribute as _Sensor() data descriptor: *int*"""
     panel_temperature_thresholds = _Sensor()
@@ -1058,7 +1050,7 @@ class FndhSimulator(PasdHardwareSimulator):
         ]
         super().__init__(ports, time_multiplier)
         # Sensors
-        super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "fndh")
+        super()._load_thresholds("FNPC")
         self.psu48v_voltages = self.DEFAULT_PSU48V_VOLTAGES
         self.psu48v_current = self.DEFAULT_PSU48V_CURRENT
         self.psu48v_temperatures = self.DEFAULT_PSU48V_TEMPERATURES
@@ -1069,11 +1061,9 @@ class FndhSimulator(PasdHardwareSimulator):
         self.power_module_temperature = self.DEFAULT_POWER_MODULE_TEMPERATURE
         self.outside_temperature = self.DEFAULT_OUTSIDE_TEMPERATURE
         self.internal_ambient_temperature = self.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
-        # Aliases for some thresholds, which are separate sets in HW
-        self.psu48v_voltage_1_thresholds = self.psu48v_voltages_thresholds
-        self.psu48v_voltage_2_thresholds = self.psu48v_voltages_thresholds
-        self.psu48v_temperature_1_thresholds = self.psu48v_temperatures_thresholds
-        self.psu48v_temperature_2_thresholds = self.psu48v_temperatures_thresholds
+        # TODO: Aliases for some thresholds, which are separate sets in HW
+        self.psu48v_voltages_thresholds = self.psu48v_voltage_1_thresholds
+        self.psu48v_temperatures_thresholds = self.psu48v_temperature_1_thresholds
 
     @property
     def sys_address(self: FndhSimulator) -> int:
@@ -1156,9 +1146,9 @@ class FndhSimulator(PasdHardwareSimulator):
         return self._ports[port_number - 1].simulate_stuck_on(state)
 
 
-class FnccSimulator(PasdHardwareSimulator):
+class FnccSimulator(BaseControllerSimulator):
     """
-    A simple simulator of a Field Node Communications Controller.
+    A simple simulator of a Field Node Communications Controller inside the FNDH.
 
     This FNCC simulator will never be used as a standalone simulator. It
     will only be used as a component of a PaSD bus simulator.
@@ -1168,11 +1158,11 @@ class FnccSimulator(PasdHardwareSimulator):
     PCB_REVISION: Final = 31
     CPU_ID: Final = [8, 7]
     CHIP_ID: Final = [5, 3, 7, 2, 1, 9, 9, 0]
-    SYS_ADDRESS: Final = FNCC_MODBUS_ADDRESS
+    SYS_ADDRESS: Final = PasdData.CONTROLLERS_CONFIG["FNCC"]["modbus_address"]
     FIELD_NODE_NUMBER: Final = 1
 
-    DEFAULT_STATUS: FnccStatusMap = FnccStatusMap.OK
     DEFAULT_FIRMWARE_VERSION: Final = 259
+    DEFAULT_STATUS: FnccStatusMap = FnccStatusMap.OK
 
     def __init__(
         self: FnccSimulator,
@@ -1183,16 +1173,9 @@ class FnccSimulator(PasdHardwareSimulator):
 
         :param time_multiplier: to differentiate uptime in test context without delays.
         """
-        super().__init__([], time_multiplier)
-
-    @property
-    def sys_address(self: FnccSimulator) -> int:
-        """
-        Return the system address.
-
-        :return: the system address.
-        """
-        return self.SYS_ADDRESS
+        super().__init__(time_multiplier)
+        self._boot_on_time: datetime | None = datetime.now()
+        self._time_multiplier: int = time_multiplier
 
     @property
     def modbus_register_map_revision(self: FnccSimulator) -> int:
@@ -1240,6 +1223,24 @@ class FnccSimulator(PasdHardwareSimulator):
         return self.DEFAULT_FIRMWARE_VERSION
 
     @property
+    def sys_address(self: FnccSimulator) -> int:
+        """
+        Return the system address.
+
+        :return: the system address.
+        """
+        return self.SYS_ADDRESS
+
+    @property
+    def status(self: FnccSimulator) -> int:
+        """
+        Return the status of the FNCC.
+
+        :return: an overall status.
+        """
+        return self.DEFAULT_STATUS
+
+    @property
     def field_node_number(self: FnccSimulator) -> int:
         """
         Return the field node number.
@@ -1250,11 +1251,11 @@ class FnccSimulator(PasdHardwareSimulator):
 
 
 class SmartboxSimulator(PasdHardwareSimulator):
-    """A simulator for a PaSD smartbox."""
+    """A simulator for a Field Node SMART Box Controller."""
 
     # pylint: disable=too-many-instance-attributes
 
-    NUMBER_OF_PORTS: Final = 12
+    NUMBER_OF_PORTS: Final = PasdData.NUMBER_OF_SMARTBOX_PORTS
 
     MODBUS_REGISTER_MAP_REVISION: Final = 1
     PCB_REVISION: Final = 21
@@ -1305,10 +1306,12 @@ class SmartboxSimulator(PasdHardwareSimulator):
     fem_ambient_temperature_thresholds = _Sensor()
     fem_case_temperatures = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
-    fem_case_temperatures_thresholds = _Sensor()
+    fem_case_temperature_1_thresholds = _Sensor()
+    fem_case_temperature_2_thresholds = _Sensor()
     fem_heatsink_temperatures = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
-    fem_heatsink_temperatures_thresholds = _Sensor()
+    fem_heatsink_temperature_1_thresholds = _Sensor()
+    fem_heatsink_temperature_2_thresholds = _Sensor()
 
     def __init__(
         self: SmartboxSimulator,
@@ -1329,7 +1332,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self._status = SmartboxStatusMap.UNINITIALISED
         self._sys_address = address
         # Sensors
-        super()._load_thresholds(self.DEFAULT_THRESHOLDS_PATH, "smartbox")
+        super()._load_thresholds("FNSC")
         self.input_voltage = self.DEFAULT_INPUT_VOLTAGE
         self.power_supply_output_voltage = self.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE
         self.power_supply_temperature = self.DEFAULT_POWER_SUPPLY_TEMPERATURE
@@ -1337,14 +1340,10 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self.fem_ambient_temperature = self.DEFAULT_FEM_AMBIENT_TEMPERATURE
         self.fem_case_temperatures = self.DEFAULT_FEM_CASE_TEMPERATURES
         self.fem_heatsink_temperatures = self.DEFAULT_FEM_HEATSINK_TEMPERATURES
-        # Aliases for some thresholds, which are separate sets in HW
-        self.fem_case_temperature_1_thresholds = self.fem_case_temperatures_thresholds
-        self.fem_case_temperature_2_thresholds = self.fem_case_temperatures_thresholds
-        self.fem_heatsink_temperature_1_thresholds = (
-            self.fem_heatsink_temperatures_thresholds
-        )
-        self.fem_heatsink_temperature_2_thresholds = (
-            self.fem_heatsink_temperatures_thresholds
+        # TODO: Aliases for some thresholds, which are separate sets in HW
+        self.fem_case_temperatures_thresholds = self.fem_case_temperature_1_thresholds
+        self.fem_heatsink_temperatures_thresholds = (
+            self.fem_heatsink_temperature_1_thresholds
         )
         # TODO: Make each current trip threshold separate R/W property?
         self.fem1_current_trip_threshold = self.ports_current_trip_threshold
@@ -1527,7 +1526,9 @@ class PasdBusSimulator:
             f"Logger level set to {logging.getLevelName(logger.getEffectiveLevel())}."
         )
 
-        self._hw_simulators: dict[int, PasdHardwareSimulator] = {}
+        self._hw_simulators: dict[
+            int, FndhSimulator | FnccSimulator | SmartboxSimulator
+        ] = {}
         self._smartboxes_ports_connected: list[list[bool]] = []
         self._smartbox_attached_ports: list[int] = [
             0
@@ -1558,25 +1559,25 @@ class PasdBusSimulator:
                 self._instantiate_smartbox(port_number)
         logger.info(f"Initialised PaSD bus simulator for station {station_label}.")
 
-    def get_fndh(self: PasdBusSimulator) -> PasdHardwareSimulator:
+    def get_fndh(self: PasdBusSimulator) -> FndhSimulator:
         """
         Return only the FNDH simulator.
 
         :return: the FNDH simulator.
         """
-        return self._hw_simulators[PasdData.FNDH_DEVICE_ID]
+        return self._hw_simulators[PasdData.FNDH_DEVICE_ID]  # type: ignore
 
-    def get_fncc(self: PasdBusSimulator) -> PasdHardwareSimulator:
+    def get_fncc(self: PasdBusSimulator) -> FnccSimulator:
         """
         Return only the FNCC simulator.
 
         :return: the FNCC simulator.
         """
-        return self._hw_simulators[PasdData.FNCC_DEVICE_ID]
+        return self._hw_simulators[PasdData.FNCC_DEVICE_ID]  # type: ignore
 
     def get_all_devices(
         self: PasdBusSimulator,
-    ) -> dict[int, PasdHardwareSimulator]:
+    ) -> dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator]:
         """
         Return a dictionary of the FNDH, FNCC and Smartbox simulators.
 
@@ -1606,7 +1607,7 @@ class PasdBusSimulator:
             self._hw_simulators[smartbox_id] = SmartboxSimulator(
                 self._time_multiplier, smartbox_id
             )
-            self._hw_simulators[smartbox_id].configure(
+            self._hw_simulators[smartbox_id].configure(  # type: ignore
                 self._smartboxes_ports_connected[smartbox_id - 1]
             )
             logger.debug(f"Initialised Smartbox simulator {smartbox_id}.")
@@ -1656,7 +1657,7 @@ class PasdBusSimulator:
             fndh_port = smartbox_config["fndh_port"]
             self._smartbox_attached_ports[smartbox_id - 1] = fndh_port
             fndh_ports_is_connected[fndh_port - 1] = True
-        self._hw_simulators[0].configure(fndh_ports_is_connected)
+        self._hw_simulators[0].configure(fndh_ports_is_connected)  # type: ignore
 
         self._smartboxes_ports_connected = [
             [False] * SmartboxSimulator.NUMBER_OF_PORTS

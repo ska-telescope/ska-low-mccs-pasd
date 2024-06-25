@@ -1,0 +1,589 @@
+# This YAML file maps the PaSD controllers' firmware registers to their respective 
+# component managers' properties and Tango attributes.
+# Its purpose is to contain all the required class, function, type and other definitions 
+# needed to construct the Tango device and Modbus API classes, in order to avoid any 
+# duplication of names and magic numbers. Implementing multiple Modbus register map 
+# revisions should be simple and easy to see from this file. 
+#
+# Values are loaded and validated against a schema with the PasdControllersConfig class.
+# When making changes to this file, check if it's still valid by running the script:
+#   'python src/ska_low_mccs_pasd/pasd_controllers_configuration.py'
+# Validation errors need to be fixed before trying to run or deploy anything!
+
+common_registers: &common_registers
+  modbus_register_map_revision:
+    tango_attr_name: ModbusRegisterMapRevisionNumber
+    data_type: int
+    address: 0
+    static: true
+  pcb_revision:
+    tango_attr_name: PcbRevisionNumber
+    data_type: int
+    address: 1
+    static: true
+  cpu_id:
+    data_type: str
+    address: 2
+    size: 2
+    static: true
+    conversion_function: convert_cpu_id
+  chip_id:
+    data_type: str
+    address: 4
+    size: 8
+    static: true
+    conversion_function: convert_chip_id
+  firmware_version:
+    data_type: str
+    address: 12
+    static: true
+    conversion_function: convert_firmware_version
+  uptime:
+    data_type: int
+    address: 13
+    size: 2 
+    conversion_function: convert_uptime
+  sys_address:
+    data_type: int
+    address: 15
+
+PaSD_controllers:
+  base_register_maps: # The version 1 register maps are created from this.
+    FNCC:
+      full_name: Field Node Communications Controller
+      prefix: fncc
+      modbus_address: 100
+      pasd_number: 100
+      registers:
+        <<: *common_registers
+        status:
+          tango_attr_name: PasdStatus
+          data_type: str
+          address: 16
+          conversion_function: convert_fncc_status
+        field_node_number:
+          data_type: int
+          address: 17
+    FNPC:
+      full_name: Field Node Peripheral Controller
+      prefix: fndh
+      modbus_address: 101
+      pasd_number: 0
+      number_of_ports: &number_of_fndh_ports 28
+      registers:
+        <<: *common_registers
+        psu48v_voltages:
+          data_type: float
+          address: 16
+          size: 2
+          tango_dim_x: 2
+          conversion_function: scale_volts
+        psu48v_current:
+          data_type: float
+          address: 18
+          conversion_function: scale_48vcurrents
+        psu48v_temperatures:
+          data_type: float
+          address: 19
+          size: 2 
+          tango_dim_x: 2
+          conversion_function: scale_signed_16bit
+        panel_temperature:
+          data_type: float
+          address: 21
+          conversion_function: scale_signed_16bit
+        fncb_temperature:
+          data_type: float
+          address: 22
+          conversion_function: scale_signed_16bit
+        fncb_humidity:
+          data_type: int
+          address: 23
+        status:
+          tango_attr_name: PasdStatus
+          data_type: str
+          address: 24
+          conversion_function: convert_fndh_status
+        led_pattern:
+          data_type: str 
+          address: 25 
+          conversion_function: convert_led_status
+        comms_gateway_temperature:
+          data_type: float 
+          address: 26 
+          conversion_function: scale_signed_16bit
+        power_module_temperature:
+          data_type: float 
+          address: 27 
+          conversion_function: scale_signed_16bit
+        outside_temperature:
+          data_type: float
+          address: 28
+          conversion_function: scale_signed_16bit
+        internal_ambient_temperature:
+          data_type: float 
+          address: 29 
+          conversion_function: scale_signed_16bit
+        port_forcings:
+          data_type: str
+          modbus_class: PasdBusPortAttribute
+          address: 35
+          size: *number_of_fndh_ports
+          tango_dim_x: *number_of_fndh_ports
+          desired_info: TO
+        ports_desired_power_when_online:
+          tango_attr_name: PortsDesiredPowerOnline
+          data_type: DesiredPowerEnum
+          modbus_class: PasdBusPortAttribute
+          address: 35
+          size: *number_of_fndh_ports
+          tango_dim_x: *number_of_fndh_ports
+          desired_info: DSON
+        ports_desired_power_when_offline:
+          tango_attr_name: PortsDesiredPowerOffline
+          data_type: DesiredPowerEnum
+          modbus_class: PasdBusPortAttribute
+          address: 35
+          size: *number_of_fndh_ports
+          tango_dim_x: *number_of_fndh_ports
+          desired_info: DSOFF
+        ports_power_sensed:
+          data_type: bool
+          modbus_class: PasdBusPortAttribute
+          address: 35
+          size: *number_of_fndh_ports
+          tango_dim_x: *number_of_fndh_ports
+          desired_info: PWRSENSE_BREAKER
+        ports_power_control:
+          data_type: bool
+          modbus_class: PasdBusPortAttribute
+          address: 35
+          size: *number_of_fndh_ports
+          tango_dim_x: *number_of_fndh_ports
+          desired_info: POWER
+        psu48v_voltage_1_thresholds:
+          data_type: float
+          address: 1000
+          size: 4 
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   5200
+            high_warning: 5000
+            low_warning:  4500
+            low_alarm:    4000
+        psu48v_voltage_2_thresholds:
+          data_type: float
+          address: 1004
+          size: 4 
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   5200
+            high_warning: 5000
+            low_warning:  4500
+            low_alarm:    4000
+        psu48v_current_thresholds:
+          data_type: float
+          address: 1008
+          size: 4 
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   1800
+            high_warning: 1600
+            low_warning:  -100
+            low_alarm:    -500
+        psu48v_temperature_1_thresholds:
+          data_type: float
+          address: 1012
+          size: 4 
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   10000
+            high_warning: 8500
+            low_warning:  0
+            low_alarm:    -500
+        psu48v_temperature_2_thresholds:
+          data_type: float
+          address: 1016
+          size: 4 
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   10000
+            high_warning: 8500
+            low_warning:  0
+            low_alarm:    -500
+        panel_temperature_thresholds:
+          data_type: float
+          address: 1020
+          size: 4 
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   8500
+            high_warning: 7000
+            low_warning:  0
+            low_alarm:    -500
+        fncb_temperature_thresholds:
+          data_type: float
+          address: 1024
+          size: 4 
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   8500
+            high_warning: 7000
+            low_warning:  0
+            low_alarm:    -500
+        fncb_humidity_thresholds:
+          tango_attr_name: HumidityThresholds
+          data_type: float
+          address: 1028
+          size: 4
+          tango_dim_x: 4
+          writable: true
+          default_thresholds:
+            high_alarm:   8500
+            high_warning: 7000
+            low_warning:  1000
+            low_alarm:    0
+        comms_gateway_temperature_thresholds:
+          data_type: float
+          address: 1032
+          size: 4 
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   8500
+            high_warning: 7000
+            low_warning:  0
+            low_alarm:    -500
+        power_module_temperature_thresholds:
+          data_type: float
+          address: 1036
+          size: 4 
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   8500
+            high_warning: 7000
+            low_warning:  0
+            low_alarm:    -500
+        outside_temperature_thresholds:
+          data_type: float
+          address:  1040
+          size: 4
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   8500
+            high_warning: 7000
+            low_warning:  0
+            low_alarm:    -500
+        internal_ambient_temperature_thresholds:
+          data_type: float
+          address: 1044
+          size: 4 
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   8500
+            high_warning: 7000
+            low_warning:  0
+            low_alarm:    -500
+        warning_flags:
+          data_type: str
+          address: 10129 
+          conversion_function: convert_fndh_alarm_status
+        alarm_flags:
+          data_type: str
+          address: 10131 
+          conversion_function: convert_fndh_alarm_status
+    FNSC:
+      full_name: Field Node SMART Box Controller
+      prefix: smartbox
+      number_of_ports: &number_of_smartbox_ports 12
+      registers:
+        <<: *common_registers
+        input_voltage:
+          data_type: float
+          address: 16
+          conversion_function: scale_volts
+        power_supply_output_voltage:
+          data_type: float
+          address: 17  
+          conversion_function: scale_volts
+        power_supply_temperature:
+          data_type: float
+          address: 18  
+          conversion_function: scale_signed_16bit
+        pcb_temperature:
+          data_type: float
+          address: 19  
+          conversion_function: scale_signed_16bit
+        fem_ambient_temperature:
+          data_type: float
+          address: 20  
+          conversion_function: scale_signed_16bit
+        status:
+          tango_attr_name: PasdStatus
+          data_type: str
+          address: 21
+          conversion_function: convert_smartbox_status
+        led_pattern:
+          data_type: str
+          address: 22
+          conversion_function: convert_led_status
+        fem_case_temperatures:
+          data_type: float
+          address: 23
+          size: 2
+          tango_dim_x: 2
+          conversion_function: scale_signed_16bit        
+        fem_heatsink_temperatures:
+          data_type: float
+          address: 25
+          size: 2
+          tango_dim_x: 2
+          conversion_function: scale_signed_16bit        
+        port_forcings:
+          data_type: str
+          modbus_class: PasdBusPortAttribute
+          address: 35
+          size: *number_of_smartbox_ports
+          tango_dim_x: *number_of_smartbox_ports
+          desired_info: TO
+        port_breakers_tripped:
+          data_type: bool
+          modbus_class: PasdBusPortAttribute
+          address: 35
+          size: *number_of_smartbox_ports
+          tango_dim_x: *number_of_smartbox_ports
+          desired_info: PWRSENSE_BREAKER
+        ports_desired_power_when_online:
+          tango_attr_name: PortsDesiredPowerOnline
+          data_type: DesiredPowerEnum
+          modbus_class: PasdBusPortAttribute
+          address: 35
+          size: *number_of_smartbox_ports
+          tango_dim_x: *number_of_smartbox_ports
+          desired_info: DSON
+        ports_desired_power_when_offline:
+          tango_attr_name: PortsDesiredPowerOffline
+          data_type: DesiredPowerEnum
+          modbus_class: PasdBusPortAttribute
+          address: 35
+          size: *number_of_smartbox_ports
+          tango_dim_x: *number_of_smartbox_ports
+          desired_info: DSOFF
+        ports_power_sensed:
+          data_type: bool
+          modbus_class: PasdBusPortAttribute
+          address: 35
+          size: *number_of_smartbox_ports
+          tango_dim_x: *number_of_smartbox_ports
+          desired_info: POWER
+        ports_current_draw:
+          data_type: float
+          address: 47
+          size: *number_of_smartbox_ports
+          tango_dim_x: *number_of_smartbox_ports
+        input_voltage_thresholds:
+          data_type: float
+          address: 1000
+          size: 4
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   5000
+            high_warning: 4900
+            low_warning:  4500
+            low_alarm:    4000
+        power_supply_output_voltage_thresholds:
+          data_type: float
+          address: 1004
+          size: 4
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   500
+            high_warning: 490
+            low_warning:  440
+            low_alarm:    400
+        power_supply_temperature_thresholds:
+          data_type: float
+          address: 1008
+          size: 4
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   8500
+            high_warning: 7000
+            low_warning:  0
+            low_alarm:    -500
+        pcb_temperature_thresholds:
+          data_type: float
+          address: 1012
+          size: 4
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   8500
+            high_warning: 7000
+            low_warning:  0
+            low_alarm:    -500
+        fem_ambient_temperature_thresholds:
+          data_type: float
+          address: 1016
+          size: 4
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   6000
+            high_warning: 4500
+            low_warning:  0
+            low_alarm:    -500
+        fem_case_temperature_1_thresholds:
+          data_type: float
+          address: 1020
+          size: 4
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   6000
+            high_warning: 4500
+            low_warning:  0
+            low_alarm:    -500
+        fem_case_temperature_2_thresholds:
+          data_type: float
+          address: 1024
+          size: 4
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   6000
+            high_warning: 4500
+            low_warning:  0
+            low_alarm:    -500
+        fem_heatsink_temperature_1_thresholds:
+          data_type: float
+          address: 1028
+          size: 4
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   6000
+            high_warning: 4500
+            low_warning:  0
+            low_alarm:    -500
+        fem_heatsink_temperature_2_thresholds:
+          data_type: float
+          address: 1032
+          size: 4
+          tango_dim_x: 4
+          conversion_function: scale_signed_16bit
+          writable: true
+          default_thresholds:
+            high_alarm:   6000
+            high_warning: 4500
+            low_warning:  0
+            low_alarm:    -500
+        fem1_current_trip_threshold:
+          data_type: int
+          address: 1068
+          writable: true
+          default_value: 496
+        fem2_current_trip_threshold:
+          data_type: int
+          address: 1069
+          writable: true
+          default_value: 496
+        fem3_current_trip_threshold:
+          data_type: int
+          address: 1070
+          writable: true
+          default_value: 496
+        fem4_current_trip_threshold:
+          data_type: int
+          address: 1071
+          writable: true
+          default_value: 496
+        fem5_current_trip_threshold:
+          data_type: int
+          address: 1072
+          writable: true
+          default_value: 496
+        fem6_current_trip_threshold:
+          data_type: int
+          address: 1073
+          writable: true
+          default_value: 496
+        fem7_current_trip_threshold:
+          data_type: int
+          address: 1074
+          writable: true
+          default_value: 496
+        fem8_current_trip_threshold:
+          data_type: int
+          address: 1075
+          writable: true
+          default_value: 496
+        fem9_current_trip_threshold:
+          data_type: int
+          address: 1076
+          writable: true
+          default_value: 496
+        fem10_current_trip_threshold:
+          data_type: int
+          address: 1077
+          writable: true
+          default_value: 496
+        fem11_current_trip_threshold:
+          data_type: int
+          address: 1078
+          writable: true
+          default_value: 496
+        fem12_current_trip_threshold:
+          data_type: int
+          address: 1079
+          writable: true
+          default_value: 496
+        warning_flags:
+          data_type: str
+          address: 10129
+          conversion_function: convert_smartbox_alarm_status        
+        alarm_flags:
+          data_type: str
+          address: 10131
+          conversion_function: convert_smartbox_alarm_status        
+# Subsequent modbus register map versions only need to contain changes to merge with the base, for example:
+  # register_map_revisions:
+  #   v2: # This should be an integer that matches the SYS_MBRV register value of the firmware.
+  #     FNPC:
+  #       registers:
+  #         fncb_humidity:
+  #           address: 23
+  #           data_type: float
+  #           conversion_function: scale_signed_16bit
