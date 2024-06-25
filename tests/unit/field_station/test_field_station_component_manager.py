@@ -539,9 +539,9 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        field_station_component_manager._antenna_mask[antenna_id] = (
-            antenna_masking_state
-        )
+        field_station_component_manager._antenna_mask[
+            antenna_id
+        ] = antenna_masking_state
         assert field_station_component_manager._antenna_mapping is not None
         smartbox_id = field_station_component_manager._antenna_mapping[antenna_id][0]
         smartbox_port = field_station_component_manager._antenna_mapping[antenna_id][1]
@@ -592,7 +592,8 @@ class TestFieldStationComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.REJECTED,
-                    "Antenna number sb18-01 is masked, call with ignore_mask=True to ignore",
+                    "Antenna number sb18-01 is masked, "
+                    "call with ignore_mask=True to ignore",
                 ),
             ),
             (
@@ -645,9 +646,9 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        field_station_component_manager._antenna_mask[antenna_id] = (
-            antenna_masking_state
-        )
+        field_station_component_manager._antenna_mask[
+            antenna_id
+        ] = antenna_masking_state
         assert field_station_component_manager._antenna_mapping is not None
         smartbox_id = field_station_component_manager._antenna_mapping[antenna_id][0]
         smartbox_port = field_station_component_manager._antenna_mapping[antenna_id][1]
@@ -809,9 +810,9 @@ class TestFieldStationComponentManager:
         if antenna_id == 0:
             field_station_component_manager._all_masked = True
         else:
-            field_station_component_manager._antenna_mask[antenna_id] = (
-                antenna_masking_state
-            )
+            field_station_component_manager._antenna_mask[
+                antenna_id
+            ] = antenna_masking_state
 
         assert (
             getattr(field_station_component_manager, component_manager_command)(
@@ -897,11 +898,7 @@ class TestFieldStationComponentManager:
                 if smartbox_no == "sb21":
                     # The last smartbox only has 3 antenna
                     desired_smartbox_port_powers = [expected_state] * 3 + [None] * 9
-                if (
-                    smartbox_no == "sb22"
-                    or smartbox_no == "sb23"
-                    or smartbox_no == "sb24"
-                ):
+                if smartbox_no in ["sb22", "sb23", "sb24"]:
                     # The configuration did not put any antenna on the
                     # last 3 smartbox
                     desired_smartbox_port_powers = [

@@ -35,6 +35,9 @@
                         "smartbox": {
                             "type": "string"
                         },
+                        "smartbox_port": {
+                            "type": "integer"
+                        },
                         "masked": {
                             "type": "boolean"
                         },
