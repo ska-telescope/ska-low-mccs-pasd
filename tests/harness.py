@@ -83,7 +83,7 @@ def get_smartbox_name(smartbox_id: int, station_label: str | None = None) -> str
 
     :return: the smartbox's Tango device name
     """
-    slug = f"{station_label or DEFAULT_STATION_LABEL}-sb{smartbox_id:02}"
+    slug = f"{station_label or DEFAULT_STATION_LABEL}-sb{smartbox_id:02d}"
     return f"low-mccs/smartbox/{slug}"
 
 
@@ -165,7 +165,7 @@ class PasdTangoTestHarnessContext:
         """
         Get a smartbox Tango device by its ID number.
 
-        :param smartbox_id: the ID number of the smartbox.
+        :param smartbox_id: the ID of the smartbox.
 
         :returns: a proxy to the smartbox Tango device.
         """
@@ -352,7 +352,7 @@ class PasdTangoTestHarness:
 
     def set_field_station_device(
         self: PasdTangoTestHarness,
-        smartbox_numbers: list[int] | None = None,
+        smartbox_numbers: list[str] | None = None,
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsFieldStation",
     ) -> None:
@@ -368,12 +368,14 @@ class PasdTangoTestHarness:
             for example with a patched subclass.
         """
         if smartbox_numbers is None:
-            smartbox_numbers = list(range(1, MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1))
+            smartbox_numbers = [""] * MAX_NUMBER_OF_SMARTBOXES_PER_STATION
+            for i in range(MAX_NUMBER_OF_SMARTBOXES_PER_STATION):
+                smartbox_numbers[i] = f"sb{(i+1):02d}"
 
         def port(context: dict[str, Any]) -> int:
             return context["configuration_manager"][1]
 
-        smartbox_names = [get_smartbox_name(number) for number in smartbox_numbers]
+        smartbox_names = [get_smartbox_name(number) for number in range(1, 25)]
 
         self._tango_test_harness.add_device(
             get_field_station_name(self._station_label),
