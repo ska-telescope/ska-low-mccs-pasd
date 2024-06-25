@@ -333,7 +333,7 @@ def off_smartbox_device_fixture(
 @pytest.fixture(name="smartbox_proxys")
 def smartbox_proxys_fixture(
     test_context: PasdTangoTestHarnessContext,
-) -> list[tango.DeviceProxy]:
+) -> dict[str, tango.DeviceProxy]:
     """
     Fixture that returns a list of smartbox Tango devices.
 
@@ -341,7 +341,7 @@ def smartbox_proxys_fixture(
 
     :return: the list of smartbox Tango devices.
     """
-    smartbox_devices = []
+    smartbox_devices = {}
     for i in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
-        smartbox_devices.append(test_context.get_smartbox_device(i))
+        smartbox_devices[f"sb{i:02d}"] = test_context.get_smartbox_device(i)
     return smartbox_devices

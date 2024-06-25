@@ -243,11 +243,14 @@ def functional_test_context_fixture(  # pylint: disable=too-many-arguments
                 logging_level=int(LoggingLevel.DEBUG),
             )
 
+            smart_box_ids_str: list[str] = []
             for smartbox_id in smartbox_ids:
                 harness.add_smartbox_device(smartbox_id=smartbox_id)
+                smart_box_ids_str[smartbox_id] = str(smartbox_id)
             harness.set_fndh_device()
             harness.set_fncc_device()
-            harness.set_field_station_device(smartbox_numbers=smartbox_ids)
+
+            harness.set_field_station_device(smartbox_numbers=smart_box_ids_str)
 
     with harness as context:
         yield context

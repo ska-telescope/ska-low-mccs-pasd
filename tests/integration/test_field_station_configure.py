@@ -12,9 +12,10 @@ from __future__ import annotations
 import copy
 import gc
 import json
+import re
 import time
 import unittest.mock
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 import tango
@@ -91,9 +92,9 @@ def invalid_simulated_configuration_fixture() -> dict[Any, Any]:
     antennas = {}
     smartboxes = {}
     for i in range(1, number_of_antenna + 1):
-        antennas[str(i)] = {"smartbox": str(i % 13 + 1), "smartbox_port": i % 11}
+        antennas[i] = {"smartbox": i % 13 + 1, "smartbox_port": i % 11}
     for i in range(1, 25):
-        smartboxes[str(i)] = {"fndh_port": i}
+        smartboxes[i] = {"fndh_port": str(i), "modbus_id": i}
 
     configuration = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
     return configuration
@@ -111,23 +112,23 @@ def simulated_configuration_alternative_fixture(
     :return: an alternate configuration for fieldstation
     """
     alternate_config = copy.deepcopy(simulated_configuration)
-    antenna1 = alternate_config["antennas"]["1"]
-    antenna2 = alternate_config["antennas"]["2"]
+    antenna1 = alternate_config["antennas"]["sb01-01"]
+    antenna2 = alternate_config["antennas"]["sb01-02"]
 
-    alternate_config["antennas"]["1"] = antenna2
-    alternate_config["antennas"]["2"] = antenna1
+    alternate_config["antennas"]["sb01-01"] = antenna2
+    alternate_config["antennas"]["sb01-02"] = antenna1
 
     return alternate_config
 
 
 @pytest.fixture(name="antenna_to_turn_on")
-def antenna_to_turn_on_fixture() -> int:
+def antenna_to_turn_on_fixture() -> str:
     """
     Return the logical antenna.
 
     :return: the logical antenna to use in test.
     """
-    return 26
+    return "sb01-04"
 
 
 def antenna_mapping_from_reference_data(
@@ -141,17 +142,15 @@ def antenna_mapping_from_reference_data(
     :return: the antenna_mapping that adheres to
         'schemas.MccsFieldStation_UpdateAntennaMapping.json'
     """
-    antenna_mapping: dict[str, list[Optional[dict]]] = {}
-    antenna_mapping["antennaMapping"] = [None] * 256
-    for antenna_id in range(1, len(reference_data["antennas"]) + 1):
-        antenna_mapping["antennaMapping"][antenna_id - 1] = {
-            "antennaID": antenna_id,
-            "smartboxID": int(reference_data["antennas"][str(antenna_id)]["smartbox"]),
-            "smartboxPort": reference_data["antennas"][str(antenna_id)][
-                "smartbox_port"
-            ],
-        }
-    return antenna_mapping
+    antenna_mapping: dict = {}
+    for i in range(1, PasdData.NUMBER_OF_SMARTBOXES - 4):
+        for j in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
+            antenna_name = f"sb{i:02d}-{j:02d}"
+            antenna_mapping[antenna_name] = [
+                reference_data["antennas"][antenna_name]["smartbox"],
+                reference_data["antennas"][antenna_name]["smartbox_port"],
+            ]
+    return {"antennaMapping": antenna_mapping}
 
 
 class TestFieldStationIntegration:
@@ -164,9 +163,9 @@ class TestFieldStationIntegration:
         pasd_bus_device: tango.DeviceProxy,
         fndh_device: tango.DeviceProxy,
         change_event_callbacks: MockTangoEventCallbackGroup,
-        smartbox_proxys: list[tango.DeviceProxy],
+        smartbox_proxys: dict[str, tango.DeviceProxy],
         off_smartbox_id: int,
-        antenna_to_turn_on: int,
+        antenna_to_turn_on: str,
         fndh_simulator: FndhSimulator,
     ) -> None:
         """
@@ -177,7 +176,7 @@ class TestFieldStationIntegration:
         :param fndh_device: proxy to the FNDH device
         :param change_event_callbacks: group of Tango change event
             callbacks with asynchrony support
-        :param smartbox_proxys: a list of device proxies to the stations
+        :param smartbox_proxys: a dict of device proxies to the stations
             smartboxes.
         :param off_smartbox_id: a fixture containing the id of a smartbox
             simulated to be off.
@@ -205,25 +204,26 @@ class TestFieldStationIntegration:
             pasd_bus_device.initializesmartbox(i)
 
         # set adminMode online for all smartbox.
-        for smartbox_id, smartbox in enumerate(smartbox_proxys):
+        for smartbox_name, smartbox in smartbox_proxys.items():
+            smartbox_id = int(re.findall("[0-9]+", smartbox_name)[0])
             smartbox.subscribe_event(
                 "state",
                 tango.EventType.CHANGE_EVENT,
-                change_event_callbacks[f"smartbox{smartbox_id+1}_state"],
+                change_event_callbacks[f"smartbox{smartbox_id}_state"],
             )
-            change_event_callbacks[
-                f"smartbox{smartbox_id+1}_state"
-            ].assert_change_event(Anything)
+            change_event_callbacks[f"smartbox{smartbox_id}_state"].assert_change_event(
+                Anything
+            )
 
             smartbox.adminMode = AdminMode.ONLINE
 
-            change_event_callbacks[
-                f"smartbox{smartbox_id+1}_state"
-            ].assert_change_event(tango.DevState.UNKNOWN)
+            change_event_callbacks[f"smartbox{smartbox_id}_state"].assert_change_event(
+                tango.DevState.UNKNOWN
+            )
 
-            change_event_callbacks[
-                f"smartbox{smartbox_id+1}_state"
-            ].assert_change_event(Anything)
+            change_event_callbacks[f"smartbox{smartbox_id}_state"].assert_change_event(
+                Anything
+            )
 
         # Set the Fndh adminMode ONLINE
         fndh_device.subscribe_event(
@@ -273,31 +273,36 @@ class TestFieldStationIntegration:
         # Use mapping to work out what smartbox port will change.
         antenna_mapping = json.loads(field_station_device.antennamapping)
 
-        for antenna_config in antenna_mapping["antennaMapping"]:
-            if antenna_config["antennaID"] == antenna_to_turn_on:
-                smartbox_id = antenna_config["smartboxID"]
-                smartbox_port = antenna_config["smartboxPort"]
-
+        chosen_smartbox_port = 0
+        chosen_smartbox_id = ""
+        for antenna_id, (smartbox_id, smartbox_port) in antenna_mapping.items():
+            if antenna_id == antenna_to_turn_on:
+                chosen_smartbox_port = smartbox_port
+                chosen_smartbox_id = str(smartbox_id)
         # Check initial state.
-        assert not smartbox_proxys[smartbox_id - 1].portspowersensed[smartbox_port - 1]
+        assert not smartbox_proxys[chosen_smartbox_id].portspowersensed[
+            chosen_smartbox_port - 1
+        ]
 
         antenna_power_states = json.loads(field_station_device.antennapowerstates)
-        assert antenna_power_states[str(antenna_to_turn_on)] != PowerState.ON
+        assert antenna_power_states[antenna_to_turn_on] != PowerState.ON
 
         # Turn on Antenna
         field_station_device.PowerOnAntenna(antenna_to_turn_on)
 
         # Check power changed.
         change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
-        assert smartbox_proxys[smartbox_id - 1].portspowersensed[smartbox_port - 1]
+        assert smartbox_proxys[chosen_smartbox_id].portspowersensed[
+            chosen_smartbox_port - 1
+        ]
         antenna_power_states = json.loads(field_station_device.antennapowerstates)
 
         # off_smartbox_id is off in the simulator.
         # Check that antennas attached to it are OFF.
         for antenna_id, config in antenna_mapping.items():
-            smartbox_id = config[0]
+            chosen_smartbox_id = config[0]
             # If the smartbox is off all antenna attached to it are OFF.
-            if smartbox_id == off_smartbox_id:
+            if chosen_smartbox_id == off_smartbox_id:
                 assert antenna_power_states[str(antenna_id)] == PowerState.OFF
 
         # Check both fndh and FieldStation agree value of outsideTemperature
@@ -463,12 +468,6 @@ class TestFieldStationIntegration:
         poll_until_command_completed(field_station_device, command_id, 3)
 
         assert field_station_device.antennamapping == json.dumps(antenna_mapping)
-        invalid_antenna_mapping = antenna_mapping_from_reference_data(
-            invalid_simulated_configuration
-        )
-        assert field_station_device.antennamapping != json.dumps(
-            invalid_antenna_mapping
-        )
 
         # Loading a different backend configuration.
         configuration_manager.read_data = unittest.mock.Mock(

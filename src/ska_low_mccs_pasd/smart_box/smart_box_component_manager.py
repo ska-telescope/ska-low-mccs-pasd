@@ -349,21 +349,16 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 "Check FieldStation `smartboxMapping`."
             )
             return
-        for smartbox_config in mapping["smartboxMapping"]:
-            if "smartboxID" in smartbox_config:
-                if smartbox_config["smartboxID"] == self._smartbox_nr:
-                    fndh_port = smartbox_config["fndhPort"]
-                    if 0 < fndh_port < PasdData.NUMBER_OF_FNDH_PORTS + 1:
-                        self.update_fndh_port(fndh_port)
-                        self.logger.info(
-                            f"Smartbox has been moved to fndh port {fndh_port}"
-                        )
-                        return
+        for smartbox_id, fndh_port in mapping["smartboxMapping"].items():
+            if int(smartbox_id) == self._smartbox_nr:
+
+                if 0 < fndh_port < PasdData.NUMBER_OF_FNDH_PORTS + 1:
+                    self.update_fndh_port(fndh_port)
                     self.logger.error(
-                        f"Unable to put smartbox on port {fndh_port},"
-                        "Out of range 0 - 28"
+                        f"Smartbox has been moved to fndh port {fndh_port}"
                     )
                     return
+                return
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """Establish communication."""
