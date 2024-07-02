@@ -780,18 +780,7 @@ class TestSmartBoxPasdBusIntegration:
             "FemCaseTemperature2Thresholds",
             "FemHeatsinkTemperature1Thresholds",
             "FemHeatsinkTemperature2Thresholds",
-            "Fem1CurrentTripThreshold",
-            "Fem2CurrentTripThreshold",
-            "Fem3CurrentTripThreshold",
-            "Fem4CurrentTripThreshold",
-            "Fem5CurrentTripThreshold",
-            "Fem6CurrentTripThreshold",
-            "Fem7CurrentTripThreshold",
-            "Fem8CurrentTripThreshold",
-            "Fem9CurrentTripThreshold",
-            "Fem10CurrentTripThreshold",
-            "Fem11CurrentTripThreshold",
-            "Fem12CurrentTripThreshold",
+            "FemCurrentTripThresholds",
             "WarningFlags",
             "AlarmFlags",
         ]:
@@ -918,52 +907,9 @@ class TestSmartBoxPasdBusIntegration:
             smartbox_simulator.fem_heatsink_temperature_2_thresholds
         )
         assert (
-            smartbox_device.Fem1CurrentTripThreshold
-            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        )
-        assert (
-            smartbox_device.Fem2CurrentTripThreshold
-            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        )
-        assert (
-            smartbox_device.Fem3CurrentTripThreshold
-            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        )
-        assert (
-            smartbox_device.Fem4CurrentTripThreshold
-            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        )
-        assert (
-            smartbox_device.Fem5CurrentTripThreshold
-            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        )
-        assert (
-            smartbox_device.Fem6CurrentTripThreshold
-            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        )
-        assert (
-            smartbox_device.Fem7CurrentTripThreshold
-            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        )
-        assert (
-            smartbox_device.Fem8CurrentTripThreshold
-            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        )
-        assert (
-            smartbox_device.Fem9CurrentTripThreshold
-            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        )
-        assert (
-            smartbox_device.Fem10CurrentTripThreshold
-            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        )
-        assert (
-            smartbox_device.Fem11CurrentTripThreshold
-            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        )
-        assert (
-            smartbox_device.Fem12CurrentTripThreshold
-            == SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
+            list(smartbox_device.FemCurrentTripThresholds)
+            == [SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD]
+            * SmartboxSimulator.NUMBER_OF_PORTS
         )
         assert smartbox_device.WarningFlags == SmartboxAlarmFlags.NONE.name
         assert smartbox_device.AlarmFlags == SmartboxAlarmFlags.NONE.name

@@ -1345,19 +1345,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self.fem_heatsink_temperatures_thresholds = (
             self.fem_heatsink_temperature_1_thresholds
         )
-        # TODO: Make each current trip threshold separate R/W property?
-        self.fem1_current_trip_threshold = self.ports_current_trip_threshold
-        self.fem2_current_trip_threshold = self.ports_current_trip_threshold
-        self.fem3_current_trip_threshold = self.ports_current_trip_threshold
-        self.fem4_current_trip_threshold = self.ports_current_trip_threshold
-        self.fem5_current_trip_threshold = self.ports_current_trip_threshold
-        self.fem6_current_trip_threshold = self.ports_current_trip_threshold
-        self.fem7_current_trip_threshold = self.ports_current_trip_threshold
-        self.fem8_current_trip_threshold = self.ports_current_trip_threshold
-        self.fem9_current_trip_threshold = self.ports_current_trip_threshold
-        self.fem10_current_trip_threshold = self.ports_current_trip_threshold
-        self.fem11_current_trip_threshold = self.ports_current_trip_threshold
-        self.fem12_current_trip_threshold = self.ports_current_trip_threshold
+        self.fem_current_trip_thresholds = self.ports_current_trip_thresholds
 
     @property
     def sys_address(self: SmartboxSimulator) -> int:
@@ -1401,15 +1389,15 @@ class SmartboxSimulator(PasdHardwareSimulator):
         ]
 
     @property
-    def ports_current_trip_threshold(
+    def ports_current_trip_thresholds(
         self: SmartboxSimulator,
-    ) -> int:
+    ) -> list[int]:
         """
         Return the current trip threshold for each smartbox port.
 
         :return: the current trip threshold for each smartbox port.
         """
-        return self.DEFAULT_PORT_CURRENT_THRESHOLD
+        return [self.DEFAULT_PORT_CURRENT_THRESHOLD] * self.NUMBER_OF_PORTS
 
     @property
     def modbus_register_map_revision(self: SmartboxSimulator) -> int:

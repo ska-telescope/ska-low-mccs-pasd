@@ -350,41 +350,8 @@ class TestPasdBusComponentManager:
             # smartbox ports current trip thresholds
             mock_callbacks.assert_call(
                 f"pasd_device_state_for_smartbox{smartbox_number}",
-                fem1_current_trip_threshold=(
-                    smartbox_simulator.fem1_current_trip_threshold
-                ),
-                fem2_current_trip_threshold=(
-                    smartbox_simulator.fem2_current_trip_threshold
-                ),
-                fem3_current_trip_threshold=(
-                    smartbox_simulator.fem3_current_trip_threshold
-                ),
-                fem4_current_trip_threshold=(
-                    smartbox_simulator.fem4_current_trip_threshold
-                ),
-                fem5_current_trip_threshold=(
-                    smartbox_simulator.fem5_current_trip_threshold
-                ),
-                fem6_current_trip_threshold=(
-                    smartbox_simulator.fem6_current_trip_threshold
-                ),
-                fem7_current_trip_threshold=(
-                    smartbox_simulator.fem7_current_trip_threshold
-                ),
-                fem8_current_trip_threshold=(
-                    smartbox_simulator.fem8_current_trip_threshold
-                ),
-                fem9_current_trip_threshold=(
-                    smartbox_simulator.fem9_current_trip_threshold
-                ),
-                fem10_current_trip_threshold=(
-                    smartbox_simulator.fem10_current_trip_threshold
-                ),
-                fem11_current_trip_threshold=(
-                    smartbox_simulator.fem11_current_trip_threshold
-                ),
-                fem12_current_trip_threshold=(
-                    smartbox_simulator.fem12_current_trip_threshold
+                fem_current_trip_thresholds=(
+                    smartbox_simulator.fem_current_trip_thresholds
                 ),
             )
 
