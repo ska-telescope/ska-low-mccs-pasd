@@ -472,52 +472,8 @@ def test_communication(  # pylint: disable=too-many-statements
         smartbox_simulator.fem_heatsink_temperature_2_thresholds
     )
     assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem1CurrentTripThreshold")
-        == smartbox_simulator.fem1_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem2CurrentTripThreshold")
-        == smartbox_simulator.fem2_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem3CurrentTripThreshold")
-        == smartbox_simulator.fem3_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem4CurrentTripThreshold")
-        == smartbox_simulator.fem4_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem5CurrentTripThreshold")
-        == smartbox_simulator.fem5_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem6CurrentTripThreshold")
-        == smartbox_simulator.fem6_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem7CurrentTripThreshold")
-        == smartbox_simulator.fem7_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem8CurrentTripThreshold")
-        == smartbox_simulator.fem8_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem9CurrentTripThreshold")
-        == smartbox_simulator.fem9_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem10CurrentTripThreshold")
-        == smartbox_simulator.fem10_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem11CurrentTripThreshold")
-        == smartbox_simulator.fem11_current_trip_threshold
-    )
-    assert (
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}Fem12CurrentTripThreshold")
-        == smartbox_simulator.fem12_current_trip_threshold
+        list(getattr(pasd_bus_device, f"smartbox{smartbox_id}FemCurrentTripThresholds"))
+        == smartbox_simulator.fem_current_trip_thresholds
     )
     assert (
         getattr(pasd_bus_device, f"smartbox{smartbox_id}WarningFlags")

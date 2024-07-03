@@ -5,7 +5,7 @@ SMART Box device
 The SMART Box Tango devices reflect the state of the individual FNSC (Field Node SMART Box
 Controller) devices, including FEM port power status. The following attributes are exposed;
 note all attributes are read-only with the exception of the alarm and warning thresholds,
-and all temperatures are in degrees Celsius:
+and FEM current trip thresholds. All temperatures are in degrees Celsius.
 
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | Tango attribute name                 | Register    | Register description                                                     |
@@ -74,29 +74,7 @@ and all temperatures are in degrees Celsius:
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | FemHeatsinkTemperature2Thresholds    | 1033-1036   | High alarm, high warning, low warning and low alarm threshold values     |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| Fem1CurrentTripThreshold             | 1069        | FEM1 current trip threshold (mA)                                         |
-+--------------------------------------+-------------+--------------------------------------------------------------------------+
-| Fem2CurrentTripThreshold             | 1070        | FEM2 current trip threshold (mA)                                         |
-+--------------------------------------+-------------+--------------------------------------------------------------------------+
-| Fem3CurrentTripThreshold             | 1071        | FEM3 current trip threshold (mA)                                         |
-+--------------------------------------+-------------+--------------------------------------------------------------------------+
-| Fem4CurrentTripThreshold             | 1072        | FEM4 current trip threshold (mA)                                         |
-+--------------------------------------+-------------+--------------------------------------------------------------------------+
-| Fem5CurrentTripThreshold             | 1073        | FEM5 current trip threshold (mA)                                         |
-+--------------------------------------+-------------+--------------------------------------------------------------------------+
-| Fem6CurrentTripThreshold             | 1074        | FEM6 current trip threshold (mA)                                         |
-+--------------------------------------+-------------+--------------------------------------------------------------------------+
-| Fem7CurrentTripThreshold             | 1075        | FEM7 current trip threshold (mA)                                         |
-+--------------------------------------+-------------+--------------------------------------------------------------------------+
-| Fem8CurrentTripThreshold             | 1076        | FEM8 current trip threshold (mA)                                         |
-+--------------------------------------+-------------+--------------------------------------------------------------------------+
-| Fem9CurrentTripThreshold             | 1077        | FEM9 current trip threshold (mA)                                         |
-+--------------------------------------+-------------+--------------------------------------------------------------------------+
-| Fem10CurrentTripThreshold            | 1078        | FEM10 current trip threshold (mA)                                        |
-+--------------------------------------+-------------+--------------------------------------------------------------------------+
-| Fem11CurrentTripThreshold            | 1079        | FEM11 current trip threshold (mA)                                        |
-+--------------------------------------+-------------+--------------------------------------------------------------------------+
-| Fem12CurrentTripThreshold            | 1080        | FEM12 current trip threshold (mA)                                        |
+| FemCurrentTripThresholds             | 1069-1080   | 12 FEM current trip thresholds (mA)                                      |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | WarningFlags                         | 10130       | List of sensors outside their warning thresholds                         |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
