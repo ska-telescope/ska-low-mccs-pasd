@@ -1345,7 +1345,6 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self.fem_heatsink_temperatures_thresholds = (
             self.fem_heatsink_temperature_1_thresholds
         )
-        self.fem_current_trip_thresholds = self.ports_current_trip_thresholds
 
     @property
     def sys_address(self: SmartboxSimulator) -> int:
@@ -1389,7 +1388,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         ]
 
     @property
-    def ports_current_trip_thresholds(
+    def fem_current_trip_thresholds(
         self: SmartboxSimulator,
     ) -> list[int]:
         """
