@@ -257,37 +257,9 @@ class MccsFieldStation(SKABaseDevice):
 
         if "antenna_powers" in kwargs:
             self.logger.debug("antenna power state changed")
-            component_state_on = True
-            # Antenna powers have changed delete json and reload.
-            # pylint: disable=attribute-defined-outside-init
-            self._antenna_power_json = None
-            antenna_powers = kwargs["antenna_powers"]  # dict[str, PowerState]
-            for antenna_id in self.component_manager._antenna_mapping:
-                antenna_number = int(antenna_id)
-                antenna_masks = self.component_manager._antenna_mask
-
-                if not antenna_masks[antenna_number]:
-                    if antenna_powers[antenna_id] != PowerState.ON:
-                        component_state_on = False
-
-            if self._component_state_on != component_state_on:
-                self._component_state_on = component_state_on
-                if component_state_on:
-                    self.logger.info(
-                        "All unmasked Antenna are `ON`,"
-                        "FieldStation transitioning to `ON` state ...."
-                    )
-                    self._component_state_callback(power=PowerState.ON)
-                    self._health_model.update_state(power=PowerState.ON, fault=fault)
-                else:
-                    self.logger.info(
-                        "Not all unmasked Antenna are `ON`,"
-                        "FieldStation transitioning to `OFF` state ...."
-                    )
-                    self._component_state_callback(power=PowerState.OFF)
-                    self._health_model.update_state(power=PowerState.OFF, fault=fault)
-
-            self.push_change_event("antennaPowerStates", json.dumps(antenna_powers))
+            self.push_change_event(
+                "antennaPowerStates", json.dumps(kwargs["antenna_powers"])
+            )
 
         super()._component_state_changed(fault=fault, power=power)
 

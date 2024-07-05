@@ -22,6 +22,7 @@ from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
 
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
+from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .smart_box_component_manager import SmartBoxComponentManager
@@ -80,6 +81,7 @@ class MccsSmartBox(SKABaseDevice):
         # Initialise with unknown.
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: SmartBoxHealthModel
+        self.component_manager: SmartBoxComponentManager
 
     def init_device(self: MccsSmartBox) -> None:
         """
@@ -414,16 +416,21 @@ class MccsSmartBox(SKABaseDevice):
                 attr_value = self._smartbox_state[attr_name].value
             else:
                 self._smartbox_state[attr_name].value = attr_value
+            if "portspowersensed" in attr_name.lower():
+                self.component_manager._on_smartbox_ports_power_changed(
+                    attr_name, attr_value, attr_quality
+                )
             self._smartbox_state[attr_name].quality = attr_quality
             self._smartbox_state[attr_name].timestamp = timestamp
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 
-        except AssertionError:
+        except AssertionError as e:
             self.logger.debug(
                 f"""The attribute {attr_name} pushed from MccsPasdBus
                 device does not exist in MccsSmartBox"""
             )
+            self.logger.error(repr(e))
 
     @attribute(dtype="DevString", label="FndhPort")
     def fndhPort(self: MccsSmartBox) -> str:
@@ -433,6 +440,33 @@ class MccsSmartBox(SKABaseDevice):
         :return: the fndh port that the smartbox is attached to.
         """
         return json.dumps(self.component_manager._fndh_port)
+
+    @attribute(dtype=(bool,), label="PortMask", max_dim_x=12)
+    def portMask(self: MccsSmartBox) -> list[bool]:
+        """
+        Return the port mask for this smartbox's ports.
+
+        :return: the port mask for this smartbox's ports.
+        """
+        return self.component_manager._port_mask
+
+    @portMask.write  # type: ignore[no-redef]
+    def portMask(self: MccsSmartBox, port_mask: list[bool]) -> None:
+        """
+        Set the port mask for this smartbox's ports.
+
+        :param port_mask: the port mask, it must be the correct length (12).
+
+        :raises ValueError: if the length of supplied port mask is incorrect.
+        """
+        if not len(port_mask) == PasdData.NUMBER_OF_SMARTBOX_PORTS:
+            self.logger.error(
+                f"Can't set port mask with wrong number of values: {len(port_mask)}."
+            )
+            raise ValueError(
+                f"Can't set port mask with wrong number of values: {len(port_mask)}."
+            )
+        self.component_manager._port_mask = port_mask
 
 
 # ----------
