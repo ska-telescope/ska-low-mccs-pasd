@@ -5,6 +5,7 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
+# pylint: disable=too-many-lines
 """This module implements the component management for smartbox."""
 from __future__ import annotations
 
@@ -483,74 +484,74 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self._update_component_state(power=PowerState.UNKNOWN)
             return
 
-        smartbox_power = self._fndh_port_powers[self._fndh_port - 1]
-
-        # If the FNDH port is OFF, the Smartbox is OFF
-        if smartbox_power == PowerState.OFF:
-            if self._power_state != PowerState.OFF:
-                self.logger.info("Setting Smartbox to OFF as its FNDH port is OFF.")
-                self._power_state = PowerState.OFF
-                self._attribute_change_callback(
-                    "portspowersensed",
-                    [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-                    timestamp,
-                    tango.AttrQuality.ATTR_VALID,
-                )
-
-        # If the FNDH port is ON, but all smartbox the ports are OFF,
-        # and all the ports aren't masked, the smartbox is STANDBY.
-        # However if the ports are all masked, and the last command given was
-        # Standby(), go to STANDBY.
-        elif (
-            smartbox_power == PowerState.ON
-            and all(power == PowerState.OFF for power in self._smartbox_port_powers)
-            and (all(not masked for masked in self._port_mask) or self._desire_standby)
-        ):
-            if self._power_state != PowerState.STANDBY:
-                self.logger.info(
-                    "Setting Smartbox to STANDBY as its FNDH port is ON. "
-                    "And all its ports are OFF, while they aren't all masked."
-                )
-                self._power_state = PowerState.STANDBY
-
-        # If the FNDH port is ON, and (any of the smartbox ports are ON,
-        # or all smartbox ports are OFF, but they are all masked),
-        # the Smartbox is ON,
-        elif smartbox_power == PowerState.ON and (
-            any(power == PowerState.ON for power in self._smartbox_port_powers)
-            or all(masked for masked in self._port_mask)
-        ):
-            if self._power_state != PowerState.ON:
-                self.logger.info(
-                    "Setting Smartbox to ON as its FNDH port is ON. "
-                    "And at least one of its ports is ON, "
-                    "or all of its ports are masked."
-                )
-                self._power_state = PowerState.ON
-                try:
-                    port_power = getattr(
-                        self._pasd_bus_proxy._proxy,
-                        f"smartbox{self._smartbox_nr}portspowersensed",
-                    )
+        match self._fndh_port_powers[self._fndh_port - 1]:
+            # If the FNDH port is OFF, the Smartbox is OFF
+            case PowerState.OFF:
+                if self._power_state != PowerState.OFF:
+                    self.logger.info("Setting Smartbox to OFF as its FNDH port is OFF.")
+                    self._power_state = PowerState.OFF
                     self._attribute_change_callback(
                         "portspowersensed",
-                        port_power,
+                        [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
                         timestamp,
                         tango.AttrQuality.ATTR_VALID,
                     )
-                except Exception:  # pylint: disable=broad-except
-                    self.logger.warning(
-                        "Unable to read smartbox port powers"
-                        "May be attempting read before attribute polled."
-                        "port powers will be updated when polled."
-                    )
-                for port in self.ports:
-                    if port.desire_on:
-                        port.turn_on()
 
-        else:
-            self.logger.error("No PowerState rules matched, going UNKNOWN")
-            self._power_state = PowerState.UNKNOWN
+            case PowerState.ON:
+                # If the FNDH port is ON, but all smartbox the ports are OFF,
+                # and all the ports aren't masked, the smartbox is STANDBY.
+                # However if the ports are all masked, and the last command given was
+                # Standby(), go to STANDBY.
+                if all(
+                    power == PowerState.OFF for power in self._smartbox_port_powers
+                ) and (
+                    all(not masked for masked in self._port_mask)
+                    or self._desire_standby
+                ):
+                    if self._power_state != PowerState.STANDBY:
+                        self.logger.info(
+                            "Setting Smartbox to STANDBY as its FNDH port is ON. "
+                            "And all its ports are OFF, while they aren't all masked."
+                        )
+                        self._power_state = PowerState.STANDBY
+
+                # If the FNDH port is ON, and (any of the smartbox ports are ON,
+                # or all smartbox ports are OFF, but they are all masked),
+                # the Smartbox is ON,
+                elif any(
+                    power == PowerState.ON for power in self._smartbox_port_powers
+                ) or all(masked for masked in self._port_mask):
+                    if self._power_state != PowerState.ON:
+                        self.logger.info(
+                            "Setting Smartbox to ON as its FNDH port is ON. "
+                            "And at least one of its ports is ON, "
+                            "or all of its ports are masked."
+                        )
+                        self._power_state = PowerState.ON
+                        try:
+                            port_power = getattr(
+                                self._pasd_bus_proxy._proxy,
+                                f"smartbox{self._smartbox_nr}portspowersensed",
+                            )
+                            self._attribute_change_callback(
+                                "portspowersensed",
+                                port_power,
+                                timestamp,
+                                tango.AttrQuality.ATTR_VALID,
+                            )
+                        except Exception:  # pylint: disable=broad-except
+                            self.logger.warning(
+                                "Unable to read smartbox port powers"
+                                "May be attempting read before attribute polled."
+                                "port powers will be updated when polled."
+                            )
+                        for port in self.ports:
+                            if port.desire_on:
+                                port.turn_on()
+
+                    else:
+                        self.logger.error("No PowerState rules matched, going UNKNOWN")
+                        self._power_state = PowerState.UNKNOWN
 
         self._update_component_state(power=self._power_state)
 

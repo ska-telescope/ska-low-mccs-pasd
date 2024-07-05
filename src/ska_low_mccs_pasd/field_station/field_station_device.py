@@ -201,7 +201,6 @@ class MccsFieldStation(SKABaseDevice):
             communicating=communication_state == CommunicationStatus.ESTABLISHED
         )
 
-    # pylint: disable=too-many-branches
     def _component_state_callback(  # noqa: C901
         self: MccsFieldStation,
         fault: Optional[bool] = None,
