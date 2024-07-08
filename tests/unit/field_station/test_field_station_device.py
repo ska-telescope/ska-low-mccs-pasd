@@ -92,7 +92,9 @@ def _bad_antenna_mapping_arg() -> str:
 
 
 def _smartbox_mapping_arg() -> str:
-    smartbox_mapping: list[dict] = [{} for _ in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)]
+    smartbox_mapping: list[dict] = [
+        {} for _ in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
+    ]
     for fndh_port in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION):
         smartbox_mapping[fndh_port]["fndhPort"] = fndh_port + 1
         smartbox_mapping[fndh_port]["smartboxID"] = fndh_port + 1

@@ -1215,7 +1215,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         antenna_mask = kwargs["antennaMask"]
         for antenna_id, masking_state in antenna_mask.items():
-
             if antenna_id is not None and masking_state is not None:
                 self._antenna_mask[antenna_id] = masking_state
                 if not masking_state:

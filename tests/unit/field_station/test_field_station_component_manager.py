@@ -92,7 +92,7 @@ def on_fndh_port_fixture(
 def _input_antenna_mask() -> dict:
     antenna_mask: dict = {}
 
-    for smartbox_no in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
             antenna_mask[f"sb{smartbox_no:02d}-{smartbox_port:02d}"] = False
     # Mask the first 12 antennas
@@ -103,7 +103,7 @@ def _input_antenna_mask() -> dict:
 
 def _output_antenna_mask() -> dict:
     antenna_mask: dict = {}
-    for smartbox_no in range(1, PasdData.NUMBER_OF_SMARTBOXES + 1):
+    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
             antenna_mask[f"sb{smartbox_no:02d}-{smartbox_port:02d}"] = False
     antenna_mask["sb22-01"] = True
@@ -291,7 +291,8 @@ def mock_smartbox_mapping_fixture() -> dict[str, int]:
     :returns: a default set of fndh port mappings
     """
     return {
-        "sb" + str(port): port for port in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
+        "sb" + str(port): port
+        for port in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
     }
 
 
@@ -393,7 +394,9 @@ class TestFieldStationComponentManager:
             get_fndh_name(),
             [
                 get_smartbox_name(smartbox_id)
-                for smartbox_id in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
+                for smartbox_id in range(
+                    1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+                )
             ],
             [],
             mock_callbacks["communication_state"],

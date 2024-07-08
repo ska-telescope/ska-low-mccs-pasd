@@ -352,7 +352,6 @@ class PasdTangoTestHarness:
 
     def set_field_station_device(
         self: PasdTangoTestHarness,
-        smartbox_numbers: list[str] | None = None,
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsFieldStation",
     ) -> None:
@@ -361,16 +360,11 @@ class PasdTangoTestHarness:
 
         This test harness currently only permits one Field Station device.
 
-        :param smartbox_numbers: numbers of the smartboxes
         :param logging_level: the Tango device's default logging level.
         :param device_class: The device class to use.
             This may be used to override the usual device class,
             for example with a patched subclass.
         """
-        if smartbox_numbers is None:
-            smartbox_numbers = [""] * MAX_NUMBER_OF_SMARTBOXES_PER_STATION
-            for i in range(MAX_NUMBER_OF_SMARTBOXES_PER_STATION):
-                smartbox_numbers[i] = f"sb{(i+1):02d}"
 
         def port(context: dict[str, Any]) -> int:
             return context["configuration_manager"][1]

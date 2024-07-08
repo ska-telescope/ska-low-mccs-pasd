@@ -1520,7 +1520,9 @@ class PasdBusSimulator:
             int, FndhSimulator | FnccSimulator | SmartboxSimulator
         ] = {}
         self._smartboxes_ports_connected: list[list[bool]] = []
-        self._smartbox_attached_ports: list[int] = [0] * PasdData.NUMBER_OF_SMARTBOXES
+        self._smartbox_attached_ports: list[int] = [
+            0
+        ] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
         self._time_multiplier: int = time_multiplier
 
         if smartboxes_depend_on_attached_ports:
@@ -1595,7 +1597,7 @@ class PasdBusSimulator:
             self._hw_simulators[smartbox_id] = SmartboxSimulator(
                 self._time_multiplier, smartbox_id
             )
-            self._hw_simulators[smartbox_id].configure(
+            self._hw_simulators[smartbox_id].configure(  # type: ignore
                 self._smartboxes_ports_connected[smartbox_id - 1]
             )
             logger.debug(f"Initialised Smartbox simulator {smartbox_id}.")
@@ -1645,7 +1647,7 @@ class PasdBusSimulator:
             fndh_port = smartbox_config["fndh_port"]
             self._smartbox_attached_ports[smartbox_id - 1] = fndh_port
             fndh_ports_is_connected[fndh_port - 1] = True
-        self._hw_simulators[0].configure(fndh_ports_is_connected)
+        self._hw_simulators[0].configure(fndh_ports_is_connected)  # type: ignore
 
         self._smartboxes_ports_connected = [
             [False] * SmartboxSimulator.NUMBER_OF_PORTS
