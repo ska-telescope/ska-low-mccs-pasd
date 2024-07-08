@@ -492,16 +492,15 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self: PasdBusComponentManager,
         cutoff: float,
         extra_sensors: bool = False,
-    ) -> Optional[bool]:
+    ) -> None:
         """
         Set the FNDH's sensors' low pass filter constants.
 
         :param cutoff: frequency of LPF to set.
         :param extra_sensors: write the constant to the extra sensors' registers after
             the LED status register.
-        :return: whether successful, or None if there was nothing to do.
         """
-        return self._request_provider.desire_set_low_pass_filter(
+        self._request_provider.desire_set_low_pass_filter(
             PasdData.FNDH_DEVICE_ID, cutoff, extra_sensors
         )
 
@@ -574,7 +573,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         smartbox_id: int,
         cutoff: float,
         extra_sensors: bool = False,
-    ) -> Optional[bool]:
+    ) -> None:
         """
         Set the Smartbox's sensors' low pass filter constants.
 
@@ -582,9 +581,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param cutoff: frequency of LPF to set.
         :param extra_sensors: write the constant to the extra sensors' registers after
             the LED status register.
-        :return: whether successful, or None if there was nothing to do.
         """
-        return self._request_provider.desire_set_low_pass_filter(
+        self._request_provider.desire_set_low_pass_filter(
             smartbox_id, cutoff, extra_sensors
         )
 
