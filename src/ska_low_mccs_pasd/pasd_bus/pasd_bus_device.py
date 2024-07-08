@@ -608,7 +608,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         handler = self.get_command_object("InitializeFndh")
         handler()
-        return ([ResultCode.OK], ["InitializeFndh command sent to device"])
+        return ([ResultCode.OK], ["InitializeFndh command requested."])
 
     class _SetFndhPortPowersCommand(FastCommand):
         SCHEMA: Final = json.loads(
@@ -664,7 +664,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """  # noqa: E501
         handler = self.get_command_object("SetFndhPortPowers")
         handler(argin)
-        return ([ResultCode.OK], ["SetFndhPortPowers command sent to device"])
+        return ([ResultCode.OK], ["SetFndhPortPowers command requested."])
 
     class _SetFndhLedPatternCommand(FastCommand):
         SCHEMA: Final = json.loads(
@@ -711,7 +711,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """  # noqa: E501
         handler = self.get_command_object("SetFndhLedPattern")
         handler(argin)
-        return ([ResultCode.OK], ["SetFndhLedPattern command sent to device"])
+        return ([ResultCode.OK], ["SetFndhLedPattern command requested."])
 
     class _SetFndhLowPassFiltersCommand(FastCommand):
         SCHEMA: Final = json.loads(
@@ -773,7 +773,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             )
         handler = self.get_command_object("SetFndhLowPassFilters")
         handler(argin)
-        return ([ResultCode.OK], ["SetFndhLowPassFilters command sent to device"])
+        return ([ResultCode.OK], ["SetFndhLowPassFilters command requested."])
 
     class _ResetFndhAlarmsCommand(FastCommand):
         def __init__(
@@ -801,7 +801,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         handler = self.get_command_object("ResetFndhAlarms")
         handler()
-        return ([ResultCode.OK], ["ResetFndhAlarms command sent to device"])
+        return ([ResultCode.OK], ["ResetFndhAlarms command requested."])
 
     class _ResetFndhWarningsCommand(FastCommand):
         def __init__(
@@ -829,7 +829,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         handler = self.get_command_object("ResetFndhWarnings")
         handler()
-        return ([ResultCode.OK], ["ResetFndhwarnings command sent"])
+        return ([ResultCode.OK], ["ResetFndhwarnings command requested."])
 
     class _InitializeSmartboxCommand(FastCommand):
         def __init__(
@@ -862,7 +862,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         handler = self.get_command_object("InitializeSmartbox")
         handler(argin)
-        return ([ResultCode.OK], ["InitializeSmartbox command sent"])
+        return ([ResultCode.OK], ["InitializeSmartbox command requested."])
 
     class _SetSmartboxPortPowersCommand(FastCommand):
         SCHEMA: Final = json.loads(
@@ -923,7 +923,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """  # noqa: E501
         handler = self.get_command_object("SetSmartboxPortPowers")
         handler(argin)
-        return ([ResultCode.OK], ["SetSmartboxPortPowers command sent"])
+        return ([ResultCode.OK], ["SetSmartboxPortPowers command requested."])
 
     class _SetSmartboxLedPatternCommand(FastCommand):
         SCHEMA: Final = json.loads(
@@ -1016,7 +1016,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         handler = self.get_command_object("SetSmartboxLowPassFilters")
         handler(argin)
         self.LowPassFilterCutoff = json.loads(argin)["cutoff"]
-        return ([ResultCode.OK], ["SetSmartboxLowPassFilters command sent"])
+        return ([ResultCode.OK], ["SetSmartboxLowPassFilters command requested."])
 
     @command(dtype_in="str", dtype_out="DevVarLongStringArray")
     def SetSmartboxLedPattern(
@@ -1035,7 +1035,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """  # noqa: E501
         handler = self.get_command_object("SetSmartboxLedPattern")
         handler(argin)
-        return ([ResultCode.OK], ["SetSmartboxLedPattern command sent"])
+        return ([ResultCode.OK], ["SetSmartboxLedPattern command requested."])
 
     class _ResetSmartboxPortBreakerCommand(FastCommand):
         SCHEMA: Final = json.loads(
@@ -1089,7 +1089,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """  # noqa: E501
         handler = self.get_command_object("ResetSmartboxPortBreaker")
         handler(argin)
-        return ([ResultCode.OK], ["ResetSmartboxPortBreaker command sent"])
+        return ([ResultCode.OK], ["ResetSmartboxPortBreaker command requested."])
 
     class _ResetSmartboxAlarmsCommand(FastCommand):
         def __init__(
@@ -1124,7 +1124,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         handler = self.get_command_object("ResetSmartboxAlarms")
         handler(argin)
-        return ([ResultCode.OK], ["ResetSmartboxAlarms command sent"])
+        return ([ResultCode.OK], ["ResetSmartboxAlarms command requested."])
 
     class _ResetSmartboxWarningsCommand(FastCommand):
         def __init__(
@@ -1161,7 +1161,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         handler = self.get_command_object("ResetSmartboxWarnings")
         handler(argin)
-        return ([ResultCode.OK], ["ResetSmartboxWarnings command sent"])
+        return ([ResultCode.OK], ["ResetSmartboxWarnings command requested."])
 
     @command(dtype_out="DevVarLongStringArray")
     def ResetFnccStatus(self: MccsPasdBus) -> DevVarLongStringArrayType:
@@ -1173,7 +1173,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         handler = self.get_command_object("ResetFnccStatus")
         handler()
-        return ([ResultCode.OK], ["ResetFnccStatus command sent"])
+        return ([ResultCode.OK], ["ResetFnccStatus command requested."])
 
     class _ResetFnccStatusCommand(FastCommand):
         def __init__(
