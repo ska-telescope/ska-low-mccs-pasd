@@ -2,11 +2,14 @@
 
 ## unreleased
 
+* [WOM-361]: Change FEM current trip threshold attributes to an array
+* [WOM-384]: Fix misleading messages
+* [WOM-217]: Use YAML to define the mapping between Tango attributes and device registers
 
 ## 0.9.0
 
-* [MCCS-2175] Add HealthState to FieldStation
-* [MCCS-2153] Add MCCS schemas to TelModel
+* [MCCS-2175]: Add HealthState to FieldStation
+* [MCCS-2153]: Add MCCS schemas to TelModel
 * [WOM-381]: Always push change events from pasdbus
 * [MCCS-2029]: Pull TMData to pasd
 * [MCCS-2107]: Remove deprecated environments
