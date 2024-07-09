@@ -54,6 +54,11 @@ server:
 {{- end}}
 depends_on:
   - device: sys/database/2
+{{- range $server_key, $this_server := $smartboxes}}
+{{- range $smartbox_name, $this_smartbox := $this_server}}
+  - device: {{$this_smartbox.pasdbus_name}}
+{{- end}}
+{{- end}}
 image:
 {{- with .Values.image}}
   registry: {{.registry | quote}}
