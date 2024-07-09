@@ -239,7 +239,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             attr, self._read_pasd_attribute, self._write_pasd_attribute, None
         )
         self.set_change_event(attribute_name, True, False)
-        self.set_archive_event(attribute_name, True, False)
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()
@@ -504,13 +503,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                         timestamp,
                         AttrQuality.ATTR_INVALID,
                     )
-                    self.push_archive_event(
-                        tango_attribute_name,
-                        self._pasd_state[tango_attribute_name].value,
-                        timestamp,
-                        AttrQuality.ATTR_INVALID,
-                    )
-
             return
 
         for pasd_attribute_name, pasd_attribute_value in kwargs.items():
@@ -545,12 +537,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self._pasd_state[tango_attribute_name].value = pasd_attribute_value
             self._pasd_state[tango_attribute_name].quality = AttrQuality.ATTR_VALID
             self.push_change_event(
-                tango_attribute_name,
-                pasd_attribute_value,
-                timestamp,
-                AttrQuality.ATTR_VALID,
-            )
-            self.push_archive_event(
                 tango_attribute_name,
                 pasd_attribute_value,
                 timestamp,
