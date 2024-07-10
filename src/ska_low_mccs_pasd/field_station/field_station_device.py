@@ -262,7 +262,7 @@ class MccsFieldStation(SKABaseDevice):
             # pylint: disable=attribute-defined-outside-init
             self._antenna_power_json = None
             antenna_powers = kwargs["antenna_powers"]  # dict[str, PowerState]
-            for antenna_id in self.component_manager._antenna_mapping:
+            for antenna_id in self.component_manager._antenna_mapping["antennaMapping"]:
                 antenna_masks = self.component_manager._antenna_mask
 
                 if not antenna_masks[antenna_id]:
@@ -371,36 +371,36 @@ class MccsFieldStation(SKABaseDevice):
 
     @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
     def PowerOnAntenna(
-        self: MccsFieldStation, antenna_no: str
+        self: MccsFieldStation, antenna_name: str
     ) -> DevVarLongStringArrayType:
         """
         Turn on an antenna.
 
-        :param antenna_no: Antenna number to turn on.
+        :param antenna_name: Antenna name to turn on.
 
         :return: A tuple containing a return code and a string
             message indicating status. The message is for
             information purpose only.
         """
         handler = self.get_command_object("PowerOnAntenna")
-        (return_code, message) = handler(antenna_no)
+        (return_code, message) = handler(antenna_name)
         return ([return_code], [message])
 
     @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
     def PowerOffAntenna(
-        self: MccsFieldStation, antenna_no: str
+        self: MccsFieldStation, antenna_name: str
     ) -> DevVarLongStringArrayType:
         """
         Turn off an antenna.
 
-        :param antenna_no: Antenna number to turn on.
+        :param antenna_name: Antenna name to turn on.
 
         :return: A tuple containing a return code and a string
             message indicating status. The message is for
             information purpose only.
         """
         handler = self.get_command_object("PowerOffAntenna")
-        (return_code, message) = handler(antenna_no)
+        (return_code, message) = handler(antenna_name)
         return ([return_code], [message])
 
     @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")

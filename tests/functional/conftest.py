@@ -251,10 +251,8 @@ def functional_test_context_fixture(  # pylint: disable=too-many-arguments
                 available_smartboxes=smartbox_ids,
             )
 
-            smart_box_ids_str: list[str] = []
             for smartbox_id in smartbox_ids:
                 harness.add_smartbox_device(smartbox_id, int(LoggingLevel.ERROR))
-                smart_box_ids_str[smartbox_id] = str(smartbox_id)
             harness.set_fndh_device(int(LoggingLevel.ERROR))
             harness.set_fncc_device(int(LoggingLevel.ERROR))
 
