@@ -31,16 +31,19 @@ ANTENNA_MAPPING_SCHEMA: Final = {
     "type": "object",
     "properties": {
         "antennaMapping": {
-            "type": "array",
-            "minItems": 256,
-            "maxItems": 256,
-            "items": {
-                "type": "object",
-                "properties": {
-                    "antennaID": {"type": "integer"},
-                    "smartboxID": {"type": "integer"},
-                    "smartboxPort": {"type": "integer"},
-                },
+            "description": "the antennas",
+            "type": "object",
+            "minProperties": 0,
+            "maxProperties": 256,
+            "patternProperties": {
+                "[a-zA-Z0-9_]+": {
+                    "description": "the antennas",
+                    "type": "object",
+                    "properties": {
+                        "smartboxID": {"type": "integer"},
+                        "smartboxPort": {"type": "integer"},
+                    },
+                }
             },
         }
     },
@@ -54,15 +57,12 @@ ANTENNA_MASK_SCHEMA: Final = {
     "type": "object",
     "properties": {
         "antennaMask": {
-            "type": "array",
-            "minItems": 256,
-            "maxItems": 256,
-            "items": {
-                "type": "object",
-                "properties": {
-                    "antennaID": {"type": "integer"},
-                    "maskingState": {"type": "boolean"},
-                },
+            "description": "the antennas",
+            "type": "object",
+            "minProperties": 0,
+            "maxProperties": 256,
+            "patternProperties": {
+                "[a-zA-Z0-9_]+": {"description": "the antennas", "type": "boolean"}
             },
         }
     },
@@ -76,21 +76,17 @@ SMARTBOX_MAPPING_SCHEMA: Final = {
     "type": "object",
     "properties": {
         "smartboxMapping": {
-            "type": "array",
-            "minItems": 24,
-            "maxItems": 24,
-            "items": {
-                "type": "object",
-                "properties": {
-                    "smartboxID": {"type": "integer"},
-                    "fndhPort": {"type": "integer"},
-                },
+            "description": "the smartbox mappings",
+            "type": "object",
+            "minProperties": 0,
+            "maxProperties": 24,
+            "patternProperties": {
+                "[a-zA-Z0-9_]+": {"description": "fqdns", "type": "int"}
             },
         }
     },
     "required": ["smartboxMapping"],
 }
-
 scenarios("./features/field_station_mapping.feature")
 
 
@@ -103,12 +99,14 @@ def get_ready_device(device_ref: str, set_device_state: Callable) -> None:
     :param set_device_state: function to set device state.
     """
     print(f"Setting device {device_ref} ready...")
+    print("JOE HARVEY IS HERE")
     set_device_state(
         device_ref,
         state=tango.DevState.ON,
         mode=AdminMode.ONLINE,
         simulation_mode=SimulationMode.TRUE,
     )
+    print(f"JOE HARVEY IS HEREdevice {device_ref} complete")
 
 
 @given("PasdBus is initialised")
@@ -119,6 +117,7 @@ def pasd_is_initialised(pasd_bus_device: tango.DeviceProxy, smartbox_id: int) ->
     :param pasd_bus_device: A `tango.DeviceProxy` to the PaSD device.
     :param smartbox_id: number of the smartbox under test.
     """
+    print("2222222 PASD BUS INIT")
     pasd_bus_device.initializefndh()
     pasd_bus_device.initializesmartbox(smartbox_id)
 
@@ -365,6 +364,7 @@ def check_port_mapping(
 
     :return: the maps reported by the field station.
     """
+    print("4444444444444444444444 CHECK FIELD STATION")
     return {
         "antenna_map": json.loads(field_station_device.antennaMapping),
         "smartbox_map": json.loads(field_station_device.smartboxMapping),
@@ -383,6 +383,7 @@ def check_the_mapping_is_valid(
     :param maps: the maps reported by the field station.
     :param is_true_context: Is this test runnning in a true context.
     """
+    print("444444444444 get valid mappings")
     # Validate against the
     jsonschema.validate(maps["antenna_map"], ANTENNA_MAPPING_SCHEMA)
 

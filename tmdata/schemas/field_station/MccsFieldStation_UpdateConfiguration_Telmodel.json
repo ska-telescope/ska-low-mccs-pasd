@@ -88,35 +88,6 @@
                         }
                     }
                 },
-                "gateway": {
-                    "description": "gateway configuration",
-                    "type": "object",
-                    "patternProperties": {
-                        "[a-zA-Z0-9_]+": {
-                            "type": "object",
-                            "properties": {
-                                "simulated": {
-                                    "type": "boolean"
-                                },
-                                "host": {
-                                    "type": "string"
-                                },
-                                "port": {
-                                    "type": "integer"
-                                },
-                                "timeout": {
-                                    "type": "number"
-                                },
-                                "polling_rate": {
-                                    "type": "number"
-                                },
-                                "device_polling_rate": {
-                                    "type": "number"
-                                }
-                            }
-                        }
-                    }
-                },
                 "controller": {
                     "type": "object",
                     "properties": {
