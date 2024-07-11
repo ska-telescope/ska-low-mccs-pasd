@@ -256,7 +256,7 @@ def functional_test_context_fixture(  # pylint: disable=too-many-arguments
             harness.set_fndh_device(int(LoggingLevel.ERROR))
             harness.set_fncc_device(int(LoggingLevel.ERROR))
 
-            harness.set_field_station_device(int(LoggingLevel.ERROR))
+            harness.set_field_station_device(smartbox_ids, int(LoggingLevel.ERROR))
 
     with harness as context:
         yield context

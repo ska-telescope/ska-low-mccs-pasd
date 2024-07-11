@@ -350,7 +350,8 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             )
             return
         for smartbox_name, fndh_port in mapping["smartboxMapping"].items():
-            if int(smartbox_name) == self._smartbox_nr:
+            smartbox_num = re.findall("[0-9]+", smartbox_name)[0]
+            if int(smartbox_num) == self._smartbox_nr:
                 if 0 < fndh_port < PasdData.NUMBER_OF_FNDH_PORTS + 1:
                     self.update_fndh_port(fndh_port)
                     self.logger.error(

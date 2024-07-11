@@ -57,19 +57,19 @@ def _antenna_mapping_arg() -> str:
     for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION):
         for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS):
             try:
-                antenna_no = f"sb-{smartbox_no:02d}-{smartbox_port}"
+                antenna_no = f"sb{smartbox_no:02d}-{smartbox_port}"
                 antenna_mapping[antenna_no] = {}
-                antenna_mapping[antenna_no]["smartboxID"] = smartbox_no
+                antenna_mapping[antenna_no]["smartboxID"] = f"sb{smartbox_no}"
                 antenna_mapping[antenna_no]["smartboxPort"] = smartbox_port
             except IndexError:
                 break
 
     # Swap two antennas
-    antenna_mapping["sb-01-1"]["smartboxID"] = 1
-    antenna_mapping["sb-01-1"]["smartboxPort"] = 2
+    antenna_mapping["sb01-1"]["smartboxID"] = "sb01-2"
+    antenna_mapping["sb01-1"]["smartboxPort"] = 2
 
-    antenna_mapping["sb-01-2"]["smartboxID"] = 1
-    antenna_mapping["sb-01-2"]["smartboxPort"] = 1
+    antenna_mapping["sb01-2"]["smartboxID"] = "sb01-1"
+    antenna_mapping["sb01-2"]["smartboxPort"] = 1
 
     return json.dumps({"antennaMapping": antenna_mapping})
 
@@ -82,7 +82,7 @@ def _bad_antenna_mapping_arg() -> str:
 
     # 257 antennas? Don't like that
     extra_antenna = {
-        "smartboxID": "invalid ",
+        "smartboxID": 123,
         "smartboxPort": 3,
     }
 
@@ -92,19 +92,15 @@ def _bad_antenna_mapping_arg() -> str:
 
 
 def _smartbox_mapping_arg() -> str:
-    smartbox_mapping: list[dict] = [
-        {} for _ in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
-    ]
-    for fndh_port in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION):
-        smartbox_mapping[fndh_port]["fndhPort"] = fndh_port + 1
-        smartbox_mapping[fndh_port]["smartboxID"] = fndh_port + 1
+    smartbox_mapping: dict = {}
+    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION):
+        for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS):
+            smartbox_mapping[f"sb{smartbox_no:02d}"] = smartbox_port
 
     # Swap two smartboxes
-    smartbox_mapping[0]["fndhPort"] = 1
-    smartbox_mapping[0]["smartboxID"] = 2
+    smartbox_mapping["sb01"] = 2
 
-    smartbox_mapping[1]["fndhPort"] = 2
-    smartbox_mapping[1]["smartboxID"] = 1
+    smartbox_mapping["sb02"] = 1
 
     return json.dumps({"smartboxMapping": smartbox_mapping})
 
@@ -116,12 +112,8 @@ def _bad_smartbox_mapping_arg() -> str:
     bad_smartbox_mapping = json.loads(good_smartbox_mapping_arg)
 
     # 25 smartboxes? Don't like that
-    extra_smartbox = {
-        "fndhPort": 25,
-        "smartboxID": 25,
-    }
 
-    bad_smartbox_mapping["smartboxMapping"].append(extra_smartbox)
+    bad_smartbox_mapping["smartboxMapping"]["sb100"] = [100]
 
     return json.dumps(bad_smartbox_mapping)
 
