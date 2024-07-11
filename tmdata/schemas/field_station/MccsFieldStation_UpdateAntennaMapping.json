@@ -16,7 +16,7 @@
                     "type": "object",
                     "properties": {
                         "smartboxID": {
-                            "type": "integer"
+                            "type": "string"
                         },
                         "smartboxPort": {
                             "type": "integer"
