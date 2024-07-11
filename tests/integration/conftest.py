@@ -266,7 +266,7 @@ def test_context_fixture(
     for smartbox_id in smartbox_ids_to_test:
         harness.add_smartbox_device(smartbox_id, int(LoggingLevel.ERROR))
     harness.set_configuration_server(configuration_manager)
-    harness.set_field_station_device(int(LoggingLevel.ERROR))
+    harness.set_field_station_device(smartbox_ids_to_test, int(LoggingLevel.ERROR))
 
     with harness as context:
         yield context

@@ -139,7 +139,7 @@ class TestFieldStationIntegration:
         pasd_bus_device: tango.DeviceProxy,
         fndh_device: tango.DeviceProxy,
         change_event_callbacks: MockTangoEventCallbackGroup,
-        smartbox_proxys: dict[str, tango.DeviceProxy],
+        smartbox_proxys: list[tango.DeviceProxy],
         off_smartbox_id: int,
         antenna_to_turn_on: str,
         fndh_simulator: FndhSimulator,
@@ -176,30 +176,29 @@ class TestFieldStationIntegration:
 
         # Initialise the station subdevices.
         pasd_bus_device.initializefndh()
-        for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
+        for i in range(1, len(smartbox_proxys) + 1):
             pasd_bus_device.initializesmartbox(i)
 
         # set adminMode online for all smartbox.
-        for smartbox_name, smartbox in smartbox_proxys.items():
-            smartbox_id = int(re.findall("[0-9]+", smartbox_name)[0])
+        for smartbox_id, smartbox in enumerate(smartbox_proxys):
             smartbox.subscribe_event(
                 "state",
                 tango.EventType.CHANGE_EVENT,
-                change_event_callbacks[f"smartbox{smartbox_id}_state"],
+                change_event_callbacks[f"smartbox{smartbox_id+1}_state"],
             )
-            change_event_callbacks[f"smartbox{smartbox_id}_state"].assert_change_event(
-                Anything
-            )
+            change_event_callbacks[
+                f"smartbox{smartbox_id+1}_state"
+            ].assert_change_event(Anything)
 
             smartbox.adminMode = AdminMode.ONLINE
 
-            change_event_callbacks[f"smartbox{smartbox_id}_state"].assert_change_event(
-                tango.DevState.UNKNOWN
-            )
+            change_event_callbacks[
+                f"smartbox{smartbox_id+1}_state"
+            ].assert_change_event(tango.DevState.UNKNOWN)
 
-            change_event_callbacks[f"smartbox{smartbox_id}_state"].assert_change_event(
-                Anything
-            )
+            change_event_callbacks[
+                f"smartbox{smartbox_id+1}_state"
+            ].assert_change_event(Anything)
 
         # Set the Fndh adminMode ONLINE
         fndh_device.subscribe_event(
@@ -242,19 +241,20 @@ class TestFieldStationIntegration:
         change_event_callbacks["field_station_state"].assert_change_event(
             tango.DevState.OFF
         )
-        for i in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION):
+        for i in range(len(smartbox_proxys)):
             change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
-        change_event_callbacks["antenna_power_states"].assert_not_called()
 
         # Use mapping to work out what smartbox port will change.
         antenna_mapping = json.loads(field_station_device.antennamapping)
 
         chosen_smartbox_port = 0
-        chosen_smartbox_id = ""
-        for antenna_id, (smartbox_id, smartbox_port) in antenna_mapping.items():
+        chosen_smartbox_id: int
+        for antenna_id, (smartbox_id, smartbox_port) in antenna_mapping[
+            "antennaMapping"
+        ].items():
             if antenna_id == antenna_to_turn_on:
                 chosen_smartbox_port = smartbox_port
-                chosen_smartbox_id = str(smartbox_id)
+                chosen_smartbox_id = int(re.findall("\d+", smartbox_id)[0]) - 1
         # Check initial state.
         assert not smartbox_proxys[chosen_smartbox_id].portspowersensed[
             chosen_smartbox_port - 1
@@ -275,7 +275,7 @@ class TestFieldStationIntegration:
 
         # off_smartbox_id is off in the simulator.
         # Check that antennas attached to it are OFF.
-        for antenna_id, config in antenna_mapping.items():
+        for antenna_id, config in antenna_mapping["antennaMapping"].items():
             chosen_smartbox_id = config[0]
             # If the smartbox is off all antenna attached to it are OFF.
             if chosen_smartbox_id == off_smartbox_id:

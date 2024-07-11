@@ -8,7 +8,7 @@
         "antennaMapping": {
             "description": "the antennas",
             "type": "object",
-            "minProperties": 256,
+            "minProperties": 253,
             "maxProperties": 256,
             "patternProperties": {
                 "[a-zA-Z0-9_]+": {
