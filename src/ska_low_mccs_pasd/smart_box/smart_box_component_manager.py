@@ -436,9 +436,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self._update_component_state(power=PowerState.UNKNOWN)
             return
 
-        self.logger.error(
-            f"evaluate power powers == {self._fndh_port_powers} port == {self._fndh_port - 1}"
-        )
         smartbox_power = self._fndh_port_powers[self._fndh_port - 1]
         if self._power_state != smartbox_power:
             self._power_state = smartbox_power
@@ -504,20 +501,15 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, str]:
-        self.logger.error("smartbox turn on 1")
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
-            self.logger.error("smartbox turn on 2")
             if self._fndh_port:
-                self.logger.error("smartbox turn on 3")
                 if self._pasd_bus_proxy is None:
-                    self.logger.error("smartbox turn on 4")
                     raise ValueError(f"Power on smartbox '{self._fndh_port} failed'")
                 desired_port_powers: list[bool | None] = [
                     None
                 ] * PasdData.NUMBER_OF_FNDH_PORTS
-                self.logger.error("smartbox turn on 5")
                 desired_port_powers[self._fndh_port - 1] = True
                 json_argument = json.dumps(
                     {
@@ -529,7 +521,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                     result_code,
                     return_message,
                 ) = self._pasd_bus_proxy.set_fndh_port_powers(json_argument)
-                self.logger.error("smartbox turn on 6")
             else:
                 self.logger.info(
                     "Cannot turn off SmartBox, we do not yet know what port it is on"
@@ -551,7 +542,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 status=TaskStatus.COMPLETED,
                 result=f"Power on smartbox '{self._fndh_port}  success'",
             )
-        self.logger.error(f"smartbox turn on 7 power_state == {self._power_state}")
         return result_code, return_message
 
     @check_communicating
