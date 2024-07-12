@@ -212,8 +212,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         self._all_masked = all_masked
 
-        ref_smart = reference_data["pasd"]["smartboxes"]
-
         self._antenna_mask = {"antennaMask": antenna_masks}
         self._smartbox_mapping = {"smartboxMapping": smartbox_mappings}
         self._antenna_mapping = {"antennaMapping": antenna_mapping}
@@ -877,7 +875,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     "stay_on_when_offline": True,
                 }
             )
-            self.logger.error(f"setpotpowers 2 arg == {json_argument}")
             result, _ = smartbox._proxy.SetPortPowers(json_argument)
             results += result
         if all(result == ResultCode.QUEUED for result in results):
@@ -1262,9 +1259,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         antenna_mapping = kwargs["antennaMapping"]
         for (
             antenna_name,
-            (smartbox_name, smartbox_port),
             values,
         ) in antenna_mapping.items():
+            smartbox_name = values["smartboxID"]
+            smartbox_port = values["smartboxPort"]
             if (
                 antenna_name is not None
                 and smartbox_name is not None

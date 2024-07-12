@@ -95,10 +95,10 @@ class MccsSmartBox(SKABaseDevice):
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
-        device_name = f'{str(self.__class__).rsplit(".", maxsplit=1)[-1][0:-2]}'
-        version = f"{device_name} Software Version: {self._version_id}"
+        self._readable_name = f'{str(self.__class__).rsplit(".", maxsplit=1)[-1][0:-2]}'
+        version = f"{self._readable_name} Software Version: {self._version_id}"
         properties = (
-            f"Initialised {device_name} device with properties:\n"
+            f"Initialised {self._readable_name} device with properties:\n"
             f"\tFieldStationName: {self.FieldStationName}\n"
             f"\tPasdFQDN: {self.PasdFQDN}\n"
             f"\tSmartBoxNumber: {self.SmartBoxNumber}\n"
@@ -479,6 +479,15 @@ class MccsSmartBox(SKABaseDevice):
         :return: the fndh port that the smartbox is attached to.
         """
         return json.dumps(self.component_manager._fndh_port)
+
+    @attribute(dtype="DevString", label="ReadableName")
+    def ReadableName(self: MccsSmartBox) -> str:
+        """
+        Return the name of the smartbox in a readable format.
+
+        :return: the name of the smartbox
+        """
+        return self._readable_name
 
 
 # ----------

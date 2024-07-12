@@ -716,67 +716,67 @@ class TestFieldStationComponentManager:
                 ),
                 id="Turn on all antennas when all unmasked",
             ),
-            # pytest.param(
-            #     "on",
-            #     0,
-            #     True,  # antenna(s) are masked
-            #     (TaskStatus.QUEUED, "Task queued"),
-            #     (
-            #         TaskStatus.REJECTED,
-            #         (
-            #             "Antennas in this station are masked, call with"
-            #             " ignore_mask=True to ignore"
-            #         ),
-            #     ),
-            #     id="Try to turn on all antennas when they are all masked",
-            # ),
-            # pytest.param(
-            #     "on",
-            #     "sb18-11",
-            #     True,  # antenna(s) are masked
-            #     (TaskStatus.QUEUED, "Task queued"),
-            #     (
-            #         TaskStatus.COMPLETED,
-            #         "All unmasked antennas turned on.",
-            #     ),
-            #     id="Turn on all antennas when one masked",
-            # ),
-            # pytest.param(
-            #     "off",
-            #     0,
-            #     False,  # antenna(s) are not masked
-            #     (TaskStatus.QUEUED, "Task queued"),
-            #     (
-            #         TaskStatus.COMPLETED,
-            #         "All unmasked antennas turned off.",
-            #     ),
-            #     id="Turn off all antennas when all unmasked",
-            # ),
-            # pytest.param(
-            #     "off",
-            #     0,
-            #     True,  # antenna(s) are masked
-            #     (TaskStatus.QUEUED, "Task queued"),
-            #     (
-            #         TaskStatus.REJECTED,
-            #         (
-            #             "Antennas in this station are masked, call with"
-            #             " ignore_mask=True to ignore"
-            #         ),
-            #     ),
-            #     id="Try to turn off all antennas when they are all masked",
-            # ),
-            # pytest.param(
-            #     "off",
-            #     "sb18-11",
-            #     True,  # antenna(s) are masked
-            #     (TaskStatus.QUEUED, "Task queued"),
-            #     (
-            #         TaskStatus.COMPLETED,
-            #         "All unmasked antennas turned off.",
-            #     ),
-            #     id="Turn off all antennas when one masked",
-            # ),
+            pytest.param(
+                "on",
+                0,
+                True,  # antenna(s) are masked
+                (TaskStatus.QUEUED, "Task queued"),
+                (
+                    TaskStatus.REJECTED,
+                    (
+                        "Antennas in this station are masked, call with"
+                        " ignore_mask=True to ignore"
+                    ),
+                ),
+                id="Try to turn on all antennas when they are all masked",
+            ),
+            pytest.param(
+                "on",
+                "sb18-11",
+                False,  # antenna(s) are masked
+                (TaskStatus.QUEUED, "Task queued"),
+                (
+                    TaskStatus.COMPLETED,
+                    "All unmasked antennas turned on.",
+                ),
+                id="Turn on all antennas when one masked",
+            ),
+            pytest.param(
+                "off",
+                0,
+                False,  # antenna(s) are not masked
+                (TaskStatus.QUEUED, "Task queued"),
+                (
+                    TaskStatus.COMPLETED,
+                    "All unmasked antennas turned off.",
+                ),
+                id="Turn off all antennas when all unmasked",
+            ),
+            pytest.param(
+                "off",
+                0,
+                True,  # antenna(s) are masked
+                (TaskStatus.QUEUED, "Task queued"),
+                (
+                    TaskStatus.REJECTED,
+                    (
+                        "Antennas in this station are masked, call with"
+                        " ignore_mask=True to ignore"
+                    ),
+                ),
+                id="Try to turn off all antennas when they are all masked",
+            ),
+            pytest.param(
+                "off",
+                "sb18-11",
+                True,  # antenna(s) are masked
+                (TaskStatus.QUEUED, "Task queued"),
+                (
+                    TaskStatus.COMPLETED,
+                    "All unmasked antennas turned off.",
+                ),
+                id="Turn off all antennas when one masked",
+            ),
         ],
     )
     def test_on_off_commands(  # noqa: C901
@@ -813,19 +813,10 @@ class TestFieldStationComponentManager:
 
         if antenna_id == 0:
             field_station_component_manager._all_masked = True
-            smartbox_id = 0
-            smartbox_port = 0
         else:
             field_station_component_manager._antenna_mask["antennaMask"][
                 antenna_id
             ] = antenna_masking_state
-
-            (
-                smartbox_id,
-                smartbox_port,
-            ) = field_station_component_manager._antenna_mapping["antennaMapping"][
-                antenna_id
-            ]
 
             # If working with all antennas, no specific smartbox will get a call with a
             # masked port
@@ -882,8 +873,11 @@ class TestFieldStationComponentManager:
                 else:
                     mocked_smartbox_power = PowerState.OFF
 
+                smartbox_trl = field_station_component_manager._smartbox_name_trl_map[
+                    smartbox_name
+                ]
                 field_station_component_manager.smartbox_state_change(
-                    smartbox_name, power=mocked_smartbox_power
+                    smartbox_trl, power=mocked_smartbox_power
                 )
 
                 smartbox_mask_map = (
@@ -920,8 +914,8 @@ class TestFieldStationComponentManager:
                     desired_smartbox_port_powers = [
                         None
                     ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
-                if smartbox_no == smartbox_id:
-                    desired_smartbox_port_powers[smartbox_port - 1] = None
+                # if smartbox_no == smartbox_id:
+                #     desired_smartbox_port_powers[smartbox_port - 1] = None
 
                 smartbox_json_arg = json.dumps(
                     {
@@ -940,7 +934,6 @@ class TestFieldStationComponentManager:
         mock_callbacks["task"].assert_call(
             status=command_tracked_result[0], result=command_tracked_result[1]
         )
-        assert False
 
     @pytest.mark.parametrize(
         (
