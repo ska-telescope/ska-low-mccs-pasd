@@ -89,6 +89,7 @@ def mock_pasdbus_fixture(
 
     :param mocked_initial_smartbox_ports: the initial power state of
         the port the smartbox is attached to.
+    :param smartbox_number: The logical id given of the smartbox.
 
     :return: a mock MccsPaSDBus device.
     """

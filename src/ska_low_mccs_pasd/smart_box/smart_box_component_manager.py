@@ -938,15 +938,15 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
             port = self.ports[port_number - 1]
+            if self._fndh_port is None:
+                msg = (
+                    "Tried to turn on port of a smartbox, however the smartbox"
+                    " cannot be turned on as it does not know its FNDH port."
+                )
+                self.logger.error(msg)
+                return (ResultCode.FAILED, msg)
             # Turn smartbox standby if not already.
             if self._fndh_port_powers[self._fndh_port - 1] != PowerState.ON:
-                if self._fndh_port is None:
-                    msg = (
-                        "Tried to turn on port of OFF smartbox, however the smartbox"
-                        " cannot be turned on as it does not know its FNDH port."
-                    )
-                    self.logger.error(msg)
-                    return (ResultCode.FAILED, msg)
                 assert port._port_id == port_number
                 port.set_desire_on(task_callback)  # type: ignore[assignment]
                 self._power_fndh_port(PowerState.ON, self._fndh_port, 60)
