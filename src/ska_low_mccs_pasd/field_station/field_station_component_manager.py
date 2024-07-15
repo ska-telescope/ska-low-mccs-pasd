@@ -559,7 +559,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     "stay_on_when_offline": True,
                 }
             )
-            self.logger.error(f"setpotpowers 1 arg == {json_argument}")
             result, _ = smartbox._proxy.SetPortPowers(json_argument)
             results += result
         return results

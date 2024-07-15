@@ -113,15 +113,13 @@ def input_smartbox_mapping_fixture(
 
     :returns: the smartboxMapping.
     """
-    smartbox_mapping: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_FNDH_PORTS)]
-    for fndh_port_idx in range(PasdData.NUMBER_OF_FNDH_PORTS):
-        smartbox_mapping[fndh_port_idx]["fndhPort"] = fndh_port_idx + 1
-        smartbox_mapping[fndh_port_idx]["smartboxID"] = fndh_port_idx + 1
+    smartbox_mapping: dict = {}
+    for fndh_port_idx in range(1, PasdData.NUMBER_OF_FNDH_PORTS + 1):
+        smartbox_mapping[f"sb{fndh_port_idx:02d}"] = fndh_port_idx
 
     # The smartbox under test is attached to the port
     # given by fixture fndh_port!!
-    smartbox_mapping[smartbox_number - 1]["fndhPort"] = fndh_port
-    smartbox_mapping[smartbox_number - 1]["smartboxID"] = smartbox_number
+    smartbox_mapping[f"sb{smartbox_number:02d}"] = fndh_port
 
     return {"smartboxMapping": smartbox_mapping}
 

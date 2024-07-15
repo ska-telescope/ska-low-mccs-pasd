@@ -286,7 +286,6 @@ class MccsFieldStation(SKABaseDevice):
                     self._component_state_callback(power=PowerState.OFF)
                     self._health_model.update_state(power=PowerState.OFF, fault=fault)
 
-            self.logger.error(f"JOE HARVEY push change event power == {antenna_powers}")
             self.push_change_event("antennaPowerStates", json.dumps(antenna_powers))
 
         super()._component_state_changed(fault=fault, power=power)
