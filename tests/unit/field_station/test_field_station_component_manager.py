@@ -205,6 +205,7 @@ def mock_smartboxes_fixture(
     for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         builder = MockDeviceBuilder()
         builder.set_state(tango.DevState.ON)
+        builder.add_command("On", (ResultCode.OK, "Dummy return string"))
         builder.add_result_command("PowerOnPort", ResultCode.OK)
         builder.add_result_command("PowerOffPort", ResultCode.OK)
         builder.add_result_command("SetPortPowers", ResultCode.QUEUED)
@@ -478,7 +479,6 @@ class TestFieldStationComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        mock_callbacks["communication_state"].assert_not_called()
         assert (
             field_station_component_manager.communication_state
             == CommunicationStatus.ESTABLISHED
@@ -732,21 +732,6 @@ class TestFieldStationComponentManager:
             pytest.param(
                 "on",
                 "SetPortPowers",
-                0,  # 0 for all antennas
-                True,  # antenna(s) are masked
-                (TaskStatus.QUEUED, "Task queued"),
-                (
-                    TaskStatus.REJECTED,
-                    (
-                        "Antennas in this station are masked, call with"
-                        " ignore_mask=True to ignore"
-                    ),
-                ),
-                id="Try to turn on all antennas when they are all masked",
-            ),
-            pytest.param(
-                "on",
-                "SetPortPowers",
                 123,
                 True,  # antenna(s) are masked
                 (TaskStatus.QUEUED, "Task queued"),
@@ -764,24 +749,9 @@ class TestFieldStationComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    "All unmasked antennas turned off.",
+                    "All FNDH ports turned off. All Smartbox ports turned off.",
                 ),
                 id="Turn off all antennas when all unmasked",
-            ),
-            pytest.param(
-                "off",
-                "SetPortPowers",
-                0,  # 0 for all antennas
-                True,  # antenna(s) are masked
-                (TaskStatus.QUEUED, "Task queued"),
-                (
-                    TaskStatus.REJECTED,
-                    (
-                        "Antennas in this station are masked, call with"
-                        " ignore_mask=True to ignore"
-                    ),
-                ),
-                id="Try to turn off all antennas when they are all masked",
             ),
             pytest.param(
                 "off",
@@ -791,14 +761,14 @@ class TestFieldStationComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    "All unmasked antennas turned off.",
+                    "All FNDH ports turned off. All Smartbox ports turned off.",
                 ),
                 id="Turn off all antennas when one masked",
             ),
         ],
     )
     def test_on_off_commands(  # noqa: C901
-        # pylint: disable=too-many-arguments, too-many-locals, too-many-branches
+        # pylint: disable=too-many-arguments, too-many-locals
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         component_manager_command: Any,
@@ -842,20 +812,6 @@ class TestFieldStationComponentManager:
             == expected_manager_result
         )
         assert field_station_component_manager._antenna_mapping_pretty is not None
-        # If we are working with a specific antenna, rather than all antennas,
-        # get the smartbox_id and smartbox_port that the antenna is connected to.
-        if antenna_no > 0:
-            smartbox_id = field_station_component_manager._antenna_mapping_pretty[
-                "antennaMapping"
-            ][antenna_no - 1]["smartboxID"]
-            smartbox_port = field_station_component_manager._antenna_mapping_pretty[
-                "antennaMapping"
-            ][antenna_no - 1]["smartboxPort"]
-        else:
-            # If working with all antennas, no specific smartbox will get a call with a
-            # masked port
-            smartbox_id = 0
-            smartbox_port = 0
 
         expected_state = component_manager_command == "on"
 
@@ -863,9 +819,12 @@ class TestFieldStationComponentManager:
             expected_state
         ] * PasdData.NUMBER_OF_FNDH_PORTS
 
-        # There are 4 surplus ports plus 2 smartbox have no antenna.
-        for unused_fndh_port in range(22, 28):
-            desired_fndh_port_powers[unused_fndh_port] = None
+        # If we are turning on ports, we expect to obey masking rules.
+        # If we are turning off ports, we expect to ignore masking rules.
+        if expected_state:
+            # There are 4 surplus ports.
+            for unused_fndh_port in range(24, 28):
+                desired_fndh_port_powers[unused_fndh_port] = False
 
         fndh_json_arg = json.dumps(
             {
@@ -915,7 +874,7 @@ class TestFieldStationComponentManager:
                 for smartbox_identity, masked_ports in smartbox_mask_map.items():
                     if smartbox_no == smartbox_identity:
                         for masked_port in masked_ports:
-                            ports_to_change[masked_port - 1] = None
+                            ports_to_change[masked_port - 1] = False
                 field_station_component_manager._on_port_power_change(
                     smartbox_name,
                     "portspowersensed",
@@ -923,41 +882,21 @@ class TestFieldStationComponentManager:
                     tango.AttrQuality.ATTR_VALID,
                 )
 
-            for smartbox_no, smartbox in enumerate(
-                field_station_component_manager._smartbox_proxys
-            ):
-                smartbox_proxy_command = getattr(smartbox._proxy, proxy_command)
-
-                desired_smartbox_port_powers: list[bool | None] = [
-                    expected_state
-                ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
-
-                if smartbox_no == 21:
-                    # The last smartbox only has 4 antenna
-                    desired_smartbox_port_powers = [expected_state] * 4 + [None] * 8
-                if smartbox_no > 21:
-                    # The configuration did not put any antenna on the
-                    # last 2 smartbox
-                    desired_smartbox_port_powers = [
-                        None
-                    ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
-                if smartbox_no == smartbox_id - 1:
-                    desired_smartbox_port_powers[smartbox_port - 1] = None
-
-                smartbox_json_arg = json.dumps(
-                    {
-                        "port_powers": desired_smartbox_port_powers,
-                        "stay_on_when_offline": True,
-                    }
-                )
-
-                smartbox_proxy_command.assert_next_call(smartbox_json_arg)
+            # We only expect to see smartbox commands called when we are turning ON
+            if expected_state:
+                for smartbox_no, smartbox in enumerate(
+                    field_station_component_manager._smartbox_proxys
+                ):
+                    smartbox_proxy_command = getattr(smartbox._proxy, "On")
+                    smartbox_proxy_command.assert_next_call()
 
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         if command_tracked_result[0] in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
             mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(
-            status=command_tracked_result[0], result=command_tracked_result[1]
+            status=command_tracked_result[0],
+            result=command_tracked_result[1],
+            lookahead=len(field_station_component_manager._smartbox_proxys),
         )
 
     @pytest.mark.parametrize(

@@ -514,6 +514,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                             "And all its ports are OFF, while they aren't all masked."
                         )
                         self._power_state = PowerState.STANDBY
+                        for port in self.ports:
+                            if port.desire_on:
+                                port.turn_on()
 
                 # If the FNDH port is ON, and (any of the smartbox ports are ON,
                 # or all smartbox ports are OFF, but they are all masked),
@@ -549,9 +552,20 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                             if port.desire_on:
                                 port.turn_on()
 
-                    else:
-                        self.logger.error("No PowerState rules matched, going UNKNOWN")
-                        self._power_state = PowerState.UNKNOWN
+                else:
+                    self.logger.warning("No PowerState rules matched, going UNKNOWN")
+                    self._power_state = PowerState.UNKNOWN
+
+            case PowerState.UNKNOWN:
+                self.logger.warning(
+                    f"The FNDH port is known ({self._fndh_port}), "
+                    "however its PowerState is UNKNOWN"
+                )
+                self._power_state = PowerState.UNKNOWN
+
+            case _:
+                self.logger.warning("No PowerState rules matched, going UNKNOWN")
+                self._power_state = PowerState.UNKNOWN
 
         self._update_component_state(power=self._power_state)
 
@@ -924,11 +938,18 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
             port = self.ports[port_number - 1]
-            # Turn smartbox on if not already.
-            if self._power_state != PowerState.ON:
+            # Turn smartbox standby if not already.
+            if self._fndh_port_powers[self._fndh_port - 1] != PowerState.ON:
+                if self._fndh_port is None:
+                    msg = (
+                        "Tried to turn on port of OFF smartbox, however the smartbox"
+                        " cannot be turned on as it does not know its FNDH port."
+                    )
+                    self.logger.error(msg)
+                    return (ResultCode.FAILED, msg)
                 assert port._port_id == port_number
                 port.set_desire_on(task_callback)  # type: ignore[assignment]
-                self.on()
+                self._power_fndh_port(PowerState.ON, self._fndh_port, 60)
                 return (
                     ResultCode.STARTED,
                     "The command will continue when the smartbox turns on.",

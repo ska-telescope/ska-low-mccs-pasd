@@ -256,6 +256,9 @@ class MccsFieldStation(SKABaseDevice):
 
         if "antenna_powers" in kwargs:
             self.logger.debug("antenna power state changed")
+            # Antenna powers have changed delete json and reload.
+            # pylint: disable=attribute-defined-outside-init
+            self._antenna_power_json = None
             self.push_change_event(
                 "antennaPowerStates", json.dumps(kwargs["antenna_powers"])
             )

@@ -756,10 +756,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             )
             return
 
-        self.logger.info("All FNDH ports turned off. All Smartbox ports turn off.")
+        self.logger.info("All FNDH ports turned off. All Smartbox ports turned off.")
         task_callback(
             status=TaskStatus.COMPLETED,
-            result="All FNDH ports turned off. All Smartbox ports turn off.",
+            result="All FNDH ports turned off. All Smartbox ports turned off.",
         )
 
     def _get_masked_smartbox_ports(

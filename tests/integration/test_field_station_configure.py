@@ -249,7 +249,7 @@ class TestFieldStationIntegration:
             tango.DevState.UNKNOWN
         )
         change_event_callbacks["field_station_state"].assert_change_event(
-            tango.DevState.OFF
+            tango.DevState.STANDBY
         )
         for i in range(len(smartbox_proxys)):
             change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
