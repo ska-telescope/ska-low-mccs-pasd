@@ -254,7 +254,7 @@ class TestFieldStationIntegration:
         ].items():
             if antenna_id == antenna_to_turn_on:
                 chosen_smartbox_port = smartbox_port
-                chosen_smartbox_id = int(re.findall("d+", smartbox_id_str)[0]) - 1
+                chosen_smartbox_id = int(re.findall(r"\d+", smartbox_id_str)[0]) - 1
         # Check initial state.
         assert not smartbox_proxys[chosen_smartbox_id].portspowersensed[
             chosen_smartbox_port - 1

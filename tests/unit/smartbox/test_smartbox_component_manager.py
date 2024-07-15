@@ -639,7 +639,6 @@ def alternate_input_smartbox_mapping_fixture(
 
     # The smartbox under test is attached to the port
     # given by fixture changed_fndh_port!!
-    smartbox_mapping[smartbox_number - 1]["fndhPort"] = changed_fndh_port
-    smartbox_mapping[smartbox_number - 1]["smartboxID"] = smartbox_number
+    smartbox_mapping[f"sb{(smartbox_number):02d}"] = changed_fndh_port
 
     return json.dumps({"smartboxMapping": smartbox_mapping})

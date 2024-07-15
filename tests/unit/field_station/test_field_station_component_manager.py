@@ -740,7 +740,7 @@ class TestFieldStationComponentManager:
             ),
             pytest.param(
                 "off",
-                0,
+                "tmp",
                 False,  # antenna(s) are not masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
