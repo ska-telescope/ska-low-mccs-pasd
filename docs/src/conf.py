@@ -99,6 +99,7 @@ nitpick_ignore = [
         "ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator._SmartboxPortSimulator",
     ),
     ("py:class", "TaskStatus"),
+    ("py:class", "ResultCode"),
 ]
 
 # If your documentation needs a minimal Sphinx version, state it here.
