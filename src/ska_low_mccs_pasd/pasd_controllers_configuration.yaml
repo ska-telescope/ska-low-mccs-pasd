@@ -72,21 +72,25 @@ PaSD_controllers:
       number_of_ports: &number_of_fndh_ports 28
       registers:
         <<: *common_registers
-        psu48v_voltages:
+        psu48v_voltage_1:
           data_type: float
           address: 16
-          size: 2
-          tango_dim_x: 2
+          conversion_function: scale_volts
+        psu48v_voltage_2:
+          data_type: float
+          address: 17
           conversion_function: scale_volts
         psu48v_current:
           data_type: float
           address: 18
           conversion_function: scale_48vcurrents
-        psu48v_temperatures:
+        psu48v_temperature_1:
           data_type: float
           address: 19
-          size: 2 
-          tango_dim_x: 2
+          conversion_function: scale_signed_16bit
+        psu48v_temperature_2:
+          data_type: float
+          address: 20
           conversion_function: scale_signed_16bit
         panel_temperature:
           data_type: float
@@ -348,18 +352,22 @@ PaSD_controllers:
           data_type: str
           address: 22
           conversion_function: convert_led_status
-        fem_case_temperatures:
+        fem_case_temperature_1:
           data_type: float
           address: 23
-          size: 2
-          tango_dim_x: 2
-          conversion_function: scale_signed_16bit        
-        fem_heatsink_temperatures:
+          conversion_function: scale_signed_16bit
+        fem_case_temperature_2:
+          data_type: float
+          address: 24
+          conversion_function: scale_signed_16bit
+        fem_heatsink_temperature_1:
           data_type: float
           address: 25
-          size: 2
-          tango_dim_x: 2
-          conversion_function: scale_signed_16bit        
+          conversion_function: scale_signed_16bit
+        fem_heatsink_temperature_2:
+          data_type: float
+          address: 26
+          conversion_function: scale_signed_16bit
         port_forcings:
           data_type: str
           modbus_class: PasdBusPortAttribute
