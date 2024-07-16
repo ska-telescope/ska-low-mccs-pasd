@@ -354,10 +354,14 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if int(smartbox_num) == self._smartbox_nr:
                 if 0 < fndh_port < PasdData.NUMBER_OF_FNDH_PORTS + 1:
                     self.update_fndh_port(fndh_port)
-                    self.logger.error(
+                    self.logger.info(
                         f"Smartbox has been moved to fndh port {fndh_port}"
                     )
                     return
+                self.logger.error(
+                    f"Unable to put smartbox on port {fndh_port},"
+                    "Out of range 0 - 28"
+                )
                 return
 
     def start_communicating(self: SmartBoxComponentManager) -> None:

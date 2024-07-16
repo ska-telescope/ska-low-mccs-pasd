@@ -924,8 +924,6 @@ class TestFieldStationComponentManager:
                     }
                 )
 
-                print(f"smartbox_json_arg == {smartbox_json_arg}")
-
                 smartbox_proxy_command.assert_next_call(smartbox_json_arg)
 
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)

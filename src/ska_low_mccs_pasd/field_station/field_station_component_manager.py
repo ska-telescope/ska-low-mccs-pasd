@@ -349,11 +349,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 port_powers[i] = PowerState.OFF
 
         number_of_antenna_powers_updated = 0
+        smartbox_name = self._smartbox_trl_name_map[smartbox_trl]
         for antenna_name, (
             antennas_smartbox_name,
             smartbox_port,
         ) in self._antenna_mapping["antennaMapping"].items():
-            smartbox_name = self._smartbox_trl_name_map[smartbox_trl]
             if antennas_smartbox_name == smartbox_name:
                 if antenna_name in self.antenna_powers:
                     port_index = smartbox_port - 1

@@ -440,6 +440,12 @@ class TestFieldStationIntegration:
         poll_until_command_completed(field_station_device, command_id, 3)
 
         assert field_station_device.antennamapping == json.dumps(antenna_mapping)
+        invalid_antenna_mapping = antenna_mapping_from_reference_data(
+            invalid_simulated_configuration
+        )
+        assert field_station_device.antennamapping != json.dumps(
+            invalid_antenna_mapping
+        )
 
         # Loading a different backend configuration.
         configuration_manager.read_data = unittest.mock.Mock(
