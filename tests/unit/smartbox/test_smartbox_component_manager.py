@@ -599,7 +599,6 @@ class TestSmartBoxComponentManager:
         :param command_tracked_response: The result of the command.
         :param mock_callbacks: the mock_callbacks.
         """
-
         smartbox_component_manager.start_communicating()
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.NOT_ESTABLISHED
