@@ -348,12 +348,18 @@ class TestfndhPasdBusIntegration:
         setattr(
             fndh_device,
             "OutsideTemperatureThresholds",
-            [40.2, 35.5, 10.5, 5],
+            [30.2, 25.5, 10.5, 5],
         )
         change_event_callbacks["outsideTemperatureThresholds"].assert_change_event(
-            [40.2, 35.5, 10.5, 5], lookahead=2
+            [30.2, 25.5, 10.5, 5], lookahead=2
         )
-        assert fndh_simulator.outside_temperature_thresholds == [4020, 3550, 1050, 500]
+        assert fndh_simulator.outside_temperature_thresholds == [3020, 2550, 1050, 500]
+
+        # Check the threshold values get propagated to the Tango alarm configuration
+        assert (
+            fndh_device.read_attribute("outsideTemperature").quality
+            == tango.AttrQuality.ATTR_ALARM
+        )
 
     # pylint: disable=too-many-arguments
     def test_port_power(
