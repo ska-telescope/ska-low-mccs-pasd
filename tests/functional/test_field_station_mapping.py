@@ -39,10 +39,6 @@ ANTENNA_MAPPING_SCHEMA: Final = {
                 "[a-zA-Z0-9_]+": {
                     "description": "the antennas",
                     "type": "array",
-                    # "properties": {
-                    #     "smartboxID": {"type": "string"},
-                    #     "smartboxPort": {"type": "integer"},
-                    # },
                 }
             },
         }
@@ -87,6 +83,7 @@ SMARTBOX_MAPPING_SCHEMA: Final = {
     },
     "required": ["smartboxMapping"],
 }
+
 scenarios("./features/field_station_mapping.feature")
 
 
@@ -98,6 +95,7 @@ def get_ready_device(device_ref: str, set_device_state: Callable) -> None:
     :param device_ref: Gherkin reference to device under test.
     :param set_device_state: function to set device state.
     """
+    print(f"Setting device {device_ref} ready...")
     set_device_state(
         device_ref,
         state=tango.DevState.ON,
