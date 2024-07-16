@@ -69,7 +69,7 @@ def invalid_simulated_configuration_fixture() -> dict[Any, Any]:
     smartboxes = {}
     for i in range(1, number_of_antenna + 1):
         antennas[i] = {"smartbox": i % 13 + 1, "smartbox_port": i % 11}
-    for i in range(1, 25):
+    for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         smartboxes[i] = {"fndh_port": str(i), "modbus_id": i}
 
     configuration = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
