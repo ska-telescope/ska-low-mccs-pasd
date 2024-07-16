@@ -1133,12 +1133,18 @@ class TestSmartBoxPasdBusIntegration:
         setattr(
             smartbox_device,
             "PcbTemperatureThresholds",
-            [40.2, 35.5, 10.5, 5],
+            [30.2, 25.5, 10.5, 5],
         )
         change_event_callbacks[
             f"smartbox{smartbox_id}pcbtemperaturethresholds"
-        ].assert_change_event([40.2, 35.5, 10.5, 5], lookahead=10)
-        assert smartbox_simulator.pcb_temperature_thresholds == [4020, 3550, 1050, 500]
+        ].assert_change_event([30.2, 25.5, 10.5, 5], lookahead=10)
+        assert smartbox_simulator.pcb_temperature_thresholds == [3020, 2550, 1050, 500]
+
+        # Check the threshold values get propagated to the Tango alarm configuration
+        assert (
+            smartbox_device.read_attribute("pcbTemperature").quality
+            == tango.AttrQuality.ATTR_ALARM
+        )
 
     def test_set_port_powers(
         self: TestSmartBoxPasdBusIntegration,
