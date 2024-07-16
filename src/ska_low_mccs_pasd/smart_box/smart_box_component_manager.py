@@ -94,7 +94,6 @@ class _PasdBusProxy(DeviceComponentManager):
         fqdn: str,
         smartbox_nr: int,
         logger: logging.Logger,
-        max_workers: int,
         smartbox_communication_state_callback: Callable[[CommunicationStatus], None],
         smartbox_component_state_callback: Callable[..., None],
         fndh_port_power_callback: Callable[..., None],
@@ -106,8 +105,6 @@ class _PasdBusProxy(DeviceComponentManager):
         :param fqdn: the FQDN of the Tile device.
         :param smartbox_nr: the smartbox's ID number.
         :param logger: the logger to be used by this object.
-        :param max_workers: the maximum worker threads for the slow commands
-            associated with this component manager.
         :param smartbox_communication_state_callback: callback to be
             called when the status of the communications change.
         :param smartbox_component_state_callback: callback to be
@@ -125,7 +122,6 @@ class _PasdBusProxy(DeviceComponentManager):
         super().__init__(
             fqdn,
             logger,
-            max_workers,
             smartbox_communication_state_callback,
             smartbox_component_state_callback,
         )
@@ -280,7 +276,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
         """
-        max_workers = 1
         self._pasd_fqdn = pasd_fqdn
         self.logger = logger
         self.ports = [
@@ -296,7 +291,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self._field_station_proxy = DeviceComponentManager(
             field_station_name,
             logger,
-            max_workers,
             self._field_station_communication_change,
             self._field_station_state_change,
         )
@@ -305,7 +299,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             pasd_fqdn,
             smartbox_nr,
             logger,
-            max_workers,
             self._pasd_bus_communication_state_changed,
             self._pasd_bus_component_state_changed,
             self._on_fndh_ports_power_changed,
@@ -316,7 +309,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             logger,
             communication_state_callback,
             component_state_callback,
-            max_workers=max_workers,
             power=None,
             health=None,
             fault=None,

@@ -99,7 +99,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._antenna_mask_telmodel: dict = {}
         self._smartbox_mapping: dict[str, int] = {}
 
-        max_workers = 1
         self.fndh_port_states: list[Optional[bool]] = [
             None
         ] * PasdData.NUMBER_OF_FNDH_PORTS
@@ -120,7 +119,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             logger,
             communication_state_callback,
             component_state_changed,
-            max_workers=max_workers,
         )
         self._communication_states = {
             fqdn: CommunicationStatus.DISABLED
@@ -131,7 +129,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._fndh_proxy = _fndh_proxy or DeviceComponentManager(
             fndh_name,
             logger,
-            max_workers,
             functools.partial(self._device_communication_state_changed, fndh_name),
             functools.partial(self._component_state_callback, device_name=fndh_name),
         )
@@ -148,7 +145,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     DeviceComponentManager(
                         smartbox_name,
                         logger,
-                        max_workers,
                         functools.partial(
                             self._device_communication_state_changed, smartbox_name
                         ),

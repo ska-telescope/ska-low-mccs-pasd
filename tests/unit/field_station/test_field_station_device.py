@@ -158,7 +158,10 @@ def mock_component_manager_fixture() -> unittest.mock.Mock:
     :return: a mock to be used as a component manager for the
         field station bus device.
     """
-    return unittest.mock.Mock()
+    component_manager = unittest.mock.Mock()
+    component_manager.max_queued_tasks = 0
+    component_manager.max_executing_tasks = 1
+    return component_manager
 
 
 @pytest.fixture(name="patched_field_station_device_class")
