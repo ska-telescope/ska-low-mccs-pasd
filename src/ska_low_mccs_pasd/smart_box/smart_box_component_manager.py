@@ -498,6 +498,10 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                     )
 
             case PowerState.ON:
+                for port in self.ports:
+                    if port.desire_on:
+                        port.turn_on()
+
                 # If the FNDH port is ON, but all smartbox the ports are OFF,
                 # and all the ports aren't masked, the smartbox is STANDBY.
                 # However if the ports are all masked, and the last command given was
@@ -505,7 +509,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 if all(
                     power == PowerState.OFF for power in self._smartbox_port_powers
                 ) and (
-                    all(not masked for masked in self._port_mask)
+                    not all(masked for masked in self._port_mask)
                     or self._desire_standby
                 ):
                     if self._power_state != PowerState.STANDBY:
@@ -514,9 +518,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                             "And all its ports are OFF, while they aren't all masked."
                         )
                         self._power_state = PowerState.STANDBY
-                        for port in self.ports:
-                            if port.desire_on:
-                                port.turn_on()
 
                 # If the FNDH port is ON, and (any of the smartbox ports are ON,
                 # or all smartbox ports are OFF, but they are all masked),
@@ -548,9 +549,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                                 "May be attempting read before attribute polled."
                                 "port powers will be updated when polled."
                             )
-                        for port in self.ports:
-                            if port.desire_on:
-                                port.turn_on()
 
                 else:
                     self.logger.warning("No PowerState rules matched, going UNKNOWN")

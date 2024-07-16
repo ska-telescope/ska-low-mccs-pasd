@@ -11,6 +11,7 @@ from __future__ import annotations
 import datetime
 import json
 import logging
+import time
 import unittest.mock
 from typing import Any, Iterator
 
@@ -270,13 +271,25 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
+
+        mock_callbacks["attribute_update"].assert_call(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            pytest.approx(datetime.datetime.utcnow().timestamp()),
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        smartbox_component_manager._on_smartbox_ports_power_changed(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            tango.AttrQuality.ATTR_VALID,
+        )
+
         # To transition to a state we need to know what fndh port we are on.
         # Lookahead 2 is needed incase this information is not initially known
         # We first transtion to UNKNOWN,
         # then when we know the state we transition to ON/OFF
-        mock_callbacks["component_state"].assert_call(
-            power=PowerState.STANDBY, lookahead=2
-        )
+        mock_callbacks["component_state"].assert_call(power=PowerState.ON, lookahead=2)
 
     @pytest.mark.parametrize(
         (
@@ -500,8 +513,30 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        # Overwrite whatever power state was calculated during start_communicating
-        smartbox_component_manager._power_state = PowerState.ON
+
+        mock_callbacks["attribute_update"].assert_call(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            pytest.approx(datetime.datetime.utcnow().timestamp()),
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        smartbox_component_manager._on_smartbox_ports_power_changed(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        # To turn off on a smartbox the smartbox itself must be on and communicating.
+        timeout = 10
+        start_time = time.time()
+        while time.time() < start_time + timeout:
+            if smartbox_component_manager._power_state == PowerState.ON:
+                break
+            time.sleep(0.1)
+
+        assert smartbox_component_manager._power_state == PowerState.ON
+
         assert (
             getattr(smartbox_component_manager, component_manager_command)(
                 component_manager_command_argument,
@@ -527,14 +562,14 @@ class TestSmartBoxComponentManager:
             (
                 "turn_on_port",
                 3,
-                "TurnAntennaOn",
+                "SetSmartboxPortPowers",
                 (TaskStatus.QUEUED, "Task queued"),
                 f"Power on port '{3} failed'",
             ),
             (
                 "turn_off_port",
                 3,
-                "TurnAntennaOff",
+                "SetSmartboxPortPowers",
                 (TaskStatus.QUEUED, "Task queued"),
                 f"Power off port '{3} failed'",
             ),
@@ -564,11 +599,38 @@ class TestSmartBoxComponentManager:
         :param command_tracked_response: The result of the command.
         :param mock_callbacks: the mock_callbacks.
         """
-        # To turn off on a smartbox the smartbox itself must be on and communicating.
-        smartbox_component_manager._power_state = PowerState.ON
-        smartbox_component_manager._update_communication_state(
+
+        smartbox_component_manager.start_communicating()
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
+
+        mock_callbacks["attribute_update"].assert_call(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            pytest.approx(datetime.datetime.utcnow().timestamp()),
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        smartbox_component_manager._on_smartbox_ports_power_changed(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        # To turn off on a smartbox the smartbox itself must be on and communicating.
+        timeout = 10
+        start_time = time.time()
+        while time.time() < start_time + timeout:
+            if smartbox_component_manager._power_state == PowerState.ON:
+                break
+            time.sleep(0.1)
+
+        assert smartbox_component_manager._power_state == PowerState.ON
+
         # setup to raise exception.
         mock_response = unittest.mock.MagicMock(
             side_effect=Exception("Mocked exception")
