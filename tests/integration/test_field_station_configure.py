@@ -119,13 +119,9 @@ def antenna_mapping_from_reference_data(
         'schemas.MccsFieldStation_UpdateAntennaMapping.json'
     """
     antenna_mapping: dict = {}
-    for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION - 4):
-        for j in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
-            antenna_name = f"sb{i:02d}-{j:02d}"
-            antenna_mapping[antenna_name] = [
-                reference_data["antennas"][antenna_name]["smartbox"],
-                reference_data["antennas"][antenna_name]["smartbox_port"],
-            ]
+    for antenna_name, values in reference_data["antennas"].items():
+        antenna_mapping[antenna_name] = [values["smartbox"], values["smartbox_port"]]
+
     return {"antennaMapping": antenna_mapping}
 
 

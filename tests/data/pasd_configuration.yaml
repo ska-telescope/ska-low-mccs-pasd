@@ -110,12 +110,6 @@ antennas:
   "sb01-10":
     smartbox: "sb01"
     smartbox_port: 10
-  "sb01-11":
-    smartbox: "sb01"
-    smartbox_port: 11
-  "sb01-12":
-    smartbox: "sb01"
-    smartbox_port: 12
   "sb02-01":
     smartbox: "sb02"
     smartbox_port: 1
@@ -149,9 +143,6 @@ antennas:
   "sb02-11":
     smartbox: "sb02"
     smartbox_port: 11
-  "sb02-12":
-    smartbox: "sb02"
-    smartbox_port: 12
   "sb03-01":
     smartbox: "sb03"
     smartbox_port: 1
@@ -185,9 +176,6 @@ antennas:
   "sb03-11":
     smartbox: "sb03"
     smartbox_port: 11
-  "sb03-12":
-    smartbox: "sb03"
-    smartbox_port: 12
   "sb04-01":
     smartbox: "sb04"
     smartbox_port: 1
@@ -221,9 +209,6 @@ antennas:
   "sb04-11":
     smartbox: "sb04"
     smartbox_port: 11
-  "sb04-12":
-    smartbox: "sb04"
-    smartbox_port: 12
   "sb05-01":
     smartbox: "sb05"
     smartbox_port: 1
@@ -257,9 +242,6 @@ antennas:
   "sb05-11":
     smartbox: "sb05"
     smartbox_port: 11
-  "sb05-12":
-    smartbox: "sb05"
-    smartbox_port: 12
   "sb06-01":
     smartbox: "sb06"
     smartbox_port: 1
@@ -293,9 +275,6 @@ antennas:
   "sb06-11":
     smartbox: "sb06"
     smartbox_port: 11
-  "sb06-12":
-    smartbox: "sb06"
-    smartbox_port: 12
   "sb07-01":
     smartbox: "sb07"
     smartbox_port: 1
@@ -329,9 +308,6 @@ antennas:
   "sb07-11":
     smartbox: "sb07"
     smartbox_port: 11
-  "sb07-12":
-    smartbox: "sb07"
-    smartbox_port: 12
   "sb08-01":
     smartbox: "sb08"
     smartbox_port: 1
@@ -362,12 +338,6 @@ antennas:
   "sb08-10":
     smartbox: "sb08"
     smartbox_port: 10
-  "sb08-11":
-    smartbox: "sb08"
-    smartbox_port: 11
-  "sb08-12":
-    smartbox: "sb08"
-    smartbox_port: 12
   "sb09-01":
     smartbox: "sb09"
     smartbox_port: 1
@@ -401,9 +371,6 @@ antennas:
   "sb09-11":
     smartbox: "sb09"
     smartbox_port: 11
-  "sb09-12":
-    smartbox: "sb09"
-    smartbox_port: 12
   "sb10-01":
     smartbox: "sb10"
     smartbox_port: 1
@@ -437,9 +404,6 @@ antennas:
   "sb10-11":
     smartbox: "sb10"
     smartbox_port: 11
-  "sb10-12":
-    smartbox: "sb10"
-    smartbox_port: 12
   "sb11-01":
     smartbox: "sb11"
     smartbox_port: 1
@@ -470,12 +434,6 @@ antennas:
   "sb11-10":
     smartbox: "sb11"
     smartbox_port: 10
-  "sb11-11":
-    smartbox: "sb11"
-    smartbox_port: 11
-  "sb11-12":
-    smartbox: "sb11"
-    smartbox_port: 12
   "sb12-01":
     smartbox: "sb12"
     smartbox_port: 1
@@ -509,9 +467,6 @@ antennas:
   "sb12-11":
     smartbox: "sb12"
     smartbox_port: 11
-  "sb12-12":
-    smartbox: "sb12"
-    smartbox_port: 12
   "sb13-01":
     smartbox: "sb13"
     smartbox_port: 1
@@ -545,9 +500,6 @@ antennas:
   "sb13-11":
     smartbox: "sb13"
     smartbox_port: 11
-  "sb13-12":
-    smartbox: "sb13"
-    smartbox_port: 12
   "sb14-01":
     smartbox: "sb14"
     smartbox_port: 1
@@ -581,9 +533,6 @@ antennas:
   "sb14-11":
     smartbox: "sb14"
     smartbox_port: 11
-  "sb14-12":
-    smartbox: "sb14"
-    smartbox_port: 12
   "sb15-01":
     smartbox: "sb15"
     smartbox_port: 1
@@ -614,12 +563,6 @@ antennas:
   "sb15-10":
     smartbox: "sb15"
     smartbox_port: 10
-  "sb15-11":
-    smartbox: "sb15"
-    smartbox_port: 11
-  "sb15-12":
-    smartbox: "sb15"
-    smartbox_port: 12
   "sb16-01":
     smartbox: "sb16"
     smartbox_port: 1
@@ -653,9 +596,6 @@ antennas:
   "sb16-11":
     smartbox: "sb16"
     smartbox_port: 11
-  "sb16-12":
-    smartbox: "sb16"
-    smartbox_port: 12
   "sb17-01":
     smartbox: "sb17"
     smartbox_port: 1
@@ -686,12 +626,6 @@ antennas:
   "sb17-10":
     smartbox: "sb17"
     smartbox_port: 10
-  "sb17-11":
-    smartbox: "sb17"
-    smartbox_port: 11
-  "sb17-12":
-    smartbox: "sb17"
-    smartbox_port: 12
   "sb18-01":
     smartbox: "sb18"
     smartbox_port: 1
@@ -722,12 +656,6 @@ antennas:
   "sb18-10":
     smartbox: "sb18"
     smartbox_port: 10
-  "sb18-11":
-    smartbox: "sb18"
-    smartbox_port: 11
-  "sb18-12":
-    smartbox: "sb18"
-    smartbox_port: 12
   "sb19-01":
     smartbox: "sb19"
     smartbox_port: 1
@@ -761,6 +689,162 @@ antennas:
   "sb19-11":
     smartbox: "sb19"
     smartbox_port: 11
-  "sb19-12":
-    smartbox: "sb19"
-    smartbox_port: 12
+  "sb20-01":
+    smartbox: "sb20"
+    smartbox_port: 1
+  "sb20-02":
+    smartbox: "sb20"
+    smartbox_port: 2
+  "sb20-03":
+    smartbox: "sb20"
+    smartbox_port: 3
+  "sb20-04":
+    smartbox: "sb20"
+    smartbox_port: 4
+  "sb20-05":
+    smartbox: "sb20"
+    smartbox_port: 5
+  "sb20-06":
+    smartbox: "sb20"
+    smartbox_port: 6
+  "sb20-07":
+    smartbox: "sb20"
+    smartbox_port: 7
+  "sb20-08":
+    smartbox: "sb20"
+    smartbox_port: 8
+  "sb20-09":
+    smartbox: "sb20"
+    smartbox_port: 9
+  "sb20-10":
+    smartbox: "sb20"
+    smartbox_port: 10
+  "sb21-01":
+    smartbox: "sb21"
+    smartbox_port: 1
+  "sb21-02":
+    smartbox: "sb21"
+    smartbox_port: 2
+  "sb21-03":
+    smartbox: "sb21"
+    smartbox_port: 3
+  "sb21-04":
+    smartbox: "sb21"
+    smartbox_port: 4
+  "sb21-05":
+    smartbox: "sb21"
+    smartbox_port: 5
+  "sb21-06":
+    smartbox: "sb21"
+    smartbox_port: 6
+  "sb21-07":
+    smartbox: "sb21"
+    smartbox_port: 7
+  "sb21-08":
+    smartbox: "sb21"
+    smartbox_port: 8
+  "sb21-09":
+    smartbox: "sb21"
+    smartbox_port: 9
+  "sb21-10":
+    smartbox: "sb21"
+    smartbox_port: 10
+  "sb21-11":
+    smartbox: "sb21"
+    smartbox_port: 11
+  "sb22-01":
+    smartbox: "sb22"
+    smartbox_port: 1
+  "sb22-02":
+    smartbox: "sb22"
+    smartbox_port: 2
+  "sb22-03":
+    smartbox: "sb22"
+    smartbox_port: 3
+  "sb22-04":
+    smartbox: "sb22"
+    smartbox_port: 4
+  "sb22-05":
+    smartbox: "sb22"
+    smartbox_port: 5
+  "sb22-06":
+    smartbox: "sb22"
+    smartbox_port: 6
+  "sb22-07":
+    smartbox: "sb22"
+    smartbox_port: 7
+  "sb22-08":
+    smartbox: "sb22"
+    smartbox_port: 8
+  "sb22-09":
+    smartbox: "sb22"
+    smartbox_port: 9
+  "sb22-10":
+    smartbox: "sb22"
+    smartbox_port: 10
+  "sb22-11":
+    smartbox: "sb22"
+    smartbox_port: 11
+  "sb23-01":
+    smartbox: "sb23"
+    smartbox_port: 1
+  "sb23-02":
+    smartbox: "sb23"
+    smartbox_port: 2
+  "sb23-03":
+    smartbox: "sb23"
+    smartbox_port: 3
+  "sb23-04":
+    smartbox: "sb23"
+    smartbox_port: 4
+  "sb23-05":
+    smartbox: "sb23"
+    smartbox_port: 5
+  "sb23-06":
+    smartbox: "sb23"
+    smartbox_port: 6
+  "sb23-07":
+    smartbox: "sb23"
+    smartbox_port: 7
+  "sb23-08":
+    smartbox: "sb23"
+    smartbox_port: 8
+  "sb23-09":
+    smartbox: "sb23"
+    smartbox_port: 9
+  "sb23-10":
+    smartbox: "sb23"
+    smartbox_port: 10
+  "sb24-01":
+    smartbox: "sb24"
+    smartbox_port: 1
+  "sb24-02":
+    smartbox: "sb24"
+    smartbox_port: 2
+  "sb24-03":
+    smartbox: "sb24"
+    smartbox_port: 3
+  "sb24-04":
+    smartbox: "sb24"
+    smartbox_port: 4
+  "sb24-05":
+    smartbox: "sb24"
+    smartbox_port: 5
+  "sb24-06":
+    smartbox: "sb24"
+    smartbox_port: 6
+  "sb24-07":
+    smartbox: "sb24"
+    smartbox_port: 7
+  "sb24-08":
+    smartbox: "sb24"
+    smartbox_port: 8
+  "sb24-09":
+    smartbox: "sb24"
+    smartbox_port: 9
+  "sb24-10":
+    smartbox: "sb24"
+    smartbox_port: 10
+  "sb24-11":
+    smartbox: "sb24"
+    smartbox_port: 11
