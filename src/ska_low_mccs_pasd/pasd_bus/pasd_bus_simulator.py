@@ -36,7 +36,6 @@ PasdBusSimulator class should be considered public.
 from __future__ import annotations
 
 import logging
-import re
 from abc import ABC
 from datetime import datetime
 from typing import Callable, Final, Optional, Sequence
@@ -527,7 +526,7 @@ class PasdHardwareSimulator(BaseControllerSimulator):
             else:
                 self._sensors_status[sensor_name] = "OK"
 
-        sensor_name = re.sub(r"_([0-9])$", "s", sensor.removesuffix("_thresholds"))
+        sensor_name = sensor.removesuffix("_thresholds")
         sensor_value = getattr(self, sensor_name)
         # Return if default value has not been set yet in instance's __init__()
         if sensor_value is None:
@@ -971,9 +970,9 @@ class FndhSimulator(PasdHardwareSimulator):
     SYS_ADDRESS: Final = PasdData.CONTROLLERS_CONFIG["FNPC"]["modbus_address"]
 
     DEFAULT_FIRMWARE_VERSION: Final = 257
-    DEFAULT_PSU48V_VOLTAGES: Final = [4790, 4810]
+    DEFAULT_PSU48V_VOLTAGE: Final = 4790
     DEFAULT_PSU48V_CURRENT: Final = 1510
-    DEFAULT_PSU48V_TEMPERATURES: Final = [4120, 4290]
+    DEFAULT_PSU48V_TEMPERATURE: Final = 4120
     DEFAULT_PANEL_TEMPERATURE: Final = 3720
     DEFAULT_FNCB_TEMPERATURE: Final = 4150
     DEFAULT_FNCB_HUMIDITY: Final = 5020
@@ -998,14 +997,16 @@ class FndhSimulator(PasdHardwareSimulator):
     }
 
     # Instantiate sensor data descriptors
-    psu48v_voltages = _Sensor()
+    psu48v_voltage_1 = _Sensor()
+    psu48v_voltage_2 = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     psu48v_voltage_1_thresholds = _Sensor()
     psu48v_voltage_2_thresholds = _Sensor()
     psu48v_current = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     psu48v_current_thresholds = _Sensor()
-    psu48v_temperatures = _Sensor()
+    psu48v_temperature_1 = _Sensor()
+    psu48v_temperature_2 = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     psu48v_temperature_1_thresholds = _Sensor()
     psu48v_temperature_2_thresholds = _Sensor()
@@ -1051,9 +1052,11 @@ class FndhSimulator(PasdHardwareSimulator):
         super().__init__(ports, time_multiplier)
         # Sensors
         super()._load_thresholds("FNPC")
-        self.psu48v_voltages = self.DEFAULT_PSU48V_VOLTAGES
+        self.psu48v_voltage_1 = self.DEFAULT_PSU48V_VOLTAGE
+        self.psu48v_voltage_2 = self.DEFAULT_PSU48V_VOLTAGE
         self.psu48v_current = self.DEFAULT_PSU48V_CURRENT
-        self.psu48v_temperatures = self.DEFAULT_PSU48V_TEMPERATURES
+        self.psu48v_temperature_1 = self.DEFAULT_PSU48V_TEMPERATURE
+        self.psu48v_temperature_2 = self.DEFAULT_PSU48V_TEMPERATURE
         self.panel_temperature = self.DEFAULT_PANEL_TEMPERATURE
         self.fncb_temperature = self.DEFAULT_FNCB_TEMPERATURE
         self.fncb_humidity = self.DEFAULT_FNCB_HUMIDITY
@@ -1061,9 +1064,6 @@ class FndhSimulator(PasdHardwareSimulator):
         self.power_module_temperature = self.DEFAULT_POWER_MODULE_TEMPERATURE
         self.outside_temperature = self.DEFAULT_OUTSIDE_TEMPERATURE
         self.internal_ambient_temperature = self.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE
-        # TODO: Aliases for some thresholds, which are separate sets in HW
-        self.psu48v_voltages_thresholds = self.psu48v_voltage_1_thresholds
-        self.psu48v_temperatures_thresholds = self.psu48v_temperature_1_thresholds
 
     @property
     def sys_address(self: FndhSimulator) -> int:
@@ -1271,8 +1271,8 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_POWER_SUPPLY_TEMPERATURE: Final = 4210
     DEFAULT_PCB_TEMPERATURE: Final = 3860  # Not implemented in hardware?
     DEFAULT_FEM_AMBIENT_TEMPERATURE: Final = 4010
-    DEFAULT_FEM_CASE_TEMPERATURES: Final = [4440, 4460]
-    DEFAULT_FEM_HEATSINK_TEMPERATURES: Final = [4280, 4250]
+    DEFAULT_FEM_CASE_TEMPERATURE: Final = 4440
+    DEFAULT_FEM_HEATSINK_TEMPERATURE: Final = 4280
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
     DEFAULT_PORT_CURRENT_THRESHOLD: Final = 496
 
@@ -1304,11 +1304,13 @@ class SmartboxSimulator(PasdHardwareSimulator):
     fem_ambient_temperature = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     fem_ambient_temperature_thresholds = _Sensor()
-    fem_case_temperatures = _Sensor()
+    fem_case_temperature_1 = _Sensor()
+    fem_case_temperature_2 = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     fem_case_temperature_1_thresholds = _Sensor()
     fem_case_temperature_2_thresholds = _Sensor()
-    fem_heatsink_temperatures = _Sensor()
+    fem_heatsink_temperature_1 = _Sensor()
+    fem_heatsink_temperature_2 = _Sensor()
     """Public attribute as _Sensor() data descriptor: *int*"""
     fem_heatsink_temperature_1_thresholds = _Sensor()
     fem_heatsink_temperature_2_thresholds = _Sensor()
@@ -1338,13 +1340,10 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self.power_supply_temperature = self.DEFAULT_POWER_SUPPLY_TEMPERATURE
         self.pcb_temperature = self.DEFAULT_PCB_TEMPERATURE
         self.fem_ambient_temperature = self.DEFAULT_FEM_AMBIENT_TEMPERATURE
-        self.fem_case_temperatures = self.DEFAULT_FEM_CASE_TEMPERATURES
-        self.fem_heatsink_temperatures = self.DEFAULT_FEM_HEATSINK_TEMPERATURES
-        # TODO: Aliases for some thresholds, which are separate sets in HW
-        self.fem_case_temperatures_thresholds = self.fem_case_temperature_1_thresholds
-        self.fem_heatsink_temperatures_thresholds = (
-            self.fem_heatsink_temperature_1_thresholds
-        )
+        self.fem_case_temperature_1 = self.DEFAULT_FEM_CASE_TEMPERATURE
+        self.fem_case_temperature_2 = self.DEFAULT_FEM_CASE_TEMPERATURE
+        self.fem_heatsink_temperature_1 = self.DEFAULT_FEM_HEATSINK_TEMPERATURE
+        self.fem_heatsink_temperature_2 = self.DEFAULT_FEM_HEATSINK_TEMPERATURE
 
     @property
     def sys_address(self: SmartboxSimulator) -> int:
