@@ -1056,13 +1056,13 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}inputvoltage",
             30.00,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             "ALARM",
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.InputVoltage == 30.00
@@ -1070,13 +1070,13 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}inputvoltage",
             42.00,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             "RECOVERY",
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.InputVoltage == 42.00
@@ -1084,20 +1084,20 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             "WARNING",
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         smartbox_simulator.input_voltage = 4800
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}inputvoltage",
             48.00,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             "OK",
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.InputVoltage == 48.00
@@ -1106,13 +1106,13 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}psuoutput",
             4.95,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             "WARNING",
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.PowerSupplyOutputVoltage == 4.95
@@ -1121,7 +1121,7 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}psutemperature",
             50.00,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.PowerSupplyTemperature == 50.00
@@ -1130,7 +1130,7 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}pcbtemperature",
             50.00,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.PcbTemperature == 50.00
@@ -1139,7 +1139,7 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}femambienttemperature",
             50.00,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.FemAmbientTemperature == 50.00
@@ -1147,22 +1147,36 @@ class TestSmartBoxPasdBusIntegration:
         smartbox_simulator.fem_case_temperature_1 = 5000
         smartbox_simulator.fem_case_temperature_2 = 4900
         change_event_callbacks.assert_change_event(
-            f"smartbox{smartbox_id}femcasetemperatures",
-            [50.00, 49.00],
-            lookahead=10,
+            f"smartbox{smartbox_id}femcasetemperature1",
+            50.00,
+            lookahead=13,
             consume_nonmatches=True,
         )
-        assert (smartbox_device.FemCaseTemperatures == [50.00, 49.00]).all()
+        change_event_callbacks.assert_change_event(
+            f"smartbox{smartbox_id}femcasetemperature2",
+            49.00,
+            lookahead=13,
+            consume_nonmatches=True,
+        )
+        assert smartbox_device.FemCaseTemperature1 == 50.00
+        assert smartbox_device.FemCaseTemperature2 == 49.00
 
         smartbox_simulator.fem_heatsink_temperature_1 = 5100
         smartbox_simulator.fem_heatsink_temperature_2 = 5000
         change_event_callbacks.assert_change_event(
-            f"smartbox{smartbox_id}femheatsinktemperatures",
-            [51.00, 50.00],
-            lookahead=10,
+            f"smartbox{smartbox_id}femheatsinktemperature1",
+            51.00,
+            lookahead=13,
             consume_nonmatches=True,
         )
-        assert (smartbox_device.FemHeatsinkTemperatures == [51.00, 50.00]).all()
+        change_event_callbacks.assert_change_event(
+            f"smartbox{smartbox_id}femheatsinktemperature2",
+            50.00,
+            lookahead=13,
+            consume_nonmatches=True,
+        )
+        assert smartbox_device.FemHeatsinkTemperature1 == 51.00
+        assert smartbox_device.FemHeatsinkTemperature2 == 50.00
 
         # When we write an attribute, check the simulator gets updated
         smartbox_device.subscribe_event(
@@ -1177,7 +1191,7 @@ class TestSmartBoxPasdBusIntegration:
         )
         change_event_callbacks[
             f"smartbox{smartbox_id}pcbtemperaturethresholds"
-        ].assert_change_event([30.2, 25.5, 10.5, 5], lookahead=10)
+        ].assert_change_event([30.2, 25.5, 10.5, 5], lookahead=13)
         assert smartbox_simulator.pcb_temperature_thresholds == [3020, 2550, 1050, 500]
 
         # Check the threshold values get propagated to the Tango alarm configuration
