@@ -359,8 +359,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                     )
                     return
                 self.logger.error(
-                    f"Unable to put smartbox on port {fndh_port},"
-                    "Out of range 0 - 28"
+                    f"Unable to put smartbox on port {fndh_port}," "Out of range 0 - 28"
                 )
                 return
 
