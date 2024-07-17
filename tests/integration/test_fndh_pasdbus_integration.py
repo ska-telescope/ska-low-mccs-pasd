@@ -204,8 +204,17 @@ class TestfndhPasdBusIntegration:
         )
         assert fndh_device.PasdStatus == "OK"
         assert fndh_device.LedPattern == "service: OFF, status: GREENSLOW"
-        assert list(fndh_device.Psu48vVoltages) == PasdConversionUtility.scale_volts(
-            FndhSimulator.DEFAULT_PSU48V_VOLTAGES
+        assert (
+            fndh_device.Psu48vVoltage1
+            == PasdConversionUtility.scale_volts(
+                FndhSimulator.DEFAULT_PSU48V_VOLTAGE_1
+            )[0]
+        )
+        assert (
+            fndh_device.Psu48vVoltage2
+            == PasdConversionUtility.scale_volts(
+                FndhSimulator.DEFAULT_PSU48V_VOLTAGE_2
+            )[0]
         )
         assert (
             fndh_device.Psu48vCurrent
@@ -213,10 +222,17 @@ class TestfndhPasdBusIntegration:
                 [FndhSimulator.DEFAULT_PSU48V_CURRENT]
             )[0]
         )
-        assert list(
-            fndh_device.Psu48vTemperatures
-        ) == PasdConversionUtility.scale_signed_16bit(
-            FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
+        assert (
+            fndh_device.Psu48vTemperature1
+            == PasdConversionUtility.scale_signed_16bit(
+                FndhSimulator.DEFAULT_PSU48V_TEMPERATURE_1
+            )[0]
+        )
+        assert (
+            fndh_device.Psu48vTemperature2
+            == PasdConversionUtility.scale_signed_16bit(
+                FndhSimulator.DEFAULT_PSU48V_TEMPERATURE_2
+            )[0]
         )
         assert (
             fndh_device.PanelTemperature

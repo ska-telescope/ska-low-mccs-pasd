@@ -970,9 +970,11 @@ class FndhSimulator(PasdHardwareSimulator):
     SYS_ADDRESS: Final = PasdData.CONTROLLERS_CONFIG["FNPC"]["modbus_address"]
 
     DEFAULT_FIRMWARE_VERSION: Final = 257
-    DEFAULT_PSU48V_VOLTAGE: Final = 4790
+    DEFAULT_PSU48V_VOLTAGE_1: Final = 4790
+    DEFAULT_PSU48V_VOLTAGE_2: Final = 4810
     DEFAULT_PSU48V_CURRENT: Final = 1510
-    DEFAULT_PSU48V_TEMPERATURE: Final = 4120
+    DEFAULT_PSU48V_TEMPERATURE_1: Final = 4120
+    DEFAULT_PSU48V_TEMPERATURE_2: Final = 4290
     DEFAULT_PANEL_TEMPERATURE: Final = 3720
     DEFAULT_FNCB_TEMPERATURE: Final = 4150
     DEFAULT_FNCB_HUMIDITY: Final = 5020
@@ -1052,11 +1054,11 @@ class FndhSimulator(PasdHardwareSimulator):
         super().__init__(ports, time_multiplier)
         # Sensors
         super()._load_thresholds("FNPC")
-        self.psu48v_voltage_1 = self.DEFAULT_PSU48V_VOLTAGE
-        self.psu48v_voltage_2 = self.DEFAULT_PSU48V_VOLTAGE
+        self.psu48v_voltage_1 = self.DEFAULT_PSU48V_VOLTAGE_1
+        self.psu48v_voltage_2 = self.DEFAULT_PSU48V_VOLTAGE_2
         self.psu48v_current = self.DEFAULT_PSU48V_CURRENT
-        self.psu48v_temperature_1 = self.DEFAULT_PSU48V_TEMPERATURE
-        self.psu48v_temperature_2 = self.DEFAULT_PSU48V_TEMPERATURE
+        self.psu48v_temperature_1 = self.DEFAULT_PSU48V_TEMPERATURE_1
+        self.psu48v_temperature_2 = self.DEFAULT_PSU48V_TEMPERATURE_2
         self.panel_temperature = self.DEFAULT_PANEL_TEMPERATURE
         self.fncb_temperature = self.DEFAULT_FNCB_TEMPERATURE
         self.fncb_humidity = self.DEFAULT_FNCB_HUMIDITY
@@ -1271,8 +1273,10 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_POWER_SUPPLY_TEMPERATURE: Final = 4210
     DEFAULT_PCB_TEMPERATURE: Final = 3860  # Not implemented in hardware?
     DEFAULT_FEM_AMBIENT_TEMPERATURE: Final = 4010
-    DEFAULT_FEM_CASE_TEMPERATURE: Final = 4440
-    DEFAULT_FEM_HEATSINK_TEMPERATURE: Final = 4280
+    DEFAULT_FEM_CASE_TEMPERATURE_1: Final = 4440
+    DEFAULT_FEM_CASE_TEMPERATURE_2: Final = 4460
+    DEFAULT_FEM_HEATSINK_TEMPERATURE_1: Final = 4280
+    DEFAULT_FEM_HEATSINK_TEMPERATURE_2: Final = 4250
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
     DEFAULT_PORT_CURRENT_THRESHOLD: Final = 496
 
@@ -1340,10 +1344,10 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self.power_supply_temperature = self.DEFAULT_POWER_SUPPLY_TEMPERATURE
         self.pcb_temperature = self.DEFAULT_PCB_TEMPERATURE
         self.fem_ambient_temperature = self.DEFAULT_FEM_AMBIENT_TEMPERATURE
-        self.fem_case_temperature_1 = self.DEFAULT_FEM_CASE_TEMPERATURE
-        self.fem_case_temperature_2 = self.DEFAULT_FEM_CASE_TEMPERATURE
-        self.fem_heatsink_temperature_1 = self.DEFAULT_FEM_HEATSINK_TEMPERATURE
-        self.fem_heatsink_temperature_2 = self.DEFAULT_FEM_HEATSINK_TEMPERATURE
+        self.fem_case_temperature_1 = self.DEFAULT_FEM_CASE_TEMPERATURE_1
+        self.fem_case_temperature_2 = self.DEFAULT_FEM_CASE_TEMPERATURE_2
+        self.fem_heatsink_temperature_1 = self.DEFAULT_FEM_HEATSINK_TEMPERATURE_1
+        self.fem_heatsink_temperature_2 = self.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
 
     @property
     def sys_address(self: SmartboxSimulator) -> int:

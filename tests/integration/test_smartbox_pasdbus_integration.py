@@ -763,8 +763,10 @@ class TestSmartBoxPasdBusIntegration:
             "PowerSupplyTemperature",
             "PcbTemperature",
             "FemAmbientTemperature",
-            "FemCaseTemperatures",
-            "FemHeatsinkTemperatures",
+            "FemCaseTemperature1",
+            "FemCaseTemperature2",
+            "FemHeatsinkTemperature1",
+            "FemHeatsinkTemperature2",
             "PortForcings",
             "PortBreakersTripped",
             "PortsDesiredPowerOnline",
@@ -851,15 +853,29 @@ class TestSmartBoxPasdBusIntegration:
                 [SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE]
             )[0]
         )
-        assert list(
-            smartbox_device.FemCaseTemperatures
-        ) == PasdConversionUtility.scale_signed_16bit(
-            SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+        assert (
+            smartbox_device.FemCaseTemperature1
+            == PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_1
+            )[0]
         )
-        assert list(
-            smartbox_device.FemHeatsinkTemperatures
-        ) == PasdConversionUtility.scale_signed_16bit(
-            SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+        assert (
+            smartbox_device.FemCaseTemperature2
+            == PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_2
+            )[0]
+        )
+        assert (
+            smartbox_device.FemHeatsinkTemperature1
+            == PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_1
+            )[0]
+        )
+        assert (
+            smartbox_device.FemHeatsinkTemperature2
+            == PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
+            )[0]
         )
         assert list(
             smartbox_device.InputVoltageThresholds
@@ -981,26 +997,48 @@ class TestSmartBoxPasdBusIntegration:
             )[0],
         )
         smartbox_device.subscribe_event(
-            "FemCaseTemperatures",
+            "FemCaseTemperature1",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[f"smartbox{smartbox_id}femcasetemperatures"],
-        )
-        change_event_callbacks.assert_change_event(
-            f"smartbox{smartbox_id}femcasetemperatures",
-            PasdConversionUtility.scale_signed_16bit(
-                SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
-            ),
+            change_event_callbacks[f"smartbox{smartbox_id}femcasetemperature1"],
         )
         smartbox_device.subscribe_event(
-            "FemHeatsinkTemperatures",
+            "FemCaseTemperature2",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[f"smartbox{smartbox_id}femheatsinktemperatures"],
+            change_event_callbacks[f"smartbox{smartbox_id}femcasetemperature2"],
         )
         change_event_callbacks.assert_change_event(
-            f"smartbox{smartbox_id}femheatsinktemperatures",
+            f"smartbox{smartbox_id}femcasetemperature1",
             PasdConversionUtility.scale_signed_16bit(
-                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
-            ),
+                SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_1
+            )[0],
+        )
+        change_event_callbacks.assert_change_event(
+            f"smartbox{smartbox_id}femcasetemperature2",
+            PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_2
+            )[0],
+        )
+        smartbox_device.subscribe_event(
+            "FemHeatsinkTemperature1",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{smartbox_id}femheatsinktemperature1"],
+        )
+        smartbox_device.subscribe_event(
+            "FemHeatsinkTemperature2",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{smartbox_id}femheatsinktemperature2"],
+        )
+        change_event_callbacks.assert_change_event(
+            f"smartbox{smartbox_id}femheatsinktemperature1",
+            PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_1
+            )[0],
+        )
+        change_event_callbacks.assert_change_event(
+            f"smartbox{smartbox_id}femheatsinktemperature2",
+            PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
+            )[0],
         )
 
         # When we mock a change in an attribute at the simulator level.
@@ -1106,7 +1144,8 @@ class TestSmartBoxPasdBusIntegration:
         )
         assert smartbox_device.FemAmbientTemperature == 50.00
 
-        smartbox_simulator.fem_case_temperatures = [5000, 4900]
+        smartbox_simulator.fem_case_temperature_1 = 5000
+        smartbox_simulator.fem_case_temperature_2 = 4900
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}femcasetemperatures",
             [50.00, 49.00],
@@ -1115,7 +1154,8 @@ class TestSmartBoxPasdBusIntegration:
         )
         assert (smartbox_device.FemCaseTemperatures == [50.00, 49.00]).all()
 
-        smartbox_simulator.fem_heatsink_temperatures = [5100, 5000]
+        smartbox_simulator.fem_heatsink_temperature_1 = 5100
+        smartbox_simulator.fem_heatsink_temperature_2 = 5000
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}femheatsinktemperatures",
             [51.00, 50.00],
@@ -1253,8 +1293,10 @@ def change_event_callbacks_fixture(
         f"smartbox{on_smartbox_id}psutemperature",
         f"smartbox{on_smartbox_id}pcbtemperature",
         f"smartbox{on_smartbox_id}femambienttemperature",
-        f"smartbox{on_smartbox_id}femcasetemperatures",
-        f"smartbox{on_smartbox_id}femheatsinktemperatures",
+        f"smartbox{on_smartbox_id}femcasetemperature1",
+        f"smartbox{on_smartbox_id}femcasetemperature2",
+        f"smartbox{on_smartbox_id}femheatsinktemperature1",
+        f"smartbox{on_smartbox_id}femheatsinktemperature2",
         f"smartbox{on_smartbox_id}status",
         f"smartbox{on_smartbox_id}pcbtemperaturethresholds",
         f"smartbox{off_smartbox_id}portpowersensed",

@@ -293,9 +293,11 @@ def check_monitoring_point_is_reported(
         "FNDH uptime": "fndhUptime",
         "FNDH status": "fndhStatus",
         "FNDH LED pattern": "fndhLedPattern",
-        "FNDH 48v PSU voltages": "fndhPsu48vVoltages",
+        "FNDH 48v PSU voltage 1": "fndhPsu48vVoltage1",
+        "FNDH 48v PSU voltage 2": "fndhPsu48vVoltage2",
         "FNDH 48v PSU current": "fndhPsu48vCurrent",
-        "FNDH 48v PSU temperatures": "fndhPsu48vTemperatures",
+        "FNDH 48v PSU temperature 1": "fndhPsu48vTemperature1",
+        "FNDH 48v PSU temperature 2": "fndhPsu48vTemperature2",
         "FNDH panel temperature": "fndhPanelTemperature",
         "FNDH FNCB ambient temperature": "fndhFncbTemperature",
         "FNDH FNCB ambient humidity": "fndhFncbHumidity",
@@ -320,11 +322,17 @@ def check_monitoring_point_is_reported(
         "smartbox FEM package ambient temperature": (
             f"smartbox{smartbox_id}FemAmbientTemperature"
         ),
-        "smartbox FEM 6 & 12 case temperatures": (
-            f"smartbox{smartbox_id}FemCaseTemperatures"
+        "smartbox FEM case temperature 1": (
+            f"smartbox{smartbox_id}FemCaseTemperature1"
         ),
-        "smartbox FEM heatsink temperatures": (
-            f"smartbox{smartbox_id}FemHeatsinkTemperatures"
+        "smartbox FEM case temperature 2": (
+            f"smartbox{smartbox_id}FemCaseTemperature2"
+        ),
+        "smartbox FEM heatsink temperature 1": (
+            f"smartbox{smartbox_id}FemHeatsinkTemperature1"
+        ),
+        "smartbox FEM heatsink temperature 2": (
+            f"smartbox{smartbox_id}FemHeatsinkTemperature2"
         ),
     }
     attribute_name = attribute_name_map[monitoring_point]
