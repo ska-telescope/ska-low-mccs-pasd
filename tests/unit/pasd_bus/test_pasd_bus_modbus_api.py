@@ -67,7 +67,7 @@ class TestPasdBusModbusApi:
             spec_set=True,
             instance=True,
             chip_id=[1, 2, 3, 4, 5, 6, 7, 8],
-            psu48v_voltages=[47, 48],
+            psu48v_voltage_1=47,
             fncb_temperature=50,
         )
         # backend_fndh.set_led_pattern.return_value = True
@@ -93,7 +93,7 @@ class TestPasdBusModbusApi:
             instance=True,
             chip_id=[8, 7, 6, 5, 4, 3, 2, 1],
             input_voltage=48,
-            fem_case_temperatures=[40, 41],
+            fem_case_temperature_1=40,
         )
         return backend_smartbox
 
@@ -121,11 +121,11 @@ class TestPasdBusModbusApi:
         ("backend", "slave", "attribute", "address", "count"),
         [
             ("backend_fndh", 0, "chip_id", 4, 8),
-            ("backend_fndh", 0, "psu48v_voltages", 16, 2),
+            ("backend_fndh", 0, "psu48v_voltage_1", 16, 1),
             ("backend_fndh", 0, "fncb_temperature", 22, 1),
             ("backend_smartbox", 1, "chip_id", 4, 8),
             ("backend_smartbox", 1, "input_voltage", 16, 1),
-            ("backend_smartbox", 1, "fem_case_temperatures", 23, 2),
+            ("backend_smartbox", 1, "fem_case_temperature_1", 23, 1),
         ],
     )
     def test_read_attribute(
@@ -505,8 +505,8 @@ class TestPasdBusModbusApiClient:
                 0,
                 PasdCommandStrings.SET_LOW_PASS_FILTER,
                 (10, False),
-                "psu48v_voltages",
-                [0x2391, 0x2391],
+                "psu48v_voltage_1",
+                0x2391,
             ),
             (
                 "fndh_simulator",

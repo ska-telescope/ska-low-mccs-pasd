@@ -312,15 +312,21 @@ class TestPasdBusComponentManager:
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="OK",
             led_pattern="service: OFF, status: GREENSLOW",
-            psu48v_voltages=PasdConversionUtility.scale_volts(
-                FndhSimulator.DEFAULT_PSU48V_VOLTAGES
-            ),
+            psu48v_voltage_1=PasdConversionUtility.scale_volts(
+                FndhSimulator.DEFAULT_PSU48V_VOLTAGE_1
+            )[0],
+            psu48v_voltage_2=PasdConversionUtility.scale_volts(
+                FndhSimulator.DEFAULT_PSU48V_VOLTAGE_2
+            )[0],
             psu48v_current=PasdConversionUtility.scale_48vcurrents(
                 [FndhSimulator.DEFAULT_PSU48V_CURRENT]
             )[0],
-            psu48v_temperatures=PasdConversionUtility.scale_signed_16bit(
-                FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
-            ),
+            psu48v_temperature_1=PasdConversionUtility.scale_signed_16bit(
+                FndhSimulator.DEFAULT_PSU48V_TEMPERATURE_1
+            )[0],
+            psu48v_temperature_2=PasdConversionUtility.scale_signed_16bit(
+                FndhSimulator.DEFAULT_PSU48V_TEMPERATURE_2
+            )[0],
             panel_temperature=PasdConversionUtility.scale_signed_16bit(
                 [FndhSimulator.DEFAULT_PANEL_TEMPERATURE]
             )[0],
@@ -402,16 +408,26 @@ class TestPasdBusComponentManager:
                 fem_ambient_temperature=PasdConversionUtility.scale_signed_16bit(
                     [SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE]
                 )[0],
-                fem_case_temperatures=(
+                fem_case_temperature_1=(
                     PasdConversionUtility.scale_signed_16bit(
-                        SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+                        SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_1
                     )
-                ),
-                fem_heatsink_temperatures=(
+                )[0],
+                fem_case_temperature_2=(
                     PasdConversionUtility.scale_signed_16bit(
-                        SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+                        SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_2
                     )
-                ),
+                )[0],
+                fem_heatsink_temperature_1=(
+                    PasdConversionUtility.scale_signed_16bit(
+                        SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_1
+                    )
+                )[0],
+                fem_heatsink_temperature_2=(
+                    PasdConversionUtility.scale_signed_16bit(
+                        SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
+                    )
+                )[0],
             )
 
         # FNDH warning flags
@@ -690,15 +706,21 @@ class TestPasdBusComponentManager:
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="OK",
             led_pattern="service: FAST, status: GREENSLOW",
-            psu48v_voltages=PasdConversionUtility.scale_volts(
-                FndhSimulator.DEFAULT_PSU48V_VOLTAGES
-            ),
+            psu48v_voltage_1=PasdConversionUtility.scale_volts(
+                FndhSimulator.DEFAULT_PSU48V_VOLTAGE_1
+            )[0],
+            psu48v_voltage_2=PasdConversionUtility.scale_volts(
+                FndhSimulator.DEFAULT_PSU48V_VOLTAGE_2
+            )[0],
             psu48v_current=PasdConversionUtility.scale_48vcurrents(
                 [FndhSimulator.DEFAULT_PSU48V_CURRENT]
             )[0],
-            psu48v_temperatures=PasdConversionUtility.scale_signed_16bit(
-                FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
-            ),
+            psu48v_temperature_1=PasdConversionUtility.scale_signed_16bit(
+                FndhSimulator.DEFAULT_PSU48V_TEMPERATURE_1
+            )[0],
+            psu48v_temperature_2=PasdConversionUtility.scale_signed_16bit(
+                FndhSimulator.DEFAULT_PSU48V_TEMPERATURE_2
+            )[0],
             panel_temperature=PasdConversionUtility.scale_signed_16bit(
                 [FndhSimulator.DEFAULT_PANEL_TEMPERATURE]
             )[0],
@@ -758,16 +780,26 @@ class TestPasdBusComponentManager:
             fem_ambient_temperature=PasdConversionUtility.scale_signed_16bit(
                 [SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE]
             )[0],
-            fem_case_temperatures=(
+            fem_case_temperature_1=(
                 PasdConversionUtility.scale_signed_16bit(
-                    SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+                    SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_1
                 )
-            ),
-            fem_heatsink_temperatures=(
+            )[0],
+            fem_case_temperature_2=(
                 PasdConversionUtility.scale_signed_16bit(
-                    SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+                    SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_2
                 )
-            ),
+            )[0],
+            fem_heatsink_temperature_1=(
+                PasdConversionUtility.scale_signed_16bit(
+                    SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_1
+                )
+            )[0],
+            fem_heatsink_temperature_2=(
+                PasdConversionUtility.scale_signed_16bit(
+                    SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
+                )
+            )[0],
             lookahead=5,  # Full cycle plus one to cover off on race conditions
         )
 
@@ -809,13 +841,15 @@ class TestPasdBusComponentManager:
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="ALARM",
             led_pattern="service: OFF, status: REDSLOW",
-            psu48v_voltages=PasdConversionUtility.scale_volts(
-                [lpf_constant, lpf_constant]
-            ),
+            psu48v_voltage_1=PasdConversionUtility.scale_volts(lpf_constant)[0],
+            psu48v_voltage_2=PasdConversionUtility.scale_volts(lpf_constant)[0],
             psu48v_current=PasdConversionUtility.scale_48vcurrents([lpf_constant])[0],
-            psu48v_temperatures=PasdConversionUtility.scale_signed_16bit(
-                [lpf_constant, lpf_constant]
-            ),
+            psu48v_temperature_1=PasdConversionUtility.scale_signed_16bit(lpf_constant)[
+                0
+            ],
+            psu48v_temperature_2=PasdConversionUtility.scale_signed_16bit(lpf_constant)[
+                0
+            ],
             panel_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
                 0
             ],
@@ -847,13 +881,15 @@ class TestPasdBusComponentManager:
             sys_address=FndhSimulator.SYS_ADDRESS,
             status="ALARM",
             led_pattern="service: OFF, status: REDSLOW",
-            psu48v_voltages=PasdConversionUtility.scale_volts(
-                [lpf_constant, lpf_constant]
-            ),
+            psu48v_voltage_1=PasdConversionUtility.scale_volts(lpf_constant)[0],
+            psu48v_voltage_2=PasdConversionUtility.scale_volts(lpf_constant)[0],
             psu48v_current=PasdConversionUtility.scale_48vcurrents([lpf_constant])[0],
-            psu48v_temperatures=PasdConversionUtility.scale_signed_16bit(
-                [lpf_constant, lpf_constant]
-            ),
+            psu48v_temperature_1=PasdConversionUtility.scale_signed_16bit(lpf_constant)[
+                0
+            ],
+            psu48v_temperature_2=PasdConversionUtility.scale_signed_16bit(lpf_constant)[
+                0
+            ],
             panel_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
                 0
             ],
@@ -907,15 +943,25 @@ class TestPasdBusComponentManager:
             fem_ambient_temperature=PasdConversionUtility.scale_signed_16bit(
                 [lpf_constant]
             )[0],
-            fem_case_temperatures=(
+            fem_case_temperature_1=(
                 PasdConversionUtility.scale_signed_16bit(
-                    SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+                    SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_1
                 )
-            ),
-            fem_heatsink_temperatures=(
+            )[0],
+            fem_case_temperature_2=(
                 PasdConversionUtility.scale_signed_16bit(
-                    SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+                    SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_2
                 )
-            ),
+            )[0],
+            fem_heatsink_temperature_1=(
+                PasdConversionUtility.scale_signed_16bit(
+                    SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_1
+                )
+            )[0],
+            fem_heatsink_temperature_2=(
+                PasdConversionUtility.scale_signed_16bit(
+                    SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
+                )
+            )[0],
             lookahead=5,  # Full cycle plus one to cover off on race conditions
         )

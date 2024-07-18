@@ -21,9 +21,11 @@ Feature: Monitoring and control of PaSD
         And MCCS-for-PaSD reports its FNDH uptime
         And MCCS-for-PaSD reports its FNDH status
         And MCCS-for-PaSD reports its FNDH LED pattern
-        And MCCS-for-PaSD reports its FNDH 48v PSU voltages
+        And MCCS-for-PaSD reports its FNDH 48v PSU voltage 1
+        And MCCS-for-PaSD reports its FNDH 48v PSU voltage 2
         And MCCS-for-PaSD reports its FNDH 48v PSU current
-        And MCCS-for-PaSD reports its FNDH 48v PSU temperatures
+        And MCCS-for-PaSD reports its FNDH 48v PSU temperature 1
+        And MCCS-for-PaSD reports its FNDH 48v PSU temperature 2
         And MCCS-for-PaSD reports its FNDH panel temperature
         And MCCS-for-PaSD reports its FNDH FNCB ambient temperature
         And MCCS-for-PaSD reports its FNDH FNCB ambient humidity
@@ -39,8 +41,10 @@ Feature: Monitoring and control of PaSD
         And MCCS-for-PaSD reports its smartbox power supply temperature
         And MCCS-for-PaSD reports its smartbox PCB temperature
         And MCCS-for-PaSD reports its smartbox FEM package ambient temperature
-        And MCCS-for-PaSD reports its smartbox FEM 6 & 12 case temperatures
-        And MCCS-for-PaSD reports its smartbox FEM heatsink temperatures
+        And MCCS-for-PaSD reports its smartbox FEM case temperature 1
+        And MCCS-for-PaSD reports its smartbox FEM case temperature 2
+        And MCCS-for-PaSD reports its smartbox FEM heatsink temperature 1
+        And MCCS-for-PaSD reports its smartbox FEM heatsink temperature 2
         And MCCS-for-PaSD reports its FNCC status
         And MCCS-for-PaSD health becomes OK
 

@@ -24,6 +24,7 @@ from tango.server import attribute, command, device_property
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
+from ..pasd_utils import configure_alarms
 from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
 
@@ -416,6 +417,17 @@ class MccsSmartBox(SKABaseDevice):
                 self._smartbox_state[attr_name].value = attr_value
             self._smartbox_state[attr_name].quality = attr_quality
             self._smartbox_state[attr_name].timestamp = timestamp
+
+            # If we are reading alarm thresholds, update the alarm configuration
+            # for the corresponding Tango attribute
+            if attr_name.endswith("thresholds"):
+                configure_alarms(
+                    self.get_device_attr().get_attr_by_name(
+                        attr_name.removesuffix("thresholds")
+                    ),
+                    attr_value,
+                )
+
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 
