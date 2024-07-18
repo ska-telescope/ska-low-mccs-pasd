@@ -12,7 +12,7 @@ import json
 import logging
 import re
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
 import tango
@@ -183,7 +183,7 @@ class _PasdBusProxy(DeviceComponentManager):
             if tango_attribute_name == "status":
                 tango_attribute_name = "pasdstatus"
 
-            timestamp = datetime.utcnow().timestamp()
+            timestamp = datetime.now(timezone.utc).timestamp()
             self._attribute_change_callback(
                 tango_attribute_name, attr_value, timestamp, attr_quality
             )
@@ -432,7 +432,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
     def _evaluate_power(self: SmartBoxComponentManager) -> None:
         """Evaluate the power state of the smartbox device."""
-        timestamp = datetime.utcnow().timestamp()
+        timestamp = datetime.now(timezone.utc).timestamp()
         if self._fndh_port is None:
             self.logger.info(
                 "The fndh port this smartbox is attached to is unknown,"

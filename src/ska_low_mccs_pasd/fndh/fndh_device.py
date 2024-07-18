@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import sys
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Final, Optional, cast
 
 import tango
@@ -561,7 +561,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self: MccsFNDH, power_states: list[PowerState]
     ) -> None:
         assert self.CONFIG["number_of_ports"] == len(power_states)
-        timestamp = datetime.utcnow().timestamp()
+        timestamp = datetime.now(timezone.utc).timestamp()
         for port in range(self.CONFIG["number_of_ports"]):
             attr_name = f"Port{port + 1}PowerState"
             if self._fndh_attributes[attr_name.lower()].value != power_states[port]:
