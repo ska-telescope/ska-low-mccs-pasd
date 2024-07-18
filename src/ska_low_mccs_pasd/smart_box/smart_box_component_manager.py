@@ -458,7 +458,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self._evaluate_power()
 
     def _evaluate_power(self: SmartBoxComponentManager) -> None:
-<<<<<<< src/ska_low_mccs_pasd/smart_box/smart_box_component_manager.py
         """
         Evaluate the power state of the smartbox device.
 
