@@ -172,19 +172,31 @@ def test_communication(  # pylint: disable=too-many-statements
     assert pasd_bus_device.fndhSysAddress == FndhSimulator.SYS_ADDRESS
     assert pasd_bus_device.fndhStatus == "OK"
     assert pasd_bus_device.fndhLedPattern == "service: OFF, status: GREENSLOW"
-    assert list(
-        pasd_bus_device.fndhPsu48vVoltages
-    ) == PasdConversionUtility.scale_volts(FndhSimulator.DEFAULT_PSU48V_VOLTAGES)
+    assert (
+        pasd_bus_device.fndhPsu48vVoltage1
+        == PasdConversionUtility.scale_volts(FndhSimulator.DEFAULT_PSU48V_VOLTAGE_1)[0]
+    )
+    assert (
+        pasd_bus_device.fndhPsu48vVoltage2
+        == PasdConversionUtility.scale_volts(FndhSimulator.DEFAULT_PSU48V_VOLTAGE_2)[0]
+    )
     assert (
         pasd_bus_device.fndhPsu48vCurrent
         == PasdConversionUtility.scale_48vcurrents(
             [FndhSimulator.DEFAULT_PSU48V_CURRENT]
         )[0]
     )
-    assert list(
-        pasd_bus_device.fndhPsu48vTemperatures
-    ) == PasdConversionUtility.scale_signed_16bit(
-        FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
+    assert (
+        pasd_bus_device.fndhPsu48vTemperature1
+        == PasdConversionUtility.scale_signed_16bit(
+            FndhSimulator.DEFAULT_PSU48V_TEMPERATURE_1
+        )[0]
+    )
+    assert (
+        pasd_bus_device.fndhPsu48vTemperature2
+        == PasdConversionUtility.scale_signed_16bit(
+            FndhSimulator.DEFAULT_PSU48V_TEMPERATURE_2
+        )[0]
     )
     assert (
         pasd_bus_device.fndhPanelTemperature
@@ -363,15 +375,29 @@ def test_communication(  # pylint: disable=too-many-statements
             [SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE]
         )[0]
     )
-    assert list(
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}FemCaseTemperatures")
-    ) == PasdConversionUtility.scale_signed_16bit(
-        SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}FemCaseTemperature1")
+        == PasdConversionUtility.scale_signed_16bit(
+            SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_1
+        )[0]
     )
-    assert list(
-        getattr(pasd_bus_device, f"smartbox{smartbox_id}FemHeatsinkTemperatures")
-    ) == PasdConversionUtility.scale_signed_16bit(
-        SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}FemCaseTemperature2")
+        == PasdConversionUtility.scale_signed_16bit(
+            SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_2
+        )[0]
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}FemHeatsinkTemperature1")
+        == PasdConversionUtility.scale_signed_16bit(
+            SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_1
+        )[0]
+    )
+    assert (
+        getattr(pasd_bus_device, f"smartbox{smartbox_id}FemHeatsinkTemperature2")
+        == PasdConversionUtility.scale_signed_16bit(
+            SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
+        )[0]
     )
     assert (
         list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortForcings"))

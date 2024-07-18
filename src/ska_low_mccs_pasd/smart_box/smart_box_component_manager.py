@@ -14,7 +14,7 @@ import logging
 import re
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
 import tango
@@ -185,7 +185,7 @@ class _PasdBusProxy(DeviceComponentManager):
             if tango_attribute_name == "status":
                 tango_attribute_name = "pasdstatus"
 
-            timestamp = datetime.utcnow().timestamp()
+            timestamp = datetime.now(timezone.utc).timestamp()
             self._attribute_change_callback(
                 tango_attribute_name, attr_value, timestamp, attr_quality
             )
@@ -458,6 +458,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self._evaluate_power()
 
     def _evaluate_power(self: SmartBoxComponentManager) -> None:
+<<<<<<< src/ska_low_mccs_pasd/smart_box/smart_box_component_manager.py
         """
         Evaluate the power state of the smartbox device.
 
@@ -475,7 +476,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
           the Smartbox is ON.
         * If the Smartbox is not in any of the states above, it is UNKNOWN.
         """
-        timestamp = datetime.utcnow().timestamp()
+        timestamp = datetime.now(timezone.utc).timestamp()
         if self._fndh_port is None:
             self.logger.info(
                 "The fndh port this smartbox is attached to is unknown,"

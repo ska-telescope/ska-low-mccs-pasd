@@ -40,9 +40,13 @@ and FEM current trip thresholds. All temperatures are in degrees Celsius.
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | LedPattern                           | 23          | Status of the service and status LEDs                                    |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| FemCaseTemperatures                  | 24-25       | Thermistors mounted on top and bottom of FEM case                        |
+| FemCaseTemperature1                  | 24          | FEM 6 temperature (thermistor mounted on top of FEM case)                |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| FemHeatsinkTemperatures              | 26-27       | Thermistors mounted on heatsink                                          |
+| FemCaseTemperature2                  | 25          | FEM 12 temperature (thermistor mounted on top of FEM case)               |
++--------------------------------------+-------------+--------------------------------------------------------------------------+
+| FemHeatsinkTemperature1              | 26          | Thermistor mounted on heatsink between FEMs 9 and 10                     |
++--------------------------------------+-------------+--------------------------------------------------------------------------+
+| FemHeatsinkTemperature2              | 27          | Thermistor mounted on heatsink between FEMs 3 and 4                      |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | PortForcings                         | 36-47       | Port forcing status for each port ("ON", "OFF", or "NONE")               |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+

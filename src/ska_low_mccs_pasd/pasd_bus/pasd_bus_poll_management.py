@@ -9,7 +9,7 @@
 
 
 import logging
-from typing import Any, Callable, Iterator, Optional, Sequence
+from typing import Any, Callable, Iterator, Sequence
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
@@ -173,22 +173,18 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         """
         self._led_pattern_requested = pattern
 
-    def desire_set_low_pass_filter(
-        self, cutoff: float, extra_sensors: bool
-    ) -> Optional[bool]:
+    def desire_set_low_pass_filter(self, cutoff: float, extra_sensors: bool) -> None:
         """
         Register a request to set the device's low pass filter constants.
 
         :param cutoff: frequency of LPF to set.
         :param extra_sensors: write the constant to the extra sensors' registers after
             the LED status register.
-        :return: whether successful, or None if there was nothing to do.
         """
         if extra_sensors:
             self._low_pass_filter_block_2_requested = (cutoff, True)
         else:
             self._low_pass_filter_block_1_requested = (cutoff, False)
-        return True
 
     def desire_attribute_write(self, attribute_name: str, values: list[Any]) -> None:
         """
@@ -445,7 +441,7 @@ class PasdBusRequestProvider:
 
     def desire_set_low_pass_filter(
         self, device_id: int, cutoff: float, extra_sensors: bool
-    ) -> Optional[bool]:
+    ) -> None:
         """
         Register a request to set a device's low pass filter constants.
 
@@ -454,9 +450,8 @@ class PasdBusRequestProvider:
         :param cutoff: frequency of LPF to set.
         :param extra_sensors: write the constant to the extra sensors' registers after
             the LED status register.
-        :return: whether successful, or None if there was nothing to do.
         """
-        return self._device_request_providers[device_id].desire_set_low_pass_filter(
+        self._device_request_providers[device_id].desire_set_low_pass_filter(
             cutoff, extra_sensors
         )
 

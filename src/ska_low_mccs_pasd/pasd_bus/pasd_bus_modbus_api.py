@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Final
 
 from pymodbus.client import ModbusTcpClient
@@ -342,7 +342,7 @@ class PasdBusModbusApiClient:
                 "detail": message,
             },
             "attributes": attributes,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _create_write_error_response(self, error_code: str, message: str) -> dict:
@@ -353,7 +353,7 @@ class PasdBusModbusApiClient:
                 "code": error_code,
                 "detail": message,
             },
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _get_modbus_address(self, device_id: int) -> int:

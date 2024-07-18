@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import sys
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Final, Optional, cast
 
 import tango
@@ -36,6 +36,7 @@ from tango.server import attribute, command, device_property
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
+from ..pasd_utils import configure_alarms
 from .fndh_component_manager import FndhComponentManager
 from .fndh_health_model import FndhHealthModel
 
@@ -566,7 +567,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self: MccsFNDH, power_states: list[PowerState]
     ) -> None:
         assert self.CONFIG["number_of_ports"] == len(power_states)
-        timestamp = datetime.utcnow().timestamp()
+        timestamp = datetime.now(timezone.utc).timestamp()
         for port in range(self.CONFIG["number_of_ports"]):
             attr_name = f"Port{port + 1}PowerState"
             if self._fndh_attributes[attr_name.lower()].value != power_states[port]:
@@ -681,6 +682,17 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 self._fndh_attributes[attr_name].value = attr_value
             self._fndh_attributes[attr_name].quality = attr_quality
             self._fndh_attributes[attr_name].timestamp = timestamp
+
+            # If we are reading alarm thresholds, update the alarm configuration
+            # for the corresponding Tango attribute
+            if attr_name.endswith("thresholds"):
+                configure_alarms(
+                    self.get_device_attr().get_attr_by_name(
+                        attr_name.removesuffix("thresholds")
+                    ),
+                    attr_value,
+                )
+
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 

@@ -439,16 +439,26 @@ class TestFndhSimulator:
     @pytest.mark.parametrize(
         ("sensor_name", "simulated_value", "expected_status"),
         [
-            ("psu48v_voltages", [5300, 4800], "ALARM"),
-            ("psu48v_voltages", [4800, 5100], "WARNING"),
-            ("psu48v_voltages", [4800, 4800], "OK"),
-            ("psu48v_voltages", [4400, 4800], "WARNING"),
-            ("psu48v_voltages", [4800, 3900], "ALARM"),
-            ("psu48v_temperatures", [10100, 6000], "ALARM"),
-            ("psu48v_temperatures", [6000, 8600], "WARNING"),
-            ("psu48v_temperatures", [6000, 6000], "OK"),
-            ("psu48v_temperatures", [-100, 6000], "WARNING"),
-            ("psu48v_temperatures", [6000, -600], "ALARM"),
+            ("psu48v_voltage_1", 5300, "ALARM"),
+            ("psu48v_voltage_1", 5100, "WARNING"),
+            ("psu48v_voltage_1", 4800, "OK"),
+            ("psu48v_voltage_1", 4400, "WARNING"),
+            ("psu48v_voltage_1", 3900, "ALARM"),
+            ("psu48v_voltage_2", 5300, "ALARM"),
+            ("psu48v_voltage_2", 5100, "WARNING"),
+            ("psu48v_voltage_2", 4800, "OK"),
+            ("psu48v_voltage_2", 4400, "WARNING"),
+            ("psu48v_voltage_2", 3900, "ALARM"),
+            ("psu48v_temperature_1", 10100, "ALARM"),
+            ("psu48v_temperature_1", 8600, "WARNING"),
+            ("psu48v_temperature_1", 6000, "OK"),
+            ("psu48v_temperature_1", -100, "WARNING"),
+            ("psu48v_temperature_1", -600, "ALARM"),
+            ("psu48v_temperature_2", 10100, "ALARM"),
+            ("psu48v_temperature_2", 8600, "WARNING"),
+            ("psu48v_temperature_2", 6000, "OK"),
+            ("psu48v_temperature_2", -100, "WARNING"),
+            ("psu48v_temperature_2", -600, "ALARM"),
             ("panel_temperature", 9000, "ALARM"),
             ("panel_temperature", 7500, "WARNING"),
             ("panel_temperature", 5000, "OK"),
@@ -548,7 +558,8 @@ class TestFndhSimulator:
         fndh_simulator.fncb_temperature = 7500
         assert fndh_simulator.status == FndhStatusMap.WARNING
         assert fndh_simulator.warning_flags == FndhAlarmFlags.SYS_FNCBTEMP.value
-        fndh_simulator.psu48v_voltages = [5100, 5100]
+        fndh_simulator.psu48v_voltage_1 = 5100
+        fndh_simulator.psu48v_voltage_2 = 5100
         assert (
             fndh_simulator.warning_flags
             == FndhAlarmFlags.SYS_FNCBTEMP.value
@@ -557,7 +568,8 @@ class TestFndhSimulator:
         )
         # Setup alarms
         fndh_simulator.fncb_temperature = 9000
-        fndh_simulator.psu48v_temperatures = [6000, -600]
+        fndh_simulator.psu48v_temperature_1 = 6000
+        fndh_simulator.psu48v_temperature_2 = -600
         assert (
             fndh_simulator.alarm_flags
             == FndhAlarmFlags.SYS_FNCBTEMP.value ^ FndhAlarmFlags.SYS_48V2_TEMP.value
@@ -923,16 +935,26 @@ class TestSmartboxSimulator:
             ("fem_ambient_temperature", 3000, "OK"),
             ("fem_ambient_temperature", -100, "WARNING"),
             ("fem_ambient_temperature", -600, "ALARM"),
-            ("fem_case_temperatures", [6100, 3000], "ALARM"),
-            ("fem_case_temperatures", [3000, 4600], "WARNING"),
-            ("fem_case_temperatures", [3000, 3000], "OK"),
-            ("fem_case_temperatures", [-100, 3000], "WARNING"),
-            ("fem_case_temperatures", [3000, -600], "ALARM"),
-            ("fem_heatsink_temperatures", [6100, 3000], "ALARM"),
-            ("fem_heatsink_temperatures", [3000, 4600], "WARNING"),
-            ("fem_heatsink_temperatures", [3000, 3000], "OK"),
-            ("fem_heatsink_temperatures", [-100, 3000], "WARNING"),
-            ("fem_heatsink_temperatures", [3000, -600], "ALARM"),
+            ("fem_case_temperature_1", 6100, "ALARM"),
+            ("fem_case_temperature_1", 4600, "WARNING"),
+            ("fem_case_temperature_1", 3000, "OK"),
+            ("fem_case_temperature_1", -100, "WARNING"),
+            ("fem_case_temperature_1", -600, "ALARM"),
+            ("fem_case_temperature_2", 6100, "ALARM"),
+            ("fem_case_temperature_2", 4600, "WARNING"),
+            ("fem_case_temperature_2", 3000, "OK"),
+            ("fem_case_temperature_2", -100, "WARNING"),
+            ("fem_case_temperature_2", -600, "ALARM"),
+            ("fem_heatsink_temperature_1", 6100, "ALARM"),
+            ("fem_heatsink_temperature_1", 4600, "WARNING"),
+            ("fem_heatsink_temperature_1", 3000, "OK"),
+            ("fem_heatsink_temperature_1", -100, "WARNING"),
+            ("fem_heatsink_temperature_1", -600, "ALARM"),
+            ("fem_heatsink_temperature_2", 6100, "ALARM"),
+            ("fem_heatsink_temperature_2", 4600, "WARNING"),
+            ("fem_heatsink_temperature_2", 3000, "OK"),
+            ("fem_heatsink_temperature_2", -100, "WARNING"),
+            ("fem_heatsink_temperature_2", -600, "ALARM"),
         ],
     )
     def test_sensors_and_status_transitions(
@@ -997,7 +1019,8 @@ class TestSmartboxSimulator:
         smartbox_simulator.input_voltage = 4950
         assert smartbox_simulator.status == SmartboxStatusMap.WARNING
         assert smartbox_simulator.warning_flags == SmartboxAlarmFlags.SYS_48V_V.value
-        smartbox_simulator.fem_case_temperatures = [5000, 5000]
+        smartbox_simulator.fem_case_temperature_1 = 5000
+        smartbox_simulator.fem_case_temperature_2 = 5000
         assert (
             smartbox_simulator.warning_flags
             == SmartboxAlarmFlags.SYS_48V_V.value
@@ -1006,7 +1029,8 @@ class TestSmartboxSimulator:
         )
         # Setup alarms
         smartbox_simulator.input_voltage = 5100
-        smartbox_simulator.fem_heatsink_temperatures = [3000, -600]
+        smartbox_simulator.fem_heatsink_temperature_1 = 3000
+        smartbox_simulator.fem_heatsink_temperature_2 = -600
         assert (
             smartbox_simulator.alarm_flags
             == SmartboxAlarmFlags.SYS_48V_V.value

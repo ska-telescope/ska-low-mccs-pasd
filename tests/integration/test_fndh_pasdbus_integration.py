@@ -204,8 +204,17 @@ class TestfndhPasdBusIntegration:
         )
         assert fndh_device.PasdStatus == "OK"
         assert fndh_device.LedPattern == "service: OFF, status: GREENSLOW"
-        assert list(fndh_device.Psu48vVoltages) == PasdConversionUtility.scale_volts(
-            FndhSimulator.DEFAULT_PSU48V_VOLTAGES
+        assert (
+            fndh_device.Psu48vVoltage1
+            == PasdConversionUtility.scale_volts(
+                FndhSimulator.DEFAULT_PSU48V_VOLTAGE_1
+            )[0]
+        )
+        assert (
+            fndh_device.Psu48vVoltage2
+            == PasdConversionUtility.scale_volts(
+                FndhSimulator.DEFAULT_PSU48V_VOLTAGE_2
+            )[0]
         )
         assert (
             fndh_device.Psu48vCurrent
@@ -213,10 +222,17 @@ class TestfndhPasdBusIntegration:
                 [FndhSimulator.DEFAULT_PSU48V_CURRENT]
             )[0]
         )
-        assert list(
-            fndh_device.Psu48vTemperatures
-        ) == PasdConversionUtility.scale_signed_16bit(
-            FndhSimulator.DEFAULT_PSU48V_TEMPERATURES
+        assert (
+            fndh_device.Psu48vTemperature1
+            == PasdConversionUtility.scale_signed_16bit(
+                FndhSimulator.DEFAULT_PSU48V_TEMPERATURE_1
+            )[0]
+        )
+        assert (
+            fndh_device.Psu48vTemperature2
+            == PasdConversionUtility.scale_signed_16bit(
+                FndhSimulator.DEFAULT_PSU48V_TEMPERATURE_2
+            )[0]
         )
         assert (
             fndh_device.PanelTemperature
@@ -348,12 +364,18 @@ class TestfndhPasdBusIntegration:
         setattr(
             fndh_device,
             "OutsideTemperatureThresholds",
-            [40.2, 35.5, 10.5, 5],
+            [30.2, 25.5, 10.5, 5],
         )
         change_event_callbacks["outsideTemperatureThresholds"].assert_change_event(
-            [40.2, 35.5, 10.5, 5], lookahead=2
+            [30.2, 25.5, 10.5, 5], lookahead=2
         )
-        assert fndh_simulator.outside_temperature_thresholds == [4020, 3550, 1050, 500]
+        assert fndh_simulator.outside_temperature_thresholds == [3020, 2550, 1050, 500]
+
+        # Check the threshold values get propagated to the Tango alarm configuration
+        assert (
+            fndh_device.read_attribute("outsideTemperature").quality
+            == tango.AttrQuality.ATTR_ALARM
+        )
 
     # pylint: disable=too-many-arguments
     def test_port_power(
