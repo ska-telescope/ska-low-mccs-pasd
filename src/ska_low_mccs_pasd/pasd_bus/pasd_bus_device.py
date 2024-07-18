@@ -9,13 +9,13 @@
 
 from __future__ import annotations
 
-import datetime
 import importlib.resources
 import json
 import logging
 import sys
 import traceback
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Final, Optional, cast
 
 import tango.server
@@ -451,7 +451,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             smartbox number.
         :param kwargs: keyword arguments defining PaSD device state.
         """
-        timestamp = datetime.datetime.utcnow().timestamp()
+        timestamp = datetime.now(timezone.utc).timestamp()
         if (
             pasd_device_number
             not in [PasdData.FNCC_DEVICE_ID, PasdData.FNDH_DEVICE_ID]
