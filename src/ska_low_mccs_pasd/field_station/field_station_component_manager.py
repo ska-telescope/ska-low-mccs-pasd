@@ -1447,50 +1447,40 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         * FieldStation is OFF if all smartboxes are OFF.
         * FieldStation is UNKNOWN if none of these were matched.
         """
+
+        def transition_to(power_state: PowerState, msg: str | None = None) -> None:
+            if self._power_state != power_state:
+                self.logger.info(
+                    msg
+                    or f"At least one Smartbox is {power_state.name}, "
+                    f"FieldStation transitioning to {power_state.name} state ...."
+                )
+                self._component_state_callback(power=power_state)
+                self._power_state = power_state
+
         with self._power_state_lock:
-            if any(power == PowerState.UNKNOWN for power in self._smartbox_power_state):
-                if self._power_state != PowerState.UNKNOWN:
-                    self.logger.info(
-                        "At least one Smartbox is `UNKNOWN`, "
-                        "FieldStation transitioning to `UNKNOWN` state ...."
+            match self._smartbox_power_state:
+                case _ if PowerState.UNKNOWN in self._smartbox_power_state:
+                    transition_to(PowerState.UNKNOWN)
+                case _ if PowerState.ON in self._smartbox_power_state:
+                    transition_to(PowerState.ON)
+                case _ if PowerState.STANDBY in self._smartbox_power_state:
+                    transition_to(PowerState.STANDBY)
+                case _ if all(
+                    power == PowerState.OFF for power in self._smartbox_power_state
+                ):
+                    transition_to(
+                        PowerState.OFF,
+                        msg=(
+                            "All smartboxes are `OFF`, "
+                            "FieldStation transitioning to `OFF` state ...."
+                        ),
                     )
-                    self._component_state_callback(power=PowerState.UNKNOWN)
-                    self._power_state = PowerState.UNKNOWN
-                return
-
-            if any(power == PowerState.ON for power in self._smartbox_power_state):
-                if self._power_state != PowerState.ON:
-                    self.logger.info(
-                        "At least one Smartbox is `ON`, "
-                        "FieldStation transitioning to `ON` state ...."
+                case _:
+                    transition_to(
+                        PowerState.UNKNOWN,
+                        msg=(
+                            "No PowerState rules matched, "
+                            "FieldStation transitioning to `UNKNOWN` state ...."
+                        ),
                     )
-                    self._component_state_callback(power=PowerState.ON)
-                    self._power_state = PowerState.ON
-                return
-
-            if any(power == PowerState.STANDBY for power in self._smartbox_power_state):
-                if self._power_state != PowerState.STANDBY:
-                    self.logger.info(
-                        "At least one smartbox is `STANDBY`, "
-                        "FieldStation transitioning to `STANDBY` state ...."
-                    )
-                    self._component_state_callback(power=PowerState.STANDBY)
-                    self._power_state = PowerState.STANDBY
-                return
-
-            if all(power == PowerState.OFF for power in self._smartbox_power_state):
-                if self._power_state != PowerState.OFF:
-                    self.logger.info(
-                        "All smartboxes are `OFF`, "
-                        "FieldStation transitioning to `OFF` state ...."
-                    )
-                    self._component_state_callback(power=PowerState.OFF)
-                    self._power_state = PowerState.OFF
-                return
-
-            self.logger.error(
-                "No PowerState rules matched, "
-                "FieldStation transitioning to `UNKNOWN` state ...."
-            )
-            self._component_state_callback(power=PowerState.UNKNOWN)
-            self._power_state = PowerState.UNKNOWN

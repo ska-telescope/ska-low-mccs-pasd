@@ -275,7 +275,7 @@ class TestSmartBoxComponentManager:
         mock_callbacks["attribute_update"].assert_call(
             "portspowersensed",
             [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-            pytest.approx(datetime.datetime.utcnow().timestamp()),
+            pytest.approx(datetime.now(timezone.utc).timestamp()),
             tango.AttrQuality.ATTR_VALID,
         )
 
@@ -348,7 +348,7 @@ class TestSmartBoxComponentManager:
         mock_callbacks["attribute_update"].assert_call(
             "portspowersensed",
             [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-            pytest.approx(datetime.datetime.utcnow().timestamp()),
+            pytest.approx(datetime.now(timezone.utc).timestamp()),
             tango.AttrQuality.ATTR_VALID,
         )
 
@@ -420,7 +420,7 @@ class TestSmartBoxComponentManager:
         mock_callbacks["attribute_update"].assert_call(
             "portspowersensed",
             [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-            pytest.approx(datetime.datetime.utcnow().timestamp()),
+            pytest.approx(datetime.now(timezone.utc).timestamp()),
             tango.AttrQuality.ATTR_VALID,
         )
 
@@ -649,7 +649,7 @@ class TestSmartBoxComponentManager:
         mock_callbacks["attribute_update"].assert_call(
             "portspowersensed",
             [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-            pytest.approx(datetime.datetime.utcnow().timestamp()),
+            pytest.approx(datetime.now(timezone.utc).timestamp()),
             tango.AttrQuality.ATTR_VALID,
         )
 
@@ -742,7 +742,7 @@ class TestSmartBoxComponentManager:
         mock_callbacks["attribute_update"].assert_call(
             "portspowersensed",
             [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-            pytest.approx(datetime.datetime.utcnow().timestamp()),
+            pytest.approx(datetime.now(timezone.utc).timestamp()),
             tango.AttrQuality.ATTR_VALID,
         )
 
@@ -813,7 +813,7 @@ class TestSmartBoxComponentManager:
         mock_callbacks["attribute_update"].assert_call(
             "portspowersensed",
             [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-            pytest.approx(datetime.datetime.utcnow().timestamp()),
+            pytest.approx(datetime.now(timezone.utc).timestamp()),
             tango.AttrQuality.ATTR_VALID,
         )
 
