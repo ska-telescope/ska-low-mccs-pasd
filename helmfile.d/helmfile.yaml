@@ -109,7 +109,7 @@ releases:
     chart: jupyterhub/jupyterhub
     version: 3.0.0
     values:
-      - .deploy/helmfile.d/templates/jupyterhub.yaml.gotmpl
+      - .deploy/helmfile.d/templates/jupyterhub.yaml
 {{- end}}
 
 {{- $_taranta_platform_provided := dig "platform" "cluster" "services" "taranta-platform" false .Values}}
