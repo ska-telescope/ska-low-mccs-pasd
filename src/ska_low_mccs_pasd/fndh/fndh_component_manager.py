@@ -13,7 +13,7 @@ import json
 import logging
 import re
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
 import tango
@@ -110,7 +110,7 @@ class _PasdBusProxy(DeviceComponentManager):
             if tango_attribute_name.lower() == "status":
                 tango_attribute_name = "pasdstatus"
 
-            timestamp = datetime.utcnow().timestamp()
+            timestamp = datetime.now(timezone.utc).timestamp()
             self._attribute_change_callback(
                 tango_attribute_name, attr_value, timestamp, attr_quality
             )

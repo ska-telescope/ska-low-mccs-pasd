@@ -42,6 +42,11 @@ server:
 {{- end}}
 depends_on:
   - device: sys/database/2
+{{- range $server_key, $this_server := $fndhs}}
+{{- range $fndh_name, $this_fndh := $this_server}}
+  - device: {{$this_fndh.pasdbus_name}}
+{{- end}}
+{{- end}}
 image:
 {{- with .Values.image}}
   registry: {{.registry | quote}}

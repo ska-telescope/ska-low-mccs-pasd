@@ -763,8 +763,10 @@ class TestSmartBoxPasdBusIntegration:
             "PowerSupplyTemperature",
             "PcbTemperature",
             "FemAmbientTemperature",
-            "FemCaseTemperatures",
-            "FemHeatsinkTemperatures",
+            "FemCaseTemperature1",
+            "FemCaseTemperature2",
+            "FemHeatsinkTemperature1",
+            "FemHeatsinkTemperature2",
             "PortForcings",
             "PortBreakersTripped",
             "PortsDesiredPowerOnline",
@@ -851,15 +853,29 @@ class TestSmartBoxPasdBusIntegration:
                 [SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE]
             )[0]
         )
-        assert list(
-            smartbox_device.FemCaseTemperatures
-        ) == PasdConversionUtility.scale_signed_16bit(
-            SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
+        assert (
+            smartbox_device.FemCaseTemperature1
+            == PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_1
+            )[0]
         )
-        assert list(
-            smartbox_device.FemHeatsinkTemperatures
-        ) == PasdConversionUtility.scale_signed_16bit(
-            SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
+        assert (
+            smartbox_device.FemCaseTemperature2
+            == PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_2
+            )[0]
+        )
+        assert (
+            smartbox_device.FemHeatsinkTemperature1
+            == PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_1
+            )[0]
+        )
+        assert (
+            smartbox_device.FemHeatsinkTemperature2
+            == PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
+            )[0]
         )
         assert list(
             smartbox_device.InputVoltageThresholds
@@ -981,26 +997,48 @@ class TestSmartBoxPasdBusIntegration:
             )[0],
         )
         smartbox_device.subscribe_event(
-            "FemCaseTemperatures",
+            "FemCaseTemperature1",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[f"smartbox{smartbox_id}femcasetemperatures"],
-        )
-        change_event_callbacks.assert_change_event(
-            f"smartbox{smartbox_id}femcasetemperatures",
-            PasdConversionUtility.scale_signed_16bit(
-                SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURES
-            ),
+            change_event_callbacks[f"smartbox{smartbox_id}femcasetemperature1"],
         )
         smartbox_device.subscribe_event(
-            "FemHeatsinkTemperatures",
+            "FemCaseTemperature2",
             tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[f"smartbox{smartbox_id}femheatsinktemperatures"],
+            change_event_callbacks[f"smartbox{smartbox_id}femcasetemperature2"],
         )
         change_event_callbacks.assert_change_event(
-            f"smartbox{smartbox_id}femheatsinktemperatures",
+            f"smartbox{smartbox_id}femcasetemperature1",
             PasdConversionUtility.scale_signed_16bit(
-                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURES
-            ),
+                SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_1
+            )[0],
+        )
+        change_event_callbacks.assert_change_event(
+            f"smartbox{smartbox_id}femcasetemperature2",
+            PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_2
+            )[0],
+        )
+        smartbox_device.subscribe_event(
+            "FemHeatsinkTemperature1",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{smartbox_id}femheatsinktemperature1"],
+        )
+        smartbox_device.subscribe_event(
+            "FemHeatsinkTemperature2",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{smartbox_id}femheatsinktemperature2"],
+        )
+        change_event_callbacks.assert_change_event(
+            f"smartbox{smartbox_id}femheatsinktemperature1",
+            PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_1
+            )[0],
+        )
+        change_event_callbacks.assert_change_event(
+            f"smartbox{smartbox_id}femheatsinktemperature2",
+            PasdConversionUtility.scale_signed_16bit(
+                SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
+            )[0],
         )
 
         # When we mock a change in an attribute at the simulator level.
@@ -1018,13 +1056,13 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}inputvoltage",
             30.00,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             "ALARM",
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.InputVoltage == 30.00
@@ -1032,13 +1070,13 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}inputvoltage",
             42.00,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             "RECOVERY",
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.InputVoltage == 42.00
@@ -1046,20 +1084,20 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             "WARNING",
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         smartbox_simulator.input_voltage = 4800
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}inputvoltage",
             48.00,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             "OK",
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.InputVoltage == 48.00
@@ -1068,13 +1106,13 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}psuoutput",
             4.95,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             "WARNING",
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.PowerSupplyOutputVoltage == 4.95
@@ -1083,7 +1121,7 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}psutemperature",
             50.00,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.PowerSupplyTemperature == 50.00
@@ -1092,7 +1130,7 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}pcbtemperature",
             50.00,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.PcbTemperature == 50.00
@@ -1101,28 +1139,44 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}femambienttemperature",
             50.00,
-            lookahead=10,
+            lookahead=13,
             consume_nonmatches=True,
         )
         assert smartbox_device.FemAmbientTemperature == 50.00
 
-        smartbox_simulator.fem_case_temperatures = [5000, 4900]
+        smartbox_simulator.fem_case_temperature_1 = 5000
+        smartbox_simulator.fem_case_temperature_2 = 4900
         change_event_callbacks.assert_change_event(
-            f"smartbox{smartbox_id}femcasetemperatures",
-            [50.00, 49.00],
-            lookahead=10,
+            f"smartbox{smartbox_id}femcasetemperature1",
+            50.00,
+            lookahead=13,
             consume_nonmatches=True,
         )
-        assert (smartbox_device.FemCaseTemperatures == [50.00, 49.00]).all()
+        change_event_callbacks.assert_change_event(
+            f"smartbox{smartbox_id}femcasetemperature2",
+            49.00,
+            lookahead=13,
+            consume_nonmatches=True,
+        )
+        assert smartbox_device.FemCaseTemperature1 == 50.00
+        assert smartbox_device.FemCaseTemperature2 == 49.00
 
-        smartbox_simulator.fem_heatsink_temperatures = [5100, 5000]
+        smartbox_simulator.fem_heatsink_temperature_1 = 5100
+        smartbox_simulator.fem_heatsink_temperature_2 = 5000
         change_event_callbacks.assert_change_event(
-            f"smartbox{smartbox_id}femheatsinktemperatures",
-            [51.00, 50.00],
-            lookahead=10,
+            f"smartbox{smartbox_id}femheatsinktemperature1",
+            51.00,
+            lookahead=13,
             consume_nonmatches=True,
         )
-        assert (smartbox_device.FemHeatsinkTemperatures == [51.00, 50.00]).all()
+        change_event_callbacks.assert_change_event(
+            f"smartbox{smartbox_id}femheatsinktemperature2",
+            50.00,
+            lookahead=13,
+            consume_nonmatches=True,
+        )
+        assert smartbox_device.FemHeatsinkTemperature1 == 51.00
+        assert smartbox_device.FemHeatsinkTemperature2 == 50.00
 
         # When we write an attribute, check the simulator gets updated
         smartbox_device.subscribe_event(
@@ -1133,12 +1187,18 @@ class TestSmartBoxPasdBusIntegration:
         setattr(
             smartbox_device,
             "PcbTemperatureThresholds",
-            [40.2, 35.5, 10.5, 5],
+            [30.2, 25.5, 10.5, 5],
         )
         change_event_callbacks[
             f"smartbox{smartbox_id}pcbtemperaturethresholds"
-        ].assert_change_event([40.2, 35.5, 10.5, 5], lookahead=10)
-        assert smartbox_simulator.pcb_temperature_thresholds == [4020, 3550, 1050, 500]
+        ].assert_change_event([30.2, 25.5, 10.5, 5], lookahead=13)
+        assert smartbox_simulator.pcb_temperature_thresholds == [3020, 2550, 1050, 500]
+
+        # Check the threshold values get propagated to the Tango alarm configuration
+        assert (
+            smartbox_device.read_attribute("pcbTemperature").quality
+            == tango.AttrQuality.ATTR_ALARM
+        )
 
     def test_set_port_powers(
         self: TestSmartBoxPasdBusIntegration,
@@ -1247,8 +1307,10 @@ def change_event_callbacks_fixture(
         f"smartbox{on_smartbox_id}psutemperature",
         f"smartbox{on_smartbox_id}pcbtemperature",
         f"smartbox{on_smartbox_id}femambienttemperature",
-        f"smartbox{on_smartbox_id}femcasetemperatures",
-        f"smartbox{on_smartbox_id}femheatsinktemperatures",
+        f"smartbox{on_smartbox_id}femcasetemperature1",
+        f"smartbox{on_smartbox_id}femcasetemperature2",
+        f"smartbox{on_smartbox_id}femheatsinktemperature1",
+        f"smartbox{on_smartbox_id}femheatsinktemperature2",
         f"smartbox{on_smartbox_id}status",
         f"smartbox{on_smartbox_id}pcbtemperaturethresholds",
         f"smartbox{off_smartbox_id}portpowersensed",

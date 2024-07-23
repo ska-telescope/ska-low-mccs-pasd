@@ -144,3 +144,22 @@ docs-pre-build:
 endif
 
 .PHONY: python-post-lint k8s-do-test docs-pre-build
+
+########################################################################
+# HELMFILE
+########################################################################
+helmfile-lint:
+	SKIPDEPS=""
+	for environment in aa0.5-production aavs3-production low-itf ; do \
+        echo "Linting helmfile against environment '$$environment'" ; \
+		helmfile -e $$environment lint $$SKIPDEPS; \
+		EXIT_CODE=$$? ; \
+		if [ $$EXIT_CODE -gt 0 ]; then \
+		echo "Linting of helmfile against environment '$$environment' FAILED." ; \
+		break ; \
+		fi ; \
+		SKIPDEPS="--skip-deps" ; \
+	done
+	exit $$EXIT_CODE
+
+.PHONY: helmfile-lint

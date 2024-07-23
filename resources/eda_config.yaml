@@ -108,10 +108,16 @@ configuration:
       FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      FemCaseTemperatures:
+      FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      FemHeatsinkTemperatures:
+      FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       PortForcings:
@@ -263,13 +269,19 @@ configuration:
       LedPattern:
         code_push_event: true
         archive_period: 0
-      Psu48vVoltages:
+      Psu48vVoltage1:
+        code_push_event: true
+        archive_period: 0
+      Psu48vVoltage2:
         code_push_event: true
         archive_period: 0
       Psu48vCurrent:
         code_push_event: true
         archive_period: 0
-      Psu48vTemperatures:
+      Psu48vTemperature1:
+        code_push_event: true
+        archive_period: 0
+      Psu48vTemperature2:
         code_push_event: true
         archive_period: 0
       PanelTemperature:
@@ -481,13 +493,19 @@ configuration:
       fndhSysAddress:
         code_push_event: true
         archive_period: 0
-      fndhPsu48vVoltages:
+      fndhPsu48vVoltage1:
+        code_push_event: true
+        archive_period: 0
+      fndhPsu48vVoltage2:
         code_push_event: true
         archive_period: 0
       fndhPsu48vCurrent:
         code_push_event: true
         archive_period: 0
-      fndhPsu48vTemperatures:
+      fndhPsu48vTemperature1:
+        code_push_event: true
+        archive_period: 0
+      fndhPsu48vTemperature2:
         code_push_event: true
         archive_period: 0
       fndhPanelTemperature:
@@ -643,10 +661,16 @@ configuration:
       smartbox1FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox1FemCaseTemperatures:
+      smartbox1FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox1FemHeatsinkTemperatures:
+      smartbox1FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox1FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox1FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox1WarningFlags:
@@ -778,10 +802,16 @@ configuration:
       smartbox2FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox2FemCaseTemperatures:
+      smartbox2FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox2FemHeatsinkTemperatures:
+      smartbox2FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox2FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox2FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox2WarningFlags:
@@ -913,10 +943,16 @@ configuration:
       smartbox3FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox3FemCaseTemperatures:
+      smartbox3FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox3FemHeatsinkTemperatures:
+      smartbox3FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox3FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox3FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox3WarningFlags:
@@ -1048,10 +1084,16 @@ configuration:
       smartbox4FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox4FemCaseTemperatures:
+      smartbox4FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox4FemHeatsinkTemperatures:
+      smartbox4FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox4FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox4FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox4WarningFlags:
@@ -1183,10 +1225,16 @@ configuration:
       smartbox5FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox5FemCaseTemperatures:
+      smartbox5FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox5FemHeatsinkTemperatures:
+      smartbox5FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox5FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox5FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox5WarningFlags:
@@ -1318,10 +1366,16 @@ configuration:
       smartbox6FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox6FemCaseTemperatures:
+      smartbox6FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox6FemHeatsinkTemperatures:
+      smartbox6FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox6FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox6FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox6WarningFlags:
@@ -1453,10 +1507,16 @@ configuration:
       smartbox7FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox7FemCaseTemperatures:
+      smartbox7FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox7FemHeatsinkTemperatures:
+      smartbox7FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox7FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox7FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox7WarningFlags:
@@ -1588,10 +1648,16 @@ configuration:
       smartbox8FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox8FemCaseTemperatures:
+      smartbox8FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox8FemHeatsinkTemperatures:
+      smartbox8FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox8FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox8FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox8WarningFlags:
@@ -1723,10 +1789,16 @@ configuration:
       smartbox9FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox9FemCaseTemperatures:
+      smartbox9FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox9FemHeatsinkTemperatures:
+      smartbox9FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox9FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox9FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox9WarningFlags:
@@ -1858,10 +1930,16 @@ configuration:
       smartbox10FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox10FemCaseTemperatures:
+      smartbox10FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox10FemHeatsinkTemperatures:
+      smartbox10FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox10FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox10FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox10WarningFlags:
@@ -1993,10 +2071,16 @@ configuration:
       smartbox11FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox11FemCaseTemperatures:
+      smartbox11FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox11FemHeatsinkTemperatures:
+      smartbox11FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox11FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox11FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox11WarningFlags:
@@ -2128,10 +2212,16 @@ configuration:
       smartbox12FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox12FemCaseTemperatures:
+      smartbox12FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox12FemHeatsinkTemperatures:
+      smartbox12FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox12FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox12FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox12WarningFlags:
@@ -2263,10 +2353,16 @@ configuration:
       smartbox13FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox13FemCaseTemperatures:
+      smartbox13FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox13FemHeatsinkTemperatures:
+      smartbox13FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox13FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox13FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox13WarningFlags:
@@ -2398,10 +2494,16 @@ configuration:
       smartbox14FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox14FemCaseTemperatures:
+      smartbox14FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox14FemHeatsinkTemperatures:
+      smartbox14FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox14FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox14FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox14WarningFlags:
@@ -2533,10 +2635,16 @@ configuration:
       smartbox15FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox15FemCaseTemperatures:
+      smartbox15FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox15FemHeatsinkTemperatures:
+      smartbox15FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox15FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox15FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox15WarningFlags:
@@ -2668,10 +2776,16 @@ configuration:
       smartbox16FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox16FemCaseTemperatures:
+      smartbox16FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox16FemHeatsinkTemperatures:
+      smartbox16FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox16FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox16FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox16WarningFlags:
@@ -2803,10 +2917,16 @@ configuration:
       smartbox17FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox17FemCaseTemperatures:
+      smartbox17FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox17FemHeatsinkTemperatures:
+      smartbox17FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox17FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox17FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox17WarningFlags:
@@ -2938,10 +3058,16 @@ configuration:
       smartbox18FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox18FemCaseTemperatures:
+      smartbox18FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox18FemHeatsinkTemperatures:
+      smartbox18FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox18FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox18FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox18WarningFlags:
@@ -3073,10 +3199,16 @@ configuration:
       smartbox19FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox19FemCaseTemperatures:
+      smartbox19FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox19FemHeatsinkTemperatures:
+      smartbox19FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox19FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox19FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox19WarningFlags:
@@ -3208,10 +3340,16 @@ configuration:
       smartbox20FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox20FemCaseTemperatures:
+      smartbox20FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox20FemHeatsinkTemperatures:
+      smartbox20FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox20FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox20FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox20WarningFlags:
@@ -3343,10 +3481,16 @@ configuration:
       smartbox21FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox21FemCaseTemperatures:
+      smartbox21FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox21FemHeatsinkTemperatures:
+      smartbox21FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox21FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox21FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox21WarningFlags:
@@ -3478,10 +3622,16 @@ configuration:
       smartbox22FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox22FemCaseTemperatures:
+      smartbox22FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox22FemHeatsinkTemperatures:
+      smartbox22FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox22FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox22FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox22WarningFlags:
@@ -3613,10 +3763,16 @@ configuration:
       smartbox23FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox23FemCaseTemperatures:
+      smartbox23FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox23FemHeatsinkTemperatures:
+      smartbox23FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox23FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox23FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox23WarningFlags:
@@ -3748,10 +3904,16 @@ configuration:
       smartbox24FemAmbientTemperature:
         code_push_event: true
         archive_period: 0
-      smartbox24FemCaseTemperatures:
+      smartbox24FemCaseTemperature1:
         code_push_event: true
         archive_period: 0
-      smartbox24FemHeatsinkTemperatures:
+      smartbox24FemCaseTemperature2:
+        code_push_event: true
+        archive_period: 0
+      smartbox24FemHeatsinkTemperature1:
+        code_push_event: true
+        archive_period: 0
+      smartbox24FemHeatsinkTemperature2:
         code_push_event: true
         archive_period: 0
       smartbox24WarningFlags:
