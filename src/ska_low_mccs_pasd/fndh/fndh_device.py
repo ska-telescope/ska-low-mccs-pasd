@@ -24,6 +24,7 @@ from ska_tango_base.commands import (
     JsonValidator,
     SubmittedSlowCommand,
 )
+from tango import DevFailed
 from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
 
@@ -680,12 +681,17 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             # If we are reading alarm thresholds, update the alarm configuration
             # for the corresponding Tango attribute
             if attr_name.endswith("thresholds"):
-                configure_alarms(
-                    self.get_device_attr().get_attr_by_name(
-                        attr_name.removesuffix("thresholds")
-                    ),
-                    attr_value,
-                )
+                try:
+                    configure_alarms(
+                        self.get_device_attr().get_attr_by_name(
+                            attr_name.removesuffix("thresholds")
+                        ),
+                        attr_value,
+                        self.logger,
+                    )
+                except DevFailed:
+                    # No corresponding attribute to update, continue
+                    pass
 
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
