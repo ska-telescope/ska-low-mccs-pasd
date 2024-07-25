@@ -258,8 +258,8 @@ PaSD_controllers:
           default_thresholds:
             high_alarm:   85
             high_warning: 70
-            low_warning:  10
-            low_alarm:    0
+            low_warning:  30
+            low_alarm:    20
         comms_gateway_temperature_thresholds:
           data_type: float
           address: 1032
