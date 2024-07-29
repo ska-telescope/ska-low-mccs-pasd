@@ -570,8 +570,13 @@ class TestFieldStationComponentManager:
                 field_station_component_manager._fndh_proxy._proxy.PowerOnPort
             )
 
+            smartbox_trl = (
+                field_station_component_manager._smartbox_trl_name_map.inverse[
+                    smartbox_id
+                ]
+            )
             smartbox_proxy = field_station_component_manager._smartbox_proxys[
-                smartbox_id
+                smartbox_trl
             ]
 
             assert smartbox_proxy._proxy is not None
@@ -679,8 +684,13 @@ class TestFieldStationComponentManager:
                 field_station_component_manager._fndh_proxy._proxy.PowerOffPort
             )
 
+            smartbox_trl = (
+                field_station_component_manager._smartbox_trl_name_map.inverse[
+                    smartbox_id
+                ]
+            )
             smartbox_proxy = field_station_component_manager._smartbox_proxys[
-                smartbox_id
+                smartbox_trl
             ]
 
             assert smartbox_proxy._proxy is not None
@@ -862,9 +872,12 @@ class TestFieldStationComponentManager:
                 tango.AttrQuality.ATTR_VALID,
             )
             for (
-                smartbox_name,
+                smartbox_trl,
                 smartbox_proxy,
             ) in field_station_component_manager._smartbox_proxys.items():
+                smartbox_name = field_station_component_manager._smartbox_trl_name_map[
+                    smartbox_trl
+                ]
                 fndh_port = field_station_component_manager._smartbox_mapping[
                     "smartboxMapping"
                 ][smartbox_name]
@@ -873,9 +886,11 @@ class TestFieldStationComponentManager:
                 else:
                     mocked_smartbox_power = PowerState.OFF
 
-                smartbox_trl = field_station_component_manager._smartbox_name_trl_map[
-                    smartbox_name
-                ]
+                smartbox_trl = (
+                    field_station_component_manager._smartbox_trl_name_map.inverse[
+                        smartbox_name
+                    ]
+                )
                 field_station_component_manager.smartbox_state_change(
                     smartbox_trl, power=mocked_smartbox_power
                 )
@@ -896,7 +911,7 @@ class TestFieldStationComponentManager:
                 )
 
             for (
-                smartbox_no,
+                smartbox_trl,
                 smartbox,
             ) in field_station_component_manager._smartbox_proxys.items():
                 smartbox_proxy_command = getattr(smartbox._proxy, "SetPortPowers")
@@ -905,10 +920,13 @@ class TestFieldStationComponentManager:
                     expected_state
                 ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
 
-                if smartbox_no == "sb21":
+                smartbox_name = field_station_component_manager._smartbox_trl_name_map[
+                    smartbox_trl
+                ]
+                if smartbox_name == "sb21":
                     # The last smartbox only has 3 antenna
                     desired_smartbox_port_powers = [expected_state] * 3 + [None] * 9
-                if smartbox_no in ["sb22", "sb23", "sb24"]:
+                if smartbox_name in ["sb22", "sb23", "sb24"]:
                     # The configuration did not put any antenna on the
                     # last 3 smartbox
                     desired_smartbox_port_powers = [

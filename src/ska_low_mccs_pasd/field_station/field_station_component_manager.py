@@ -19,6 +19,7 @@ from typing import Any, Callable, Final, Optional
 
 import jsonschema
 import tango
+from bidict import bidict
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.base import check_communicating
@@ -140,15 +141,13 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         )
         self._smartbox_power_state = {}
         self._smartbox_proxys = {}
-        self._smartbox_trl_name_map: dict[str, str] = {}
-        self._smartbox_name_trl_map: dict[str, str] = {}
+        self._smartbox_trl_name_map: bidict = bidict()
         if _smartbox_proxys:
             self._smartbox_proxys = _smartbox_proxys
         else:
             for smartbox_trl in smartbox_names:
-                smartbox_name = re.findall("sb[0-9]+", smartbox_trl)[0]
                 self._smartbox_power_state[smartbox_trl] = PowerState.UNKNOWN
-                self._smartbox_proxys[smartbox_name] = DeviceComponentManager(
+                self._smartbox_proxys[smartbox_trl] = DeviceComponentManager(
                     smartbox_trl,
                     logger,
                     max_workers,
@@ -159,8 +158,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                         self._component_state_callback, device_name=smartbox_trl
                     ),
                 )
-                self._smartbox_trl_name_map.update({smartbox_trl: smartbox_name})
-                self._smartbox_name_trl_map.update({smartbox_name: smartbox_trl})
 
         # initialise the power
         self.antenna_powers: dict[str, PowerState] = {}
@@ -231,8 +228,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
 
         self._fndh_proxy.start_communicating()
-        for proxy in self._smartbox_proxys.values():
+        for smartbox_trl, proxy in self._smartbox_proxys.items():
             proxy.start_communicating()
+            smartbox_name = re.findall("sb[0-9]+", smartbox_trl)[0]
+            self._smartbox_trl_name_map[smartbox_trl] = smartbox_name
 
     def stop_communicating(self: FieldStationComponentManager) -> None:
         """Break off communication with the PasdData."""
@@ -278,9 +277,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         proxy_object = None
         if fqdn == self._fndh_name:
             proxy_object = self._fndh_proxy
-        elif fqdn in self._smartbox_trl_name_map:
-            smartbox_no = self._smartbox_trl_name_map[fqdn]
-            proxy_object = self._smartbox_proxys[smartbox_no]
+        elif fqdn in self._smartbox_proxys:
+            proxy_object = self._smartbox_proxys[fqdn]
 
         if (
             proxy_object is not None
@@ -330,10 +328,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 "Discarding empty port power changed event for smartbox {smartbox_name}"
             )
             return
-        if (
-            smartbox_trl
-            not in self._smartbox_trl_name_map.keys()  # pylint: disable=C0201
-        ):
+        if smartbox_trl not in self._smartbox_trl_name_map.keys():
             self.logger.error(
                 f"An unrecognised smartbox {smartbox_trl} "
                 "had a change in its port powers"
@@ -518,7 +513,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         desired_fndh_port_powers: list[bool | None],
     ) -> dict[str, bool | None]:
         desired_smartbox_power: dict[str, bool | None] = {}
-        for smartbox_name, smartbox_proxy in self._smartbox_proxys.items():
+        for smartbox_trl, smartbox_proxy in self._smartbox_proxys.items():
             assert smartbox_proxy._proxy is not None
             fndh_port = json.loads(smartbox_proxy._proxy.fndhPort)
             if fndh_port is None:
@@ -527,6 +522,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     f"smartbox {smartbox_proxy._name} does not know its fndh port"
                 )
                 raise ValueError("Smartbox attribute fndhPort has non integer value.")
+            smartbox_name = self._smartbox_trl_name_map[smartbox_trl]
             desired_smartbox_power[smartbox_name] = desired_fndh_port_powers[
                 fndh_port - 1
             ]
@@ -550,7 +546,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             desired_smartbox_port_powers: list[bool | None] = [
                 True
             ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
-            masked_ports = masked_smartbox_ports.get(smartbox_trl, [])
+            smartbox_name = self._smartbox_trl_name_map[smartbox_trl]
+            masked_ports = masked_smartbox_ports.get(smartbox_name, [])
             for masked_port in masked_ports:
                 desired_smartbox_port_powers[masked_port - 1] = None
             json_argument = json.dumps(
@@ -729,7 +726,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             for port_idx, port_state in desired_state.items():
                 if port_state is not None:
                     port_power = PowerState.ON if port_state else PowerState.OFF
-                    port_trl = self._smartbox_name_trl_map[port_idx]
+                    port_trl = self._smartbox_trl_name_map.inverse[port_idx]
                     if current_state[port_trl] != port_power:
                         return False
             return True
@@ -860,12 +857,13 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         result, _ = self._fndh_proxy._proxy.SetPortPowers(json_argument)
         results += result
         masked_ports = []
-        for smartbox_no, smartbox in self._smartbox_proxys.items():
+        for smartbox_trl, smartbox in self._smartbox_proxys.items():
             assert smartbox._proxy
             desired_smartbox_port_powers: list[int | None] = [
                 False
             ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
-            masked_ports = masked_smartbox_ports.get(smartbox_no, [])
+            smartbox_name = self._smartbox_trl_name_map[smartbox_trl]
+            masked_ports = masked_smartbox_ports.get(smartbox_name, [])
             for masked_port in masked_ports:
                 desired_smartbox_port_powers[masked_port - 1] = None
             json_argument = json.dumps(
@@ -1032,7 +1030,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             antenna_name
         ]
         try:
-            smartbox_proxy = self._smartbox_proxys[smartbox_name]
+            smartbox_trl = self._smartbox_trl_name_map.inverse[smartbox_name]
+            smartbox_proxy = self._smartbox_proxys[smartbox_trl]
         except IndexError:
             msg = (
                 f"Tried to turn on antenna {antenna_name}, this is mapped to "
@@ -1139,7 +1138,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             antenna_name
         ]
         try:
-            smartbox_proxy = self._smartbox_proxys[smartbox_name]
+            smartbox_trl = self._smartbox_trl_name_map.inverse[smartbox_name]
+            smartbox_proxy = self._smartbox_proxys[smartbox_trl]
         except IndexError:
             msg = (
                 f"Tried to turn off antenna {antenna_name}, this is mapped to "

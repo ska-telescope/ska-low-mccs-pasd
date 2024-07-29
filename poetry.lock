@@ -197,6 +197,22 @@ url = "https://artefact.skao.int/repository/pypi-all/simple"
 reference = "ska-nexus"
 
 [[package]]
+name = "bidict"
+version = "0.23.1"
+description = "The bidirectional mapping library for Python."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "bidict-0.23.1-py3-none-any.whl", hash = "sha256:5dae8d4d79b552a71cbabc7deb25dfe8ce710b17ff41711e13010ead2abfc3e5"},
+    {file = "bidict-0.23.1.tar.gz", hash = "sha256:03069d763bc387bbd20e7d49914e75fc4132a41937fa3405417e1a5a2d006d71"},
+]
+
+[package.source]
+type = "legacy"
+url = "https://artefact.skao.int/repository/pypi-all/simple"
+reference = "ska-nexus"
+
+[[package]]
 name = "black"
 version = "23.12.1"
 description = "The uncompromising code formatter."
@@ -3887,4 +3903,8 @@ reference = "ska-nexus"
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
+<<<<<<< HEAD
 content-hash = "3bf74b94dcc9e9dce92c82b00b5a8936d3a7c3f7189cc8d3283bbdd66507ac2a"
+=======
+content-hash = "019fdbe8a5870984ce2d6c27a0dd77788a7983cf658da43789c6d4a8913784f7"
+>>>>>>> 047f022 (Added bidict to manage the TRL <=> name mappings)
