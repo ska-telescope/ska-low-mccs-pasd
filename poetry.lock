@@ -2925,8 +2925,8 @@ transitions = "^0.9.0"
 [package.source]
 type = "git"
 url = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git"
-reference = "894e07cb7437097ef8f4c2670427236730146272"
-resolved_reference = "894e07cb7437097ef8f4c2670427236730146272"
+reference = "835333758d0d288ff2ac9f13eb1de7b556e2ab2c"
+resolved_reference = "835333758d0d288ff2ac9f13eb1de7b556e2ab2c"
 
 [[package]]
 name = "ska-ser-devices"
@@ -3682,4 +3682,4 @@ reference = "ska-nexus"
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "7457e11dc3cc8fff3fcd60c5421c48eb68df3baa5926bd0af087cc8b225c8e9f"
+content-hash = "fac53e9f69a021d84110852651a87181134544c6cfab6a59db1ee51ddb08ca05"
