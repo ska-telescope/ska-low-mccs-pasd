@@ -160,7 +160,7 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
             label=attribute_name,
             max_dim_x=max_dim_x,
             fget=self._read_fncc_attribute,
-            display_unit=unit,
+            unit=unit,
             description=description,
             format=format_string,
         ).to_attr()

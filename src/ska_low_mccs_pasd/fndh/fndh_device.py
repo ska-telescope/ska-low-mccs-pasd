@@ -431,6 +431,8 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 unit=register["unit"],
                 format_string=register["format_string"],
                 description=register["description"],
+                min_value=register["min_value"],
+                max_value=register["max_value"],
             )
 
     # pylint: disable=too-many-arguments
@@ -444,6 +446,8 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         unit: Optional[str] = None,
         format_string: Optional[str] = None,
         description: Optional[str] = None,
+        min_value: Optional[float] = None,
+        max_value: Optional[float] = None,
     ) -> None:
         self._fndh_attributes[attribute_name.lower()] = FNDHAttribute(
             value=default_value, timestamp=0, quality=tango.AttrQuality.ATTR_INVALID
@@ -456,7 +460,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             max_dim_x=max_dim_x,
             fget=self._read_fndh_attribute,
             fset=self._read_fndh_attribute,
-            display_unit=unit,
+            unit=unit,
             description=description,
             format=format_string,
         ).to_attr()
@@ -466,6 +470,20 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             self._write_fndh_attribute,
             None,
         )
+        if min_value is not None or max_value is not None:
+            if access_type != tango.AttrWriteType.READ_WRITE:
+                self.logger.warning(
+                    "Can't set min and max values on read-only "
+                    f"attribute {attribute_name}"
+                )
+            else:
+                writeable_attribute = self.get_device_attr().get_w_attr_by_name(
+                    attribute_name
+                )
+                if min_value is not None:
+                    writeable_attribute.set_min_value(min_value)
+                if max_value is not None:
+                    writeable_attribute.set_max_value(max_value)
         self.set_change_event(attribute_name, True, False)
         self.set_archive_event(attribute_name, True, False)
 
