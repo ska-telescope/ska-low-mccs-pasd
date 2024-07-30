@@ -16,11 +16,11 @@ python = "~3.10"
 kubernetes = "28.1.0"
 numpy = "^1.26.4"
 backoff = "^2.2.1"
-pytango = "9.4.2"
+pytango = "^9.5.1"
 PyYAML = "^6.0"
 ska-tango-base = "^1.0.0"
 ska-control-model = "^1.0.0"
-ska-low-mccs-common =  { git = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git", rev = "28d6b5bc6230fdabfc4b3e9840ff3429320e449d" }
+ska-low-mccs-common =  { git = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git", rev = "894e07cb7437097ef8f4c2670427236730146272" }
 ska-ser-devices = "^0.2.0"
 pymodbus = "~3.5.4"
 typing-extensions = "^4.6.1"
