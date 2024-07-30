@@ -258,14 +258,21 @@ class MccsSmartBox(SKABaseDevice):
                     else tango.AttrWriteType.READ
                 ),
                 max_dim_x=register["tango_dim_x"],
+                unit=register["unit"],
+                format_string=register["format_string"],
+                description=register["description"],
             )
 
+    # pylint: disable=too-many-arguments
     def _setup_smartbox_attribute(
         self: MccsSmartBox,
         attribute_name: str,
         data_type: type | tuple[type],
         access_type: tango.AttrWriteType,
         max_dim_x: Optional[int] = None,
+        unit: Optional[str] = None,
+        format_string: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> None:
         self._smartbox_state[attribute_name.lower()] = SmartboxAttribute(
             value=None, timestamp=0, quality=tango.AttrQuality.ATTR_INVALID
@@ -278,6 +285,9 @@ class MccsSmartBox(SKABaseDevice):
             max_dim_x=max_dim_x,
             fget=self._read_smartbox_attribute,
             fset=self._write_smartbox_attribute,
+            display_unit=unit,
+            description=description,
+            format=format_string,
         ).to_attr()
         self.add_attribute(
             attr, self._read_smartbox_attribute, self._write_smartbox_attribute, None

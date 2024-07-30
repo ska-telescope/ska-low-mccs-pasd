@@ -428,6 +428,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                     else tango.AttrWriteType.READ
                 ),
                 max_dim_x=register["tango_dim_x"],
+                unit=register["unit"],
+                format_string=register["format_string"],
+                description=register["description"],
             )
 
     # pylint: disable=too-many-arguments
@@ -438,6 +441,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         access_type: tango.AttrWriteType,
         max_dim_x: Optional[int] = None,
         default_value: Optional[Any] = None,
+        unit: Optional[str] = None,
+        format_string: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> None:
         self._fndh_attributes[attribute_name.lower()] = FNDHAttribute(
             value=default_value, timestamp=0, quality=tango.AttrQuality.ATTR_INVALID
@@ -450,6 +456,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             max_dim_x=max_dim_x,
             fget=self._read_fndh_attribute,
             fset=self._read_fndh_attribute,
+            display_unit=unit,
+            description=description,
+            format=format_string,
         ).to_attr()
         self.add_attribute(
             attr,

@@ -133,6 +133,9 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
                     else tango.AttrWriteType.READ
                 ),
                 max_dim_x=register["tango_dim_x"],
+                unit=register["unit"],
+                format_string=register["format_string"],
+                description=register["description"],
             )
 
     # pylint: disable=too-many-arguments
@@ -143,6 +146,9 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
         access_type: tango.AttrWriteType,
         max_dim_x: Optional[int] = None,
         default_value: Optional[Any] = None,
+        unit: Optional[str] = None,
+        format_string: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> None:
         self._fncc_attributes[attribute_name.lower()] = FNCCAttribute(
             value=default_value, timestamp=0, quality=tango.AttrQuality.ATTR_INVALID
@@ -154,6 +160,9 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
             label=attribute_name,
             max_dim_x=max_dim_x,
             fget=self._read_fncc_attribute,
+            display_unit=unit,
+            description=description,
+            format=format_string,
         ).to_attr()
         self.add_attribute(
             attr,
