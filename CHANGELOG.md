@@ -2,6 +2,7 @@
 
 ## unreleased
 
+* [WOM-147]: Add metadata to the Tango attributes
 * [WOM-144]: Synchronize Tango alarm config with threshold values
 * [WOM-361]: Change FEM current trip threshold attributes to an array
 * [WOM-384]: Fix misleading messages
