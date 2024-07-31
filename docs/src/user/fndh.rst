@@ -89,9 +89,9 @@ are read/write.
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | InternalAmbientTemperatureThresholds | 1045-1048   | High alarm, high warning, low warning and low alarm threshold values     |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| WarningFlags                         | 10129       | List of sensors outside their warning thresholds                         |
+| WarningFlags                         | 10129       | List of sensors in WARNING state                                         |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| AlarmFlags                           | 10131       | List of sensors outside their alarm thresholds                           |
+| AlarmFlags                           | 10131       | List of sensors in ALARM state                                           |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 
 The FNDH ``PasdStatus`` attribute should be interpreted as follows:
