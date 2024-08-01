@@ -79,7 +79,7 @@ are read/write.
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | FncbTemperatureThresholds            | 1025-1028   | High alarm, high warning, low warning and low alarm threshold values     |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| HumidityThresholds                   | 1029-1032   | High alarm, high warning, low warning and low alarm threshold values     |
+| FncbHumidityThresholds               | 1029-1032   | High alarm, high warning, low warning and low alarm threshold values     |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | CommsGatewayTemperatureThresholds    | 1033-1036   | High alarm, high warning, low warning and low alarm threshold values     |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
