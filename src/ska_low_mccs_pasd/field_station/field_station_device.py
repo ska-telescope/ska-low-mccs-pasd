@@ -262,9 +262,9 @@ class MccsFieldStation(SKABaseDevice):
             # pylint: disable=attribute-defined-outside-init
             self._antenna_power_json = None
             antenna_powers = kwargs["antenna_powers"]  # dict[str, PowerState]
-            for antenna_id in self.component_manager._antenna_mapping["antennaMapping"]:
-                antenna_masks = self.component_manager._antenna_mask["antennaMask"]
 
+            antenna_masks = self.component_manager._antenna_mask["antennaMask"]
+            for antenna_id in self.component_manager._antenna_mapping["antennaMapping"]:
                 if not antenna_masks[antenna_id]:
                     if antenna_powers[antenna_id] != PowerState.ON:
                         component_state_on = False
