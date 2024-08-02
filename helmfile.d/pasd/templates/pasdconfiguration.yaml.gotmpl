@@ -21,7 +21,7 @@
       {{- $_ := set $pasd_config_instance "antennas" dict}}
       {{- range $antenna_name, $antenna_spec := (dig "antennas" dict $station_spec)}}
         {{- $antenna_config := pick $antenna_spec "smartbox_port"}}
-        {{- $_ := set $antenna_config "smartbox" ($antenna_spec.smartbox | trimPrefix "sb" | trimPrefix "0")}}
+        {{- $_ := set $antenna_config "smartbox" ($antenna_spec.smartbox)}}
         {{- $_ := set $antenna_config "masked" (dig "masked" false $antenna_spec)}}
         {{- $_ := set $pasd_config_instance.antennas $antenna_name $antenna_config}}
       {{- end}}
