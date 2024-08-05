@@ -9,7 +9,12 @@ Define the deployment for MccsFndh devices.
           logging_level_default: 5
 
 */}}
-{{- $fndhs := dig "fndhs" dict .Values.deviceServers}}
+{{- $fndhs := dict}}
+{{- range $server_name, $this_server := (dig "fndhs" dict .Values.deviceServers)}}
+{{- if $this_server}}
+{{- $_ := set $fndhs $server_name $this_server}}
+{{- end}}
+{{- end}}
 {{- if $fndhs}}
 name: "fndh-{{.Release.Name}}"
 function: ska-low-mccs-pasd-fndh
@@ -28,6 +33,7 @@ server:
         - name: MccsFndh
           devices:
 {{- range $fndh_name, $this_fndh := $this_server}}
+{{- if $this_fndh}}
             - name: {{$fndh_name}}
               properties:
                 - name: PasdFQDN
@@ -40,11 +46,14 @@ server:
 {{- end}}
 {{- end}}
 {{- end}}
+{{- end}}
 depends_on:
   - device: sys/database/2
 {{- range $server_key, $this_server := $fndhs}}
 {{- range $fndh_name, $this_fndh := $this_server}}
+{{- if $this_fndh}}
   - device: {{$this_fndh.pasdbus_name}}
+{{- end}}
 {{- end}}
 {{- end}}
 image:
