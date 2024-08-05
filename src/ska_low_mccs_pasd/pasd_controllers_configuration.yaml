@@ -25,14 +25,14 @@ common_registers: &common_registers
     static: true
   cpu_id:
     data_type: str
-    description: "Microcontroller type"
+    description: "Microcontroller part id"
     address: 2
     size: 2
     static: true
     conversion_function: convert_cpu_id
   chip_id:
     data_type: str
-    description: "Microcontroller unique ID"
+    description: "Microcontroller serial number"
     address: 4
     size: 8
     static: true
