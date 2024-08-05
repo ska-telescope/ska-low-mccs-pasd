@@ -258,9 +258,9 @@ class MccsSmartBox(SKABaseDevice):
                     else tango.AttrWriteType.READ
                 ),
                 max_dim_x=register["tango_dim_x"],
+                description=register["description"],
                 unit=register["unit"],
                 format_string=register["format_string"],
-                description=register["description"],
                 min_value=register["min_value"],
                 max_value=register["max_value"],
             )
@@ -271,10 +271,10 @@ class MccsSmartBox(SKABaseDevice):
         attribute_name: str,
         data_type: type | tuple[type],
         access_type: tango.AttrWriteType,
+        description: str,
         max_dim_x: Optional[int] = None,
         unit: Optional[str] = None,
         format_string: Optional[str] = None,
-        description: Optional[str] = None,
         min_value: Optional[float] = None,
         max_value: Optional[float] = None,
     ) -> None:

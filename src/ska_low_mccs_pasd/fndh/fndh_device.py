@@ -116,7 +116,12 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         for port in range(1, self.CONFIG["number_of_ports"] + 1):
             attr_name = f"Port{port}PowerState"
             self._setup_fndh_attribute(
-                attr_name, PowerState, tango.AttrWriteType.READ, 1, PowerState.UNKNOWN
+                attr_name,
+                PowerState,
+                tango.AttrWriteType.READ,
+                f"Port {port} power state",
+                1,
+                PowerState.UNKNOWN,
             )
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
@@ -427,10 +432,10 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                     if register["writable"]
                     else tango.AttrWriteType.READ
                 ),
+                description=register["description"],
                 max_dim_x=register["tango_dim_x"],
                 unit=register["unit"],
                 format_string=register["format_string"],
-                description=register["description"],
                 min_value=register["min_value"],
                 max_value=register["max_value"],
             )
@@ -441,11 +446,11 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         attribute_name: str,
         data_type: type | tuple[type],
         access_type: tango.AttrWriteType,
+        description: str,
         max_dim_x: Optional[int] = None,
         default_value: Optional[Any] = None,
         unit: Optional[str] = None,
         format_string: Optional[str] = None,
-        description: Optional[str] = None,
         min_value: Optional[float] = None,
         max_value: Optional[float] = None,
     ) -> None:
