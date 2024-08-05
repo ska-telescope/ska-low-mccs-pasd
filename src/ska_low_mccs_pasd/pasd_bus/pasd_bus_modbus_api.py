@@ -586,3 +586,16 @@ class PasdBusModbusApiClient:
         if "data" in response:
             return response["data"]["result"]
         return response
+
+    def reset_connection(self) -> None:
+        """
+        Reset the connection to the device.
+
+        Read from the device until the timeout
+        to flush the input buffer, then close
+        the connection and reconnect.
+        """
+        if self._client.connected:
+            self._client.recv(None)
+            self._client.close()
+        self._client.connect()
