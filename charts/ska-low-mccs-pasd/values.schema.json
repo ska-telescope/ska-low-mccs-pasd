@@ -20,10 +20,6 @@
               "type": "string",
               "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)((-dev\\.c[0-9a-f]{8})|(-dirty))?$"
             }
-          ],
-          "type": [
-            "string",
-            "null"
           ]
         },
         "pullPolicy": {
@@ -36,248 +32,353 @@
       "type": "object",
       "properties": {
         "fieldstations": {
-          "type": "object",
-          "propertyNames": {
-            "$comment": "Slug used to construct server name, k8s pods, etc",
-            "format": "hostname"
-          },
-          "additionalProperties": {
-            "type": "object",
-            "propertyNames": {
-              "$comment": "device TRL",
-              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+          "oneOf": [
+            {
+              "type": "null"
             },
-            "additionalProperties": {
+            {
               "type": "object",
-              "properties": {
-                "fndh_name": {
-                  "type": "string",
-                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                },
-                "fncc_name": {
-                  "type": "string",
-                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                },
-                "configuration_host": {
-                  "type": "string",
-                  "format": "hostname"
-                },
-                "configuration_port": {
-                  "type": "integer",
-                  "minimum": 1
-                },
-                "smartbox_names": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                  },
-                  "maxLength": 24
-                },
-                "config_uri": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "logging_level_default": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 5
-                }
+              "propertyNames": {
+                "$comment": "Slug used to construct server name, k8s pods, etc",
+                "format": "hostname"
               },
-              "required": [
-                "fndh_name",
-                "configuration_host",
-                "configuration_port",
-                "smartbox_names"
-              ],
-              "additionalProperties": false
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "$comment": "device TRL",
+                      "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                    },
+                    "additionalProperties": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "fndh_name": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                            },
+                            "fncc_name": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                            },
+                            "configuration_host": {
+                              "type": "string",
+                              "format": "hostname"
+                            },
+                            "configuration_port": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "smartbox_names": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                              },
+                              "maxLength": 24
+                            },
+                            "config_uri": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "logging_level_default": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 5
+                            }
+                          },
+                          "required": [
+                            "fndh_name",
+                            "configuration_host",
+                            "configuration_port",
+                            "smartbox_names"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
             }
-          }
+          ]
         },
         "fndhs": {
-          "type": "object",
-          "propertyNames": {
-            "$comment": "Slug used to construct server name, k8s pods, etc",
-            "format": "hostname"
-          },
-          "additionalProperties": {
-            "type": "object",
-            "propertyNames": {
-              "$comment": "device TRL",
-              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+          "oneOf": [
+            {
+              "type": "null"
             },
-            "additionalProperties": {
+            {
               "type": "object",
-              "properties": {
-                "pasdbus_name": {
-                  "type": "string",
-                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                },
-                "logging_level_default": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 5
-                }
+              "propertyNames": {
+                "$comment": "Slug used to construct server name, k8s pods, etc",
+                "format": "hostname"
               },
-              "required": [
-                "pasdbus_name"
-              ],
-              "additionalProperties": false
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "$comment": "device TRL",
+                      "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                    },
+                    "additionalProperties": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "pasdbus_name": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                            },
+                            "logging_level_default": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 5
+                            }
+                          },
+                          "required": [
+                            "pasdbus_name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
             }
-          }
+          ]
         },
         "fnccs": {
-          "type": "object",
-          "propertyNames": {
-            "$comment": "Slug used to construct server name, k8s pods, etc",
-            "format": "hostname"
-          },
-          "additionalProperties": {
-            "type": "object",
-            "propertyNames": {
-              "$comment": "device TRL",
-              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+          "oneOf": [
+            {
+              "type": "null"
             },
-            "additionalProperties": {
+            {
               "type": "object",
-              "properties": {
-                "pasdbus_name": {
-                  "type": "string",
-                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                },
-                "logging_level_default": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 5
-                }
+              "propertyNames": {
+                "$comment": "Slug used to construct server name, k8s pods, etc",
+                "format": "hostname"
               },
-              "required": [
-                "pasdbus_name"
-              ],
-              "additionalProperties": false
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "$comment": "device TRL",
+                      "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                    },
+                    "additionalProperties": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "pasdbus_name": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                            },
+                            "logging_level_default": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 5
+                            }
+                          },
+                          "required": [
+                            "pasdbus_name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
             }
-          }
+          ]
         },
         "smartboxes": {
-          "type": "object",
-          "propertyNames": {
-            "$comment": "Slug used to construct server name, k8s pods, etc",
-            "format": "hostname"
-          },
-          "additionalProperties": {
-            "type": "object",
-            "propertyNames": {
-              "$comment": "device TRL",
-              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+          "oneOf": [
+            {
+              "type": "null"
             },
-            "additionalProperties": {
+            {
               "type": "object",
-              "properties": {
-                "smartbox_number": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 24
-                },
-                "fndh_name": {
-                  "type": "string",
-                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                },
-                "field_station_name": {
-                  "type": "string",
-                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                },
-                "fndh_port": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 28
-                },
-                "pasdbus_name": {
-                  "type": "string",
-                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                },
-                "logging_level_default": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 5
-                }
+              "propertyNames": {
+                "$comment": "Slug used to construct server name, k8s pods, etc",
+                "format": "hostname"
               },
-              "required": [
-                "fndh_name",
-                "field_station_name",
-                "fndh_port",
-                "pasdbus_name"
-              ],
-              "additionalProperties": false
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "$comment": "device TRL",
+                      "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                    },
+                    "additionalProperties": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "smartbox_number": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 24
+                            },
+                            "fndh_name": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                            },
+                            "field_station_name": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                            },
+                            "fndh_port": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 28
+                            },
+                            "pasdbus_name": {
+                              "type": "string",
+                              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                            },
+                            "logging_level_default": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 5
+                            }
+                          },
+                          "required": [
+                            "fndh_name",
+                            "field_station_name",
+                            "fndh_port",
+                            "pasdbus_name"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
             }
-          }
+          ]
         },
         "pasdbuses": {
-          "type": "object",
-          "propertyNames": {
-            "$comment": "Slug used to construct server name, k8s pods, etc",
-            "format": "hostname"
-          },
-          "additionalProperties": {
-            "type": "object",
-            "propertyNames": {
-              "$comment": "device TRL",
-              "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+          "oneOf": [
+            {
+              "type": "null"
             },
-            "additionalProperties": {
+            {
               "type": "object",
-              "properties": {
-                "host": {
-                  "type": "string",
-                  "format": "hostname"
-                },
-                "port": {
-                  "type": "integer",
-                  "minimum": 1
-                },
-                "timeout": {
-                  "type": "number",
-                  "minimum": 0
-                },
-                "polling_rate": {
-                  "type": "number",
-                  "minimum": 0
-                },
-                "device_polling_rate": {
-                  "type": "number",
-                  "minimum": 0
-                },
-                "low_pass_filter_cutoff": {
-                  "type": "number",
-                  "minimum": 0
-                },
-                "simulation_config": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 1
-                },
-                "logging_level_default": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 5
-                },
-                "available_smartboxes": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  },
-                  "maxLength": 24
-                }
+              "propertyNames": {
+                "$comment": "Slug used to construct server name, k8s pods, etc",
+                "format": "hostname"
               },
-              "required": [
-                "host",
-                "port",
-                "timeout"
-              ],
-              "additionalProperties": false
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "$comment": "device TRL",
+                      "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
+                    },
+                    "additionalProperties": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "host": {
+                              "type": "string",
+                              "format": "hostname"
+                            },
+                            "port": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "timeout": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "polling_rate": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "device_polling_rate": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "low_pass_filter_cutoff": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "simulation_config": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "logging_level_default": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 5
+                            },
+                            "available_smartboxes": {
+                              "type": "array",
+                              "items": {
+                                "type": "integer"
+                              },
+                              "maxLength": 24
+                            }
+                          },
+                          "required": [
+                            "host",
+                            "port",
+                            "timeout"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
             }
-          }
+          ]
         }
       },
       "additionalProperties": false
@@ -291,26 +392,33 @@
             "format": "hostname"
           },
           "additionalProperties": {
-            "type": "object",
-            "properties": {
-              "host": {
-                "type": "string",
-                "format": "hostname"
+            "oneOf": [
+              {
+                "type": "null"
               },
-              "port": {
-                "type": "integer",
-                "minimum": 1
-              },
-              "time_multiplier": {
-                "type": "number",
-                "exclusiveMinimum": 0
+              {
+                "type": "object",
+                "properties": {
+                  "host": {
+                    "type": "string",
+                    "format": "hostname"
+                  },
+                  "port": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "time_multiplier": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "host",
+                  "port"
+                ],
+                "additionalProperties": false
               }
-            },
-            "required": [
-              "host",
-              "port"
-            ],
-            "additionalProperties": false
+            ]
           }
         }
       }
@@ -322,22 +430,29 @@
         "format": "hostname"
       },
       "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "host": {
-            "type": "string",
-            "format": "hostname"
+        "oneOf": [
+          {
+            "type": "null"
           },
-          "port": {
-            "type": "integer",
-            "minimum": 1
+          {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string",
+                "format": "hostname"
+              },
+              "port": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "host",
+              "port"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "host",
-          "port"
-        ],
-        "additionalProperties": false
+        ]
       }
     },
     "referenceData": {
@@ -352,59 +467,89 @@
             "type": "object",
             "properties": {
               "pasd": {
-                "type": "object",
-                "properties": {
-                  "smartboxes": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "smartboxes": {
+                        "oneOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "oneOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "fndh_port": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 28
+                                    }
+                                  },
+                                  "required": [
+                                    "fndh_port"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "smartboxes"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "antennas": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
                     "type": "object",
                     "additionalProperties": {
-                      "type": "object",
-                      "properties": {
-                        "smartboxes": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
                           "type": "object",
                           "properties": {
-                            "fndh_port": {
+                            "smartbox": {
+                              "type": "string"
+                            },
+                            "smartbox_port": {
                               "type": "integer",
                               "minimum": 1,
-                              "maximum": 28
+                              "maximum": 12
+                            },
+                            "masked": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
-                            "fndh_port"
+                            "smartbox",
+                            "smartbox_port"
                           ],
                           "additionalProperties": false
                         }
-                      }
+                      ]
                     }
                   }
-                },
-                "required": [
-                  "smartboxes"
-                ],
-                "additionalProperties": false
-              },
-              "antennas": {
-                "type": "object",
-                "additionalProperties": {
-                  "type": "object",
-                  "properties": {
-                    "smartbox": {
-                      "type": "string"
-                    },
-                    "smartbox_port": {
-                      "type": "integer",
-                      "minimum": 1,
-                      "maximum": 12
-                    },
-                    "masked": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "smartbox",
-                    "smartbox_port"
-                  ],
-                  "additionalProperties": false
-                }
+                ]
               }
             },
             "additionalProperties": false
