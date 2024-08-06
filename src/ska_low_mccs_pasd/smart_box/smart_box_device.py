@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from dataclasses import dataclass
 from typing import Any, Final, Optional, cast
@@ -89,16 +90,17 @@ class MccsSmartBox(SKABaseDevice):
 
         This is overridden here to change the Tango serialisation model.
         """
+        self._readable_name = re.findall("sb[0-9]+", self.get_name())[0]
         super().init_device()
         self._smartbox_state: dict[str, SmartboxAttribute] = {}
         self._setup_smartbox_attributes()
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
-        self._readable_name = f'{str(self.__class__).rsplit(".", maxsplit=1)[-1][0:-2]}'
-        version = f"{self._readable_name} Software Version: {self._version_id}"
+        device_name = f'{str(self.__class__).rsplit(".", maxsplit=1)[-1][0:-2]}'
+        version = f"{device_name} Software Version: {self._version_id}"
         properties = (
-            f"Initialised {self._readable_name} device with properties:\n"
+            f"Initialised {device_name} device with properties:\n"
             f"\tFieldStationName: {self.FieldStationName}\n"
             f"\tPasdFQDN: {self.PasdFQDN}\n"
             f"\tSmartBoxNumber: {self.SmartBoxNumber}\n"
@@ -152,6 +154,7 @@ class MccsSmartBox(SKABaseDevice):
             self._component_state_callback,
             self._attribute_changed_callback,
             self.SmartBoxNumber,
+            self._readable_name,
             self.CONFIG["number_of_ports"],
             self.FieldStationName,
             self.PasdFQDN,

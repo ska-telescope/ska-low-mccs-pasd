@@ -258,6 +258,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         component_state_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
         smartbox_nr: int,
+        readable_name: str,
         port_count: int,
         field_station_name: str,
         pasd_fqdn: str,
@@ -275,6 +276,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param attribute_change_callback: callback to be called when a attribute
             of interest changes.
         :param smartbox_nr: the smartbox's ID number.
+        :param readable_name: the smartbox's name
         :param port_count: the number of smartbox ports.
         :param field_station_name: the name of the field station.
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
@@ -288,6 +290,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         ]
         self._power_state = PowerState.UNKNOWN
         self._smartbox_nr = smartbox_nr
+        self._readable_name = readable_name
         self._fndh_port: Optional[int] = None
         self._attribute_change_callback = attribute_change_callback
 
@@ -350,8 +353,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             )
             return
         for smartbox_name, fndh_port in mapping["smartboxMapping"].items():
-            smartbox_num = re.findall("[0-9]+", smartbox_name)[0]
-            if int(smartbox_num) == self._smartbox_nr:
+            if smartbox_name == self._readable_name:
                 if 0 < fndh_port < PasdData.NUMBER_OF_FNDH_PORTS + 1:
                     self.update_fndh_port(fndh_port)
                     self.logger.info(
