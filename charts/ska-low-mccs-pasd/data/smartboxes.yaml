@@ -19,6 +19,7 @@ Define the deployment for MccsSmartbox devices.
 {{- end}}
 {{- end}}
 {{- if $smartboxes}}
+{{- $dependencies := dict}}
 name: "smartbox-{{.Release.Name}}"
 function: ska-low-mccs-pasd-smartbox
 domain: ska-low-mccs-pasd-smartbox
@@ -37,6 +38,7 @@ server:
           devices:
 {{- range $smartbox_name, $this_smartbox := $this_server}}
 {{- if $this_smartbox}}
+{{- $_ := set $dependencies $this_smartbox.pasdbus_name nil}}
             - name: {{$smartbox_name}}
               properties:
                 - name: SmartBoxNumber
@@ -61,12 +63,8 @@ server:
 {{- end}}
 depends_on:
   - device: sys/database/2
-{{- range $server_key, $this_server := $smartboxes}}
-{{- range $smartbox_name, $this_smartbox := $this_server}}
-{{- if $this_smartbox}}
-  - device: {{$this_smartbox.pasdbus_name}}
-{{- end}}
-{{- end}}
+{{- range $dependency := keys $dependencies}}
+  - device: {{$dependency}}
 {{- end}}
 image:
 {{- with .Values.image}}
