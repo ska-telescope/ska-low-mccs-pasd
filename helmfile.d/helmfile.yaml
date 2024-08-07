@@ -108,7 +108,7 @@ releases:
   - name: ska-low-mccs-pasd
     namespace: {{.Namespace | default "ska-low-mccs"}}
     chart: ../charts/ska-low-mccs-pasd
-    version: ~0.9.0
+    version: ~0.10.0
     values:
       - .deploy/helmfile.d/templates/globals.yaml.gotmpl
       - .deploy/helmfile.d/templates/pasd/fieldstations.yaml.gotmpl

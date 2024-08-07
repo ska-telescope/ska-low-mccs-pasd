@@ -12,7 +12,7 @@ The Monitoring Control and Calibration (MCCS) subsystem is responsible
 for, amongst other things, monitoring and control of LFAA.
 """
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 
 __version_info__ = (
     "ska-low-mccs-pasd",
