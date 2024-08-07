@@ -2884,13 +2884,13 @@ reference = "ska-nexus"
 
 [[package]]
 name = "ska-low-mccs-common"
-version = "0.10.2"
+version = "0.11.1"
 description = "The Monitoring, Control and Calibration Subsystem (MCCS) of the SKA Low telescope"
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "ska_low_mccs_common-0.10.2-py3-none-any.whl", hash = "sha256:bdef9c97102fd0b5aa0dba5374e75c12a2e866fdf38ff42a98502b6210c0d151"},
-    {file = "ska_low_mccs_common-0.10.2.tar.gz", hash = "sha256:4bd44bf2c3607ec3cc432005e7d87eb0db5d14eb0bcfd8271f0b0ded2d9f8674"},
+    {file = "ska_low_mccs_common-0.11.1-py3-none-any.whl", hash = "sha256:b3d47eaa13d91b50aa2c8345c593a179d254724587341ce281ed87cc1a39ce3a"},
+    {file = "ska_low_mccs_common-0.11.1.tar.gz", hash = "sha256:f55b12d066df84fc3d5dfb4ade59f411636ff5013b9f9702198b63a1c8825c38"},
 ]
 
 [package.dependencies]
@@ -3887,4 +3887,4 @@ reference = "ska-nexus"
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "2ac4888fb24e496bc38eddec87f6b34131e01270c58ed3c6cb29d8d9cf6a8d78"
+content-hash = "3bf74b94dcc9e9dce92c82b00b5a8936d3a7c3f7189cc8d3283bbdd66507ac2a"
