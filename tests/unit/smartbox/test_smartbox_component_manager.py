@@ -26,7 +26,6 @@ from tests.harness import (
     PasdTangoTestHarnessContext,
     get_field_station_name,
     get_pasd_bus_name,
-    get_smartbox_name,
 )
 
 SMARTBOX_PORTS = 12
@@ -219,7 +218,7 @@ class TestSmartBoxComponentManager:
             mock_callbacks["component_state"],
             mock_callbacks["attribute_update"],
             smartbox_number,
-            get_smartbox_name(smartbox_number),
+            f"sb{smartbox_number:02d}",
             SMARTBOX_PORTS,
             get_field_station_name(),
             get_pasd_bus_name(),
