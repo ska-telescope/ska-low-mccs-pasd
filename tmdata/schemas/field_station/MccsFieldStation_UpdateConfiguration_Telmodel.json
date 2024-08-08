@@ -71,7 +71,7 @@
                     "patternProperties": {
                         "[a-zA-Z0-9_]+": {
                             "type": "object",
-                            "minProperties": 2,
+                            "minProperties": 1,
                             "maxProperties": 2,
                             "properties": {
                                 "fndh_port": {
@@ -82,8 +82,7 @@
                                 }
                             },
                             "required": [
-                                "fndh_port",
-                                "modbus_id"
+                                "fndh_port"
                             ]
                         }
                     }
