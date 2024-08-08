@@ -240,7 +240,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
     def reset_connection(self: PasdBusComponentManager) -> None:
         """Reset the connection to the device."""
-        self._connection_reset_count = self._connection_reset_count + 1
+        self._connection_reset_count += 1
         self._logger.info(f"Connection reset count: {self._connection_reset_count}")
         self._pasd_bus_api_client.reset_connection()
 
