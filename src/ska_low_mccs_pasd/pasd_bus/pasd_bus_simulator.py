@@ -36,6 +36,7 @@ PasdBusSimulator class should be considered public.
 from __future__ import annotations
 
 import logging
+import re
 from abc import ABC
 from datetime import datetime
 from typing import Callable, Final, Optional, Sequence
