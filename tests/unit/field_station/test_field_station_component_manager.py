@@ -452,7 +452,10 @@ class TestFieldStationComponentManager:
             field_station_component_manager.communication_state
             == CommunicationStatus.ESTABLISHED
         )
-
+        # Lookahead needs to take into account smartbox callbacks
+        mock_callbacks["component_state"].assert_call(
+            outsidetemperature=mocked_outside_temperature, lookahead=50
+        )
         assert (
             field_station_component_manager.outsideTemperature
             == mocked_outside_temperature
