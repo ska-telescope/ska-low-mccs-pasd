@@ -19,13 +19,13 @@ environments:
   aa0.5-production:
     values:
     - telmodel:
-      - source: gitlab://gitlab.com/ska-telescope/ska-low-deployment?f0f1478a2b5ebc240222db8ede01b94aa7f977a9#tmdata
+      - source: gitlab://gitlab.com/ska-telescope/ska-low-tmdata?f5b890234e2343fc384398d6d50e63244c77d78b#tmdata
         datasets:
-        - instrument/mccs-configuration/aa0.5.yaml
-        - instrument/mccs-configuration/s8-1.yaml
-        - instrument/mccs-configuration/s8-6.yaml
-        - instrument/mccs-configuration/s9-2.yaml
-        - instrument/mccs-configuration/s10-3.yaml
+        - aa0.5.yaml
+        - s8-1.yaml
+        - s8-6.yaml
+        - s9-2.yaml
+        - s10-3.yaml
       config_files:
       - values/values-aa0-5.yaml
       datacentre: infra:au-aa-mccs-cloud01-k8s
