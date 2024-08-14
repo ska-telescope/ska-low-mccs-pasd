@@ -72,12 +72,9 @@
                         "[a-zA-Z0-9_]+": {
                             "type": "object",
                             "minProperties": 1,
-                            "maxProperties": 2,
+                            "maxProperties": 1,
                             "properties": {
                                 "fndh_port": {
-                                    "type": "integer"
-                                },
-                                "modbus_id": {
                                     "type": "integer"
                                 }
                             },
