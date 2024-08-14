@@ -81,18 +81,7 @@ environments:
 {{- end}}
     values:
       - .deploy/helmfile.d/templates/tmdata.yaml.gotmpl
-
----
-
-{{- $values := .Environment.Values}}
-{{- range $config_file := ($values | get "config_files" list)}}
-{{- $config := readFile $config_file | fromYaml}}
-{{- $values = mergeOverwrite $values $config}}
-{{- end}}
-environments:
-  {{.Environment.Name}}:
-    values:
-{{list $values | toYaml | indent 6}}
+      {{- toYaml .Environment.Values.config_files | nindent 6}}
 
 ---
 
