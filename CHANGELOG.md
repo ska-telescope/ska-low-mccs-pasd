@@ -2,7 +2,11 @@
 
 ## unreleased
 
-* []
+## 0.10.1
+
+* [LOW-952]: Point at ska-low-tmdata for AA0.5 telmodel data
+* [MCCS-2216]: Support nulls in values schemas
+* [WOM-370]: Faster, more reliable tests
 
 ## 0.10.0
 

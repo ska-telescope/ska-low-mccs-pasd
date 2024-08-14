@@ -19,13 +19,13 @@ environments:
   aa0.5-production:
     values:
     - telmodel:
-      - source: gitlab://gitlab.com/ska-telescope/ska-low-deployment?f0f1478a2b5ebc240222db8ede01b94aa7f977a9#tmdata
+      - source: gitlab://gitlab.com/ska-telescope/ska-low-tmdata?f5b890234e2343fc384398d6d50e63244c77d78b#tmdata
         datasets:
-        - instrument/mccs-configuration/aa0.5.yaml
-        - instrument/mccs-configuration/s8-1.yaml
-        - instrument/mccs-configuration/s8-6.yaml
-        - instrument/mccs-configuration/s9-2.yaml
-        - instrument/mccs-configuration/s10-3.yaml
+        - aa0.5.yaml
+        - s8-1.yaml
+        - s8-6.yaml
+        - s9-2.yaml
+        - s10-3.yaml
       config_files:
       - values/values-aa0-5.yaml
       datacentre: infra:au-aa-mccs-cloud01-k8s
@@ -81,18 +81,7 @@ environments:
 {{- end}}
     values:
       - .deploy/helmfile.d/templates/tmdata.yaml.gotmpl
-
----
-
-{{- $values := .Environment.Values}}
-{{- range $config_file := ($values | get "config_files" list)}}
-{{- $config := readFile $config_file | fromYaml}}
-{{- $values = mergeOverwrite $values $config}}
-{{- end}}
-environments:
-  {{.Environment.Name}}:
-    values:
-{{list $values | toYaml | indent 6}}
+      {{- toYaml .Environment.Values.config_files | nindent 6}}
 
 ---
 
@@ -108,7 +97,6 @@ releases:
   - name: ska-low-mccs-pasd
     namespace: {{.Namespace | default "ska-low-mccs"}}
     chart: ../charts/ska-low-mccs-pasd
-    version: ~0.10.0
     values:
       - .deploy/helmfile.d/templates/globals.yaml.gotmpl
       - .deploy/helmfile.d/templates/pasd/fieldstations.yaml.gotmpl
