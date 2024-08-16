@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from dataclasses import dataclass
 from typing import Any, Final, Optional, cast
@@ -89,6 +90,7 @@ class MccsSmartBox(SKABaseDevice):
 
         This is overridden here to change the Tango serialisation model.
         """
+        self._readable_name = re.findall("sb[0-9]+", self.get_name())[0]
         super().init_device()
         self._smartbox_state: dict[str, SmartboxAttribute] = {}
         self._setup_smartbox_attributes()
@@ -152,6 +154,7 @@ class MccsSmartBox(SKABaseDevice):
             self._component_state_callback,
             self._attribute_changed_callback,
             self.SmartBoxNumber,
+            self._readable_name,
             self.CONFIG["number_of_ports"],
             self.FieldStationName,
             self.PasdFQDN,
@@ -479,6 +482,15 @@ class MccsSmartBox(SKABaseDevice):
         :return: the fndh port that the smartbox is attached to.
         """
         return json.dumps(self.component_manager._fndh_port)
+
+    @attribute(dtype="DevString", label="ReadableName")
+    def ReadableName(self: MccsSmartBox) -> str:
+        """
+        Return the name of the smartbox in a readable format.
+
+        :return: the name of the smartbox
+        """
+        return self._readable_name
 
 
 # ----------
