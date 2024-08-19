@@ -30,6 +30,16 @@ class RegisterDict(TypedDict, total=False):
         The Modbus API function used for data conversion.
     writable (bool):
         Indicates if the register is writable. Defaults to False.
+    unit (str):
+        The units the data is reported in, if applicable.
+    format_string (str):
+        An optional format string for the data e.g. %6.2f.
+    description (str):
+        A description of the register.
+    min_value (float):
+        The minimum value that is allowed to be written, if applicable.
+    max_value (float):
+        The maximum value that is allowed to be written, if applicable.
     modbus_class (str):
         The Modbus API class of the register. Defaults to 'PasdBusAttribute'.
     tango_attr_name (str):
@@ -52,6 +62,11 @@ class RegisterDict(TypedDict, total=False):
     tango_dim_x: int
     conversion_function: str
     writable: bool
+    unit: str
+    format_string: str
+    description: str
+    min_value: float
+    max_value: float
     modbus_class: str
     tango_attr_name: str
     static: bool
@@ -102,6 +117,11 @@ REGISTER_SCHEMA: Final = {
                 "regex": "^[a-z]+(?:_[a-z,0-9]+)*$",
             },
             "writable": {"type": "boolean", "default": False},
+            "unit": {"type": "string", "nullable": True, "default": None},
+            "format_string": {"type": "string", "nullable": True, "default": None},
+            "description": {"type": "string", "required": True},
+            "min_value": {"type": "float", "nullable": True, "default": None},
+            "max_value": {"type": "float", "nullable": True, "default": None},
             "modbus_class": {
                 "type": "string",
                 "default": "PasdBusAttribute",

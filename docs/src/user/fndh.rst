@@ -79,7 +79,7 @@ are read/write.
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | FncbTemperatureThresholds            | 1025-1028   | High alarm, high warning, low warning and low alarm threshold values     |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| HumidityThresholds                   | 1029-1032   | High alarm, high warning, low warning and low alarm threshold values     |
+| FncbHumidityThresholds               | 1029-1032   | High alarm, high warning, low warning and low alarm threshold values     |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | CommsGatewayTemperatureThresholds    | 1033-1036   | High alarm, high warning, low warning and low alarm threshold values     |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
@@ -89,9 +89,9 @@ are read/write.
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | InternalAmbientTemperatureThresholds | 1045-1048   | High alarm, high warning, low warning and low alarm threshold values     |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| WarningFlags                         | 10129       | List of sensors outside their warning thresholds                         |
+| WarningFlags                         | 10129       | List of sensors in WARNING state                                         |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| AlarmFlags                           | 10131       | List of sensors outside their alarm thresholds                           |
+| AlarmFlags                           | 10131       | List of sensors in ALARM state                                           |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 
 The FNDH ``PasdStatus`` attribute should be interpreted as follows:

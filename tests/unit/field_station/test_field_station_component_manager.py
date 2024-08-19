@@ -33,19 +33,19 @@ from tests.harness import (
 
 
 @pytest.fixture(name="on_antenna_number")
-def on_antenna_number_fixture() -> int:
+def on_antenna_number_fixture() -> str:
     """
     Return a fixture for the number of an antenna which is on.
 
     :returns: a fixture for the number of an antenna which is on.
     """
-    return 123
+    return "sb18-01"
 
 
 @pytest.fixture(name="on_smartbox_id")
 def on_smartbox_id_fixture(
-    on_antenna_number: int, mock_antenna_mapping: dict[int, list]
-) -> int:
+    on_antenna_number: str, mock_antenna_mapping: dict[str, list]
+) -> str:
     """
     Return the id of a smartbox which is on.
 
@@ -76,7 +76,7 @@ def on_smartbox_port_fixture(
 
 @pytest.fixture(name="on_fndh_port")
 def on_fndh_port_fixture(
-    on_smartbox_id: int, mock_smartbox_mapping: dict[int, int]
+    on_smartbox_id: str, mock_smartbox_mapping: dict[str, int]
 ) -> int:
     """
     Return a FNDH port which is on.
@@ -90,103 +90,84 @@ def on_fndh_port_fixture(
 
 
 def _input_antenna_mask() -> dict:
-    antenna_mask: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_ANTENNAS)]
-    for antenna_no in range(PasdData.NUMBER_OF_ANTENNAS):
-        antenna_mask[antenna_no]["antennaID"] = antenna_no + 1
-        antenna_mask[antenna_no]["maskingState"] = False
+    antenna_mask: dict = {}
+
+    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
+        for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
+            antenna_mask[f"sb{smartbox_no:02d}-{smartbox_port:02d}"] = False
     # Mask the first 12 antennas
-    for antenna_no in range(PasdData.NUMBER_OF_SMARTBOX_PORTS):
-        antenna_mask[antenna_no]["maskingState"] = True
     # The 94th element in this list will have antennaID = 95
-    antenna_mask[94]["maskingState"] = True
+    antenna_mask["sb22-01"] = True
     return {"antennaMask": antenna_mask}
 
 
-def _output_antenna_mask() -> list:
-    antenna_mask: list = [False for _ in range(PasdData.NUMBER_OF_ANTENNAS + 1)]
-    for antenna_id in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
-        antenna_mask[antenna_id] = True
-    antenna_mask[95] = True
-    return antenna_mask
+def _output_antenna_mask() -> dict:
+    antenna_mask: dict = {}
+    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
+        for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
+            antenna_mask[f"sb{smartbox_no:02d}-{smartbox_port:02d}"] = False
+    antenna_mask["sb22-01"] = True
+    return {"antennaMask": antenna_mask}
 
 
 def _input_antenna_mapping() -> dict:
-    antenna_mapping: list[dict] = [{} for _ in range(PasdData.NUMBER_OF_ANTENNAS)]
-    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
+    antenna_mapping: dict = {}
+    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION - 3):
         for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
-            try:
-                antenna_no = (
-                    smartbox_no - 1
-                ) * PasdData.NUMBER_OF_SMARTBOX_PORTS + smartbox_port
-                antenna_mapping[antenna_no - 1]["antennaID"] = antenna_no
-                antenna_mapping[antenna_no - 1]["smartboxID"] = smartbox_no
-                antenna_mapping[antenna_no - 1]["smartboxPort"] = smartbox_port
-            except IndexError:
-                break
+            antenna_id = f"sb{smartbox_no:02d}-{smartbox_port:02d}"
+            antenna_mapping[antenna_id] = {}
+            antenna_mapping[antenna_id]["smartboxID"] = smartbox_no
+            antenna_mapping[antenna_id]["smartboxPort"] = smartbox_port
 
     # Swap two antennas
-    antenna_mapping[0]["antennaID"] = 1
-    antenna_mapping[0]["smartboxID"] = 1
-    antenna_mapping[0]["smartboxPort"] = 2
-
-    antenna_mapping[1]["antennaID"] = 2
-    antenna_mapping[1]["smartboxID"] = 1
-    antenna_mapping[1]["smartboxPort"] = 1
+    tmp_antenna = antenna_mapping["sb01-01"]
+    antenna_mapping["sb01-01"] = antenna_mapping["sb01-02"]
+    antenna_mapping["sb01-02"] = tmp_antenna
 
     return {"antennaMapping": antenna_mapping}
 
 
 def _output_antenna_mapping() -> dict:
-    antenna_mapping: dict[str, list] = {
-        str(antenna_id): [0, 0]
-        for antenna_id in range(1, PasdData.NUMBER_OF_ANTENNAS + 1)
-    }
-    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
+    antenna_mapping: dict = {}
+    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION - 3):
         for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1):
-            try:
-                antenna_no = (
-                    smartbox_no - 1
-                ) * PasdData.NUMBER_OF_SMARTBOX_PORTS + smartbox_port
-                if str(antenna_no) in antenna_mapping.keys():
-                    antenna_mapping[str(antenna_no)] = [smartbox_no, smartbox_port]
-            except KeyError:
-                break
+            antenna_id = f"sb{smartbox_no:02d}-{smartbox_port:02d}"
+            antenna_mapping[antenna_id] = (smartbox_no, smartbox_port)
 
+    antenna_mapping["sb21-01"] = (f"sb{21}", 1)
+    antenna_mapping["sb21-02"] = (f"sb{21}", 2)
+    antenna_mapping["sb21-03"] = (f"sb{21}", 3)
     # Swap two antennas
-    antenna_mapping["1"] = [1, 2]
-    antenna_mapping["2"] = [1, 1]
+    tmp_antenna = antenna_mapping["sb01-01"]
+    antenna_mapping["sb01-01"] = antenna_mapping["sb01-02"]
+    antenna_mapping["sb01-02"] = tmp_antenna
 
-    return antenna_mapping
+    return {"antennaMapping": antenna_mapping}
 
 
 def _input_smartbox_mapping() -> dict:
-    smartbox_mapping: list[dict] = [
-        {} for _ in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
-    ]
-    for fndh_port in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION):
-        smartbox_mapping[fndh_port]["fndhPort"] = fndh_port + 1
-        smartbox_mapping[fndh_port]["smartboxID"] = fndh_port + 1
+    smartbox_mapping = {}
+    for fndh_port in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
+        smartbox_mapping[f"sb{fndh_port:02d}"] = fndh_port
 
     # Swap two smartboxes
-    smartbox_mapping[0]["fndhPort"] = 1
-    smartbox_mapping[0]["smartboxID"] = 2
 
-    smartbox_mapping[1]["fndhPort"] = 2
-    smartbox_mapping[1]["smartboxID"] = 1
+    smartbox_mapping["sb01"] = 2
+    smartbox_mapping["sb02"] = 1
 
     return {"smartboxMapping": smartbox_mapping}
 
 
 def _output_smartbox_mapping() -> dict:
-    smartbox_mapping: dict = {
-        str(fndh_port): fndh_port
-        for fndh_port in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
-    }
+    smartbox_mapping: dict = {}
+    for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
+        smartbox_name = f"sb{smartbox_no:02d}"
+        smartbox_mapping[smartbox_name] = smartbox_no
 
     # Swap two smartboxes
-    smartbox_mapping["1"] = 2
-    smartbox_mapping["2"] = 1
-    return smartbox_mapping
+    smartbox_mapping["sb01"] = 2
+    smartbox_mapping["sb02"] = 1
+    return {"smartboxMapping": smartbox_mapping}
 
 
 @pytest.fixture(name="mock_smartboxes")
@@ -277,7 +258,7 @@ def mock_antenna_mask_fixture() -> list[bool]:
 
 
 @pytest.fixture(name="mock_antenna_mapping")
-def mock_antenna_mapping_fixture() -> dict[int, list]:
+def mock_antenna_mapping_fixture() -> dict[str, list]:
     """
     Generate a default set of antenna mappings for testing.
 
@@ -286,11 +267,12 @@ def mock_antenna_mapping_fixture() -> dict[int, list]:
     :returns: a default set of antenna mappings for testing.
     """
     return {
-        smartbox_no * PasdData.NUMBER_OF_SMARTBOX_PORTS
-        + smartbox_port
-        + 1: [smartbox_no + 1, smartbox_port + 1]
-        for smartbox_no in range(0, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
-        for smartbox_port in range(0, PasdData.NUMBER_OF_SMARTBOX_PORTS)
+        f"sb{smartbox_no:02d}-{smartbox_port:02d}": [
+            f"sb{smartbox_no:02d}",
+            smartbox_port,
+        ]
+        for smartbox_no in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
+        for smartbox_port in range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS + 1)
         if smartbox_no * PasdData.NUMBER_OF_SMARTBOX_PORTS + smartbox_port + 1 < 257
         # For sanity's sake we assign all ports antennas, this is not realistic
         # however the calls on the smartboxes become complex to predict, and these
@@ -300,7 +282,7 @@ def mock_antenna_mapping_fixture() -> dict[int, list]:
 
 
 @pytest.fixture(name="mock_smartbox_mapping")
-def mock_smartbox_mapping_fixture() -> dict[int, int]:
+def mock_smartbox_mapping_fixture() -> dict[str, int]:
     """
     Generate a default set of fndh port mappings.
 
@@ -309,7 +291,7 @@ def mock_smartbox_mapping_fixture() -> dict[int, int]:
     :returns: a default set of fndh port mappings
     """
     return {
-        port: port
+        "sb" + str(port): port
         for port in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
     }
 
@@ -334,7 +316,7 @@ def simulated_configuration_fixture(mock_antenna_mapping: Any) -> dict[Any, Any]
         }
 
     for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
-        smartboxes[str(i)] = {"fndh_port": i}
+        smartboxes[f"sb{i:02d}"] = {"fndh_port": i, "modbus_id": i}
 
     configuration = {
         "antennas": antennas,
@@ -371,8 +353,8 @@ class TestFieldStationComponentManager:
         logger: logging.Logger,
         mock_callbacks: MockCallableGroup,
         mock_antenna_mask: list[bool],
-        mock_antenna_mapping: dict[int, list],
-        mock_smartbox_mapping: dict[int, int],
+        mock_antenna_mapping: dict[str, list],
+        mock_smartbox_mapping: dict[str, int],
         configuration_manager: Any,
         mock_smartboxes: Any,
         mock_fndh: Any,
@@ -448,11 +430,15 @@ class TestFieldStationComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
+        mock_callbacks["communication_state"].assert_not_called()
         assert (
             field_station_component_manager.communication_state
             == CommunicationStatus.ESTABLISHED
         )
-
+        # Lookahead needs to take into account smartbox callbacks
+        mock_callbacks["component_state"].assert_call(
+            outsidetemperature=mocked_outside_temperature, lookahead=50
+        )
         assert (
             field_station_component_manager.outsideTemperature
             == mocked_outside_temperature
@@ -501,36 +487,36 @@ class TestFieldStationComponentManager:
 
     @pytest.mark.parametrize(
         (
-            "antenna_no",
+            "antenna_id",
             "antenna_masking_state",
             "expected_manager_result",
             "command_tracked_result",
         ),
         [
             (
-                255,
+                "sb18-01",
                 True,  # antenna is masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.REJECTED,
                     (
-                        "Antenna number 255 is masked, call with"
+                        "Antenna number sb18-01 is masked, call with"
                         " ignore_mask=True to ignore"
                     ),
                 ),
             ),
             (
-                256,
+                "sb18-01",
                 False,  # antenna is not masked
                 (TaskStatus.QUEUED, "Task queued"),
-                (TaskStatus.COMPLETED, "turn on antenna 256 success."),
+                (TaskStatus.COMPLETED, "turn on antenna sb18-01 success."),
             ),
         ],
     )
     def test_antenna_power_on(  # pylint: disable=too-many-arguments
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
-        antenna_no: int,
+        antenna_id: str,
         antenna_masking_state: bool,
         expected_manager_result: tuple[TaskStatus, str],
         command_tracked_result: tuple[TaskStatus, str],
@@ -541,7 +527,7 @@ class TestFieldStationComponentManager:
 
         :param field_station_component_manager: A FieldStation component manager
             with communication established.
-        :param antenna_no: antenna number under test.
+        :param antenna_id: antenna number under test.
         :param antenna_masking_state: whether the antenna is masked.
         :param expected_manager_result: expected response from the call
         :param command_tracked_result: The result of the command.
@@ -556,22 +542,24 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        field_station_component_manager._antenna_mask[
-            antenna_no
+        field_station_component_manager._antenna_mask["antennaMask"][
+            antenna_id
         ] = antenna_masking_state
-        assert field_station_component_manager._antenna_mapping_pretty is not None
-        smartbox_id = field_station_component_manager._antenna_mapping_pretty[
+        assert field_station_component_manager._antenna_mapping is not None
+        smartbox_id = field_station_component_manager._antenna_mapping[
             "antennaMapping"
-        ][antenna_no - 1]["smartboxID"]
-        smartbox_port = field_station_component_manager._antenna_mapping_pretty[
+        ][antenna_id][0]
+        smartbox_port = field_station_component_manager._antenna_mapping[
             "antennaMapping"
-        ][antenna_no - 1]["smartboxPort"]
+        ][antenna_id][1]
 
-        fndh_port = field_station_component_manager._smartbox_mapping[str(smartbox_id)]
+        fndh_port = field_station_component_manager._smartbox_mapping[
+            "smartboxMapping"
+        ][smartbox_id]
 
         assert (
             field_station_component_manager.turn_on_antenna(
-                antenna_no, mock_callbacks["task"]
+                antenna_id, mock_callbacks["task"]
             )
             == expected_manager_result
         )
@@ -582,8 +570,13 @@ class TestFieldStationComponentManager:
                 field_station_component_manager._fndh_proxy._proxy.PowerOnPort
             )
 
+            smartbox_trl = (
+                field_station_component_manager._smartbox_trl_name_map.inverse[
+                    smartbox_id
+                ]
+            )
             smartbox_proxy = field_station_component_manager._smartbox_proxys[
-                int(smartbox_id) - 1
+                smartbox_trl
             ]
 
             assert smartbox_proxy._proxy is not None
@@ -601,37 +594,38 @@ class TestFieldStationComponentManager:
 
     @pytest.mark.parametrize(
         (
-            "antenna_no",
+            "antenna_id",
             "antenna_masking_state",
             "expected_manager_result",
             "command_tracked_result",
         ),
         [
             (
-                1,
+                "sb18-01",
                 True,  # antenna is masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.REJECTED,
-                    "Antenna number 1 is masked, call with ignore_mask=True to ignore",
+                    "Antenna number sb18-01 is masked, "
+                    "call with ignore_mask=True to ignore",
                 ),
             ),
             (
-                123,
+                "sb18-11",
                 False,  # antenna is not masked
                 (TaskStatus.QUEUED, "Task queued"),
-                (TaskStatus.COMPLETED, "turn off antenna 123 success."),
+                (TaskStatus.COMPLETED, "turn off antenna sb18-11 success."),
             ),
             (
-                255,
+                "sb10-12",
                 False,  # antenna is not masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.REJECTED,
                     (
-                        "Tried to turn off antenna 255, this is mapped to smartbox 22, "
-                        "which is on fndh port 22. However this port is "
-                        "not powered on."
+                        "Tried to turn off antenna sb10-12, this is mapped to "
+                        "smartbox sb10, which is on fndh port 10."
+                        " However this port is not powered on."
                     ),
                 ),
             ),
@@ -640,7 +634,7 @@ class TestFieldStationComponentManager:
     def test_antenna_power_off(  # pylint: disable=too-many-arguments
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
-        antenna_no: int,
+        antenna_id: str,
         antenna_masking_state: bool,
         expected_manager_result: tuple[TaskStatus, str],
         command_tracked_result: tuple[TaskStatus, str],
@@ -651,7 +645,7 @@ class TestFieldStationComponentManager:
 
         :param field_station_component_manager: A FieldStation component manager
             with communication established.
-        :param antenna_no: antenna number under test.
+        :param antenna_id: antenna number under test.
         :param antenna_masking_state: whether the antenna is masked.
         :param expected_manager_result: expected response from the call
         :param command_tracked_result: The result of the command.
@@ -666,32 +660,37 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        field_station_component_manager._antenna_mask[
-            antenna_no
+        field_station_component_manager._antenna_mask["antennaMask"][
+            antenna_id
         ] = antenna_masking_state
-        assert field_station_component_manager._antenna_mapping_pretty is not None
-        smartbox_id = field_station_component_manager._antenna_mapping_pretty[
+        assert field_station_component_manager._antenna_mapping is not None
+        smartbox_id = field_station_component_manager._antenna_mapping[
             "antennaMapping"
-        ][antenna_no - 1]["smartboxID"]
-        smartbox_port = field_station_component_manager._antenna_mapping_pretty[
+        ][antenna_id][0]
+        smartbox_port = field_station_component_manager._antenna_mapping[
             "antennaMapping"
-        ][antenna_no - 1]["smartboxPort"]
+        ][antenna_id][1]
 
         assert (
             field_station_component_manager.turn_off_antenna(
-                antenna_no, mock_callbacks["task"]
+                antenna_id, mock_callbacks["task"]
             )
             == expected_manager_result
         )
 
-        if command_tracked_result == TaskStatus.COMPLETED:
+        if command_tracked_result[0] == TaskStatus.COMPLETED:
             assert field_station_component_manager._fndh_proxy._proxy is not None
             fndh_proxy_command = (
                 field_station_component_manager._fndh_proxy._proxy.PowerOffPort
             )
 
+            smartbox_trl = (
+                field_station_component_manager._smartbox_trl_name_map.inverse[
+                    smartbox_id
+                ]
+            )
             smartbox_proxy = field_station_component_manager._smartbox_proxys[
-                int(smartbox_id) - 1
+                smartbox_trl
             ]
 
             assert smartbox_proxy._proxy is not None
@@ -710,8 +709,7 @@ class TestFieldStationComponentManager:
     @pytest.mark.parametrize(
         (
             "component_manager_command",
-            "proxy_command",
-            "antenna_no",
+            "antenna_id",
             "antenna_masking_state",
             "expected_manager_result",
             "command_tracked_result",
@@ -719,8 +717,7 @@ class TestFieldStationComponentManager:
         [
             pytest.param(
                 "on",
-                "SetPortPowers",
-                0,  # 0 for all antennas
+                "sb18-11",
                 False,  # antenna(s) are not masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
@@ -731,8 +728,7 @@ class TestFieldStationComponentManager:
             ),
             pytest.param(
                 "on",
-                "SetPortPowers",
-                0,  # 0 for all antennas
+                0,
                 True,  # antenna(s) are masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
@@ -746,9 +742,8 @@ class TestFieldStationComponentManager:
             ),
             pytest.param(
                 "on",
-                "SetPortPowers",
-                123,
-                True,  # antenna(s) are masked
+                "sb18-11",
+                False,  # antenna(s) are masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
@@ -758,8 +753,7 @@ class TestFieldStationComponentManager:
             ),
             pytest.param(
                 "off",
-                "SetPortPowers",
-                0,  # 0 for all antennas
+                "tmp",
                 False,  # antenna(s) are not masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
@@ -770,8 +764,7 @@ class TestFieldStationComponentManager:
             ),
             pytest.param(
                 "off",
-                "SetPortPowers",
-                0,  # 0 for all antennas
+                0,
                 True,  # antenna(s) are masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
@@ -785,8 +778,7 @@ class TestFieldStationComponentManager:
             ),
             pytest.param(
                 "off",
-                "SetPortPowers",
-                123,
+                "sb18-11",
                 True,  # antenna(s) are masked
                 (TaskStatus.QUEUED, "Task queued"),
                 (
@@ -802,8 +794,7 @@ class TestFieldStationComponentManager:
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         component_manager_command: Any,
-        proxy_command: str,
-        antenna_no: Any,
+        antenna_id: Any,
         antenna_masking_state: bool,
         expected_manager_result: Any,
         command_tracked_result: Any,
@@ -815,8 +806,7 @@ class TestFieldStationComponentManager:
         :param field_station_component_manager: A FieldStation component manager
             with communication established.
         :param component_manager_command: command to issue to the component manager
-        :param proxy_command: command we expect to be called on the proxies.
-        :param antenna_no: antenna to mask (if any).
+        :param antenna_id: antenna to mask (if any).
         :param antenna_masking_state: masking state of antenna.
         :param expected_manager_result: expected response from the call
         :param command_tracked_result: The result of the command.
@@ -831,9 +821,15 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        field_station_component_manager._antenna_mask[
-            antenna_no
-        ] = antenna_masking_state
+        if antenna_id == 0:
+            field_station_component_manager._all_masked = True
+        else:
+            field_station_component_manager._antenna_mask["antennaMask"][
+                antenna_id
+            ] = antenna_masking_state
+
+            # If working with all antennas, no specific smartbox will get a call with a
+            # masked port
 
         assert (
             getattr(field_station_component_manager, component_manager_command)(
@@ -841,21 +837,9 @@ class TestFieldStationComponentManager:
             )
             == expected_manager_result
         )
-        assert field_station_component_manager._antenna_mapping_pretty is not None
+        assert field_station_component_manager._antenna_mapping is not None
         # If we are working with a specific antenna, rather than all antennas,
         # get the smartbox_id and smartbox_port that the antenna is connected to.
-        if antenna_no > 0:
-            smartbox_id = field_station_component_manager._antenna_mapping_pretty[
-                "antennaMapping"
-            ][antenna_no - 1]["smartboxID"]
-            smartbox_port = field_station_component_manager._antenna_mapping_pretty[
-                "antennaMapping"
-            ][antenna_no - 1]["smartboxPort"]
-        else:
-            # If working with all antennas, no specific smartbox will get a call with a
-            # masked port
-            smartbox_id = 0
-            smartbox_port = 0
 
         expected_state = component_manager_command == "on"
 
@@ -864,7 +848,7 @@ class TestFieldStationComponentManager:
         ] * PasdData.NUMBER_OF_FNDH_PORTS
 
         # There are 4 surplus ports plus 2 smartbox have no antenna.
-        for unused_fndh_port in range(22, 28):
+        for unused_fndh_port in range(21, 28):
             desired_fndh_port_powers[unused_fndh_port] = None
 
         fndh_json_arg = json.dumps(
@@ -875,9 +859,9 @@ class TestFieldStationComponentManager:
         )
 
         # If we are not working with a fully masked station.
-        if antenna_no != 0 or not antenna_masking_state:
+        if not antenna_masking_state:
             fndh_proxy_command = getattr(
-                field_station_component_manager._fndh_proxy._proxy, proxy_command
+                field_station_component_manager._fndh_proxy._proxy, "SetPortPowers"
             )
             fndh_proxy_command.assert_next_call(fndh_json_arg)
 
@@ -887,25 +871,28 @@ class TestFieldStationComponentManager:
                 desired_fndh_port_powers,
                 tango.AttrQuality.ATTR_VALID,
             )
-            for smartbox_proxy in field_station_component_manager._smartbox_proxys:
-                smartbox_name = smartbox_proxy._name
-
-                smartbox_no = (
-                    field_station_component_manager._smartbox_name_number_map[
-                        smartbox_name
-                    ]
-                    + 1
-                )
-                fndh_port = field_station_component_manager._smartbox_mapping[
-                    str(smartbox_no)
+            for (
+                smartbox_trl,
+                smartbox_proxy,
+            ) in field_station_component_manager._smartbox_proxys.items():
+                smartbox_name = field_station_component_manager._smartbox_trl_name_map[
+                    smartbox_trl
                 ]
+                fndh_port = field_station_component_manager._smartbox_mapping[
+                    "smartboxMapping"
+                ][smartbox_name]
                 if desired_fndh_port_powers[fndh_port - 1]:
                     mocked_smartbox_power = PowerState.ON
                 else:
                     mocked_smartbox_power = PowerState.OFF
 
+                smartbox_trl = (
+                    field_station_component_manager._smartbox_trl_name_map.inverse[
+                        smartbox_name
+                    ]
+                )
                 field_station_component_manager.smartbox_state_change(
-                    smartbox_name, power=mocked_smartbox_power
+                    smartbox_trl, power=mocked_smartbox_power
                 )
 
                 smartbox_mask_map = (
@@ -913,36 +900,40 @@ class TestFieldStationComponentManager:
                 )
                 ports_to_change = [expected_state] * 12
                 for smartbox_identity, masked_ports in smartbox_mask_map.items():
-                    if smartbox_no == smartbox_identity:
+                    if smartbox_name == smartbox_identity:
                         for masked_port in masked_ports:
                             ports_to_change[masked_port - 1] = None
                 field_station_component_manager._on_port_power_change(
-                    smartbox_name,
+                    smartbox_proxy._name,
                     "portspowersensed",
                     ports_to_change,
                     tango.AttrQuality.ATTR_VALID,
                 )
 
-            for smartbox_no, smartbox in enumerate(
-                field_station_component_manager._smartbox_proxys
-            ):
-                smartbox_proxy_command = getattr(smartbox._proxy, proxy_command)
+            for (
+                smartbox_trl,
+                smartbox,
+            ) in field_station_component_manager._smartbox_proxys.items():
+                smartbox_proxy_command = getattr(smartbox._proxy, "SetPortPowers")
 
                 desired_smartbox_port_powers: list[bool | None] = [
                     expected_state
                 ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
 
-                if smartbox_no == 21:
-                    # The last smartbox only has 4 antenna
-                    desired_smartbox_port_powers = [expected_state] * 4 + [None] * 8
-                if smartbox_no > 21:
+                smartbox_name = field_station_component_manager._smartbox_trl_name_map[
+                    smartbox_trl
+                ]
+                if smartbox_name == "sb21":
+                    # The last smartbox only has 3 antenna
+                    desired_smartbox_port_powers = [expected_state] * 3 + [None] * 9
+                if smartbox_name in ["sb22", "sb23", "sb24"]:
                     # The configuration did not put any antenna on the
-                    # last 2 smartbox
+                    # last 3 smartbox
                     desired_smartbox_port_powers = [
                         None
                     ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
-                if smartbox_no == smartbox_id - 1:
-                    desired_smartbox_port_powers[smartbox_port - 1] = None
+                # if smartbox_no == smartbox_id:
+                #     desired_smartbox_port_powers[smartbox_port - 1] = None
 
                 smartbox_json_arg = json.dumps(
                     {

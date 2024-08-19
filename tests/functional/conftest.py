@@ -557,9 +557,17 @@ def set_device_state_fixture(
 
         if device_proxy.read_attribute("state").value != state:
             print(f"Turning {device_proxy.dev_name()} {state}")
-            set_tango_device_state(
-                change_event_callbacks, subscribe_device_proxy, device_proxy, state
-            )
+            try:
+                set_tango_device_state(
+                    change_event_callbacks, subscribe_device_proxy, device_proxy, state
+                )
+            except tango.DevFailed:
+                # Try one more time, sometimes we lose communication
+                time.sleep(10)
+                print("Retrying set_tango_device_state")
+                set_tango_device_state(
+                    change_event_callbacks, subscribe_device_proxy, device_proxy, state
+                )
 
     return _set_device_state
 

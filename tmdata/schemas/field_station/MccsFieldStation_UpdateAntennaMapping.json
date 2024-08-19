@@ -6,20 +6,21 @@
     "type": "object",
     "properties": {
         "antennaMapping": {
-            "type": "array",
-            "minItems": 256,
-            "maxItems": 256,
-            "items": {
-                "type": "object",
-                "properties": {
-                    "antennaID": {
-                        "type": "integer"
-                    },
-                    "smartboxID": {
-                        "type": "integer"
-                    },
-                    "smartboxPort": {
-                        "type": "integer"
+            "description": "the antennas",
+            "type": "object",
+            "minProperties": 253,
+            "maxProperties": 256,
+            "patternProperties": {
+                "[a-zA-Z0-9_]+": {
+                    "description": "the antennas",
+                    "type": "object",
+                    "properties": {
+                        "smartboxID": {
+                            "type": "string"
+                        },
+                        "smartboxPort": {
+                            "type": "integer"
+                        }
                     }
                 }
             }

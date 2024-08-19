@@ -2,6 +2,15 @@
 
 ## unreleased
 
+## 0.10.1
+
+* [LOW-952]: Point at ska-low-tmdata for AA0.5 telmodel data
+* [MCCS-2216]: Support nulls in values schemas
+* [WOM-370]: Faster, more reliable tests
+
+## 0.10.0
+
+* [WOM-147]: Add metadata to the Tango attributes
 * [WOM-144]: Synchronize Tango alarm config with threshold values
 * [WOM-361]: Change FEM current trip threshold attributes to an array
 * [WOM-384]: Fix misleading messages

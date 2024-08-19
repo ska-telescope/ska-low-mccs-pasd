@@ -24,6 +24,7 @@ from ska_tango_base.commands import (
     JsonValidator,
     SubmittedSlowCommand,
 )
+from tango import DevFailed
 from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
 
@@ -115,7 +116,12 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         for port in range(1, self.CONFIG["number_of_ports"] + 1):
             attr_name = f"Port{port}PowerState"
             self._setup_fndh_attribute(
-                attr_name, PowerState, tango.AttrWriteType.READ, 1, PowerState.UNKNOWN
+                attr_name,
+                PowerState,
+                tango.AttrWriteType.READ,
+                f"Port {port} power state",
+                1,
+                PowerState.UNKNOWN,
             )
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
@@ -426,7 +432,12 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                     if register["writable"]
                     else tango.AttrWriteType.READ
                 ),
+                description=register["description"],
                 max_dim_x=register["tango_dim_x"],
+                unit=register["unit"],
+                format_string=register["format_string"],
+                min_value=register["min_value"],
+                max_value=register["max_value"],
             )
 
     # pylint: disable=too-many-arguments
@@ -435,8 +446,13 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         attribute_name: str,
         data_type: type | tuple[type],
         access_type: tango.AttrWriteType,
+        description: str,
         max_dim_x: Optional[int] = None,
         default_value: Optional[Any] = None,
+        unit: Optional[str] = None,
+        format_string: Optional[str] = None,
+        min_value: Optional[float] = None,
+        max_value: Optional[float] = None,
     ) -> None:
         self._fndh_attributes[attribute_name.lower()] = FNDHAttribute(
             value=default_value, timestamp=0, quality=tango.AttrQuality.ATTR_INVALID
@@ -449,6 +465,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             max_dim_x=max_dim_x,
             fget=self._read_fndh_attribute,
             fset=self._read_fndh_attribute,
+            unit=unit,
+            description=description,
+            format=format_string,
         ).to_attr()
         self.add_attribute(
             attr,
@@ -456,6 +475,20 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             self._write_fndh_attribute,
             None,
         )
+        if min_value is not None or max_value is not None:
+            if access_type != tango.AttrWriteType.READ_WRITE:
+                self.logger.warning(
+                    "Can't set min and max values on read-only "
+                    f"attribute {attribute_name}"
+                )
+            else:
+                writeable_attribute = self.get_device_attr().get_w_attr_by_name(
+                    attribute_name
+                )
+                if min_value is not None:
+                    writeable_attribute.set_min_value(min_value)
+                if max_value is not None:
+                    writeable_attribute.set_max_value(max_value)
         self.set_change_event(attribute_name, True, False)
         self.set_archive_event(attribute_name, True, False)
 
@@ -680,12 +713,17 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             # If we are reading alarm thresholds, update the alarm configuration
             # for the corresponding Tango attribute
             if attr_name.endswith("thresholds"):
-                configure_alarms(
-                    self.get_device_attr().get_attr_by_name(
-                        attr_name.removesuffix("thresholds")
-                    ),
-                    attr_value,
-                )
+                try:
+                    configure_alarms(
+                        self.get_device_attr().get_attr_by_name(
+                            attr_name.removesuffix("thresholds")
+                        ),
+                        attr_value,
+                        self.logger,
+                    )
+                except DevFailed:
+                    # No corresponding attribute to update, continue
+                    pass
 
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)

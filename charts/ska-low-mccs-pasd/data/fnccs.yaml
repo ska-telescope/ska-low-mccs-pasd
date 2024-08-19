@@ -9,8 +9,14 @@ Define the deployment for MccsFncc devices.
           logging_level_default: 5
 
 */}}
-{{- $fnccs := dig "fnccs" dict .Values.deviceServers}}
+{{- $fnccs := dict}}
+{{- range $server_name, $this_server := (dig "fnccs" dict .Values.deviceServers)}}
+{{- if $this_server}}
+{{- $_ := set $fnccs $server_name $this_server}}
+{{- end}}
+{{- end}}
 {{- if $fnccs}}
+{{- $dependencies := dict}}
 name: "fncc-{{.Release.Name}}"
 function: ska-low-mccs-pasd-fncc
 domain: ska-low-mccs-pasd-fncc
@@ -28,6 +34,8 @@ server:
         - name: MccsFncc
           devices:
 {{- range $fncc_name, $this_fncc := $this_server}}
+{{- if $this_fncc}}
+{{- $_ := set $dependencies $this_fncc.pasdbus_name nil}}
             - name: {{$fncc_name}}
               properties:
                 - name: PasdFQDN
@@ -40,12 +48,11 @@ server:
 {{- end}}
 {{- end}}
 {{- end}}
+{{- end}}
 depends_on:
   - device: sys/database/2
-{{- range $server_key, $this_server := $fnccs}}
-{{- range $fncc_name, $this_fncc := $this_server}}
-  - device: {{$this_fncc.pasdbus_name}}
-{{- end}}
+{{- range $dependency := keys $dependencies}}
+  - device: {{$dependency}}
 {{- end}}
 image:
 {{- with .Values.image}}

@@ -159,7 +159,7 @@ def mock_pasd_hw_simulators_fixture(
         mock_simulator = unittest.mock.Mock(wraps=simulator)
 
         def side_effect(
-            sim: FndhSimulator | FnccSimulator | SmartboxSimulator,
+            sim: FndhSimulator | FnccSimulator | SmartboxSimulator | PasdBusSimulator,
             prop: str,
             val: int | None = None,
         ) -> property | None:

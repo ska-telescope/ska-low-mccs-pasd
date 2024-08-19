@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ska-low-mccs-pasd"
-version = "0.9.0"
+version = "0.10.1"
 description = "The Monitoring, Control and Calibration Subsystem (MCCS) of the SKA Low telescope"
 license = "BSD-3-Clause"
 authors = ["MCCS team"]
@@ -20,7 +20,7 @@ pytango = "^9.5.1"
 PyYAML = "^6.0"
 ska-tango-base = "^1.0.0"
 ska-control-model = "^1.0.0"
-ska-low-mccs-common =  { git = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git", rev = "835333758d0d288ff2ac9f13eb1de7b556e2ab2c" }
+ska-low-mccs-common =  { git = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git", rev = "556b912d3b3a08f4cac7d42548f5446a32c5d920" }
 ska-ser-devices = "^0.2.0"
 pymodbus = "~3.5.4"
 typing-extensions = "^4.6.1"
@@ -33,6 +33,7 @@ annotated-types = "^0.7.0"
 httptools = "0.6.1"
 cachetools = "5.3.3"
 click = "^8.1.7"
+bidict = "^0.23.1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.20.0"

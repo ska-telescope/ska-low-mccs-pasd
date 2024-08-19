@@ -1,19 +1,32 @@
-{{- $labels := coalesce .Values.global.labels .Values.labels "label:none" }}
-{{- range $key, $value := ((.Values.referenceData).pasdconfiguration)}}
+{{- $labels := coalesce .Values.global.labels .Values.labels (dict "label" "none")}}
+{{- range $station, $station_config := ((.Values.referenceData).pasdconfiguration)}}
+{{- $filtered_station_config := dict}}
+{{- range $type, $type_config := $station_config}}
+{{- $filtered_type_config := dict}}
+{{- range $instance, $instance_config := $type_config}}
+{{- if $instance_config}}
+{{- $_ := set $filtered_type_config $instance $instance_config}}
+{{- end}}
+{{- end}}
+{{- if $filtered_type_config}}
+{{- $_ := set $filtered_station_config $type $filtered_type_config}}
+{{- end}}
+{{- end}}
+{{- with $filtered_station_config}}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pasd-configuration-{{$key}}
+  name: pasd-configuration-{{$station}}
   namespace: {{$.Release.Namespace}}
   labels:
     platform_spec: pasd
-    station: {{$key}}
+    station: {{$station}}
 {{- with $labels}}
 {{ toYaml . | indent 4 }}
 {{- end}}
 data:
   pasd_configuration.yaml: |
-{{toYaml $value | indent 4}}
----
+    {{- toYaml $filtered_station_config | nindent 4}}
+{{- end}}
 {{- end }}

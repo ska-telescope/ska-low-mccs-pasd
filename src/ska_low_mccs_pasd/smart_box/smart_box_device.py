@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from dataclasses import dataclass
 from typing import Any, Final, Optional, cast
@@ -18,6 +19,7 @@ import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
+from tango import DevFailed
 from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
 
@@ -88,6 +90,7 @@ class MccsSmartBox(SKABaseDevice):
 
         This is overridden here to change the Tango serialisation model.
         """
+        self._readable_name = re.findall("sb[0-9]+", self.get_name())[0]
         super().init_device()
         self._smartbox_state: dict[str, SmartboxAttribute] = {}
         self._setup_smartbox_attributes()
@@ -151,6 +154,7 @@ class MccsSmartBox(SKABaseDevice):
             self._component_state_callback,
             self._attribute_changed_callback,
             self.SmartBoxNumber,
+            self._readable_name,
             self.CONFIG["number_of_ports"],
             self.FieldStationName,
             self.PasdFQDN,
@@ -257,14 +261,25 @@ class MccsSmartBox(SKABaseDevice):
                     else tango.AttrWriteType.READ
                 ),
                 max_dim_x=register["tango_dim_x"],
+                description=register["description"],
+                unit=register["unit"],
+                format_string=register["format_string"],
+                min_value=register["min_value"],
+                max_value=register["max_value"],
             )
 
+    # pylint: disable=too-many-arguments
     def _setup_smartbox_attribute(
         self: MccsSmartBox,
         attribute_name: str,
         data_type: type | tuple[type],
         access_type: tango.AttrWriteType,
+        description: str,
         max_dim_x: Optional[int] = None,
+        unit: Optional[str] = None,
+        format_string: Optional[str] = None,
+        min_value: Optional[float] = None,
+        max_value: Optional[float] = None,
     ) -> None:
         self._smartbox_state[attribute_name.lower()] = SmartboxAttribute(
             value=None, timestamp=0, quality=tango.AttrQuality.ATTR_INVALID
@@ -277,10 +292,27 @@ class MccsSmartBox(SKABaseDevice):
             max_dim_x=max_dim_x,
             fget=self._read_smartbox_attribute,
             fset=self._write_smartbox_attribute,
+            unit=unit,
+            description=description,
+            format=format_string,
         ).to_attr()
         self.add_attribute(
             attr, self._read_smartbox_attribute, self._write_smartbox_attribute, None
         )
+        if min_value is not None or max_value is not None:
+            if access_type != tango.AttrWriteType.READ_WRITE:
+                self.logger.warning(
+                    "Can't set min and max values on read-only "
+                    f"attribute {attribute_name}"
+                )
+            else:
+                writeable_attribute = self.get_device_attr().get_w_attr_by_name(
+                    attribute_name
+                )
+                if min_value is not None:
+                    writeable_attribute.set_min_value(min_value)
+                if max_value is not None:
+                    writeable_attribute.set_max_value(max_value)
         self.set_change_event(attribute_name, True, False)
         self.set_archive_event(attribute_name, True, False)
 
@@ -421,12 +453,17 @@ class MccsSmartBox(SKABaseDevice):
             # If we are reading alarm thresholds, update the alarm configuration
             # for the corresponding Tango attribute
             if attr_name.endswith("thresholds"):
-                configure_alarms(
-                    self.get_device_attr().get_attr_by_name(
-                        attr_name.removesuffix("thresholds")
-                    ),
-                    attr_value,
-                )
+                try:
+                    configure_alarms(
+                        self.get_device_attr().get_attr_by_name(
+                            attr_name.removesuffix("thresholds")
+                        ),
+                        attr_value,
+                        self.logger,
+                    )
+                except DevFailed:
+                    # No corresponding attribute to update, continue
+                    pass
 
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
@@ -445,6 +482,15 @@ class MccsSmartBox(SKABaseDevice):
         :return: the fndh port that the smartbox is attached to.
         """
         return json.dumps(self.component_manager._fndh_port)
+
+    @attribute(dtype="DevString", label="ReadableName")
+    def ReadableName(self: MccsSmartBox) -> str:
+        """
+        Return the name of the smartbox in a readable format.
+
+        :return: the name of the smartbox
+        """
+        return self._readable_name
 
 
 # ----------

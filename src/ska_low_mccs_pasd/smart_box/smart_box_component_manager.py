@@ -254,6 +254,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         component_state_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
         smartbox_nr: int,
+        readable_name: str,
         port_count: int,
         field_station_name: str,
         pasd_fqdn: str,
@@ -271,6 +272,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param attribute_change_callback: callback to be called when a attribute
             of interest changes.
         :param smartbox_nr: the smartbox's ID number.
+        :param readable_name: the smartbox's name
         :param port_count: the number of smartbox ports.
         :param field_station_name: the name of the field station.
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
@@ -283,6 +285,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         ]
         self._power_state = PowerState.UNKNOWN
         self._smartbox_nr = smartbox_nr
+        self._readable_name = readable_name
         self._fndh_port: Optional[int] = None
         self._attribute_change_callback = attribute_change_callback
 
@@ -341,21 +344,18 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 "Check FieldStation `smartboxMapping`."
             )
             return
-        for smartbox_config in mapping["smartboxMapping"]:
-            if "smartboxID" in smartbox_config:
-                if smartbox_config["smartboxID"] == self._smartbox_nr:
-                    fndh_port = smartbox_config["fndhPort"]
-                    if 0 < fndh_port < PasdData.NUMBER_OF_FNDH_PORTS + 1:
-                        self.update_fndh_port(fndh_port)
-                        self.logger.info(
-                            f"Smartbox has been moved to fndh port {fndh_port}"
-                        )
-                        return
-                    self.logger.error(
-                        f"Unable to put smartbox on port {fndh_port},"
-                        "Out of range 0 - 28"
+        for smartbox_name, fndh_port in mapping["smartboxMapping"].items():
+            if smartbox_name == self._readable_name:
+                if 0 < fndh_port < PasdData.NUMBER_OF_FNDH_PORTS + 1:
+                    self.update_fndh_port(fndh_port)
+                    self.logger.info(
+                        f"Smartbox has been moved to fndh port {fndh_port}"
                     )
                     return
+                self.logger.error(
+                    f"Unable to put smartbox on port {fndh_port}," "Out of range 0 - 28"
+                )
+                return
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """Establish communication."""

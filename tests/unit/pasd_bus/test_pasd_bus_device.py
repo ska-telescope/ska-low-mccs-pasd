@@ -283,7 +283,7 @@ def test_communication(  # pylint: disable=too-many-statements
         fndh_simulator.fncb_temperature_thresholds
     )
     assert (
-        list(pasd_bus_device.fndhHumidityThresholds)
+        list(pasd_bus_device.fndhFncbHumidityThresholds)
         == fndh_simulator.fncb_humidity_thresholds
     )
     assert list(
