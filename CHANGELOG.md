@@ -2,6 +2,11 @@
 
 ## unreleased
 
+## 0.11.0
+
+* [MCCS-2141] Update ska-tango-base to 1.0.0
+* [MCCS-2115] Update field station to use new antenna mappings
+
 ## 0.10.1
 
 * [LOW-952]: Point at ska-low-tmdata for AA0.5 telmodel data
