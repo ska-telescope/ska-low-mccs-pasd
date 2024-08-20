@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* [SKB-455]: Automatically reset the connection when a poll fails
+
 ## 0.11.0
 
 * [MCCS-2141] Update ska-tango-base to 1.0.0
@@ -16,7 +18,6 @@
 ## 0.10.0
 
 * [WOM-147]: Add metadata to the Tango attributes
-* [SKB-455]: Automatically reset the connection when a poll fails
 * [WOM-144]: Synchronize Tango alarm config with threshold values
 * [WOM-361]: Change FEM current trip threshold attributes to an array
 * [WOM-384]: Fix misleading messages
