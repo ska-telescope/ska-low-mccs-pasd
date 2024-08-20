@@ -596,6 +596,11 @@ class PasdBusModbusApiClient:
         the connection and reconnect.
         """
         if self._client.connected:
-            self._client.recv(None)
+            data = self._client.recv(None)
+            if data:
+                self._logger.debug(
+                    "Recovering from communications error (SPRTS-98 / SKB-455): "
+                    f"recycling connection after discarding bytes:\n{data.hex()}"
+                )
             self._client.close()
         self._client.connect()
