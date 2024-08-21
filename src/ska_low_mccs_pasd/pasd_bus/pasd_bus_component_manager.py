@@ -164,6 +164,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             int(device_polling_rate / polling_rate), self._logger, available_smartboxes
         )
         self._last_request_timestamp: float = 0
+        self._connection_reset_count = 0
 
         super().__init__(
             logger,
@@ -236,6 +237,12 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._logger.info("Stopping polling and closing connection to the server...")
         self._pasd_bus_api_client.close()
         super().polling_stopped()
+
+    def reset_connection(self: PasdBusComponentManager) -> None:
+        """Reset the connection to the device."""
+        self._connection_reset_count += 1
+        self._logger.info(f"Connection reset count: {self._connection_reset_count}")
+        self._pasd_bus_api_client.reset_connection()
 
     # TODO: None return is reasonable and should be supported by ska-tango-base
     def get_request(  # type: ignore[override]
@@ -434,6 +441,18 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 poll_response.device_id,
                 **(poll_response.data),
             )
+
+    def poll_failed(self: PasdBusComponentManager, exception: Exception) -> None:
+        """
+        Respond to an exception being raised by a poll attempt.
+
+        This is a hook called by the poller when an exception occurs.
+
+        :param exception: the exception that was raised by a recent poll
+            attempt.
+        """
+        super().poll_failed(exception)
+        self.reset_connection()
 
     @check_communicating
     def request_startup_info(self: PasdBusComponentManager, device_id: int) -> None:

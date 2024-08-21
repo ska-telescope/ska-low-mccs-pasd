@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* [SKB-455]: Automatically reset the connection when a poll fails
+
 ## 0.11.0
 
 * [MCCS-2141] Update ska-tango-base to 1.0.0
