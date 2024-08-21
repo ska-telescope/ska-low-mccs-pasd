@@ -20,7 +20,7 @@ pytango = "^9.5.1"
 PyYAML = "^6.0"
 ska-tango-base = "^1.0.0"
 ska-control-model = "^1.0.0"
-ska-low-mccs-common =  { git = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git", rev = "556b912d3b3a08f4cac7d42548f5446a32c5d920" }
+ska-low-mccs-common = "^0.12.0"
 ska-ser-devices = "^0.2.0"
 pymodbus = "~3.5.4"
 typing-extensions = "^4.6.1"
