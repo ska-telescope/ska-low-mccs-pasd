@@ -51,12 +51,10 @@ class _PasdBusProxy(DeviceComponentManager):
         """
         self._attribute_change_callback = attribute_change_callback
         self._pasd_device = PasdData.FNCC_DEVICE_ID
-        max_workers = 1
 
         super().__init__(
             fqdn,
             logger,
-            max_workers,
             communication_state_callback,
             state_change_callback,
         )
@@ -155,7 +153,6 @@ class FnccComponentManager(TaskExecutorComponentManager):
             logger,
             communication_state_callback,
             component_state_callback,
-            max_workers=1,
             power=None,
             fault=None,
             pasdbus_status=None,

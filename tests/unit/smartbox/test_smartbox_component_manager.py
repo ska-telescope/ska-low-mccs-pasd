@@ -79,7 +79,6 @@ class TestPasdBusProxy:
             get_pasd_bus_name(),
             smartbox_number,
             logger,
-            1,
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
             mock_callbacks["smartbox_power_state"],
