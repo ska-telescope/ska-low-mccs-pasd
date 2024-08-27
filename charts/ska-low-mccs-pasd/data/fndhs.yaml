@@ -16,7 +16,6 @@ Define the deployment for MccsFndh devices.
 {{- end}}
 {{- end}}
 {{- if $fndhs}}
-{{- $dependencies := dict}}
 name: "fndh-{{.Release.Name}}"
 function: ska-low-mccs-pasd-fndh
 domain: ska-low-mccs-pasd-fndh
@@ -35,7 +34,6 @@ server:
           devices:
 {{- range $fndh_name, $this_fndh := $this_server}}
 {{- if $this_fndh}}
-{{- $_ := set $dependencies $this_fndh.pasdbus_name nil}}
             - name: {{$fndh_name}}
               properties:
                 - name: PasdFQDN
@@ -51,9 +49,6 @@ server:
 {{- end}}
 depends_on:
   - device: sys/database/2
-{{- range $dependency := keys $dependencies}}
-  - device: {{$dependency}}
-{{- end}}
 image:
 {{- with .Values.image}}
   registry: {{.registry | quote}}

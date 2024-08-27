@@ -3,6 +3,7 @@
 ## unreleased
 
 * [SKB-455]: Automatically reset the connection when a poll fails
+* [WOM-422]: Revert initialisation order constraint
 
 ## 0.11.0
 
