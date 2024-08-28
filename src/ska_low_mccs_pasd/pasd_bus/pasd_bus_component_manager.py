@@ -310,6 +310,10 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 request = PasdBusRequest(
                     device_id, None, None, self.STATIC_INFO_ATTRIBUTES
                 )
+            case (device_id, "RESET_ALARMS", None):
+                request = PasdBusRequest(device_id, "reset_alarms", None, [])
+            case (device_id, "RESET_WARNINGS", None):
+                request = PasdBusRequest(device_id, "reset_warnings", None, [])
             case (PasdData.FNDH_DEVICE_ID, "STATUS", None):
                 request = PasdBusRequest(
                     PasdData.FNDH_DEVICE_ID, None, None, self.FNDH_STATUS_ATTRIBUTES
