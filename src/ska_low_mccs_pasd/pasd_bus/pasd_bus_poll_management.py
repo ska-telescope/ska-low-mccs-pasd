@@ -245,10 +245,12 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
 
         if self._alarm_reset_requested:
             self._alarm_reset_requested = False
+            self._attribute_update_requests.append("alarm_flags")
             return "RESET_ALARMS", None
 
         if self._warning_reset_requested:
             self._warning_reset_requested = False
+            self._attribute_update_requests.append("warning_flags")
             return "RESET_WARNINGS", None
 
         return "NONE", None
