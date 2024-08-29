@@ -1037,3 +1037,83 @@ class TestPasdBusComponentManager:
         mock_callbacks["pasd_device_state_for_fndh"].assert_call(
             warning_flags=FndhAlarmFlags.NONE.name, lookahead=11
         )
+
+    def test_reset_smartbox_alarms(
+        self: TestPasdBusComponentManager,
+        pasd_bus_component_manager: PasdBusComponentManager,
+        smartbox_simulator: SmartboxSimulator,
+        smartbox_id: int,
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test the component manager can reset a Smartbox's alarm flags.
+
+        :param pasd_bus_component_manager: the PaSD bus component
+            manager under test.
+        :param smartbox_simulator: the Smartbox simulator under test.
+        :param smartbox_id: the ID of the Smartbox under test
+        :param mock_callbacks: a group of mock callables for the component
+            manager under test to use as callbacks
+        """
+        pasd_bus_component_manager.start_communicating()
+        mock_callbacks.assert_call(
+            "communication_state", CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks.assert_call(
+            "communication_state", CommunicationStatus.ESTABLISHED
+        )
+        mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
+        pasd_bus_component_manager.initialize_smartbox(smartbox_id)
+        smartbox_simulator.fem_ambient_temperature = 8310
+        mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_id}"].assert_call(
+            alarm_flags=SmartboxAlarmFlags.SYS_AMB_TEMP.name,
+            lookahead=11,
+        )
+        smartbox_simulator.fem_ambient_temperature = (
+            smartbox_simulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
+        )
+        pasd_bus_component_manager.reset_smartbox_alarms(smartbox_id)
+        mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_id}"].assert_call(
+            alarm_flags=SmartboxAlarmFlags.NONE.name,
+            lookahead=11,
+        )
+
+    def test_reset_smartbox_warnings(
+        self: TestPasdBusComponentManager,
+        pasd_bus_component_manager: PasdBusComponentManager,
+        smartbox_simulator: SmartboxSimulator,
+        smartbox_id: int,
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test the component manager can reset a Smartbox's warning flags.
+
+        :param pasd_bus_component_manager: the PaSD bus component
+            manager under test.
+        :param smartbox_simulator: the Smartbox simulator under test.
+        :param smartbox_id: the ID of the Smartbox under test
+        :param mock_callbacks: a group of mock callables for the component
+            manager under test to use as callbacks
+        """
+        pasd_bus_component_manager.start_communicating()
+        mock_callbacks.assert_call(
+            "communication_state", CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks.assert_call(
+            "communication_state", CommunicationStatus.ESTABLISHED
+        )
+        mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
+        pasd_bus_component_manager.initialize_smartbox(smartbox_id)
+        smartbox_simulator.fem_ambient_temperature = 5260
+        mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_id}"].assert_call(
+            warning_flags=SmartboxAlarmFlags.SYS_AMB_TEMP.name,
+            lookahead=11,
+        )
+        smartbox_simulator.fem_ambient_temperature = (
+            smartbox_simulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
+        )
+        pasd_bus_component_manager.reset_smartbox_warnings(smartbox_id)
+        mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_id}"].assert_call(
+            warning_flags=SmartboxAlarmFlags.NONE.name,
+            lookahead=11,
+        )
