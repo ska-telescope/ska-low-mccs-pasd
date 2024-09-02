@@ -163,7 +163,7 @@ def mock_pasd_hw_simulators_fixture(
             prop: str,
             val: int | None = None,
         ) -> property | None:
-            if val:
+            if val is not None:
                 setattr(sim, prop, val)
                 return None
             return getattr(sim, prop)

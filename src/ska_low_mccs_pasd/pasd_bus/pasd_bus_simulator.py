@@ -630,6 +630,11 @@ class PasdHardwareSimulator(BaseControllerSimulator):
         """
         return self._warning_flags
 
+    @warning_flags.setter
+    def warning_flags(self: PasdHardwareSimulator, _: int) -> None:
+        """Reset the sensor warning flags."""
+        self.reset_warnings()
+
     def reset_warnings(self: PasdHardwareSimulator) -> bool | None:
         """
         Reset the sensor warning flags.
@@ -649,6 +654,11 @@ class PasdHardwareSimulator(BaseControllerSimulator):
         :return: the sensor alarm flags.
         """
         return self._alarm_flags
+
+    @alarm_flags.setter
+    def alarm_flags(self: PasdHardwareSimulator, _: int) -> None:
+        """Reset the sensor alarm flags."""
+        self.reset_alarms()
 
     def reset_alarms(self: PasdHardwareSimulator) -> bool | None:
         """

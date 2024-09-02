@@ -2,6 +2,7 @@
 
 ## unreleased
 
+* [WOM-420]: Fix alarm/warning reset functionality
 * [SKB-455]: Automatically reset the connection when a poll fails
 
 ## 0.11.0
