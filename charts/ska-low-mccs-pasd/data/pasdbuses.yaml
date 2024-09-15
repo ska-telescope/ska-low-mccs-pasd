@@ -73,6 +73,7 @@ server:
                 - name: LoggingLevelDefault
                   values:
                     - {{quote .}}
+{{- end}}
 {{- with $this_pasdbus.simulation_config}}
                 - name: "SimulationConfig"
                   values:
@@ -82,7 +83,6 @@ server:
                   values:
 {{- range $this_pasdbus.available_smartboxes }}
                     - {{. | quote}}
-{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}
