@@ -41,6 +41,8 @@ coverage.xml
 
 resources/git-hooks
 
+venv/
+
 # Ansible
 *.retry
 
