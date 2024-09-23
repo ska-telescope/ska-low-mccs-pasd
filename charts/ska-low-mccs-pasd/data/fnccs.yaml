@@ -30,9 +30,15 @@ server:
   instances:
 {{- range $server_key, $this_server := $fnccs}}
     - name: {{printf "fncc-%s" $server_key}}
+      {{- $dependencies := dict}}
       {{- range $fncc_name, $this_fncc := $this_server}}
+      {{- $_ := set $dependencies $this_fncc.pasdbus_name nil}}
+      {{- end}}
+      {{- with $dependencies}}
       depends_on:
-        - device: {{$this_fncc.pasdbus_name}}
+      {{- range (keys .)}}
+        - device: {{.}}
+      {{- end}}
       {{- end}}
       classes:
         - name: MccsFncc
