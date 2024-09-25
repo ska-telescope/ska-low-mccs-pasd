@@ -33,12 +33,21 @@ server:
   instances:
 {{- range $server_key, $this_server := $smartboxes}}
     - name: {{printf "smartbox-%s" $server_key}}
+      {{- $dependencies := dict}}
+      {{- range $smartbox_name, $this_smartbox := $this_server}}
+      {{- $_ := set $dependencies $this_smartbox.pasdbus_name nil}}
+      {{- end}}
+      {{- with $dependencies}}
+      depends_on:
+      {{- range (keys .)}}
+        - device: {{.}}
+      {{- end}}
+      {{- end}}
       classes:
         - name: "MccsSmartbox"
           devices:
 {{- range $smartbox_name, $this_smartbox := $this_server}}
 {{- if $this_smartbox}}
-{{- $_ := set $dependencies $this_smartbox.pasdbus_name nil}}
             - name: {{$smartbox_name}}
               properties:
                 - name: SmartBoxNumber
@@ -63,9 +72,6 @@ server:
 {{- end}}
 depends_on:
   - device: sys/database/2
-{{- range $dependency := keys $dependencies}}
-  - device: {{$dependency}}
-{{- end}}
 image:
 {{- with .Values.image}}
   registry: {{.registry | quote}}

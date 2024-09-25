@@ -30,12 +30,21 @@ server:
   instances:
 {{- range $server_key, $this_server := $fndhs}}
     - name: {{printf "fndh-%s" $server_key}}
+      {{- $dependencies := dict}}
+      {{- range $fndh_name, $this_fndh := $this_server}}
+      {{- $_ := set $dependencies $this_fndh.pasdbus_name nil}}
+      {{- end}}
+      {{- with $dependencies}}
+      depends_on:
+      {{- range (keys .)}}
+        - device: {{.}}
+      {{- end}}
+      {{- end}}
       classes:
         - name: MccsFndh
           devices:
 {{- range $fndh_name, $this_fndh := $this_server}}
 {{- if $this_fndh}}
-{{- $_ := set $dependencies $this_fndh.pasdbus_name nil}}
             - name: {{$fndh_name}}
               properties:
                 - name: PasdFQDN
@@ -51,9 +60,6 @@ server:
 {{- end}}
 depends_on:
   - device: sys/database/2
-{{- range $dependency := keys $dependencies}}
-  - device: {{$dependency}}
-{{- end}}
 image:
 {{- with .Values.image}}
   registry: {{.registry | quote}}

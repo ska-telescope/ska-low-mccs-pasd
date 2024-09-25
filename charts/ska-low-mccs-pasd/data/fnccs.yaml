@@ -30,12 +30,21 @@ server:
   instances:
 {{- range $server_key, $this_server := $fnccs}}
     - name: {{printf "fncc-%s" $server_key}}
+      {{- $dependencies := dict}}
+      {{- range $fncc_name, $this_fncc := $this_server}}
+      {{- $_ := set $dependencies $this_fncc.pasdbus_name nil}}
+      {{- end}}
+      {{- with $dependencies}}
+      depends_on:
+      {{- range (keys .)}}
+        - device: {{.}}
+      {{- end}}
+      {{- end}}
       classes:
         - name: MccsFncc
           devices:
 {{- range $fncc_name, $this_fncc := $this_server}}
 {{- if $this_fncc}}
-{{- $_ := set $dependencies $this_fncc.pasdbus_name nil}}
             - name: {{$fncc_name}}
               properties:
                 - name: PasdFQDN
@@ -51,9 +60,6 @@ server:
 {{- end}}
 depends_on:
   - device: sys/database/2
-{{- range $dependency := keys $dependencies}}
-  - device: {{$dependency}}
-{{- end}}
 image:
 {{- with .Values.image}}
   registry: {{.registry | quote}}
