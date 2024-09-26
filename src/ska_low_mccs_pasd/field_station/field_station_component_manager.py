@@ -1345,8 +1345,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             for smartbox_power_state in self._smartbox_power_state.values()
             if smartbox_power_state != PowerState.UNKNOWN
         ]
-        self.logger.error(f"{trimmed_smartbox_power_states=}")
-        self.logger.error(f"{self._smartbox_power_state=}")
 
         def transition_to(power_state: PowerState, msg: str | None = None) -> None:
             if self._power_state != power_state:

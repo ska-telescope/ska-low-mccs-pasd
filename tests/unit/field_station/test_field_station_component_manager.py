@@ -831,64 +831,60 @@ class TestFieldStationComponentManager:
         )
 
         # If we are not working with a fully masked station.
-        if not antenna_masking_state:
-            fndh_proxy_command = getattr(
-                field_station_component_manager._fndh_proxy._proxy, "SetPortPowers"
-            )
-            fndh_proxy_command.assert_next_call(fndh_json_arg)
+        fndh_proxy_command = getattr(
+            field_station_component_manager._fndh_proxy._proxy, "SetPortPowers"
+        )
+        fndh_proxy_command.assert_next_call(fndh_json_arg)
+        # Mock a change event in the power of fndh ports
+        field_station_component_manager._on_fndh_port_change(
+            "portspowersensed",
+            desired_fndh_port_powers,
+            tango.AttrQuality.ATTR_VALID,
+        )
+        for (
+            smartbox_trl,
+            smartbox_proxy,
+        ) in field_station_component_manager._smartbox_proxys.items():
+            smartbox_name = field_station_component_manager._smartbox_trl_name_map[
+                smartbox_trl
+            ]
+            fndh_port = field_station_component_manager._smartbox_mapping[
+                "smartboxMapping"
+            ][smartbox_name]
+            if desired_fndh_port_powers[fndh_port - 1]:
+                mocked_smartbox_power = PowerState.ON
+            else:
+                mocked_smartbox_power = PowerState.OFF
 
-            # Mock a change event in the power of fndh ports
-            field_station_component_manager._on_fndh_port_change(
+            smartbox_trl = (
+                field_station_component_manager._smartbox_trl_name_map.inverse[
+                    smartbox_name
+                ]
+            )
+            field_station_component_manager.smartbox_state_change(
+                smartbox_trl, power=mocked_smartbox_power
+            )
+
+            smartbox_mask_map = (
+                field_station_component_manager._get_masked_smartbox_ports()
+            )
+            ports_to_change = [expected_state] * 12
+            for smartbox_identity, masked_ports in smartbox_mask_map.items():
+                if smartbox_name == smartbox_identity:
+                    for masked_port in masked_ports:
+                        ports_to_change[masked_port - 1] = False
+            field_station_component_manager._on_port_power_change(
+                smartbox_proxy._name,
                 "portspowersensed",
-                desired_fndh_port_powers,
+                ports_to_change,
                 tango.AttrQuality.ATTR_VALID,
             )
-            for (
-                smartbox_trl,
-                smartbox_proxy,
-            ) in field_station_component_manager._smartbox_proxys.items():
-                smartbox_name = field_station_component_manager._smartbox_trl_name_map[
-                    smartbox_trl
-                ]
-                fndh_port = field_station_component_manager._smartbox_mapping[
-                    "smartboxMapping"
-                ][smartbox_name]
-                if desired_fndh_port_powers[fndh_port - 1]:
-                    mocked_smartbox_power = PowerState.ON
-                else:
-                    mocked_smartbox_power = PowerState.OFF
 
-                smartbox_trl = (
-                    field_station_component_manager._smartbox_trl_name_map.inverse[
-                        smartbox_name
-                    ]
-                )
-                field_station_component_manager.smartbox_state_change(
-                    smartbox_trl, power=mocked_smartbox_power
-                )
-
-                smartbox_mask_map = (
-                    field_station_component_manager._get_masked_smartbox_ports()
-                )
-                ports_to_change = [expected_state] * 12
-                for smartbox_identity, masked_ports in smartbox_mask_map.items():
-                    if smartbox_name == smartbox_identity:
-                        for masked_port in masked_ports:
-                            ports_to_change[masked_port - 1] = False
-                field_station_component_manager._on_port_power_change(
-                    smartbox_proxy._name,
-                    "portspowersensed",
-                    ports_to_change,
-                    tango.AttrQuality.ATTR_VALID,
-                )
-
-            # We only expect to see smartbox commands called when we are turning ON
-            if expected_state:
-                for (
-                    smartbox
-                ) in field_station_component_manager._smartbox_proxys.values():
-                    smartbox_proxy_command = getattr(smartbox._proxy, "On")
-                    smartbox_proxy_command.assert_next_call()
+        # We only expect to see smartbox commands called when we are turning ON
+        if expected_state:
+            for smartbox in field_station_component_manager._smartbox_proxys.values():
+                smartbox_proxy_command = getattr(smartbox._proxy, "On")
+                smartbox_proxy_command.assert_next_call()
 
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         if command_tracked_result[0] in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
