@@ -80,9 +80,9 @@ and FEM current trip thresholds. All temperatures are in degrees Celsius.
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | FemCurrentTripThresholds             | 1069-1080   | 12 FEM current trip thresholds (mA)                                      |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| WarningFlags                         | 10130       | List of sensors outside their warning thresholds                         |
+| WarningFlags                         | 10130       | List of sensors in WARNING state                                         |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| AlarmFlags                           | 10132       | List of sensors outside their alarm thresholds                           |
+| AlarmFlags                           | 10132       | List of sensors in ALARM state                                           |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 
 The SMART Box ``PasdStatus`` attribute should be interpreted as follows:

@@ -32,16 +32,15 @@ ANTENNA_MAPPING_SCHEMA: Final = {
     "type": "object",
     "properties": {
         "antennaMapping": {
-            "type": "array",
-            "minItems": 256,
-            "maxItems": 256,
-            "items": {
-                "type": "object",
-                "properties": {
-                    "antennaID": {"type": "integer"},
-                    "smartboxID": {"type": "integer"},
-                    "smartboxPort": {"type": "integer"},
-                },
+            "description": "the antennas",
+            "type": "object",
+            "minProperties": 0,
+            "maxProperties": 256,
+            "patternProperties": {
+                "[a-zA-Z0-9_]+": {
+                    "description": "the antennas",
+                    "type": "array",
+                }
             },
         }
     },
@@ -55,15 +54,12 @@ ANTENNA_MASK_SCHEMA: Final = {
     "type": "object",
     "properties": {
         "antennaMask": {
-            "type": "array",
-            "minItems": 256,
-            "maxItems": 256,
-            "items": {
-                "type": "object",
-                "properties": {
-                    "antennaID": {"type": "integer"},
-                    "maskingState": {"type": "boolean"},
-                },
+            "description": "the antennas",
+            "type": "object",
+            "minProperties": 0,
+            "maxProperties": 256,
+            "patternProperties": {
+                "[a-zA-Z0-9_]+": {"description": "the antennas", "type": "boolean"}
             },
         }
     },
@@ -77,15 +73,12 @@ SMARTBOX_MAPPING_SCHEMA: Final = {
     "type": "object",
     "properties": {
         "smartboxMapping": {
-            "type": "array",
-            "minItems": 24,
-            "maxItems": 24,
-            "items": {
-                "type": "object",
-                "properties": {
-                    "smartboxID": {"type": "integer"},
-                    "fndhPort": {"type": "integer"},
-                },
+            "description": "the smartbox mappings",
+            "type": "object",
+            "minProperties": 0,
+            "maxProperties": 24,
+            "patternProperties": {
+                "[a-zA-Z0-9_]+": {"description": "fqdns", "type": "integer"}
             },
         }
     },
@@ -263,9 +256,9 @@ def turn_antenna_state(
     :param desired_state: a Gherkin reference state.
     """
     if desired_state == "OFF":
-        field_station_device.PowerOffAntenna(int(antenna_number))
+        field_station_device.PowerOffAntenna(antenna_number)
     elif desired_state == "ON":
-        field_station_device.PowerOnAntenna(int(antenna_number))
+        field_station_device.PowerOnAntenna(antenna_number)
     else:
         assert False
 
@@ -405,8 +398,7 @@ def check_the_mapping_is_valid(
     # Check that we have a configuration for every smartbox under test.
     number_of_configured_smartboxes = 0
     for smartbox_config in maps["smartbox_map"]["smartboxMapping"]:
-        if "smartboxID" in smartbox_config:
-            number_of_configured_smartboxes += 1
+        number_of_configured_smartboxes += 1
     if is_true_context:
         # Currently the store is configured with the deployed configuration from
         # helm. We check that for the devices deployed we have a configuration.

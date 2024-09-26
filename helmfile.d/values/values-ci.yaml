@@ -1,15 +1,9 @@
-overrides:
+platform:
   array:
     stations:
       "ci-1":
         id: 1
         pasd:
-          config_uri: # Config uri currently breaks the functional tests
-            # This is the wrong data for this configuration,
-            # however the values-ci file no longer exists on the telmodel
-            # uri: "gitlab://gitlab.com/ska-telescope/ska-low-aavs3?main#tmdata"
-            # path: "instrument/mccs-configuration/aavs3.yaml"
-            # station_name: "aavs3"
           fndh:
             gateway:
               simulated: true

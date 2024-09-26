@@ -84,7 +84,10 @@ def simulated_configuration_fixture(pasd_config_path: str) -> dict[Any, Any]:
     smartboxes = simulator_configuration["pasd"]["smartboxes"]
     smartbox_mapping = {}
     for smartbox_id, config in smartboxes.items():
-        smartbox_mapping[smartbox_id] = {"fndh_port": config["fndh_port"]}
+        smartbox_mapping[smartbox_id] = {
+            "fndh_port": config["fndh_port"],
+            "modbus_id": config["fndh_port"],
+        }
 
     configuration: Final = {
         "antennas": antennas,

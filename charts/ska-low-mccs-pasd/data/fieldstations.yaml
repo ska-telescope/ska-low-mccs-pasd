@@ -38,7 +38,12 @@ Define the deployment for MccsFieldStation devices.
           logging_level_default: 5
 
 */}}
-{{- $fieldstations := dig "fieldstations" dict .Values.deviceServers}}
+{{- $fieldstations := dict}}
+{{- range $server_name, $this_server := (dig "fieldstations" dict .Values.deviceServers)}}
+{{- if $this_server}}
+{{- $_ := set $fieldstations $server_name $this_server}}
+{{- end}}
+{{- end}}
 {{- if $fieldstations}}
 name: "fieldstation-{{.Release.Name}}"
 function: ska-low-mccs-pasd-fieldstation
@@ -57,6 +62,7 @@ server:
         - name: MccsFieldStation
           devices:
 {{- range $fieldstation_name, $this_fieldstation := $this_server}}
+{{- if $this_fieldstation}}
             - name: {{$fieldstation_name}}
               properties:
                 - name: "ConfigurationHost"
@@ -81,6 +87,7 @@ server:
                 - name: "LoggingLevelDefault"
                   values:
                     - {{quote .}}
+{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}

@@ -2,6 +2,24 @@
 
 ## unreleased
 
+* [WOM-420]: Fix alarm/warning reset functionality
+* [WOM-426]: Fix minor chart bug
+* [SKB-455]: Automatically reset the connection when a poll fails
+
+## 0.11.0
+
+* [MCCS-2141] Update ska-tango-base to 1.0.0
+* [MCCS-2115] Update field station to use new antenna mappings
+
+## 0.10.1
+
+* [LOW-952]: Point at ska-low-tmdata for AA0.5 telmodel data
+* [MCCS-2216]: Support nulls in values schemas
+* [WOM-370]: Faster, more reliable tests
+
+## 0.10.0
+
+* [WOM-147]: Add metadata to the Tango attributes
 * [WOM-144]: Synchronize Tango alarm config with threshold values
 * [WOM-361]: Change FEM current trip threshold attributes to an array
 * [WOM-384]: Fix misleading messages

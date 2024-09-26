@@ -18,7 +18,12 @@ Define the deployment for MccsSmartbox devices.
             - 3
 
 */}}
-{{- $pasdbuses := dig "pasdbuses" dict .Values.deviceServers}}
+{{- $pasdbuses := dict}}
+{{- range $server_name, $this_server := (dig "pasdbuses" dict .Values.deviceServers)}}
+{{- if $this_server}}
+{{- $_ := set $pasdbuses $server_name $this_server}}
+{{- end}}
+{{- end}}
 {{- if $pasdbuses}}
 name: "pasdbus-{{.Release.Name}}"
 function: ska-low-mccs-pasd-bus
@@ -37,6 +42,7 @@ server:
         - name: MccsPasdBus
           devices:
 {{- range $pasdbus_name, $this_pasdbus := $this_server}}
+{{- if $this_pasdbus}}
             - name: {{$pasdbus_name}}
               properties:
                 - name: Host
@@ -67,6 +73,7 @@ server:
                 - name: LoggingLevelDefault
                   values:
                     - {{quote .}}
+{{- end}}
 {{- with $this_pasdbus.simulation_config}}
                 - name: "SimulationConfig"
                   values:
@@ -76,7 +83,7 @@ server:
                   values:
 {{- range $this_pasdbus.available_smartboxes }}
                     - {{. | quote}}
-{{- end }}
+{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}

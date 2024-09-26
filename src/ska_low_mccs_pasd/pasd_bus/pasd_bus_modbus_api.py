@@ -586,3 +586,21 @@ class PasdBusModbusApiClient:
         if "data" in response:
             return response["data"]["result"]
         return response
+
+    def reset_connection(self) -> None:
+        """
+        Reset the connection to the device.
+
+        Read from the device until the timeout
+        to flush the input buffer, then close
+        the connection and reconnect.
+        """
+        if self._client.connected:
+            data = self._client.recv(None)
+            if data:
+                self._logger.debug(
+                    "Recovering from communications error (SPRTS-98 / SKB-455): "
+                    f"recycling connection after discarding bytes:\n{data.hex()}"
+                )
+            self._client.close()
+        self._client.connect()

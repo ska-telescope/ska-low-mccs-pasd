@@ -196,7 +196,7 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         self._attribute_writes[attribute_name] = values
 
     # pylint: disable=too-many-return-statements
-    def get_write(self) -> tuple[str, Any]:
+    def get_write(self) -> tuple[str, Any]:  # noqa: C901
         """
         Return a description of the next write / command to be performed on the device.
 
@@ -242,6 +242,16 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         if self._status_reset_requested:
             self._status_reset_requested = False
             return "RESET_STATUS", None
+
+        if self._alarm_reset_requested:
+            self._alarm_reset_requested = False
+            self._attribute_update_requests.append("alarm_flags")
+            return "RESET_ALARMS", None
+
+        if self._warning_reset_requested:
+            self._warning_reset_requested = False
+            self._attribute_update_requests.append("warning_flags")
+            return "RESET_WARNINGS", None
 
         return "NONE", None
 

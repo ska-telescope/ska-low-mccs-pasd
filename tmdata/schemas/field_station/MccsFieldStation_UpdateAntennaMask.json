@@ -6,18 +6,14 @@
     "type": "object",
     "properties": {
         "antennaMask": {
-            "type": "array",
-            "minItems": 256,
-            "maxItems": 256,
-            "items": {
-                "type": "object",
-                "properties": {
-                    "antennaID": {
-                        "type": "integer"
-                    },
-                    "maskingState": {
-                        "type": "boolean"
-                    }
+            "description": "the antennas",
+            "type": "object",
+            "minProperties": 0,
+            "maxProperties": 256,
+            "patternProperties": {
+                "[a-zA-Z0-9_]+": {
+                    "description": "the antennas",
+                    "type": "boolean"
                 }
             }
         }

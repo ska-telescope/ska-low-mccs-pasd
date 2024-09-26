@@ -36,6 +36,7 @@ PasdBusSimulator class should be considered public.
 from __future__ import annotations
 
 import logging
+import re
 from abc import ABC
 from datetime import datetime
 from typing import Callable, Final, Optional, Sequence
@@ -629,6 +630,11 @@ class PasdHardwareSimulator(BaseControllerSimulator):
         """
         return self._warning_flags
 
+    @warning_flags.setter
+    def warning_flags(self: PasdHardwareSimulator, _: int) -> None:
+        """Reset the sensor warning flags."""
+        self.reset_warnings()
+
     def reset_warnings(self: PasdHardwareSimulator) -> bool | None:
         """
         Reset the sensor warning flags.
@@ -648,6 +654,11 @@ class PasdHardwareSimulator(BaseControllerSimulator):
         :return: the sensor alarm flags.
         """
         return self._alarm_flags
+
+    @alarm_flags.setter
+    def alarm_flags(self: PasdHardwareSimulator, _: int) -> None:
+        """Reset the sensor alarm flags."""
+        self.reset_alarms()
 
     def reset_alarms(self: PasdHardwareSimulator) -> bool | None:
         """
@@ -977,7 +988,7 @@ class FndhSimulator(PasdHardwareSimulator):
     DEFAULT_PSU48V_TEMPERATURE_2: Final = 4290
     DEFAULT_PANEL_TEMPERATURE: Final = 3720
     DEFAULT_FNCB_TEMPERATURE: Final = 4150
-    DEFAULT_FNCB_HUMIDITY: Final = 5020
+    DEFAULT_FNCB_HUMIDITY: Final = 50
     DEFAULT_COMMS_GATEWAY_TEMPERATURE: Final = 3930
     DEFAULT_POWER_MODULE_TEMPERATURE: Final = 4580
     DEFAULT_OUTSIDE_TEMPERATURE: Final = 3250
@@ -1643,7 +1654,7 @@ class PasdBusSimulator:
 
         fndh_ports_is_connected = [False] * FndhSimulator.NUMBER_OF_PORTS
         for smartbox_id, smartbox_config in pasd_config["smartboxes"].items():
-            smartbox_id = int(smartbox_id)
+            smartbox_id = int(re.findall(r"\d+", smartbox_id)[0])
             fndh_port = smartbox_config["fndh_port"]
             self._smartbox_attached_ports[smartbox_id - 1] = fndh_port
             fndh_ports_is_connected[fndh_port - 1] = True
@@ -1654,7 +1665,7 @@ class PasdBusSimulator:
             for _ in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
         ]
         for antenna_config in config["antennas"].values():
-            smartbox_id = int(antenna_config["smartbox"])
+            smartbox_id = int(re.findall(r"\d+", antenna_config["smartbox"])[0])
             smartbox_port = antenna_config["smartbox_port"]
             self._smartboxes_ports_connected[smartbox_id - 1][smartbox_port - 1] = True
 

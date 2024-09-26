@@ -265,7 +265,7 @@ epub_exclude_files = ["search.html"]
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.10/", None),
     "numpy": ("https://numpy.org/doc/1.25/", None),
-    "pytango": ("https://pytango.readthedocs.io/en/v9.4.2/", None),
+    "pytango": ("https://pytango.readthedocs.io/en/v9.5.1/", None),
     "ska-control-model": (
         "https://developer.skao.int/projects/ska-control-model/en/0.3.1/",
         None,

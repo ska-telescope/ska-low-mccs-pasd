@@ -318,7 +318,7 @@ class TestfndhPasdBusIntegration:
             fndh_simulator.fncb_temperature_thresholds
         )
         assert (
-            list(fndh_device.HumidityThresholds)
+            list(fndh_device.FncbHumidityThresholds)
             == fndh_simulator.fncb_humidity_thresholds
         )
         assert list(

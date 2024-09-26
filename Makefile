@@ -41,7 +41,7 @@ K8S_HELMFILE = helmfile.d/helmfile.yaml
 ifdef CI_COMMIT_SHORT_SHA
 K8S_HELMFILE_ENV ?= stfc-ci
 else
-K8S_HELMFILE_ENV ?= minikube
+K8S_HELMFILE_ENV ?= minikube-ci
 endif
 
 
@@ -119,6 +119,10 @@ k8s-do-test:
 	echo $$EXIT_CODE > build/status
 	exit $$EXIT_CODE
 
+k8s-pre-install-chart:
+	pip install --extra-index-url https://artefact.skao.int/repository/pypi-internal/simple ska-telmodel
+k8s-pre-uninstall-chart:
+	pip install --extra-index-url https://artefact.skao.int/repository/pypi-internal/simple ska-telmodel
 
 #######################################
 # HELM
@@ -144,3 +148,22 @@ docs-pre-build:
 endif
 
 .PHONY: python-post-lint k8s-do-test docs-pre-build
+
+########################################################################
+# HELMFILE
+########################################################################
+helmfile-lint:
+	SKIPDEPS=""
+	for environment in minikube-ci stfc-ci aa0.5-production aavs3-production aavs3-minikube low-itf low-itf-minikube; do \
+        echo "Linting helmfile against environment '$$environment'" ; \
+		helmfile -e $$environment lint $$SKIPDEPS; \
+		EXIT_CODE=$$? ; \
+		if [ $$EXIT_CODE -gt 0 ]; then \
+		echo "Linting of helmfile against environment '$$environment' FAILED." ; \
+		break ; \
+		fi ; \
+		SKIPDEPS="--skip-deps" ; \
+	done
+	exit $$EXIT_CODE
+
+.PHONY: helmfile-lint

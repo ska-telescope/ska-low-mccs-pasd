@@ -13,38 +13,46 @@
 common_registers: &common_registers
   modbus_register_map_revision:
     tango_attr_name: ModbusRegisterMapRevisionNumber
+    description: "Modbus register map revision"
     data_type: int
     address: 0
     static: true
   pcb_revision:
     tango_attr_name: PcbRevisionNumber
+    description: "PCB revision number"
     data_type: int
     address: 1
     static: true
   cpu_id:
     data_type: str
+    description: "Microcontroller part id"
     address: 2
     size: 2
     static: true
     conversion_function: convert_cpu_id
   chip_id:
     data_type: str
+    description: "Microcontroller serial number"
     address: 4
     size: 8
     static: true
     conversion_function: convert_chip_id
   firmware_version:
     data_type: str
+    description: "Firmware revision number"
     address: 12
     static: true
     conversion_function: convert_firmware_version
   uptime:
     data_type: int
+    description: "Time since last booted"
     address: 13
     size: 2 
     conversion_function: convert_uptime
+    unit: "seconds"
   sys_address:
     data_type: int
+    description: "Modbus address"
     address: 15
 
 PaSD_controllers:
@@ -58,10 +66,12 @@ PaSD_controllers:
         <<: *common_registers
         status:
           tango_attr_name: PasdStatus
+          description: "Communications status"
           data_type: str
           address: 16
           conversion_function: convert_fncc_status
         field_node_number:
+          description: "Field node unique ID"
           data_type: int
           address: 17
     FNPC:
@@ -76,58 +86,93 @@ PaSD_controllers:
           data_type: float
           address: 16
           conversion_function: scale_volts
+          description: "48Vdc COSEL SMPS 1 output voltage"
+          unit: "V"
+          format_string: "%.2f"
         psu48v_voltage_2:
           data_type: float
           address: 17
           conversion_function: scale_volts
+          description: "48Vdc COSEL SMPS 2 output voltage"
+          unit: "V"
+          format_string: "%.2f"
         psu48v_current:
           data_type: float
           address: 18
           conversion_function: scale_48vcurrents
+          description: "48Vdc COSEL SMPS output current"
+          unit: "A"
+          format_string: "%.2f"
         psu48v_temperature_1:
           data_type: float
           address: 19
           conversion_function: scale_signed_16bit
+          description: "Thermistor at top of COSEL SMPS base plate"
+          unit: "deg C"
+          format_string: "%.2f"
         psu48v_temperature_2:
           data_type: float
           address: 20
           conversion_function: scale_signed_16bit
+          description: "Thermistor at bottom of COSEL SMPS base plate"
+          unit: "deg C"
+          format_string: "%.2f"
         panel_temperature:
           data_type: float
           address: 21
           conversion_function: scale_signed_16bit
+          description: "Not implemented in the hardware"
         fncb_temperature:
           data_type: float
           address: 22
           conversion_function: scale_signed_16bit
+          description: "Field node controller board temperature"
+          unit: "deg C"
+          format_string: "%.2f"
         fncb_humidity:
           data_type: int
           address: 23
+          description: "Field node controller board humidity"
+          unit: "%"
         status:
           tango_attr_name: PasdStatus
           data_type: str
           address: 24
           conversion_function: convert_fndh_status
+          description: "System status"
         led_pattern:
           data_type: str 
           address: 25 
           conversion_function: convert_led_status
+          description: "Service and status LEDs"
         comms_gateway_temperature:
           data_type: float 
           address: 26 
           conversion_function: scale_signed_16bit
+          description: "Thermistor on external surface of the communications gateway"
+          unit: "deg C"
+          format_string: "%.2f"
         power_module_temperature:
           data_type: float 
           address: 27 
           conversion_function: scale_signed_16bit
+          description: "Thermistor on external surface of the power module enclosure"
+          unit: "deg C"
+          format_string: "%.2f"
         outside_temperature:
           data_type: float
           address: 28
           conversion_function: scale_signed_16bit
+          description: "Thermistor on the floor of the FNDH EP enclosure"
+          unit: "deg C"
+          format_string: "%.2f"
         internal_ambient_temperature:
           data_type: float 
           address: 29 
           conversion_function: scale_signed_16bit
+          description: "Thermistor on the roof of the FNDH EP enclosure"
+          unit: "deg C"
+          format_string: "%.2f"
         port_forcings:
           data_type: str
           modbus_class: PasdBusPortAttribute
@@ -135,6 +180,7 @@ PaSD_controllers:
           size: *number_of_fndh_ports
           tango_dim_x: *number_of_fndh_ports
           desired_info: TO
+          description: "Technician override status for each port"
         ports_desired_power_when_online:
           tango_attr_name: PortsDesiredPowerOnline
           data_type: DesiredPowerEnum
@@ -143,6 +189,7 @@ PaSD_controllers:
           size: *number_of_fndh_ports
           tango_dim_x: *number_of_fndh_ports
           desired_info: DSON
+          description: "Desired state of each port when FNPC is ONLINE"
         ports_desired_power_when_offline:
           tango_attr_name: PortsDesiredPowerOffline
           data_type: DesiredPowerEnum
@@ -151,6 +198,7 @@ PaSD_controllers:
           size: *number_of_fndh_ports
           tango_dim_x: *number_of_fndh_ports
           desired_info: DSOFF
+          description: "Desired state of each port when FNPC is OFFLINE"
         ports_power_sensed:
           data_type: bool
           modbus_class: PasdBusPortAttribute
@@ -158,6 +206,7 @@ PaSD_controllers:
           size: *number_of_fndh_ports
           tango_dim_x: *number_of_fndh_ports
           desired_info: PWRSENSE_BREAKER
+          description: "Present power state for each port"
         ports_power_control:
           data_type: bool
           modbus_class: PasdBusPortAttribute
@@ -165,6 +214,7 @@ PaSD_controllers:
           size: *number_of_fndh_ports
           tango_dim_x: *number_of_fndh_ports
           desired_info: POWER
+          description: "Power control line ON/OFF status (true if port can be turned on)"
         psu48v_voltage_1_thresholds:
           data_type: float
           address: 1000
@@ -177,6 +227,7 @@ PaSD_controllers:
             high_warning: 5000
             low_warning:  4500
             low_alarm:    4000
+          description: "High alarm, high warning, low warning and low alarm values for output voltage 1"
         psu48v_voltage_2_thresholds:
           data_type: float
           address: 1004
@@ -189,6 +240,7 @@ PaSD_controllers:
             high_warning: 5000
             low_warning:  4500
             low_alarm:    4000
+          description: "High alarm, high warning, low warning and low alarm values for output voltage 2"
         psu48v_current_thresholds:
           data_type: float
           address: 1008
@@ -201,6 +253,7 @@ PaSD_controllers:
             high_warning: 1600
             low_warning:  -100
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for output current"
         psu48v_temperature_1_thresholds:
           data_type: float
           address: 1012
@@ -213,6 +266,7 @@ PaSD_controllers:
             high_warning: 8500
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for PSU temperature 1"
         psu48v_temperature_2_thresholds:
           data_type: float
           address: 1016
@@ -225,6 +279,7 @@ PaSD_controllers:
             high_warning: 8500
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for PSU temperature 2"
         panel_temperature_thresholds:
           data_type: float
           address: 1020
@@ -237,6 +292,7 @@ PaSD_controllers:
             high_warning: 7000
             low_warning:  0
             low_alarm:    -500
+          description: "Not implemented in the hardware"
         fncb_temperature_thresholds:
           data_type: float
           address: 1024
@@ -249,18 +305,21 @@ PaSD_controllers:
             high_warning: 7000
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for FNCB temperature"
         fncb_humidity_thresholds:
-          tango_attr_name: HumidityThresholds
-          data_type: float
+          data_type: int
           address: 1028
           size: 4
           tango_dim_x: 4
           writable: true
           default_thresholds:
-            high_alarm:   8500
-            high_warning: 7000
-            low_warning:  1000
+            high_alarm:   85
+            high_warning: 70
+            low_warning:  10
             low_alarm:    0
+          description: "High alarm, high warning, low warning and low alarm values for FNCB humidity"
+          min_value: 0
+          max_value: 100
         comms_gateway_temperature_thresholds:
           data_type: float
           address: 1032
@@ -273,6 +332,7 @@ PaSD_controllers:
             high_warning: 7000
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for comms gateway temperature"
         power_module_temperature_thresholds:
           data_type: float
           address: 1036
@@ -285,6 +345,7 @@ PaSD_controllers:
             high_warning: 7000
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for power module temperature"
         outside_temperature_thresholds:
           data_type: float
           address:  1040
@@ -297,6 +358,7 @@ PaSD_controllers:
             high_warning: 7000
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for outside temperature"
         internal_ambient_temperature_thresholds:
           data_type: float
           address: 1044
@@ -309,14 +371,17 @@ PaSD_controllers:
             high_warning: 7000
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for internal temperature"
         warning_flags:
           data_type: str
           address: 10129 
           conversion_function: convert_fndh_alarm_status
+          description: "List of sensors in WARNING state"
         alarm_flags:
           data_type: str
           address: 10131 
           conversion_function: convert_fndh_alarm_status
+          description: "List of sensors in ALARM state"
     FNSC:
       full_name: Field Node SMART Box Controller
       prefix: smartbox
@@ -327,47 +392,76 @@ PaSD_controllers:
           data_type: float
           address: 16
           conversion_function: scale_volts
+          description: "Incoming voltage"
+          unit: "V"
+          format_string: "%.2f"
         power_supply_output_voltage:
           data_type: float
           address: 17  
           conversion_function: scale_volts
+          description: "PSU output voltage"
+          unit: "V"
+          format_string: "%.2f"
         power_supply_temperature:
           data_type: float
           address: 18  
           conversion_function: scale_signed_16bit
+          description: "PSU temperature"
+          unit: "deg C"
+          format_string: "%.2f"
         pcb_temperature:
           data_type: float
           address: 19  
           conversion_function: scale_signed_16bit
+          description: "Not implemented in the hardware"
+          unit: "deg C"
+          format_string: "%.2f"
         fem_ambient_temperature:
           data_type: float
           address: 20  
           conversion_function: scale_signed_16bit
+          description: "Thermistor mounted on sensor board in the FEM package"
+          unit: "deg C"
+          format_string: "%.2f"
         status:
           tango_attr_name: PasdStatus
           data_type: str
           address: 21
           conversion_function: convert_smartbox_status
+          description: "SMART Box system status"
         led_pattern:
           data_type: str
           address: 22
           conversion_function: convert_led_status
+          description: "Service and status LEDs"
         fem_case_temperature_1:
           data_type: float
           address: 23
           conversion_function: scale_signed_16bit
+          description: "Thermistor on top of FEM case"
+          unit: "deg C"
+          format_string: "%.2f"
         fem_case_temperature_2:
           data_type: float
           address: 24
           conversion_function: scale_signed_16bit
+          description: "Thermistor on bottom of FEM case"
+          unit: "deg C"
+          format_string: "%.2f"
         fem_heatsink_temperature_1:
           data_type: float
           address: 25
           conversion_function: scale_signed_16bit
+          description: "Thermistor mounted on heatsink between FEMs 9 and 10"
+          unit: "deg C"
+          format_string: "%.2f"
         fem_heatsink_temperature_2:
           data_type: float
           address: 26
           conversion_function: scale_signed_16bit
+          description: "Thermistor mounted on heatsink between FEMs 3 and 4"
+          unit: "deg C"
+          format_string: "%.2f"
         port_forcings:
           data_type: str
           modbus_class: PasdBusPortAttribute
@@ -375,6 +469,7 @@ PaSD_controllers:
           size: *number_of_smartbox_ports
           tango_dim_x: *number_of_smartbox_ports
           desired_info: TO
+          description: "Technician override status for each port"
         port_breakers_tripped:
           data_type: bool
           modbus_class: PasdBusPortAttribute
@@ -382,6 +477,7 @@ PaSD_controllers:
           size: *number_of_smartbox_ports
           tango_dim_x: *number_of_smartbox_ports
           desired_info: PWRSENSE_BREAKER
+          description: "Firmware circuit breaker status for each port"
         ports_desired_power_when_online:
           tango_attr_name: PortsDesiredPowerOnline
           data_type: DesiredPowerEnum
@@ -390,6 +486,7 @@ PaSD_controllers:
           size: *number_of_smartbox_ports
           tango_dim_x: *number_of_smartbox_ports
           desired_info: DSON
+          description: "Desired state of each port when FNSC is ONLINE"
         ports_desired_power_when_offline:
           tango_attr_name: PortsDesiredPowerOffline
           data_type: DesiredPowerEnum
@@ -398,6 +495,7 @@ PaSD_controllers:
           size: *number_of_smartbox_ports
           tango_dim_x: *number_of_smartbox_ports
           desired_info: DSOFF
+          description: "Desired state of each port when FNSC is OFFLINE"
         ports_power_sensed:
           data_type: bool
           modbus_class: PasdBusPortAttribute
@@ -405,11 +503,14 @@ PaSD_controllers:
           size: *number_of_smartbox_ports
           tango_dim_x: *number_of_smartbox_ports
           desired_info: POWER
+          description: "Power sensed state for each FEM"
         ports_current_draw:
           data_type: float
           address: 47
           size: *number_of_smartbox_ports
           tango_dim_x: *number_of_smartbox_ports
+          description: "List of FEM current measurements"
+          unit: "mA"
         input_voltage_thresholds:
           data_type: float
           address: 1000
@@ -422,6 +523,7 @@ PaSD_controllers:
             high_warning: 4900
             low_warning:  4500
             low_alarm:    4000
+          description: "High alarm, high warning, low warning and low alarm values for input voltage"
         power_supply_output_voltage_thresholds:
           data_type: float
           address: 1004
@@ -434,6 +536,7 @@ PaSD_controllers:
             high_warning: 490
             low_warning:  440
             low_alarm:    400
+          description: "High alarm, high warning, low warning and low alarm values for output voltage"
         power_supply_temperature_thresholds:
           data_type: float
           address: 1008
@@ -446,6 +549,7 @@ PaSD_controllers:
             high_warning: 7000
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for PSU temperature"
         pcb_temperature_thresholds:
           data_type: float
           address: 1012
@@ -458,6 +562,7 @@ PaSD_controllers:
             high_warning: 7000
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for PCB temperature"
         fem_ambient_temperature_thresholds:
           data_type: float
           address: 1016
@@ -470,6 +575,7 @@ PaSD_controllers:
             high_warning: 4500
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for ambient temperature"
         fem_case_temperature_1_thresholds:
           data_type: float
           address: 1020
@@ -482,6 +588,7 @@ PaSD_controllers:
             high_warning: 4500
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for FEM case temperature 1"
         fem_case_temperature_2_thresholds:
           data_type: float
           address: 1024
@@ -489,11 +596,13 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          format_string: "%.2f"
           default_thresholds:
             high_alarm:   6000
             high_warning: 4500
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for FEM case temperature 2"
         fem_heatsink_temperature_1_thresholds:
           data_type: float
           address: 1028
@@ -506,6 +615,7 @@ PaSD_controllers:
             high_warning: 4500
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for heatsink temperature 1"
         fem_heatsink_temperature_2_thresholds:
           data_type: float
           address: 1032
@@ -518,6 +628,7 @@ PaSD_controllers:
             high_warning: 4500
             low_warning:  0
             low_alarm:    -500
+          description: "High alarm, high warning, low warning and low alarm values for heatsink temperature 2"
         fem_current_trip_thresholds:
           data_type: int
           address: 1068
@@ -525,14 +636,17 @@ PaSD_controllers:
           tango_dim_x: 12
           writable: true
           default_value: 496
+          description: "List of FEM current trip thresholds"
         warning_flags:
           data_type: str
           address: 10129
-          conversion_function: convert_smartbox_alarm_status        
+          conversion_function: convert_smartbox_alarm_status
+          description: "List of registers in WARNING state"
         alarm_flags:
           data_type: str
           address: 10131
-          conversion_function: convert_smartbox_alarm_status        
+          conversion_function: convert_smartbox_alarm_status
+          description: "List of registers in ALARM state"
 # Subsequent modbus register map versions only need to contain changes to merge with the base, for example:
   # register_map_revisions:
   #   v2: # This should be an integer that matches the SYS_MBRV register value of the firmware.
