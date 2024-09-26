@@ -187,8 +187,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         antenna_mapping: dict[str, tuple[str, int]] = {}
         smartbox_mappings: dict = {}
 
-        all_masked = True
-
         for antenna_name, antenna_config in reference_data["antennas"].items():
             smartbox_name = antenna_config["smartbox"]
             smartbox_port = antenna_config["smartbox_port"]
@@ -196,18 +194,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self.antenna_powers[antenna_name] = PowerState.UNKNOWN
 
             antenna_mapping[antenna_name] = (smartbox_name, smartbox_port)
-
-            if not masked_state:
-                all_masked = False
-
             antenna_masks[antenna_name] = masked_state
 
         for smartbox_name, smartbox_config in reference_data["pasd"][
             "smartboxes"
         ].items():
             smartbox_mappings[smartbox_name] = smartbox_config["fndh_port"]
-
-        self._all_masked = all_masked
 
         self._antenna_mask = {"antennaMask": antenna_masks}
         self._smartbox_mapping = {"smartboxMapping": smartbox_mappings}
@@ -231,9 +223,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     @check_communicating
     def _update_smartbox_mask(self: FieldStationComponentManager) -> None:
         """Update the mask on the smartboxe for their ports."""
-        for smartbox_no, smartbox_proxy in enumerate(self._smartbox_proxys, start=1):
+        for smartbox_trl, smartbox_proxy in self._smartbox_proxys.items():
             assert smartbox_proxy._proxy is not None
-            port_mask = self._get_smartbox_port_mask(smartbox_no)
+            smartbox_name = self._smartbox_trl_name_map[smartbox_trl]
+            port_mask = self._get_smartbox_port_mask(smartbox_name)
             smartbox_proxy._proxy.portMask = port_mask
 
     def start_communicating(self: FieldStationComponentManager) -> None:
@@ -500,7 +493,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 smartbox_on_commands = MccsCompositeCommandProxy(
                     task_callback, self.logger
                 )
-                for smartbox_trl in self._smartbox_trls:
+                for smartbox_trl in self._smartbox_proxys:
                     smartbox_on_commands += MccsCommandProxy(
                         smartbox_trl, "On", self.logger
                     )
@@ -565,7 +558,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 smartbox_on_commands = MccsCompositeCommandProxy(
                     task_callback, self.logger
                 )
-                for smartbox_trl in self._smartbox_trls:
+                for smartbox_trl in self._smartbox_proxys:
                     smartbox_on_commands += MccsCommandProxy(
                         smartbox_trl, "Standby", self.logger
                     )
@@ -740,7 +733,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         This will return a dictionary, containing keys for each smartbox,
         and values which are lists containing which port is masked.
 
-        e.g {1 : [4,5]}. Smartbox 1 has ports 4 and 5 masked.
+        e.g {sb01 : [4,5]}. Smartbox 1 has ports 4 and 5 masked.
 
         :returns: which ports are masked on each smartbox.
         """
@@ -775,20 +768,20 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         return masked_smartbox_ports
 
     def _get_smartbox_port_mask(
-        self: FieldStationComponentManager, smartbox_no: int
+        self: FieldStationComponentManager, smartbox_name: str
     ) -> list[bool]:
         """
         Get the port mask for a given (0-indexed) smartbox no.
 
         This will return an array of 12 bools, one for each smartbox port.
 
-        :param smartbox_no: which smartbox to get the port mask of.
+        :param smartbox_name: which smartbox to get the port mask of.
 
         :returns: the port mask for the given smartbox.
         """
         all_smartbox_masked_ports = self._get_masked_smartbox_ports()
         port_mask = [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS
-        masked_ports = all_smartbox_masked_ports.get(smartbox_no, [])
+        masked_ports = all_smartbox_masked_ports.get(smartbox_name, [])
         for masked_port in masked_ports:
             port_mask[masked_port - 1] = True
         return port_mask
@@ -1049,15 +1042,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     ) -> None:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
-        all_masked = True
-
         antenna_mask = kwargs["antennaMask"]
         for antenna_name, masking_state in antenna_mask.items():
             if antenna_name is not None and masking_state is not None:
                 self._antenna_mask["antennaMask"][antenna_name] = masking_state
-                if not masking_state:
-                    all_masked = False
-        self._all_masked = all_masked
         if task_callback:
             task_callback(status=TaskStatus.COMPLETED)
 
@@ -1364,14 +1352,15 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         with self._power_state_lock:
             match self._smartbox_power_state:
-                case _ if PowerState.UNKNOWN in self._smartbox_power_state:
+                case _ if PowerState.UNKNOWN in self._smartbox_power_state.values():
                     transition_to(PowerState.UNKNOWN)
-                case _ if PowerState.ON in self._smartbox_power_state:
+                case _ if PowerState.ON in self._smartbox_power_state.values():
                     transition_to(PowerState.ON)
-                case _ if PowerState.STANDBY in self._smartbox_power_state:
+                case _ if PowerState.STANDBY in self._smartbox_power_state.values():
                     transition_to(PowerState.STANDBY)
                 case _ if all(
-                    power == PowerState.OFF for power in self._smartbox_power_state
+                    power == PowerState.OFF
+                    for power in self._smartbox_power_state.values()
                 ):
                     transition_to(
                         PowerState.OFF,
