@@ -7,7 +7,7 @@
 # See LICENSE for more info.
 """This module contains the integration tests for MccsPasdBus with MccsSmartBox."""
 
-# pylint: disable=too-many-lines,too-many-arguments
+# pylint: disable=too-many-lines,too-many-arguments, too-many-positional-arguments
 from __future__ import annotations
 
 import gc

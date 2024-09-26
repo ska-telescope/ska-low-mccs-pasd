@@ -151,7 +151,7 @@ def fndh_device_fixture(
         ),
     ],
 )
-def test_command(  # pylint: disable=too-many-arguments
+def test_command(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     fndh_device: tango.DeviceProxy,
     mock_component_manager: unittest.mock.Mock,
     device_command: str,

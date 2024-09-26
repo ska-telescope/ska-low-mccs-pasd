@@ -196,7 +196,8 @@ def smartboxes_under_test_fixture(
 
 
 @pytest.fixture(name="functional_test_context", scope="module")
-def functional_test_context_fixture(  # pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments, too-many-positional-arguments
+def functional_test_context_fixture(
     is_true_context: bool,
     station_label: str,
     pasd_address: tuple[str, int] | None,
@@ -591,6 +592,8 @@ def set_tango_device_state(
     """
     subscribe_device_proxy(dev)
     initial_state = dev.state()
+    result_code = ResultCode.UNKNOWN
+    command_id = ""
     # Issue the command
     if desired_state != initial_state:
         if desired_state == tango.DevState.ON:

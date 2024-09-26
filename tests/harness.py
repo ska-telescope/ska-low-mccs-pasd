@@ -274,7 +274,8 @@ class PasdTangoTestHarness:
             "configuration_manager", configuration_server
         )
 
-    def set_pasd_bus_device(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def set_pasd_bus_device(
         self: PasdTangoTestHarness,
         address: tuple[str, int] | None = None,
         polling_rate: float = 0.5,

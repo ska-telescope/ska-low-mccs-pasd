@@ -138,7 +138,7 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
                 format_string=register["format_string"],
             )
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def _setup_fncc_attribute(
         self: MccsFNCC,
         attribute_name: str,

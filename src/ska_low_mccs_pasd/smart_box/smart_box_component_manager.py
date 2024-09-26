@@ -90,7 +90,7 @@ class Port:
 class _PasdBusProxy(DeviceComponentManager):
     """This is a proxy to the pasdbus specific to this smartbox."""
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self: _PasdBusProxy,
         fqdn: str,
@@ -249,7 +249,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     or the real hardware.
     """
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self: SmartBoxComponentManager,
         logger: logging.Logger,

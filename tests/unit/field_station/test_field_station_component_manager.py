@@ -348,7 +348,8 @@ class TestFieldStationComponentManager:
     """Tests of the FieldStation component manager."""
 
     @pytest.fixture(name="field_station_component_manager")
-    def field_station_component_manager_fixture(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def field_station_component_manager_fixture(
         self: TestFieldStationComponentManager,
         test_context: str,
         logger: logging.Logger,
@@ -513,7 +514,8 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
-    def test_antenna_power_on(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_antenna_power_on(
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         antenna_id: str,
@@ -631,7 +633,8 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
-    def test_antenna_power_off(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_antenna_power_off(
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         antenna_id: str,
@@ -761,8 +764,8 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
+    # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     def test_on_off_commands(  # noqa: C901
-        # pylint: disable=too-many-arguments, too-many-locals
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         component_manager_command: Any,
@@ -793,15 +796,9 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        if antenna_id == 0:
-            field_station_component_manager._all_masked = True
-        else:
-            field_station_component_manager._antenna_mask["antennaMask"][
-                antenna_id
-            ] = antenna_masking_state
-
-            # If working with all antennas, no specific smartbox will get a call with a
-            # masked port
+        field_station_component_manager._antenna_mask["antennaMask"][
+            antenna_id
+        ] = antenna_masking_state
 
         assert (
             getattr(field_station_component_manager, component_manager_command)(
@@ -887,9 +884,9 @@ class TestFieldStationComponentManager:
 
             # We only expect to see smartbox commands called when we are turning ON
             if expected_state:
-                for smartbox_no, smartbox in enumerate(
-                    field_station_component_manager._smartbox_proxys
-                ):
+                for (
+                    smartbox
+                ) in field_station_component_manager._smartbox_proxys.values():
                     smartbox_proxy_command = getattr(smartbox._proxy, "On")
                     smartbox_proxy_command.assert_next_call()
 
@@ -937,7 +934,8 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
-    def test_manual_config_commands(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_manual_config_commands(
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         component_manager_command: Any,

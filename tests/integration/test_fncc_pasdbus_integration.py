@@ -83,7 +83,7 @@ class TestfnccPasdBusIntegration:
         change_event_callbacks["fncc_state"].assert_change_event(tango.DevState.ON)
         # ================================================================
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def test_communication(
         self: TestfnccPasdBusIntegration,
         fncc_device: tango.DeviceProxy,

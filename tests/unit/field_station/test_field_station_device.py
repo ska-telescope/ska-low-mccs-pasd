@@ -329,7 +329,7 @@ def test_outside_temperature(
         ),
     ],
 )
-def test_command(  # pylint: disable=too-many-arguments
+def test_command(  # pylint: disable=too-many-arguments, too-many-positional-arguments
     field_station_device: tango.DeviceProxy,
     mock_component_manager: unittest.mock.Mock,
     device_command: str,
@@ -401,7 +401,8 @@ def test_command(  # pylint: disable=too-many-arguments
         ),
     ],
 )
-def test_invalid_json_commands(  # pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments, too-many-positional-arguments
+def test_invalid_json_commands(
     field_station_device: tango.DeviceProxy,
     mock_component_manager: unittest.mock.Mock,
     device_command: str,

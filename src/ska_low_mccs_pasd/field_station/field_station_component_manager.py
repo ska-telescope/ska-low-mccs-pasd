@@ -56,7 +56,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         )
     )
 
-    # pylint: disable=too-many-arguments, too-many-locals
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self: FieldStationComponentManager,
         logger: logging.Logger,

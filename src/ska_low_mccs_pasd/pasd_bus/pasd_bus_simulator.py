@@ -1502,7 +1502,7 @@ class PasdBusSimulator:
     * Voltages, currents and temperatures never change.
     """
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self: PasdBusSimulator,
         pasd_configuration_path: str,

@@ -270,7 +270,7 @@ class MccsSmartBox(SKABaseDevice):
                 max_value=register["max_value"],
             )
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def _setup_smartbox_attribute(
         self: MccsSmartBox,
         attribute_name: str,
@@ -359,7 +359,8 @@ class MccsSmartBox(SKABaseDevice):
 
         self._health_model.update_state(communicating=True)
 
-    def _component_state_callback(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def _component_state_callback(
         self: MccsSmartBox,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,

@@ -32,7 +32,7 @@ __all__ = ["FndhComponentManager", "_PasdBusProxy"]
 class _PasdBusProxy(DeviceComponentManager):
     """This is a proxy to the pasdbus bus."""
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self: _PasdBusProxy,
         fqdn: str,
@@ -158,7 +158,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
     or the real hardware.
     """
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self: FndhComponentManager,
         logger: logging.Logger,
         communication_state_callback: Callable[[CommunicationStatus], None],
