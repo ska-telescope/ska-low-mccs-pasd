@@ -1333,12 +1333,20 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         """
         Evaluate the power state of the FieldStation.
 
-        * FieldStation is UNKNOWN if any smartboxes are UNKNOWN.
         * FieldStation is ON if any smartboxes are ON.
         * FieldStation is STANDBY if any smartboxes are STANDBY.
         * FieldStation is OFF if all smartboxes are OFF.
         * FieldStation is UNKNOWN if none of these were matched.
         """
+        # We don't want to take into account UNKNOWN smartboxes here, that's taken care
+        # in the healthState.
+        trimmed_smartbox_power_states = [
+            smartbox_power_state
+            for smartbox_power_state in self._smartbox_power_state.values()
+            if smartbox_power_state != PowerState.UNKNOWN
+        ]
+        self.logger.error(f"{trimmed_smartbox_power_states=}")
+        self.logger.error(f"{self._smartbox_power_state=}")
 
         def transition_to(power_state: PowerState, msg: str | None = None) -> None:
             if self._power_state != power_state:
@@ -1347,33 +1355,32 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     or f"At least one Smartbox is {power_state.name}, "
                     f"FieldStation transitioning to {power_state.name} state ...."
                 )
-                self._component_state_callback(power=power_state)
                 self._power_state = power_state
+            self._component_state_callback(power=power_state)
 
-        with self._power_state_lock:
-            match self._smartbox_power_state:
-                case _ if PowerState.UNKNOWN in self._smartbox_power_state.values():
-                    transition_to(PowerState.UNKNOWN)
-                case _ if PowerState.ON in self._smartbox_power_state.values():
-                    transition_to(PowerState.ON)
-                case _ if PowerState.STANDBY in self._smartbox_power_state.values():
-                    transition_to(PowerState.STANDBY)
-                case _ if all(
-                    power == PowerState.OFF
-                    for power in self._smartbox_power_state.values()
-                ):
-                    transition_to(
-                        PowerState.OFF,
-                        msg=(
-                            "All smartboxes are `OFF`, "
-                            "FieldStation transitioning to `OFF` state ...."
-                        ),
-                    )
-                case _:
-                    transition_to(
-                        PowerState.UNKNOWN,
-                        msg=(
-                            "No PowerState rules matched, "
-                            "FieldStation transitioning to `UNKNOWN` state ...."
-                        ),
-                    )
+        if trimmed_smartbox_power_states:
+            with self._power_state_lock:
+                match self._smartbox_power_state:
+                    case _ if PowerState.ON in trimmed_smartbox_power_states:
+                        transition_to(PowerState.ON)
+                    case _ if PowerState.STANDBY in trimmed_smartbox_power_states:
+                        transition_to(PowerState.STANDBY)
+                    case _ if all(
+                        power == PowerState.OFF
+                        for power in trimmed_smartbox_power_states
+                    ):
+                        transition_to(
+                            PowerState.OFF,
+                            msg=(
+                                "All smartboxes are `OFF`, "
+                                "FieldStation transitioning to `OFF` state ...."
+                            ),
+                        )
+                    case _:
+                        transition_to(
+                            PowerState.UNKNOWN,
+                            msg=(
+                                "No PowerState rules matched, "
+                                "FieldStation transitioning to `UNKNOWN` state ...."
+                            ),
+                        )
