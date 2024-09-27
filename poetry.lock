@@ -2977,7 +2977,7 @@ transitions = "^0.9.0"
 type = "git"
 url = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git"
 reference = "composite-commmand-proxy"
-resolved_reference = "d260af81f268c67cd0d0cd7eeeaaa92c18f4beab"
+resolved_reference = "58ce7691196f4141a57a6863dc5f1d6ae585c062"
 
 [[package]]
 name = "ska-ser-devices"
