@@ -16,13 +16,7 @@ from datetime import datetime, timezone
 from typing import Any, Final, Optional, cast
 
 import tango
-from ska_control_model import (
-    CommunicationStatus,
-    HealthState,
-    PowerState,
-    ResultCode,
-    TaskStatus,
-)
+from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import (
     DeviceInitCommand,
@@ -264,7 +258,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             self: MccsFNDH.ConfigureCommand,
             *args: Any,
             **kwargs: Any,
-        ) -> tuple[TaskStatus, str]:
+        ) -> tuple[ResultCode, str]:
             """
             Implement :py:meth:`.MccsFNDH.Configure` command functionality.
 
@@ -296,7 +290,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 self._device._humidityThreshold = humidity_threshold
                 self.logger.debug(f"Humidity threshold set to {humidity_threshold}.")
 
-            return (TaskStatus.COMPLETED, "Configure completed OK")
+            return (ResultCode.OK, "Configure completed OK")
 
     @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
     def Configure(self: MccsFNDH, argin: str) -> DevVarLongStringArrayType:
