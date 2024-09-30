@@ -200,6 +200,10 @@ class MccsFieldStation(SKABaseDevice):
         self._health_model.update_state(
             communicating=communication_state == CommunicationStatus.ESTABLISHED
         )
+        if communication_state != CommunicationStatus.ESTABLISHED:
+            self._component_state_callback(power=PowerState.UNKNOWN)
+        if communication_state == CommunicationStatus.ESTABLISHED:
+            self._component_state_callback(power=self.component_manager._power_state)
 
     def _component_state_callback(  # noqa: C901
         self: MccsFieldStation,

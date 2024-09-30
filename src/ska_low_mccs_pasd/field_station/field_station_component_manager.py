@@ -1367,7 +1367,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     f"FieldStation transitioning to {power_state.name} state ...."
                 )
                 self._power_state = power_state
-            self._component_state_callback(power=power_state)
+                self._component_state_callback(power=power_state)
 
         if trimmed_smartbox_power_states:
             with self._power_state_lock:
