@@ -346,8 +346,9 @@ def configuration_manager_fixture(
 class TestFieldStationComponentManager:
     """Tests of the FieldStation component manager."""
 
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     @pytest.fixture(name="field_station_component_manager")
-    def field_station_component_manager_fixture(  # pylint: disable=too-many-arguments
+    def field_station_component_manager_fixture(
         self: TestFieldStationComponentManager,
         test_context: str,
         logger: logging.Logger,
@@ -513,7 +514,8 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
-    def test_antenna_power_on(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_antenna_power_on(
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         antenna_id: str,
@@ -631,7 +633,8 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
-    def test_antenna_power_off(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_antenna_power_off(
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         antenna_id: str,
@@ -789,8 +792,9 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    # pylint: disable=too-many-locals, too-many-branches
     def test_on_off_commands(  # noqa: C901
-        # pylint: disable=too-many-arguments, too-many-locals, too-many-branches
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         component_manager_command: Any,
@@ -986,7 +990,8 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
-    def test_manual_config_commands(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_manual_config_commands(
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
         component_manager_command: Any,
@@ -1034,3 +1039,37 @@ class TestFieldStationComponentManager:
             getattr(field_station_component_manager, component_manager_attribute)
             == expected_config_output
         )
+
+    def test_smartbox_port_mask(
+        self: TestFieldStationComponentManager,
+        field_station_component_manager: FieldStationComponentManager,
+        mock_smartboxes: list[unittest.mock.Mock],
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test the FieldStation setting smartbox port mask.
+
+        :param field_station_component_manager: A FieldStation component manager
+            with communication established.
+        :param mock_smartboxes: A list of mock Smartbox devices.
+        :param mock_callbacks: mock callables.
+        """
+        field_station_component_manager.start_communicating()
+
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_not_called()
+
+        for smartbox_no, smartbox in enumerate(mock_smartboxes):
+            if smartbox_no < 20:  # all these smartboxes have antennas on every port.
+                assert smartbox.portMask == [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS
+            elif smartbox_no == 20:  # this smartbox has some ports with antennas
+                assert smartbox.portMask == [
+                    i >= 3 for i in range(PasdData.NUMBER_OF_SMARTBOX_PORTS)
+                ]
+            else:  # these antennas have no ports with antennas
+                assert smartbox.portMask == [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS
