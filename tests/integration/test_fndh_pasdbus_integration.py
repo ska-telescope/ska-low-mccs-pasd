@@ -86,7 +86,7 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
         # ================================================================
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def test_communication(
         self: TestfndhPasdBusIntegration,
         fndh_device: tango.DeviceProxy,
@@ -377,7 +377,7 @@ class TestfndhPasdBusIntegration:
             == tango.AttrQuality.ATTR_ALARM
         )
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def test_port_power(
         self: TestfndhPasdBusIntegration,
         fndh_device: tango.DeviceProxy,

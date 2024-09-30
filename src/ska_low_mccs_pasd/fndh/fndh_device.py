@@ -440,7 +440,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 max_value=register["max_value"],
             )
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def _setup_fndh_attribute(
         self: MccsFNDH,
         attribute_name: str,
