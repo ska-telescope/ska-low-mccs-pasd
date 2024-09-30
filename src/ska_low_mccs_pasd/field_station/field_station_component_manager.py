@@ -511,17 +511,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         if failure_log:
             self.logger.error(f"Failure in the `ON` command -> {failure_log}")
-            task_callback(
-                status=TaskStatus.FAILED,
-                result=(ResultCode.FAILED, "Didn't turn on all unmasked antennas."),
-            )
             return
 
         self.logger.info("All unmasked antennas turned on.")
-        task_callback(
-            status=TaskStatus.COMPLETED,
-            result=(ResultCode.OK, "All unmasked antennas turned on."),
-        )
 
     def standby(
         self: FieldStationComponentManager, task_callback: Optional[Callable] = None
@@ -579,20 +571,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         if failure_log:
             self.logger.error(f"Failure in the `STANDBY` command -> {failure_log}")
-            task_callback(
-                status=TaskStatus.FAILED,
-                result=(ResultCode.FAILED, "Didn't turn on all FNDH ports."),
-            )
             return
 
         self.logger.info("All FNDH ports turned on. All Smartbox ports turn off.")
-        task_callback(
-            status=TaskStatus.COMPLETED,
-            result=(
-                ResultCode.OK,
-                "All FNDH ports turned on. All Smartbox ports turn off.",
-            ),
-        )
 
     def _power_fndh_ports(
         self: FieldStationComponentManager,
