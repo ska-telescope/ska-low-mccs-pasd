@@ -22,8 +22,9 @@ import tango
 from bidict import bidict
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_mccs_common.component import DeviceComponentManager
-from ska_low_mccs_common.component.command_proxy import (
-    MccsCommandProxy,
+from ska_low_mccs_common.component.command_proxy import MccsCommandProxy
+from ska_low_mccs_common.component.composite_command_proxy import (
+    CompositeCommandResultEvaluator,
     MccsCompositeCommandProxy,
 )
 from ska_tango_base.base import check_communicating
@@ -497,7 +498,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     smartbox_on_commands += MccsCommandProxy(
                         smartbox_trl, "On", self.logger
                     )
-                smartbox_on_commands(timeout=time_left)
+                smartbox_on_commands(
+                    command_evaluator=CompositeCommandResultEvaluator(),
+                    timeout=time_left,
+                )
 
         except TimeoutError as e:
             failure_log = f"Timeout when turning station on {e}, "
@@ -509,14 +513,14 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self.logger.error(f"Failure in the `ON` command -> {failure_log}")
             task_callback(
                 status=TaskStatus.FAILED,
-                result="Didn't turn on all unmasked antennas.",
+                result=(ResultCode.FAILED, "Didn't turn on all unmasked antennas."),
             )
             return
 
         self.logger.info("All unmasked antennas turned on.")
         task_callback(
             status=TaskStatus.COMPLETED,
-            result="All unmasked antennas turned on.",
+            result=(ResultCode.OK, "All unmasked antennas turned on."),
         )
 
     def standby(
@@ -555,14 +559,17 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
             fndh_result, time_left = self._power_fndh_ports(PowerState.ON, timeout)
             if fndh_result == ResultCode.OK:
-                smartbox_on_commands = MccsCompositeCommandProxy(
+                smartbox_standby_commands = MccsCompositeCommandProxy(
                     task_callback, self.logger
                 )
                 for smartbox_trl in self._smartbox_proxys:
-                    smartbox_on_commands += MccsCommandProxy(
+                    smartbox_standby_commands += MccsCommandProxy(
                         smartbox_trl, "Standby", self.logger
                     )
-                smartbox_on_commands(timeout=time_left)
+                smartbox_standby_commands(
+                    command_evaluator=CompositeCommandResultEvaluator(),
+                    timeout=time_left,
+                )
 
         except TimeoutError as e:
             failure_log = f"Timeout when turning station standby {e}, "
@@ -574,14 +581,17 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self.logger.error(f"Failure in the `STANDBY` command -> {failure_log}")
             task_callback(
                 status=TaskStatus.FAILED,
-                result="Didn't turn on all FNDH ports.",
+                result=(ResultCode.FAILED, "Didn't turn on all FNDH ports."),
             )
             return
 
         self.logger.info("All FNDH ports turned on. All Smartbox ports turn off.")
         task_callback(
             status=TaskStatus.COMPLETED,
-            result="All FNDH ports turned on. All Smartbox ports turn off.",
+            result=(
+                ResultCode.OK,
+                "All FNDH ports turned on. All Smartbox ports turn off.",
+            ),
         )
 
     def _power_fndh_ports(
@@ -714,14 +724,17 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self.logger.error(f"Failure in the `OFF` command -> {failure_log}")
             task_callback(
                 status=TaskStatus.FAILED,
-                result="Didn't turn off all FNDH ports.",
+                result=(ResultCode.FAILED, "Didn't turn off all FNDH ports."),
             )
             return
 
         self.logger.info("All FNDH ports turned off. All Smartbox ports turned off.")
         task_callback(
             status=TaskStatus.COMPLETED,
-            result="All FNDH ports turned off. All Smartbox ports turned off.",
+            result=(
+                ResultCode.OK,
+                "All FNDH ports turned off. All Smartbox ports turned off.",
+            ),
         )
 
     def _get_masked_smartbox_ports(
