@@ -90,7 +90,9 @@ def turn_pasd_devices_online(
     smartbox_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.UNKNOWN)
     if smartbox_on:
-        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.STANDBY
+        )
     else:
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
     change_event_callbacks["smartbox_state"].assert_not_called()
@@ -247,8 +249,12 @@ class TestSmartBoxPasdBusIntegration:
         json_argument = json.dumps(
             {"port_powers": desired_port_powers, "stay_on_when_offline": True}
         )
+
+        # Turning on FNDH ports should send the Smartbox to STANDBY.
         pasd_bus_device.SetFndhPortPowers(json_argument)
-        change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.STANDBY
+        )
         assert pasd_bus_device.fndhPortsPowerSensed[off_smartbox_attached_port - 1]
 
         desired_port_powers[off_smartbox_attached_port - 1] = False
@@ -260,6 +266,11 @@ class TestSmartBoxPasdBusIntegration:
         assert not pasd_bus_device.fndhPortsPowerSensed[off_smartbox_attached_port - 1]
 
         smartbox_device.On()
+        # Check the MccsSmartbox device goes to STANDBY once the FNDH port is on.
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.STANDBY
+        )
+        # Check the MccsSmartbox devices goes to ON once the Smartbox port is on.
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
         assert pasd_bus_device.fndhPortsPowerSensed[off_smartbox_attached_port - 1]
 
@@ -591,7 +602,11 @@ class TestSmartBoxPasdBusIntegration:
         )
         assert smartbox_device.PasdStatus == "OK"
 
-        # Check the MccsSmartbox device is turned on.
+        # Check the MccsSmartbox device goes to STANDBY once the FNDH port is on.
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.STANDBY
+        )
+        # Check the MccsSmartbox devices goes to ON once the Smartbox port is on.
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["smartbox_state"].assert_not_called()
         change_event_callbacks["fndhportpowerstate"].assert_change_event(PowerState.ON)
@@ -696,7 +711,9 @@ class TestSmartBoxPasdBusIntegration:
             expected_smartbox_port_states[port - 1] = True
             change_event_callbacks[
                 f"smartbox{smartbox_id}portpowersensed"
-            ].assert_change_event(expected_smartbox_port_states, 4, True)
+            ].assert_change_event(
+                expected_smartbox_port_states, lookahead=4, consume_nonmatches=True
+            )
             assert (
                 list(smartbox_device.PortsPowerSensed) == expected_smartbox_port_states
             )
