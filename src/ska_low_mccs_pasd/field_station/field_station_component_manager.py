@@ -384,7 +384,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     )
         self.antenna_powers_changed.set()
         self._component_state_callback(antenna_powers=self.antenna_powers)
-        self._evaluate_power_state()
 
     def _on_fndh_port_change(
         self: FieldStationComponentManager,
@@ -503,9 +502,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     timeout=time_left,
                 )
 
-        except TimeoutError as e:
-            failure_log = f"Timeout when turning station on {e}, "
-
         except Exception as e:  # pylint: disable=broad-exception-caught
             failure_log = f"Unhandled error when turning station on {e}, "
 
@@ -563,9 +559,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     timeout=time_left,
                 )
 
-        except TimeoutError as e:
-            failure_log = f"Timeout when turning station standby {e}, "
-
         except Exception as e:  # pylint: disable=broad-exception-caught
             failure_log = f"Unhandled error when turning station standby {e}, "
 
@@ -581,6 +574,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         timeout: int,
     ) -> tuple[ResultCode, int]:
         assert self._fndh_proxy._proxy
+        result = ResultCode.FAILED
 
         desired_fndh_port_powers: list[bool | None] = [
             power == PowerState.ON
@@ -607,14 +601,13 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self.logger.info(
                 f"waiting on fndh ports to change in {timeout} seconds ..."
             )
-            self.wait_for_fndh_port(desired_fndh_port_powers, timeout)
+            result = self.wait_for_fndh_port(desired_fndh_port_powers, timeout)
 
             t2 = time.time()
             time_taken = int(t2 - t1)
             timeout -= time_taken
 
-            return ResultCode.OK, timeout
-        return ResultCode.FAILED, timeout
+        return result, timeout
 
     def wait_for_fndh_port(  # noqa: C901
         self: FieldStationComponentManager, desired: list[Optional[bool]], timeout: int
@@ -625,8 +618,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :param desired: the desired port powers looks like `[False]*28`
         :param timeout: the maximum time to wait in seconds (s)
 
-        :raises TimeoutError: If the fndh port powers did not match the desired state
-            after the timout period
         :return: A ResultCode and a string.
         """
 
@@ -656,7 +647,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 remaining_time = timeout - int(time_waited)
                 return self.wait_for_fndh_port(desired, remaining_time)
             self.logger.error("Timeout waiting for fndh ports to change state.")
-            raise TimeoutError("The FndhPorts did not change in time")
+            return ResultCode.FAILED
 
         self.logger.info("All FNDH ports reached desired state.")
         return ResultCode.OK
@@ -694,9 +685,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             # Wait for the smartbox to change state
             timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
             self._power_fndh_ports(PowerState.OFF, timeout)
-
-        except TimeoutError as e:
-            failure_log = f"Timeout when turning station off {e}, "
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             failure_log = f"Unhandled error when turning station off {e}, "

@@ -186,7 +186,8 @@ def mock_smartboxes_fixture(
     for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         builder = MockDeviceBuilder()
         builder.set_state(tango.DevState.ON)
-        builder.add_command("On", (ResultCode.OK, "Dummy return string"))
+        builder.add_command("On", ([ResultCode.OK], ["Dummy return string"]))
+        builder.add_command("Standby", ([ResultCode.OK], ["Dummy return string"]))
         builder.add_result_command("PowerOnPort", ResultCode.OK)
         builder.add_result_command("PowerOffPort", ResultCode.OK)
         builder.add_result_command("SetPortPowers", ResultCode.QUEUED)
@@ -725,7 +726,10 @@ class TestFieldStationComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    "All unmasked antennas turned on.",
+                    (
+                        ResultCode.OK,
+                        "MccsCompositeCommandProxy completed without warning.",
+                    ),
                 ),
                 id="Turn on all antennas when all unmasked",
             ),
@@ -736,7 +740,10 @@ class TestFieldStationComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    "All unmasked antennas turned on.",
+                    (
+                        ResultCode.OK,
+                        "MccsCompositeCommandProxy completed without warning.",
+                    ),
                 ),
                 id="Turn on all antennas when one masked",
             ),
@@ -747,7 +754,10 @@ class TestFieldStationComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    "All FNDH ports turned off. All Smartbox ports turned off.",
+                    (
+                        ResultCode.OK,
+                        "All FNDH ports turned off. All Smartbox ports turned off.",
+                    ),
                 ),
                 id="Turn off all antennas when all unmasked",
             ),
@@ -758,7 +768,10 @@ class TestFieldStationComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    "All FNDH ports turned off. All Smartbox ports turned off.",
+                    (
+                        ResultCode.OK,
+                        "All FNDH ports turned off. All Smartbox ports turned off.",
+                    ),
                 ),
                 id="Turn off all antennas when one masked",
             ),

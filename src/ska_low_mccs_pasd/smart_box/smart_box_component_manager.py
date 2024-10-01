@@ -29,6 +29,11 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 
 __all__ = ["SmartBoxComponentManager"]
 
+RESULT_TO_TASK = {
+    ResultCode.OK: TaskStatus.COMPLETED,
+    ResultCode.FAILED: TaskStatus.FAILED,
+}
+
 
 class Port:
     """A instance of a Smartbox Port."""
@@ -571,7 +576,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         power_state: PowerState,
         fndh_port: int,
         timeout: int,
-    ) -> int:
+    ) -> tuple[ResultCode, int]:
         desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
         desired_port_powers[fndh_port - 1] = power_state == PowerState.ON
         json_argument = json.dumps(
@@ -588,26 +593,23 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         power_state: PowerState,
         fndh_port: int,
         timeout: int,
-    ) -> int:
+    ) -> tuple[ResultCode, int]:
         while self._fndh_port_powers[fndh_port - 1] != power_state:
             self.logger.debug(
                 f"Waiting for FNDH port {self._fndh_port} to change state."
             )
             t1 = time.time()
-            self.fndh_ports_change.wait(3)
+            self.fndh_ports_change.wait(timeout)
             t2 = time.time()
             timeout -= int(t2 - t1)
             self.fndh_ports_change.clear()
             if timeout < 0:
-                raise TimeoutError(
-                    f"FNDH port {self._fndh_port} didn't "
-                    f"change state in {timeout} seconds."
-                )
-        return timeout
+                return ResultCode.FAILED, timeout
+        return ResultCode.OK, timeout
 
     def _power_smartbox_ports(
         self: SmartBoxComponentManager, power_state: PowerState, timeout: int
-    ) -> int:
+    ) -> tuple[ResultCode, int]:
         desired_port_powers: list[bool] = [
             power_state == PowerState.ON
         ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
@@ -625,22 +627,20 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
     def _wait_for_smartbox_ports_state(
         self: SmartBoxComponentManager, desired_port_powers: list[bool], timeout: int
-    ) -> int:
+    ) -> tuple[ResultCode, int]:
         desired_port_power_states = [
             PowerState.ON if power else PowerState.OFF for power in desired_port_powers
         ]
         while not self._smartbox_port_powers == desired_port_power_states:
             self.logger.debug("Waiting for unmasked smartbox ports to change state")
             t1 = time.time()
-            self.smartbox_ports_change.wait(3)
+            self.smartbox_ports_change.wait(timeout)
             t2 = time.time()
             timeout -= int(t2 - t1)
             self.smartbox_ports_change.clear()
             if timeout < 0:
-                raise TimeoutError(
-                    f"Unmasked smartbox ports didn't change state in {timeout} seconds."
-                )
-        return timeout
+                return ResultCode.FAILED, timeout
+        return ResultCode.OK, timeout
 
     @check_communicating
     def on(
@@ -668,6 +668,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
+        result = ResultCode.OK
         if self._pasd_bus_proxy is None:
             raise ValueError(f"Power on smartbox '{self._fndh_port} failed'")
 
@@ -683,9 +684,12 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         try:
             timeout = 60  # seconds
             if self._fndh_port_powers[self._fndh_port - 1] != PowerState.ON:
-                timeout = self._power_fndh_port(PowerState.ON, self._fndh_port, timeout)
+                result, timeout = self._power_fndh_port(
+                    PowerState.ON, self._fndh_port, timeout
+                )
 
-            self._power_smartbox_ports(PowerState.ON, timeout)
+            if result == ResultCode.OK:
+                result, _ = self._power_smartbox_ports(PowerState.ON, timeout)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
@@ -697,10 +701,10 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         if task_callback:
             task_callback(
-                status=TaskStatus.COMPLETED,
+                status=RESULT_TO_TASK[result],
                 result=(
-                    ResultCode.OK,
-                    f"Power on smartbox '{self._fndh_port} success'",
+                    result,
+                    f"Power on smartbox '{self._fndh_port} {result.name}'",
                 ),
             )
 
@@ -730,6 +734,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
+        result = ResultCode.OK
         if self._pasd_bus_proxy is None:
             raise ValueError(f"Power smartbox '{self._fndh_port} to standby failed'")
 
@@ -745,9 +750,12 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         try:
             timeout = 60  # seconds
             if self._fndh_port_powers[self._fndh_port - 1] != PowerState.ON:
-                timeout = self._power_fndh_port(PowerState.ON, self._fndh_port, timeout)
+                result, timeout = self._power_fndh_port(
+                    PowerState.ON, self._fndh_port, timeout
+                )
 
-            self._power_smartbox_ports(PowerState.OFF, timeout)
+            if result == ResultCode.OK:
+                result, _ = self._power_smartbox_ports(PowerState.OFF, timeout)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
@@ -759,10 +767,10 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         if task_callback:
             task_callback(
-                status=TaskStatus.COMPLETED,
+                status=RESULT_TO_TASK[result],
                 result=(
                     ResultCode.OK,
-                    f"Power smartbox '{self._fndh_port} to standby success'",
+                    f"Power smartbox '{self._fndh_port} to standby {result.name}'",
                 ),
             )
 
@@ -792,6 +800,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
+        result = ResultCode.OK
         if self._pasd_bus_proxy is None:
             raise ValueError(f"Power off smartbox '{self._fndh_port} failed'")
 
@@ -804,7 +813,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         try:
             timeout = 60  # seconds
             if self._fndh_port_powers[self._fndh_port - 1] != PowerState.OFF:
-                timeout = self._power_fndh_port(
+                result, _ = self._power_fndh_port(
                     PowerState.OFF, self._fndh_port, timeout
                 )
 
@@ -818,10 +827,10 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         if task_callback:
             task_callback(
-                status=TaskStatus.COMPLETED,
+                status=RESULT_TO_TASK[result],
                 result=(
-                    ResultCode.OK,
-                    f"Power off smartbox '{self._fndh_port} success'",
+                    result,
+                    f"Power off smartbox '{self._fndh_port} {result.name}'",
                 ),
             )
 
@@ -1047,3 +1056,22 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param value: the value to write.
         """
         self._pasd_bus_proxy.write_attribute(attribute_name, value)
+
+    @property
+    def port_mask(self: SmartBoxComponentManager) -> list[bool]:
+        """
+        Getter for the port mask.
+
+        :returns: list of masked ports on the smartbox.
+        """
+        return self._port_mask
+
+    @port_mask.setter
+    def port_mask(self: SmartBoxComponentManager, value: list[bool]) -> None:
+        """
+        Setter for the port mask.
+
+        :param value: list of masked ports on the smartbox.
+        """
+        self._port_mask = value
+        self._evaluate_power()

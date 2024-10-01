@@ -303,7 +303,7 @@ class TestSmartBoxComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    (ResultCode.OK, "Power on smartbox '{fndh_port} success'"),
+                    (ResultCode.OK, "Power on smartbox '{fndh_port} OK'"),
                 ),
             ),
             (
@@ -311,7 +311,7 @@ class TestSmartBoxComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    (ResultCode.OK, "Power off smartbox '{fndh_port} success'"),
+                    (ResultCode.OK, "Power off smartbox '{fndh_port} OK'"),
                 ),
             ),
         ],
@@ -509,7 +509,7 @@ class TestSmartBoxComponentManager:
             status=TaskStatus.COMPLETED,
             result=(
                 ResultCode.OK,
-                f"Power smartbox '{fndh_port} to standby success'",
+                f"Power smartbox '{fndh_port} to standby OK'",
             ),
         )
 

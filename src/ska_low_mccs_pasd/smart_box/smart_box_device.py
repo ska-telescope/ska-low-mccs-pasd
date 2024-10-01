@@ -498,7 +498,7 @@ class MccsSmartBox(SKABaseDevice):
 
         :return: the port mask for this smartbox's ports.
         """
-        return self.component_manager._port_mask
+        return self.component_manager.port_mask
 
     @portMask.write  # type: ignore[no-redef]
     def portMask(self: MccsSmartBox, port_mask: list[bool]) -> None:
@@ -516,7 +516,7 @@ class MccsSmartBox(SKABaseDevice):
             raise ValueError(
                 f"Can't set port mask with wrong number of values: {len(port_mask)}."
             )
-        self.component_manager._port_mask = port_mask
+        self.component_manager.port_mask = port_mask
 
     @attribute(dtype="DevString", label="ReadableName")
     def ReadableName(self: MccsSmartBox) -> str:
