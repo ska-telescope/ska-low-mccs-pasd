@@ -212,23 +212,22 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         if self._antenna_mapping:
             self.has_antenna = True
 
+        self._update_smartbox_mask()
+
+    def _update_smartbox_mask(self: FieldStationComponentManager) -> None:
+        """Update the mask on the smartboxe for their ports."""
         try:
-            self._update_smartbox_mask()
-        except ConnectionError:
-            self.logger.info(
+            for smartbox_trl, smartbox_proxy in self._smartbox_proxys.items():
+                assert smartbox_proxy._proxy is not None
+                smartbox_name = self._smartbox_trl_name_map[smartbox_trl]
+                port_mask = self._get_smartbox_port_mask(smartbox_name)
+                smartbox_proxy._proxy.portMask = port_mask
+        except Exception:  # pylint: disable=broad-exception-caught
+            self.logger.warning(
                 "Tried to update smartbox port mask on smartboxes, "
                 "however connection is not established. "
                 "Will try again when connection established."
             )
-
-    @check_communicating
-    def _update_smartbox_mask(self: FieldStationComponentManager) -> None:
-        """Update the mask on the smartboxe for their ports."""
-        for smartbox_trl, smartbox_proxy in self._smartbox_proxys.items():
-            assert smartbox_proxy._proxy is not None
-            smartbox_name = self._smartbox_trl_name_map[smartbox_trl]
-            port_mask = self._get_smartbox_port_mask(smartbox_name)
-            smartbox_proxy._proxy.portMask = port_mask
 
     def start_communicating(self: FieldStationComponentManager) -> None:
         """Establish communication."""
@@ -490,9 +489,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
             fndh_result, time_left = self._power_fndh_ports(PowerState.ON, timeout)
             if fndh_result == ResultCode.OK:
-                smartbox_on_commands = MccsCompositeCommandProxy(
-                    task_callback, self.logger
-                )
+                smartbox_on_commands = MccsCompositeCommandProxy(self.logger)
                 for smartbox_trl in self._smartbox_proxys:
                     smartbox_on_commands += MccsCommandProxy(
                         smartbox_trl, "On", self.logger
@@ -507,9 +504,17 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         if failure_log:
             self.logger.error(f"Failure in the `ON` command -> {failure_log}")
+            task_callback(
+                status=TaskStatus.FAILED,
+                result=(ResultCode.FAILED, "Didn't turn on all unmasked antennas."),
+            )
             return
 
         self.logger.info("All unmasked antennas turned on.")
+        task_callback(
+            status=TaskStatus.COMPLETED,
+            result=(ResultCode.OK, "All unmasked antennas turned on."),
+        )
 
     def standby(
         self: FieldStationComponentManager, task_callback: Optional[Callable] = None
@@ -547,9 +552,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
             fndh_result, time_left = self._power_fndh_ports(PowerState.ON, timeout)
             if fndh_result == ResultCode.OK:
-                smartbox_standby_commands = MccsCompositeCommandProxy(
-                    task_callback, self.logger
-                )
+                smartbox_standby_commands = MccsCompositeCommandProxy(self.logger)
                 for smartbox_trl in self._smartbox_proxys:
                     smartbox_standby_commands += MccsCommandProxy(
                         smartbox_trl, "Standby", self.logger
@@ -564,9 +567,20 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         if failure_log:
             self.logger.error(f"Failure in the `STANDBY` command -> {failure_log}")
+            task_callback(
+                status=TaskStatus.FAILED,
+                result=(ResultCode.FAILED, "Didn't turn on all FNDH ports."),
+            )
             return
 
         self.logger.info("All FNDH ports turned on. All Smartbox ports turn off.")
+        task_callback(
+            status=TaskStatus.COMPLETED,
+            result=(
+                ResultCode.OK,
+                "All FNDH ports turned on. All Smartbox ports turn off.",
+            ),
+        )
 
     def _power_fndh_ports(
         self: FieldStationComponentManager,

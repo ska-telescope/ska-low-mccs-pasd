@@ -2950,7 +2950,7 @@ reference = "ska-nexus"
 
 [[package]]
 name = "ska-low-mccs-common"
-version = "0.13.1"
+version = "0.13.2"
 description = "The Monitoring, Control and Calibration Subsystem (MCCS) of the SKA Low telescope"
 optional = false
 python-versions = "^3.10"
@@ -2977,7 +2977,7 @@ transitions = "^0.9.0"
 type = "git"
 url = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git"
 reference = "composite-commmand-proxy"
-resolved_reference = "aac56210fb3154772cc0ba3be89e12a55d824dde"
+resolved_reference = "eb628aafebaba69767058aff3497bb5e880369ae"
 
 [[package]]
 name = "ska-ser-devices"

@@ -195,8 +195,8 @@ def smartboxes_under_test_fixture(
     return smartboxes_under_test
 
 
-@pytest.fixture(name="functional_test_context", scope="module")
 # pylint: disable=too-many-arguments, too-many-positional-arguments
+@pytest.fixture(name="functional_test_context", scope="module")
 def functional_test_context_fixture(
     is_true_context: bool,
     station_label: str,

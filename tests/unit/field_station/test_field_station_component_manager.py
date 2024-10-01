@@ -348,8 +348,8 @@ def configuration_manager_fixture(
 class TestFieldStationComponentManager:
     """Tests of the FieldStation component manager."""
 
-    @pytest.fixture(name="field_station_component_manager")
     # pylint: disable=too-many-arguments, too-many-positional-arguments
+    @pytest.fixture(name="field_station_component_manager")
     def field_station_component_manager_fixture(
         self: TestFieldStationComponentManager,
         test_context: str,
@@ -728,7 +728,7 @@ class TestFieldStationComponentManager:
                     TaskStatus.COMPLETED,
                     (
                         ResultCode.OK,
-                        "MccsCompositeCommandProxy completed without warning.",
+                        "All unmasked antennas turned on.",
                     ),
                 ),
                 id="Turn on all antennas when all unmasked",
@@ -742,7 +742,7 @@ class TestFieldStationComponentManager:
                     TaskStatus.COMPLETED,
                     (
                         ResultCode.OK,
-                        "MccsCompositeCommandProxy completed without warning.",
+                        "All unmasked antennas turned on.",
                     ),
                 ),
                 id="Turn on all antennas when one masked",
@@ -777,7 +777,7 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
-    # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+    # pylint: disable=too-many-arguments, too-many-positional-arguments,too-many-locals
     def test_on_off_commands(  # noqa: C901
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,
@@ -992,3 +992,37 @@ class TestFieldStationComponentManager:
             getattr(field_station_component_manager, component_manager_attribute)
             == expected_config_output
         )
+
+    def test_smartbox_port_mask(
+        self: TestFieldStationComponentManager,
+        field_station_component_manager: FieldStationComponentManager,
+        mock_smartboxes: list[unittest.mock.Mock],
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test the FieldStation setting smartbox port mask.
+
+        :param field_station_component_manager: A FieldStation component manager
+            with communication established.
+        :param mock_smartboxes: A list of mock Smartbox devices.
+        :param mock_callbacks: mock callables.
+        """
+        field_station_component_manager.start_communicating()
+
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_not_called()
+
+        for smartbox_no, smartbox in enumerate(mock_smartboxes):
+            if smartbox_no < 20:  # all these smartboxes have antennas on every port.
+                assert smartbox.portMask == [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS
+            elif smartbox_no == 20:  # this smartbox has some ports with antennas
+                assert smartbox.portMask == [
+                    i >= 3 for i in range(PasdData.NUMBER_OF_SMARTBOX_PORTS)
+                ]
+            else:  # these antennas have no ports with antennas
+                assert smartbox.portMask == [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS
