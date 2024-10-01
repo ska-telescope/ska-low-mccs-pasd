@@ -217,7 +217,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         self._update_smartbox_mask()
 
-    @check_communicating
     def _update_smartbox_mask(self: FieldStationComponentManager) -> None:
         """Update the mask on the smartboxe for their ports."""
         try:
