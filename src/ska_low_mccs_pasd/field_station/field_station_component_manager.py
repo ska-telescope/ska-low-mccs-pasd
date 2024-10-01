@@ -215,23 +215,23 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         if self._antenna_mapping:
             self.has_antenna = True
 
-        try:
-            self._update_smartbox_mask()
-        except ConnectionError:
-            self.logger.info(
-                "Tried to update smartbox port mask on smartboxes, "
-                "however connection is not established. "
-                "Will try again when connection established."
-            )
+        self._update_smartbox_mask()
 
     @check_communicating
     def _update_smartbox_mask(self: FieldStationComponentManager) -> None:
         """Update the mask on the smartboxe for their ports."""
-        for smartbox_trl, smartbox_proxy in self._smartbox_proxys.items():
-            assert smartbox_proxy._proxy is not None
-            smartbox_name = self._smartbox_trl_name_map[smartbox_trl]
-            port_mask = self._get_smartbox_port_mask(smartbox_name)
-            smartbox_proxy._proxy.portMask = port_mask
+        try:
+            for smartbox_trl, smartbox_proxy in self._smartbox_proxys.items():
+                assert smartbox_proxy._proxy is not None
+                smartbox_name = self._smartbox_trl_name_map[smartbox_trl]
+                port_mask = self._get_smartbox_port_mask(smartbox_name)
+                smartbox_proxy._proxy.portMask = port_mask
+        except Exception:  # pylint: disable=broad-exception-caught
+            self.logger.warning(
+                "Tried to update smartbox port mask on smartboxes, "
+                "however connection is not established. "
+                "Will try again when connection established."
+            )
 
     def start_communicating(self: FieldStationComponentManager) -> None:
         """Establish communication."""
