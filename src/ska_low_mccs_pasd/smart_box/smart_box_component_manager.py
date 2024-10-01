@@ -5,6 +5,7 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
+# pylint: disable=too-many-lines
 """This module implements the component management for smartbox."""
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ import json
 import logging
 import re
 import threading
+import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
@@ -26,6 +28,11 @@ from ska_tango_base.executor import TaskExecutorComponentManager
 from ska_low_mccs_pasd.pasd_data import PasdData
 
 __all__ = ["SmartBoxComponentManager"]
+
+RESULT_TO_TASK = {
+    ResultCode.OK: TaskStatus.COMPLETED,
+    ResultCode.FAILED: TaskStatus.FAILED,
+}
 
 
 class Port:
@@ -218,6 +225,7 @@ class _PasdBusProxy(DeviceComponentManager):
             unique id to identify the command in the queue.
         """
         assert self._proxy
+        self._proxy.InitializeFndh()
         return self._proxy.SetFndhPortPowers(json_argument)
 
     def write_attribute(
@@ -284,13 +292,19 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             Port(self.turn_on_port, port, logger) for port in range(1, port_count + 1)
         ]
         self._power_state = PowerState.UNKNOWN
+        self._desire_standby = False
         self._smartbox_nr = smartbox_nr
         self._readable_name = readable_name
         self._fndh_port: Optional[int] = None
         self._port_mask = [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS
         self._attribute_change_callback = attribute_change_callback
+        self.fndh_ports_change = threading.Event()
+        self.smartbox_ports_change = threading.Event()
 
         self._fndh_port_powers = [PowerState.UNKNOWN] * PasdData.NUMBER_OF_FNDH_PORTS
+        self._smartbox_port_powers = [
+            PowerState.UNKNOWN
+        ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
 
         self._field_station_proxy = DeviceComponentManager(
             field_station_name,
@@ -409,6 +423,23 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         for idx, attr in enumerate(attr_value):
             self._fndh_port_powers[idx] = PowerState.ON if attr else PowerState.OFF
+        self.fndh_ports_change.set()
+        self._evaluate_power()
+
+    def _on_smartbox_ports_power_changed(
+        self: SmartBoxComponentManager,
+        attr_name: str,
+        attr_value: list[bool],
+        attr_quality: tango.AttrQuality,
+    ) -> None:
+        assert attr_name.lower() == "portspowersensed", (
+            "failed to update the smartbox port powers "
+            f"{attr_name.lower()} is not portspowersensed"
+        )
+
+        for idx, attr in enumerate(attr_value):
+            self._smartbox_port_powers[idx] = PowerState.ON if attr else PowerState.OFF
+        self.smartbox_ports_change.set()
         self._evaluate_power()
 
     def update_fndh_port(self: SmartBoxComponentManager, fndh_port: int) -> None:
@@ -424,7 +455,23 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self._evaluate_power()
 
     def _evaluate_power(self: SmartBoxComponentManager) -> None:
-        """Evaluate the power state of the smartbox device."""
+        """
+        Evaluate the power state of the smartbox device.
+
+        * If the Smartbox's FNDH port is not known, the smartbox is UNKNOWN.
+        * If the Smartbox's FNDH port is OFF, the Smartbox is OFF.
+        * If the Smartbox's FNDH port is ON, and one of:
+            1. All its ports are OFF, while not being masked,
+            2. All its ports are OFF, and masked, and the desired state is STANDBY,
+
+          the Smartbox is STANDBY.
+        * If the Smartbox's FNDH port is ON, and one of:
+            1. Any of its ports are ON,
+            2. All its ports are OFF, and masked, and the desired state is not STANDBY,
+
+          the Smartbox is ON.
+        * If the Smartbox is not in any of the states above, it is UNKNOWN.
+        """
         timestamp = datetime.now(timezone.utc).timestamp()
         if self._fndh_port is None:
             self.logger.info(
@@ -434,40 +481,88 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self._update_component_state(power=PowerState.UNKNOWN)
             return
 
-        smartbox_power = self._fndh_port_powers[self._fndh_port - 1]
-        if self._power_state != smartbox_power:
-            self._power_state = smartbox_power
+        match self._fndh_port_powers[self._fndh_port - 1]:
+            # If the FNDH port is OFF, the Smartbox is OFF
+            case PowerState.OFF:
+                if self._power_state != PowerState.OFF:
+                    self.logger.info("Setting Smartbox to OFF as its FNDH port is OFF.")
+                    self._power_state = PowerState.OFF
+                    self._attribute_change_callback(
+                        "portspowersensed",
+                        [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+                        timestamp,
+                        tango.AttrQuality.ATTR_VALID,
+                    )
 
-        if self._power_state == PowerState.ON:
-            try:
-                port_power = getattr(
-                    self._pasd_bus_proxy._proxy,
-                    f"smartbox{self._smartbox_nr}portspowersensed",
-                )
-                self._attribute_change_callback(
-                    "portspowersensed",
-                    port_power,
-                    timestamp,
-                    tango.AttrQuality.ATTR_VALID,
-                )
-            except Exception:  # pylint: disable=broad-except
+            case PowerState.ON:
+                for port in self.ports:
+                    if port.desire_on:
+                        port.turn_on()
+
+                # If the FNDH port is ON, but all smartbox the ports are OFF,
+                # and all the ports aren't masked, the smartbox is STANDBY.
+                # However if the ports are all masked, and the last command given was
+                # Standby(), go to STANDBY.
+                if all(
+                    power == PowerState.OFF for power in self._smartbox_port_powers
+                ) and (
+                    not all(masked for masked in self._port_mask)
+                    or self._desire_standby
+                ):
+                    if self._power_state != PowerState.STANDBY:
+                        self.logger.info(
+                            "Setting Smartbox to STANDBY as its FNDH port is ON. "
+                            "And all its ports are OFF, while they aren't all masked."
+                        )
+                        self._power_state = PowerState.STANDBY
+
+                # If the FNDH port is ON, and (any of the smartbox ports are ON,
+                # or all smartbox ports are OFF, but they are all masked),
+                # the Smartbox is ON,
+                elif any(
+                    power == PowerState.ON for power in self._smartbox_port_powers
+                ) or all(masked for masked in self._port_mask):
+                    if self._power_state != PowerState.ON:
+                        self.logger.info(
+                            "Setting Smartbox to ON as its FNDH port is ON. "
+                            "And at least one of its ports is ON, "
+                            "or all of its ports are masked."
+                        )
+                        self._power_state = PowerState.ON
+                        try:
+                            port_power = getattr(
+                                self._pasd_bus_proxy._proxy,
+                                f"smartbox{self._smartbox_nr}portspowersensed",
+                            )
+                            self._attribute_change_callback(
+                                "portspowersensed",
+                                port_power,
+                                timestamp,
+                                tango.AttrQuality.ATTR_VALID,
+                            )
+                        except Exception:  # pylint: disable=broad-except
+                            self.logger.warning(
+                                "Unable to read smartbox port powers"
+                                "May be attempting read before attribute polled."
+                                "port powers will be updated when polled."
+                            )
+
+                else:
+                    self.logger.warning("No PowerState rules matched, going UNKNOWN")
+                    self._power_state = PowerState.UNKNOWN
+
+            case PowerState.UNKNOWN:
                 self.logger.warning(
-                    "Unable to read smartbox port powers"
-                    "May be attempting read before attribute polled."
-                    "port powers will be updated when polled."
+                    f"The FNDH port is known ({self._fndh_port}), "
+                    "however its PowerState is UNKNOWN"
                 )
-            for port in self.ports:
-                if port.desire_on:
-                    port.turn_on()
-        if self._power_state == PowerState.OFF:
-            self._attribute_change_callback(
-                "portspowersensed",
-                [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-                timestamp,
-                tango.AttrQuality.ATTR_VALID,
-            )
+                self._power_state = PowerState.UNKNOWN
 
-        self._update_component_state(power=smartbox_power)
+            case _:
+                self.logger.warning("No PowerState rules matched, going UNKNOWN")
+                self._power_state = PowerState.UNKNOWN
+
+        self._update_component_state(power=self._power_state)
 
     def stop_communicating(self: SmartBoxComponentManager) -> None:
         """Stop communication with components under control."""
@@ -475,6 +570,77 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             return
         self._pasd_bus_proxy.stop_communicating()
         self._update_component_state(power=None, fault=None)
+
+    def _power_fndh_port(
+        self: SmartBoxComponentManager,
+        power_state: PowerState,
+        fndh_port: int,
+        timeout: int,
+    ) -> tuple[ResultCode, int]:
+        desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
+        desired_port_powers[fndh_port - 1] = power_state == PowerState.ON
+        json_argument = json.dumps(
+            {
+                "port_powers": desired_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
+        self._pasd_bus_proxy.set_fndh_port_powers(json_argument)
+        return self._wait_for_fndh_port_state(power_state, fndh_port, timeout)
+
+    def _wait_for_fndh_port_state(
+        self: SmartBoxComponentManager,
+        power_state: PowerState,
+        fndh_port: int,
+        timeout: int,
+    ) -> tuple[ResultCode, int]:
+        while self._fndh_port_powers[fndh_port - 1] != power_state:
+            self.logger.debug(
+                f"Waiting for FNDH port {self._fndh_port} to change state."
+            )
+            t1 = time.time()
+            self.fndh_ports_change.wait(timeout)
+            t2 = time.time()
+            timeout -= int(t2 - t1)
+            self.fndh_ports_change.clear()
+            if timeout < 0:
+                return ResultCode.FAILED, timeout
+        return ResultCode.OK, timeout
+
+    def _power_smartbox_ports(
+        self: SmartBoxComponentManager, power_state: PowerState, timeout: int
+    ) -> tuple[ResultCode, int]:
+        desired_port_powers: list[bool] = [
+            power_state == PowerState.ON
+        ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
+        for port, masked in enumerate(self._port_mask):
+            if masked:
+                desired_port_powers[port] = False
+        json_argument = json.dumps(
+            {
+                "port_powers": desired_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
+        self._pasd_bus_proxy.set_smartbox_port_powers(json_argument)
+        return self._wait_for_smartbox_ports_state(desired_port_powers, timeout)
+
+    def _wait_for_smartbox_ports_state(
+        self: SmartBoxComponentManager, desired_port_powers: list[bool], timeout: int
+    ) -> tuple[ResultCode, int]:
+        desired_port_power_states = [
+            PowerState.ON if power else PowerState.OFF for power in desired_port_powers
+        ]
+        while not self._smartbox_port_powers == desired_port_power_states:
+            self.logger.debug("Waiting for unmasked smartbox ports to change state")
+            t1 = time.time()
+            self.smartbox_ports_change.wait(timeout)
+            t2 = time.time()
+            timeout -= int(t2 - t1)
+            self.smartbox_ports_change.clear()
+            if timeout < 0:
+                return ResultCode.FAILED, timeout
+        return ResultCode.OK, timeout
 
     @check_communicating
     def on(
@@ -498,49 +664,115 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self: SmartBoxComponentManager,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, str]:
+    ) -> None:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
+
+        result = ResultCode.OK
+        if self._pasd_bus_proxy is None:
+            raise ValueError(f"Power on smartbox '{self._fndh_port} failed'")
+
+        if self._fndh_port is None:
+            self.logger.info(
+                "Cannot turn on SmartBox, we do not yet know what port it is on"
+            )
+            raise ValueError("cannot turn on Unknown FNDH port.")
+
+        # So we can differentiate between ON and STANDBY when all ports are masked.
+        self._desire_standby = False
+
         try:
-            if self._fndh_port:
-                if self._pasd_bus_proxy is None:
-                    raise ValueError(f"Power on smartbox '{self._fndh_port} failed'")
-                desired_port_powers: list[bool | None] = [
-                    None
-                ] * PasdData.NUMBER_OF_FNDH_PORTS
-                desired_port_powers[self._fndh_port - 1] = True
-                json_argument = json.dumps(
-                    {
-                        "port_powers": desired_port_powers,
-                        "stay_on_when_offline": True,
-                    }
+            timeout = 60  # seconds
+            if self._fndh_port_powers[self._fndh_port - 1] != PowerState.ON:
+                result, timeout = self._power_fndh_port(
+                    PowerState.ON, self._fndh_port, timeout
                 )
-                (
-                    result_code,
-                    return_message,
-                ) = self._pasd_bus_proxy.set_fndh_port_powers(json_argument)
-            else:
-                self.logger.info(
-                    "Cannot turn off SmartBox, we do not yet know what port it is on"
-                )
-                raise ValueError("cannot turn on Unknown FNDH port.")
+
+            if result == ResultCode.OK:
+                result, _ = self._power_smartbox_ports(PowerState.ON, timeout)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
             if task_callback:
                 task_callback(
                     status=TaskStatus.FAILED,
-                    result=f"{ex}",
+                    result=(ResultCode.FAILED, f"{ex}"),
                 )
-
-            return ResultCode.FAILED, "0"
 
         if task_callback:
             task_callback(
-                status=TaskStatus.COMPLETED,
-                result=f"Power on smartbox '{self._fndh_port}  success'",
+                status=RESULT_TO_TASK[result],
+                result=(
+                    result,
+                    f"Power on smartbox '{self._fndh_port} {result.name}'",
+                ),
             )
-        return result_code, return_message
+
+    @check_communicating
+    def standby(
+        self: SmartBoxComponentManager,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Turn the Smartbox to standby.
+
+        :param task_callback: Update task state, defaults to None
+
+        :return: a result code and a unique_id or message.
+        """
+        return self.submit_task(
+            self._standby,  # type: ignore[arg-type]
+            args=[],
+            task_callback=task_callback,
+        )
+
+    def _standby(
+        self: SmartBoxComponentManager,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
+        if task_callback:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+
+        result = ResultCode.OK
+        if self._pasd_bus_proxy is None:
+            raise ValueError(f"Power smartbox '{self._fndh_port} to standby failed'")
+
+        if self._fndh_port is None:
+            self.logger.info(
+                "Cannot turn SmartBox to standby, we do not yet know what port it is on"
+            )
+            raise ValueError("cannot turn on Unknown FNDH port.")
+
+        # So we can differentiate between ON and STANDBY when all ports are masked.
+        self._desire_standby = True
+
+        try:
+            timeout = 60  # seconds
+            if self._fndh_port_powers[self._fndh_port - 1] != PowerState.ON:
+                result, timeout = self._power_fndh_port(
+                    PowerState.ON, self._fndh_port, timeout
+                )
+
+            if result == ResultCode.OK:
+                result, _ = self._power_smartbox_ports(PowerState.OFF, timeout)
+
+        except Exception as ex:  # pylint: disable=broad-except
+            self.logger.error(f"error {ex}")
+            if task_callback:
+                task_callback(
+                    status=TaskStatus.FAILED,
+                    result=(ResultCode.FAILED, f"{ex}"),
+                )
+
+        if task_callback:
+            task_callback(
+                status=RESULT_TO_TASK[result],
+                result=(
+                    ResultCode.OK,
+                    f"Power smartbox '{self._fndh_port} to standby {result.name}'",
+                ),
+            )
 
     @check_communicating
     def off(
@@ -564,51 +796,43 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self: SmartBoxComponentManager,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, str]:
+    ) -> None:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
+
+        result = ResultCode.OK
+        if self._pasd_bus_proxy is None:
+            raise ValueError(f"Power off smartbox '{self._fndh_port} failed'")
+
+        if self._fndh_port is None:
+            self.logger.info(
+                "Cannot turn on SmartBox, we do not yet know what port it is on"
+            )
+            raise ValueError("cannot turn off Unknown FNDH port.")
+
         try:
-            if self._fndh_port:
-                if self._pasd_bus_proxy is None:
-                    raise ValueError(f"Power off smartbox '{self._fndh_port} failed'")
-
-                desired_port_powers: list[bool | None] = [
-                    None
-                ] * PasdData.NUMBER_OF_FNDH_PORTS
-                desired_port_powers[self._fndh_port - 1] = False
-                json_argument = json.dumps(
-                    {
-                        "port_powers": desired_port_powers,
-                        "stay_on_when_offline": True,
-                    }
+            timeout = 60  # seconds
+            if self._fndh_port_powers[self._fndh_port - 1] != PowerState.OFF:
+                result, _ = self._power_fndh_port(
+                    PowerState.OFF, self._fndh_port, timeout
                 )
-
-                (
-                    result_code,
-                    return_message,
-                ) = self._pasd_bus_proxy.set_fndh_port_powers(json_argument)
-            else:
-                self.logger.info(
-                    "Cannot turn off SmartBox, we do not yet know what port it is on"
-                )
-                raise ValueError("cannot turn off Unknown FNDH port.")
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
             if task_callback:
                 task_callback(
                     status=TaskStatus.FAILED,
-                    result=f"{ex}",
+                    result=(ResultCode.FAILED, f"{ex}"),
                 )
-
-            return ResultCode.FAILED, "0"
 
         if task_callback:
             task_callback(
-                status=TaskStatus.COMPLETED,
-                result=f"Power off smartbox '{self._fndh_port}  success'",
+                status=RESULT_TO_TASK[result],
+                result=(
+                    result,
+                    f"Power off smartbox '{self._fndh_port} {result.name}'",
+                ),
             )
-        return result_code, return_message
 
     @check_communicating
     def turn_off_port(
@@ -713,11 +937,18 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if self._pasd_bus_proxy is None:
                 raise NotImplementedError("pasd_bus_proxy is None")
             port = self.ports[port_number - 1]
-            # Turn smartbox on if not already.
-            if self._power_state != PowerState.ON:
+            if self._fndh_port is None:
+                msg = (
+                    "Tried to turn on port of a smartbox, however the smartbox"
+                    " cannot be turned on as it does not know its FNDH port."
+                )
+                self.logger.error(msg)
+                return (ResultCode.FAILED, msg)
+            # Turn smartbox standby if not already.
+            if self._fndh_port_powers[self._fndh_port - 1] != PowerState.ON:
                 assert port._port_id == port_number
                 port.set_desire_on(task_callback)  # type: ignore[assignment]
-                self.on()
+                self._power_fndh_port(PowerState.ON, self._fndh_port, 60)
                 return (
                     ResultCode.STARTED,
                     "The command will continue when the smartbox turns on.",
