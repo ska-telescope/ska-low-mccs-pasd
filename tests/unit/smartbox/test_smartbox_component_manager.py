@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import unittest.mock
 from datetime import datetime, timezone
 from typing import Any, Iterator
 
 import pytest
 import tango
-from ska_control_model import CommunicationStatus, PowerState, TaskStatus
+from ska_control_model import CommunicationStatus, PowerState, ResultCode, TaskStatus
 from ska_tango_testing.mock import MockCallableGroup
 
 from ska_low_mccs_pasd import PasdData
@@ -247,12 +248,9 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        mock_callbacks["communication_state"].assert_not_called()
-
         # check that the communication state goes to DISABLED after stop communication.
         smartbox_component_manager.stop_communicating()
         mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
-        mock_callbacks["communication_state"].assert_not_called()
 
     def test_component_state(
         self: TestSmartBoxComponentManager,
@@ -273,6 +271,20 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
+
+        mock_callbacks["attribute_update"].assert_call(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            pytest.approx(datetime.now(timezone.utc).timestamp()),
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        smartbox_component_manager._on_smartbox_ports_power_changed(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            tango.AttrQuality.ATTR_VALID,
+        )
+
         # To transition to a state we need to know what fndh port we are on.
         # Lookahead 2 is needed incase this information is not initially known
         # We first transtion to UNKNOWN,
@@ -291,7 +303,7 @@ class TestSmartBoxComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    "Power on smartbox '{fndh_port}  success'",
+                    (ResultCode.OK, "Power on smartbox '{fndh_port} OK'"),
                 ),
             ),
             (
@@ -299,7 +311,7 @@ class TestSmartBoxComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    "Power off smartbox '{fndh_port}  success'",
+                    (ResultCode.OK, "Power off smartbox '{fndh_port} OK'"),
                 ),
             ),
         ],
@@ -332,8 +344,22 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        # see comment in TestSmartBoxComponentManager::test_component_state
-        mock_callbacks["component_state"].assert_call(power=PowerState.ON, lookahead=2)
+        mock_callbacks["component_state"].assert_call(power=PowerState.UNKNOWN)
+
+        mock_callbacks["attribute_update"].assert_call(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            pytest.approx(datetime.now(timezone.utc).timestamp()),
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        smartbox_component_manager._on_smartbox_ports_power_changed(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        mock_callbacks["component_state"].assert_call(power=PowerState.ON)
         assert (
             getattr(smartbox_component_manager, component_manager_command)(
                 mock_callbacks["task"]
@@ -342,10 +368,153 @@ class TestSmartBoxComponentManager:
         )
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
+
+        # Once the command has started, smartbox waits for fndh ports to change state.
+        # Let's pretend that happened.
+        smartbox_component_manager._on_fndh_ports_power_changed(
+            "fndhportspowersensed",
+            [component_manager_command == "on"] * PasdData.NUMBER_OF_FNDH_PORTS,
+            tango.AttrQuality.ATTR_VALID,
+        )
+
         mock_callbacks["task"].assert_call(
             status=command_tracked_response[0],
-            result=command_tracked_response[1].format(fndh_port=fndh_port),
+            result=(
+                command_tracked_response[1][0],
+                command_tracked_response[1][1].format(fndh_port=fndh_port),
+            ),
         )
+
+    @pytest.mark.parametrize(
+        ("initial_state"),
+        ["on", "off"],
+    )
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_standby(
+        self: TestSmartBoxComponentManager,
+        smartbox_component_manager: SmartBoxComponentManager,
+        mock_pasdbus: unittest.mock.Mock,
+        fndh_port: int,
+        smartbox_number: int,
+        mock_callbacks: MockCallableGroup,
+        initial_state: str,
+    ) -> None:
+        """
+        Test the SmartBox Standby Command.
+
+        :param smartbox_component_manager: A SmartBox component manager
+            with communication established.
+        :param mock_pasdbus: the mock PaSD bus that is set in the test harness
+        :param fndh_port: the fndh port the smartbox is attached to.
+        :param smartbox_number: the number of the smartbox under test.
+        :param mock_callbacks: the mock_callbacks.
+        :param initial_state: the state before we call Standby().
+        """
+        smartbox_component_manager.start_communicating()
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.ESTABLISHED
+        )
+        mock_callbacks["component_state"].assert_call(power=PowerState.UNKNOWN)
+
+        mock_callbacks["attribute_update"].assert_call(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            pytest.approx(datetime.now(timezone.utc).timestamp()),
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        smartbox_component_manager._on_smartbox_ports_power_changed(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        mock_callbacks["component_state"].assert_call(power=PowerState.ON)
+
+        # If we are starting with an OFF smartbox, lets force it.
+        if initial_state == "off":
+            # Get callback that all the smartbox ports are OFF
+            smartbox_component_manager._on_smartbox_ports_power_changed(
+                "portspowersensed",
+                [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+                tango.AttrQuality.ATTR_VALID,
+            )
+
+            # Then get callback that all the FNDH ports are OFF
+            smartbox_component_manager._on_fndh_ports_power_changed(
+                "fndhportspowersensed",
+                [False] * PasdData.NUMBER_OF_FNDH_PORTS,
+                tango.AttrQuality.ATTR_VALID,
+            )
+
+            # Then the smartbox should evaluate its power to OFF
+            assert smartbox_component_manager._power_state == PowerState.OFF
+
+        smartbox_component_manager.standby(task_callback=mock_callbacks["task"])
+
+        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
+        mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
+
+        # Once the task has started, the smartbox will expect to receive change events
+        # on FNDH port powers and its own Smartbox port powers, so we will pretend to
+        # receive them.
+
+        # If we start in the OFF state, we expect that the FNDH port will be powered on
+        if initial_state == "off":
+            fndh_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
+            fndh_port_powers[fndh_port - 1] = True
+            expected_fndh_powers = json.dumps(
+                {
+                    "port_powers": fndh_port_powers,
+                    "stay_on_when_offline": True,
+                }
+            )
+            mock_pasdbus.SetFndhPortPowers.assert_next_call(expected_fndh_powers)
+
+            # We have checked the PasdBus is sent the correct command, lets now assume
+            # it did the correct thing and we get the correct change event.
+            smartbox_component_manager._on_fndh_ports_power_changed(
+                "fndhportspowersensed",
+                [fndh_port_power is not None for fndh_port_power in fndh_port_powers],
+                tango.AttrQuality.ATTR_VALID,
+            )
+
+        # We expect all smartbox ports to be turned OFF.
+        expected_smartbox_powers = json.dumps(
+            {
+                "port_powers": [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+                "stay_on_when_offline": True,
+                "smartbox_number": smartbox_number,
+            }
+        )
+
+        # We have checked the PasdBus is sent the correct command, lets now assume
+        # it did the correct thing and we get the correct change event.
+        mock_pasdbus.SetSmartboxPortPowers.assert_next_call(expected_smartbox_powers)
+
+        # We've sent the command, lets now pretend it worked and we got a
+        # change event from PasdBus.
+        smartbox_component_manager._on_smartbox_ports_power_changed(
+            "portspowersensed",
+            [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        # Now that our ports have all changed to the correct state, the command should
+        # now finish.
+        mock_callbacks["task"].assert_call(
+            status=TaskStatus.COMPLETED,
+            result=(
+                ResultCode.OK,
+                f"Power smartbox '{fndh_port} to standby OK'",
+            ),
+        )
+
+        # And after all is said and done, the component manager should be in STANDBY.
+        assert smartbox_component_manager._power_state == PowerState.STANDBY
 
     @pytest.mark.parametrize(
         (
@@ -480,8 +649,30 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        # Overwrite whatever power state was calculated during start_communicating
-        smartbox_component_manager._power_state = PowerState.ON
+
+        mock_callbacks["attribute_update"].assert_call(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            pytest.approx(datetime.now(timezone.utc).timestamp()),
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        smartbox_component_manager._on_smartbox_ports_power_changed(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        # To turn off on a smartbox the smartbox itself must be on and communicating.
+        timeout = 10
+        start_time = time.time()
+        while time.time() < start_time + timeout:
+            if smartbox_component_manager._power_state == PowerState.ON:
+                break
+            time.sleep(0.1)
+
+        assert smartbox_component_manager._power_state == PowerState.ON
+
         assert (
             getattr(smartbox_component_manager, component_manager_command)(
                 component_manager_command_argument,
@@ -507,14 +698,14 @@ class TestSmartBoxComponentManager:
             (
                 "turn_on_port",
                 3,
-                "TurnAntennaOn",
+                "SetSmartboxPortPowers",
                 (TaskStatus.QUEUED, "Task queued"),
                 f"Power on port '{3} failed'",
             ),
             (
                 "turn_off_port",
                 3,
-                "TurnAntennaOff",
+                "SetSmartboxPortPowers",
                 (TaskStatus.QUEUED, "Task queued"),
                 f"Power off port '{3} failed'",
             ),
@@ -545,11 +736,37 @@ class TestSmartBoxComponentManager:
         :param command_tracked_response: The result of the command.
         :param mock_callbacks: the mock_callbacks.
         """
-        # To turn off on a smartbox the smartbox itself must be on and communicating.
-        smartbox_component_manager._power_state = PowerState.ON
-        smartbox_component_manager._update_communication_state(
+        smartbox_component_manager.start_communicating()
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
+
+        mock_callbacks["attribute_update"].assert_call(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            pytest.approx(datetime.now(timezone.utc).timestamp()),
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        smartbox_component_manager._on_smartbox_ports_power_changed(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        # To turn off on a smartbox the smartbox itself must be on and communicating.
+        timeout = 10
+        start_time = time.time()
+        while time.time() < start_time + timeout:
+            if smartbox_component_manager._power_state == PowerState.ON:
+                break
+            time.sleep(0.1)
+
+        assert smartbox_component_manager._power_state == PowerState.ON
+
         # setup to raise exception.
         mock_response = unittest.mock.MagicMock(
             side_effect=Exception("Mocked exception")
@@ -595,7 +812,23 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        mock_callbacks["component_state"].assert_call(power=PowerState.ON, lookahead=2)
+
+        mock_callbacks["component_state"].assert_call(power=PowerState.UNKNOWN)
+
+        mock_callbacks["attribute_update"].assert_call(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            pytest.approx(datetime.now(timezone.utc).timestamp()),
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        smartbox_component_manager._on_smartbox_ports_power_changed(
+            "portspowersensed",
+            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            tango.AttrQuality.ATTR_VALID,
+        )
+
+        mock_callbacks["component_state"].assert_call(power=PowerState.ON)
 
         # mock a callback from the fieldstation when it changes state.
         # We are placing the smartbox on a new port that is OFF.
