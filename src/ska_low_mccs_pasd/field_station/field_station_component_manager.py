@@ -53,7 +53,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         )
     )
 
-    # pylint: disable=too-many-arguments, too-many-locals
+    # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     def __init__(
         self: FieldStationComponentManager,
         logger: logging.Logger,
@@ -214,6 +214,23 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         if self._antenna_mapping:
             self.has_antenna = True
+
+        self._update_smartbox_mask()
+
+    def _update_smartbox_mask(self: FieldStationComponentManager) -> None:
+        """Update the mask on the smartboxe for their ports."""
+        try:
+            for smartbox_trl, smartbox_proxy in self._smartbox_proxys.items():
+                assert smartbox_proxy._proxy is not None
+                smartbox_name = self._smartbox_trl_name_map[smartbox_trl]
+                port_mask = self._get_smartbox_port_mask(smartbox_name)
+                smartbox_proxy._proxy.portMask = port_mask
+        except Exception:  # pylint: disable=broad-exception-caught
+            self.logger.warning(
+                "Tried to update smartbox port mask on smartboxes, "
+                "however connection is not established. "
+                "Will try again when connection established."
+            )
 
     def start_communicating(self: FieldStationComponentManager) -> None:
         """Establish communication."""
@@ -438,6 +455,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
         else:
             self._update_communication_state(CommunicationStatus.ESTABLISHED)
+            self._update_smartbox_mask()
 
     def on(
         self: FieldStationComponentManager, task_callback: Optional[Callable] = None
@@ -953,6 +971,25 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     masked_smartbox_ports[smartbox_name].append(smartbox_port)
 
         return masked_smartbox_ports
+
+    def _get_smartbox_port_mask(
+        self: FieldStationComponentManager, smartbox_name: str
+    ) -> list[bool]:
+        """
+        Get the port mask for a given (0-indexed) smartbox no.
+
+        This will return an array of 12 bools, one for each smartbox port.
+
+        :param smartbox_name: which smartbox to get the port mask of.
+
+        :returns: the port mask for the given smartbox.
+        """
+        all_smartbox_masked_ports = self._get_masked_smartbox_ports()
+        port_mask = [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS
+        masked_ports = all_smartbox_masked_ports.get(smartbox_name, [])
+        for masked_port in masked_ports:
+            port_mask[masked_port - 1] = True
+        return port_mask
 
     def _get_smartbox_ports_with_antennas(
         self: FieldStationComponentManager, smartbox_name: str

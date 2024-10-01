@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 #
 # This file is part of the SKA Low MCCS project
 #

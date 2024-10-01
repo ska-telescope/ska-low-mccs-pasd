@@ -308,7 +308,7 @@ class PasdBusPortAttribute(PasdBusAttribute):
                     results.append(bool(status))
         return results
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def _set_bitmap_value(
         self: PasdBusPortAttribute,
         port_number_offset: int,

@@ -54,7 +54,7 @@ def test_context_fixture(
 class TestPasdBusProxy:
     """Tests of the PaSD bus proxy used by the smartbox component manager."""
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     @pytest.fixture(name="pasd_bus_proxy")
     def pasd_bus_proxy_fixture(
         self: TestPasdBusProxy,
@@ -190,7 +190,7 @@ class TestPasdBusProxy:
 class TestSmartBoxComponentManager:
     """Tests for the SmartBox component manager."""
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     @pytest.fixture(name="smartbox_component_manager")
     def smartbox_component_manager_fixture(
         self: TestSmartBoxComponentManager,
@@ -304,7 +304,8 @@ class TestSmartBoxComponentManager:
             ),
         ],
     )
-    def test_on_off(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_on_off(
         self: TestSmartBoxComponentManager,
         smartbox_component_manager: SmartBoxComponentManager,
         component_manager_command: Any,
@@ -365,7 +366,8 @@ class TestSmartBoxComponentManager:
             ),
         ],
     )
-    def test_all_port_commands(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_all_port_commands(
         self: TestSmartBoxComponentManager,
         smartbox_component_manager: SmartBoxComponentManager,
         component_manager_command: Any,
@@ -450,7 +452,8 @@ class TestSmartBoxComponentManager:
             ),
         ],
     )
-    def test_command(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_command(
         self: TestSmartBoxComponentManager,
         smartbox_component_manager: SmartBoxComponentManager,
         component_manager_command: Any,
@@ -517,7 +520,8 @@ class TestSmartBoxComponentManager:
             ),
         ],
     )
-    def test_command_fail(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_command_fail(
         self: TestSmartBoxComponentManager,
         smartbox_component_manager: SmartBoxComponentManager,
         mock_pasdbus: unittest.mock.Mock,

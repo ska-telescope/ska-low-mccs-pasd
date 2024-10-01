@@ -128,7 +128,8 @@ def antenna_mapping_from_reference_data(
 class TestFieldStationIntegration:
     """Test pasdbus and fndh integration."""
 
-    # pylint: disable=too-many-arguments, too-many-locals, too-many-statements
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    # pylint: disable=too-many-locals, too-many-statements
     def test_turn_on_off_antenna(
         self: TestFieldStationIntegration,
         field_station_device: tango.DeviceProxy,
@@ -406,7 +407,8 @@ class TestFieldStationIntegration:
         assert fndh_device.overVoltageThreshold == over_voltage_threshold
         assert fndh_device.humidityThreshold == humidity_threshold
 
-    def test_configuration_change(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_configuration_change(
         self: TestFieldStationIntegration,
         field_station_device: tango.DeviceProxy,
         simulated_configuration: dict[Any, Any],

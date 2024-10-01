@@ -202,7 +202,8 @@ class TestFndhComponentManager:
             ),
         ],
     )
-    def test_command(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_command(
         self: TestFndhComponentManager,
         fndh_component_manager: FndhComponentManager,
         component_manager_command: Any,
@@ -276,7 +277,8 @@ class TestFndhComponentManager:
             ),
         ],
     )
-    def test_proxy_return_error(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_proxy_return_error(
         self: TestFndhComponentManager,
         fndh_component_manager: FndhComponentManager,
         component_manager_command: Any,

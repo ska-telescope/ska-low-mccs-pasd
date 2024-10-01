@@ -88,7 +88,7 @@ class Port:
 class _PasdBusProxy(DeviceComponentManager):
     """This is a proxy to the pasdbus specific to this smartbox."""
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self: _PasdBusProxy,
         fqdn: str,
@@ -246,7 +246,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     or the real hardware.
     """
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self: SmartBoxComponentManager,
         logger: logging.Logger,
@@ -287,6 +287,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self._smartbox_nr = smartbox_nr
         self._readable_name = readable_name
         self._fndh_port: Optional[int] = None
+        self._port_mask = [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS
         self._attribute_change_callback = attribute_change_callback
 
         self._fndh_port_powers = [PowerState.UNKNOWN] * PasdData.NUMBER_OF_FNDH_PORTS
@@ -824,3 +825,22 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param value: the value to write.
         """
         self._pasd_bus_proxy.write_attribute(attribute_name, value)
+
+    @property
+    def port_mask(self: SmartBoxComponentManager) -> list[bool]:
+        """
+        Getter for the port mask.
+
+        :returns: list of masked ports on the smartbox.
+        """
+        return self._port_mask
+
+    @port_mask.setter
+    def port_mask(self: SmartBoxComponentManager, value: list[bool]) -> None:
+        """
+        Setter for the port mask.
+
+        :param value: list of masked ports on the smartbox.
+        """
+        self._port_mask = value
+        self._evaluate_power()

@@ -122,7 +122,7 @@ class TestPasdBusComponentManager:
     common commands.
     """
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def test_attribute_updates(
         self: TestPasdBusComponentManager,
         pasd_config: dict,

@@ -24,6 +24,7 @@ from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
 
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
+from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from ..pasd_utils import configure_alarms
@@ -83,6 +84,7 @@ class MccsSmartBox(SKABaseDevice):
         # Initialise with unknown.
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: SmartBoxHealthModel
+        self.component_manager: SmartBoxComponentManager
 
     def init_device(self: MccsSmartBox) -> None:
         """
@@ -268,7 +270,7 @@ class MccsSmartBox(SKABaseDevice):
                 max_value=register["max_value"],
             )
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def _setup_smartbox_attribute(
         self: MccsSmartBox,
         attribute_name: str,
@@ -357,7 +359,8 @@ class MccsSmartBox(SKABaseDevice):
 
         self._health_model.update_state(communicating=True)
 
-    def _component_state_callback(  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def _component_state_callback(
         self: MccsSmartBox,
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,
@@ -491,6 +494,33 @@ class MccsSmartBox(SKABaseDevice):
         :return: the name of the smartbox
         """
         return self._readable_name
+
+    @attribute(dtype=(bool,), label="PortMask", max_dim_x=12)
+    def portMask(self: MccsSmartBox) -> list[bool]:
+        """
+        Return the port mask for this smartbox's ports.
+
+        :return: the port mask for this smartbox's ports.
+        """
+        return self.component_manager.port_mask
+
+    @portMask.write  # type: ignore[no-redef]
+    def portMask(self: MccsSmartBox, port_mask: list[bool]) -> None:
+        """
+        Set the port mask for this smartbox's ports.
+
+        :param port_mask: the port mask, it must be the correct length (12).
+
+        :raises ValueError: if the length of supplied port mask is incorrect.
+        """
+        if not len(port_mask) == PasdData.NUMBER_OF_SMARTBOX_PORTS:
+            self.logger.error(
+                f"Can't set port mask with wrong number of values: {len(port_mask)}."
+            )
+            raise ValueError(
+                f"Can't set port mask with wrong number of values: {len(port_mask)}."
+            )
+        self.component_manager.port_mask = port_mask
 
 
 # ----------

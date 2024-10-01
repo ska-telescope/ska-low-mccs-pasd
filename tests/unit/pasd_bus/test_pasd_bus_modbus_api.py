@@ -116,7 +116,7 @@ class TestPasdBusModbusApi:
         }
         return PasdBusModbusApi(backend_mocks, logging.getLogger())
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     @pytest.mark.parametrize(
         ("backend", "slave", "attribute", "address", "count"),
         [
@@ -409,7 +409,7 @@ class TestPasdBusModbusApiClient:
         response = api.read_attributes(slave, attribute)
         assert response[attribute] == expected
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     @pytest.mark.parametrize(
         ("backend", "slave", "attribute", "values", "expected"),
         [
@@ -456,7 +456,7 @@ class TestPasdBusModbusApiClient:
         simulator_values = getattr(request.getfixturevalue(backend), attribute)
         assert simulator_values == expected
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     @pytest.mark.parametrize(
         ("backend", "slave", "command", "arguments", "attribute", "expected"),
         [

@@ -111,7 +111,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         ]:
             SMARTBOX_STATUS_ATTRIBUTES.append(key)
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self: PasdBusComponentManager,
         host: str,
         port: int,
