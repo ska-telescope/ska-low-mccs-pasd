@@ -15,7 +15,9 @@ from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.health import HealthRules
 
 DEGRADED_HEALTH_STATES = frozenset({HealthState.DEGRADED, HealthState.FAILED, None})
-DEGRADED_POWER_STATES = frozenset({PowerState.UNKNOWN, None})
+DEGRADED_POWER_STATES = frozenset(
+    {PowerState.UNKNOWN, PowerState.OFF, PowerState.STANDBY, None}
+)
 DEGRADED_STATES = {"health": DEGRADED_HEALTH_STATES, "power": DEGRADED_POWER_STATES}
 
 

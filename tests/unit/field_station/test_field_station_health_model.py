@@ -217,6 +217,62 @@ class TestFieldStationHealthModel:
                 " FNDH: ON",
                 id="1/2 smartboxes UNKNOWN, expect FAILED",
             ),
+            pytest.param(
+                {
+                    "fndh_health": HealthState.OK,
+                    "fndh_power": PowerState.ON,
+                    "smartbox_health": {
+                        get_smartbox_name(i): (
+                            HealthState.UNKNOWN
+                            if i < PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION / 2
+                            else HealthState.OK
+                        )
+                        for i in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
+                    },
+                    "smartbox_power": {
+                        get_smartbox_name(i): (
+                            PowerState.OFF
+                            if i < PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION / 2
+                            else PowerState.ON
+                        )
+                        for i in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
+                    },
+                },
+                None,
+                HealthState.FAILED,
+                "Too many subdevices are in a bad power state: Smartboxes: "
+                f"{[f'{get_smartbox_name(i)} - OFF' for i in range(12)]}"
+                " FNDH: ON",
+                id="1/2 smartboxes OFF, expect FAILED",
+            ),
+            pytest.param(
+                {
+                    "fndh_health": HealthState.OK,
+                    "fndh_power": PowerState.ON,
+                    "smartbox_health": {
+                        get_smartbox_name(i): (
+                            HealthState.UNKNOWN
+                            if i < PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION / 2
+                            else HealthState.OK
+                        )
+                        for i in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
+                    },
+                    "smartbox_power": {
+                        get_smartbox_name(i): (
+                            PowerState.STANDBY
+                            if i < PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION / 2
+                            else PowerState.ON
+                        )
+                        for i in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
+                    },
+                },
+                None,
+                HealthState.FAILED,
+                "Too many subdevices are in a bad power state: Smartboxes: "
+                f"{[f'{get_smartbox_name(i)} - STANDBY' for i in range(12)]}"
+                " FNDH: ON",
+                id="1/2 smartboxes STANDBY, expect FAILED",
+            ),
         ],
     )
     def test_station_evaluate_health(
