@@ -499,7 +499,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                     if port.desire_on:
                         port.turn_on()
 
-                # If the FNDH port is ON, but all smartbox the ports are OFF,
+                # If the FNDH port is ON, but all smartbox ports are OFF,
                 # and all the ports aren't masked, the smartbox is STANDBY.
                 # However if the ports are all masked, and the last command given was
                 # Standby(), go to STANDBY.
