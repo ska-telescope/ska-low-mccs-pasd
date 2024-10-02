@@ -233,9 +233,12 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
                 return
 
         super()._component_state_changed(fault=fault, power=power)
-        self._health_model.update_state(
-            fault=fault, power=power, pasdbus_status=pasdbus_status
-        )
+        if fault is not None:
+            self._health_model.update_state(fault=fault)
+        if power is not None:
+            self._health_model.update_state(power=power)
+        if pasdbus_status is not None:
+            self._health_model.update_state(pasdbus_status=pasdbus_status)
 
     def _health_changed_callback(self: MccsFNCC, health: HealthState) -> None:
         """
