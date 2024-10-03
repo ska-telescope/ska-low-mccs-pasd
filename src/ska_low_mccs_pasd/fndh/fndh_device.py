@@ -646,9 +646,12 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 self._update_port_power_states(self._port_power_states)
 
         super()._component_state_changed(fault=fault, power=power)
-        self._health_model.update_state(
-            fault=fault, power=power, pasdbus_status=pasdbus_status
-        )
+        if fault is not None:
+            self._health_model.update_state(fault=fault)
+        if power is not None:
+            self._health_model.update_state(power=power)
+        if pasdbus_status is not None:
+            self._health_model.update_state(pasdbus_status=pasdbus_status)
 
     def _health_changed_callback(self: MccsFNDH, health: HealthState) -> None:
         """
