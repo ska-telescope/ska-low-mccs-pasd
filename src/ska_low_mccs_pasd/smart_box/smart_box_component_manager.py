@@ -225,7 +225,7 @@ class _PasdBusProxy(DeviceComponentManager):
             unique id to identify the command in the queue.
         """
         assert self._proxy
-        self._proxy.InitializeFndh()
+        # self._proxy.InitializeFndh()
         return self._proxy.SetFndhPortPowers(json_argument)
 
     def write_attribute(
