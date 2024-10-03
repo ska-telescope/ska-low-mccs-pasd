@@ -10,10 +10,8 @@ from __future__ import annotations
 
 import gc
 import json
-import time
 from typing import Callable, Literal
 
-import pytest
 import tango
 from pytest_bdd import given, parsers, scenario, then, when
 from ska_control_model import AdminMode, HealthState, ResultCode, SimulationMode
@@ -615,26 +613,13 @@ def check_smartbox_port_changes_power_state(
     )
     expected_powered[smartbox_port_no - 1] = state_map[state_name]
 
-    try:
-        change_event_callbacks[
-            f"{get_pasd_bus_name()}/smartbox{smartbox_id}PortsPowerSensed"
-        ].assert_change_event(
-            expected_powered,
-            lookahead=5,  # TODO: This only needs 2 in lightweight testing. Why?
-            consume_nonmatches=True,
-        )
-    except AssertionError:
-        print(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"))
-        time.sleep(1)
-        print(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"))
-        time.sleep(1)
-        print(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"))
-        time.sleep(1)
-        print(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"))
-        time.sleep(1)
-        print(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"))
-        time.sleep(1)
-        pytest.fail(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"))
+    change_event_callbacks[
+        f"{get_pasd_bus_name()}/smartbox{smartbox_id}PortsPowerSensed"
+    ].assert_change_event(
+        expected_powered,
+        lookahead=5,  # TODO: This only needs 2 in lightweight testing. Why?
+        consume_nonmatches=True,
+    )
 
     powered = list(getattr(pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"))
     assert powered[smartbox_port_no - 1] == state_map[state_name]
