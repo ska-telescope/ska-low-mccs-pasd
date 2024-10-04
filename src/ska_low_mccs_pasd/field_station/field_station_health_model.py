@@ -156,6 +156,7 @@ class FieldStationHealthModel(BaseHealthModel):
             if health == station_health:
                 return station_health, station_report
             result, report = self._health_rules.rules[health](
+                self._state["power"],
                 self._fndh_health,
                 self._fndh_power,
                 self._smartbox_health,
