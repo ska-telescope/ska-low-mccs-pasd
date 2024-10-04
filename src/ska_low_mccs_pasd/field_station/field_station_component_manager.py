@@ -511,8 +511,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         if failure_log:
             self.logger.error(f"Failure in the `ON` command -> {failure_log}")
             task_callback(
-                status=TaskStatus.FAILED,
-                result=(ResultCode.FAILED, f"Command unsuccessful: {failure_log}"),
+                status=TaskStatus.COMPLETED,
+                result=(result, message),
             )
             return
 
@@ -580,8 +580,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         if failure_log:
             self.logger.error(f"Failure in the `STANDBY` command -> {failure_log}")
             task_callback(
-                status=TaskStatus.FAILED,
-                result=(ResultCode.FAILED, f"Command unsuccessful: {failure_log}"),
+                status=TaskStatus.COMPLETED,
+                result=(result, message),
             )
             return
 
