@@ -82,12 +82,14 @@ def mocked_initial_smartbox_ports_fixture(
 @pytest.fixture(name="mock_pasdbus")
 def mock_pasdbus_fixture(
     mocked_initial_smartbox_ports: list[bool],
+    smartbox_number: int,
 ) -> unittest.mock.Mock:
     """
     Fixture that provides a mock MccsPaSDBus device.
 
     :param mocked_initial_smartbox_ports: the initial power state of
         the port the smartbox is attached to.
+    :param smartbox_number: The logical id given of the smartbox.
 
     :return: a mock MccsPaSDBus device.
     """
@@ -96,6 +98,10 @@ def mock_pasdbus_fixture(
     builder.add_command("GetPasdDeviceSubscriptions", {})
 
     builder.add_attribute("fndhPortsPowerSensed", mocked_initial_smartbox_ports)
+    builder.add_attribute(f"smartbox{smartbox_number}PortsPowerSensed", [True] * 12)
+    builder.add_command(
+        "GetPasdDeviceSubscriptions", [f"smartbox{smartbox_number}PortsPowerSensed"]
+    )
     builder.add_result_command("SetSmartboxPortPowers", ResultCode.OK)
     builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
     return builder()
@@ -129,12 +135,12 @@ def mock_field_station_fixture(
     input_smartbox_mapping: dict[str, Any]
 ) -> unittest.mock.Mock:
     """
-    Fixture that provides a mock MccsFNDH device.
+    Fixture that provides a mock FieldStation device.
 
     :param input_smartbox_mapping: the mocked smartboxMapping
         attribute value.
 
-    :return: a mock MccsFNDH device.
+    :return: a mock FieldStation device.
     """
     builder = MockDeviceBuilder()
     builder.set_state(tango.DevState.ON)

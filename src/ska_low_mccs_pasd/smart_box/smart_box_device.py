@@ -453,6 +453,10 @@ class MccsSmartBox(SKABaseDevice):
                 attr_value = self._smartbox_state[attr_name].value
             else:
                 self._smartbox_state[attr_name].value = attr_value
+            if "portspowersensed" in attr_name.lower():
+                self.component_manager._on_smartbox_ports_power_changed(
+                    attr_name, attr_value, attr_quality
+                )
             self._smartbox_state[attr_name].quality = attr_quality
             self._smartbox_state[attr_name].timestamp = timestamp
 
@@ -474,11 +478,12 @@ class MccsSmartBox(SKABaseDevice):
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 
-        except AssertionError:
+        except AssertionError as e:
             self.logger.debug(
                 f"""The attribute {attr_name} pushed from MccsPasdBus
                 device does not exist in MccsSmartBox"""
             )
+            self.logger.error(repr(e))
 
     @attribute(dtype="DevString", label="FndhPort")
     def fndhPort(self: MccsSmartBox) -> str:

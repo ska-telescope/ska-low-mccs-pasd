@@ -596,9 +596,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         for masked_port in masked_fndh_ports:
             desired_fndh_port_powers[masked_port - 1] = None
 
-        desired_smartbox_power: dict = self._get_desired_smartbox_powers(
-            desired_fndh_port_powers
-        )
         json_argument = json.dumps(
             {
                 "port_powers": desired_fndh_port_powers,
@@ -619,15 +616,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             time_taken = int(t2 - t1)
             timeout -= time_taken
 
-            self.logger.info(
-                f"waiting on smartboxes to change state in {timeout} seconds ..."
-            )
-
-            self.wait_for_smartbox_device_state(desired_smartbox_power, timeout)
-            t3 = time.time()
-            time_taken = int(t3 - t2)
-            timeout -= time_taken
-
             # Now the smartbox are all on we can turn on the ports
             # with unmasked antenna
             results = self.turn_on_unmasked_smartbox_ports(masked_smartbox_ports)
@@ -639,8 +627,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     masked_smartbox_ports, PowerState.ON
                 )
                 self.wait_for_antenna_powers(desired_antenna_powers, timeout)
-                t4 = time.time()
-                time_taken = int(t4 - t3)
+                t3 = time.time()
+                time_taken = int(t3 - t2)
                 timeout -= time_taken
                 self.logger.info(
                     "All unmasked antenna have been turned on with"
