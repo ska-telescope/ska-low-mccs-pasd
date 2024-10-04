@@ -2,14 +2,19 @@
 
 ## unreleased
 
+## 0.11.1
+
+* [SKB-480]: Fix FNDH stuck in UNKNOWN
+* [MCCS-2140]: Add MccsSmartbox.portMask
+* [WOM-497]: Update charts to fix dependencies
 * [WOM-420]: Fix alarm/warning reset functionality
 * [WOM-426]: Fix minor chart bug
 * [SKB-455]: Automatically reset the connection when a poll fails
 
 ## 0.11.0
 
-* [MCCS-2141] Update ska-tango-base to 1.0.0
-* [MCCS-2115] Update field station to use new antenna mappings
+* [MCCS-2141]: Update ska-tango-base to 1.0.0
+* [MCCS-2115]: Update field station to use new antenna mappings
 
 ## 0.10.1
 

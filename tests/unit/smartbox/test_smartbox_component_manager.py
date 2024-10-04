@@ -410,6 +410,10 @@ class TestSmartBoxComponentManager:
         :param mock_callbacks: the mock_callbacks.
         :param initial_state: the state before we call Standby().
         """
+        # make all other ports the opposite.
+        mock_setup = [initial_state == "off"] * 28
+        mock_setup[fndh_port - 1] = not mock_setup[fndh_port - 1]
+        mock_pasdbus.configure_mock(fndhPortsPowerSensed=mock_setup)
         smartbox_component_manager.start_communicating()
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.NOT_ESTABLISHED
@@ -431,27 +435,13 @@ class TestSmartBoxComponentManager:
             [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
             tango.AttrQuality.ATTR_VALID,
         )
-
-        mock_callbacks["component_state"].assert_call(power=PowerState.ON)
-
-        # If we are starting with an OFF smartbox, lets force it.
-        if initial_state == "off":
-            # Get callback that all the smartbox ports are OFF
-            smartbox_component_manager._on_smartbox_ports_power_changed(
-                "portspowersensed",
-                [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-                tango.AttrQuality.ATTR_VALID,
-            )
-
-            # Then get callback that all the FNDH ports are OFF
-            smartbox_component_manager._on_fndh_ports_power_changed(
-                "fndhportspowersensed",
-                [False] * PasdData.NUMBER_OF_FNDH_PORTS,
-                tango.AttrQuality.ATTR_VALID,
-            )
-
-            # Then the smartbox should evaluate its power to OFF
-            assert smartbox_component_manager._power_state == PowerState.OFF
+        match initial_state:
+            case "off":
+                mock_callbacks["component_state"].assert_call(power=PowerState.OFF)
+            case "on":
+                mock_callbacks["component_state"].assert_call(power=PowerState.ON)
+            case _:
+                pytest.fail("Unknown initial state.")
 
         smartbox_component_manager.standby(task_callback=mock_callbacks["task"])
 
