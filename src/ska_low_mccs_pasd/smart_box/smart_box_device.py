@@ -494,6 +494,15 @@ class MccsSmartBox(SKABaseDevice):
         """
         return json.dumps(self.component_manager._fndh_port)
 
+    @attribute(dtype="DevString", label="ReadableName")
+    def ReadableName(self: MccsSmartBox) -> str:
+        """
+        Return the name of the smartbox in a readable format.
+
+        :return: the name of the smartbox
+        """
+        return self._readable_name
+
     @attribute(dtype=(bool,), label="PortMask", max_dim_x=12)
     def portMask(self: MccsSmartBox) -> list[bool]:
         """
@@ -520,15 +529,6 @@ class MccsSmartBox(SKABaseDevice):
                 f"Can't set port mask with wrong number of values: {len(port_mask)}."
             )
         self.component_manager.port_mask = port_mask
-
-    @attribute(dtype="DevString", label="ReadableName")
-    def ReadableName(self: MccsSmartBox) -> str:
-        """
-        Return the name of the smartbox in a readable format.
-
-        :return: the name of the smartbox
-        """
-        return self._readable_name
 
 
 # ----------
