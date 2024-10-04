@@ -19,7 +19,7 @@ DEGRADED_POWER_STATES = {
     PowerState.ON: frozenset(
         {PowerState.UNKNOWN, PowerState.OFF, PowerState.STANDBY, None}
     ),
-    PowerState.STANDBY: frozenset({PowerState.UNKNOWN, None}),
+    PowerState.STANDBY: frozenset({PowerState.OFF, PowerState.UNKNOWN, None}),
     PowerState.OFF: frozenset({PowerState.UNKNOWN, None}),
     PowerState.UNKNOWN: frozenset({None}),
     None: frozenset(),

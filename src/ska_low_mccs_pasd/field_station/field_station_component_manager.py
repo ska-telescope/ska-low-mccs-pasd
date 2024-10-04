@@ -494,10 +494,16 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     smartbox_on_commands += MccsCommandProxy(
                         smartbox_trl, "On", self.logger
                     )
-                smartbox_on_commands(
+                result, message = smartbox_on_commands(
                     command_evaluator=CompositeCommandResultEvaluator(),
                     timeout=time_left,
                 )
+                if result != ResultCode.OK:
+                    loaded_composite_message = json.loads(message)
+                    failure_log += (
+                        f"MccsCompositeCommandProxy was not happy {result=}"
+                        f" {json.dumps(loaded_composite_message, indent=4)}"
+                    )
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             failure_log = f"Unhandled error when turning station on {e}, "
@@ -506,7 +512,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self.logger.error(f"Failure in the `ON` command -> {failure_log}")
             task_callback(
                 status=TaskStatus.FAILED,
-                result=(ResultCode.FAILED, "Didn't turn on all unmasked antennas."),
+                result=(ResultCode.FAILED, f"Command unsuccessful: {failure_log}"),
             )
             return
 
@@ -557,10 +563,16 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     smartbox_standby_commands += MccsCommandProxy(
                         smartbox_trl, "Standby", self.logger
                     )
-                smartbox_standby_commands(
+                result, message = smartbox_standby_commands(
                     command_evaluator=CompositeCommandResultEvaluator(),
                     timeout=time_left,
                 )
+                if result != ResultCode.OK:
+                    loaded_composite_message = json.loads(message)
+                    failure_log += (
+                        f"MccsCompositeCommandProxy was not happy {result=}"
+                        f" {json.dumps(loaded_composite_message, indent=4)}"
+                    )
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             failure_log = f"Unhandled error when turning station standby {e}, "
@@ -569,7 +581,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self.logger.error(f"Failure in the `STANDBY` command -> {failure_log}")
             task_callback(
                 status=TaskStatus.FAILED,
-                result=(ResultCode.FAILED, "Didn't turn on all FNDH ports."),
+                result=(ResultCode.FAILED, f"Command unsuccessful: {failure_log}"),
             )
             return
 
