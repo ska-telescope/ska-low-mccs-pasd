@@ -484,29 +484,33 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         task_callback(status=TaskStatus.IN_PROGRESS)
         failure_log = ""
 
-        try:
-            # Wait for the smartbox to change state
-            timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
-            fndh_result, time_left = self._power_fndh_ports(PowerState.ON, timeout)
-            if fndh_result == ResultCode.OK:
-                smartbox_on_commands = MccsCompositeCommandProxy(self.logger)
-                for smartbox_trl in self._smartbox_proxys:
-                    smartbox_on_commands += MccsCommandProxy(
-                        smartbox_trl, "On", self.logger
-                    )
-                result, message = smartbox_on_commands(
-                    command_evaluator=CompositeCommandResultEvaluator(),
-                    timeout=time_left,
+        # Wait for the smartbox to change state
+        timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
+        fndh_result, time_left = self._power_fndh_ports(PowerState.ON, timeout)
+        if fndh_result == ResultCode.OK:
+            smartbox_on_commands = MccsCompositeCommandProxy(self.logger)
+            for smartbox_trl in self._smartbox_proxys:
+                smartbox_on_commands += MccsCommandProxy(
+                    smartbox_trl, "On", self.logger
                 )
-                if result != ResultCode.OK:
-                    loaded_composite_message = json.loads(message)
-                    failure_log += (
-                        f"MccsCompositeCommandProxy was not happy {result=}"
-                        f" {json.dumps(loaded_composite_message, indent=4)}"
-                    )
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            failure_log = f"Unhandled error when turning station on {e}, "
+            result, message = smartbox_on_commands(
+                command_evaluator=CompositeCommandResultEvaluator(),
+                timeout=time_left,
+            )
+            if result != ResultCode.OK:
+                loaded_composite_message = json.loads(message)
+                failure_log += (
+                    f"MccsCompositeCommandProxy was not happy {result=}"
+                    f" {json.dumps(loaded_composite_message, indent=4)}"
+                )
+        elif fndh_result == ResultCode.REJECTED:
+            failure_log = "Communication not established with MccsFNDH."
+            result = fndh_result
+            message = failure_log
+        else:
+            failure_log = "Failed to turn on all FNDH ports with smartboxes."
+            result = fndh_result
+            message = failure_log
 
         if failure_log:
             self.logger.error(f"Failure in the `ON` command -> {failure_log}")
@@ -553,29 +557,33 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         failure_log = ""
 
-        try:
-            # Wait for the smartbox to change state
-            timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
-            fndh_result, time_left = self._power_fndh_ports(PowerState.ON, timeout)
-            if fndh_result == ResultCode.OK:
-                smartbox_standby_commands = MccsCompositeCommandProxy(self.logger)
-                for smartbox_trl in self._smartbox_proxys:
-                    smartbox_standby_commands += MccsCommandProxy(
-                        smartbox_trl, "Standby", self.logger
-                    )
-                result, message = smartbox_standby_commands(
-                    command_evaluator=CompositeCommandResultEvaluator(),
-                    timeout=time_left,
+        # Wait for the smartbox to change state
+        timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
+        fndh_result, time_left = self._power_fndh_ports(PowerState.ON, timeout)
+        if fndh_result == ResultCode.OK:
+            smartbox_standby_commands = MccsCompositeCommandProxy(self.logger)
+            for smartbox_trl in self._smartbox_proxys:
+                smartbox_standby_commands += MccsCommandProxy(
+                    smartbox_trl, "Standby", self.logger
                 )
-                if result != ResultCode.OK:
-                    loaded_composite_message = json.loads(message)
-                    failure_log += (
-                        f"MccsCompositeCommandProxy was not happy {result=}"
-                        f" {json.dumps(loaded_composite_message, indent=4)}"
-                    )
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            failure_log = f"Unhandled error when turning station standby {e}, "
+            result, message = smartbox_standby_commands(
+                command_evaluator=CompositeCommandResultEvaluator(),
+                timeout=time_left,
+            )
+            if result != ResultCode.OK:
+                loaded_composite_message = json.loads(message)
+                failure_log = (
+                    f"MccsCompositeCommandProxy was not happy {result=}"
+                    f" {json.dumps(loaded_composite_message, indent=4)}"
+                )
+        elif fndh_result == ResultCode.REJECTED:
+            failure_log = "Communication not established with MccsFNDH."
+            result = fndh_result
+            message = failure_log
+        else:
+            failure_log = "Failed to turn on all FNDH ports with smartboxes."
+            result = fndh_result
+            message = failure_log
 
         if failure_log:
             self.logger.error(f"Failure in the `STANDBY` command -> {failure_log}")
@@ -599,7 +607,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         power: PowerState,
         timeout: int,
     ) -> tuple[ResultCode, int]:
-        assert self._fndh_proxy._proxy
+        if self._fndh_proxy._proxy is None:
+            return ResultCode.REJECTED, timeout
         result = ResultCode.FAILED
 
         desired_fndh_port_powers: list[bool | None] = [
@@ -707,19 +716,20 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         failure_log = ""
 
-        try:
-            # Wait for the smartbox to change state
-            timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
-            self._power_fndh_ports(PowerState.OFF, timeout)
+        # Wait for the smartbox to change state
+        timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
+        fndh_result, timeout = self._power_fndh_ports(PowerState.OFF, timeout)
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            failure_log = f"Unhandled error when turning station off {e}, "
+        if fndh_result == ResultCode.REJECTED:
+            failure_log = "Communication not established with MccsFNDH."
+        elif fndh_result == ResultCode.FAILED:
+            failure_log = "Failed to turn off all FNDH ports."
 
         if failure_log:
             self.logger.error(f"Failure in the `OFF` command -> {failure_log}")
             task_callback(
-                status=TaskStatus.FAILED,
-                result=(ResultCode.FAILED, "Didn't turn off all FNDH ports."),
+                status=TaskStatus.COMPLETED,
+                result=(fndh_result, failure_log),
             )
             return
 
@@ -727,7 +737,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         task_callback(
             status=TaskStatus.COMPLETED,
             result=(
-                ResultCode.OK,
+                fndh_result,
                 "All FNDH ports turned off. All Smartbox ports turned off.",
             ),
         )
