@@ -26,6 +26,7 @@ from ska_low_mccs_common.component.command_proxy import MccsCommandProxy
 from ska_low_mccs_common.component.composite_command_proxy import (
     CompositeCommandResultEvaluator,
     MccsCompositeCommandProxy,
+    pretty_format,
 )
 from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
@@ -498,10 +499,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 timeout=time_left,
             )
             if result != ResultCode.OK:
-                loaded_composite_message = json.loads(message)
                 failure_log += (
                     f"MccsCompositeCommandProxy was not happy {result=}"
-                    f" {json.dumps(loaded_composite_message, indent=4)}"
+                    f" {pretty_format(message)}"
                 )
         elif fndh_result == ResultCode.REJECTED:
             failure_log = "Communication not established with MccsFNDH."
@@ -571,10 +571,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 timeout=time_left,
             )
             if result != ResultCode.OK:
-                loaded_composite_message = json.loads(message)
                 failure_log = (
                     f"MccsCompositeCommandProxy was not happy {result=}"
-                    f" {json.dumps(loaded_composite_message, indent=4)}"
+                    f" {pretty_format(message)}"
                 )
         elif fndh_result == ResultCode.REJECTED:
             failure_log = "Communication not established with MccsFNDH."
