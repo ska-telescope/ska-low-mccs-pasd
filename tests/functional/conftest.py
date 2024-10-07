@@ -592,6 +592,8 @@ def set_tango_device_state(
     """
     subscribe_device_proxy(dev)
     initial_state = dev.state()
+    result_code = ResultCode.UNKNOWN
+    command_id = ""
     # Issue the command
     if desired_state != initial_state:
         if desired_state == tango.DevState.ON:

@@ -236,7 +236,7 @@ class TestFieldStationIntegration:
             tango.DevState.UNKNOWN
         )
         change_event_callbacks["field_station_state"].assert_change_event(
-            tango.DevState.OFF
+            tango.DevState.STANDBY, lookahead=2
         )
         for i in range(len(smartbox_proxys)):
             change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
@@ -316,10 +316,10 @@ class TestFieldStationIntegration:
         fndh_simulator.outside_temperature = mocked_outside_temperature_register
 
         change_event_callbacks["fndh_outside_temperature"].assert_change_event(
-            scaled_outside_temperature
+            scaled_outside_temperature, lookahead=2
         )
         change_event_callbacks["field_station_outside_temperature"].assert_change_event(
-            scaled_outside_temperature
+            scaled_outside_temperature, lookahead=2
         )
 
     def test_configure(

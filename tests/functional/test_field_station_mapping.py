@@ -14,6 +14,7 @@ import time
 from typing import Any, Callable, Final
 
 import jsonschema
+import pytest
 import tango
 from pytest_bdd import given, parsers, scenarios, then, when
 from ska_control_model import AdminMode, PowerState, SimulationMode
@@ -222,12 +223,23 @@ def assert_antenna_on(
     :param desired_state: a Gherkin reference state.
     """
     desired_tango_state = state_mapping[desired_state]
-    antenna_power = json.loads(field_station_device.antennapowerstates)[antenna_no]
+    ticks = 10
+    tick = 0
+    while tick < ticks:
+        try:
+            antenna_power = json.loads(field_station_device.antennapowerstates)[
+                antenna_no
+            ]
 
-    if desired_tango_state == tango.DevState.OFF:
-        assert antenna_power == PowerState.OFF
-    else:
-        assert antenna_power == PowerState.ON
+            if desired_tango_state == tango.DevState.OFF:
+                assert antenna_power == PowerState.OFF
+            else:
+                assert antenna_power == PowerState.ON
+            return
+        except AssertionError:
+            time.sleep(1)
+            tick += 1
+    pytest.fail(reason=f"Antennas didn't reach correct state : {antenna_power}")
 
 
 @when(parsers.parse("we turn {desired_state} antenna {antenna_number}"))
@@ -276,7 +288,7 @@ def correct_antenna_turns_on(
         if power == desired_power:
             break
         time.sleep(3)
-
+        tick += 1
     assert power == desired_power
 
 

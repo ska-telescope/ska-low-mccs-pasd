@@ -87,9 +87,9 @@ nitpick_ignore = [
     # so that these external dependencies don't leak out through our
     # public interface.
     ("py:class", "numpy.complex"),
-    ("py:exc", "HTTPException"), # fastapi online docs are mkdocs-based
-    ("py:class", "starlette.requests.Request"), # mkdocs-based
-    ("py:class", "uvicorn.config.Config"), # mkdocs-based
+    ("py:exc", "HTTPException"),  # fastapi online docs are mkdocs-based
+    ("py:class", "starlette.requests.Request"),  # mkdocs-based
+    ("py:class", "uvicorn.config.Config"),  # mkdocs-based
     ("py:exc", "yaml.YAMLError"),
     ("py:class", "ska_low_mccs_common.health.HealthChangedCallbackProtocol"),
     ("py:class", "ska_low_mccs_common.MccsDeviceProxy"),
@@ -98,6 +98,8 @@ nitpick_ignore = [
         "py:class",
         "ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator._SmartboxPortSimulator",
     ),
+    ("py:class", "TaskStatus"),
+    ("py:class", "ResultCode"),
 ]
 
 # If your documentation needs a minimal Sphinx version, state it here.

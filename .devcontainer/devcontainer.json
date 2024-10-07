@@ -48,6 +48,7 @@
         "ms-python.python",
         "ryanluker.vscode-coverage-gutters",
         "tamasfe.even-better-toml",
+        "alexkrechik.cucumberautocomplete",
         "trond-snekvik.simple-rst"
       ]
     }

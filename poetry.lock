@@ -77,13 +77,13 @@ reference = "ska-nexus"
 
 [[package]]
 name = "astroid"
-version = "3.3.4"
+version = "3.3.5"
 description = "An abstract syntax tree for Python with inference support."
 optional = false
 python-versions = ">=3.9.0"
 files = [
-    {file = "astroid-3.3.4-py3-none-any.whl", hash = "sha256:5eba185467253501b62a9f113c263524b4f5d55e1b30456370eed4cdbd6438fd"},
-    {file = "astroid-3.3.4.tar.gz", hash = "sha256:e73d0b62dd680a7c07cb2cd0ce3c22570b044dd01bd994bc3a2dd16c6cbba162"},
+    {file = "astroid-3.3.5-py3-none-any.whl", hash = "sha256:a9d1c946ada25098d790e079ba2a1b112157278f3fb7e718ae6a9252f5835dc8"},
+    {file = "astroid-3.3.5.tar.gz", hash = "sha256:5cfc40ae9f68311075d27ef68a4841bdc5cc7f6cf86671b49f00607d30188e2d"},
 ]
 
 [package.dependencies]
@@ -2950,13 +2950,13 @@ reference = "ska-nexus"
 
 [[package]]
 name = "ska-low-mccs-common"
-version = "0.12.1"
+version = "0.14.0"
 description = "The Monitoring, Control and Calibration Subsystem (MCCS) of the SKA Low telescope"
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "ska_low_mccs_common-0.12.1-py3-none-any.whl", hash = "sha256:02e2b609af01e092d1900d5314f23d1c411d639d9bf45c7fd1f9d4a23e18f6e7"},
-    {file = "ska_low_mccs_common-0.12.1.tar.gz", hash = "sha256:a83f9798ef5dafa978372c424cf950a9d4a00ff8e52798fe180a0d529e5a8afc"},
+    {file = "ska_low_mccs_common-0.14.0-py3-none-any.whl", hash = "sha256:7dbe11ac2d2f32b3f6c6608f4543e8070523d29446602cde1a6dae0c00752b5c"},
+    {file = "ska_low_mccs_common-0.14.0.tar.gz", hash = "sha256:2ea7f80f12b4f6dcfc167f828c802a757e7c2cc18653a2d0e1e309c60b5a99a8"},
 ]
 
 [package.dependencies]
@@ -3976,4 +3976,4 @@ reference = "ska-nexus"
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "51e8352042435c0b6569a9e95057cd8330421f33310e5cade85d2624c4c35a6c"
+content-hash = "ec5d2af7dca51c3d4bf3be38c2c6116ca7f23a9d0d3ca85731003b8f43ab614a"

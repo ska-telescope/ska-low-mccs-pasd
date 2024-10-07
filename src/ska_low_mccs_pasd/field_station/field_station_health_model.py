@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Optional, Sequence
 
-from ska_control_model import HealthState
+from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.health import BaseHealthModel, HealthChangedCallbackProtocol
 
 from .field_station_health_rules import FieldStationHealthRules
@@ -41,11 +41,17 @@ class FieldStationHealthModel(BaseHealthModel):
         self._smartbox_health: dict[str, Optional[HealthState]] = {
             smartbox_fqdn: HealthState.UNKNOWN for smartbox_fqdn in smartbox_fqdns
         }
+        self._smartbox_power: dict[str, Optional[PowerState]] = {
+            smartbox_fqdn: PowerState.UNKNOWN for smartbox_fqdn in smartbox_fqdns
+        }
         self._fndh_health: Optional[HealthState]
+        self._fndh_power: Optional[PowerState]
         if fndh_fqdn == "":
             self._fndh_health = None
+            self._fndh_power = None
         else:
             self._fndh_health = HealthState.UNKNOWN
+            self._fndh_power = PowerState.UNKNOWN
         self._fndh_fqdn = fndh_fqdn
         self._health_rules = FieldStationHealthRules(thresholds)
         super().__init__(health_changed_callback)
@@ -59,12 +65,29 @@ class FieldStationHealthModel(BaseHealthModel):
         Handle a change in fndh health.
 
         :param fndh_fqdn: the FQDN of the fndh whose health has changed
-        :param fndh_health: the health state of the specified smartbox, or
+        :param fndh_health: the health state of the fndh, or
             None if the fndh's admin mode indicates that its health
             should not be rolled up.
         """
         if self._fndh_health != fndh_health and fndh_fqdn == self._fndh_fqdn:
             self._fndh_health = fndh_health
+            self.update_health()
+
+    def fndh_power_changed(
+        self: FieldStationHealthModel,
+        fndh_fqdn: str,
+        fndh_power: Optional[PowerState],
+    ) -> None:
+        """
+        Handle a change in fndh power.
+
+        :param fndh_fqdn: the FQDN of the fndh whose power has changed
+        :param fndh_power: the power state of the fndh, or
+            None if the fndh's admin mode indicates that its power
+            should not be rolled up.
+        """
+        if self._fndh_power != fndh_power and fndh_fqdn == self._fndh_fqdn:
+            self._fndh_power = fndh_power
             self.update_health()
 
     def smartbox_health_changed(
@@ -85,6 +108,26 @@ class FieldStationHealthModel(BaseHealthModel):
             and smartbox_fqdn in self._smartbox_health
         ):
             self._smartbox_health[smartbox_fqdn] = smartbox_health
+            self.update_health()
+
+    def smartbox_power_changed(
+        self: FieldStationHealthModel,
+        smartbox_fqdn: str,
+        smartbox_power: Optional[PowerState],
+    ) -> None:
+        """
+        Handle a change in smartbox power.
+
+        :param smartbox_fqdn: the FQDN of the smartbox whose health has changed
+        :param smartbox_power: the power state of the specified smartbox, or
+            None if the smartbox's admin mode indicates that its health
+            should not be rolled up.
+        """
+        if (
+            self._smartbox_power.get(smartbox_fqdn) != smartbox_power
+            and smartbox_fqdn in self._smartbox_power
+        ):
+            self._smartbox_power[smartbox_fqdn] = smartbox_power
             self.update_health()
 
     def evaluate_health(
@@ -113,7 +156,11 @@ class FieldStationHealthModel(BaseHealthModel):
             if health == station_health:
                 return station_health, station_report
             result, report = self._health_rules.rules[health](
-                self._fndh_health, self._smartbox_health
+                self._state["power"],
+                self._fndh_health,
+                self._fndh_power,
+                self._smartbox_health,
+                self._smartbox_power,
             )
             if result:
                 return health, report
