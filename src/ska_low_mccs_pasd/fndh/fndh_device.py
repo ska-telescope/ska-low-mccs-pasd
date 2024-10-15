@@ -792,12 +792,13 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             # for the corresponding Tango attribute
             if attr_name.endswith("thresholds"):
                 try:
+                    threshold_attribute_name = attr_name.removesuffix("thresholds")
                     self._health_model.update_health_threshold(
-                        attr_name.removesuffix("thresholds"), attr_value
+                        threshold_attribute_name, attr_value
                     )
                     configure_alarms(
                         self.get_device_attr().get_attr_by_name(
-                            attr_name.removesuffix("thresholds")
+                            threshold_attribute_name
                         ),
                         attr_value,
                         self.logger,
