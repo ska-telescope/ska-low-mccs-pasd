@@ -97,6 +97,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self._overCurrentThreshold: float
         self._overVoltageThreshold: float
         self._humidityThreshold: float
+        self._health_monitor_points: dict[str, list[float]] = {}
         self._ports_with_smartbox: list[int] = []
 
     def init_device(self: MccsFNDH) -> None:
@@ -530,6 +531,40 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         """
         self._overCurrentThreshold = value
 
+    @attribute(
+        dtype="DevString",
+        label="return the version of healthRules in use. Only v1 and v1 available.",
+    )
+    def healthRuleVersion(self: MccsFNDH) -> str:
+        """
+        Return the HealthRuleVersion in use.
+
+        :return: the HealthRuleVersion is use.
+        """
+        if self._health_model.health_rule_active:
+            return "v1"
+        return "v0"
+
+    @healthRuleVersion.write  # type: ignore[no-redef]
+    def healthRuleVersion(self: MccsFNDH, value: str) -> None:
+        """
+        Set the HealthRuleVersion to use.
+
+        :param value: new version to use. Currenly support v1 or v2
+
+        :raises ValueError: when attempting to set a version not
+            supported.
+        """
+        version = value.lower()
+        if version not in ["v0", "v1"]:
+            raise ValueError("We only support versions v0 and v1")
+        if version == "v0":
+            self._health_model.health_rule_active = False
+            self.logger.info("De-activated the new healthRules.")
+            return
+        self._health_model.health_rule_active = True
+        self.logger.info("Activated the new healthRules.")
+
     @attribute(dtype="DevDouble", label="Over Voltage threshold", unit="Volt")
     def overVoltageThreshold(self: MccsFNDH) -> float:
         """
@@ -614,6 +649,10 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             self._update_port_power_states(
                 [PowerState.UNKNOWN] * self.CONFIG["number_of_ports"]
             )
+            self._health_monitor_points = {}
+            self._health_model.update_state(
+                monitoring_points=self._health_monitor_points
+            )
             self._component_state_changed_callback(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._component_state_changed_callback(power=PowerState.ON)
@@ -621,7 +660,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
 
         super()._communication_state_changed(communication_state)
 
-        self._health_model.update_state(communicating=True)
+        self._health_model.update_state(
+            communicating=(communication_state == CommunicationStatus.ESTABLISHED)
+        )
 
     def _update_port_power_states(
         self: MccsFNDH, power_states: list[PowerState]
@@ -677,6 +718,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 return
             if power == PowerState.ON:
                 self._update_port_power_states(self._port_power_states)
+                self._communication_state_changed(CommunicationStatus.ESTABLISHED)
 
         super()._component_state_changed(fault=fault, power=power)
         if fault is not None:
@@ -750,6 +792,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             # for the corresponding Tango attribute
             if attr_name.endswith("thresholds"):
                 try:
+                    self._health_model.update_health_threshold(
+                        attr_name.removesuffix("thresholds"), attr_value
+                    )
                     configure_alarms(
                         self.get_device_attr().get_attr_by_name(
                             attr_name.removesuffix("thresholds")
@@ -760,6 +805,11 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass
+            else:
+                self._health_monitor_points[attr_name] = attr_value
+                self._health_model.update_state(
+                    monitoring_points=self._health_monitor_points
+                )
 
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
@@ -769,6 +819,15 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 f"""The attribute {attr_name} pushed from MccsPasdBus
                 device does not exist in MccsSmartBox"""
             )
+
+    @attribute(dtype="DevString")
+    def healthReport(self: MccsFNDH) -> str:
+        """
+        Get the health report.
+
+        :return: the health report.
+        """
+        return self._health_model.health_report
 
 
 # ----------
