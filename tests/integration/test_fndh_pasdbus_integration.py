@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import gc
+import random
 
 import pytest
 import tango
@@ -490,6 +491,90 @@ class TestfndhPasdBusIntegration:
 
         assert fndh_device.PortPowerState(off_smartbox_attached_port) == PowerState.ON
 
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_health(
+        self: TestfndhPasdBusIntegration,
+        fndh_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        fndh_simulator: FndhSimulator,
+        off_smartbox_attached_port: int,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test integration of FNDH health with pasdBus.
+
+        :param fndh_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param pasd_bus_device: a proxy to the PaSD bus device under test.
+        :param fndh_simulator: the FNDH simulator under test
+        :param off_smartbox_attached_port: the FNDH port the off
+            smartbox-under-test is attached to.
+        :param change_event_callbacks: dictionary of mock change event
+            callbacks with asynchrony support
+        """
+        # Grab a random attribute with alarms defined.
+        threshold_attributes = list(FndhSimulator.ALARM_MAPPING.keys())
+        random_index = random.randrange(0, len(threshold_attributes) - 1)
+        attribute_name: str = threshold_attributes[random_index]
+        attribute_threshold = attribute_name + "_thresholds"
+
+        assert fndh_device.adminMode == AdminMode.OFFLINE
+        assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+        assert (
+            fndh_device.PortPowerState(off_smartbox_attached_port) == PowerState.UNKNOWN
+        )
+        pasd_bus_device.subscribe_event(
+            "healthState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasdBushealthState"],
+        )
+
+        change_event_callbacks.assert_change_event(
+            "pasdBushealthState", HealthState.UNKNOWN
+        )
+        pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+        change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
+        fndh_device.subscribe_event(
+            "healthState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndhhealthState"],
+        )
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.UNKNOWN
+        )
+        fndh_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+        change_event_callbacks.assert_not_called()
+        assert fndh_device.healthState == HealthState.OK
+
+        # Check for transitions through health. when value changes.
+        (
+            max_alarm,
+            max_warning,
+            min_warning,
+            min_alarm,
+        ) = getattr(fndh_simulator, attribute_threshold)
+        healthy_value = (max_warning + min_warning) / 2
+        setattr(fndh_simulator, attribute_name, max_alarm)
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.FAILED
+        )
+        setattr(fndh_simulator, attribute_name, max_warning)
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.DEGRADED
+        )
+        setattr(fndh_simulator, attribute_name, min_alarm)
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.FAILED
+        )
+        setattr(fndh_simulator, attribute_name, min_warning)
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.DEGRADED
+        )
+        setattr(fndh_simulator, attribute_name, int(healthy_value))
+        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+
 
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture(
@@ -506,6 +591,7 @@ def change_event_callbacks_fixture(
         "fndh_state",
         "pasd_bus_state",
         "pasdBushealthState",
+        "fndhhealthState",
         f"smartbox{last_smartbox_id}AlarmFlags",
         "fndhPortPowerState",
         "fndhPort2PowerState",
