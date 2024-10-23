@@ -214,6 +214,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self.has_antenna = True
 
         self._update_smartbox_mask()
+        self._update_fndh_configuration()
 
     def _update_smartbox_mask(self: FieldStationComponentManager) -> None:
         """Update the mask on the smartboxe for their ports."""
@@ -228,6 +229,21 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 "Tried to update smartbox port mask on smartboxes, "
                 "however connection is not established. "
                 "Will try again when connection established."
+            )
+
+    def _update_fndh_configuration(self: FieldStationComponentManager) -> None:
+        """Update the fndh with configuration."""
+        try:
+            assert self._fndh_proxy._proxy is not None
+            active_fndh_ports: list[Any] = list(
+                self._smartbox_mapping["smartboxMapping"].values()
+            )
+            self._fndh_proxy._proxy.portsWithSmartbox = active_fndh_ports
+        except Exception:  # pylint: disable=broad-exception-caught
+            self.logger.warning(
+                "Tried to update fndh configuration with the "
+                "smartbox attached ports. However, the connection is not "
+                "ESTABLISHED. Will try again when ESTABLISHED."
             )
 
     def start_communicating(self: FieldStationComponentManager) -> None:
@@ -455,6 +471,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         else:
             self._update_communication_state(CommunicationStatus.ESTABLISHED)
             self._update_smartbox_mask()
+            self._update_fndh_configuration()
 
     def on(
         self: FieldStationComponentManager, task_callback: Optional[Callable] = None

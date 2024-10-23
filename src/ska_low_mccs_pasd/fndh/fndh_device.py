@@ -29,6 +29,7 @@ from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
 
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
+from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from ..pasd_utils import configure_alarms
@@ -96,6 +97,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self._overCurrentThreshold: float
         self._overVoltageThreshold: float
         self._humidityThreshold: float
+        self._ports_with_smartbox: list[int] = []
 
     def init_device(self: MccsFNDH) -> None:
         """
@@ -563,6 +565,37 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         :param value: new value for the humidityThreshold attribute
         """
         self._humidityThreshold = value
+
+    @attribute(dtype=("DevShort",), label="portsWithSmartbox", max_dim_x=24)
+    def portsWithSmartbox(self: MccsFNDH) -> list[bool]:
+        """
+        Return the ports with a smartbox attached.
+
+        :return: the ports with smartbox attached.
+        """
+        return self._ports_with_smartbox
+
+    @portsWithSmartbox.write  # type: ignore[no-redef]
+    def portsWithSmartbox(self: MccsFNDH, port_numbers: list[int]) -> None:
+        """
+        Set the ports with smartbox attached.
+
+        :param port_numbers: the port numbers with a smartbox attached.
+
+        :raises ValueError: if the number of smartbox exceeds the maximum allowed for
+            a station.
+        """
+        if not len(port_numbers) == PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION:
+            self.logger.error(
+                "The number of ports with smartbox is over the "
+                f"maximum for a station: {len(port_numbers)}."
+            )
+            raise ValueError(
+                "The number of ports with smartbox is over the "
+                f"maximum for a station: {len(port_numbers)}."
+            )
+        self._ports_with_smartbox = port_numbers
+        self._health_model.update_state(ports_with_smartbox=self._ports_with_smartbox)
 
     # ----------
     # Callbacks
