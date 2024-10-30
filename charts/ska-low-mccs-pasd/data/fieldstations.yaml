@@ -36,6 +36,8 @@ Define the deployment for MccsFieldStation devices.
             - low-mccs/smartbox/s8-1-sb23
             - low-mccs/smartbox/s8-1-sb24
           logging_level_default: 5
+          device_properties: # Arbitrary properties.
+            foo: bar
 
 */}}
 {{- $fieldstations := dict}}
@@ -87,6 +89,16 @@ server:
                 - name: "LoggingLevelDefault"
                   values:
                     - {{quote .}}
+{{- end}}
+{{- range $property_name, $property_value := ($this_fieldstation | dig "device_properties" dict)}}
+{{- if not (kindIs "slice" $property_value)}}
+{{- $property_value = list $property_value}}
+{{- end}}
+                - name: {{$property_name | quote}}
+                  values:
+{{- range $value := $property_value}}
+                  - {{quote $value}}
+{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}
