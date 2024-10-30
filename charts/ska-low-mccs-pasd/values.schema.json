@@ -95,6 +95,9 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 5
+                            },
+                            "device_properties": {
+                              "type": "object"
                             }
                           },
                           "required": [
@@ -151,6 +154,9 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 5
+                            },
+                            "device_properties": {
+                              "type": "object"
                             }
                           },
                           "required": [
@@ -204,6 +210,9 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 5
+                            },
+                            "device_properties": {
+                              "type": "object"
                             }
                           },
                           "required": [
@@ -275,6 +284,9 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 5
+                            },
+                            "device_properties": {
+                              "type": "object"
                             }
                           },
                           "required": [
@@ -356,6 +368,9 @@
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 5
+                            },
+                            "device_properties": {
+                              "type": "object"
                             },
                             "available_smartboxes": {
                               "type": "array",
