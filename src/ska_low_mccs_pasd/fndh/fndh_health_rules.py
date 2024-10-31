@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ska_control_model import HealthState
+from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.health import HealthRules
 
 
@@ -32,11 +32,16 @@ class FndhHealthRules(HealthRules):
     def unknown_rule(  # type: ignore[override]
         self: FndhHealthRules,
         monitoring_points: dict[str, Any],
+        pasd_power: PowerState | None = None,
+        ignore_pasd_power: bool = False,
     ) -> tuple[bool, str]:
         """
         Return True if we have UNKNOWN healthstate.
 
         :param monitoring_points: A dictionary containing the monitoring points.
+        :param pasd_power: The power reported by the PaSDBus.
+        :param ignore_pasd_power: True if we are ignoring the rollup of the pasd
+            power
 
         :returns: True if we are in a UNKNOWN healthstate.
         """
@@ -54,11 +59,16 @@ class FndhHealthRules(HealthRules):
     def failed_rule(  # type: ignore[override]
         self: FndhHealthRules,
         monitoring_points: dict[str, Any],
+        pasd_power: PowerState | None = None,
+        ignore_pasd_power: bool = False,
     ) -> tuple[bool, str]:
         """
         Return True if we have FAILED healthstate.
 
         :param monitoring_points: A dictionary containing the monitoring points.
+        :param pasd_power: The power reported by the PaSDBus.
+        :param ignore_pasd_power: True if we are ignoring the rollup of the pasd
+            power.
 
         :returns: True if we are in a FAILED healthstate.
         """
@@ -74,14 +84,29 @@ class FndhHealthRules(HealthRules):
     def degraded_rule(  # type: ignore[override]
         self: FndhHealthRules,
         monitoring_points: dict[str, Any],
+        pasd_power: PowerState | None = None,
+        ignore_pasd_power: bool = False,
     ) -> tuple[bool, str]:
         """
         Return True if we have DEGRADED healthstate.
 
         :param monitoring_points: A dictionary containing the monitoring points.
+        :param pasd_power: The power reported by the PaSDBus.
+        :param ignore_pasd_power: True if we are ignoring the rollup of the pasd
+            power.
 
         :returns: True if we are in a DEGRADED healthstate.
         """
+        if (
+            (not ignore_pasd_power)
+            and (pasd_power is not None)
+            and (pasd_power == PowerState.UNKNOWN)
+        ):
+            return (
+                True,
+                "The PaSDBus has a UNKNOWN PowerState. "
+                "FNDH HealthState evaluated as DEGRADED.",
+            )
         for key, value in monitoring_points.items():
             if value[0] == HealthState.DEGRADED:
                 return (
@@ -95,11 +120,16 @@ class FndhHealthRules(HealthRules):
     def healthy_rule(  # type: ignore[override]
         self: FndhHealthRules,
         monitoring_points: dict[str, Any],
+        pasd_power: PowerState | None = None,
+        ignore_pasd_power: bool = False,
     ) -> tuple[bool, str]:
         """
         Return True if we have OK healthstate.
 
         :param monitoring_points: A dictionary containing the monitoring points.
+        :param pasd_power: The power reported by the PaSDBus.
+        :param ignore_pasd_power: True if we are ignoring the rollup of the pasd
+            power
 
         :returns: True if we are in a OK healthstate.
         """
@@ -128,13 +158,13 @@ class FndhHealthRules(HealthRules):
         if (monitoring_point >= max_warn) or (monitoring_point <= min_warn):
             if (monitoring_point >= max_alm) or (monitoring_point <= min_alm):
                 return (
-                    HealthState.FAILED,
+                    HealthState.DEGRADED,
                     f"Monitoring point has value {monitoring_point}, "
                     "this is in the alarm region for thresholds "
                     f"{max_alm=}, {min_alm=}",
                 )
             return (
-                HealthState.DEGRADED,
+                HealthState.OK,
                 f"Monitoring point has value {monitoring_point}, "
                 "this is in the warning region for thresholds "
                 f"{max_warn=}, {min_warn=}",
@@ -154,5 +184,4 @@ class FndhHealthRules(HealthRules):
         :param threshold_value: A list containing the
             [max_alm, max_warn, min_warn, min_alm]
         """
-        print(f"oisadhoiash {threshold_name=},{threshold_value=}")
         self._thresholds[threshold_name] = threshold_value

@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import sys
 from dataclasses import dataclass
@@ -98,6 +99,8 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self._overVoltageThreshold: float
         self._humidityThreshold: float
         self._health_monitor_points: dict[str, list[float]] = {}
+        self.simulated_value = 0
+        self._ignore_pasd = False
         self._ports_with_smartbox: list[int] = []
 
     def init_device(self: MccsFNDH) -> None:
@@ -532,6 +535,26 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self._overCurrentThreshold = value
 
     @attribute(
+        dtype="DevShort",
+    )
+    def simulateValue(self: MccsFNDH) -> int:
+        """
+        Return the simulateValue in use.
+
+        :return: the simulateValue is use.
+        """
+        return self.simulated_value
+
+    @simulateValue.write  # type: ignore[no-redef]
+    def simulateValue(self: MccsFNDH, value: int) -> None:
+        """
+        Set the simulateValue to use.
+
+        :param value: new version to use. Currenly support v1 or v2
+        """
+        self.simulated_value = value
+
+    @attribute(
         dtype="DevString",
         label="return the version of healthRules in use. Only v1 and v1 available.",
     )
@@ -693,7 +716,6 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         fault: Optional[bool] = None,
         power: Optional[PowerState] = None,
         fqdn: Optional[str] = None,
-        pasdbus_status: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -705,28 +727,24 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         :param fault: whether the component is in fault.
         :param power: the power state of the component
         :param fqdn: the fqdn of the device calling.
-        :param pasdbus_status: the status of the pasd_bus
         :param kwargs: additional keyword arguments defining component
             state.
         """
         if fqdn is not None:
-            # TODO: The information passed here could factor into the FNDH health
-            if power == PowerState.UNKNOWN:
-                # If a proxy calls back with a unknown power. As a precaution it is
-                # assumed that communication is NOT_ESTABLISHED.
-                self._communication_state_changed(CommunicationStatus.NOT_ESTABLISHED)
-                return
-            if power == PowerState.ON:
-                self._update_port_power_states(self._port_power_states)
-                self._communication_state_changed(CommunicationStatus.ESTABLISHED)
-
+            if "health" in kwargs:
+                # NOTE: If the health is updated with None it means
+                # we do not roll up the power.
+                if kwargs.get("health", "") is None:
+                    self._health_model.update_state(ignore_pasd_power=True)
+                else:
+                    self._health_model.update_state(ignore_pasd_power=False)
+            self._health_model.update_state(pasd_power=power)
+            return
         super()._component_state_changed(fault=fault, power=power)
         if fault is not None:
             self._health_model.update_state(fault=fault)
         if power is not None:
             self._health_model.update_state(power=power)
-        if pasdbus_status is not None:
-            self._health_model.update_state(pasdbus_status=pasdbus_status)
 
     def _health_changed_callback(self: MccsFNDH, health: HealthState) -> None:
         """
@@ -776,6 +794,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 )
                 > 0
             )
+            if self.simulated_value != 0:
+                if attr_name == "psu48vvoltage1":
+                    attr_value = self.simulated_value
             # TODO: These attributes may factor into the FNDH health.
             # we should notify the health model of any relevant changes.
             if attr_value is None:
@@ -820,6 +841,28 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 f"""The attribute {attr_name} pushed from MccsPasdBus
                 device does not exist in MccsSmartBox"""
             )
+
+    @attribute(
+        dtype="DevString",
+        format="%s",
+    )
+    def healthModelParams(self: MccsFNDH) -> str:
+        """
+        Get the health params from the health model.
+
+        :return: the health params
+        """
+        return json.dumps(self._health_model.health_params)
+
+    @healthModelParams.write  # type: ignore[no-redef]
+    def healthModelParams(self: MccsFNDH, argin: str) -> None:
+        """
+        Set the params for health transition rules.
+
+        :param argin: JSON-string of dictionary of health states
+        """
+        self._health_model.health_params = json.loads(argin)
+        self._health_model.update_health()
 
     @attribute(dtype="DevString")
     def healthReport(self: MccsFNDH) -> str:
