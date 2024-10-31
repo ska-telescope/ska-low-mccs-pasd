@@ -98,7 +98,6 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self._overVoltageThreshold: float
         self._humidityThreshold: float
         self._health_monitor_points: dict[str, list[float]] = {}
-        self.simulated_value = 0
         self._ignore_pasd = False
 
     def init_device(self: MccsFNDH) -> None:
@@ -533,26 +532,6 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self._overCurrentThreshold = value
 
     @attribute(
-        dtype="DevShort",
-    )
-    def simulateValue(self: MccsFNDH) -> int:
-        """
-        Return the simulateValue in use.
-
-        :return: the simulateValue is use.
-        """
-        return self.simulated_value
-
-    @simulateValue.write  # type: ignore[no-redef]
-    def simulateValue(self: MccsFNDH, value: int) -> None:
-        """
-        Set the simulateValue to use.
-
-        :param value: new version to use. Currenly support v1 or v2
-        """
-        self.simulated_value = value
-
-    @attribute(
         dtype="DevString",
         label="return the version of healthRules in use. Only v1 and v1 available.",
     )
@@ -761,9 +740,6 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
                 )
                 > 0
             )
-            if self.simulated_value != 0:
-                if attr_name == "psu48vvoltage1":
-                    attr_value = self.simulated_value
             # TODO: These attributes may factor into the FNDH health.
             # we should notify the health model of any relevant changes.
             if attr_value is None:
