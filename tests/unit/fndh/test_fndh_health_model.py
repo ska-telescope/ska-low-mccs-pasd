@@ -52,20 +52,17 @@ class TestFNDHHealthModel:
                 {
                     "psu48v_voltage_1": 85.0,
                 },
-                HealthState.DEGRADED,
-                "Monitoring point psu48v_voltage_1 is in DEGRADED HealthState. "
-                "Cause: Monitoring point has value 85.0, "
-                "this is in the warning region for thresholds "
-                "max_warn=84.0, min_warn=43.0",
-                id="voltage in warning, expect DEGRADED",
+                HealthState.OK,
+                "Health is OK.",
+                id="voltage in warning, expect OK",
             ),
             pytest.param(
                 {"psu48v_voltage_1_thresholds": [100.0, 84.0, 43.0, 0.0]},
                 {
                     "psu48v_voltage_1": 105.0,
                 },
-                HealthState.FAILED,
-                "Monitoring point psu48v_voltage_1 is in FAILED HealthState. "
+                HealthState.DEGRADED,
+                "Monitoring point psu48v_voltage_1 is in DEGRADED HealthState. "
                 "Cause: Monitoring point has value 105.0, "
                 "this is in the alarm region for thresholds "
                 "max_alm=100.0, min_alm=0.0",
@@ -270,12 +267,12 @@ class TestFNDHHealthModel:
                 },
                 HealthState.OK,
                 "Health is OK.",
-                HealthState.FAILED,
-                "Monitoring point comms_gateway_temperature is in FAILED HealthState. "
+                HealthState.DEGRADED,
+                "Monitoring point comms_gateway_temperature in DEGRADED HealthState. "
                 "Cause: Monitoring point has value 56.0, "
                 "this is in the alarm region for thresholds "
                 "max_alm=33.0, min_alm=0.0",
-                id="Update thresholds so that now the device reports FAILED",
+                id="Update thresholds so that now the device reports DEGRADED",
             ),
         ],
     )

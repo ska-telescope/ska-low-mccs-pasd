@@ -35,7 +35,12 @@ class FndhHealthModel(BaseHealthModel):
         self.logger = None
         self._use_new_rules = True
         self._health_rules = FndhHealthRules()
-        super().__init__(health_changed_callback, pasdbus_status=None)
+        self._ignore_pasd_power = False
+        super().__init__(
+            health_changed_callback,
+            pasd_power=None,
+            ignore_pasd_power=False,
+        )
 
     @property
     def health_rule_active(self: FndhHealthModel) -> bool:
@@ -87,6 +92,8 @@ class FndhHealthModel(BaseHealthModel):
         if not self._use_new_rules:
             return tile_health, tile_report
         monitoring_points = self.monitoring_points
+        pasd_power = self._state.get("pasd_power", None)
+        ignore_pasd_power = self._state.get("ignore_pasd_power")
         for health in [
             HealthState.FAILED,
             HealthState.UNKNOWN,
@@ -95,7 +102,11 @@ class FndhHealthModel(BaseHealthModel):
         ]:
             if health == tile_health:
                 return tile_health, tile_report
-            result, report = self._health_rules.rules[health](monitoring_points)
+            result, report = self._health_rules.rules[health](
+                monitoring_points=monitoring_points,
+                pasd_power=pasd_power,
+                ignore_pasd_power=ignore_pasd_power,
+            )
             if result:
                 return health, report
         return HealthState.UNKNOWN, "No rules matched"
@@ -151,5 +162,5 @@ class FndhHealthModel(BaseHealthModel):
             threshold as value
         """
         self._health_rules._thresholds = self._merge_dicts(
-            self._health_rules.default_thresholds, params
+            self._health_rules._thresholds, params
         )
