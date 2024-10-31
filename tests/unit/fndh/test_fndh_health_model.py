@@ -268,7 +268,8 @@ class TestFNDHHealthModel:
                 HealthState.OK,
                 "Health is OK.",
                 HealthState.DEGRADED,
-                "Monitoring point comms_gateway_temperature in DEGRADED HealthState. "
+                "Monitoring point comms_gateway_temperature "
+                "is in DEGRADED HealthState. "
                 "Cause: Monitoring point has value 56.0, "
                 "this is in the alarm region for thresholds "
                 "max_alm=33.0, min_alm=0.0",
