@@ -2,6 +2,11 @@
 
 ## unreleased
 
+## 0.12.0
+
+* [MCCS-2309]: allow setting arbitrary Tango properties via Helm chart values
+* [MCCS-2140]: implement STANDBY mode in FieldStation, and improve related health state handling
+
 ## 0.11.1
 
 * [SKB-480]: Fix FNDH stuck in UNKNOWN
