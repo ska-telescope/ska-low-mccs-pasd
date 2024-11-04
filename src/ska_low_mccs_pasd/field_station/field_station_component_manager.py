@@ -239,11 +239,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 self._smartbox_mapping["smartboxMapping"].values()
             )
             self._fndh_proxy._proxy.portsWithSmartbox = active_fndh_ports
-        except Exception:  # pylint: disable=broad-exception-caught
+        except tango.DevFailed as df:
             self.logger.warning(
                 "Tried to update fndh configuration with the "
                 "smartbox attached ports. However, the connection is not "
-                "ESTABLISHED. Will try again when ESTABLISHED."
+                "ESTABLISHED. Will try again when ESTABLISHED. "
+                f"{df}"
             )
 
     def start_communicating(self: FieldStationComponentManager) -> None:
