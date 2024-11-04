@@ -411,15 +411,18 @@ class TestFieldStationIntegration:
     def test_configuration_change(
         self: TestFieldStationIntegration,
         field_station_device: tango.DeviceProxy,
+        fndh_device: tango.DeviceProxy,
         simulated_configuration: dict[Any, Any],
         configuration_manager: unittest.mock.Mock,
         invalid_simulated_configuration: dict[Any, Any],
         simulated_configuration_alternative: dict[Any, Any],
+        change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
         """
         Test loading a new configuration.
 
         :param field_station_device: provide to the field station device
+        :param fndh_device: a fixture yielding the fndh under test.
         :param simulated_configuration: a fixture containing the
             simulated configuration.
         :param configuration_manager: the configuration manager to manager configuration
@@ -428,8 +431,11 @@ class TestFieldStationIntegration:
             invalid simulated configuration.
         :param simulated_configuration_alternative: a fixture containing a
             alternative simulated configuration.
+        :param change_event_callbacks: group of Tango change event
+            callbacks with asynchrony support
         """
         antenna_mapping = antenna_mapping_from_reference_data(simulated_configuration)
+        assert fndh_device.portsWithSmartbox.tolist() == []
 
         # Check initial configuration loaded.
         assert field_station_device.antennamapping == json.dumps(antenna_mapping)
@@ -440,6 +446,7 @@ class TestFieldStationIntegration:
         )
         [return_code], [command_id] = field_station_device.LoadConfiguration()
         poll_until_command_completed(field_station_device, command_id, 3)
+        assert fndh_device.portsWithSmartbox.tolist() == []
 
         assert field_station_device.antennamapping == json.dumps(antenna_mapping)
         invalid_antenna_mapping = antenna_mapping_from_reference_data(
@@ -464,6 +471,21 @@ class TestFieldStationIntegration:
         assert field_station_device.antennamapping == json.dumps(
             alternative_antenna_mapping
         )
+        field_station_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["field_station_state"],
+        )
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
+        field_station_device.adminMode = 0
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        # We will stick in unknown since the adminMode of subdevices is OFFLINE.
+        change_event_callbacks["field_station_state"].assert_not_called()
+        assert len(fndh_device.portsWithSmartbox.tolist()) == 24
 
 
 # pylint: disable=inconsistent-return-statements

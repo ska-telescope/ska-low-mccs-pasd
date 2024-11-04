@@ -15,6 +15,7 @@ import unittest.mock
 from contextlib import nullcontext
 from typing import Any, ContextManager
 
+import numpy as np
 import pytest
 import tango
 from ska_control_model import AdminMode, LoggingLevel, PowerState, ResultCode
@@ -334,3 +335,22 @@ def test_threshold_attributes(
     assert fndh_device.overVoltageThreshold == 6.0
     fndh_device.humidityThreshold = 60.0
     assert fndh_device.humidityThreshold == 60.0
+
+
+def test_ports_with_smartbox(
+    fndh_device: tango.DeviceProxy,
+) -> None:
+    """
+    Test that we can update the port configuration.
+
+    :param fndh_device: fixture that provides a
+        :py:class:`tango.DeviceProxy` to the device under test, in a
+        :py:class:`tango.test_context.DeviceTestContext`.
+    """
+    assert fndh_device.portsWithSmartbox.tolist() == []
+    mocked_ports_bad = [i + 1 for i in range(25)]
+    with pytest.raises(tango.DevFailed):
+        fndh_device.portsWithSmartbox = mocked_ports_bad
+    mocked_ports = [i + 1 for i in range(24)]
+    fndh_device.portsWithSmartbox = np.array(mocked_ports)
+    assert fndh_device.portsWithSmartbox.tolist() == mocked_ports
