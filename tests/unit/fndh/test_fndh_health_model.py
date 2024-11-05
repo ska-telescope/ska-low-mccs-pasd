@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import pytest
 from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.testing.mock import MockCallable
@@ -39,7 +40,7 @@ class TestFNDHHealthModel:
         ("thresholds", "data", "expected_final_health", "expected_final_report"),
         [
             pytest.param(
-                {"psu48v_voltage_1_thresholds": [100.0, 84.0, 43.0, 0.0]},
+                {"psu48v_voltage_1": np.array([100.0, 84.0, 43.0, 0.0])},
                 {
                     "psu48v_voltage_1": 81.0,
                 },
@@ -48,7 +49,7 @@ class TestFNDHHealthModel:
                 id="All devices healthy, expect OK",
             ),
             pytest.param(
-                {"psu48v_voltage_1_thresholds": [100.0, 84.0, 43.0, 0.0]},
+                {"psu48v_voltage_1": np.array([100.0, 84.0, 43.0, 0.0])},
                 {
                     "psu48v_voltage_1": 85.0,
                 },
@@ -57,7 +58,7 @@ class TestFNDHHealthModel:
                 id="voltage in warning, expect OK",
             ),
             pytest.param(
-                {"psu48v_voltage_1_thresholds": [100.0, 84.0, 43.0, 0.0]},
+                {"psu48v_voltage_1": np.array([100.0, 84.0, 43.0, 0.0])},
                 {
                     "psu48v_voltage_1": 105.0,
                 },
@@ -68,12 +69,90 @@ class TestFNDHHealthModel:
                 "max_alm=100.0, min_alm=0.0",
                 id="voltage too high, expect FAILED",
             ),
+            pytest.param(
+                {
+                    "degraded_percent_uncontrolled_smartbox": 0,
+                    "failed_percent_uncontrolled_smartbox": 25,
+                },
+                {
+                    "ports_with_smartbox": np.array([i + 1 for i in range(24)]),
+                    "ports_power_control": np.array([True] * 28),
+                },
+                HealthState.OK,
+                "Health is OK.",
+                id="All ports with smartbox configured have control.",
+            ),
+            pytest.param(
+                {
+                    "degraded_percent_uncontrolled_smartbox": 0,
+                    "failed_percent_uncontrolled_smartbox": 25,
+                },
+                {
+                    "ports_with_smartbox": np.array([i + 1 for i in range(24)]),
+                    "ports_power_control": np.array([False] * 28),
+                },
+                HealthState.FAILED,
+                "Number of smartbox without control is 100, "
+                "this is above the configured limit of 25.",
+                id="No power control over any smartbox.",
+            ),
+            pytest.param(
+                {
+                    "degraded_percent_uncontrolled_smartbox": 0,
+                    "failed_percent_uncontrolled_smartbox": 25,
+                },
+                {
+                    "ports_with_smartbox": np.array([i + 1 for i in range(24)]),
+                    "ports_power_control": np.array([False] + [True] * 27),
+                },
+                HealthState.DEGRADED,
+                "Number of smartbox without control is 4, "
+                "this is above the configured limit of 0.",
+                id="No power control over some smartbox.",
+            ),
+            pytest.param(
+                {
+                    "degraded_percent_uncontrolled_smartbox": 0,
+                    "failed_percent_uncontrolled_smartbox": 25,
+                },
+                {
+                    "ports_with_smartbox": np.array([i + 1 for i in range(24)]),
+                },
+                HealthState.OK,
+                "Health is OK.",
+                id="update before ports_power_control is known",
+            ),
+            pytest.param(
+                {
+                    "degraded_percent_uncontrolled_smartbox": 0,
+                    "failed_percent_uncontrolled_smartbox": 25,
+                },
+                {
+                    "ports_power_control": np.array([False] + [True] * 27),
+                },
+                HealthState.OK,
+                "Health is OK.",
+                id="update before ports_power_sensed is known",
+            ),
+            pytest.param(
+                {
+                    "degraded_percent_uncontrolled_smartbox": 0,
+                    "failed_percent_uncontrolled_smartbox": 25,
+                },
+                {
+                    "ports_with_smartbox": np.array([]),
+                    "ports_power_control": np.array([]),
+                },
+                HealthState.OK,
+                "Health is OK.",
+                id="update with empty lists",
+            ),
         ],
     )
     def test_fndh_evaluate_health(
         self: TestFNDHHealthModel,
         health_model: FndhHealthModel,
-        thresholds: dict[str, list[float]],
+        thresholds: dict[str, np.ndarray],
         data: dict[str, Any],
         expected_final_health: HealthState,
         expected_final_report: str,
@@ -87,15 +166,10 @@ class TestFNDHHealthModel:
         :param expected_final_health: Expected final health.
         :param expected_final_report: Expected final health report.
         """
-        for threshold, values in thresholds.items():
-            health_model.update_health_threshold(
-                threshold.removesuffix("_thresholds"), values
-            )
+        health_model.health_params = thresholds
 
         health_model.update_state(monitoring_points=data)
 
-        print(f"actual == {health_model.evaluate_health()}")
-        print(f"expected == {expected_final_health}, {expected_final_report}")
         assert health_model.evaluate_health() == (
             expected_final_health,
             expected_final_report,
@@ -243,27 +317,41 @@ class TestFNDHHealthModel:
                     "comms_gateway_temperature": 56.0,
                     "power_module_temperature": 56.0,
                     "internal_ambient_temperature": 56.0,
-                    "port_forcings": [False] * 12,
-                    "ports_desired_power_when_online": [False] * 12,
-                    "ports_desired_power_when_offline": [False] * 12,
-                    "ports_power_sensed": [False] * 12,
-                    "ports_power_control": [False] * 12,
+                    "port_forcings": np.array([False] * 12),
+                    "ports_desired_power_when_online": np.array([False] * 12),
+                    "ports_desired_power_when_offline": np.array([False] * 12),
+                    "ports_power_sensed": np.array([False] * 12),
+                    "ports_power_control": np.array([False] * 12),
                 },
                 {
-                    "psu48v_voltage_1_thresholds": [100.0, 84.0, 43.0, 0.0],
-                    "psu48v_voltage_2_thresholds": [100.0, 84.0, 43.0, 0.0],
-                    "psu48v_current_thresholds": [100.0, 84.0, 43.0, 0.0],
-                    "psu48v_temperature_1_thresholds": [100.0, 84.0, 43.0, 0.0],
-                    "psu48v_temperature_2_thresholds": [100.0, 84.0, 43.0, 0.0],
-                    "panel_temperature_thresholds": [100.0, 84.0, 43.0, 0.0],
-                    "fncb_humidity_thresholds": [100.0, 84.0, 43.0, 0.0],
-                    "comms_gateway_temperature_thresholds": [100.0, 84.0, 43.0, 0.0],
-                    "power_module_temperature_thresholds": [100.0, 84.0, 43.0, 0.0],
-                    "outside_temperature_thresholds": [100.0, 84.0, 43.0, 0.0],
-                    "internal_ambient_temperature_thresholds": [100.0, 84.0, 43.0, 0.0],
+                    "psu48v_voltage_1_thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "psu48v_voltage_2_thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "psu48v_current_thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "psu48v_temperature_1_thresholds": np.array(
+                        [100.0, 84.0, 43.0, 0.0]
+                    ),
+                    "psu48v_temperature_2_thresholds": np.array(
+                        [100.0, 84.0, 43.0, 0.0]
+                    ),
+                    "panel_temperature_thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "fncb_humidity_thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "comms_gateway_temperature_thresholds": np.array(
+                        [100.0, 84.0, 43.0, 0.0]
+                    ),
+                    "power_module_temperature_thresholds": np.array(
+                        [100.0, 84.0, 43.0, 0.0]
+                    ),
+                    "outside_temperature_thresholds": np.array(
+                        [100.0, 84.0, 43.0, 0.0]
+                    ),
+                    "internal_ambient_temperature_thresholds": np.array(
+                        [100.0, 84.0, 43.0, 0.0]
+                    ),
                 },
                 {
-                    "comms_gateway_temperature_thresholds": [33.0, 22.0, 10.0, 0.0],
+                    "comms_gateway_temperature_thresholds": np.array(
+                        [33.0, 22.0, 10.0, 0.0]
+                    ),
                 },
                 HealthState.OK,
                 "Health is OK.",
@@ -281,8 +369,8 @@ class TestFNDHHealthModel:
         self: TestFNDHHealthModel,
         health_model: FndhHealthModel,
         monitoring_values: dict[str, Any],
-        init_thresholds: dict[str, list[float]],
-        end_thresholds: dict[str, list[float]],
+        init_thresholds: dict[str, np.ndarray],
+        end_thresholds: dict[str, np.ndarray],
         init_expected_health: HealthState,
         init_expected_report: str,
         end_expected_health: HealthState,

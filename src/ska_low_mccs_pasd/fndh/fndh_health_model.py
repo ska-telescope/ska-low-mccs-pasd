@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from ska_control_model import HealthState
 from ska_low_mccs_common.health import BaseHealthModel, HealthChangedCallbackProtocol
 
@@ -94,6 +95,9 @@ class FndhHealthModel(BaseHealthModel):
         monitoring_points = self.monitoring_points
         pasd_power = self._state.get("pasd_power", None)
         ignore_pasd_power = self._state.get("ignore_pasd_power")
+        mon_points = self._state.get("monitoring_points", {})
+        ports_with_smartbox = mon_points.get("ports_with_smartbox")
+        ports_power_control = mon_points.get("ports_power_control")
         for health in [
             HealthState.FAILED,
             HealthState.UNKNOWN,
@@ -106,6 +110,8 @@ class FndhHealthModel(BaseHealthModel):
                 monitoring_points=monitoring_points,
                 pasd_power=pasd_power,
                 ignore_pasd_power=ignore_pasd_power,
+                ports_with_smartbox=ports_with_smartbox,
+                ports_power_control=ports_power_control,
             )
             if result:
                 return health, report
@@ -130,7 +136,7 @@ class FndhHealthModel(BaseHealthModel):
         }
 
     def update_health_threshold(
-        self: FndhHealthModel, threshold_key: str, threshold_values: list[float]
+        self: FndhHealthModel, threshold_key: str, threshold_values: np.ndarray
     ) -> None:
         """
         Update the health thresholds.

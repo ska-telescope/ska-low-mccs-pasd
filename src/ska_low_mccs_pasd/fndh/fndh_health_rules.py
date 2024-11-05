@@ -11,12 +11,43 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.health import HealthRules
 
 
+def _calculate_percent_smartbox_without_control(
+    ports_with_smartbox: list[int] | None, ports_power_control: list[bool] | None
+) -> int:
+    """
+    Return the percent of smartbox with control.
+
+    :param ports_with_smartbox: the id of the Fndh ports
+        with a smartbox attached (1 based).
+    :param ports_power_control: a list of bools representing
+        if we have control over the power of ports.
+
+    :return: the percent of smartboxes with power control
+        to the nearest integer.
+    """
+    if (
+        ports_with_smartbox is None
+        or len(ports_with_smartbox) == 0
+        or ports_power_control is None
+    ):
+        return 0
+    nof_smartbox_without_control = 0
+    for port_no in ports_with_smartbox:
+        if not ports_power_control[port_no - 1]:
+            nof_smartbox_without_control += 1
+    return int((nof_smartbox_without_control * 100) / len(ports_with_smartbox))
+
+
 class FndhHealthRules(HealthRules):
     """A class to handle transition rules for the FNDH."""
+
+    DEFAULT_DEGRADED_PERCENT_UNCONTROLLED_SMARTBOX = 0
+    DEFAULT_FAILED_PERCENT_UNCONTROLLED_SMARTBOX = 20
 
     def __init__(self, *args: Any, **kwargs: Any):
         """
@@ -28,12 +59,21 @@ class FndhHealthRules(HealthRules):
         super().__init__(*args, **kwargs)
         self.logger = None
         self._thresholds: dict[str, Any]
+        self._thresholds[
+            "failed_percent_uncontrolled_smartbox"
+        ] = self.DEFAULT_FAILED_PERCENT_UNCONTROLLED_SMARTBOX
+        self._thresholds[
+            "degraded_percent_uncontrolled_smartbox"
+        ] = self.DEFAULT_DEGRADED_PERCENT_UNCONTROLLED_SMARTBOX
 
+    # pylint: disable=too-many-positional-arguments, too-many-arguments
     def unknown_rule(  # type: ignore[override]
         self: FndhHealthRules,
         monitoring_points: dict[str, Any],
         pasd_power: PowerState | None = None,
         ignore_pasd_power: bool = False,
+        ports_with_smartbox: list[int] | None = None,
+        ports_power_control: list[bool] | None = None,
     ) -> tuple[bool, str]:
         """
         Return True if we have UNKNOWN healthstate.
@@ -42,6 +82,8 @@ class FndhHealthRules(HealthRules):
         :param pasd_power: The power reported by the PaSDBus.
         :param ignore_pasd_power: True if we are ignoring the rollup of the pasd
             power
+        :param ports_with_smartbox: The ports configured with a smartbox.
+        :param ports_power_control: Port that have control.
 
         :returns: True if we are in a UNKNOWN healthstate.
         """
@@ -56,11 +98,14 @@ class FndhHealthRules(HealthRules):
                 )
         return False, ""
 
+    # pylint: disable=too-many-positional-arguments, too-many-arguments
     def failed_rule(  # type: ignore[override]
         self: FndhHealthRules,
         monitoring_points: dict[str, Any],
         pasd_power: PowerState | None = None,
         ignore_pasd_power: bool = False,
+        ports_with_smartbox: list[int] | None = None,
+        ports_power_control: list[bool] | None = None,
     ) -> tuple[bool, str]:
         """
         Return True if we have FAILED healthstate.
@@ -69,9 +114,28 @@ class FndhHealthRules(HealthRules):
         :param pasd_power: The power reported by the PaSDBus.
         :param ignore_pasd_power: True if we are ignoring the rollup of the pasd
             power.
+        :param ports_with_smartbox: The ports configured with a smartbox.
+        :param ports_power_control: Port that have control.
 
         :returns: True if we are in a FAILED healthstate.
         """
+        percent_of_uncontrollable_smartbox = (
+            _calculate_percent_smartbox_without_control(
+                ports_with_smartbox=ports_with_smartbox,
+                ports_power_control=ports_power_control,
+            )
+        )
+        if (
+            percent_of_uncontrollable_smartbox
+            > self._thresholds["failed_percent_uncontrolled_smartbox"]
+        ):
+            return (
+                True,
+                f"Number of smartbox without control is "
+                f"{percent_of_uncontrollable_smartbox}, "
+                "this is above the configured limit of "
+                f"{self._thresholds['failed_percent_uncontrolled_smartbox']}.",
+            )
         for key, value in monitoring_points.items():
             if value[0] == HealthState.FAILED:
                 return (
@@ -81,11 +145,14 @@ class FndhHealthRules(HealthRules):
                 )
         return False, ""
 
+    # pylint: disable=too-many-positional-arguments, too-many-arguments
     def degraded_rule(  # type: ignore[override]
         self: FndhHealthRules,
         monitoring_points: dict[str, Any],
         pasd_power: PowerState | None = None,
         ignore_pasd_power: bool = False,
+        ports_with_smartbox: list[int] | None = None,
+        ports_power_control: list[bool] | None = None,
     ) -> tuple[bool, str]:
         """
         Return True if we have DEGRADED healthstate.
@@ -94,9 +161,30 @@ class FndhHealthRules(HealthRules):
         :param pasd_power: The power reported by the PaSDBus.
         :param ignore_pasd_power: True if we are ignoring the rollup of the pasd
             power.
+        :param ports_with_smartbox: The ports configured with a smartbox.
+        :param ports_power_control: Port that have control.
 
         :returns: True if we are in a DEGRADED healthstate.
         """
+        percent_of_uncontrollable_smartbox = (
+            _calculate_percent_smartbox_without_control(
+                ports_with_smartbox=ports_with_smartbox,
+                ports_power_control=ports_power_control,
+            )
+        )
+        print(f"{percent_of_uncontrollable_smartbox=}")
+        if (
+            percent_of_uncontrollable_smartbox
+            > self._thresholds["degraded_percent_uncontrolled_smartbox"]
+        ):
+            return (
+                True,
+                "Number of smartbox without control is "
+                f"{percent_of_uncontrollable_smartbox }, "
+                "this is above the configured limit of "
+                f"{self._thresholds['degraded_percent_uncontrolled_smartbox']}.",
+            )
+
         if (
             (not ignore_pasd_power)
             and (pasd_power is not None)
@@ -117,11 +205,14 @@ class FndhHealthRules(HealthRules):
                 )
         return False, ""
 
+    # pylint: disable=too-many-positional-arguments, too-many-arguments
     def healthy_rule(  # type: ignore[override]
         self: FndhHealthRules,
         monitoring_points: dict[str, Any],
         pasd_power: PowerState | None = None,
         ignore_pasd_power: bool = False,
+        ports_with_smartbox: list[int] | None = None,
+        ports_power_control: list[bool] | None = None,
     ) -> tuple[bool, str]:
         """
         Return True if we have OK healthstate.
@@ -130,6 +221,8 @@ class FndhHealthRules(HealthRules):
         :param pasd_power: The power reported by the PaSDBus.
         :param ignore_pasd_power: True if we are ignoring the rollup of the pasd
             power
+        :param ports_with_smartbox: The ports configured with a smartbox.
+        :param ports_power_control: Port that have control.
 
         :returns: True if we are in a OK healthstate.
         """
@@ -175,13 +268,13 @@ class FndhHealthRules(HealthRules):
         )
 
     def update_thresholds(
-        self: FndhHealthRules, threshold_name: str, threshold_value: list[float]
+        self: FndhHealthRules, threshold_name: str, threshold_value: np.ndarray
     ) -> None:
         """
         Update the thresholds for attributes.
 
         :param threshold_name: the name of the threshold to update
-        :param threshold_value: A list containing the
+        :param threshold_value: A numpy.array containing the
             [max_alm, max_warn, min_warn, min_alm]
         """
-        self._thresholds[threshold_name] = threshold_value
+        self._thresholds[threshold_name] = threshold_value.tolist()
