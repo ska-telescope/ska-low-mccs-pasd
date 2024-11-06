@@ -37,7 +37,14 @@ class FndhHealthModel(BaseHealthModel):
         >>> }
     """
 
-    _health_rules: FndhHealthRules
+    # The evaluation of HealthState will check for matches specified by the
+    # precedence of HealthStates defined by this list.
+    ORDERED_HEALTH_PRECEDENCE = [
+        HealthState.FAILED,
+        HealthState.UNKNOWN,
+        HealthState.DEGRADED,
+        HealthState.OK,
+    ]
 
     def __init__(
         self: FndhHealthModel,
@@ -52,7 +59,7 @@ class FndhHealthModel(BaseHealthModel):
         """
         self.logger = None
         self._use_new_rules = True
-        self._health_rules = FndhHealthRules()
+        self._health_rules: FndhHealthRules = FndhHealthRules()
         super().__init__(
             health_changed_callback,
             pasd_power=None,
@@ -90,6 +97,21 @@ class FndhHealthModel(BaseHealthModel):
         self.logger = logger
         self._health_rules.logger = logger
 
+    def _get_report_from_rules(
+        self: FndhHealthModel, mon_points: dict[str, Any]
+    ) -> tuple[HealthState, str]:
+        for health_value in self.ORDERED_HEALTH_PRECEDENCE:
+            result, report = self._health_rules.rules[health_value](
+                monitoring_points=self.monitoring_points_with_thresholds,
+                pasd_power=self._state.get("pasd_power"),
+                ignore_pasd_power=self._state.get("ignore_pasd_power"),
+                ports_with_smartbox=self._state.get("ports_with_smartbox"),
+                ports_power_control=mon_points.get("portspowercontrol"),
+            )
+            if result:
+                return health_value, report
+        return HealthState.UNKNOWN, "No rules matched"
+
     def evaluate_health(
         self: FndhHealthModel,
     ) -> tuple[HealthState, str]:
@@ -116,27 +138,28 @@ class FndhHealthModel(BaseHealthModel):
 
         :return: an overall health of the FNDH.
         """
-        fndh_health, fndh_report = super().evaluate_health()
+        base_health, base_report = super().evaluate_health()
         if not self._use_new_rules:
-            return fndh_health, fndh_report
+            # before MCCS-2245, no rules were used meaning we just returned the
+            # evaluation from the HealthModel.
+            return base_health, base_report
+
         mon_points = self._state.get("monitoring_points", {})
-        for health in [
-            HealthState.FAILED,
-            HealthState.UNKNOWN,
-            HealthState.DEGRADED,
-            HealthState.OK,
-        ]:
-            if health == fndh_health:
-                return fndh_health, fndh_report
-            result, report = self._health_rules.rules[health](
-                monitoring_points=self.monitoring_points_with_thresholds,
-                pasd_power=self._state.get("pasd_power"),
-                ignore_pasd_power=self._state.get("ignore_pasd_power"),
-                ports_with_smartbox=self._state.get("ports_with_smartbox"),
-                ports_power_control=mon_points.get("portspowercontrol"),
-            )
-            if result:
-                return health, report
+        rules_health, rules_report = self._get_report_from_rules(mon_points)
+
+        if base_health == rules_health and base_health != HealthState.OK:
+            # If both health states match, return them together
+            return base_health, "\n".join([base_report, rules_report])
+
+        # Return report with highest health concern.
+        for health in self.ORDERED_HEALTH_PRECEDENCE:
+            if health == base_health:
+                return base_health, base_report
+
+            if health == rules_health:
+                return rules_health, rules_report
+
+        # Default case if no health states matched any precedence order
         return HealthState.UNKNOWN, "No rules matched"
 
     @property
