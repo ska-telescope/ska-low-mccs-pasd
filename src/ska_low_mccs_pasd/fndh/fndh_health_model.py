@@ -116,28 +116,24 @@ class FndhHealthModel(BaseHealthModel):
 
         :return: an overall health of the FNDH.
         """
-        tile_health, tile_report = super().evaluate_health()
+        fndh_health, fndh_report = super().evaluate_health()
         if not self._use_new_rules:
-            return tile_health, tile_report
-        pasd_power = self._state.get("pasd_power", None)
-        ignore_pasd_power = self._state.get("ignore_pasd_power")
-        ports_with_smartbox = self._state.get("ports_with_smartbox")
+            return fndh_health, fndh_report
         mon_points = self._state.get("monitoring_points", {})
-        ports_power_control = mon_points.get("portspowercontrol")
         for health in [
             HealthState.FAILED,
             HealthState.UNKNOWN,
             HealthState.DEGRADED,
             HealthState.OK,
         ]:
-            if health == tile_health:
-                return tile_health, tile_report
+            if health == fndh_health:
+                return fndh_health, fndh_report
             result, report = self._health_rules.rules[health](
                 monitoring_points=self.monitoring_points_with_thresholds,
-                pasd_power=pasd_power,
-                ignore_pasd_power=ignore_pasd_power,
-                ports_with_smartbox=ports_with_smartbox,
-                ports_power_control=ports_power_control,
+                pasd_power=self._state.get("pasd_power"),
+                ignore_pasd_power=self._state.get("ignore_pasd_power"),
+                ports_with_smartbox=self._state.get("ports_with_smartbox"),
+                ports_power_control=mon_points.get("portspowercontrol"),
             )
             if result:
                 return health, report

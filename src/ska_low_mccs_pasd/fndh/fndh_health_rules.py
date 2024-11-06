@@ -16,6 +16,10 @@ from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.health import HealthRules
 
 
+def _join_health_messages(messages: list[str]) -> str:
+    return "\n".join(messages)
+
+
 def _calculate_percent_smartbox_without_control(
     ports_with_smartbox: list[int] | None, ports_power_control: list[bool] | None
 ) -> int:
@@ -82,15 +86,21 @@ class FndhHealthRules(HealthRules):
 
         :returns: True if we are in a UNKNOWN healthstate.
         """
-        # Check if we are UNKNOWN
+        unknown_points: list[str] = []
+        # Iterate over monitoring points and check for UNKNOWN health state
         for attribute_name, attr_health_info in monitoring_points.items():
             if attr_health_info[0] == HealthState.UNKNOWN:
-                return (
-                    True,
+                unknown_points.append(
                     f"Monitoring point {attribute_name} is in "
                     f"{attr_health_info[0].name} HealthState. "
-                    f"Cause: {attr_health_info[1]}",
+                    f"Cause: {attr_health_info[1]}"
                 )
+
+        # If there are any UNKNOWN points, return True and a concatenated message
+        if unknown_points:
+            return True, _join_health_messages(unknown_points)
+
+        # Return False and an empty message if no UNKNOWN points found
         return False, ""
 
     def failed_rule(  # type: ignore[override]
@@ -106,6 +116,7 @@ class FndhHealthRules(HealthRules):
 
         :returns: True if we are in a FAILED healthstate.
         """
+        failed_points: list[str] = []
         percent_of_uncontrollable_smartbox = (
             _calculate_percent_smartbox_without_control(
                 ports_with_smartbox=kwargs.get("ports_with_smartbox"),
@@ -116,20 +127,25 @@ class FndhHealthRules(HealthRules):
             percent_of_uncontrollable_smartbox
             > self._thresholds["failed_percent_uncontrolled_smartbox"]
         ):
-            return (
-                True,
+            failed_points.append(
                 f"Number of smartbox without control is "
                 f"{percent_of_uncontrollable_smartbox}, "
                 "this is above the configured limit of "
-                f"{self._thresholds['failed_percent_uncontrolled_smartbox']}.",
+                f"{self._thresholds['failed_percent_uncontrolled_smartbox']}."
             )
+
         for key, value in monitoring_points.items():
             if value[0] == HealthState.FAILED:
-                return (
-                    True,
+                failed_points.append(
                     f"Monitoring point {key} is in {value[0].name} HealthState. "
-                    f"Cause: {value[1]}",
+                    f"Cause: {value[1]}"
                 )
+
+        # If there are any FAILED points, return True and a concatenated message
+        if failed_points:
+            return True, _join_health_messages(failed_points)
+
+        # Return False and an empty message if no FAILED points found
         return False, ""
 
     def degraded_rule(  # type: ignore[override]
@@ -144,41 +160,44 @@ class FndhHealthRules(HealthRules):
         :param kwargs: optional kwargs.
         :returns: True if we are in a DEGRADED healthstate.
         """
+        degraded_points: list[str] = []
+
         percent_of_uncontrollable_smartbox = (
             _calculate_percent_smartbox_without_control(
                 ports_with_smartbox=kwargs.get("ports_with_smartbox"),
                 ports_power_control=kwargs.get("ports_power_control"),
             )
         )
-        print(f"{percent_of_uncontrollable_smartbox=}")
         if (
             percent_of_uncontrollable_smartbox
             > self._thresholds["degraded_percent_uncontrolled_smartbox"]
         ):
-            return (
-                True,
+            degraded_points.append(
                 "Number of smartbox without control is "
                 f"{percent_of_uncontrollable_smartbox }, "
                 "this is above the configured limit of "
-                f"{self._thresholds['degraded_percent_uncontrolled_smartbox']}.",
+                f"{self._thresholds['degraded_percent_uncontrolled_smartbox']}."
             )
 
         if (not kwargs.get("ignore_pasd_power", False)) and (
             kwargs.get("pasd_power") == PowerState.UNKNOWN
         ):
-            return (
-                True,
+            degraded_points.append(
                 "The PaSDBus has a UNKNOWN PowerState. "
-                "FNDH HealthState evaluated as DEGRADED.",
+                "FNDH HealthState evaluated as DEGRADED."
             )
         for key, value in monitoring_points.items():
             if value[0] == HealthState.DEGRADED:
-                return (
-                    True,
+                degraded_points.append(
                     f"Monitoring point {key} is in "
                     f"{value[0].name} HealthState. "
-                    f"Cause: {value[1]}",
+                    f"Cause: {value[1]}"
                 )
+        # If there are any DEGRADED points, return True and a concatenated message
+        if degraded_points:
+            return True, _join_health_messages(degraded_points)
+
+        # Return False and an empty message if no DEGRADED points found
         return False, ""
 
     def healthy_rule(  # type: ignore[override]

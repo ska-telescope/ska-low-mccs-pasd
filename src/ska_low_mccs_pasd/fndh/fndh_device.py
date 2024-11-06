@@ -98,6 +98,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         self._overCurrentThreshold: float
         self._overVoltageThreshold: float
         self._humidityThreshold: float
+
+        # Health monitor points contains a cache of monitring points as they are updated
+        # in a poll. When communication is lost this cache is reset to empty again.
         self._health_monitor_points: dict[str, list[float]] = {}
         self._ignore_pasd = False
         self._ports_with_smartbox: list[int] = []
@@ -651,10 +654,9 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             self._update_port_power_states(
                 [PowerState.UNKNOWN] * self.CONFIG["number_of_ports"]
             )
+            # Clear the cached monitoring points due to loss of communication.
             self._health_monitor_points = {}
-            self._health_model.update_state(
-                monitoring_points=self._health_monitor_points
-            )
+
             self._component_state_changed_callback(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._component_state_changed_callback(power=PowerState.ON)
@@ -663,7 +665,8 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         super()._communication_state_changed(communication_state)
 
         self._health_model.update_state(
-            communicating=(communication_state == CommunicationStatus.ESTABLISHED)
+            communicating=(communication_state == CommunicationStatus.ESTABLISHED),
+            monitoring_points=self._health_monitor_points,
         )
 
     def _update_port_power_states(
