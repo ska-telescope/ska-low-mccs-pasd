@@ -22,10 +22,11 @@ def _calculate_percent_smartbox_without_control(
     """
     Return the percent of smartbox with control.
 
-    :param ports_with_smartbox: the id of the Fndh ports
-        with a smartbox attached (1 based).
-    :param ports_power_control: a list of bools representing
-        if we have control over the power of ports.
+    :param ports_with_smartbox: a list of the ids of the Fndh
+        ports with a smartbox attached (1 based).
+    :param ports_power_control: a list of bools, one per
+        Fndh port, each one representing if we have control
+        over its power (0 based).
 
     :return: the percent of smartboxes with power control
         to the nearest integer.
@@ -46,6 +47,8 @@ def _calculate_percent_smartbox_without_control(
 class FndhHealthRules(HealthRules):
     """A class to handle transition rules for the FNDH."""
 
+    # Default percentages of uncontrolled smartboxes
+    # required for degraded and failed status
     DEFAULT_DEGRADED_PERCENT_UNCONTROLLED_SMARTBOX = 0
     DEFAULT_FAILED_PERCENT_UNCONTROLLED_SMARTBOX = 20
 
@@ -66,24 +69,16 @@ class FndhHealthRules(HealthRules):
             "degraded_percent_uncontrolled_smartbox"
         ] = self.DEFAULT_DEGRADED_PERCENT_UNCONTROLLED_SMARTBOX
 
-    # pylint: disable=too-many-positional-arguments, too-many-arguments
     def unknown_rule(  # type: ignore[override]
         self: FndhHealthRules,
         monitoring_points: dict[str, Any],
-        pasd_power: PowerState | None = None,
-        ignore_pasd_power: bool = False,
-        ports_with_smartbox: list[int] | None = None,
-        ports_power_control: list[bool] | None = None,
+        **kwargs: Any,
     ) -> tuple[bool, str]:
         """
         Return True if we have UNKNOWN healthstate.
 
         :param monitoring_points: A dictionary containing the monitoring points.
-        :param pasd_power: The power reported by the PaSDBus.
-        :param ignore_pasd_power: True if we are ignoring the rollup of the pasd
-            power
-        :param ports_with_smartbox: The ports configured with a smartbox.
-        :param ports_power_control: Port that have control.
+        :param kwargs: optional kwargs.
 
         :returns: True if we are in a UNKNOWN healthstate.
         """
@@ -98,31 +93,23 @@ class FndhHealthRules(HealthRules):
                 )
         return False, ""
 
-    # pylint: disable=too-many-positional-arguments, too-many-arguments
     def failed_rule(  # type: ignore[override]
         self: FndhHealthRules,
         monitoring_points: dict[str, Any],
-        pasd_power: PowerState | None = None,
-        ignore_pasd_power: bool = False,
-        ports_with_smartbox: list[int] | None = None,
-        ports_power_control: list[bool] | None = None,
+        **kwargs: Any,
     ) -> tuple[bool, str]:
         """
         Return True if we have FAILED healthstate.
 
         :param monitoring_points: A dictionary containing the monitoring points.
-        :param pasd_power: The power reported by the PaSDBus.
-        :param ignore_pasd_power: True if we are ignoring the rollup of the pasd
-            power.
-        :param ports_with_smartbox: The ports configured with a smartbox.
-        :param ports_power_control: Port that have control.
+        :param kwargs: optional kwargs.
 
         :returns: True if we are in a FAILED healthstate.
         """
         percent_of_uncontrollable_smartbox = (
             _calculate_percent_smartbox_without_control(
-                ports_with_smartbox=ports_with_smartbox,
-                ports_power_control=ports_power_control,
+                ports_with_smartbox=kwargs.get("ports_with_smartbox"),
+                ports_power_control=kwargs.get("ports_power_control"),
             )
         )
         if (
@@ -145,31 +132,22 @@ class FndhHealthRules(HealthRules):
                 )
         return False, ""
 
-    # pylint: disable=too-many-positional-arguments, too-many-arguments
     def degraded_rule(  # type: ignore[override]
         self: FndhHealthRules,
         monitoring_points: dict[str, Any],
-        pasd_power: PowerState | None = None,
-        ignore_pasd_power: bool = False,
-        ports_with_smartbox: list[int] | None = None,
-        ports_power_control: list[bool] | None = None,
+        **kwargs: Any,
     ) -> tuple[bool, str]:
         """
         Return True if we have DEGRADED healthstate.
 
         :param monitoring_points: A dictionary containing the monitoring points.
-        :param pasd_power: The power reported by the PaSDBus.
-        :param ignore_pasd_power: True if we are ignoring the rollup of the pasd
-            power.
-        :param ports_with_smartbox: The ports configured with a smartbox.
-        :param ports_power_control: Port that have control.
-
+        :param kwargs: optional kwargs.
         :returns: True if we are in a DEGRADED healthstate.
         """
         percent_of_uncontrollable_smartbox = (
             _calculate_percent_smartbox_without_control(
-                ports_with_smartbox=ports_with_smartbox,
-                ports_power_control=ports_power_control,
+                ports_with_smartbox=kwargs.get("ports_with_smartbox"),
+                ports_power_control=kwargs.get("ports_power_control"),
             )
         )
         print(f"{percent_of_uncontrollable_smartbox=}")
@@ -185,10 +163,8 @@ class FndhHealthRules(HealthRules):
                 f"{self._thresholds['degraded_percent_uncontrolled_smartbox']}.",
             )
 
-        if (
-            (not ignore_pasd_power)
-            and (pasd_power is not None)
-            and (pasd_power == PowerState.UNKNOWN)
+        if (not kwargs.get("ignore_pasd_power", False)) and (
+            kwargs.get("pasd_power") == PowerState.UNKNOWN
         ):
             return (
                 True,
@@ -205,24 +181,16 @@ class FndhHealthRules(HealthRules):
                 )
         return False, ""
 
-    # pylint: disable=too-many-positional-arguments, too-many-arguments
     def healthy_rule(  # type: ignore[override]
         self: FndhHealthRules,
         monitoring_points: dict[str, Any],
-        pasd_power: PowerState | None = None,
-        ignore_pasd_power: bool = False,
-        ports_with_smartbox: list[int] | None = None,
-        ports_power_control: list[bool] | None = None,
+        **kwargs: Any,
     ) -> tuple[bool, str]:
         """
         Return True if we have OK healthstate.
 
         :param monitoring_points: A dictionary containing the monitoring points.
-        :param pasd_power: The power reported by the PaSDBus.
-        :param ignore_pasd_power: True if we are ignoring the rollup of the pasd
-            power
-        :param ports_with_smartbox: The ports configured with a smartbox.
-        :param ports_power_control: Port that have control.
+        :param kwargs: optional kwargs.
 
         :returns: True if we are in a OK healthstate.
         """
@@ -268,13 +236,13 @@ class FndhHealthRules(HealthRules):
         )
 
     def update_thresholds(
-        self: FndhHealthRules, threshold_name: str, threshold_value: np.ndarray
+        self: FndhHealthRules, attribute_name: str, threshold_value: np.ndarray
     ) -> None:
         """
         Update the thresholds for attributes.
 
-        :param threshold_name: the name of the threshold to update
+        :param attribute_name: the name of the threshold to update
         :param threshold_value: A numpy.array containing the
             [max_alm, max_warn, min_warn, min_alm]
         """
-        self._thresholds[threshold_name] = threshold_value.tolist()
+        self._thresholds[attribute_name] = threshold_value.tolist()

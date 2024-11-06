@@ -23,6 +23,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     FndhAlarmFlags,
     PasdConversionUtility,
 )
+from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..conftest import Helpers
 
@@ -571,6 +572,98 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks["fndhhealthState"].assert_not_called()
         pasd_bus_device.adminMode = AdminMode.OFFLINE
         change_event_callbacks["fndhhealthState"].assert_not_called()
+
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_health_from_port_power_control(
+        self: TestfndhPasdBusIntegration,
+        fndh_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        fndh_simulator: FndhSimulator,
+        off_smartbox_attached_port: int,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test health when we modify the percent of uncontrolled smartbox.
+
+        :param fndh_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param pasd_bus_device: a proxy to the PaSD bus device under test.
+        :param fndh_simulator: the FNDH simulator under test
+        :param off_smartbox_attached_port: the FNDH port the off
+            smartbox-under-test is attached to.
+        :param change_event_callbacks: dictionary of mock change event
+            callbacks with asynchrony support
+        """
+
+        def _simulate_pdoc_control_line_state(
+            port_pdoc_enabled: list[tuple[int, bool]]
+        ) -> None:
+            for port, enabled in port_pdoc_enabled:
+                fndh_simulator._ports[port].enabled = enabled
+
+        def _simulate_smartbox_control(
+            smartbox_has_control: list[tuple[int, bool]]
+        ) -> None:
+            pdoc_control = [(i, True) for i in range(PasdData.NUMBER_OF_FNDH_PORTS)]
+            ports_with_smartbox = []
+            for smartbox_id, controllable in smartbox_has_control:
+                ports_with_smartbox.append(smartbox_id)
+                if not controllable:
+                    pdoc_control[smartbox_id - 1] = (smartbox_id - 1, controllable)
+            fndh_device.portsWithSmartbox = ports_with_smartbox
+            _simulate_pdoc_control_line_state(pdoc_control)
+
+        assert fndh_device.adminMode == AdminMode.OFFLINE
+        assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+        assert (
+            fndh_device.PortPowerState(off_smartbox_attached_port) == PowerState.UNKNOWN
+        )
+        pasd_bus_device.subscribe_event(
+            "healthState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasdBushealthState"],
+        )
+
+        change_event_callbacks.assert_change_event(
+            "pasdBushealthState", HealthState.UNKNOWN
+        )
+        pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+        change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
+        fndh_device.subscribe_event(
+            "healthState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndhhealthState"],
+        )
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.UNKNOWN
+        )
+        fndh_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+        assert fndh_device.healthState == HealthState.OK
+
+        # 23 out of 24 smartbox have control
+        _simulate_smartbox_control([(i, i != 1) for i in range(24)])
+
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.DEGRADED
+        )
+        # 1 out of 24 smartbox have control
+        _simulate_smartbox_control([(i, False) for i in range(24)])
+
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.FAILED
+        )
+        # 23 out of 24 smartbox have control
+        _simulate_smartbox_control([(i, i != 1) for i in range(24)])
+
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.DEGRADED
+        )
+        # 24 out of 24 smartbox have control
+        _simulate_smartbox_control([(i, True) for i in range(24)])
+
+        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
 
 
 @pytest.fixture(name="change_event_callbacks")

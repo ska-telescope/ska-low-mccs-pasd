@@ -535,7 +535,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
 
     @attribute(
         dtype="DevString",
-        label="return the version of healthRules in use. Only v1 and v1 available.",
+        label="return the version of healthRules in use. Only v0 and v1 available.",
     )
     def healthRuleVersion(self: MccsFNDH) -> str:
         """
@@ -552,7 +552,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         """
         Set the HealthRuleVersion to use.
 
-        :param value: new version to use. Currenly support v1 or v2
+        :param value: new version to use. Currenly support v0 or v1
 
         :raises ValueError: when attempting to set a version not
             supported.

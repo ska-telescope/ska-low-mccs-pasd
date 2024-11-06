@@ -76,7 +76,7 @@ class TestFNDHHealthModel:
                 },
                 {
                     "ports_with_smartbox": np.array([i + 1 for i in range(24)]),
-                    "ports_power_control": np.array([True] * 28),
+                    "portspowercontrol": np.array([True] * 28),
                 },
                 HealthState.OK,
                 "Health is OK.",
@@ -89,7 +89,7 @@ class TestFNDHHealthModel:
                 },
                 {
                     "ports_with_smartbox": np.array([i + 1 for i in range(24)]),
-                    "ports_power_control": np.array([False] * 28),
+                    "portspowercontrol": np.array([False] * 28),
                 },
                 HealthState.FAILED,
                 "Number of smartbox without control is 100, "
@@ -103,7 +103,7 @@ class TestFNDHHealthModel:
                 },
                 {
                     "ports_with_smartbox": np.array([i + 1 for i in range(24)]),
-                    "ports_power_control": np.array([False] + [True] * 27),
+                    "portspowercontrol": np.array([False] + [True] * 27),
                 },
                 HealthState.DEGRADED,
                 "Number of smartbox without control is 4, "
@@ -116,11 +116,11 @@ class TestFNDHHealthModel:
                     "failed_percent_uncontrolled_smartbox": 25,
                 },
                 {
-                    "ports_with_smartbox": np.array([i + 1 for i in range(24)]),
+                    "portspowercontrol": np.array([i + 1 for i in range(24)]),
                 },
                 HealthState.OK,
                 "Health is OK.",
-                id="update before ports_power_control is known",
+                id="update before portspowercontrol is known",
             ),
             pytest.param(
                 {
@@ -128,7 +128,7 @@ class TestFNDHHealthModel:
                     "failed_percent_uncontrolled_smartbox": 25,
                 },
                 {
-                    "ports_power_control": np.array([False] + [True] * 27),
+                    "portspowercontrol": np.array([False] + [True] * 27),
                 },
                 HealthState.OK,
                 "Health is OK.",
@@ -141,7 +141,7 @@ class TestFNDHHealthModel:
                 },
                 {
                     "ports_with_smartbox": np.array([]),
-                    "ports_power_control": np.array([]),
+                    "portspowercontrol": np.array([]),
                 },
                 HealthState.OK,
                 "Health is OK.",
@@ -168,6 +168,7 @@ class TestFNDHHealthModel:
         """
         health_model.health_params = thresholds
 
+        health_model.update_state(ports_with_smartbox=data.get("ports_with_smartbox"))
         health_model.update_state(monitoring_points=data)
 
         assert health_model.evaluate_health() == (

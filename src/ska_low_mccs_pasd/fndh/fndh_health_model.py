@@ -18,7 +18,24 @@ from .fndh_health_rules import FndhHealthRules
 
 
 class FndhHealthModel(BaseHealthModel):
-    """A health model for a FNDH."""
+    """
+    The health model for a FNDH.
+
+    The health model will contain a dictionary _state
+    containing monitoring points to feed the healthRules.
+
+    :example:
+        >>> {
+        >>>     "pasd_power": PowerState.ON
+        >>>     "ignore_pasd_power": False
+        >>>     "ports_with_smartbox": [1, 3, 4, 6]
+        >>>     "monitoring_points" :{
+        >>>         "portspowercontrol" : [True] * 28,
+        >>>         "portspowersensed"  : [True] * 28,
+        >>>         ...
+        >>>     }
+        >>> }
+    """
 
     _health_rules: FndhHealthRules
 
@@ -36,11 +53,11 @@ class FndhHealthModel(BaseHealthModel):
         self.logger = None
         self._use_new_rules = True
         self._health_rules = FndhHealthRules()
-        self._ignore_pasd_power = False
         super().__init__(
             health_changed_callback,
             pasd_power=None,
             ignore_pasd_power=False,
+            ports_with_smartbox=None,
         )
 
     @property
@@ -79,25 +96,34 @@ class FndhHealthModel(BaseHealthModel):
         """
         Compute overall health of the fndh.
 
-        The overall health is determined by:
-         - PaSDBus state
-         - Monitoring point values.
+        The overall health is determined by a set of monitoring
+        points defined in the _state dictionary.
+
+        :example:
+            >>> {
+            >>>     "pasd_power": PowerState.ON
+            >>>     "ignore_pasd_power": False
+            >>>     "ports_with_smartbox": [1, 3, 4, 6]
+            >>>     "monitoring_points" :{
+            >>>         "portspowercontrol" : [True] * 28,
+            >>>         "portspowersensed"  : [True] * 28,
+            >>>         ...
+            >>>     }
+            >>> }
+
 
         For more details see ``FndhHealthRules``.
 
-        :return: an overall health of the station
+        :return: an overall health of the FNDH.
         """
-        # if self.logger is not None:
-        #     self.logger.error("FNDH is evaluate_health...\n")
         tile_health, tile_report = super().evaluate_health()
         if not self._use_new_rules:
             return tile_health, tile_report
-        monitoring_points = self.monitoring_points
         pasd_power = self._state.get("pasd_power", None)
         ignore_pasd_power = self._state.get("ignore_pasd_power")
+        ports_with_smartbox = self._state.get("ports_with_smartbox")
         mon_points = self._state.get("monitoring_points", {})
-        ports_with_smartbox = mon_points.get("ports_with_smartbox")
-        ports_power_control = mon_points.get("ports_power_control")
+        ports_power_control = mon_points.get("portspowercontrol")
         for health in [
             HealthState.FAILED,
             HealthState.UNKNOWN,
@@ -107,7 +133,7 @@ class FndhHealthModel(BaseHealthModel):
             if health == tile_health:
                 return tile_health, tile_report
             result, report = self._health_rules.rules[health](
-                monitoring_points=monitoring_points,
+                monitoring_points=self.monitoring_points_with_thresholds,
                 pasd_power=pasd_power,
                 ignore_pasd_power=ignore_pasd_power,
                 ports_with_smartbox=ports_with_smartbox,
@@ -118,13 +144,13 @@ class FndhHealthModel(BaseHealthModel):
         return HealthState.UNKNOWN, "No rules matched"
 
     @property
-    def monitoring_points(
+    def monitoring_points_with_thresholds(
         self: FndhHealthModel,
     ) -> dict[str, tuple[HealthState, str]]:
         """
-        Get the intermediate health roll-up states.
+        Get the monitoring points with thresholds defined.
 
-        :return: the intermediate health roll-up states
+        :return: monitoring points with thresholds defined.
         """
         mon_points = self._state.get("monitoring_points", {})
         return {
@@ -147,7 +173,7 @@ class FndhHealthModel(BaseHealthModel):
         """
         self._health_rules.update_thresholds(threshold_key, threshold_values)
 
-        # # re-evaluate
+        # re-evaluate
         self.evaluate_health()
 
     @property
