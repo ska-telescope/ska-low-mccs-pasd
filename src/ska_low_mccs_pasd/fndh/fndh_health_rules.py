@@ -301,6 +301,7 @@ class FndhHealthRules(HealthRules):
 
     def compute_monitoring_point_health(
         self: FndhHealthRules,
+        monitoring_point_name: str,
         monitoring_point: float | None,
         thresholds: list[float],
     ) -> tuple[HealthState, str]:
@@ -313,33 +314,34 @@ class FndhHealthRules(HealthRules):
         below min_alm it is HealthState.DEGRADED.
         Otherwise we return HealthState.OK with an informational message.
 
-        :param monitoring_point: the monitoring point to evaluate.
-        :param thresholds: the thresholds defined for this attribute to
-            evaluate the monitoring point against.
+        :param monitoring_point_name: the name of the monitoring point.
+        :param monitoring_point: the monitoring point value to evaluate.
+        :param thresholds: the thresholds defined for this attribute.
 
         :return: the computed health state and health report
         """
         if monitoring_point is None:
-            return (HealthState.OK, "Monitoring point has not yet been updated")
+            return (HealthState.OK, "")
         max_alm, max_warn, min_warn, min_alm = thresholds
 
         if (monitoring_point >= max_warn) or (monitoring_point <= min_warn):
             if (monitoring_point >= max_alm) or (monitoring_point <= min_alm):
                 return (
                     HealthState.DEGRADED,
-                    f"Monitoring point has value {monitoring_point}, "
-                    "this is in the alarm region for thresholds "
+                    f"Monitoring point {monitoring_point_name} has value "
+                    f"{monitoring_point}, this is in the alarm region for thresholds "
                     f"{max_alm=}, {min_alm=}",
                 )
             return (
                 HealthState.OK,
-                f"Monitoring point has value {monitoring_point}, "
-                "this is in the warning region for thresholds "
+                f"Monitoring point {monitoring_point_name} has value "
+                f"{monitoring_point}, this is in the warning region for thresholds "
                 f"{max_warn=}, {min_warn=}",
             )
         return (
             HealthState.OK,
-            f"Monitoring point has value {monitoring_point}, this is within limits",
+            f"Monitoring point {monitoring_point_name} has value "
+            f"{monitoring_point}, this is within limits",
         )
 
     def update_thresholds(

@@ -183,6 +183,7 @@ class FndhHealthModel(BaseHealthModel):
         mon_points = self._state.get("monitoring_points", {})
         return {
             attribute_name: self._health_rules.compute_monitoring_point_health(
+                attribute_name,
                 mon_points.get(attribute_name, None),
                 threshold,
             )

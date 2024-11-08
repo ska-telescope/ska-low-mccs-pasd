@@ -64,7 +64,7 @@ class TestFNDHHealthModel:
                 },
                 HealthState.DEGRADED,
                 "Monitoring point psu48v_voltage_1 is in DEGRADED HealthState. "
-                "Cause: Monitoring point has value 105.0, "
+                "Cause: Monitoring point psu48v_voltage_1 has value 105.0, "
                 "this is in the alarm region for thresholds "
                 "max_alm=100.0, min_alm=0.0",
                 id="voltage too high, expect FAILED",
@@ -359,7 +359,7 @@ class TestFNDHHealthModel:
                 HealthState.DEGRADED,
                 "Monitoring point comms_gateway_temperature "
                 "is in DEGRADED HealthState. "
-                "Cause: Monitoring point has value 56.0, "
+                "Cause: Monitoring point comms_gateway_temperature has value 56.0, "
                 "this is in the alarm region for thresholds "
                 "max_alm=33.0, min_alm=0.0",
                 id="Update thresholds so that now the device reports DEGRADED",
