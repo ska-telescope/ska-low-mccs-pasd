@@ -625,7 +625,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         :raises ValueError: if the number of smartbox exceeds the maximum allowed for
             a station.
         """
-        if not len(port_numbers) == PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION:
+        if len(port_numbers) > PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION:
             self.logger.error(
                 "The number of ports with smartbox is over the "
                 f"maximum for a station: {len(port_numbers)}."
