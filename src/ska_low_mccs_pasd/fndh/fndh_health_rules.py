@@ -15,9 +15,27 @@ import numpy as np
 from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.health import HealthRules
 
+__all__ = ["FndhHealthRules", "join_health_reports"]
 
-def _join_health_messages(messages: list[str]) -> str:
-    return "\n".join(messages)
+
+def join_health_reports(messages: list[str]) -> str:
+    """
+    Join the messages removing duplicates and empty strings.
+
+    :param messages: a list of messages.
+
+    :returns: a string with result.
+    """
+    seen = set()
+    unique_messages = []
+
+    for message in messages:
+        # Ignore empty strings and duplicates
+        if message and message not in seen:
+            seen.add(message)
+            unique_messages.append(message)
+
+    return "\n".join(unique_messages)
 
 
 def _calculate_percent_smartbox_without_control(
@@ -75,7 +93,7 @@ class FndhHealthRules(HealthRules):
 
     def unknown_rule(  # type: ignore[override]
         self: FndhHealthRules,
-        monitoring_points: dict[str, Any],
+        monitoring_points: dict[str, tuple[HealthState, str]],
         **kwargs: Any,
     ) -> tuple[bool, str]:
         """
@@ -85,6 +103,17 @@ class FndhHealthRules(HealthRules):
         :param kwargs: optional kwargs.
 
         :returns: True if we are in a UNKNOWN healthstate.
+
+        :example:
+            >>> monitoring_points = {
+            >>>     "portspowercontrol": (HealthState.OK, ""),
+            >>>     "psu48vvoltage1": (HealthState.FAILED, "too high"),
+            >>>     ...
+            >>> }
+            >>> kwargs = {
+            >>>    ...
+            >>> }
+            >>> healthy_rule(monitoring_points=monitoring_points, **kwargs)
         """
         unknown_points: list[str] = []
         # Iterate over monitoring points and check for UNKNOWN health state
@@ -98,14 +127,14 @@ class FndhHealthRules(HealthRules):
 
         # If there are any UNKNOWN points, return True and a concatenated message
         if unknown_points:
-            return True, _join_health_messages(unknown_points)
+            return True, join_health_reports(unknown_points)
 
         # Return False and an empty message if no UNKNOWN points found
         return False, ""
 
     def failed_rule(  # type: ignore[override]
         self: FndhHealthRules,
-        monitoring_points: dict[str, Any],
+        monitoring_points: dict[str, tuple[HealthState, str]],
         **kwargs: Any,
     ) -> tuple[bool, str]:
         """
@@ -115,6 +144,18 @@ class FndhHealthRules(HealthRules):
         :param kwargs: optional kwargs.
 
         :returns: True if we are in a FAILED healthstate.
+
+        :example:
+            >>> monitoring_points = {
+            >>>     "portspowercontrol": (HealthState.OK, ""),
+            >>>     "psu48vvoltage1": (HealthState.FAILED, "too high"),
+            >>>     ...
+            >>> }
+            >>> kwargs = {
+            >>>    "ports_with_smartbox": [1,2,6],
+            >>>    "ports_power_control": [True]*28,
+            >>> }
+            >>> healthy_rule(monitoring_points=monitoring_points, **kwargs)
         """
         failed_points: list[str] = []
         percent_of_uncontrollable_smartbox = (
@@ -143,14 +184,18 @@ class FndhHealthRules(HealthRules):
 
         # If there are any FAILED points, return True and a concatenated message
         if failed_points:
-            return True, _join_health_messages(failed_points)
+            return (
+                True,
+                join_health_reports(failed_points)
+                or "Health is failed with no extra information",
+            )
 
         # Return False and an empty message if no FAILED points found
         return False, ""
 
     def degraded_rule(  # type: ignore[override]
         self: FndhHealthRules,
-        monitoring_points: dict[str, Any],
+        monitoring_points: dict[str, tuple[HealthState, str]],
         **kwargs: Any,
     ) -> tuple[bool, str]:
         """
@@ -159,6 +204,20 @@ class FndhHealthRules(HealthRules):
         :param monitoring_points: A dictionary containing the monitoring points.
         :param kwargs: optional kwargs.
         :returns: True if we are in a DEGRADED healthstate.
+
+        :example:
+            >>> monitoring_points = {
+            >>>     "portspowercontrol": (HealthState.OK, ""),
+            >>>     "psu48vvoltage1": (HealthState.FAILED, "too high"),
+            >>>     ...
+            >>> }
+            >>> kwargs = {
+            >>>    "pasd_power": PowerStat.ON,
+            >>>    "ignore_pasd_power": True,
+            >>>    "ports_with_smartbox": [1,2,6],
+            >>>    "ports_power_control": [True]*28,
+            >>> }
+            >>> healthy_rule(monitoring_points=monitoring_points, **kwargs)
         """
         degraded_points: list[str] = []
 
@@ -195,14 +254,18 @@ class FndhHealthRules(HealthRules):
                 )
         # If there are any DEGRADED points, return True and a concatenated message
         if degraded_points:
-            return True, _join_health_messages(degraded_points)
+            return (
+                True,
+                join_health_reports(degraded_points)
+                or "Health is degraded with no extra information",
+            )
 
         # Return False and an empty message if no DEGRADED points found
         return False, ""
 
     def healthy_rule(  # type: ignore[override]
         self: FndhHealthRules,
-        monitoring_points: dict[str, Any],
+        monitoring_points: dict[str, tuple[HealthState, str]],
         **kwargs: Any,
     ) -> tuple[bool, str]:
         """
@@ -212,18 +275,43 @@ class FndhHealthRules(HealthRules):
         :param kwargs: optional kwargs.
 
         :returns: True if we are in a OK healthstate.
+
+        :example:
+            >>> monitoring_points = {
+            >>>     "portspowercontrol": (HealthState.OK, ""),
+            >>>     "psu48vvoltage1": (HealthState.FAILED, "too high"),
+            >>>     ...
+            >>> }
+            >>> kwargs = {
+            >>>    ...
+            >>> }
+            >>> healthy_rule(monitoring_points=monitoring_points, **kwargs)
         """
-        if all(state == HealthState.OK for state, _ in monitoring_points.values()):
-            return True, "Health is OK"
+        messages: list[str] = []
+        states: list[bool] = []
+
+        # Iterate through monitoring_points, appending to messages and states
+        for state, message in monitoring_points.values():
+            messages.append(message)
+            states.append(state == HealthState.OK)
+
+        if all(states):
+            return True, join_health_reports(messages) or "Health is OK"
         return False, "Health not OK"
 
-    def compute_intermediate_state(
+    def compute_monitoring_point_health(
         self: FndhHealthRules,
-        monitoring_point: float,
+        monitoring_point: float | None,
         thresholds: list[float],
     ) -> tuple[HealthState, str]:
         """
-        Compute the Monitoring point state for the FNDH.
+        Compute the Health of a monitoring point.
+
+        A monitoring point is evaluated against a set of thresolds
+        with structure [high_alm, high_warn, low_warn, low_alm].
+        If the monitoring point if above specified max_alm or min_alm
+        it is HealthState.DEGRADED.
+        Otherwise it is HealthState.OK with a informational message.
 
         :param monitoring_point: the monitoring point to evaluate.
         :param thresholds: the thresholds defined for this attribute to

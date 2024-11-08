@@ -14,7 +14,7 @@ import numpy as np
 from ska_control_model import HealthState
 from ska_low_mccs_common.health import BaseHealthModel, HealthChangedCallbackProtocol
 
-from .fndh_health_rules import FndhHealthRules
+from .fndh_health_rules import FndhHealthRules, join_health_reports
 
 
 class FndhHealthModel(BaseHealthModel):
@@ -22,7 +22,13 @@ class FndhHealthModel(BaseHealthModel):
     The health model for a FNDH.
 
     The health model will contain a dictionary _state
-    containing monitoring points to feed the healthRules.
+    containing data to feed the healthRules.
+    The monitoring_points key maps to a dictionary
+    containing the current attribute values which are
+    checked against the alarm thresholds. The
+    portspowersensed attribute is used to determine
+    if the smartbox on the attached port is
+    controllable.
 
     :example:
         >>> {
@@ -102,7 +108,7 @@ class FndhHealthModel(BaseHealthModel):
     ) -> tuple[HealthState, str]:
         for health_value in self.ORDERED_HEALTH_PRECEDENCE:
             result, report = self._health_rules.rules[health_value](
-                monitoring_points=self.monitoring_points_with_thresholds,
+                monitoring_points=self.monitoring_points_health_status,
                 pasd_power=self._state.get("pasd_power"),
                 ignore_pasd_power=self._state.get("ignore_pasd_power"),
                 ports_with_smartbox=self._state.get("ports_with_smartbox"),
@@ -147,9 +153,9 @@ class FndhHealthModel(BaseHealthModel):
         mon_points = self._state.get("monitoring_points", {})
         rules_health, rules_report = self._get_report_from_rules(mon_points)
 
-        if base_health == rules_health and base_health != HealthState.OK:
+        if base_health == rules_health:
             # If both health states match, return them together
-            return base_health, "\n".join([base_report, rules_report])
+            return base_health, join_health_reports([base_report, rules_report])
 
         # Return report with highest health concern.
         for health in self.ORDERED_HEALTH_PRECEDENCE:
@@ -163,17 +169,20 @@ class FndhHealthModel(BaseHealthModel):
         return HealthState.UNKNOWN, "No rules matched"
 
     @property
-    def monitoring_points_with_thresholds(
+    def monitoring_points_health_status(
         self: FndhHealthModel,
     ) -> dict[str, tuple[HealthState, str]]:
         """
-        Get the monitoring points with thresholds defined.
+        Return a dictionary containing health information about monitoring points.
 
-        :return: monitoring points with thresholds defined.
+        For monitoring points with a threshold defined evaluate the health of
+        and add to a dictionary.
+
+        :return: health information about monitoring points.
         """
         mon_points = self._state.get("monitoring_points", {})
         return {
-            attribute_name: self._health_rules.compute_intermediate_state(
+            attribute_name: self._health_rules.compute_monitoring_point_health(
                 mon_points.get(attribute_name, None),
                 threshold,
             )

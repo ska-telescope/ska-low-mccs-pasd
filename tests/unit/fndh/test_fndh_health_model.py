@@ -171,10 +171,10 @@ class TestFNDHHealthModel:
         health_model.update_state(ports_with_smartbox=data.get("ports_with_smartbox"))
         health_model.update_state(monitoring_points=data)
 
-        assert health_model.evaluate_health() == (
-            expected_final_health,
-            expected_final_report,
-        )
+        final_health, final_report = health_model.evaluate_health()
+        assert final_health == expected_final_health
+        assert expected_final_report in final_report
+
         # Check feature flagging
         assert health_model.health_rule_active is True
         health_model.health_rule_active = False
@@ -391,22 +391,23 @@ class TestFNDHHealthModel:
 
         """
         # We are communicating and we have not seen any scary looking monitoring points.
-        assert health_model.evaluate_health() == (HealthState.OK, "Health is OK.")
+        initial_health, initial_report = health_model.evaluate_health()
+        assert initial_health == HealthState.OK
+        assert "Health is OK." in initial_report
 
         health_model.update_state(monitoring_points=monitoring_values)
         for threshold, values in init_thresholds.items():
             health_model.update_health_threshold(
                 threshold.removesuffix("_thresholds"), values
             )
-        assert health_model.evaluate_health() == (
-            init_expected_health,
-            init_expected_report,
-        )
+        initial_health, initial_report = health_model.evaluate_health()
+        assert initial_health == init_expected_health
+        assert init_expected_report in initial_report
         for threshold, values in end_thresholds.items():
             health_model.update_health_threshold(
                 threshold.removesuffix("_thresholds"), values
             )
-        assert health_model.evaluate_health() == (
-            end_expected_health,
-            end_expected_report,
-        )
+
+        final_health, final_report = health_model.evaluate_health()
+        assert final_health == end_expected_health
+        assert end_expected_report in final_report
