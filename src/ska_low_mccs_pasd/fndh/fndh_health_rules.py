@@ -113,7 +113,7 @@ class FndhHealthRules(HealthRules):
             >>> kwargs = {
             >>>    ...
             >>> }
-            >>> healthy_rule(monitoring_points=monitoring_points, **kwargs)
+            >>> unknown_rule(monitoring_points=monitoring_points, **kwargs)
         """
         unknown_points: list[str] = []
         # Iterate over monitoring points and check for UNKNOWN health state
@@ -155,7 +155,7 @@ class FndhHealthRules(HealthRules):
             >>>    "ports_with_smartbox": [1,2,6],
             >>>    "ports_power_control": [True]*28,
             >>> }
-            >>> healthy_rule(monitoring_points=monitoring_points, **kwargs)
+            >>> failed_rule(monitoring_points=monitoring_points, **kwargs)
         """
         failed_points: list[str] = []
         percent_of_uncontrollable_smartbox = (
@@ -212,12 +212,12 @@ class FndhHealthRules(HealthRules):
             >>>     ...
             >>> }
             >>> kwargs = {
-            >>>    "pasd_power": PowerStat.ON,
+            >>>    "pasd_power": PowerState.ON,
             >>>    "ignore_pasd_power": True,
             >>>    "ports_with_smartbox": [1,2,6],
             >>>    "ports_power_control": [True]*28,
             >>> }
-            >>> healthy_rule(monitoring_points=monitoring_points, **kwargs)
+            >>> degraded_rule(monitoring_points=monitoring_points, **kwargs)
         """
         degraded_points: list[str] = []
 
@@ -309,9 +309,9 @@ class FndhHealthRules(HealthRules):
 
         A monitoring point is evaluated against a set of thresolds
         with structure [high_alm, high_warn, low_warn, low_alm].
-        If the monitoring point if above specified max_alm or min_alm
-        it is HealthState.DEGRADED.
-        Otherwise it is HealthState.OK with a informational message.
+        If the monitoring point if above specified max_alm or
+        below min_alm it is HealthState.DEGRADED.
+        Otherwise we return HealthState.OK with an informational message.
 
         :param monitoring_point: the monitoring point to evaluate.
         :param thresholds: the thresholds defined for this attribute to
