@@ -43,6 +43,7 @@ class SmartboxAttribute:
     timestamp: float
 
 
+# pylint: disable=too-many-instance-attributes
 class MccsSmartBox(SKABaseDevice):
     """An implementation of the SmartBox device for MCCS."""
 
@@ -85,6 +86,7 @@ class MccsSmartBox(SKABaseDevice):
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: SmartBoxHealthModel
         self.component_manager: SmartBoxComponentManager
+        self._health_monitor_points: dict[str, list[float]] = {}
 
     def init_device(self: MccsSmartBox) -> None:
         """
@@ -114,7 +116,9 @@ class MccsSmartBox(SKABaseDevice):
     def _init_state_model(self: MccsSmartBox) -> None:
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
-        self._health_model = SmartBoxHealthModel(self._health_changed_callback)
+        self._health_model = SmartBoxHealthModel(
+            self._health_changed_callback, self.logger
+        )
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
 
@@ -352,12 +356,16 @@ class MccsSmartBox(SKABaseDevice):
 
         if communication_state != CommunicationStatus.ESTABLISHED:
             self._component_state_callback(power=PowerState.UNKNOWN)
+            self._health_monitor_points = {}
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._component_state_callback(power=self.component_manager._power_state)
 
         super()._communication_state_changed(communication_state)
 
-        self._health_model.update_state(communicating=True)
+        self._health_model.update_state(
+            communicating=True,
+            monitoring_points=self._health_monitor_points,
+        )
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def _component_state_callback(
@@ -464,16 +472,21 @@ class MccsSmartBox(SKABaseDevice):
             # for the corresponding Tango attribute
             if attr_name.endswith("thresholds"):
                 try:
+                    attr_name = attr_name.removesuffix("thresholds")
                     configure_alarms(
-                        self.get_device_attr().get_attr_by_name(
-                            attr_name.removesuffix("thresholds")
-                        ),
+                        self.get_device_attr().get_attr_by_name(attr_name),
                         attr_value,
                         self.logger,
                     )
+                    self._health_model.health_params = {attr_name: attr_value}
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass
+            else:
+                self._health_monitor_points[attr_name] = attr_value
+                self._health_model.update_state(
+                    monitoring_points=self._health_monitor_points
+                )
 
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
@@ -529,6 +542,37 @@ class MccsSmartBox(SKABaseDevice):
                 f"Can't set port mask with wrong number of values: {len(port_mask)}."
             )
         self.component_manager.port_mask = port_mask
+
+    @attribute(
+        dtype="DevString",
+        format="%s",
+    )
+    def healthModelParams(self: MccsSmartBox) -> str:
+        """
+        Get the health params from the health model.
+
+        :return: the health params
+        """
+        return json.dumps(self._health_model.health_params)
+
+    @healthModelParams.write  # type: ignore[no-redef]
+    def healthModelParams(self: MccsSmartBox, argin: str) -> None:
+        """
+        Set the params for health transition rules.
+
+        :param argin: JSON-string of dictionary of health states
+        """
+        self._health_model.health_params = json.loads(argin)
+        self._health_model.update_health()
+
+    @attribute(dtype="DevString")
+    def healthReport(self: MccsSmartBox) -> str:
+        """
+        Get the health report.
+
+        :return: the health report.
+        """
+        return self._health_model.health_report
 
 
 # ----------
