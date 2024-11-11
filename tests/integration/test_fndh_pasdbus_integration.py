@@ -610,7 +610,7 @@ class TestfndhPasdBusIntegration:
             for smartbox_id, controllable in smartbox_has_control:
                 ports_with_smartbox.append(smartbox_id)
                 if not controllable:
-                    pdoc_control[smartbox_id - 1] = (smartbox_id - 1, controllable)
+                    pdoc_control[smartbox_id] = (smartbox_id, controllable)
             fndh_device.portsWithSmartbox = ports_with_smartbox
             _simulate_pdoc_control_line_state(pdoc_control)
 
