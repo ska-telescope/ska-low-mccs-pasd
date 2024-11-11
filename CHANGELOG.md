@@ -1,6 +1,9 @@
 # Version History
 
-## unreleased
+## 0.12.1
+
+* [MCCS-2324]: MccsSmartbox power commands can get stuck in infinite loop
+* [MCCS-2245]: Add configuration to FNDH
 
 ## 0.12.0
 

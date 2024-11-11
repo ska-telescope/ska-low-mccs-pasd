@@ -602,7 +602,8 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             t2 = time.time()
             timeout -= int(t2 - t1)
             self.fndh_ports_change.clear()
-            if timeout < 0:
+            if timeout <= 0:
+                self.logger.error("Timeout reached waiting for FNDH port state.")
                 return ResultCode.FAILED, timeout
         return ResultCode.OK, timeout
 
@@ -637,7 +638,8 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             t2 = time.time()
             timeout -= int(t2 - t1)
             self.smartbox_ports_change.clear()
-            if timeout < 0:
+            if timeout <= 0:
+                self.logger.error("Timeout reached waiting for Smartbox port state.")
                 return ResultCode.FAILED, timeout
         return ResultCode.OK, timeout
 
