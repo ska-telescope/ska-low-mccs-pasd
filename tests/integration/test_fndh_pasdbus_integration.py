@@ -558,18 +558,23 @@ class TestfndhPasdBusIntegration:
         healthy_value = (max_warning + min_warning) / 2
         setattr(fndh_simulator, attribute_name, max_alarm)
         change_event_callbacks.assert_change_event(
-            "fndhhealthState", HealthState.DEGRADED
+            "fndhhealthState", HealthState.FAILED
         )
         setattr(fndh_simulator, attribute_name, max_warning)
-        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
-        setattr(fndh_simulator, attribute_name, min_alarm)
         change_event_callbacks.assert_change_event(
             "fndhhealthState", HealthState.DEGRADED
         )
+        setattr(fndh_simulator, attribute_name, min_alarm)
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.FAILED
+        )
         setattr(fndh_simulator, attribute_name, min_warning)
-        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.DEGRADED
+        )
         setattr(fndh_simulator, attribute_name, int(healthy_value))
-        change_event_callbacks["fndhhealthState"].assert_not_called()
+        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+
         pasd_bus_device.adminMode = AdminMode.OFFLINE
         change_event_callbacks["fndhhealthState"].assert_not_called()
 

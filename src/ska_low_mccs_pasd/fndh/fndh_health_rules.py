@@ -310,8 +310,10 @@ class FndhHealthRules(HealthRules):
 
         A monitoring point is evaluated against a set of thresolds
         with structure [high_alm, high_warn, low_warn, low_alm].
-        If the monitoring point if above specified max_alm or
-        below min_alm it is HealthState.DEGRADED.
+        If the monitoring point is above specified max_alm or
+        below min_alm it is HealthState.FAILED.
+        If the monitoring point is max_alm > p >= max_warn or
+        min_warn >= p > min_alm it is HealthState.DEGRADED.
         Otherwise we return HealthState.OK with an informational message.
 
         :param monitoring_point_name: the name of the monitoring point.
@@ -327,13 +329,13 @@ class FndhHealthRules(HealthRules):
         if (monitoring_point >= max_warn) or (monitoring_point <= min_warn):
             if (monitoring_point >= max_alm) or (monitoring_point <= min_alm):
                 return (
-                    HealthState.DEGRADED,
+                    HealthState.FAILED,
                     f"Monitoring point {monitoring_point_name} has value "
                     f"{monitoring_point}, this is in the alarm region for thresholds "
                     f"{max_alm=}, {min_alm=}",
                 )
             return (
-                HealthState.OK,
+                HealthState.DEGRADED,
                 f"Monitoring point {monitoring_point_name} has value "
                 f"{monitoring_point}, this is in the warning region for thresholds "
                 f"{max_warn=}, {min_warn=}",

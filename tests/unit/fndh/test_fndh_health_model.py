@@ -6,7 +6,7 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
-"""This module contains the tests for MccsStation."""
+"""This module contains the tests for MccsFndh healthModel."""
 from __future__ import annotations
 
 from typing import Any
@@ -21,12 +21,12 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import FnccStatusMap, LedSe
 
 
 class TestFNDHHealthModel:
-    """A class for tests of the station health model."""
+    """A class for tests of the FNDH health model."""
 
     @pytest.fixture
     def health_model(self: TestFNDHHealthModel) -> FndhHealthModel:
         """
-        Fixture to return the station health model.
+        Fixture to return the FNDH health model.
 
         :return: Health model to be used.
         """
@@ -53,8 +53,11 @@ class TestFNDHHealthModel:
                 {
                     "psu48v_voltage_1": 85.0,
                 },
-                HealthState.OK,
-                "Health is OK.",
+                HealthState.DEGRADED,
+                "Monitoring point psu48v_voltage_1 is in DEGRADED HealthState. "
+                "Cause: Monitoring point psu48v_voltage_1 has value 85.0, "
+                "this is in the warning region for thresholds "
+                "max_warn=84.0, min_warn=43.0",
                 id="voltage in warning, expect OK",
             ),
             pytest.param(
@@ -62,8 +65,8 @@ class TestFNDHHealthModel:
                 {
                     "psu48v_voltage_1": 105.0,
                 },
-                HealthState.DEGRADED,
-                "Monitoring point psu48v_voltage_1 is in DEGRADED HealthState. "
+                HealthState.FAILED,
+                "Monitoring point psu48v_voltage_1 is in FAILED HealthState. "
                 "Cause: Monitoring point psu48v_voltage_1 has value 105.0, "
                 "this is in the alarm region for thresholds "
                 "max_alm=100.0, min_alm=0.0",
@@ -356,17 +359,17 @@ class TestFNDHHealthModel:
                 },
                 HealthState.OK,
                 "Health is OK.",
-                HealthState.DEGRADED,
+                HealthState.FAILED,
                 "Monitoring point comms_gateway_temperature "
-                "is in DEGRADED HealthState. "
+                "is in FAILED HealthState. "
                 "Cause: Monitoring point comms_gateway_temperature has value 56.0, "
                 "this is in the alarm region for thresholds "
                 "max_alm=33.0, min_alm=0.0",
-                id="Update thresholds so that now the device reports DEGRADED",
+                id="Update thresholds so that now the device reports FAILED",
             ),
         ],
     )
-    def test_subrack_can_change_thresholds(
+    def test_fndh_can_change_thresholds(
         self: TestFNDHHealthModel,
         health_model: FndhHealthModel,
         monitoring_values: dict[str, Any],
@@ -378,7 +381,7 @@ class TestFNDHHealthModel:
         end_expected_report: str,
     ) -> None:
         """
-        Test subrack can change threshold values.
+        Test FNDH can change threshold values.
 
         :param monitoring_values: the monitoring values.
         :param health_model: Health model fixture.

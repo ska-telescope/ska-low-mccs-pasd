@@ -102,7 +102,6 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         # Health monitor points contains a cache of monitring points as they are updated
         # in a poll. When communication is lost this cache is reset to empty again.
         self._health_monitor_points: dict[str, list[float]] = {}
-        self._ignore_pasd = False
         self._ports_with_smartbox: list[int] = []
 
     def init_device(self: MccsFNDH) -> None:
@@ -148,6 +147,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._health_model = FndhHealthModel(self._health_changed_callback)
+        self._health_model.set_logger(self.logger)
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
 
