@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import importlib.resources
 import json
 import logging
 import sys
@@ -17,6 +18,7 @@ from datetime import datetime, timezone
 from typing import Any, Final, Optional, cast
 
 import tango
+from jsonschema import validate
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
 from ska_tango_base.commands import (
@@ -72,6 +74,11 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         "bool": bool,
         "DesiredPowerEnum": DesiredPowerEnum,
     }
+    UPDATE_HEALTH_PARAMS_SCHEMA: Final = json.loads(
+        importlib.resources.read_text(
+            "ska_low_mccs_pasd.fndh.schemas", "MccsFndh_UpdateHealthParams.json"
+        )
+    )
 
     # ---------------
     # Initialisation
@@ -146,8 +153,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
     def _init_state_model(self: MccsFNDH) -> None:
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
-        self._health_model = FndhHealthModel(self._health_changed_callback)
-        self._health_model.set_logger(self.logger)
+        self._health_model = FndhHealthModel(self._health_changed_callback, self.logger)
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
 
@@ -793,7 +799,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
             if attr_name.endswith("thresholds"):
                 try:
                     threshold_attribute_name = attr_name.removesuffix("thresholds")
-                    self._health_model.update_health_threshold(
+                    self._health_model.update_monitoring_point_threshold(
                         threshold_attribute_name, attr_value
                     )
                     configure_alarms(
@@ -829,6 +835,14 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         """
         Get the health params from the health model.
 
+        Monitoring points will have a thresholds defined by a list
+        ``[max_alm, max_warn, min_warn, min_alm]`` this is specified by
+        the polling of the hardware. It is suggested not to
+        modify these defaults but not enforced.
+        See:
+        https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html
+        for extra information.
+
         :return: the health params
         """
         return json.dumps(self._health_model.health_params)
@@ -840,6 +854,7 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
 
         :param argin: JSON-string of dictionary of health states
         """
+        validate(json.loads(argin), self.UPDATE_HEALTH_PARAMS_SCHEMA)
         self._health_model.health_params = json.loads(argin)
         self._health_model.update_health()
 

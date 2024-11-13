@@ -9,6 +9,7 @@
 """This module contains the tests for MccsFndh healthModel."""
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import numpy as np
@@ -24,13 +25,17 @@ class TestFNDHHealthModel:
     """A class for tests of the FNDH health model."""
 
     @pytest.fixture
-    def health_model(self: TestFNDHHealthModel) -> FndhHealthModel:
+    def health_model(
+        self: TestFNDHHealthModel, logger: logging.Logger
+    ) -> FndhHealthModel:
         """
         Fixture to return the FNDH health model.
 
+        :param logger: a fixture with the logger to use.
+
         :return: Health model to be used.
         """
-        health_model = FndhHealthModel(MockCallable())
+        health_model = FndhHealthModel(MockCallable(), logger)
         health_model.update_state(communicating=True, power=PowerState.ON)
 
         return health_model
@@ -40,34 +45,34 @@ class TestFNDHHealthModel:
         ("thresholds", "data", "expected_final_health", "expected_final_report"),
         [
             pytest.param(
-                {"psu48v_voltage_1": np.array([100.0, 84.0, 43.0, 0.0])},
+                {"psu48vvoltage1": [100.0, 84.0, 43.0, 0.0]},
                 {
-                    "psu48v_voltage_1": 81.0,
+                    "psu48vvoltage1": 81.0,
                 },
                 HealthState.OK,
                 "Health is OK.",
                 id="All devices healthy, expect OK",
             ),
             pytest.param(
-                {"psu48v_voltage_1": np.array([100.0, 84.0, 43.0, 0.0])},
+                {"psu48vvoltage1": [100.0, 84.0, 43.0, 0.0]},
                 {
-                    "psu48v_voltage_1": 85.0,
+                    "psu48vvoltage1": 85.0,
                 },
                 HealthState.DEGRADED,
-                "Monitoring point psu48v_voltage_1 is in DEGRADED HealthState. "
-                "Cause: Monitoring point psu48v_voltage_1 has value 85.0, "
+                "Monitoring point psu48vvoltage1 is in DEGRADED HealthState. "
+                "Cause: Monitoring point psu48vvoltage1 has value 85.0, "
                 "this is in the warning region for thresholds "
                 "max_warn=84.0, min_warn=43.0",
                 id="voltage in warning, expect OK",
             ),
             pytest.param(
-                {"psu48v_voltage_1": np.array([100.0, 84.0, 43.0, 0.0])},
+                {"psu48vvoltage1": [100.0, 84.0, 43.0, 0.0]},
                 {
-                    "psu48v_voltage_1": 105.0,
+                    "psu48vvoltage1": 105.0,
                 },
                 HealthState.FAILED,
-                "Monitoring point psu48v_voltage_1 is in FAILED HealthState. "
-                "Cause: Monitoring point psu48v_voltage_1 has value 105.0, "
+                "Monitoring point psu48vvoltage1 is in FAILED HealthState. "
+                "Cause: Monitoring point psu48vvoltage1 has value 105.0, "
                 "this is in the alarm region for thresholds "
                 "max_alm=100.0, min_alm=0.0",
                 id="voltage too high, expect FAILED",
@@ -78,8 +83,8 @@ class TestFNDHHealthModel:
                     "failed_percent_uncontrolled_smartbox": 25,
                 },
                 {
-                    "ports_with_smartbox": np.array([i + 1 for i in range(24)]),
-                    "portspowercontrol": np.array([True] * 28),
+                    "ports_with_smartbox": [i + 1 for i in range(24)],
+                    "portspowercontrol": [True] * 28,
                 },
                 HealthState.OK,
                 "Health is OK.",
@@ -91,8 +96,8 @@ class TestFNDHHealthModel:
                     "failed_percent_uncontrolled_smartbox": 25,
                 },
                 {
-                    "ports_with_smartbox": np.array([i + 1 for i in range(24)]),
-                    "portspowercontrol": np.array([False] * 28),
+                    "ports_with_smartbox": [i + 1 for i in range(24)],
+                    "portspowercontrol": [False] * 28,
                 },
                 HealthState.FAILED,
                 "Number of smartbox without control is 100, "
@@ -105,8 +110,8 @@ class TestFNDHHealthModel:
                     "failed_percent_uncontrolled_smartbox": 25,
                 },
                 {
-                    "ports_with_smartbox": np.array([i + 1 for i in range(24)]),
-                    "portspowercontrol": np.array([False] + [True] * 27),
+                    "ports_with_smartbox": [i + 1 for i in range(24)],
+                    "portspowercontrol": [False] + [True] * 27,
                 },
                 HealthState.DEGRADED,
                 "Number of smartbox without control is 4, "
@@ -119,7 +124,7 @@ class TestFNDHHealthModel:
                     "failed_percent_uncontrolled_smartbox": 25,
                 },
                 {
-                    "portspowercontrol": np.array([i + 1 for i in range(24)]),
+                    "portspowercontrol": [i + 1 for i in range(24)],
                 },
                 HealthState.OK,
                 "Health is OK.",
@@ -131,7 +136,7 @@ class TestFNDHHealthModel:
                     "failed_percent_uncontrolled_smartbox": 25,
                 },
                 {
-                    "portspowercontrol": np.array([False] + [True] * 27),
+                    "portspowercontrol": [False] + [True] * 27,
                 },
                 HealthState.OK,
                 "Health is OK.",
@@ -143,8 +148,8 @@ class TestFNDHHealthModel:
                     "failed_percent_uncontrolled_smartbox": 25,
                 },
                 {
-                    "ports_with_smartbox": np.array([]),
-                    "portspowercontrol": np.array([]),
+                    "ports_with_smartbox": [],
+                    "portspowercontrol": [],
                 },
                 HealthState.OK,
                 "Health is OK.",
@@ -155,7 +160,9 @@ class TestFNDHHealthModel:
     def test_fndh_evaluate_health(
         self: TestFNDHHealthModel,
         health_model: FndhHealthModel,
-        thresholds: dict[str, np.ndarray],
+        default_monitoring_point_thresholds: dict[str, list[float]],
+        healthy_monitoring_points: dict[str, Any],
+        thresholds: dict[str, list[float]],
         data: dict[str, Any],
         expected_final_health: HealthState,
         expected_final_report: str,
@@ -165,14 +172,29 @@ class TestFNDHHealthModel:
 
         :param thresholds: the thresholds defined for this monitoring point.
         :param health_model: Health model fixture.
+        :param default_monitoring_point_thresholds: a fixture containing some default
+            monitoring point thresholds to use
+        :param healthy_monitoring_points: a fixture containing monitoring points in
+            the health range.
         :param data: Health data values for health model.
         :param expected_final_health: Expected final health.
         :param expected_final_report: Expected final health report.
         """
-        health_model.health_params = thresholds
+        # Monitoring points thresholds not yet updated
+        health, _ = health_model.evaluate_health()
+        assert health == HealthState.UNKNOWN
+
+        # Monitoring points not yet updated
+        monitoring_point_thresholds = default_monitoring_point_thresholds.copy()
+        monitoring_point_thresholds.update(thresholds)
+        health_model.health_params = monitoring_point_thresholds
+        health, _ = health_model.evaluate_health()
+        assert health == HealthState.UNKNOWN
 
         health_model.update_state(ports_with_smartbox=data.get("ports_with_smartbox"))
-        health_model.update_state(monitoring_points=data)
+        monitoring_points = healthy_monitoring_points.copy()
+        monitoring_points.update(data)
+        health_model.update_state(monitoring_points=monitoring_points)
 
         final_health, final_report = health_model.evaluate_health()
         assert final_health == expected_final_health
@@ -309,60 +331,57 @@ class TestFNDHHealthModel:
         [
             pytest.param(
                 {
-                    "psu48v_voltage_1": 55.0,
-                    "psu48v_voltage_2": 56.0,
-                    "psu48v_current": 56.0,
-                    "psu48v_temperature_1": 56.0,
-                    "psu48v_temperature_2": 56.0,
-                    "panel_temperature": 56.0,
-                    "fncb_temperature": 56.0,
+                    "psu48vvoltage1": 55.0,
+                    "psu48vvoltage2": 56.0,
+                    "psu48vcurrent": 56.0,
+                    "psu48vtemperature1": 56.0,
+                    "psu48vtemperature2": 56.0,
+                    "paneltemperature": 56.0,
+                    "fncbtemperature": 56.0,
+                    "fncbhumidity": 54.0,
                     "status": FnccStatusMap.UNDEFINED,
-                    "led_pattern": LedServiceMap.ON,
-                    "comms_gateway_temperature": 56.0,
-                    "power_module_temperature": 56.0,
-                    "internal_ambient_temperature": 56.0,
-                    "port_forcings": np.array([False] * 12),
-                    "ports_desired_power_when_online": np.array([False] * 12),
-                    "ports_desired_power_when_offline": np.array([False] * 12),
-                    "ports_power_sensed": np.array([False] * 12),
-                    "ports_power_control": np.array([False] * 12),
+                    "ledpattern": LedServiceMap.ON,
+                    "commsgatewaytemperature": 56.0,
+                    "powermoduletemperature": 56.0,
+                    "outsidetemperature": 46.0,
+                    "internalambienttemperature": 56.0,
+                    "portforcings": np.array([False] * 12),
+                    "portsdesiredpowerwhenonline": np.array([False] * 12),
+                    "portsdesiredpowerwhenoffline": np.array([False] * 12),
+                    "portspowersensed": np.array([False] * 12),
+                    "portspowercontrol": np.array([False] * 12),
                 },
                 {
-                    "psu48v_voltage_1_thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
-                    "psu48v_voltage_2_thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
-                    "psu48v_current_thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
-                    "psu48v_temperature_1_thresholds": np.array(
+                    "psu48vvoltage1thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "psu48vvoltage2thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "psu48vcurrentthresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "psu48vtemperature1thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "psu48vtemperature2thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "paneltemperaturethresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "fncbhumiditythresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "fncbtemperaturethresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "commsgatewaytemperaturethresholds": np.array(
                         [100.0, 84.0, 43.0, 0.0]
                     ),
-                    "psu48v_temperature_2_thresholds": np.array(
+                    "powermoduletemperaturethresholds": np.array(
                         [100.0, 84.0, 43.0, 0.0]
                     ),
-                    "panel_temperature_thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
-                    "fncb_humidity_thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
-                    "comms_gateway_temperature_thresholds": np.array(
-                        [100.0, 84.0, 43.0, 0.0]
-                    ),
-                    "power_module_temperature_thresholds": np.array(
-                        [100.0, 84.0, 43.0, 0.0]
-                    ),
-                    "outside_temperature_thresholds": np.array(
-                        [100.0, 84.0, 43.0, 0.0]
-                    ),
-                    "internal_ambient_temperature_thresholds": np.array(
+                    "outsidetemperaturethresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    "internalambienttemperaturethresholds": np.array(
                         [100.0, 84.0, 43.0, 0.0]
                     ),
                 },
                 {
-                    "comms_gateway_temperature_thresholds": np.array(
+                    "commsgatewaytemperaturethresholds": np.array(
                         [33.0, 22.0, 10.0, 0.0]
                     ),
                 },
                 HealthState.OK,
                 "Health is OK.",
                 HealthState.FAILED,
-                "Monitoring point comms_gateway_temperature "
+                "Monitoring point commsgatewaytemperature "
                 "is in FAILED HealthState. "
-                "Cause: Monitoring point comms_gateway_temperature has value 56.0, "
+                "Cause: Monitoring point commsgatewaytemperature has value 56.0, "
                 "this is in the alarm region for thresholds "
                 "max_alm=33.0, min_alm=0.0",
                 id="Update thresholds so that now the device reports FAILED",
@@ -394,21 +413,21 @@ class TestFNDHHealthModel:
 
         """
         # We are communicating and we have not seen any scary looking monitoring points.
-        initial_health, initial_report = health_model.evaluate_health()
-        assert initial_health == HealthState.OK
-        assert "Health is OK." in initial_report
+        initial_health, _ = health_model.evaluate_health()
+        assert initial_health == HealthState.UNKNOWN
 
         health_model.update_state(monitoring_points=monitoring_values)
         for threshold, values in init_thresholds.items():
-            health_model.update_health_threshold(
-                threshold.removesuffix("_thresholds"), values
+            health_model.update_monitoring_point_threshold(
+                threshold.removesuffix("thresholds"), values
             )
         initial_health, initial_report = health_model.evaluate_health()
+
         assert initial_health == init_expected_health
         assert init_expected_report in initial_report
         for threshold, values in end_thresholds.items():
-            health_model.update_health_threshold(
-                threshold.removesuffix("_thresholds"), values
+            health_model.update_monitoring_point_threshold(
+                threshold.removesuffix("thresholds"), values
             )
 
         final_health, final_report = health_model.evaluate_health()

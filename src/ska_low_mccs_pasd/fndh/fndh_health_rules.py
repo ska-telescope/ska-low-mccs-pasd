@@ -9,13 +9,26 @@
 """A file to store health transition rules for station."""
 from __future__ import annotations
 
-from typing import Any
+import logging
+from typing import Any, Final
 
 import numpy as np
 from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.health import HealthRules
 
 __all__ = ["FndhHealthRules", "join_health_reports"]
+
+
+def merge_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> dict[str, Any]:
+    """
+    Return a new dictionary containing a merged dictionary.
+
+    :param dict1: first dictionary to merge.
+    :param dict2: second dictionary to merge.
+
+    :returns: a dictionary containing the merge of dict1 and dict2
+    """
+    return {**dict1, **dict2}
 
 
 def join_health_reports(messages: list[str]) -> str:
@@ -66,30 +79,50 @@ def _calculate_percent_smartbox_without_control(
     return int((nof_smartbox_without_control * 100) / len(ports_with_smartbox))
 
 
-class FndhHealthRules(HealthRules):
-    """A class to handle transition rules for the FNDH."""
+# pylint: disable=too-few-public-methods
+class FndhHealthData:
+    """A class containing data used by the healthRules."""
 
     # Default percentages of uncontrolled smartboxes
     # required for degraded and failed status
     DEFAULT_DEGRADED_PERCENT_UNCONTROLLED_SMARTBOX = 0
     DEFAULT_FAILED_PERCENT_UNCONTROLLED_SMARTBOX = 20
 
-    def __init__(self, *args: Any, **kwargs: Any):
+
+class FndhHealthRules(HealthRules):
+    """A class to handle transition rules for the FNDH."""
+
+    DEFAULT_THRESHOLD_VALUES: Final[dict[str, int]] = {
+        "failed_percent_uncontrolled_smartbox": (
+            FndhHealthData.DEFAULT_FAILED_PERCENT_UNCONTROLLED_SMARTBOX
+        ),
+        "degraded_percent_uncontrolled_smartbox": (
+            FndhHealthData.DEFAULT_DEGRADED_PERCENT_UNCONTROLLED_SMARTBOX
+        ),
+    }
+
+    def __init__(
+        self,
+        logger: logging.Logger,
+        monitoring_points: dict[str, Any],
+        *args: Any,
+        **kwargs: Any,
+    ):
         """
         Initialise this device object.
 
+        :param logger: the logger to use.
+        :param monitoring_points: a dictionary containing
+            the monitoring points to evaluate.
         :param args: positional args to the init
         :param kwargs: keyword args to the init
         """
         super().__init__(*args, **kwargs)
-        self.logger = None
-        self._thresholds: dict[str, Any]
-        self._thresholds[
-            "failed_percent_uncontrolled_smartbox"
-        ] = self.DEFAULT_FAILED_PERCENT_UNCONTROLLED_SMARTBOX
-        self._thresholds[
-            "degraded_percent_uncontrolled_smartbox"
-        ] = self.DEFAULT_DEGRADED_PERCENT_UNCONTROLLED_SMARTBOX
+
+        self._thresholds = dict(
+            merge_dicts(monitoring_points, self.DEFAULT_THRESHOLD_VALUES)
+        )
+        self._logger = logger
 
     def unknown_rule(  # type: ignore[override]
         self: FndhHealthRules,
@@ -303,7 +336,7 @@ class FndhHealthRules(HealthRules):
         self: FndhHealthRules,
         monitoring_point_name: str,
         monitoring_point: float | None,
-        thresholds: list[float],
+        thresholds: list[float] | None,
     ) -> tuple[HealthState, str]:
         """
         Compute the Health of a monitoring point.
@@ -322,8 +355,19 @@ class FndhHealthRules(HealthRules):
 
         :return: the computed health state and health report
         """
+        if thresholds is None:
+            return (
+                HealthState.UNKNOWN,
+                f"Thresholds for {monitoring_point_name} have not yet been updated."
+                "We should transition out of this state once we have polled "
+                " the hardware for this information.",
+            )
         if monitoring_point is None:
-            return (HealthState.OK, "")
+            return (
+                HealthState.UNKNOWN,
+                f"Monitoring point {monitoring_point_name} has not yet been updated.",
+            )
+
         max_alm, max_warn, min_warn, min_alm = thresholds
 
         if (monitoring_point >= max_warn) or (monitoring_point <= min_warn):
@@ -346,14 +390,53 @@ class FndhHealthRules(HealthRules):
             f"{monitoring_point}, this is within limits",
         )
 
-    def update_thresholds(
+    def update_monitoring_point_thresholds(
         self: FndhHealthRules, attribute_name: str, threshold_value: np.ndarray
     ) -> None:
         """
-        Update the thresholds for attributes.
+        Update the thresholds for monitoring points.
 
         :param attribute_name: the name of the threshold to update
         :param threshold_value: A numpy.array containing the
             [max_alm, max_warn, min_warn, min_alm]
         """
-        self._thresholds[attribute_name] = threshold_value.tolist()
+        old_threshold = self._thresholds[attribute_name]
+        new_threshold = threshold_value.tolist()
+
+        self.thresholds = {attribute_name: new_threshold}
+
+        if old_threshold is None:
+            self._logger.info(
+                f"Threshold for {attribute_name} has been "
+                f"initiailsed to {new_threshold}"
+            )
+        else:
+            self._logger.info(
+                f"Threshold for {attribute_name} has being updated "
+                f"from {old_threshold} to {new_threshold}"
+            )
+
+    @property
+    def thresholds(self) -> dict[str, Any]:
+        """
+        Return the threshold values.
+
+        :returns: the merged results of both the monitoring_thresholds
+            and _thresholds dictionarys.
+        """
+        return self._thresholds
+
+    @thresholds.setter
+    def thresholds(self, thresholds: dict[str, Any]) -> None:
+        """
+        Set the threshold values.
+
+        :param thresholds: a dictionary containing the thresholds to set
+        """
+        threshold_to_update = {}
+        for key, value in thresholds.items():
+            if key not in self._thresholds:
+                self._logger.error(f"{key=} is not supported by FNDH health rules.")
+                continue
+            threshold_to_update[key] = value
+        self._thresholds.update(threshold_to_update)
