@@ -472,13 +472,13 @@ class MccsSmartBox(SKABaseDevice):
             # for the corresponding Tango attribute
             if attr_name.endswith("thresholds"):
                 try:
-                    attr_name = attr_name.removesuffix("thresholds")
+                    attr_true = attr_name.removesuffix("thresholds")
                     configure_alarms(
-                        self.get_device_attr().get_attr_by_name(attr_name),
+                        self.get_device_attr().get_attr_by_name(attr_true),
                         attr_value,
                         self.logger,
                     )
-                    self._health_model.health_params = {attr_name: attr_value}
+                    self._health_model.health_params = {attr_true: attr_value}
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass
