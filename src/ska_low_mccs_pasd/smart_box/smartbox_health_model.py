@@ -5,7 +5,7 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
-"""An implementation of a health model for a PaSD bus."""
+"""An implementation of a health model for a Smartbox."""
 from __future__ import annotations
 
 from logging import Logger
@@ -20,11 +20,7 @@ __all__ = ["SmartBoxHealthModel"]
 
 
 class SmartBoxHealthModel(BaseHealthModel):
-    """
-    A health model for a PaSD bus.
-
-    # TODO: [MCCS-2087] Implement the evaluate_health method
-    """
+    """A health model for a smartbox."""
 
     _health_rules: SmartboxHealthRules
 
@@ -83,14 +79,16 @@ class SmartBoxHealthModel(BaseHealthModel):
         """
         monitoring_points: dict[str, Any] = self._state.get("monitoring_points", {})
 
-        return {
-            health_key: self._health_rules.compute_intermediate_state(
+        intermediate_healths = {}
+        for health_key, parameters in self.health_params.items():
+            intermediate_healths[
+                health_key
+            ] = self._health_rules.compute_intermediate_state(
                 health_key,
                 monitoring_points.get(health_key, {}),
                 parameters,
             )
-            for health_key, parameters in self.health_params.items()
-        }
+        return intermediate_healths
 
     @property
     def health_params(self: SmartBoxHealthModel) -> dict[str, Any]:
@@ -110,14 +108,5 @@ class SmartBoxHealthModel(BaseHealthModel):
             threshold as value
         """
         self._health_rules._thresholds = self._merge_dicts(
-            self._health_rules.default_thresholds, params
+            self._health_rules._thresholds, params
         )
-
-    def update_data(self: SmartBoxHealthModel, new_states: dict) -> None:
-        """
-        Update this health model with state relevant to evaluating health.
-
-        :param new_states: New states of the data points.
-        """
-        self._state.update(new_states)
-        self.update_health()

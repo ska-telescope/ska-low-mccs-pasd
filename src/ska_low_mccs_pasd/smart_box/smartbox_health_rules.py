@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy
 from ska_control_model import HealthState
 from ska_low_mccs_common.health import HealthRules
 
@@ -67,7 +68,7 @@ class SmartboxHealthRules(HealthRules):
 
         :param intermediate_healths: dictionary of intermediate healths
 
-        :return: True if UNKNOWN is a valid state, along with a text report.
+        :return: True if FAILED is a valid state, along with a text report.
         """
         for key, value in intermediate_healths.items():
             if value[0] == HealthState.FAILED:
@@ -87,7 +88,7 @@ class SmartboxHealthRules(HealthRules):
 
         :param intermediate_healths: dictionary of intermediate healths
 
-        :return: True if UNKNOWN is a valid state, along with a text report.
+        :return: True if DEGRADED is a valid state, along with a text report.
         """
         for key, value in intermediate_healths.items():
             if value[0] == HealthState.DEGRADED:
@@ -149,7 +150,7 @@ class SmartboxHealthRules(HealthRules):
                     f"{monitoring_value} > {min_max}",
                 )
             )
-        if isinstance(min_max, list):
+        if isinstance(min_max, (list, numpy.ndarray)):
             min_max.sort()
 
             if len(min_max) == 1:

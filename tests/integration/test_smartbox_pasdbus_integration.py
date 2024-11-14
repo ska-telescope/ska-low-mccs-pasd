@@ -142,6 +142,15 @@ def setup_devices_with_subscriptions(
     )
     change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.DISABLE)
 
+    smartbox_device.subscribe_event(
+        "healthState",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["smartboxHealthState"],
+    )
+    change_event_callbacks.assert_change_event(
+        "smartboxHealthState", HealthState.UNKNOWN
+    )
+
     pasd_bus_device.subscribe_event(
         "healthState",
         tango.EventType.CHANGE_EVENT,
@@ -1295,6 +1304,81 @@ class TestSmartBoxPasdBusIntegration:
             [True] * 12,
         )
 
+    def test_smartbox_health(
+        self: TestSmartBoxPasdBusIntegration,
+        pasd_bus_device: tango.DeviceProxy,
+        fndh_device: tango.DeviceProxy,
+        on_smartbox_device: tango.DeviceProxy,
+        on_smartbox_id: int,
+        smartbox_simulator: SmartboxSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+        last_smartbox_id: int,
+    ) -> None:
+        """
+        Test the health of smartbox.
+
+        :param on_smartbox_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param pasd_bus_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param fndh_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param smartbox_simulator: the smartbox simulator under test.
+        :param on_smartbox_id: the smartbox of interest in this test.
+        :param change_event_callbacks: group of Tango change event
+            callback with asynchrony support
+        :param last_smartbox_id: ID of the last smartbox polled
+        """
+        smartbox_device = on_smartbox_device
+
+        monitoring_point = "input_voltage"
+        monitoring_point_thresholds = monitoring_point + "_thresholds"
+        # ==========
+        # PaSD SETUP
+        # ==========
+        setup_devices_with_subscriptions(
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
+        )
+
+        turn_pasd_devices_online(
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
+            last_smartbox_id,
+        )
+        max_alarm, max_warning, min_warning, min_alarm = getattr(
+            smartbox_simulator, monitoring_point_thresholds
+        )
+        healthy_value = (max_warning + min_warning) / 2
+
+        setattr(smartbox_simulator, monitoring_point, max_alarm + 100)
+        change_event_callbacks.assert_change_event(
+            "smartboxHealthState", HealthState.FAILED, lookahead=5
+        )
+        setattr(smartbox_simulator, monitoring_point, max_alarm - 50)
+        change_event_callbacks.assert_change_event(
+            "smartboxHealthState", HealthState.DEGRADED, lookahead=5
+        )
+        setattr(smartbox_simulator, monitoring_point, healthy_value)
+        change_event_callbacks.assert_change_event(
+            "smartboxHealthState", HealthState.OK, lookahead=5
+        )
+        setattr(smartbox_simulator, monitoring_point, min_alarm - 100)
+        change_event_callbacks.assert_change_event(
+            "smartboxHealthState", HealthState.FAILED, lookahead=5
+        )
+        setattr(smartbox_simulator, monitoring_point, min_warning - 100)
+        change_event_callbacks.assert_change_event(
+            "smartboxHealthState", HealthState.DEGRADED, lookahead=5
+        )
+
 
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture(
@@ -1316,6 +1400,7 @@ def change_event_callbacks_fixture(
         "pasd_bus_state",
         "fndh_state",
         "healthState",
+        "smartboxHealthState",
         "fndhstatus",
         f"smartbox{last_smartbox_id}AlarmFlags",
         f"smartbox{on_smartbox_id}portpowersensed",
