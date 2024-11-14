@@ -41,8 +41,8 @@ class TestSmartboxHealthModel:
         [
             pytest.param(
                 {
-                    "SYS_48V_V_TH": [100.0, 84.0, 43.0, 0.0],
-                    "SYS_PSU_V_TH": [5.0, 4.9, 4.4, 4.0],
+                    "SYS_48V_V_TH": [0.0, 43.0, 84.0, 100.0],
+                    "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"SYS_48V_V_TH": 81.0, "SYS_PSU_V_TH": 4.7},
                 HealthState.OK,
@@ -51,8 +51,8 @@ class TestSmartboxHealthModel:
             ),
             pytest.param(
                 {
-                    "SYS_48V_V_TH": [100.0, 84.0, 43.0, 0.0],
-                    "SYS_PSU_V_TH": [5.0, 4.9, 4.4, 4.0],
+                    "SYS_48V_V_TH": [0.0, 43.0, 84.0, 100.0],
+                    "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"SYS_48V_V_TH": 110.0, "SYS_PSU_V_TH": 4.7},
                 HealthState.FAILED,
@@ -63,8 +63,8 @@ class TestSmartboxHealthModel:
             ),
             pytest.param(
                 {
-                    "SYS_48V_V_TH": [100.0, 84.0, 43.0, 0.0],
-                    "SYS_PSU_V_TH": [5.0, 4.9, 4.4, 4.0],
+                    "SYS_48V_V_TH": [0.0, 43.0, 84.0, 100.0],
+                    "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"SYS_48V_V_TH": -10.0, "SYS_PSU_V_TH": 4.7},
                 HealthState.FAILED,
@@ -75,8 +75,8 @@ class TestSmartboxHealthModel:
             ),
             pytest.param(
                 {
-                    "SYS_48V_V_TH": [100.0, 84.0, 43.0, 0.0],
-                    "SYS_PSU_V_TH": [5.0, 4.9, 4.4, 4.0],
+                    "SYS_48V_V_TH": [0.0, 43.0, 84.0, 100.0],
+                    "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"SYS_48V_V_TH": 90.0, "SYS_PSU_V_TH": 4.7},
                 HealthState.DEGRADED,
@@ -87,8 +87,8 @@ class TestSmartboxHealthModel:
             ),
             pytest.param(
                 {
-                    "SYS_48V_V_TH": [100.0, 84.0, 43.0, 0.0],
-                    "SYS_PSU_V_TH": [5.0, 4.9, 4.4, 4.0],
+                    "SYS_48V_V_TH": [0.0, 43.0, 84.0, 100.0],
+                    "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"SYS_48V_V_TH": 40.0, "SYS_PSU_V_TH": 4.7},
                 HealthState.DEGRADED,
@@ -100,7 +100,7 @@ class TestSmartboxHealthModel:
             pytest.param(
                 {
                     "P05_CURRENT_TH": [496],
-                    "SYS_PSU_V_TH": [5.0, 4.9, 4.4, 4.0],
+                    "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"P05_CURRENT_TH": 400, "SYS_PSU_V_TH": 4.7},
                 HealthState.OK,
@@ -110,7 +110,7 @@ class TestSmartboxHealthModel:
             pytest.param(
                 {
                     "P05_CURRENT_TH": [496],
-                    "SYS_PSU_V_TH": [5.0, 4.9, 4.4, 4.0],
+                    "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"P05_CURRENT_TH": 500, "SYS_PSU_V_TH": 4.7},
                 HealthState.FAILED,
@@ -215,11 +215,11 @@ class TestSmartboxHealthModel:
                     "SYS_PSUTEMP_TH": 46.0,
                 },
                 {
-                    "SYS_48V_V_TH": [100.0, 84.0, 43.0, 0.0],
-                    "SYS_PSU_V_TH": [100.0, 84.0, 43.0, 0.0],
-                    "SYS_PSUTEMP_TH": [100.0, 84.0, 43.0, 0.0],
+                    "SYS_48V_V_TH": [0.0, 43.0, 84.0, 100.0],
+                    "SYS_PSU_V_TH": [0.0, 43.0, 84.0, 100.0],
+                    "SYS_PSUTEMP_TH": [0.0, 43.0, 84.0, 100.0],
                 },
-                {"SYS_PSU_V_TH": [33.0, 22.0, 10.0, 0.0]},
+                {"SYS_PSU_V_TH": [0.0, 10.0, 22.0, 33.0]},
                 HealthState.OK,
                 "Health is OK.",
                 HealthState.FAILED,
@@ -235,11 +235,11 @@ class TestSmartboxHealthModel:
                     "SYS_PSUTEMP_TH": 46.0,
                 },
                 {
-                    "SYS_48V_V_TH": [100.0, 84.0, 43.0, 0.0],
-                    "SYS_PSU_V_TH": [33.0, 22.0, 10.0, 0.0],
-                    "SYS_PSUTEMP_TH": [100.0, 84.0, 43.0, 0.0],
+                    "SYS_48V_V_TH": [0.0, 43.0, 84.0, 100.0],
+                    "SYS_PSU_V_TH": [0.0, 10.0, 22.0, 33.0],
+                    "SYS_PSUTEMP_TH": [0.0, 43.0, 84.0, 100.0],
                 },
-                {"SYS_PSU_V_TH": [100.0, 84.0, 43.0, 0.0]},
+                {"SYS_PSU_V_TH": [0.0, 43.0, 84.0, 100.0]},
                 HealthState.FAILED,
                 "Intermediate health SYS_PSU_V_TH is in FAILED HealthState. "
                 "Cause: Monitoring point SYS_PSU_V_TH: out side of max/min "
