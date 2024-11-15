@@ -151,27 +151,27 @@ class SmartboxHealthRules(HealthRules):
                 )
             )
         if isinstance(min_max, (list, numpy.ndarray)):
-            min_max.sort()
+            sorted_min_max = sorted(min_max)
 
-            if len(min_max) == 1:
+            if len(sorted_min_max) == 1:
                 return (
                     (HealthState.OK, "")
-                    if monitoring_value < min_max[0]
+                    if monitoring_value < sorted_min_max[0]
                     else (
                         HealthState.FAILED,
                         f"Monitoring point {monitoring_point}: "
-                        f"{monitoring_value} > {min_max[0]}",
+                        f"{monitoring_value} > {sorted_min_max[0]}",
                     )
                 )
-            if len(min_max) == 4:
+            if len(sorted_min_max) == 4:
                 # all the values are 0 or 0.0, not a point we care about
-                if all(value == 0 for value in min_max):
+                if all(value == 0 for value in sorted_min_max):
                     return (HealthState.OK, "")
 
-                min_fault = min_max[0]
-                min_warning = min_max[1]
-                max_warning = min_max[2]
-                max_fault = min_max[3]
+                min_fault = sorted_min_max[0]
+                min_warning = sorted_min_max[1]
+                max_warning = sorted_min_max[2]
+                max_fault = sorted_min_max[3]
 
                 if monitoring_value < min_fault or monitoring_value > max_fault:
                     return (

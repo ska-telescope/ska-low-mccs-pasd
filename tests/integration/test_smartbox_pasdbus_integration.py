@@ -946,11 +946,11 @@ class TestSmartBoxPasdBusIntegration:
         # These thresholds are in the wrong order, I'm not sure why but
         # they're in descending rather than ascending and its breaking
         # the tests
-        # assert list(
-        #     smartbox_device.FemHeatsinkTemperature2Thresholds
-        # ) == PasdConversionUtility.scale_signed_16bit(
-        #     smartbox_simulator.fem_heatsink_temperature_2_thresholds
-        # )
+        assert list(
+            smartbox_device.FemHeatsinkTemperature2Thresholds
+        ) == PasdConversionUtility.scale_signed_16bit(
+            smartbox_simulator.fem_heatsink_temperature_2_thresholds
+        )
         assert (
             list(smartbox_device.FemCurrentTripThresholds)
             == [SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD]
