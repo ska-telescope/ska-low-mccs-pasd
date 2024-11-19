@@ -185,14 +185,14 @@ class SmartboxHealthRules(HealthRules):
                         HealthState.DEGRADED,
                         f"Monitoring point {monitoring_point}: "
                         f"in warning range, min fault: {min_fault} < "
-                        f"value: {monitoring_value} < {min_warning} min warning",
+                        f"value: {monitoring_value} < min warning: {min_warning}",
                     )
                 if monitoring_value > max_warning:
                     return (
                         HealthState.DEGRADED,
                         f"Monitoring point {monitoring_point}: "
-                        f"in warning range, max fault: {min_fault} > "
-                        f"value: {monitoring_value} > {min_warning} max warning",
+                        f"in warning range, max fault: {max_fault} > "
+                        f"value: {monitoring_value} > max warning: {max_warning}",
                     )
                 return (HealthState.OK, "")
 

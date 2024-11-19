@@ -58,7 +58,7 @@ class TestSmartboxHealthModel:
                 HealthState.FAILED,
                 "Intermediate health SYS_48V_V_TH is in FAILED HealthState. "
                 "Cause: Monitoring point SYS_48V_V_TH: out side of max/min "
-                "values, value: 110.0,max: 100.0, min: 0.0",
+                "values, value: 110.0, max: 100.0, min: 0.0",
                 id="value too high, expect failed",
             ),
             pytest.param(
@@ -70,7 +70,7 @@ class TestSmartboxHealthModel:
                 HealthState.FAILED,
                 "Intermediate health SYS_48V_V_TH is in FAILED HealthState. "
                 "Cause: Monitoring point SYS_48V_V_TH: out side of max/min "
-                "values, value: -10.0,max: 100.0, min: 0.0",
+                "values, value: -10.0, max: 100.0, min: 0.0",
                 id="value too low, expect failed",
             ),
             pytest.param(
@@ -82,7 +82,7 @@ class TestSmartboxHealthModel:
                 HealthState.DEGRADED,
                 "Intermediate health SYS_48V_V_TH is in DEGRADED HealthState. "
                 "Cause: Monitoring point SYS_48V_V_TH: in warning range, "
-                "value: 90.0, max: 84.0, min: 43.0",
+                "max fault: 100.0 > value: 90.0 > max warning: 84.0",
                 id="value in high warning range, expect degraded",
             ),
             pytest.param(
@@ -94,7 +94,7 @@ class TestSmartboxHealthModel:
                 HealthState.DEGRADED,
                 "Intermediate health SYS_48V_V_TH is in DEGRADED HealthState. "
                 "Cause: Monitoring point SYS_48V_V_TH: in warning range, "
-                "value: 40.0, max: 84.0, min: 43.0",
+                "min fault: 0.0 < value: 40.0 < min warning: 43.0",
                 id="value in low warning range, expect degraded",
             ),
             pytest.param(
@@ -224,8 +224,8 @@ class TestSmartboxHealthModel:
                 "Health is OK.",
                 HealthState.FAILED,
                 "Intermediate health SYS_PSU_V_TH is in FAILED HealthState. "
-                "Cause: Monitoring point SYS_PSU_V_TH: out side of max/min "
-                "values, value: 46.0,max: 33.0, min: 0.0",
+                "Cause: Monitoring point SYS_PSU_V_TH: out side of max/min values, "
+                "value: 46.0, max: 33.0, min: 0.0",
                 id="Update thresholds so that now the device reports FAILED",
             ),
             pytest.param(
@@ -242,8 +242,8 @@ class TestSmartboxHealthModel:
                 {"SYS_PSU_V_TH": [0.0, 43.0, 84.0, 100.0]},
                 HealthState.FAILED,
                 "Intermediate health SYS_PSU_V_TH is in FAILED HealthState. "
-                "Cause: Monitoring point SYS_PSU_V_TH: out side of max/min "
-                "values, value: 46.0,max: 33.0, min: 0.0",
+                "Cause: Monitoring point SYS_PSU_V_TH: out side of max/min values, "
+                "value: 46.0, max: 33.0, min: 0.0",
                 HealthState.OK,
                 "Health is OK.",
                 id="Update thresholds so that now the device reports OK",
