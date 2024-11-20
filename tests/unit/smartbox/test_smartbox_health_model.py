@@ -21,12 +21,12 @@ from ska_low_mccs_pasd.smart_box.smartbox_health_model import SmartBoxHealthMode
 
 
 class TestSmartboxHealthModel:
-    """A class for tests of the station health model."""
+    """A class for tests of the smartbox health model."""
 
     @pytest.fixture
     def health_model(self: TestSmartboxHealthModel) -> SmartBoxHealthModel:
         """
-        Fixture to return the station health model.
+        Fixture to return the smartbox health model.
 
         :return: Health model to be used.
         """
@@ -57,7 +57,7 @@ class TestSmartboxHealthModel:
                 {"SYS_48V_V_TH": 110.0, "SYS_PSU_V_TH": 4.7},
                 HealthState.FAILED,
                 "Intermediate health SYS_48V_V_TH is in FAILED HealthState. "
-                "Cause: Monitoring point SYS_48V_V_TH: out side of max/min "
+                "Cause: Monitoring point SYS_48V_V_TH: outside of max/min "
                 "values, value: 110.0, max: 100.0, min: 0.0",
                 id="value too high, expect failed",
             ),
@@ -69,7 +69,7 @@ class TestSmartboxHealthModel:
                 {"SYS_48V_V_TH": -10.0, "SYS_PSU_V_TH": 4.7},
                 HealthState.FAILED,
                 "Intermediate health SYS_48V_V_TH is in FAILED HealthState. "
-                "Cause: Monitoring point SYS_48V_V_TH: out side of max/min "
+                "Cause: Monitoring point SYS_48V_V_TH: outside of max/min "
                 "values, value: -10.0, max: 100.0, min: 0.0",
                 id="value too low, expect failed",
             ),
@@ -224,7 +224,7 @@ class TestSmartboxHealthModel:
                 "Health is OK.",
                 HealthState.FAILED,
                 "Intermediate health SYS_PSU_V_TH is in FAILED HealthState. "
-                "Cause: Monitoring point SYS_PSU_V_TH: out side of max/min values, "
+                "Cause: Monitoring point SYS_PSU_V_TH: outside of max/min values, "
                 "value: 46.0, max: 33.0, min: 0.0",
                 id="Update thresholds so that now the device reports FAILED",
             ),
@@ -242,7 +242,7 @@ class TestSmartboxHealthModel:
                 {"SYS_PSU_V_TH": [0.0, 43.0, 84.0, 100.0]},
                 HealthState.FAILED,
                 "Intermediate health SYS_PSU_V_TH is in FAILED HealthState. "
-                "Cause: Monitoring point SYS_PSU_V_TH: out side of max/min values, "
+                "Cause: Monitoring point SYS_PSU_V_TH: outside of max/min values, "
                 "value: 46.0, max: 33.0, min: 0.0",
                 HealthState.OK,
                 "Health is OK.",

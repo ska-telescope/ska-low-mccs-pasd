@@ -35,6 +35,26 @@ from .smartbox_health_model import SmartBoxHealthModel
 __all__ = ["MccsSmartBox", "main"]
 
 
+class JsonSerialize(json.JSONEncoder):
+    """Allows numpy arrays to be dumped to json."""
+
+    def default(self, o: Any) -> Any:
+        """
+        Return json serializable values.
+
+        :param o: object to be made json consumable.
+
+        :return: value that can be consumed by json.
+        """
+        if isinstance(o, numpy.integer):
+            return int(o)
+        if isinstance(o, numpy.floating):
+            return float(o)
+        if isinstance(o, numpy.ndarray):
+            return o.tolist()
+        return json.JSONEncoder.default(self, o)
+
+
 @dataclass
 class SmartboxAttribute:
     """Class representing the internal state of a Smartbox attribute."""
@@ -544,26 +564,6 @@ class MccsSmartBox(SKABaseDevice):
             )
         self.component_manager.port_mask = port_mask
 
-    # Create a JSON Encoder class
-    class JsonSerialize(json.JSONEncoder):
-        """Allows numpy arrays to be dumped to json."""
-
-        def default(self, o: Any) -> Any:
-            """
-            Return json serializable values.
-
-            :param o: object to be made json consumable.
-
-            :return: value that can be consumed by json.
-            """
-            if isinstance(o, numpy.integer):
-                return int(o)
-            if isinstance(o, numpy.floating):
-                return float(o)
-            if isinstance(o, numpy.ndarray):
-                return o.tolist()
-            return json.JSONEncoder.default(self, o)
-
     @attribute(
         dtype="DevString",
         format="%s",
@@ -574,7 +574,7 @@ class MccsSmartBox(SKABaseDevice):
 
         :return: the health params
         """
-        return json.dumps(self._health_model.health_params, cls=self.JsonSerialize)
+        return json.dumps(self._health_model.health_params, cls=JsonSerialize)
 
     @healthModelParams.write  # type: ignore[no-redef]
     def healthModelParams(self: MccsSmartBox, argin: str) -> None:

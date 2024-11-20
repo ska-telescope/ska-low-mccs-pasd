@@ -41,7 +41,7 @@ class SmartBoxHealthModel(BaseHealthModel):
         """
         self.logger = logger
         self._health_rules = SmartboxHealthRules(thresholds)
-        super().__init__(health_changed_callback, pasdbus_status=None)
+        super().__init__(health_changed_callback)
 
     def evaluate_health(
         self: SmartBoxHealthModel,

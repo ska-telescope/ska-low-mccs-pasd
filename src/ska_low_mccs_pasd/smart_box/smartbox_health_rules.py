@@ -15,8 +15,6 @@ import numpy
 from ska_control_model import HealthState
 from ska_low_mccs_common.health import HealthRules
 
-DEGRADED_STATES = frozenset({HealthState.DEGRADED, HealthState.FAILED, None})
-
 
 class SmartboxHealthRules(HealthRules):
     """A class to handle transition rules for station."""
@@ -168,31 +166,31 @@ class SmartboxHealthRules(HealthRules):
                 if all(value == 0 for value in sorted_min_max):
                     return (HealthState.OK, "")
 
-                min_fault = sorted_min_max[0]
-                min_warning = sorted_min_max[1]
-                max_warning = sorted_min_max[2]
-                max_fault = sorted_min_max[3]
+                min_alm = sorted_min_max[0]
+                min_warn = sorted_min_max[1]
+                max_warn = sorted_min_max[2]
+                max_alm = sorted_min_max[3]
 
-                if monitoring_value < min_fault or monitoring_value > max_fault:
+                if monitoring_value < min_alm or monitoring_value > max_alm:
                     return (
                         HealthState.FAILED,
                         f"Monitoring point {monitoring_point}: "
-                        f"out side of max/min values, value: {monitoring_value}, "
-                        f"max: {max_fault}, min: {min_fault}",
+                        f"outside of max/min values, value: {monitoring_value}, "
+                        f"max: {max_alm}, min: {min_alm}",
                     )
-                if monitoring_value < min_warning:
+                if monitoring_value < min_warn:
                     return (
                         HealthState.DEGRADED,
                         f"Monitoring point {monitoring_point}: "
-                        f"in warning range, min fault: {min_fault} < "
-                        f"value: {monitoring_value} < min warning: {min_warning}",
+                        f"in warning range, min fault: {min_alm} < "
+                        f"value: {monitoring_value} < min warning: {min_warn}",
                     )
-                if monitoring_value > max_warning:
+                if monitoring_value > max_warn:
                     return (
                         HealthState.DEGRADED,
                         f"Monitoring point {monitoring_point}: "
-                        f"in warning range, max fault: {max_fault} > "
-                        f"value: {monitoring_value} > max warning: {max_warning}",
+                        f"in warning range, max fault: {max_alm} > "
+                        f"value: {monitoring_value} > max warning: {max_warn}",
                     )
                 return (HealthState.OK, "")
 

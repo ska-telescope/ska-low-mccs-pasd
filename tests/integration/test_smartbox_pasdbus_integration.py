@@ -943,9 +943,6 @@ class TestSmartBoxPasdBusIntegration:
         ) == PasdConversionUtility.scale_signed_16bit(
             smartbox_simulator.fem_heatsink_temperature_1_thresholds
         )
-        # These thresholds are in the wrong order, I'm not sure why but
-        # they're in descending rather than ascending and its breaking
-        # the tests
         assert list(
             smartbox_device.FemHeatsinkTemperature2Thresholds
         ) == PasdConversionUtility.scale_signed_16bit(
@@ -968,7 +965,7 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             SmartboxSimulator.DEFAULT_STATUS.name,
-            lookahead=5,
+            lookahead=2,
         )
         smartbox_device.subscribe_event(
             "InputVoltage",
@@ -982,7 +979,7 @@ class TestSmartBoxPasdBusIntegration:
                     SmartboxSimulator.DEFAULT_INPUT_VOLTAGE,
                 ]
             )[0],
-            lookahead=5,
+            lookahead=2,
         )
         smartbox_device.subscribe_event(
             "PowerSupplyOutputVoltage",
@@ -994,7 +991,7 @@ class TestSmartBoxPasdBusIntegration:
             PasdConversionUtility.scale_volts(
                 [SmartboxSimulator.DEFAULT_POWER_SUPPLY_OUTPUT_VOLTAGE]
             )[0],
-            lookahead=5,
+            lookahead=2,
         )
         smartbox_device.subscribe_event(
             "PowerSupplyTemperature",
@@ -1006,7 +1003,7 @@ class TestSmartBoxPasdBusIntegration:
             PasdConversionUtility.scale_signed_16bit(
                 [SmartboxSimulator.DEFAULT_POWER_SUPPLY_TEMPERATURE]
             )[0],
-            lookahead=5,
+            lookahead=2,
         )
         smartbox_device.subscribe_event(
             "PcbTemperature",
@@ -1018,7 +1015,7 @@ class TestSmartBoxPasdBusIntegration:
             PasdConversionUtility.scale_signed_16bit(
                 [SmartboxSimulator.DEFAULT_PCB_TEMPERATURE]
             )[0],
-            lookahead=5,
+            lookahead=2,
         )
         smartbox_device.subscribe_event(
             "FemAmbientTemperature",
@@ -1030,7 +1027,7 @@ class TestSmartBoxPasdBusIntegration:
             PasdConversionUtility.scale_signed_16bit(
                 [SmartboxSimulator.DEFAULT_FEM_AMBIENT_TEMPERATURE]
             )[0],
-            lookahead=5,
+            lookahead=2,
         )
         smartbox_device.subscribe_event(
             "FemCaseTemperature1",
@@ -1047,14 +1044,14 @@ class TestSmartBoxPasdBusIntegration:
             PasdConversionUtility.scale_signed_16bit(
                 SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_1
             )[0],
-            lookahead=5,
+            lookahead=2,
         )
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}femcasetemperature2",
             PasdConversionUtility.scale_signed_16bit(
                 SmartboxSimulator.DEFAULT_FEM_CASE_TEMPERATURE_2
             )[0],
-            lookahead=5,
+            lookahead=2,
         )
         smartbox_device.subscribe_event(
             "FemHeatsinkTemperature1",
@@ -1071,14 +1068,14 @@ class TestSmartBoxPasdBusIntegration:
             PasdConversionUtility.scale_signed_16bit(
                 SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_1
             )[0],
-            lookahead=5,
+            lookahead=2,
         )
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}femheatsinktemperature2",
             PasdConversionUtility.scale_signed_16bit(
                 SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
             )[0],
-            lookahead=5,
+            lookahead=2,
         )
 
         # When we mock a change in an attribute at the simulator level.
@@ -1372,27 +1369,25 @@ class TestSmartBoxPasdBusIntegration:
         )
         healthy_value = (max_warning + min_warning) / 2
 
-        # AssertionError: 5000, 4900, 4500, 4000
-
         setattr(smartbox_simulator, monitoring_point, max_alarm + 100)
         change_event_callbacks.assert_change_event(
-            "smartboxHealthState", HealthState.FAILED, lookahead=5
+            "smartboxHealthState", HealthState.FAILED, lookahead=2
         )
         setattr(smartbox_simulator, monitoring_point, max_alarm - 50)
         change_event_callbacks.assert_change_event(
-            "smartboxHealthState", HealthState.DEGRADED, lookahead=5
+            "smartboxHealthState", HealthState.DEGRADED, lookahead=2
         )
         setattr(smartbox_simulator, monitoring_point, healthy_value)
         change_event_callbacks.assert_change_event(
-            "smartboxHealthState", HealthState.OK, lookahead=5
+            "smartboxHealthState", HealthState.OK, lookahead=2
         )
         setattr(smartbox_simulator, monitoring_point, min_alarm - 100)
         change_event_callbacks.assert_change_event(
-            "smartboxHealthState", HealthState.FAILED, lookahead=5
+            "smartboxHealthState", HealthState.FAILED, lookahead=2
         )
         setattr(smartbox_simulator, monitoring_point, min_warning - 100)
         change_event_callbacks.assert_change_event(
-            "smartboxHealthState", HealthState.DEGRADED, lookahead=5
+            "smartboxHealthState", HealthState.DEGRADED, lookahead=2
         )
 
 
