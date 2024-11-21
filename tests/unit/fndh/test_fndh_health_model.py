@@ -336,7 +336,7 @@ class TestFNDHHealthModel:
                     "psu48vcurrent": 56.0,
                     "psu48vtemperature1": 56.0,
                     "psu48vtemperature2": 56.0,
-                    "paneltemperature": 56.0,
+                    # "paneltemperature": 56.0, Not implemented in hardware
                     "fncbtemperature": 56.0,
                     "fncbhumidity": 54.0,
                     "status": FnccStatusMap.UNDEFINED,
@@ -357,7 +357,7 @@ class TestFNDHHealthModel:
                     "psu48vcurrentthresholds": np.array([100.0, 84.0, 43.0, 0.0]),
                     "psu48vtemperature1thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
                     "psu48vtemperature2thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
-                    "paneltemperaturethresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    # "paneltemperaturethresholds": np.array([100.0, 84.0, 43.0, 0.0]),
                     "fncbhumiditythresholds": np.array([100.0, 84.0, 43.0, 0.0]),
                     "fncbtemperaturethresholds": np.array([100.0, 84.0, 43.0, 0.0]),
                     "commsgatewaytemperaturethresholds": np.array(

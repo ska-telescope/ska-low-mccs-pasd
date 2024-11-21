@@ -64,15 +64,6 @@
       "minItems": 4,
       "maxItems": 4
     },
-    "paneltemperature": {
-      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
-      "type": "array",
-      "items": {
-        "type": "number"
-      },
-      "minItems": 4,
-      "maxItems": 4
-    },
     "fncbtemperature": {
       "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
       "type": "array",

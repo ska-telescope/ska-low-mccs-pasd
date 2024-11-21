@@ -60,7 +60,8 @@ class FndhHealthModel(BaseHealthModel):
         "psu48vcurrent": None,
         "psu48vtemperature1": None,
         "psu48vtemperature2": None,
-        "paneltemperature": None,
+        # "paneltemperature": None, Not implemented
+        # see comment in src/ska_low_mccs_pasd/pasd_controllers_configuration.yaml
         "fncbtemperature": None,
         "fncbhumidity": None,
         "commsgatewaytemperature": None,

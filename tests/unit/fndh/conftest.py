@@ -22,7 +22,7 @@ def default_monitoring_point_thresholds_fixture() -> dict[str, list[float]]:
         "psu48vcurrent": [100.0, 80.0, 2.0, 0.0],
         "psu48vtemperature1": [100.0, 80.0, 2.0, 0.0],
         "psu48vtemperature2": [100.0, 80.0, 2.0, 0.0],
-        "paneltemperature": [100.0, 80.0, 2.0, 0.0],
+        # "paneltemperature": [100.0, 80.0, 2.0, 0.0], Not implemented in hardware
         "fncbtemperature": [100.0, 80.0, 2.0, 0.0],
         "fncbhumidity": [100.0, 80.0, 2.0, 0.0],
         "commsgatewaytemperature": [100.0, 80.0, 2.0, 0.0],
