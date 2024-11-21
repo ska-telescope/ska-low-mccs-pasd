@@ -79,6 +79,11 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     LowPassFilterCutoff: int = tango.server.device_property(
         dtype=float, default_value=10.0, update_db=True
     )
+    # Default current trip threshold, used for all FEMs.
+    # It is automatically written to all smartboxes on power up / reset.
+    FEMCurrentTripThreshold: int = tango.server.device_property(
+        dtype=int, default_value=496, update_db=True
+    )
     SimulationConfig: Final = tango.server.device_property(
         dtype=int, default_value=SimulationMode.FALSE
     )
@@ -135,6 +140,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             f"\tDevicePollingRate: {self.DevicePollingRate}\n"
             f"\tTimeout: {self.Timeout}\n"
             f"\tLowPassFilterCutoff: {self.LowPassFilterCutoff}\n"
+            f"\tFEMCurrentTripThreshold: {self.FEMCurrentTripThreshold}\n"
             f"\tSimulationConfig: {self.SimulationConfig}\n"
             f"\tAvailableSmartboxes: {self.AvailableSmartboxes}\n"
         )
@@ -268,6 +274,18 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self.component_manager.set_smartbox_low_pass_filters(
                 pasd_device_number, self.LowPassFilterCutoff, True
             )
+
+    def _set_fem_current_trip_thresholds(self: MccsPasdBus, smartbox_id: int) -> None:
+        """
+        Set all the FEM current trip thresholds on the given smartbox device.
+
+        :param smartbox_id: the smartbox number to write to.
+        """
+        self.component_manager.write_attribute(
+            smartbox_id,
+            "fem_current_trip_thresholds",
+            [self.FEMCurrentTripThreshold] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+        )
 
     def create_component_manager(
         self: MccsPasdBus,
@@ -404,6 +422,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self._init_pasd_devices = False
             for device_number in self.AvailableSmartboxes + [PasdData.FNDH_DEVICE_ID]:
                 self._set_all_low_pass_filters_of_device(device_number)
+            for device_number in self.AvailableSmartboxes:
+                self._set_fem_current_trip_thresholds(device_number)
 
     def _component_state_callback(
         self: MccsPasdBus,
@@ -533,6 +553,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     # Set the device's low-pass filter constants
                     if self._simulation_mode == SimulationMode.FALSE:
                         self._set_all_low_pass_filters_of_device(pasd_device_number)
+                    # Set the FEM current trip thresholds
+                    if pasd_device_number in self.AvailableSmartboxes:
+                        self._set_fem_current_trip_thresholds(pasd_device_number)
 
             self._pasd_state[tango_attribute_name].value = pasd_attribute_value
             self._pasd_state[tango_attribute_name].quality = AttrQuality.ATTR_VALID
