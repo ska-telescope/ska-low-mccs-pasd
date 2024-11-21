@@ -332,7 +332,7 @@ class TestFNDHHealthModel:
             pytest.param(
                 {
                     "psu48vvoltage1": 55.0,
-                    "psu48vvoltage2": 56.0,
+                    # "psu48vvoltage2": 56.0, Not implemented in hardware
                     "psu48vcurrent": 56.0,
                     "psu48vtemperature1": 56.0,
                     "psu48vtemperature2": 56.0,
@@ -353,7 +353,7 @@ class TestFNDHHealthModel:
                 },
                 {
                     "psu48vvoltage1thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
-                    "psu48vvoltage2thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
+                    # "psu48vvoltage2thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
                     "psu48vcurrentthresholds": np.array([100.0, 84.0, 43.0, 0.0]),
                     "psu48vtemperature1thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
                     "psu48vtemperature2thresholds": np.array([100.0, 84.0, 43.0, 0.0]),

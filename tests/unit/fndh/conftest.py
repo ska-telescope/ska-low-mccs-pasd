@@ -18,7 +18,7 @@ def default_monitoring_point_thresholds_fixture() -> dict[str, list[float]]:
     """
     return {
         "psu48vvoltage1": [100.0, 80.0, 2.0, 0.0],
-        "psu48vvoltage2": [100.0, 80.0, 2.0, 0.0],
+        # "psu48vvoltage2": [100.0, 80.0, 2.0, 0.0], Not implemented in hardware
         "psu48vcurrent": [100.0, 80.0, 2.0, 0.0],
         "psu48vtemperature1": [100.0, 80.0, 2.0, 0.0],
         "psu48vtemperature2": [100.0, 80.0, 2.0, 0.0],
