@@ -1405,6 +1405,9 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self.fem_case_temperature_2 = self.DEFAULT_FEM_CASE_TEMPERATURE_2
         self.fem_heatsink_temperature_1 = self.DEFAULT_FEM_HEATSINK_TEMPERATURE_1
         self.fem_heatsink_temperature_2 = self.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
+        self._fem_current_trip_thresholds = [
+            self.DEFAULT_PORT_CURRENT_THRESHOLD
+        ] * self.NUMBER_OF_PORTS
 
     @property
     def sys_address(self: SmartboxSimulator) -> int:
@@ -1456,7 +1459,22 @@ class SmartboxSimulator(PasdHardwareSimulator):
 
         :return: the current trip threshold for each smartbox port.
         """
-        return [self.DEFAULT_PORT_CURRENT_THRESHOLD] * self.NUMBER_OF_PORTS
+        return self._fem_current_trip_thresholds
+
+    @fem_current_trip_thresholds.setter
+    def fem_current_trip_thresholds(
+        self: SmartboxSimulator, thresholds: list[int]
+    ) -> None:
+        """Set the current trip threshold for each smartbox port.
+
+        :param thresholds: list of thresholds to set
+        """
+        if len(thresholds) == self.NUMBER_OF_PORTS:
+            self._fem_current_trip_thresholds = thresholds
+        else:
+            # Keep the old values for the unset values
+            existing_values = self._fem_current_trip_thresholds[len(thresholds) :]
+            self._fem_current_trip_thresholds = thresholds + existing_values
 
     @property
     def modbus_register_map_revision(self: SmartboxSimulator) -> int:
