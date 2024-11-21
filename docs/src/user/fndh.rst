@@ -139,3 +139,42 @@ reading.
 The PaSD automatically transitions to the RECOVERY state when the relevant
 sensor values return to within their alarm thresholds. To return the FNDH to an operational
 state after such an event, the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.InitializeFndh` command must be executed.
+
+
+Health Evaluation
+-----------------
+
+The health of the FNDH (Field Node Distribution Hub) is determined by two primary factors:
+
+1. The value of monitoring points in relation to their defined thresholds.
+2. The percentage of `smartbox-configured ports` with power control.
+
+### Threshold Evaluation
+
+The thresholds are read from the hardware during the initial polling and after any write events.
+
+### Configuration via `healthModelParams`
+
+All health-related values are configurable through the `healthModelParams` parameter. 
+Below is an example of how the desired thresholds can be set (please note values set are arbitrary):
+
+.. code-block:: python
+
+    desired_thresholds = {
+        "failed_percent_uncontrolled_smartbox": 100,
+        "degraded_percent_uncontrolled_smartbox": 100,
+        "psu48vvoltage1": [48.5, 48.3, 48.7, 48.6],
+        "psu48vcurrent": [10.2, 10.5, 9.8, 10.1],
+        "psu48vtemperature1": [35.0, 36.0, 34.5, 35.5],
+        "psu48vtemperature2": [33.0, 32.5, 33.5, 33.2],
+        "fncbtemperature": [28.5, 29.0, 28.8, 29.2],
+        "fncbhumidity": [65, 70, 68, 66],
+        "commsgatewaytemperature": [30.0, 30.5, 29.8, 30.2],
+        "powermoduletemperature": [40.0, 40.5, 39.8, 40.2],
+        "outsidetemperature": [22.0, 21.5, 22.5, 22.1],
+        "internalambienttemperature": [24.5, 24.8, 24.3, 24.7]
+    }
+
+    fndh.healthModelParams = json.dumps(desired_thresholds)
+
+
