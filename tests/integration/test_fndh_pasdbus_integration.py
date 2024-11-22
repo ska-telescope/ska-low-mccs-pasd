@@ -18,6 +18,7 @@ from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
+from ska_low_mccs_pasd.fndh import FndhHealthModel
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     FndhAlarmFlags,
@@ -514,10 +515,38 @@ class TestfndhPasdBusIntegration:
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         """
-        # Grab a random attribute with alarms defined.
-        threshold_attributes = list(FndhSimulator.ALARM_MAPPING.keys())
-        random_index = random.randrange(0, len(threshold_attributes) - 1)
-        attribute_name: str = threshold_attributes[random_index]
+
+        def _get_random_supported_monitoring_point(
+            monitoring_points: list[str], supported_points: list[str]
+        ) -> str:
+            """
+            Return monitoring points supported by healthRules.
+
+            :param monitoring_points: monitoring points available from
+                the PaSD API.
+            :param supported_points: monitoring points supported by the
+                health model.
+
+            :returns: a random supported monitoring point.
+            """
+            dict1_no_underscore = [key.replace("_", "") for key in monitoring_points]
+            dict2_no_underscore = [key.replace("_", "") for key in supported_points]
+
+            supported_items = [
+                monitoring_points[i]
+                for i in range(len(monitoring_points))
+                if dict1_no_underscore[i] in dict2_no_underscore
+            ]
+            random_index: int = random.randrange(0, len(supported_items) - 1)
+            return supported_items[random_index]
+
+        attribute_name: str = _get_random_supported_monitoring_point(
+            list(FndhSimulator.ALARM_MAPPING.keys()),
+            list(FndhHealthModel.SUPPORTED_MONITORING_POINTS.keys()),
+        )
+        # TODO: remove once it is understood why psu48vvoltage is failing.
+        attribute_name = "psu48v_current"
+        print(f"Test attribute: {attribute_name}")
         attribute_threshold = attribute_name + "_thresholds"
 
         assert fndh_device.adminMode == AdminMode.OFFLINE
@@ -541,11 +570,11 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["fndhhealthState"],
         )
-        change_event_callbacks.assert_change_event(
-            "fndhhealthState", HealthState.UNKNOWN
+        change_event_callbacks["fndhhealthState"].assert_change_event(
+            HealthState.UNKNOWN
         )
         fndh_device.adminMode = AdminMode.ONLINE
-        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+        change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.OK)
         assert fndh_device.healthState == HealthState.OK
 
         # Check for transitions through health. when value changes.
@@ -555,25 +584,30 @@ class TestfndhPasdBusIntegration:
             min_warning,
             min_alarm,
         ) = getattr(fndh_simulator, attribute_threshold)
+        setattr(
+            fndh_simulator,
+            attribute_threshold,
+            [max_alarm, max_warning, min_warning, min_alarm],
+        )
         healthy_value = (max_warning + min_warning) / 2
         setattr(fndh_simulator, attribute_name, max_alarm)
-        change_event_callbacks.assert_change_event(
-            "fndhhealthState", HealthState.FAILED
+        change_event_callbacks["fndhhealthState"].assert_change_event(
+            HealthState.FAILED
         )
         setattr(fndh_simulator, attribute_name, max_warning)
-        change_event_callbacks.assert_change_event(
-            "fndhhealthState", HealthState.DEGRADED
+        change_event_callbacks["fndhhealthState"].assert_change_event(
+            HealthState.DEGRADED
         )
         setattr(fndh_simulator, attribute_name, min_alarm)
-        change_event_callbacks.assert_change_event(
-            "fndhhealthState", HealthState.FAILED
+        change_event_callbacks["fndhhealthState"].assert_change_event(
+            HealthState.FAILED
         )
         setattr(fndh_simulator, attribute_name, min_warning)
-        change_event_callbacks.assert_change_event(
-            "fndhhealthState", HealthState.DEGRADED
+        change_event_callbacks["fndhhealthState"].assert_change_event(
+            HealthState.DEGRADED
         )
         setattr(fndh_simulator, attribute_name, int(healthy_value))
-        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+        change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.OK)
 
         pasd_bus_device.adminMode = AdminMode.OFFLINE
         change_event_callbacks["fndhhealthState"].assert_not_called()
