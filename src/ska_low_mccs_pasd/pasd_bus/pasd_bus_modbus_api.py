@@ -401,7 +401,6 @@ class PasdBusModbusApiClient:
         reply = self._client.read_holding_registers(
             attributes[keys[0]].address, count, modbus_address
         )
-        print(f"{reply=}")
 
         match reply:
             case ReadHoldingRegistersResponse():
@@ -468,7 +467,7 @@ class PasdBusModbusApiClient:
                     f"Unexpected response type for slave {modbus_address}: "
                     f"{type(reply)}",
                 )
-
+        print(f"{response=}")
         return response
 
     def _write_registers(
