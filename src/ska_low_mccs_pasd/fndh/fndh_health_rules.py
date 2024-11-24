@@ -13,7 +13,7 @@ import logging
 from typing import Any, Final
 
 import numpy as np
-from ska_control_model import HealthState, PowerState
+from ska_control_model import HealthState
 from ska_low_mccs_common.health import HealthRules
 
 __all__ = ["FndhHealthRules", "join_health_reports"]
@@ -51,32 +51,173 @@ def join_health_reports(messages: list[str]) -> str:
     return "\n".join(unique_messages)
 
 
-def _calculate_percent_smartbox_without_control(
-    ports_with_smartbox: list[int] | None, ports_power_control: list[bool] | None
-) -> int:
+def _calculate_pdoc_fault(
+    power_sensed: bool, power_control: bool, port_number: int
+) -> tuple[bool, str]:
     """
-    Return the percent of smartbox with control.
+    Calculate if the pdoc is faulty.
+
+    Below is a summary of evaluation:
+
+    :example:
+        >>> [power_sensed, power_control] -> isFaulty:
+        >>> [True, True] -> False
+        >>> [False, True] -> True, PDOC stuck OFF,
+        >>> could be a fault within the PDOC, damaged PDOC cable, or faulty SMART Box EP
+        >>> [True, False] -> True, PDOC stuck ON, fault within the PDOC,
+        >>> cannot turn OFF PDOC port
+        >>> in response to a POWERDOWN from the SMART Box
+        >>> [False, False] -> False
+
+
+    :param power_sensed: PDOC Hot Swap Controller ON/OFF.
+        False is OFF, True is ON.
+    :param power_control: PDOC port power control ON/OFF.
+        False = Control line to PDOC is OFF. PDOC port cannot be turned ON.
+        True = Control line to PDOC is ON. PDOC port can be turned ON
+    :param port_number: the id given to the port of interest,
+        for informational purposes only.
+
+    :returns: a tuple with the fault state of the pdoc port and
+        a message with information.
+    """
+    if power_control and not power_sensed:
+        return (
+            True,
+            (
+                f"PDOC {port_number} stuck OFF, "
+                "could be a fault within the PDOC, "
+                "damaged PDOC cable, or faulty SMART Box EP"
+            ),
+        )
+    if power_sensed and not power_control:
+        return (
+            True,
+            (
+                f"PDOC {port_number} stuck ON, "
+                "fault within the PDOC, "
+                "cannot turn OFF PDOC port "
+                "in response to a POWERDOWN from the SMART Box"
+            ),
+        )
+    # Port is considered ok, no information required.
+    return False, ""
+
+
+def _get_faulty_smartbox_reports(
+    ports_with_smartbox: list[int],
+    ports_power_sensed: list[bool],
+    ports_power_control: list[bool],
+) -> list[tuple[int, str]]:
+    """
+    Return a fault report for faulty smartbox.
 
     :param ports_with_smartbox: a list of the ids of the Fndh
         ports with a smartbox attached (1 based).
-    :param ports_power_control: a list of bools, one per
-        Fndh port, each one representing if we have control
-        over its power (0 based).
+    :param ports_power_sensed: a list for booleans to represent
+        the state of the PDOC Hot Swap Controller True being ON.
+    :param ports_power_control: a list for booleans to represent
+        the state of the PDOC port power control, True being ON.
+
+    :returns: a list of tuples containing the faulty port with
+        a message for information
+    """
+    report: list[tuple[int, str]] = []
+
+    for port_no in ports_with_smartbox:
+        power_control = ports_power_control[port_no - 1]
+        power_sensed = ports_power_sensed[port_no - 1]
+        is_faulty, message = _calculate_pdoc_fault(
+            power_sensed=power_sensed,
+            power_control=power_control,
+            port_number=port_no,
+        )
+        if is_faulty:
+            report.append((port_no, message))
+
+    return report
+
+
+def _generate_smartbox_pdoc_fault_report(
+    percentage_threshold: float,
+    ports_with_smartbox: list[int],
+    ports_power_sensed: list[bool],
+    ports_power_control: list[bool],
+) -> str | None:
+    """
+    Return a fault report when exceeding thresholds.
+
+    :param percentage_threshold: the percentage threshold to
+        check the fault smarbox configured ports against.
+    :param ports_with_smartbox: a list of the ids of the Fndh
+        ports with a smartbox attached (1 based).
+    :param ports_power_sensed: a list for booleans to represent
+        the state of the PDOC Hot Swap Controller True being ON.
+    :param ports_power_control: a list for booleans to represent
+        the state of the PDOC port power control, True being ON.
+
+    :return: a string with the fault report, or None if
+        the number of faults do not exceed thresholds.
+    """
+    faulty_ports: tuple = ()
+    fault_reports: tuple = ()
+
+    faulty_smartbox_reports: list[tuple[int, str]] = _get_faulty_smartbox_reports(
+        ports_with_smartbox=ports_with_smartbox,
+        ports_power_sensed=ports_power_sensed,
+        ports_power_control=ports_power_control,
+    )
+    if faulty_smartbox_reports:
+        faulty_ports, fault_reports = zip(*faulty_smartbox_reports, strict=True)
+
+    percent_of_faulty_smartbox_ports = _calculate_percent_faulty_smartbox_ports(
+        len(faulty_ports), len(ports_with_smartbox)
+    )
+
+    if percent_of_faulty_smartbox_ports > percentage_threshold:
+        return (
+            f"Percent of faulty smartbox-configured-ports is "
+            f"{percent_of_faulty_smartbox_ports}%, "
+            "this is above the configurable threshold of "
+            f"{percentage_threshold}%. Details: ["
+            f"{fault_reports}]"
+        )
+    return None
+
+
+def _calculate_percent_faulty_smartbox_ports(
+    number_of_faulty_smartbox_configured_ports: int,
+    number_of_smartbox_configured_ports: int,
+) -> int:
+    """
+    Return the percent of faulty ports.
+
+    :param number_of_faulty_smartbox_configured_ports: a integer
+        representing the number of smartbox configured ports
+        without control.
+    :param number_of_smartbox_configured_ports: an integer
+        representing the number of smartbox configured ports.
 
     :return: the percent of smartboxes with power control
         to the nearest integer.
+
+    :raises ValueError: when the number of faulty smartbox configured ports
+        is larger than the number of smartbox configured ports.
     """
-    if (
-        ports_with_smartbox is None
-        or len(ports_with_smartbox) == 0
-        or ports_power_control is None
-    ):
+    if number_of_smartbox_configured_ports == 0:
         return 0
-    nof_smartbox_without_control = 0
-    for port_no in ports_with_smartbox:
-        if not ports_power_control[port_no - 1]:
-            nof_smartbox_without_control += 1
-    return int((nof_smartbox_without_control * 100) / len(ports_with_smartbox))
+
+    if number_of_faulty_smartbox_configured_ports > number_of_smartbox_configured_ports:
+        raise ValueError(
+            "Number of faulty smartbox configured ports exceeds "
+            "the total number of smartbox configured ports."
+        )
+
+    faulty_smartbox_fraction = (
+        number_of_faulty_smartbox_configured_ports / number_of_smartbox_configured_ports
+    )
+
+    return int(faulty_smartbox_fraction * 100)
 
 
 # pylint: disable=too-few-public-methods
@@ -149,6 +290,29 @@ class FndhHealthRules(HealthRules):
             >>> unknown_rule(monitoring_points=monitoring_points, **kwargs)
         """
         unknown_points: list[str] = []
+
+        ports_power_sensed = kwargs.get("ports_power_sensed")
+        ports_power_control = kwargs.get("ports_power_control")
+        ports_with_smartbox = kwargs.get("ports_with_smartbox")
+
+        if ports_with_smartbox is None:
+            unknown_points.append(
+                "Unable to determine health, "
+                "We have no information about the ports with smartbox configured."
+                "Suggested debug hint: Check the portsWithSmartbox attribute."
+                "This should be written to by FieldStation."
+            )
+
+        if (ports_with_smartbox is not None and len(ports_with_smartbox) > 0) and (
+            ports_power_sensed is None or ports_power_control is None
+        ):
+            unknown_points.append(
+                "Unable to evaluate PDOC port faults in configured smartbox: "
+                f"{ports_with_smartbox=}, "
+                f"{ports_power_control=}, "
+                f"{ports_power_sensed=}, "
+            )
+
         # Iterate over monitoring points and check for UNKNOWN health state
         for attribute_name, attr_health_info in monitoring_points.items():
             if attr_health_info[0] == HealthState.UNKNOWN:
@@ -191,22 +355,24 @@ class FndhHealthRules(HealthRules):
             >>> failed_rule(monitoring_points=monitoring_points, **kwargs)
         """
         failed_points: list[str] = []
-        percent_of_uncontrollable_smartbox = (
-            _calculate_percent_smartbox_without_control(
-                ports_with_smartbox=kwargs.get("ports_with_smartbox"),
-                ports_power_control=kwargs.get("ports_power_control"),
-            )
-        )
-        if (
-            percent_of_uncontrollable_smartbox
-            > self._thresholds["failed_percent_uncontrolled_smartbox"]
+        ports_power_sensed = kwargs.get("ports_power_sensed")
+        ports_power_control = kwargs.get("ports_power_control")
+        ports_with_smartbox = kwargs.get("ports_with_smartbox")
+
+        # Only evaluate pdoc faults if we can work out this information.
+        if (ports_with_smartbox is not None and len(ports_with_smartbox) > 0) and (
+            ports_power_sensed is not None and ports_power_control is not None
         ):
-            failed_points.append(
-                f"Number of smartbox without control is "
-                f"{percent_of_uncontrollable_smartbox}, "
-                "this is above the configured limit of "
-                f"{self._thresholds['failed_percent_uncontrolled_smartbox']}."
+            smartbox_pdoc_fault = _generate_smartbox_pdoc_fault_report(
+                percentage_threshold=self._thresholds[
+                    "failed_percent_uncontrolled_smartbox"
+                ],
+                ports_with_smartbox=ports_with_smartbox,
+                ports_power_sensed=ports_power_sensed,
+                ports_power_control=ports_power_control,
             )
+            if smartbox_pdoc_fault:
+                failed_points.append(smartbox_pdoc_fault)
 
         for key, value in monitoring_points.items():
             if value[0] == HealthState.FAILED:
@@ -253,31 +419,27 @@ class FndhHealthRules(HealthRules):
             >>> degraded_rule(monitoring_points=monitoring_points, **kwargs)
         """
         degraded_points: list[str] = []
+        ports_power_sensed = kwargs.get("ports_power_sensed")
+        ports_power_control = kwargs.get("ports_power_control")
+        ports_with_smartbox = kwargs.get("ports_with_smartbox")
 
-        percent_of_uncontrollable_smartbox = (
-            _calculate_percent_smartbox_without_control(
-                ports_with_smartbox=kwargs.get("ports_with_smartbox"),
-                ports_power_control=kwargs.get("ports_power_control"),
-            )
-        )
-        if (
-            percent_of_uncontrollable_smartbox
-            > self._thresholds["degraded_percent_uncontrolled_smartbox"]
+        # Only evaluate pdoc faults if we can work out this information.
+        if (ports_with_smartbox is not None and len(ports_with_smartbox) > 0) and (
+            ports_power_sensed is not None and ports_power_control is not None
         ):
-            degraded_points.append(
-                "Number of smartbox without control is "
-                f"{percent_of_uncontrollable_smartbox }, "
-                "this is above the configured limit of "
-                f"{self._thresholds['degraded_percent_uncontrolled_smartbox']}."
+            smartbox_pdoc_fault_message: str | None = (
+                _generate_smartbox_pdoc_fault_report(
+                    percentage_threshold=self._thresholds[
+                        "degraded_percent_uncontrolled_smartbox"
+                    ],
+                    ports_with_smartbox=ports_with_smartbox,
+                    ports_power_sensed=ports_power_sensed,
+                    ports_power_control=ports_power_control,
+                )
             )
+            if smartbox_pdoc_fault_message:
+                degraded_points.append(smartbox_pdoc_fault_message)
 
-        if (not kwargs.get("ignore_pasd_power", False)) and (
-            kwargs.get("pasd_power") == PowerState.UNKNOWN
-        ):
-            degraded_points.append(
-                "The PaSDBus has a UNKNOWN PowerState. "
-                "FNDH HealthState evaluated as DEGRADED."
-            )
         for key, value in monitoring_points.items():
             if value[0] == HealthState.DEGRADED:
                 degraded_points.append(

@@ -147,7 +147,7 @@ Health Evaluation
 The health of the FNDH (Field Node Distribution Hub) is determined by two primary factors:
 
 1. The value of monitoring points in relation to their defined thresholds.
-2. The percentage of `smartbox-configured ports` with power control.
+2. The percentage of `smartbox-configured ports` with a fault.
 
 ### Threshold Evaluation
 

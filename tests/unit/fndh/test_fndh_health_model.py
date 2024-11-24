@@ -47,6 +47,9 @@ class TestFNDHHealthModel:
             pytest.param(
                 {"psu48vvoltage1": [100.0, 84.0, 43.0, 0.0]},
                 {
+                    "ports_with_smartbox": [i + 1 for i in range(24)],
+                    "portspowercontrol": [True] * 28,
+                    "portspowersensed": [True] * 28,
                     "psu48vvoltage1": 81.0,
                 },
                 HealthState.OK,
@@ -56,6 +59,9 @@ class TestFNDHHealthModel:
             pytest.param(
                 {"psu48vvoltage1": [100.0, 84.0, 43.0, 0.0]},
                 {
+                    "ports_with_smartbox": [i + 1 for i in range(24)],
+                    "portspowercontrol": [True] * 28,
+                    "portspowersensed": [True] * 28,
                     "psu48vvoltage1": 85.0,
                 },
                 HealthState.DEGRADED,
@@ -68,6 +74,9 @@ class TestFNDHHealthModel:
             pytest.param(
                 {"psu48vvoltage1": [100.0, 84.0, 43.0, 0.0]},
                 {
+                    "ports_with_smartbox": [i + 1 for i in range(24)],
+                    "portspowercontrol": [True] * 28,
+                    "portspowersensed": [True] * 28,
                     "psu48vvoltage1": 105.0,
                 },
                 HealthState.FAILED,
@@ -85,10 +94,11 @@ class TestFNDHHealthModel:
                 {
                     "ports_with_smartbox": [i + 1 for i in range(24)],
                     "portspowercontrol": [True] * 28,
+                    "portspowersensed": [True] * 28,
                 },
                 HealthState.OK,
                 "Health is OK.",
-                id="All ports with smartbox configured have control.",
+                id="All smartbox-configured ports are healthy.",
             ),
             pytest.param(
                 {
@@ -96,13 +106,88 @@ class TestFNDHHealthModel:
                     "failed_percent_uncontrolled_smartbox": 25,
                 },
                 {
-                    "ports_with_smartbox": [i + 1 for i in range(24)],
-                    "portspowercontrol": [False] * 28,
+                    "ports_with_smartbox": [i + 1 for i in range(22)] + [25, 28],
+                    "portspowercontrol": [False] * 27 + [True],
+                    "portspowersensed": [True] * 27 + [False],
                 },
                 HealthState.FAILED,
-                "Number of smartbox without control is 100, "
-                "this is above the configured limit of 25.",
-                id="No power control over any smartbox.",
+                "Percent of faulty smartbox-configured-ports is 100%, "
+                "this is above the configurable threshold of 25%. "
+                "Details: [('PDOC 1 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 2 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 3 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 4 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 5 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 6 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 7 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 8 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 9 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 10 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 11 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 12 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 13 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 14 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 15 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 16 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 17 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 18 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 19 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 20 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 21 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 22 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 25 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box', "
+                "'PDOC 28 stuck OFF, could be a fault within the PDOC, "
+                "damaged PDOC cable, or faulty SMART Box EP')]",
+                id=(
+                    "All smartbox-configured-ports are faulty with PDOC stuck ON"
+                    "the 28th smartbox is faulty with ports stuck OFF"
+                ),
             ),
             pytest.param(
                 {
@@ -111,11 +196,15 @@ class TestFNDHHealthModel:
                 },
                 {
                     "ports_with_smartbox": [i + 1 for i in range(24)],
+                    "portspowersensed": [True] * 28,
                     "portspowercontrol": [False] + [True] * 27,
                 },
                 HealthState.DEGRADED,
-                "Number of smartbox without control is 4, "
-                "this is above the configured limit of 0.",
+                "Percent of faulty smartbox-configured-ports is 4%, "
+                "this is above the configurable threshold of 0%. "
+                "Details: [('PDOC 1 stuck ON, fault within the PDOC, "
+                "cannot turn OFF PDOC port in response to a "
+                "POWERDOWN from the SMART Box'",
                 id="No power control over some smartbox.",
             ),
             pytest.param(
@@ -124,11 +213,12 @@ class TestFNDHHealthModel:
                     "failed_percent_uncontrolled_smartbox": 25,
                 },
                 {
+                    "ports_with_smartbox": [i + 1 for i in range(24)],
                     "portspowercontrol": [i + 1 for i in range(24)],
                 },
-                HealthState.OK,
-                "Health is OK.",
-                id="update before portspowercontrol is known",
+                HealthState.UNKNOWN,
+                "Unable to evaluate PDOC port faults in configured smartbox",
+                id="Health before portspowercontrol is known",
             ),
             pytest.param(
                 {
@@ -136,11 +226,12 @@ class TestFNDHHealthModel:
                     "failed_percent_uncontrolled_smartbox": 25,
                 },
                 {
+                    "ports_with_smartbox": [i + 1 for i in range(24)],
                     "portspowercontrol": [False] + [True] * 27,
                 },
-                HealthState.OK,
-                "Health is OK.",
-                id="update before ports_power_sensed is known",
+                HealthState.UNKNOWN,
+                "Unable to evaluate PDOC port faults in configured smartbox",
+                id="Health before ports_power_sensed is known",
             ),
             pytest.param(
                 {
@@ -150,10 +241,11 @@ class TestFNDHHealthModel:
                 {
                     "ports_with_smartbox": [],
                     "portspowercontrol": [],
+                    "portspowersensed": [],
                 },
                 HealthState.OK,
-                "Health is OK.",
-                id="update with empty lists",
+                "Health is OK",
+                id="Health with no smartbox configured ports.",
             ),
         ],
     )
@@ -346,10 +438,10 @@ class TestFNDHHealthModel:
                     "outsidetemperature": 46.0,
                     "internalambienttemperature": 56.0,
                     "portforcings": np.array([False] * 12),
-                    "portsdesiredpowerwhenonline": np.array([False] * 12),
-                    "portsdesiredpowerwhenoffline": np.array([False] * 12),
-                    "portspowersensed": np.array([False] * 12),
-                    "portspowercontrol": np.array([False] * 12),
+                    "portsdesiredpowerwhenonline": np.array([False] * 28),
+                    "portsdesiredpowerwhenoffline": np.array([False] * 28),
+                    "portspowersensed": np.array([False] * 28),
+                    "portspowercontrol": np.array([False] * 28),
                 },
                 {
                     "psu48vvoltage1thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
@@ -413,9 +505,9 @@ class TestFNDHHealthModel:
 
         """
         # We are communicating and we have not seen any scary looking monitoring points.
-        initial_health, _ = health_model.evaluate_health()
-        assert initial_health == HealthState.UNKNOWN
-
+        initial_health, initial_report = health_model.evaluate_health()
+        assert initial_health == HealthState.UNKNOWN, initial_report
+        health_model.update_state(ports_with_smartbox=[i + 1 for i in range(24)])
         health_model.update_state(monitoring_points=monitoring_values)
         for threshold, values in init_thresholds.items():
             health_model.update_monitoring_point_threshold(
@@ -423,7 +515,7 @@ class TestFNDHHealthModel:
             )
         initial_health, initial_report = health_model.evaluate_health()
 
-        assert initial_health == init_expected_health
+        assert initial_health == init_expected_health, initial_report
         assert init_expected_report in initial_report
         for threshold, values in end_thresholds.items():
             health_model.update_monitoring_point_threshold(
@@ -431,5 +523,5 @@ class TestFNDHHealthModel:
             )
 
         final_health, final_report = health_model.evaluate_health()
-        assert final_health == end_expected_health
+        assert final_health == end_expected_health, final_report
         assert end_expected_report in final_report

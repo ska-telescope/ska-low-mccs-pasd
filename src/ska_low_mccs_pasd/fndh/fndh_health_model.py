@@ -126,6 +126,9 @@ class FndhHealthModel(BaseHealthModel):
                 ports_power_control=self._state.get("monitoring_points", {}).get(
                     "portspowercontrol"
                 ),
+                ports_power_sensed=self._state.get("monitoring_points", {}).get(
+                    "portspowersensed"
+                ),
             )
             if result:
                 return health_value, report
