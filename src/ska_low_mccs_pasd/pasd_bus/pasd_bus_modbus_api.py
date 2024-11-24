@@ -124,9 +124,7 @@ class PasdBusModbusApi:
                     ModbusExceptions.IllegalAddress,
                     slave=device_id,
                 )
-            print(f"{unconverted_value=}")
             value = self._convert_value(unconverted_value, attr)
-            print(f"{value=}")
             if isinstance(value, list):
                 if isinstance(value[0], list):
                     value = value[0]
@@ -139,7 +137,6 @@ class PasdBusModbusApi:
                 raise ValueError(f"Expected a list from {value}")
             last_address = attr.address
             last_count = attr.count
-        print(f"{values=}")
         return values
 
     def _handle_write_attributes(
@@ -233,7 +230,6 @@ class PasdBusModbusApi:
                     values = self._handle_read_attributes(
                         device_id, filtered_register_map
                     )
-                    print(f"Value {values}")
                     if isinstance(values, ExceptionResponse):
                         response = values
                     else:
@@ -467,7 +463,6 @@ class PasdBusModbusApiClient:
                     f"Unexpected response type for slave {modbus_address}: "
                     f"{type(reply)}",
                 )
-        print(f"{response=}")
         return response
 
     def _write_registers(
