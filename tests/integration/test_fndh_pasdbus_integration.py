@@ -603,6 +603,7 @@ class TestfndhPasdBusIntegration:
         )
         pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
         change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
+        pasd_bus_device.initializefndh()
         fndh_device.subscribe_event(
             "healthState",
             tango.EventType.CHANGE_EVENT,
