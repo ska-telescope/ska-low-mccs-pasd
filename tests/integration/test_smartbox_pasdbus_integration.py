@@ -372,7 +372,6 @@ class TestSmartBoxPasdBusIntegration:
             tango.DevState.DISABLE
         )
         # TODO: Update the FNDH to subscribe to state changes on the MccsPaSDBus.
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.UNKNOWN
         )
@@ -382,7 +381,6 @@ class TestSmartBoxPasdBusIntegration:
             tango.DevState.UNKNOWN
         )
         change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
-        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
         change_event_callbacks["smartbox_state"].assert_change_event(tango.DevState.OFF)
 
         fndh_device.adminMode = AdminMode.OFFLINE

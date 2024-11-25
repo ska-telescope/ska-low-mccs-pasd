@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skao.int/UpdateHealthParams.json",
+  "title": "MccsFNDH UpdateHealthParams schema",
+  "description": "Schema for MccsFndh's UpdateHealthParams",
+  "type": "object",
+  "properties": {
+    "failed_percent_uncontrolled_smartbox": {
+      "description": "Percentage of Smartboxes configured without PDOC control should be considered as FAILED.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "degraded_percent_uncontrolled_smartbox": {
+      "description": "Percentage of Smartboxes configured without PDOC control should be considered as DEGRADED.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "psu48vvoltage1": {
+      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": 0
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "psu48vcurrent": {
+      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "psu48vtemperature1": {
+      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "psu48vtemperature2": {
+      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "fncbtemperature": {
+      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "fncbhumidity": {
+      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "commsgatewaytemperature": {
+      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "powermoduletemperature": {
+      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "outsidetemperature": {
+      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "internalambienttemperature": {
+      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    }
+  },
+  "required": [
+    "failed_percent_uncontrolled_smartbox",
+    "degraded_percent_uncontrolled_smartbox",
+    "psu48vvoltage1",
+    "psu48vcurrent",
+    "psu48vtemperature1",
+    "psu48vtemperature2",
+    "fncbtemperature",
+    "fncbhumidity",
+    "commsgatewaytemperature",
+    "powermoduletemperature",
+    "outsidetemperature",
+    "internalambienttemperature"
+  ],
+  "additionalProperties": false
+}

@@ -385,24 +385,23 @@ class TestFieldStationIntegration:
             "overVoltageThreshold": over_voltage_threshold,
             "humidityThreshold": humidity_threshold,
         }
-
-        response = field_station_device.Configure(json.dumps(config))
-        [result_code_array, [command_id]] = response
-        assert result_code_array[0] == ResultCode.QUEUED
-
         field_station_device.subscribe_event(
             "longRunningCommandStatus",
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["field_station_command_status"],
         )
-        # Sometimes COMPLETED follows so soon after QUEUED
-        # that we don't see the QUEUED event.
-        # So instead of asserting QUEUED then COMPLETED,
-        # We just assert COMPLETED with lookahead 2.
         change_event_callbacks["field_station_command_status"].assert_change_event(
-            (command_id, "COMPLETED"), lookahead=3
+            Anything
         )
+        response = field_station_device.Configure(json.dumps(config))
+        [result_code_array, [command_id]] = response
+        assert result_code_array[0] == ResultCode.QUEUED
 
+        # lookahead of 4. It seems most of the time a lookahead of 3 is sufficient.
+        # However, it seems that STAGING is sometimes called (but not always).
+        change_event_callbacks["field_station_command_status"].assert_change_event(
+            (command_id, "COMPLETED"), lookahead=4
+        )
         assert fndh_device.overCurrentThreshold == over_current_threshold
         assert fndh_device.overVoltageThreshold == over_voltage_threshold
         assert fndh_device.humidityThreshold == humidity_threshold
