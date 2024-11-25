@@ -303,9 +303,12 @@ class FndhHealthRules(HealthRules):
                 "This should be written to by FieldStation."
             )
 
-        if (ports_with_smartbox is not None and len(ports_with_smartbox) > 0) and (
-            ports_power_sensed is None or ports_power_control is None
+        if (
+            ports_power_sensed is None
+            or ports_power_control is None
+            or ports_with_smartbox is None
         ):
+            # Unable to determine if smartbox configure ports are faulty.
             unknown_points.append(
                 "Unable to evaluate PDOC port faults in configured smartbox: "
                 f"{ports_with_smartbox=}, "
@@ -381,7 +384,8 @@ class FndhHealthRules(HealthRules):
                     f"Cause: {value[1]}"
                 )
 
-        # If there are any FAILED points, return True and a concatenated message
+        # If there are any FAILED points,
+        # return True and a concatenated message.
         if failed_points:
             return (
                 True,
