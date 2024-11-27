@@ -81,9 +81,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     )
     # Default current trip threshold, used for all FEMs.
     # It is automatically written to all smartboxes on power up / reset.
-    FEMCurrentTripThreshold: int = tango.server.device_property(
-        dtype=int, default_value=PasdData.DEFAULT_FEM_CURRENT_TRIP_THRESHOLD
-    )
+    FEMCurrentTripThreshold: int = tango.server.device_property(dtype=int)
     SimulationConfig: Final = tango.server.device_property(
         dtype=int, default_value=SimulationMode.FALSE
     )
@@ -281,11 +279,12 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         :param smartbox_id: the smartbox number to write to.
         """
-        self.component_manager.write_attribute(
-            smartbox_id,
-            "fem_current_trip_thresholds",
-            [self.FEMCurrentTripThreshold] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-        )
+        if self.FEMCurrentTripThreshold is not None:
+            self.component_manager.write_attribute(
+                smartbox_id,
+                "fem_current_trip_thresholds",
+                [self.FEMCurrentTripThreshold] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            )
 
     def create_component_manager(
         self: MccsPasdBus,
