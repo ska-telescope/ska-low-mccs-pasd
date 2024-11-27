@@ -79,8 +79,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     LowPassFilterCutoff: int = tango.server.device_property(
         dtype=float, default_value=10.0, update_db=True
     )
-    # Default current trip threshold, used for all FEMs.
-    # It is automatically written to all smartboxes on power up / reset.
+    # Current trip threshold, used for all FEMs (optional).
+    # If set, it is automatically written to all smartboxes on power up / reset.
     FEMCurrentTripThreshold: int = tango.server.device_property(dtype=int)
     SimulationConfig: Final = tango.server.device_property(
         dtype=int, default_value=SimulationMode.FALSE
