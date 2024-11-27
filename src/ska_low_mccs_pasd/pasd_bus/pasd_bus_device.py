@@ -530,7 +530,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 pasd_device_number, pasd_attribute_name
             )
             self.logger.debug(
-                f"Tango attribute name: {tango_attribute_name}, value: {pasd_attribute_value}"
+                f"Tango attribute name: {tango_attribute_name}, "
+                f"value: {pasd_attribute_value}"
             )
             if tango_attribute_name == "":
                 self.logger.error(
