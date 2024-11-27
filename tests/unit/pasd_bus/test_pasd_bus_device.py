@@ -1114,14 +1114,10 @@ def test_set_trip_thresholds_on_power_up(
     change_event_callbacks.assert_change_event("state", tango.DevState.ON)
 
     # Make sure the default simulated value is different from the
-    # device configuration so that we can be sure it is being
-    # set by the pasd_bus_device
-    assert (
-        SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        != PasdData.DEFAULT_FEM_CURRENT_TRIP_THRESHOLD
-    )
+    # test harness device configuration
+    assert SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD != 496
 
-    # Set a non-default value for the current trip threshold
+    # Set a different value for the current trip threshold
     # and make sure it has been written
     setattr(
         pasd_bus_device,
@@ -1167,7 +1163,6 @@ def test_set_trip_thresholds_on_power_up(
     # should have been automatically written to the smartbox
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}FemCurrentTripThresholds",
-        [PasdData.DEFAULT_FEM_CURRENT_TRIP_THRESHOLD]
-        * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+        [496] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
         lookahead=3,
     )
