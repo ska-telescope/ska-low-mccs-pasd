@@ -40,3 +40,6 @@ class PasdData:  # pylint: disable=too-few-public-methods
 
     FNCC_DEVICE_ID: Final = CONTROLLERS_CONFIG["FNCC"]["pasd_number"]
     """The device identifier for an FNCC"""
+
+    DEFAULT_FEM_CURRENT_TRIP_THRESHOLD: Final = 496
+    """The default FEM current trip threshold, if not set as a device property"""
