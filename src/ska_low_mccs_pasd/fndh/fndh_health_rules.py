@@ -536,24 +536,33 @@ class FndhHealthRules(HealthRules):
 
         max_alm, max_warn, min_warn, min_alm = thresholds
 
+        extra_info = ""
+        if monitoring_point_name in ["psu48vvoltage2", "paneltemperature"]:
+            # Some extra information to user
+            extra_info += (
+                " Note: this monitoring point is "
+                "Not implemented in hardware see information "
+                "https://github.com/andreww5au/PaSD-client/blob/main/pasd/fndh.py"
+            )
+
         if (monitoring_point >= max_warn) or (monitoring_point <= min_warn):
             if (monitoring_point >= max_alm) or (monitoring_point <= min_alm):
                 return (
                     HealthState.FAILED,
                     f"Monitoring point {monitoring_point_name} has value "
                     f"{monitoring_point}, this is in the alarm region for thresholds "
-                    f"{max_alm=}, {min_alm=}",
+                    f"{max_alm=}, {min_alm=}" + extra_info,
                 )
             return (
                 HealthState.DEGRADED,
                 f"Monitoring point {monitoring_point_name} has value "
                 f"{monitoring_point}, this is in the warning region for thresholds "
-                f"{max_warn=}, {min_warn=}",
+                f"{max_warn=}, {min_warn=}" + extra_info,
             )
         return (
             HealthState.OK,
             f"Monitoring point {monitoring_point_name} has value "
-            f"{monitoring_point}, this is within limits",
+            f"{monitoring_point}, this is within limits" + extra_info,
         )
 
     def update_monitoring_point_thresholds(
