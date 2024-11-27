@@ -536,25 +536,18 @@ class TestfndhPasdBusIntegration:
 
         assert fndh_device.PortPowerState(off_smartbox_attached_port) == PowerState.ON
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def test_health(
         self: TestfndhPasdBusIntegration,
-        fndh_device: tango.DeviceProxy,
-        pasd_bus_device: tango.DeviceProxy,
+        healthy_fndh: tango.DeviceProxy,
         fndh_simulator: FndhSimulator,
-        off_smartbox_attached_port: int,
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
         """
         Test integration of FNDH health with pasdBus.
 
-        :param fndh_device: fixture that provides a
-            :py:class:`tango.DeviceProxy` to the device under test, in a
-            :py:class:`tango.test_context.DeviceTestContext`.
-        :param pasd_bus_device: a proxy to the PaSD bus device under test.
+        :param healthy_fndh: fixture that provides FNDH in the
+            Healthy state.
         :param fndh_simulator: the FNDH simulator under test
-        :param off_smartbox_attached_port: the FNDH port the off
-            smartbox-under-test is attached to.
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         """
@@ -587,38 +580,6 @@ class TestfndhPasdBusIntegration:
             list(FndhSimulator.ALARM_MAPPING.keys()),
             list(FndhHealthModel.SUPPORTED_MONITORING_POINTS.keys()),
         )
-        assert fndh_device.adminMode == AdminMode.OFFLINE
-        assert pasd_bus_device.adminMode == AdminMode.OFFLINE
-        assert (
-            fndh_device.PortPowerState(off_smartbox_attached_port) == PowerState.UNKNOWN
-        )
-        pasd_bus_device.subscribe_event(
-            "healthState",
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["pasdBushealthState"],
-        )
-
-        change_event_callbacks.assert_change_event(
-            "pasdBushealthState", HealthState.UNKNOWN
-        )
-        pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
-        change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
-        pasd_bus_device.initializefndh()
-        fndh_device.subscribe_event(
-            "healthState",
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["fndhhealthState"],
-        )
-        change_event_callbacks["fndhhealthState"].assert_change_event(
-            HealthState.UNKNOWN
-        )
-        fndh_device.adminMode = AdminMode.ONLINE
-        change_event_callbacks["fndhhealthState"].assert_not_called()
-        # We must have information about the ports configured with smartbox.
-        # Otherwise we cannot tell if the FNDH is
-        fndh_device.portsWithSmartbox = [1, 2]
-        change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.OK)
-        assert fndh_device.healthState == HealthState.OK
 
         for attribute_name in attribute_names:
             print(f"Test attribute: {attribute_name}")
@@ -631,10 +592,7 @@ class TestfndhPasdBusIntegration:
                 min_warning,
                 min_alarm,
             ) = getattr(fndh_simulator, attribute_threshold)
-            print(
-                "Thresholds in simulator "
-                f"{getattr(fndh_simulator, attribute_threshold)}"
-            )
+
             healthy_value = (max_warning + min_warning) / 2
             setattr(fndh_simulator, attribute_name, max_alarm)
             change_event_callbacks["fndhhealthState"].assert_change_event(
@@ -657,7 +615,6 @@ class TestfndhPasdBusIntegration:
                 HealthState.OK
             )
 
-        pasd_bus_device.adminMode = AdminMode.OFFLINE
         change_event_callbacks["fndhhealthState"].assert_not_called()
 
     def test_faulty_smartbox_configured_ports_degraded(
@@ -889,7 +846,7 @@ def healthy_fndh_fixture(
     """
     assert fndh_device.adminMode == AdminMode.OFFLINE
     assert pasd_bus_device.adminMode == AdminMode.OFFLINE
-    pasd_bus_device.subscribe_event(
+    pasd_sub_id = pasd_bus_device.subscribe_event(
         "healthState",
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["pasdBushealthState"],
@@ -900,7 +857,8 @@ def healthy_fndh_fixture(
     )
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
     change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
-    fndh_device.subscribe_event(
+    pasd_bus_device.initializefndh()
+    fndh_sub_id = fndh_device.subscribe_event(
         "healthState",
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["fndhhealthState"],
@@ -935,4 +893,8 @@ def healthy_fndh_fixture(
     fndh_device.adminMode = AdminMode.ONLINE
     change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
     assert fndh_device.healthState == HealthState.OK
+
     yield fndh_device
+
+    fndh_device.unsubscribe_event(fndh_sub_id)
+    pasd_bus_device.unsubscribe_event(pasd_sub_id)
