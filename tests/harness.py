@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     )
 
 DEFAULT_STATION_LABEL = "ci-1"  # station 1 of cluster "ci"
+FEM_CURRENT_TRIP_THRESHOLD = 496
 
 
 def get_pasd_bus_name(station_label: str | None = None) -> str:

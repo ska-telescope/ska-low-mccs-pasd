@@ -25,7 +25,8 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     PasdConversionUtility,
     SmartboxAlarmFlags,
 )
-from ska_low_mccs_pasd.pasd_data import PasdData
+
+from .. import harness
 
 gc.disable()  # TODO: why is this needed?
 
@@ -947,10 +948,11 @@ class TestSmartBoxPasdBusIntegration:
         ) == PasdConversionUtility.scale_signed_16bit(
             smartbox_simulator.fem_heatsink_temperature_2_thresholds
         )
+        # The trip thresholds are initialised from the device
+        # configuration in the test harness
         assert (
             list(smartbox_device.FemCurrentTripThresholds)
-            == [PasdData.DEFAULT_FEM_CURRENT_TRIP_THRESHOLD]
-            * SmartboxSimulator.NUMBER_OF_PORTS
+            == [harness.FEM_CURRENT_TRIP_THRESHOLD] * SmartboxSimulator.NUMBER_OF_PORTS
         )
         assert smartbox_device.WarningFlags == SmartboxAlarmFlags.NONE.name
         assert smartbox_device.AlarmFlags == SmartboxAlarmFlags.NONE.name
