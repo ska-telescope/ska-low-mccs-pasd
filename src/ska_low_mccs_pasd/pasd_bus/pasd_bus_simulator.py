@@ -1335,7 +1335,11 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_FEM_HEATSINK_TEMPERATURE_1: Final = 4280
     DEFAULT_FEM_HEATSINK_TEMPERATURE_2: Final = 4250
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
-    DEFAULT_PORT_CURRENT_THRESHOLD: Final = 496
+    DEFAULT_PORT_CURRENT_THRESHOLD: Final = (
+        398  # Intentionally set to a different value
+        # to the default device property configuration so
+        # that we can test it is being set at init
+    )
 
     ALARM_MAPPING = {
         "input_voltage": SmartboxAlarmFlags.SYS_48V_V,

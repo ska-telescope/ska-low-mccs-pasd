@@ -25,6 +25,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     PasdConversionUtility,
     SmartboxAlarmFlags,
 )
+from ska_low_mccs_pasd.pasd_data import PasdData
 
 gc.disable()  # TODO: why is this needed?
 
@@ -948,7 +949,7 @@ class TestSmartBoxPasdBusIntegration:
         )
         assert (
             list(smartbox_device.FemCurrentTripThresholds)
-            == [SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD]
+            == [PasdData.DEFAULT_FEM_CURRENT_TRIP_THRESHOLD]
             * SmartboxSimulator.NUMBER_OF_PORTS
         )
         assert smartbox_device.WarningFlags == SmartboxAlarmFlags.NONE.name
