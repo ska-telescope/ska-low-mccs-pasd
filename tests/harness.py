@@ -282,7 +282,7 @@ class PasdTangoTestHarness:
         polling_rate: float = 0.5,
         device_polling_rate: float = 15.0,
         low_pass_filter_cutoff: float = 10.0,
-        fem_current_trip_threshold: int = 496,
+        fem_current_trip_threshold: int = FEM_CURRENT_TRIP_THRESHOLD,
         timeout: float = 1.0,
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsPasdBus",
