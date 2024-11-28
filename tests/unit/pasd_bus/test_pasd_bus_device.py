@@ -26,8 +26,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     SmartboxAlarmFlags,
 )
 from ska_low_mccs_pasd.pasd_data import PasdData
-from tests import harness
-from tests.harness import PasdTangoTestHarness
+from tests.harness import FEM_CURRENT_TRIP_THRESHOLD, PasdTangoTestHarness
 
 # TODO: Weird hang-at-garbage-collection bug
 gc.disable()
@@ -1117,8 +1116,7 @@ def test_set_trip_thresholds_on_power_up(
     # Make sure the default simulated value is different from the
     # test harness device configuration
     assert (
-        SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD
-        != harness.FEM_CURRENT_TRIP_THRESHOLD
+        SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD != FEM_CURRENT_TRIP_THRESHOLD
     )
 
     # Set a different value for the current trip threshold
@@ -1167,6 +1165,6 @@ def test_set_trip_thresholds_on_power_up(
     # should have been automatically written to the smartbox
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}FemCurrentTripThresholds",
-        [harness.FEM_CURRENT_TRIP_THRESHOLD] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+        [FEM_CURRENT_TRIP_THRESHOLD] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
         lookahead=3,
     )
