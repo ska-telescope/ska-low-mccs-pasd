@@ -41,7 +41,29 @@ class SmartBoxHealthModel(BaseHealthModel):
         """
         self.logger = logger
         self._health_rules = SmartboxHealthRules(thresholds)
+        self._use_new_health_rules = True
         super().__init__(health_changed_callback)
+
+    @property
+    def use_new_health_rules(self: SmartBoxHealthModel) -> bool:
+        """
+        A flag to represent if new healthRules are active.
+
+        :returns: True if the new health rule is active.
+        """
+        return self._use_new_health_rules
+
+    @use_new_health_rules.setter
+    def use_new_health_rules(self: SmartBoxHealthModel, val: bool) -> None:
+        """
+        Toggle the use of the new health rules.
+
+        :param val: True if we want to use new healthRules.
+        """
+        if self._use_new_health_rules != val:
+            self._use_new_health_rules = val
+            # force a re-evaluation
+            self.evaluate_health()
 
     def evaluate_health(
         self: SmartBoxHealthModel,
@@ -54,6 +76,8 @@ class SmartBoxHealthModel(BaseHealthModel):
         :return: an overall health of the smartbox
         """
         smartbox_health, smartbox_report = super().evaluate_health()
+        if not self._use_new_health_rules:
+            return smartbox_health, smartbox_report
         intermediate_healths = self.intermediate_healths
         for health in [
             HealthState.FAILED,

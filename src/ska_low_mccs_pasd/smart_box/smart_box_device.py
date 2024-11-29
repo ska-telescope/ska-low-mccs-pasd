@@ -595,6 +595,25 @@ class MccsSmartBox(SKABaseDevice):
         """
         return self._health_model.health_report
 
+    @attribute(dtype=(bool,), label="useNewHealthRules")
+    def useNewHealthRules(self: MccsSmartBox) -> bool:
+        """
+        Get whether to use new health rules.
+
+        :return: whether to use new health rules.
+        """
+        return self._health_model._use_new_health_rules
+
+    @useNewHealthRules.write  # type: ignore[no-redef]
+    def useNewHealthRules(self: MccsSmartBox, use_new_rules: bool) -> None:
+        """
+        Set whether to use new health rules.
+
+        :param use_new_rules: whether to use new rules
+        """
+        self._health_model.use_new_health_rules = use_new_rules
+        self._health_model.update_health()
+
 
 # ----------
 # Run server
