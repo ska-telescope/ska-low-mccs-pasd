@@ -99,8 +99,7 @@ PaSD_controllers:
         psu48v_current:
           data_type: float
           address: 18
-          conversion_function: scale_signed_16bit
-          # conversion_function: scale_48vcurrents
+          conversion_function: scale_48vcurrents
           description: "48Vdc COSEL SMPS output current"
           unit: "A"
           format_string: "%.2f"

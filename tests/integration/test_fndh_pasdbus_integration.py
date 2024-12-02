@@ -12,6 +12,7 @@ from __future__ import annotations
 import gc
 import random
 import re
+import warnings
 
 import pytest
 import tango
@@ -539,6 +540,8 @@ class TestfndhPasdBusIntegration:
     def test_health(
         self: TestfndhPasdBusIntegration,
         healthy_fndh: tango.DeviceProxy,
+        supported_fndh_health_monitoring_points: list[str],
+        positive_only_monitoring_points: list[str],
         fndh_simulator: FndhSimulator,
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
@@ -547,44 +550,17 @@ class TestfndhPasdBusIntegration:
 
         :param healthy_fndh: fixture that provides FNDH in the
             Healthy state.
+        :param supported_fndh_health_monitoring_points: a list of monitoring
+            points supported by the health model.
+        :param positive_only_monitoring_points: a list of monitoring
+            points that can only take a positive value in hardware.
         :param fndh_simulator: the FNDH simulator under test
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         """
-
-        def _get_supported_monitoring_points(
-            monitoring_points: list[str], supported_points: list[str]
-        ) -> list[str]:
-            """
-            Return monitoring points supported by healthRules.
-
-            :param monitoring_points: monitoring points available from
-                the PaSD API.
-            :param supported_points: monitoring points supported by the
-                health model.
-
-            :returns: a random supported monitoring point.
-            """
-            dict1_no_underscore = [key.replace("_", "") for key in monitoring_points]
-            dict2_no_underscore = [key.replace("_", "") for key in supported_points]
-
-            supported_items = [
-                monitoring_points[i]
-                for i in range(len(monitoring_points))
-                if dict1_no_underscore[i] in dict2_no_underscore
-            ]
-            # random_index: int = random.randrange(0, len(supported_items) - 1)
-            return supported_items  # [random_index]
-
-        attribute_names: list[str] = _get_supported_monitoring_points(
-            list(FndhSimulator.ALARM_MAPPING.keys()),
-            list(FndhHealthModel.SUPPORTED_MONITORING_POINTS.keys()),
-        )
-
-        for attribute_name in attribute_names:
-            print(f"Test attribute: {attribute_name}")
+        for attribute_name in supported_fndh_health_monitoring_points:
             attribute_threshold = attribute_name + "_thresholds"
-
+            print(f"Test attribute: {attribute_name}")
             # Check for transitions through health. when value changes.
             (
                 max_alarm,
@@ -602,14 +578,36 @@ class TestfndhPasdBusIntegration:
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.DEGRADED
             )
-            setattr(fndh_simulator, attribute_name, min_alarm)
-            change_event_callbacks["fndhhealthState"].assert_change_event(
-                HealthState.FAILED
-            )
-            setattr(fndh_simulator, attribute_name, min_warning)
-            change_event_callbacks["fndhhealthState"].assert_change_event(
-                HealthState.DEGRADED
-            )
+            if min_alarm < 0 and attribute_name in positive_only_monitoring_points:
+                warnings.warn(
+                    UserWarning(
+                        f"positive only monitoring point {attribute_name} "
+                        "is not being tested for min_alarm due to "
+                        "attempting to set a negative value "
+                        "in the simulator. Hardware does not allow this. "
+                        "see src/ska_low_mccs_pasd/pasd_bus/pasd_bus_conversions.py"
+                    )
+                )
+            else:
+                setattr(fndh_simulator, attribute_name, min_alarm)
+                change_event_callbacks["fndhhealthState"].assert_change_event(
+                    HealthState.FAILED
+                )
+            if min_warning < 0 and attribute_name in positive_only_monitoring_points:
+                warnings.warn(
+                    UserWarning(
+                        f"positive only monitoring point {attribute_name} "
+                        "is not being tested for max_alm due to "
+                        "attempting to set a negative value "
+                        "in the simulator. Hardware does not allow this. "
+                        "See src/ska_low_mccs_pasd/pasd_bus/pasd_bus_conversions.py"
+                    )
+                )
+            else:
+                setattr(fndh_simulator, attribute_name, min_warning)
+                change_event_callbacks["fndhhealthState"].assert_change_event(
+                    HealthState.DEGRADED
+                )
             setattr(fndh_simulator, attribute_name, int(healthy_value))
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.OK
@@ -824,6 +822,42 @@ def change_event_callbacks_fixture(
         timeout=26.0,
         assert_no_error=False,
     )
+
+
+@pytest.fixture(name="supported_fndh_health_monitoring_points")
+def supported_fndh_health_monitoring_points_fixture() -> set[str]:
+    """
+    Return a set of all monitoring points supported by the FNDH.
+
+    :returns: a set of all monitoring points supported by the FNDH.
+    """
+    monitoring_points = list(FndhSimulator.ALARM_MAPPING.keys())
+    supported_points = list(FndhHealthModel.SUPPORTED_MONITORING_POINTS.keys())
+    dict1_no_underscore = [key.replace("_", "") for key in monitoring_points]
+    dict2_no_underscore = [key.replace("_", "") for key in supported_points]
+
+    supported_items = (
+        monitoring_points[i]
+        for i in range(len(monitoring_points))
+        if dict1_no_underscore[i] in dict2_no_underscore
+    )
+    # random_index: int = random.randrange(0, len(supported_items) - 1)
+    return set(supported_items)  # [random_index]
+
+
+@pytest.fixture(name="positive_only_monitoring_points")
+def positive_only_monitoring_points_fixture() -> set[str]:
+    """
+    Return a set of monitoring points that can only have a positive value.
+
+    :returns: a set of monitoring points that can
+        only have a positive value.
+    """
+    return {
+        "psu48v_current",
+        "psu48v_voltage_1",
+        "psu48v_voltage_2",
+    }
 
 
 @pytest.fixture(name="healthy_fndh")
