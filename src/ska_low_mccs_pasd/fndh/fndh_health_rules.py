@@ -539,11 +539,7 @@ class FndhHealthRules(HealthRules):
         extra_info = ""
         if monitoring_point_name in ["psu48vvoltage2", "paneltemperature"]:
             # Some extra information to user
-            extra_info += (
-                " Note: this monitoring point is "
-                "Not implemented in hardware see information "
-                "https://github.com/andreww5au/PaSD-client/blob/main/pasd/fndh.py"
-            )
+            extra_info += " Note: this monitoring point is not implemented in hardware "
 
         if (monitoring_point >= max_warn) or (monitoring_point <= min_warn):
             if (monitoring_point >= max_alm) or (monitoring_point <= min_alm):
@@ -583,7 +579,7 @@ class FndhHealthRules(HealthRules):
         if old_threshold is None:
             self._logger.info(
                 f"Threshold for {attribute_name} has been "
-                f"initiailsed to {new_threshold}"
+                f"initialised to {new_threshold}"
             )
         else:
             self._logger.info(

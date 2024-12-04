@@ -240,7 +240,7 @@ PaSD_controllers:
             high_warning: 5000
             low_warning:  4500
             low_alarm:    4000
-          description: "High alarm, high warning, low warning and low alarm values for output voltage 2"
+          description: "High alarm, high warning, low warning and low alarm values for output voltage 2. Not Implemented in hardware."
         psu48v_current_thresholds:
           data_type: float
           address: 1008
@@ -279,7 +279,7 @@ PaSD_controllers:
             high_warning: 8500
             low_warning:  0
             low_alarm:    -500
-          description: "High alarm, high warning, low warning and low alarm values for PSU temperature 2"
+          description: "High alarm, high warning, low warning and low alarm values for PSU temperature 2."
         panel_temperature_thresholds:
           data_type: float
           address: 1020
