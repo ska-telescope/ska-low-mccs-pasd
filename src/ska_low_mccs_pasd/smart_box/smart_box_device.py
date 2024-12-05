@@ -15,6 +15,7 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Final, Optional, cast
 
+import numpy
 import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_tango_base.base import SKABaseDevice
@@ -34,6 +35,26 @@ from .smartbox_health_model import SmartBoxHealthModel
 __all__ = ["MccsSmartBox", "main"]
 
 
+class JsonSerialize(json.JSONEncoder):
+    """Allows numpy arrays to be dumped to json."""
+
+    def default(self, o: Any) -> Any:
+        """
+        Return json serializable values.
+
+        :param o: object to be made json consumable.
+
+        :return: value that can be consumed by json.
+        """
+        if isinstance(o, numpy.integer):
+            return int(o)
+        if isinstance(o, numpy.floating):
+            return float(o)
+        if isinstance(o, numpy.ndarray):
+            return o.tolist()
+        return json.JSONEncoder.default(self, o)
+
+
 @dataclass
 class SmartboxAttribute:
     """Class representing the internal state of a Smartbox attribute."""
@@ -43,6 +64,7 @@ class SmartboxAttribute:
     timestamp: float
 
 
+# pylint: disable=too-many-instance-attributes
 class MccsSmartBox(SKABaseDevice):
     """An implementation of the SmartBox device for MCCS."""
 
@@ -85,6 +107,7 @@ class MccsSmartBox(SKABaseDevice):
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: SmartBoxHealthModel
         self.component_manager: SmartBoxComponentManager
+        self._health_monitor_points: dict[str, list[float]] = {}
 
     def init_device(self: MccsSmartBox) -> None:
         """
@@ -114,7 +137,9 @@ class MccsSmartBox(SKABaseDevice):
     def _init_state_model(self: MccsSmartBox) -> None:
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
-        self._health_model = SmartBoxHealthModel(self._health_changed_callback)
+        self._health_model = SmartBoxHealthModel(
+            self._health_changed_callback, self.logger
+        )
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
 
@@ -352,12 +377,16 @@ class MccsSmartBox(SKABaseDevice):
 
         if communication_state != CommunicationStatus.ESTABLISHED:
             self._component_state_callback(power=PowerState.UNKNOWN)
+            self._health_monitor_points = {}
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._component_state_callback(power=self.component_manager._power_state)
 
         super()._communication_state_changed(communication_state)
 
-        self._health_model.update_state(communicating=True)
+        self._health_model.update_state(
+            communicating=True,
+            monitoring_points=self._health_monitor_points,
+        )
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def _component_state_callback(
@@ -464,16 +493,21 @@ class MccsSmartBox(SKABaseDevice):
             # for the corresponding Tango attribute
             if attr_name.endswith("thresholds"):
                 try:
+                    attr_true = attr_name.removesuffix("thresholds")
                     configure_alarms(
-                        self.get_device_attr().get_attr_by_name(
-                            attr_name.removesuffix("thresholds")
-                        ),
+                        self.get_device_attr().get_attr_by_name(attr_true),
                         attr_value,
                         self.logger,
                     )
+                    self._health_model.health_params = {attr_true: attr_value}
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass
+            else:
+                self._health_monitor_points[attr_name] = attr_value
+                self._health_model.update_state(
+                    monitoring_points=self._health_monitor_points
+                )
 
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
@@ -529,6 +563,56 @@ class MccsSmartBox(SKABaseDevice):
                 f"Can't set port mask with wrong number of values: {len(port_mask)}."
             )
         self.component_manager.port_mask = port_mask
+
+    @attribute(
+        dtype="DevString",
+        format="%s",
+    )
+    def healthModelParams(self: MccsSmartBox) -> str:
+        """
+        Get the health params from the health model.
+
+        :return: the health params
+        """
+        return json.dumps(self._health_model.health_params, cls=JsonSerialize)
+
+    @healthModelParams.write  # type: ignore[no-redef]
+    def healthModelParams(self: MccsSmartBox, argin: str) -> None:
+        """
+        Set the params for health transition rules.
+
+        :param argin: JSON-string of dictionary of health states
+        """
+        self._health_model.health_params = json.loads(argin)
+        self._health_model.update_health()
+
+    @attribute(dtype="DevString")
+    def healthReport(self: MccsSmartBox) -> str:
+        """
+        Get the health report.
+
+        :return: the health report.
+        """
+        return self._health_model.health_report
+
+    @attribute(dtype=(bool,), label="useNewHealthRules")
+    def useNewHealthRules(self: MccsSmartBox) -> bool:
+        """
+        Get whether to use new health rules.
+
+        :return: whether to use new health rules.
+        """
+        return self._health_model._use_new_health_rules
+
+    @useNewHealthRules.write  # type: ignore[no-redef]
+    def useNewHealthRules(self: MccsSmartBox, use_new_rules: bool) -> None:
+        """
+        Set whether to use new health rules.
+
+        :param use_new_rules: whether to use new rules
+        """
+        self._health_model.use_new_health_rules = use_new_rules
+        self._health_model.update_health()
 
 
 # ----------

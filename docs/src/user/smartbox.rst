@@ -32,7 +32,7 @@ and FEM current trip thresholds. All temperatures are in degrees Celsius.
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | PowerSupplyTemperature               | 19          | PSU temperature                                                          |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| PcbTemperature                       | 20          | PCB temperature                                                          |   
+| PcbTemperature                       | 20          | PCB temperature                                                          |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | FemAmbientTemperature                | 21          | Thermistor mounted on sensor board in the FEM package                    |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
@@ -110,12 +110,12 @@ The SMART Box devices support the following commands:
 +------------------------+-----------------------------+-----------------------------------------------------------------------+
 | Command name           | Arguments                   | Description                                                           |
 +========================+=============================+=======================================================================+
-| PowerOnPort            | Port number                 | Request to power on the specified FEM port                            |                   
+| PowerOnPort            | Port number                 | Request to power on the specified FEM port                            |
 +------------------------+-----------------------------+-----------------------------------------------------------------------+
-| PowerOffPort           | Port number                 | Request to power off the specified FEM port                           |                    
+| PowerOffPort           | Port number                 | Request to power off the specified FEM port                           |
 +------------------------+-----------------------------+-----------------------------------------------------------------------+
 | SetPortPowers          | See: :ref:`set-port-powers` | Initialise the SMART Box and request the specified port power statuses|
-+------------------------+-----------------------------+-----------------------------------------------------------------------+                    
++------------------------+-----------------------------+-----------------------------------------------------------------------+
 
 Alarm recovery procedure
 ------------------------
@@ -129,3 +129,32 @@ SMART Boxes automatically transition to the RECOVERY state when the relevant
 sensor values return to within their alarm thresholds. To return a SMART Box to an operational
 state after such an event, the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.InitializeSmartbox` command must
 be executed.
+
+Smartbox health
+---------------
+The smartbox health is decided entirley by the monitoring points, their values and thresholds.
+
+If we look at the monitoring points we can see 3 types of threshold.
+1. Monitoring points that are unused
+2. Monitoring points with a single value
+3. Monitoring points with multiple values
+
+The first case can be ignored, maybe the values will get used in the future but for now we ignore them
+The second case represents a maximum threshold that the value of the monitoring point should not exceed, if it does, it triggers a FAILED health state, otherwise an OK health state
+The third case represents a range, [min_fault, min_warning, max_warning, max_fault]
+If the value is below the min_fault or above the max_fault, it triggers a FAILED health state
+If the value is between min_fault and min_warning, or between max_fault and max_warning it triggers a DEGRADED health state
+If it between min_warning and max_warning then its in OK health state.
+
+We can change the thresholds at run time on the smartbox by setting smartbox.healthModelParams
+
+For example
+
+.. code-block:: python
+
+    desired_thresholds = {
+        "pcb_temperature": [48.5, 48.3, 48.7, 48.6],
+        "input_voltage": [10.2, 10.5, 9.8, 10.1],
+    }
+
+    smartbox.healthModelParams = json.dumps(desired_thresholds)
