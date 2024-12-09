@@ -13,7 +13,10 @@ from ska_control_model import LoggingLevel, SimulationMode
 from ska_tango_testing.harness import TangoTestHarness, TangoTestHarnessContext
 from tango.server import Device
 
-from tests.conftest import MAX_NUMBER_OF_SMARTBOXES_PER_STATION
+from tests.conftest import (
+    FEM_CURRENT_TRIP_THRESHOLD,
+    MAX_NUMBER_OF_SMARTBOXES_PER_STATION,
+)
 
 if TYPE_CHECKING:
     from ska_low_mccs_pasd.pasd_bus import (
@@ -23,7 +26,6 @@ if TYPE_CHECKING:
     )
 
 DEFAULT_STATION_LABEL = "ci-1"  # station 1 of cluster "ci"
-FEM_CURRENT_TRIP_THRESHOLD = 496
 
 
 def get_pasd_bus_name(station_label: str | None = None) -> str:
