@@ -163,6 +163,17 @@ class _PasdPortSimulator(ABC):
         """
         raise NotImplementedError
 
+    def simulate_stuck_off(
+        self: _PasdPortSimulator, state: bool = True
+    ) -> Optional[bool]:
+        """
+        Simulate port stuck on fault condition.
+
+        :param state: of simulating condition.
+        :raises NotImplementedError: raised if not implemented in subclass
+        """
+        raise NotImplementedError
+
     @property
     def connected(self: _PasdPortSimulator) -> bool:
         """
@@ -341,6 +352,7 @@ class _FndhPortSimulator(_PasdPortSimulator):
         self._instantiate_smartbox = instantiate_smartbox
         self._delete_smartbox = delete_smartbox
         self._stuck_on = False
+        self._stuck_off = False
 
     def _update_port_power(self: _FndhPortSimulator) -> None:
         """
@@ -353,6 +365,8 @@ class _FndhPortSimulator(_PasdPortSimulator):
         super()._update_port_power()
         if self._stuck_on:
             self._on = True
+        if self._stuck_off:
+            self._on = False
         # Instantiate or delete smartbox if port state has changed
         if (
             previous != self._on
@@ -374,9 +388,28 @@ class _FndhPortSimulator(_PasdPortSimulator):
         :param state: of simulating condition.
         :return: whether successful, or None if there was nothing to do.
         """
+        if self._stuck_off:
+            self._stuck_off = False
         if self._stuck_on == state:
             return None
         self._stuck_on = state
+        self._update_port_power()
+        return True
+
+    def simulate_stuck_off(
+        self: _FndhPortSimulator, state: bool = True
+    ) -> Optional[bool]:
+        """
+        Simulate port stuck off fault condition.
+
+        :param state: of simulating condition.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        if self._stuck_on:
+            self._stuck_on = False
+        if self._stuck_off == state:
+            return None
+        self._stuck_off = state
         self._update_port_power()
         return True
 
@@ -1157,6 +1190,19 @@ class FndhSimulator(PasdHardwareSimulator):
         :return: whether successful, or None if there was nothing to do.
         """
         return self._ports[port_number - 1].simulate_stuck_on(state)
+
+    def simulate_port_stuck_off(
+        self: FndhSimulator, port_number: int, state: bool = True
+    ) -> Optional[bool]:
+        """
+        Simulate port stuck off fault condition.
+
+        :param port_number: number of the port for which a breaker trip
+            will be simulated.
+        :param state: of simulating condition.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        return self._ports[port_number - 1].simulate_stuck_off(state)
 
 
 class FnccSimulator(BaseControllerSimulator):

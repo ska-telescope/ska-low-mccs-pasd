@@ -463,7 +463,6 @@ class PasdBusModbusApiClient:
                     f"Unexpected response type for slave {modbus_address}: "
                     f"{type(reply)}",
                 )
-
         return response
 
     def _write_registers(

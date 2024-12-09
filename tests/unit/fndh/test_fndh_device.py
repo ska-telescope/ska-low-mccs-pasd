@@ -354,3 +354,7 @@ def test_ports_with_smartbox(
     mocked_ports = [i + 1 for i in range(24)]
     fndh_device.portsWithSmartbox = np.array(mocked_ports)
     assert fndh_device.portsWithSmartbox.tolist() == mocked_ports
+    # check less than a full station.
+    mocked_ports = [i + 1 for i in range(4)]
+    fndh_device.portsWithSmartbox = np.array(mocked_ports)
+    assert fndh_device.portsWithSmartbox.tolist() == mocked_ports

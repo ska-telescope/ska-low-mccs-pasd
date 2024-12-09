@@ -10,6 +10,9 @@
 from __future__ import annotations
 
 import gc
+import random
+import re
+import warnings
 
 import pytest
 import tango
@@ -17,6 +20,7 @@ from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
+from ska_low_mccs_pasd.fndh import FndhHealthModel
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     FndhAlarmFlags,
@@ -26,6 +30,49 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
 from ..conftest import Helpers
 
 gc.disable()  # TODO: why is this needed?
+
+# Strings with a placeholder to check health report.
+STUCK_ON_PDOC_TEMPLATE = (
+    "PDOC {} stuck ON, fault within the PDOC, "
+    "cannot turn OFF PDOC port in response to a POWERDOWN from the SMART Box"
+)
+STUCK_OFF_PDOC_TEMPLATE = (
+    "PDOC {} stuck OFF, could be a fault within the PDOC, "
+    "damaged PDOC cable, or faulty SMART Box EP"
+)
+
+
+def generate_pdoc_strings(template: str, replacements: list[str]) -> list[str]:
+    """
+    Return a list of strings by replacing the placeholder in the template with values.
+
+    :param template: the template string with a placeholder present.
+    :param replacements: a list of strings to replace placeholder.
+
+    :returns: a list of strings
+    """
+    pdoc_strings = []
+    for replacement in replacements:
+        # Use .format() to insert the replacement into the template
+        pdoc_string = template.format(replacement)
+        pdoc_strings.append(pdoc_string)
+
+    return pdoc_strings
+
+
+def _check_pdoc_stuck_message(expected_reports: list[str], fault_report: str) -> None:
+    """
+    Check that expected PDOC fault reports match fault_report.
+
+    :param expected_reports: a list of expected fault reports.
+    :param fault_report: the complete fault report.
+    """
+    pattern = r"PDOC (\d{1,2}) stuck (ON|OFF)"
+
+    matches = re.findall(pattern, fault_report)
+    expected_matches = re.findall(pattern, ",".join(expected_reports))
+
+    assert sorted(matches) == sorted(expected_matches)
 
 
 class TestfndhPasdBusIntegration:
@@ -490,6 +537,267 @@ class TestfndhPasdBusIntegration:
 
         assert fndh_device.PortPowerState(off_smartbox_attached_port) == PowerState.ON
 
+    def test_health(
+        self: TestfndhPasdBusIntegration,
+        healthy_fndh: tango.DeviceProxy,
+        supported_fndh_health_monitoring_points: list[str],
+        positive_only_monitoring_points: list[str],
+        fndh_simulator: FndhSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test integration of FNDH health with pasdBus.
+
+        :param healthy_fndh: fixture that provides FNDH in the
+            Healthy state.
+        :param supported_fndh_health_monitoring_points: a list of monitoring
+            points supported by the health model.
+        :param positive_only_monitoring_points: a list of monitoring
+            points that can only take a positive value in hardware.
+        :param fndh_simulator: the FNDH simulator under test
+        :param change_event_callbacks: dictionary of mock change event
+            callbacks with asynchrony support
+        """
+        for attribute_name in supported_fndh_health_monitoring_points:
+            attribute_threshold = attribute_name + "_thresholds"
+            print(f"Test attribute: {attribute_name}")
+            # Check for transitions through health. when value changes.
+            (
+                max_alarm,
+                max_warning,
+                min_warning,
+                min_alarm,
+            ) = getattr(fndh_simulator, attribute_threshold)
+
+            healthy_value = (max_warning + min_warning) / 2
+            setattr(fndh_simulator, attribute_name, max_alarm)
+            change_event_callbacks["fndhhealthState"].assert_change_event(
+                HealthState.FAILED
+            )
+            setattr(fndh_simulator, attribute_name, max_warning)
+            change_event_callbacks["fndhhealthState"].assert_change_event(
+                HealthState.DEGRADED
+            )
+            if min_alarm < 0 and attribute_name in positive_only_monitoring_points:
+                warnings.warn(
+                    UserWarning(
+                        f"positive only monitoring point {attribute_name} "
+                        "is not being tested for min_alarm due to "
+                        "attempting to set a negative value "
+                        "in the simulator. Hardware does not allow this. "
+                        "see src/ska_low_mccs_pasd/pasd_bus/pasd_bus_conversions.py"
+                    )
+                )
+            else:
+                setattr(fndh_simulator, attribute_name, min_alarm)
+                change_event_callbacks["fndhhealthState"].assert_change_event(
+                    HealthState.FAILED
+                )
+            if min_warning < 0 and attribute_name in positive_only_monitoring_points:
+                warnings.warn(
+                    UserWarning(
+                        f"positive only monitoring point {attribute_name} "
+                        "is not being tested for max_alm due to "
+                        "attempting to set a negative value "
+                        "in the simulator. Hardware does not allow this. "
+                        "See src/ska_low_mccs_pasd/pasd_bus/pasd_bus_conversions.py"
+                    )
+                )
+            else:
+                setattr(fndh_simulator, attribute_name, min_warning)
+                change_event_callbacks["fndhhealthState"].assert_change_event(
+                    HealthState.DEGRADED
+                )
+            setattr(fndh_simulator, attribute_name, int(healthy_value))
+            change_event_callbacks["fndhhealthState"].assert_change_event(
+                HealthState.OK
+            )
+
+        change_event_callbacks["fndhhealthState"].assert_not_called()
+
+    def test_faulty_smartbox_configured_ports_degraded(
+        self: TestfndhPasdBusIntegration,
+        healthy_fndh: tango.DeviceProxy,
+        fndh_simulator: FndhSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test that the FNDH becomes DEGRADED when smartbox ports are faulty.
+
+        Simulates the following actions:
+        - A random smartbox-configured-port being stuck ON.
+        - A random smartbox-configured-port port being stuck OFF.
+
+        Check the HealthReport and HealthState for expected response.
+
+        :param healthy_fndh: Fixture that provides an FNDH in the Healthy state.
+        :param fndh_simulator: The FNDH simulator under test.
+        :param change_event_callbacks: A dictionary of mock change event callbacks
+            with support for asynchrony.
+        """
+        # Just renaming since it is not always healthy
+        fndh_device = healthy_fndh
+
+        ports_with_smartbox = list(fndh_device.portswithsmartbox)
+        random_stuck_off_port = random.choice(ports_with_smartbox)
+        ports_with_smartbox.remove(random_stuck_off_port)
+        random_stuck_on_port = random.choice(ports_with_smartbox)
+        fndh_simulator.simulate_port_stuck_on(random_stuck_on_port)
+        fndh_simulator._ports[random_stuck_on_port - 1].enabled = False
+        fndh_simulator.simulate_port_stuck_off(random_stuck_off_port)
+        fndh_simulator._ports[random_stuck_off_port - 1].enabled = True
+        # ++++++++++++++++++++++++++++++++++++++++
+
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.DEGRADED
+        )
+        expected_stuck_on_faults = [random_stuck_on_port]
+        expected_stuck_off_faults = [random_stuck_off_port]
+        stuck_on_faults = generate_pdoc_strings(
+            STUCK_ON_PDOC_TEMPLATE, expected_stuck_on_faults
+        )
+        stuck_off_faults = generate_pdoc_strings(
+            STUCK_OFF_PDOC_TEMPLATE, expected_stuck_off_faults
+        )
+        _check_pdoc_stuck_message(
+            stuck_off_faults + stuck_on_faults,
+            fndh_device.healthReport,
+        )
+
+    def test_faulty_smartbox_configured_ports_failed_stuck_on(
+        self: TestfndhPasdBusIntegration,
+        healthy_fndh: tango.DeviceProxy,
+        fndh_simulator: FndhSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test health when we have all smartbox ports faulty stuck ON.
+
+        Simulates the following actions:
+        - All smartbox-configured-port being stuck ON.
+
+        Check the HealthReport and HealthState for expected response.
+
+        :param healthy_fndh: Fixture that provides an FNDH in the Healthy state.
+        :param fndh_simulator: The FNDH simulator under test.
+        :param change_event_callbacks: A dictionary of mock change event callbacks
+            with support for asynchrony.
+        """
+        fndh_device = healthy_fndh
+
+        # +++++++++++++++++++++++++++++++++++++++++
+
+        # Simulate a stuck on condition.
+        for i in fndh_device.portswithsmartbox:
+            fndh_simulator.simulate_port_stuck_on(i)
+            fndh_simulator._ports[i - 1].enabled = False
+        # ++++++++++++++++++++++++++++++++++++++++
+
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.FAILED
+        )
+        # Example usage
+        expected_stuck_on_faults = fndh_device.portswithsmartbox
+        expected_stuck_off_faults: list = []
+        stuck_on_faults = generate_pdoc_strings(
+            STUCK_ON_PDOC_TEMPLATE, expected_stuck_on_faults
+        )
+        stuck_off_faults = generate_pdoc_strings(
+            STUCK_OFF_PDOC_TEMPLATE, expected_stuck_off_faults
+        )
+        _check_pdoc_stuck_message(
+            stuck_off_faults + stuck_on_faults,
+            fndh_device.healthReport,
+        )
+
+        # +++++++++++++++++++++++++++++++++++++++++
+        # Remove fault
+        for i in fndh_device.portswithsmartbox:
+            fndh_simulator.simulate_port_stuck_on(i, False)
+        # ++++++++++++++++++++++++++++++++++++++++
+        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+
+        # Example usage
+        expected_stuck_on_faults = []
+        expected_stuck_off_faults = []
+        stuck_on_faults = generate_pdoc_strings(
+            STUCK_ON_PDOC_TEMPLATE, expected_stuck_on_faults
+        )
+        stuck_off_faults = generate_pdoc_strings(
+            STUCK_OFF_PDOC_TEMPLATE, expected_stuck_off_faults
+        )
+        _check_pdoc_stuck_message(
+            stuck_off_faults + stuck_on_faults,
+            fndh_device.healthReport,
+        )
+
+    def test_faulty_smartbox_configured_ports_failed_stuck_off(
+        self: TestfndhPasdBusIntegration,
+        healthy_fndh: tango.DeviceProxy,
+        fndh_simulator: FndhSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test health when we have all smartbox ports faulty stuck ON.
+
+        Simulates the following actions:
+        - All smartbox-configured-port being stuck OFF.
+
+        Check the HealthReport and HealthState for expected response.
+
+        :param healthy_fndh: Fixture that provides an FNDH in the Healthy state.
+        :param fndh_simulator: The FNDH simulator under test.
+        :param change_event_callbacks: A dictionary of mock change event callbacks
+            with support for asynchrony.
+        """
+        fndh_device = healthy_fndh
+
+        # +++++++++++++++++++++++++++++++++++++++++
+        # Simulate a stuck OFF condition.
+        for i in fndh_device.portswithsmartbox:
+            fndh_simulator.simulate_port_stuck_off(i)
+            fndh_simulator._ports[i - 1].enabled = True
+        # ++++++++++++++++++++++++++++++++++++++++
+
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.FAILED
+        )
+
+        # Example usage
+        expected_stuck_on_faults: list = []
+        expected_stuck_off_faults = fndh_device.portswithsmartbox
+        stuck_on_faults = generate_pdoc_strings(
+            STUCK_ON_PDOC_TEMPLATE, expected_stuck_on_faults
+        )
+        stuck_off_faults = generate_pdoc_strings(
+            STUCK_OFF_PDOC_TEMPLATE, expected_stuck_off_faults
+        )
+        _check_pdoc_stuck_message(
+            stuck_off_faults + stuck_on_faults,
+            fndh_device.healthReport,
+        )
+
+        # +++++++++++++++++++++++++++++++++++++++++
+        # remove the stuck OFF condition.
+        for i in fndh_device.portswithsmartbox:
+            fndh_simulator.simulate_port_stuck_off(i, False)
+        # ++++++++++++++++++++++++++++++++++++++++
+
+        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+        # Example usage
+        expected_stuck_on_faults = []
+        expected_stuck_off_faults = []
+        stuck_on_faults = generate_pdoc_strings(
+            STUCK_ON_PDOC_TEMPLATE, expected_stuck_on_faults
+        )
+        stuck_off_faults = generate_pdoc_strings(
+            STUCK_OFF_PDOC_TEMPLATE, expected_stuck_off_faults
+        )
+        _check_pdoc_stuck_message(
+            stuck_off_faults + stuck_on_faults,
+            fndh_device.healthReport,
+        )
+
 
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture(
@@ -506,6 +814,7 @@ def change_event_callbacks_fixture(
         "fndh_state",
         "pasd_bus_state",
         "pasdBushealthState",
+        "fndhhealthState",
         f"smartbox{last_smartbox_id}AlarmFlags",
         "fndhPortPowerState",
         "fndhPort2PowerState",
@@ -513,3 +822,113 @@ def change_event_callbacks_fixture(
         timeout=26.0,
         assert_no_error=False,
     )
+
+
+@pytest.fixture(name="supported_fndh_health_monitoring_points")
+def supported_fndh_health_monitoring_points_fixture() -> set[str]:
+    """
+    Return a set of all monitoring points supported by the FNDH.
+
+    :returns: a set of all monitoring points supported by the FNDH.
+    """
+    monitoring_points = list(FndhSimulator.ALARM_MAPPING.keys())
+    supported_points = list(FndhHealthModel.SUPPORTED_MONITORING_POINTS.keys())
+    dict1_no_underscore = [key.replace("_", "") for key in monitoring_points]
+    dict2_no_underscore = [key.replace("_", "") for key in supported_points]
+
+    supported_items = (
+        monitoring_points[i]
+        for i in range(len(monitoring_points))
+        if dict1_no_underscore[i] in dict2_no_underscore
+    )
+    # random_index: int = random.randrange(0, len(supported_items) - 1)
+    return set(supported_items)  # [random_index]
+
+
+@pytest.fixture(name="positive_only_monitoring_points")
+def positive_only_monitoring_points_fixture() -> set[str]:
+    """
+    Return a set of monitoring points that can only have a positive value.
+
+    :returns: a set of monitoring points that can
+        only have a positive value.
+    """
+    return {
+        "psu48v_current",
+        "psu48v_voltage_1",
+        "psu48v_voltage_2",
+    }
+
+
+@pytest.fixture(name="healthy_fndh")
+def healthy_fndh_fixture(
+    fndh_device: tango.DeviceProxy,
+    pasd_bus_device: tango.DeviceProxy,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns a FNDH in the Healthy State.
+
+    :param pasd_bus_device: a proxy to the PaSD bus device under test.
+    :param fndh_device: fixture that provides a
+        :py:class:`tango.DeviceProxy` to the device under test, in a
+        :py:class:`tango.test_context.DeviceTestContext`.
+    :param change_event_callbacks: A dictionary of mock change event callbacks
+        with support for asynchrony.
+
+    :yield: a FNDH in the Healthy State.
+    """
+    assert fndh_device.adminMode == AdminMode.OFFLINE
+    assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+    pasd_sub_id = pasd_bus_device.subscribe_event(
+        "healthState",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["pasdBushealthState"],
+    )
+
+    change_event_callbacks.assert_change_event(
+        "pasdBushealthState", HealthState.UNKNOWN
+    )
+    pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+    change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
+    pasd_bus_device.initializefndh()
+    fndh_sub_id = fndh_device.subscribe_event(
+        "healthState",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["fndhhealthState"],
+    )
+    change_event_callbacks.assert_change_event("fndhhealthState", HealthState.UNKNOWN)
+    # Carefully configure smartbox on unfaulty ports
+    fndh_device.portswithsmartbox = [
+        1,
+        2,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        26,
+        28,
+    ]
+    fndh_device.adminMode = AdminMode.ONLINE
+    change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+    assert fndh_device.healthState == HealthState.OK
+
+    yield fndh_device
+
+    fndh_device.unsubscribe_event(fndh_sub_id)
+    pasd_bus_device.unsubscribe_event(pasd_sub_id)
