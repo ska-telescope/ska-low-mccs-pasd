@@ -104,7 +104,7 @@ class MccsFieldStation(SKABaseDevice):
         self._health_rollup.define(
             "smartboxes",
             self.SmartBoxFQDNs,
-            (-1, 1, 1),
+            (0, 1, 1),
         )
 
     def create_component_manager(
@@ -207,7 +207,7 @@ class MccsFieldStation(SKABaseDevice):
     # Callbacks
     # ----------
 
-    def _communication_state_callback(
+    def _communication_state_changed(
         self: MccsFieldStation,
         communication_state: CommunicationStatus,
         device_name: Optional[str] = None,
