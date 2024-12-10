@@ -36,7 +36,7 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_controllers_configuration import ControllerDict
 from .pasd_bus_component_manager import PasdBusComponentManager
-from .pasd_bus_conversions import FndhStatusMap
+from .pasd_bus_conversions import FndhStatusMap, SmartboxStatusMap
 from .pasd_bus_health_model import PasdBusHealthModel
 from .pasd_bus_register_map import DesiredPowerEnum
 
@@ -547,8 +547,12 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 # MCCS was started by checking if its status changed to UNINITIALISED
                 previous_status = self._pasd_state[tango_attribute_name].value
                 if (
-                    pasd_attribute_value == FndhStatusMap.UNINITIALISED.name
-                    and pasd_attribute_value != previous_status
+                    pasd_attribute_value != previous_status
+                    and pasd_attribute_value
+                    in (
+                        FndhStatusMap.UNINITIALISED.name,
+                        SmartboxStatusMap.UNINITIALISED.name,
+                    )
                 ):
                     # Register a request to read the static info and thresholds
                     self.component_manager.request_startup_info(pasd_device_number)
