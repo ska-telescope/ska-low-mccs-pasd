@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [WOM-486]: Add FemCurrentTripThreshold device property
+
 ## 0.13.0
 
 * [LOW-1131]: Expose Field station as LoadBalancer
