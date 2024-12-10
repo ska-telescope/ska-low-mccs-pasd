@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [WOM-486]: Add FemCurrentTripThreshold device property
+
 ## 0.12.1
 
 * [MCCS-2324]: MccsSmartbox power commands can get stuck in infinite loop
