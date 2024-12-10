@@ -17,6 +17,8 @@ global:
   tango_host: databaseds-tango-base:10000
   cluster_domain: cluster.local
 
+exposeDeviceServers: true
+
 livenessProbe:
   initialDelaySeconds: 0
   periodSeconds: 10

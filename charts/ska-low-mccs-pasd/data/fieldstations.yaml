@@ -116,4 +116,7 @@ livenessProbe:
 {{ toYaml .Values.livenessProbe | indent 2 }}
 readinessProbe:
 {{ toYaml .Values.readinessProbe | indent 2 }}
+{{- with $.Values.exposeDeviceServers}}
+exposeDS: {{.}}
+{{- end}}
 {{- end}}
