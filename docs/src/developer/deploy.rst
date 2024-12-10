@@ -261,6 +261,8 @@ For example:
            fndh_port: 1
            pasdbus_name: low-mccs/pasdbus/ci-1
            logging_level_default: 5
+           device_properties:
+            FemCurrentTripThreshold: 489
      pasdbuses:
        ci-1:
          low-mccs/pasdbus/ci-1:
