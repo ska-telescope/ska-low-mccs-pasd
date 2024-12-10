@@ -1,5 +1,9 @@
 # Version History
 
+## 0.13.0
+
+* [LOW-1131]: Expose Field station as LoadBalancer
+
 ## 0.12.1
 
 * [MCCS-2324]: MccsSmartbox power commands can get stuck in infinite loop
