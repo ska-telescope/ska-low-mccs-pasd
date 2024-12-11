@@ -871,6 +871,8 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
             :param smartbox_id: id of the smartbox being addressed.
             """
+            # We set the current trip thresholds here just in case
+            # it hasn't been done yet
             self._component_manager.initialize_fem_current_trip_thresholds(
                 smartbox_id, self._fem_current_trip_threshold
             )
