@@ -313,7 +313,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         for command_name, command_class in [
             ("InitializeFndh", MccsPasdBus._InitializeFndhCommand),
-            ("InitializeSmartbox", MccsPasdBus._InitializeSmartboxCommand),
             ("ResetFnccStatus", MccsPasdBus._ResetFnccStatusCommand),
             ("SetFndhPortPowers", MccsPasdBus._SetFndhPortPowersCommand),
             ("SetFndhLedPattern", MccsPasdBus._SetFndhLedPatternCommand),
@@ -340,6 +339,12 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 command_name,
                 command_class(self.component_manager, self.logger),
             )
+        self.register_command_object(
+            "InitializeSmartbox",
+            MccsPasdBus._InitializeSmartboxCommand(
+                self.component_manager, self.logger, self.FEMCurrentTripThreshold
+            ),
+        )
 
         self.register_command_object(
             "GetPasdDeviceSubscriptions",
@@ -851,8 +856,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self: MccsPasdBus._InitializeSmartboxCommand,
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
+            fem_current_trip_threshold: int,
         ):
             self._component_manager = component_manager
+            self._fem_current_trip_threshold = fem_current_trip_threshold
             super().__init__(logger)
 
         # pylint: disable-next=arguments-differ
@@ -864,6 +871,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
             :param smartbox_id: id of the smartbox being addressed.
             """
+            self._component_manager.initialize_fem_current_trip_thresholds(
+                smartbox_id, self._fem_current_trip_threshold
+            )
             self._component_manager.initialize_smartbox(smartbox_id)
 
     @command(dtype_in=int, dtype_out="DevVarLongStringArray")

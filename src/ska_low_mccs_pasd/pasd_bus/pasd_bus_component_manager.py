@@ -69,6 +69,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     WARNING_FLAGS_ATTRIBUTE: Final = "warning_flags"
     ALARM_FLAGS_ATTRIBUTE: Final = "alarm_flags"
 
+    FEM_CURRENT_TRIP_THRESHOLDS_ATTRIBUTE: Final = "fem_current_trip_thresholds"
+
     STATIC_INFO_ATTRIBUTES: Final[list[str]] = []
     FNCC_STATUS_ATTRIBUTES: Final[list[str]] = []
     for key, register in PasdData.CONTROLLERS_CONFIG["FNCC"]["registers"].items():
@@ -479,6 +481,22 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param: smartbox_id: id of the smartbox being addressed
         """
         self._request_provider.desire_initialize(smartbox_id)
+
+    @check_communicating
+    def initialize_fem_current_trip_thresholds(
+        self: PasdBusComponentManager, smartbox_id: int, fem_current_trip_threshold: int
+    ) -> None:
+        """
+        Initialize the FEM current trip thresholds.
+
+        :param: smartbox_id: id of the smartbox being addressed
+        :param: fem_current_trip_threshold: threshold value to write
+        """
+        self._request_provider.desire_attribute_write(
+            smartbox_id,
+            self.FEM_CURRENT_TRIP_THRESHOLDS_ATTRIBUTE,
+            [fem_current_trip_threshold] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+        )
 
     @check_communicating
     def set_fndh_port_powers(
