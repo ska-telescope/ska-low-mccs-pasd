@@ -273,19 +273,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 pasd_device_number, self.LowPassFilterCutoff, True
             )
 
-    def _set_fem_current_trip_thresholds(self: MccsPasdBus, smartbox_id: int) -> None:
-        """
-        Set all the FEM current trip thresholds on the given smartbox device.
-
-        :param smartbox_id: the smartbox number to write to.
-        """
-        if self.FEMCurrentTripThreshold is not None:
-            self.component_manager.write_attribute(
-                smartbox_id,
-                "fem_current_trip_thresholds",
-                [self.FEMCurrentTripThreshold] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-            )
-
     def create_component_manager(
         self: MccsPasdBus,
     ) -> PasdBusComponentManager:
@@ -426,8 +413,11 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self._init_pasd_devices = False
             for device_number in self.AvailableSmartboxes + [PasdData.FNDH_DEVICE_ID]:
                 self._set_all_low_pass_filters_of_device(device_number)
-            for device_number in self.AvailableSmartboxes:
-                self._set_fem_current_trip_thresholds(device_number)
+            if self.FEMCurrentTripThreshold is not None:
+                for device_number in self.AvailableSmartboxes:
+                    self.component_manager.initialize_fem_current_trip_thresholds(
+                        device_number, self.FEMCurrentTripThreshold
+                    )
 
     def _component_state_callback(
         self: MccsPasdBus,
@@ -565,8 +555,13 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                     if self._simulation_mode == SimulationMode.FALSE:
                         self._set_all_low_pass_filters_of_device(pasd_device_number)
                     # Set the FEM current trip thresholds
-                    if pasd_device_number in self.AvailableSmartboxes:
-                        self._set_fem_current_trip_thresholds(pasd_device_number)
+                    if (
+                        pasd_device_number in self.AvailableSmartboxes
+                        and self.FEMCurrentTripThreshold is not None
+                    ):
+                        self.component_manager.initialize_fem_current_trip_thresholds(
+                            pasd_device_number, self.FEMCurrentTripThreshold
+                        )
 
             self._pasd_state[tango_attribute_name].value = pasd_attribute_value
             self._pasd_state[tango_attribute_name].quality = AttrQuality.ATTR_VALID
