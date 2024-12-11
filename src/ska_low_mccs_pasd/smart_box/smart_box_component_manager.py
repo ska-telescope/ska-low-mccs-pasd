@@ -25,7 +25,6 @@ from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
 
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import SmartboxStatusMap
 from ska_low_mccs_pasd.pasd_data import PasdData
 
 __all__ = ["SmartBoxComponentManager"]
@@ -209,9 +208,7 @@ class _PasdBusProxy(DeviceComponentManager):
             unique id to identify the command in the queue.
         """
         assert self._proxy
-        if self._proxy.status in (None, SmartboxStatusMap.UNINITIALISED):
-            # Smartbox has been reset so we need to initialise
-            self._proxy.InitializeSmartbox(self._smartbox_nr)
+        self._proxy.InitializeSmartbox(self._smartbox_nr)
         argument = json.loads(json_argument)
         argument.update({"smartbox_number": self._smartbox_nr})
         return self._proxy.SetSmartboxPortPowers(json.dumps(argument))
