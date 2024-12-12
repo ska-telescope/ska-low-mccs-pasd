@@ -851,7 +851,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self: MccsPasdBus._InitializeSmartboxCommand,
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
-            fem_current_trip_threshold: int,
+            fem_current_trip_threshold: int | None,
         ):
             self._component_manager = component_manager
             self._fem_current_trip_threshold = fem_current_trip_threshold
@@ -868,9 +868,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             """
             # We set the current trip thresholds here just in case
             # it hasn't been done yet
-            self._component_manager.initialize_fem_current_trip_thresholds(
-                smartbox_id, self._fem_current_trip_threshold
-            )
+            if self._fem_current_trip_threshold is not None:
+                self._component_manager.initialize_fem_current_trip_thresholds(
+                    smartbox_id, self._fem_current_trip_threshold
+                )
             self._component_manager.initialize_smartbox(smartbox_id)
 
     @command(dtype_in=int, dtype_out="DevVarLongStringArray")
