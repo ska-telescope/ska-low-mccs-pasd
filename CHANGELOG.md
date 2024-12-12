@@ -1,8 +1,10 @@
 # Version History
 
-## Unreleased
+## 0.14.0
 
 * [WOM-486]: Add FemCurrentTripThreshold device property
+* [THORN-37]: Update DeviceComponentManager to use DevSource.DEV
+* [MCCS-2245]: Correct docs formatting
 
 ## 0.13.0
 
