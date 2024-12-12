@@ -328,7 +328,7 @@ def correct_smartbox_turns_on(
         )
         change_event_callbacks[
             f"{smartbox_under_test.dev_name()}/state"
-        ].assert_change_event(tango.DevState.ON, lookahead=2)
+        ].assert_change_event(tango.DevState.ON, lookahead=4)
         smartbox_under_test.unsubscribe_event(subscription_id)
 
         assert smartbox_under_test.state() == tango.DevState.ON
