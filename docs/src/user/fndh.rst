@@ -144,19 +144,19 @@ state after such an event, the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_de
 Health Evaluation
 -----------------
 
-The health of the FNDH (Field Node Distribution Hub) is determined by two primary factors:
+The health of the FNDH is determined by two primary factors:
 
 1. The value of monitoring points in relation to their defined thresholds.
-2. The percentage of `smartbox-configured ports` with a fault.
+2. The percentage of `smartbox-configured-ports` with a fault.
 
-### Threshold Evaluation
+**Threshold Evaluation**
 
 The thresholds are read from the hardware during the initial polling and after any write events.
 
-### Configuration via `healthModelParams`
+**Configuration via healthModelParams**
 
-All health-related values are configurable through the `healthModelParams` parameter. 
-Below is an example of how the desired thresholds can be set (please note values set are arbitrary):
+All health-related values are configurable through the ``healthModelParams`` parameter. 
+Below is an example of how the desired thresholds can be set (**Note**: values set are arbitrary):
 
 .. code-block:: python
 
