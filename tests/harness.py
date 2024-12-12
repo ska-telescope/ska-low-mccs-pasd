@@ -13,7 +13,10 @@ from ska_control_model import LoggingLevel, SimulationMode
 from ska_tango_testing.harness import TangoTestHarness, TangoTestHarnessContext
 from tango.server import Device
 
-from tests.conftest import MAX_NUMBER_OF_SMARTBOXES_PER_STATION
+from tests.conftest import (
+    FEM_CURRENT_TRIP_THRESHOLD,
+    MAX_NUMBER_OF_SMARTBOXES_PER_STATION,
+)
 
 if TYPE_CHECKING:
     from ska_low_mccs_pasd.pasd_bus import (
@@ -281,6 +284,7 @@ class PasdTangoTestHarness:
         polling_rate: float = 0.5,
         device_polling_rate: float = 15.0,
         low_pass_filter_cutoff: float = 10.0,
+        fem_current_trip_threshold: int = FEM_CURRENT_TRIP_THRESHOLD,
         timeout: float = 1.0,
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsPasdBus",
@@ -300,6 +304,8 @@ class PasdTangoTestHarness:
             with the same device.
         :param low_pass_filter_cutoff: the default cut-off frequency to set for
             the devices' sensors' low-pass filtering.
+        :param fem_current_trip_threshold: the default current trip threshold
+             to set for the FEMs.
         :param timeout: timeout to use when interacting with the PaSD
         :param logging_level: the Tango device's default logging level.
         :param device_class: The device class to use.
@@ -333,6 +339,7 @@ class PasdTangoTestHarness:
             DevicePollingRate=device_polling_rate,
             Timeout=timeout,
             LowPassFilterCutoff=low_pass_filter_cutoff,
+            FEMCurrentTripThreshold=fem_current_trip_threshold,
             SimulationConfig=int(SimulationMode.TRUE),
             AvailableSmartboxes=available_smartboxes,
             LoggingLevelDefault=logging_level,

@@ -268,6 +268,8 @@ For example:
            port: 502
            timeout: 10
            logging_level_default: 5
+           device_properties:
+             FemCurrentTripThreshold: 489
    simulators:
      pasdbuses:
        ci-1:

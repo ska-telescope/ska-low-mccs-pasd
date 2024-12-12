@@ -25,6 +25,7 @@ MAX_NUMBER_OF_SMARTBOXES_PER_STATION: Final = 24
 NUMBER_OF_ANTENNAS: Final = 256
 NUMBER_OF_SMARTBOX_PORTS: Final = 12
 NUMBER_OF_FNDH_PORTS: Final = 28
+FEM_CURRENT_TRIP_THRESHOLD: Final = 496
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:

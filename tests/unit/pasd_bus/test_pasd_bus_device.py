@@ -25,7 +25,8 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     PasdConversionUtility,
     SmartboxAlarmFlags,
 )
-from tests.harness import PasdTangoTestHarness
+from ska_low_mccs_pasd.pasd_data import PasdData
+from tests.harness import FEM_CURRENT_TRIP_THRESHOLD, PasdTangoTestHarness
 
 # TODO: Weird hang-at-garbage-collection bug
 gc.disable()
@@ -59,7 +60,8 @@ def change_event_callbacks_fixture(
         f"smartbox{smartbox_id}PortsPowerSensed",
         f"smartbox{smartbox_id}AlarmFlags",
         f"smartbox{smartbox_id}PcbTemperatureThresholds",
-        timeout=30.0,
+        f"smartbox{smartbox_id}FemCurrentTripThresholds",
+        timeout=45.0,
         assert_no_error=False,
     )
 
@@ -1063,4 +1065,106 @@ def test_set_smartbox_thresholds(
 
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}PcbTemperatureThresholds", [55, 50, 20, 0]
+    )
+
+
+def test_set_trip_thresholds_on_power_up(
+    pasd_bus_device: tango.DeviceProxy,
+    smartbox_id: int,
+    fndh_simulator: FndhSimulator,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> None:
+    """
+    Test the FEM current trip thresholds are set when a smartbox is powered on.
+
+    :param pasd_bus_device: a proxy to the PaSD bus device under test.
+    :param smartbox_id: id of the smartbox being addressed.
+    :param fndh_simulator: the fndh simulator under test
+    :param change_event_callbacks: dictionary of mock change event
+        callbacks with asynchrony support
+    """
+    assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+
+    pasd_bus_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+
+    pasd_bus_device.subscribe_event(
+        "fndhPortsPowerSensed",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["fndhPortsPowerSensed"],
+    )
+    change_event_callbacks.assert_change_event("fndhPortsPowerSensed", None)
+
+    pasd_bus_device.subscribe_event(
+        f"smartbox{smartbox_id}FemCurrentTripThresholds",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks[f"smartbox{smartbox_id}FemCurrentTripThresholds"],
+    )
+    change_event_callbacks.assert_change_event(
+        f"smartbox{smartbox_id}FemCurrentTripThresholds", None
+    )
+
+    pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+
+    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
+    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+
+    # Make sure the default simulated value is different from the
+    # test harness device configuration
+    assert (
+        SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD != FEM_CURRENT_TRIP_THRESHOLD
+    )
+
+    # Set a different value for the current trip threshold
+    # and make sure it has been written
+    setattr(
+        pasd_bus_device,
+        f"smartbox{smartbox_id}FemCurrentTripThresholds",
+        [15] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+    )
+
+    change_event_callbacks.assert_change_event(
+        f"smartbox{smartbox_id}FemCurrentTripThresholds",
+        [15] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+    )
+
+    # Switch the smartbox off
+    pasd_bus_device.InitializeFndh()
+    change_event_callbacks.assert_change_event(
+        "fndhPortsPowerSensed", fndh_simulator.ports_power_sensed, lookahead=3
+    )
+    port_powers = [False] + [None] * (len(fndh_simulator.ports_power_sensed) - 1)
+    expected_fndh_ports_power_sensed = list(fndh_simulator.ports_power_sensed)
+    expected_fndh_ports_power_sensed[0] = False
+    json_arg = {
+        "port_powers": port_powers,
+        "stay_on_when_offline": False,
+    }
+    pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
+    change_event_callbacks.assert_change_event(
+        "fndhPortsPowerSensed", expected_fndh_ports_power_sensed, lookahead=3
+    )
+
+    # Switch the smartbox on again
+    port_powers[0] = True
+    expected_fndh_ports_power_sensed[0] = True
+    json_arg = {
+        "port_powers": port_powers,
+        "stay_on_when_offline": False,
+    }
+    pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
+    change_event_callbacks.assert_change_event(
+        "fndhPortsPowerSensed", expected_fndh_ports_power_sensed, lookahead=3
+    )
+
+    # The trip thresholds configured as device properties
+    # should have been automatically written to the smartbox
+    change_event_callbacks.assert_change_event(
+        f"smartbox{smartbox_id}FemCurrentTripThresholds",
+        [FEM_CURRENT_TRIP_THRESHOLD] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+        lookahead=3,
     )

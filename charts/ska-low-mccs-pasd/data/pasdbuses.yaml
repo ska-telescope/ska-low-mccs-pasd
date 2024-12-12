@@ -17,7 +17,7 @@ Define the deployment for MccsSmartbox devices.
             - 2
             - 3
           device_properties: # Arbitrary properties.
-            foo: bar
+            FemCurrentTripThreshold: 489 # Optional - written to all smartboxes on init.
 
 */}}
 {{- $pasdbuses := dict}}

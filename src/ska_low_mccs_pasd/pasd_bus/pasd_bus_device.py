@@ -36,7 +36,7 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_controllers_configuration import ControllerDict
 from .pasd_bus_component_manager import PasdBusComponentManager
-from .pasd_bus_conversions import FndhStatusMap
+from .pasd_bus_conversions import FndhStatusMap, SmartboxStatusMap
 from .pasd_bus_health_model import PasdBusHealthModel
 from .pasd_bus_register_map import DesiredPowerEnum
 
@@ -79,6 +79,9 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
     LowPassFilterCutoff: int = tango.server.device_property(
         dtype=float, default_value=10.0, update_db=True
     )
+    # Current trip threshold, used for all FEMs (optional).
+    # If set, it is automatically written to all smartboxes on power up / reset.
+    FEMCurrentTripThreshold: int = tango.server.device_property(dtype=int)
     SimulationConfig: Final = tango.server.device_property(
         dtype=int, default_value=SimulationMode.FALSE
     )
@@ -135,6 +138,7 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             f"\tDevicePollingRate: {self.DevicePollingRate}\n"
             f"\tTimeout: {self.Timeout}\n"
             f"\tLowPassFilterCutoff: {self.LowPassFilterCutoff}\n"
+            f"\tFEMCurrentTripThreshold: {self.FEMCurrentTripThreshold}\n"
             f"\tSimulationConfig: {self.SimulationConfig}\n"
             f"\tAvailableSmartboxes: {self.AvailableSmartboxes}\n"
         )
@@ -296,7 +300,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
         for command_name, command_class in [
             ("InitializeFndh", MccsPasdBus._InitializeFndhCommand),
-            ("InitializeSmartbox", MccsPasdBus._InitializeSmartboxCommand),
             ("ResetFnccStatus", MccsPasdBus._ResetFnccStatusCommand),
             ("SetFndhPortPowers", MccsPasdBus._SetFndhPortPowersCommand),
             ("SetFndhLedPattern", MccsPasdBus._SetFndhLedPatternCommand),
@@ -323,6 +326,12 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 command_name,
                 command_class(self.component_manager, self.logger),
             )
+        self.register_command_object(
+            "InitializeSmartbox",
+            MccsPasdBus._InitializeSmartboxCommand(
+                self.component_manager, self.logger, self.FEMCurrentTripThreshold
+            ),
+        )
 
         self.register_command_object(
             "GetPasdDeviceSubscriptions",
@@ -404,6 +413,11 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self._init_pasd_devices = False
             for device_number in self.AvailableSmartboxes + [PasdData.FNDH_DEVICE_ID]:
                 self._set_all_low_pass_filters_of_device(device_number)
+            if self.FEMCurrentTripThreshold is not None:
+                for device_number in self.AvailableSmartboxes:
+                    self.component_manager.initialize_fem_current_trip_thresholds(
+                        device_number, self.FEMCurrentTripThreshold
+                    )
 
     def _component_state_callback(
         self: MccsPasdBus,
@@ -509,7 +523,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             tango_attribute_name = _get_tango_attribute_name(
                 pasd_device_number, pasd_attribute_name
             )
-            self.logger.debug(f"Tango attribute name: {tango_attribute_name}.")
+            self.logger.debug(
+                f"Tango attribute name: {tango_attribute_name}, "
+                f"value: {pasd_attribute_value}"
+            )
             if tango_attribute_name == "":
                 self.logger.error(
                     f"Received update for unknown PaSD attribute {pasd_attribute_name} "
@@ -525,14 +542,26 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
                 # MCCS was started by checking if its status changed to UNINITIALISED
                 previous_status = self._pasd_state[tango_attribute_name].value
                 if (
-                    pasd_attribute_value == FndhStatusMap.UNINITIALISED.name
-                    and pasd_attribute_value != previous_status
+                    pasd_attribute_value != previous_status
+                    and pasd_attribute_value
+                    in (
+                        FndhStatusMap.UNINITIALISED.name,
+                        SmartboxStatusMap.UNINITIALISED.name,
+                    )
                 ):
                     # Register a request to read the static info and thresholds
                     self.component_manager.request_startup_info(pasd_device_number)
                     # Set the device's low-pass filter constants
                     if self._simulation_mode == SimulationMode.FALSE:
                         self._set_all_low_pass_filters_of_device(pasd_device_number)
+                    # Set the FEM current trip thresholds
+                    if (
+                        pasd_device_number in self.AvailableSmartboxes
+                        and self.FEMCurrentTripThreshold is not None
+                    ):
+                        self.component_manager.initialize_fem_current_trip_thresholds(
+                            pasd_device_number, self.FEMCurrentTripThreshold
+                        )
 
             self._pasd_state[tango_attribute_name].value = pasd_attribute_value
             self._pasd_state[tango_attribute_name].quality = AttrQuality.ATTR_VALID
@@ -822,8 +851,10 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
             self: MccsPasdBus._InitializeSmartboxCommand,
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
+            fem_current_trip_threshold: int | None,
         ):
             self._component_manager = component_manager
+            self._fem_current_trip_threshold = fem_current_trip_threshold
             super().__init__(logger)
 
         # pylint: disable-next=arguments-differ
@@ -835,6 +866,12 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
 
             :param smartbox_id: id of the smartbox being addressed.
             """
+            # We set the current trip thresholds here just in case
+            # it hasn't been done yet
+            if self._fem_current_trip_threshold is not None:
+                self._component_manager.initialize_fem_current_trip_thresholds(
+                    smartbox_id, self._fem_current_trip_threshold
+                )
             self._component_manager.initialize_smartbox(smartbox_id)
 
     @command(dtype_in=int, dtype_out="DevVarLongStringArray")
