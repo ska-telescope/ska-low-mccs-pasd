@@ -537,7 +537,7 @@ class MccsFieldStation(SKABaseDevice):
 
         :return: the health report.
         """
-        return self._health_summary
+        return self._health_report
 
 
 # ----------
