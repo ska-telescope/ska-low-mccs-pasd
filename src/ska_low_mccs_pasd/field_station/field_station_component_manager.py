@@ -40,6 +40,66 @@ from ..reference_data_store.pasd_config_client_server import PasdConfigurationCl
 __all__ = ["FieldStationComponentManager"]
 
 
+# pylint: disable=too-many-arguments, too-many-positional-arguments
+class _SmartboxProxy(DeviceComponentManager):
+    """A proxy to a MccsSmartbox device, for a station to use."""
+
+    def __init__(
+        self: _SmartboxProxy,
+        trl: str,
+        logger: logging.Logger,
+        communication_state_callback: Callable[[CommunicationStatus], None],
+        component_state_callback: Callable[..., None],
+        ports_power_changed_callback: Callable,
+    ) -> None:
+        super().__init__(
+            trl,
+            logger,
+            communication_state_callback,
+            component_state_callback,
+        )
+        self._ports_power_changed_callback = ports_power_changed_callback
+
+    def get_change_event_callbacks(self) -> dict[str, Callable]:
+        return {
+            **super().get_change_event_callbacks(),
+            "PortsPowerSensed": self._ports_power_changed,
+        }
+
+    def _ports_power_changed(self, *args: Any, **kwargs: Any) -> None:
+        self._ports_power_changed_callback(self._name, *args, **kwargs)
+
+
+# pylint: disable=too-many-arguments, too-many-positional-arguments
+class _FndhProxy(DeviceComponentManager):
+    """A proxy to a MccsFndh device, for a station to use."""
+
+    def __init__(
+        self: _FndhProxy,
+        trl: str,
+        logger: logging.Logger,
+        communication_state_callback: Callable[[CommunicationStatus], None],
+        component_state_callback: Callable[..., None],
+        ports_power_changed_callback: Callable,
+        field_conditions_changed_callback: Callable,
+    ) -> None:
+        super().__init__(
+            trl,
+            logger,
+            communication_state_callback,
+            component_state_callback,
+        )
+        self._ports_power_changed_callback = ports_power_changed_callback
+        self._field_conditions_changed_callback = field_conditions_changed_callback
+
+    def get_change_event_callbacks(self) -> dict[str, Callable]:
+        return {
+            **super().get_change_event_callbacks(),
+            "PortsPowerSensed": self._ports_power_changed_callback,
+            "OutsideTemperature": self._field_conditions_changed_callback,
+        }
+
+
 # pylint: disable=too-many-instance-attributes,  too-many-lines, abstract-method
 class FieldStationComponentManager(TaskExecutorComponentManager):
     """A component manager for MccsFieldStation."""
@@ -136,11 +196,13 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         }
 
         self._fndh_name = fndh_name
-        self._fndh_proxy = _fndh_proxy or DeviceComponentManager(
+        self._fndh_proxy = _fndh_proxy or _FndhProxy(
             fndh_name,
             logger,
             functools.partial(self._device_communication_state_changed, fndh_name),
             functools.partial(self._component_state_callback, device_name=fndh_name),
+            self._on_fndh_port_change,
+            self._on_field_conditions_change,
         )
         self._smartbox_power_state = {}
         self._smartbox_proxys = {}
@@ -150,7 +212,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         else:
             for smartbox_trl in smartbox_names:
                 self._smartbox_power_state[smartbox_trl] = PowerState.UNKNOWN
-                self._smartbox_proxys[smartbox_trl] = DeviceComponentManager(
+                self._smartbox_proxys[smartbox_trl] = _SmartboxProxy(
                     smartbox_trl,
                     logger,
                     functools.partial(
@@ -159,6 +221,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     functools.partial(
                         self._component_state_callback, device_name=smartbox_trl
                     ),
+                    self._on_port_power_change,
                 )
 
         # initialise the power
@@ -271,62 +334,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             return
         self._update_communication_state(CommunicationStatus.DISABLED)
 
-    def subscribe_to_attribute(
-        self: FieldStationComponentManager,
-        fqdn: str,
-        attribute_name: str,
-        callback: Callable,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Subscribe to an attribute on a device.
-
-        :param fqdn: The device to subscribe too.
-        :param attribute_name: the name of the attribute to subscribe to.
-        :param callback: a callback to call on change.
-        :param task_callback: Update task state, defaults to None
-
-        :return: a result code and a unique_id or message.
-        """
-        return self.submit_task(
-            self._subscribe_to_attribute,  # type: ignore[arg-type]
-            args=[fqdn, attribute_name, callback],
-            task_callback=task_callback,
-        )
-
-    def _subscribe_to_attribute(
-        self: FieldStationComponentManager,
-        fqdn: str,
-        attribute_name: str,
-        callback: Callable,
-        task_callback: Optional[Callable] = None,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> None:
-        proxy_object = None
-        if fqdn == self._fndh_name:
-            proxy_object = self._fndh_proxy
-        elif fqdn in self._smartbox_proxys:
-            proxy_object = self._smartbox_proxys[fqdn]
-
-        if (
-            proxy_object is not None
-            and proxy_object._proxy is not None
-            and attribute_name.lower()
-            not in proxy_object._proxy._change_event_callbacks.keys()
-        ):
-            try:
-                proxy_object._proxy.add_change_event_callback(
-                    attribute_name,
-                    callback,
-                    stateless=True,
-                )
-                self.logger.info(f"subscribed to {fqdn} {attribute_name}")
-
-            except Exception:  # pylint: disable=broad-except
-                self.logger.error(
-                    f"Failed to make subscription to {fqdn} {attribute_name}"
-                )
-
     def _on_field_conditions_change(
         self: FieldStationComponentManager,
         event_name: str,
@@ -438,25 +445,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         fqdn: str,
         communication_state: CommunicationStatus,
     ) -> None:
-        if communication_state == CommunicationStatus.ESTABLISHED:
-            try:
-                match fqdn:
-                    case self._fndh_name:
-                        self.subscribe_to_attribute(
-                            fqdn, "OutsideTemperature", self._on_field_conditions_change
-                        )
-                        self.subscribe_to_attribute(
-                            fqdn, "PortsPowerSensed", self._on_fndh_port_change
-                        )
-                    case _:
-                        self.subscribe_to_attribute(
-                            fqdn,
-                            "PortsPowerSensed",
-                            functools.partial(self._on_port_power_change, fqdn),
-                        )
-
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                self.logger.error(f"failed to subscribe to {fqdn}: {e}")
         self._communication_states[fqdn] = communication_state
         self.logger.debug(
             f"device {fqdn} changed communcation state to {communication_state.name}"
