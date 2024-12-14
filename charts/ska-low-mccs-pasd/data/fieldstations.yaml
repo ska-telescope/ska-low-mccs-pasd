@@ -54,9 +54,9 @@ instances:
 {{- range $server_key := keys $fieldstations}}
   - {{printf "fieldstation-%s" $server_key}}
 {{- end}}
-command: MccsFieldStation
+command: pasd_device_server
 server:
-  name: MccsFieldStation
+  name: pasd_device_server
   instances:
 {{- range $server_key, $this_server := $fieldstations}}
     - name: {{printf "fieldstation-%s" $server_key}}

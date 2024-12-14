@@ -29,9 +29,9 @@ instances:
 {{- range $server_key := keys $smartboxes}}
   - {{printf "smartbox-%s" $server_key}}
 {{- end}}
-command: MccsSmartBox
+command: pasd_device_server
 server: 
-  name: "MccsSmartbox"
+  name: pasd_device_server
   instances:
 {{- range $server_key, $this_server := $smartboxes}}
     - name: {{printf "smartbox-%s" $server_key}}

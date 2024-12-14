@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [THORN-1]: Multi-class device server endpoint
 * [WOM-486]: Add FemCurrentTripThreshold device property
 
 ## 0.13.0

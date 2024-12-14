@@ -26,9 +26,9 @@ instances:
 {{- range $server_key := keys $fnccs}}
   - {{printf "fncc-%s" $server_key}}
 {{- end}}
-command: MccsFNCC
+command: pasd_device_server
 server: 
-  name: MccsFncc
+  name: pasd_device_server
   instances:
 {{- range $server_key, $this_server := $fnccs}}
     - name: {{printf "fncc-%s" $server_key}}

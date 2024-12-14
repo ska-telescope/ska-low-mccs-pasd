@@ -26,9 +26,9 @@ instances:
 {{- range $server_key := keys $fndhs}}
   - {{printf "fndh-%s" $server_key}}
 {{- end}}
-command: MccsFNDH
+command: pasd_device_server
 server: 
-  name: MccsFndh
+  name: pasd_device_server
   instances:
 {{- range $server_key, $this_server := $fndhs}}
     - name: {{printf "fndh-%s" $server_key}}

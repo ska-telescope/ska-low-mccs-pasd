@@ -35,9 +35,29 @@ __all__ = [
     "MccsFNCC",
     "reference_data_store",
 ]
+
+
+import tango.server
+
 from .field_station import MccsFieldStation
 from .fncc import MccsFNCC
 from .fndh import MccsFNDH
 from .pasd_bus import MccsPasdBus
 from .pasd_data import PasdData
 from .smart_box import MccsSmartBox
+
+
+def main(*args: str, **kwargs: str) -> int:  # pragma: no cover
+    """
+    Entry point for module.
+
+    :param args: positional arguments
+    :param kwargs: named arguments
+
+    :return: exit code
+    """
+    return tango.server.run(
+        classes=(MccsFieldStation, MccsFNCC, MccsFNDH, MccsPasdBus, MccsSmartBox),
+        args=args or None,
+        **kwargs
+    )
