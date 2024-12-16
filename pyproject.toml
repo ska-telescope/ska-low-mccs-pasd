@@ -20,7 +20,7 @@ pytango = "^9.5.1"
 PyYAML = "^6.0"
 ska-tango-base = "~1.2.3"
 ska-control-model = { version = "^1.2.0", extras = ["health_rollup"] }
-ska-low-mccs-common = "^0.15.4"
+ska-low-mccs-common = "^0.15.5"
 ska-ser-devices = "^0.2.0"
 pymodbus = "~3.5.4"
 typing-extensions = "^4.6.1"
