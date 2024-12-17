@@ -2,6 +2,7 @@
 
 ## 0.14.0
 
+* [THORN-1]: Multi-class device server endpoint
 * [WOM-486]: Add FemCurrentTripThreshold device property
 * [THORN-37]: Update DeviceComponentManager to use DevSource.DEV
 * [MCCS-2245]: Correct docs formatting

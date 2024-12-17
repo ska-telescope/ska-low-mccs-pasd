@@ -81,6 +81,7 @@ uvicorn = { extras = ["standard"], version = "^0.29.0" }
 cerberus = "^1.3.5"
 
 [tool.poetry.scripts]
+pasd_device_server = "ska_low_mccs_pasd:main"
 MccsPasdBus = "ska_low_mccs_pasd.pasd_bus.pasd_bus_device:main"
 PasdBusSimulatorServer = "ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator_server:main"
 MccsSmartBox = "ska_low_mccs_pasd.smart_box.smart_box_device:main"

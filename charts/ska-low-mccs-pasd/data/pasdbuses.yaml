@@ -34,9 +34,9 @@ instances:
 {{- range $server_key := keys $pasdbuses}}
   - {{printf "pasdbus-%s" $server_key}}
 {{- end}}
-command: MccsPasdBus
+command: pasd_device_server
 server: 
-  name: MccsPasdBus
+  name: pasd_device_server
   instances:
 {{- range $server_key, $this_server := $pasdbuses}}
     - name: {{printf "pasdbus-%s" $server_key}}
