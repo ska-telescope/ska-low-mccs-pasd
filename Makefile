@@ -154,7 +154,7 @@ endif
 ########################################################################
 helmfile-lint:
 	SKIPDEPS=""
-	for environment in minikube-ci stfc-ci aa0.5-production aavs3-production aavs3-minikube low-itf low-itf-minikube; do \
+	for environment in minikube-ci stfc-ci aa0.5-production low-itf low-itf-minikube; do \
         echo "Linting helmfile against environment '$$environment'" ; \
 		helmfile -e $$environment lint $$SKIPDEPS; \
 		EXIT_CODE=$$? ; \
