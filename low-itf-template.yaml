@@ -1,0 +1,2579 @@
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fieldstations-sa-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fndhs-sa-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pasdbuses-sa-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: smartboxes-sa-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+---
+# Source: ska-low-mccs-pasd/templates/pasd_configuration_server.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: config-watcher-acc
+  namespace: ska-low-mccs
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Device Server configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fieldstations-ska-low-mccs-pasd-dsconfig-json
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: configurator
+    function: deployment
+    intent: enabling
+    domain: self-configuration
+  annotations:
+    null
+data:
+  configuration.json: |
+    {
+      "servers": {
+        "pasd_device_server" : {
+          "fieldstation-itf1": {
+            "MccsFieldStation": {
+              "low-mccs/fieldstation/itf1": {
+                "properties": {
+                  "ConfigurationHost": [
+                    "pasd-configuration-service"
+                    ],
+                  "ConfigurationPort": [
+                    "8081"
+                    ],
+                  "StationName": [
+                    "itf1"
+                    ],
+                  "TMConfigURI": [
+                    ],
+                  "FndhFQDN": [
+                    "low-mccs/fndh/itf1"
+                    ],
+                  "SmartBoxFQDNs": [
+                    "low-mccs/smartbox/itf1-sb01",
+                    "low-mccs/smartbox/itf1-sb19"
+                    ],
+                  "LoggingLevelDefault": [
+                    "5"
+                    ]
+                }
+              }
+            }
+          },
+          "fieldstation-itf2": {
+            "MccsFieldStation": {
+              "low-mccs/fieldstation/itf2": {
+                "properties": {
+                  "ConfigurationHost": [
+                    "pasd-configuration-service"
+                    ],
+                  "ConfigurationPort": [
+                    "8081"
+                    ],
+                  "StationName": [
+                    "itf2"
+                    ],
+                  "TMConfigURI": [
+                    ],
+                  "FndhFQDN": [
+                    "low-mccs/fndh/itf2"
+                    ],
+                  "SmartBoxFQDNs": [
+                    "low-mccs/smartbox/itf2-sb02",
+                    "low-mccs/smartbox/itf2-sb11"
+                    ],
+                  "LoggingLevelDefault": [
+                    "5"
+                    ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  bootstrap.sh: |
+    #/bin/sh
+    json2tango -w -a -u data/configuration.json
+    rc=$?
+    if [ $rc -eq 0 ]; then
+      echo "finished normally."
+      exit 0
+    else
+      if [ $rc -eq 2 ]; then
+        echo "finished with an update."
+        exit 0
+      else
+        echo "finished with an ERROR."
+        exit $rc
+      fi
+    fi
+  pasd_device_server.py: |
+    
+    #!/usr/bin/env python
+    
+    import importlib
+    import importlib.util
+    from tango.server import run
+    
+    classes = []
+    
+    def main(args=None, **kwargs):
+      
+      return run(classes=(classes), args=args, **kwargs)
+    
+    if __name__ == '__main__':
+        main()
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Device Server configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fndhs-ska-low-mccs-pasd-dsconfig-json
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: configurator
+    function: deployment
+    intent: enabling
+    domain: self-configuration
+  annotations:
+    null
+data:
+  configuration.json: |
+    {
+      "servers": {
+        "pasd_device_server" : {
+          "fndh-itf1": {
+            "MccsFndh": {
+              "low-mccs/fndh/itf1": {
+                "properties": {
+                  "PasdFQDN": [
+                    "low-mccs/pasdbus/itf1"
+                    ],
+                  "LoggingLevelDefault": [
+                    "5"
+                    ]
+                }
+              }
+            }
+          },
+          "fndh-itf2": {
+            "MccsFndh": {
+              "low-mccs/fndh/itf2": {
+                "properties": {
+                  "PasdFQDN": [
+                    "low-mccs/pasdbus/itf2"
+                    ],
+                  "LoggingLevelDefault": [
+                    "5"
+                    ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  bootstrap.sh: |
+    #/bin/sh
+    json2tango -w -a -u data/configuration.json
+    rc=$?
+    if [ $rc -eq 0 ]; then
+      echo "finished normally."
+      exit 0
+    else
+      if [ $rc -eq 2 ]; then
+        echo "finished with an update."
+        exit 0
+      else
+        echo "finished with an ERROR."
+        exit $rc
+      fi
+    fi
+  pasd_device_server.py: |
+    
+    #!/usr/bin/env python
+    
+    import importlib
+    import importlib.util
+    from tango.server import run
+    
+    classes = []
+    
+    def main(args=None, **kwargs):
+      
+      return run(classes=(classes), args=args, **kwargs)
+    
+    if __name__ == '__main__':
+        main()
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Device Server configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pasdbuses-ska-low-mccs-pasd-dsconfig-json
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: configurator
+    function: deployment
+    intent: enabling
+    domain: self-configuration
+  annotations:
+    null
+data:
+  configuration.json: |
+    {
+      "servers": {
+        "pasd_device_server" : {
+          "pasdbus-itf1": {
+            "MccsPasdBus": {
+              "low-mccs/pasdbus/itf1": {
+                "properties": {
+                  "Host": [
+                    "10.135.155.50"
+                    ],
+                  "Port": [
+                    "5000"
+                    ],
+                  "Timeout": [
+                    "10"
+                    ],
+                  "LoggingLevelDefault": [
+                    "5"
+                    ],
+                  "AvailableSmartboxes": [
+                    "1",
+                    "19"
+                    ]
+                }
+              }
+            }
+          },
+          "pasdbus-itf2": {
+            "MccsPasdBus": {
+              "low-mccs/pasdbus/itf2": {
+                "properties": {
+                  "Host": [
+                    "10.135.155.51"
+                    ],
+                  "Port": [
+                    "5000"
+                    ],
+                  "Timeout": [
+                    "10"
+                    ],
+                  "LoggingLevelDefault": [
+                    "5"
+                    ],
+                  "AvailableSmartboxes": [
+                    "2",
+                    "11"
+                    ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  bootstrap.sh: |
+    #/bin/sh
+    json2tango -w -a -u data/configuration.json
+    rc=$?
+    if [ $rc -eq 0 ]; then
+      echo "finished normally."
+      exit 0
+    else
+      if [ $rc -eq 2 ]; then
+        echo "finished with an update."
+        exit 0
+      else
+        echo "finished with an ERROR."
+        exit $rc
+      fi
+    fi
+  pasd_device_server.py: |
+    
+    #!/usr/bin/env python
+    
+    import importlib
+    import importlib.util
+    from tango.server import run
+    
+    classes = []
+    
+    def main(args=None, **kwargs):
+      
+      return run(classes=(classes), args=args, **kwargs)
+    
+    if __name__ == '__main__':
+        main()
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Device Server configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smartboxes-ska-low-mccs-pasd-dsconfig-json
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: configurator
+    function: deployment
+    intent: enabling
+    domain: self-configuration
+  annotations:
+    null
+data:
+  configuration.json: |
+    {
+      "servers": {
+        "pasd_device_server" : {
+          "smartbox-itf1-sb01": {
+            "MccsSmartbox": {
+              "low-mccs/smartbox/itf1-sb01": {
+                "properties": {
+                  "SmartBoxNumber": [
+                    "1"
+                    ],
+                  "PasdFQDN": [
+                    "low-mccs/pasdbus/itf1"
+                    ],
+                  "FndhFQDN": [
+                    "low-mccs/fndh/itf1"
+                    ],
+                  "FieldStationName": [
+                    "low-mccs/fieldstation/itf1"
+                    ],
+                  "LoggingLevelDefault": [
+                    "5"
+                    ]
+                }
+              }
+            }
+          },
+          "smartbox-itf1-sb19": {
+            "MccsSmartbox": {
+              "low-mccs/smartbox/itf1-sb19": {
+                "properties": {
+                  "SmartBoxNumber": [
+                    "19"
+                    ],
+                  "PasdFQDN": [
+                    "low-mccs/pasdbus/itf1"
+                    ],
+                  "FndhFQDN": [
+                    "low-mccs/fndh/itf1"
+                    ],
+                  "FieldStationName": [
+                    "low-mccs/fieldstation/itf1"
+                    ],
+                  "LoggingLevelDefault": [
+                    "5"
+                    ]
+                }
+              }
+            }
+          },
+          "smartbox-itf2-sb02": {
+            "MccsSmartbox": {
+              "low-mccs/smartbox/itf2-sb02": {
+                "properties": {
+                  "SmartBoxNumber": [
+                    "2"
+                    ],
+                  "PasdFQDN": [
+                    "low-mccs/pasdbus/itf2"
+                    ],
+                  "FndhFQDN": [
+                    "low-mccs/fndh/itf2"
+                    ],
+                  "FieldStationName": [
+                    "low-mccs/fieldstation/itf2"
+                    ],
+                  "LoggingLevelDefault": [
+                    "5"
+                    ]
+                }
+              }
+            }
+          },
+          "smartbox-itf2-sb11": {
+            "MccsSmartbox": {
+              "low-mccs/smartbox/itf2-sb11": {
+                "properties": {
+                  "SmartBoxNumber": [
+                    "11"
+                    ],
+                  "PasdFQDN": [
+                    "low-mccs/pasdbus/itf2"
+                    ],
+                  "FndhFQDN": [
+                    "low-mccs/fndh/itf2"
+                    ],
+                  "FieldStationName": [
+                    "low-mccs/fieldstation/itf2"
+                    ],
+                  "LoggingLevelDefault": [
+                    "5"
+                    ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  bootstrap.sh: |
+    #/bin/sh
+    json2tango -w -a -u data/configuration.json
+    rc=$?
+    if [ $rc -eq 0 ]; then
+      echo "finished normally."
+      exit 0
+    else
+      if [ $rc -eq 2 ]; then
+        echo "finished with an update."
+        exit 0
+      else
+        echo "finished with an ERROR."
+        exit $rc
+      fi
+    fi
+  pasd_device_server.py: |
+    
+    #!/usr/bin/env python
+    
+    import importlib
+    import importlib.util
+    from tango.server import run
+    
+    classes = []
+    
+    def main(args=None, **kwargs):
+      
+      return run(classes=(classes), args=args, **kwargs)
+    
+    if __name__ == '__main__':
+        main()
+---
+# Source: ska-low-mccs-pasd/templates/pasd_configuration.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pasd-configuration-itf1
+  namespace: ska-low-mccs
+  labels:
+    platform_spec: pasd
+    station: itf1
+    app: ska-low-mccs-pasd
+data:
+  pasd_configuration.yaml: |
+    antennas:
+      sb01-01:
+        masked: false
+        smartbox: sb01
+        smartbox_port: 3
+      sb01-02:
+        masked: false
+        smartbox: sb01
+        smartbox_port: 2
+      sb19-01:
+        masked: false
+        smartbox: sb19
+        smartbox_port: 1
+      sb19-02:
+        masked: false
+        smartbox: sb19
+        smartbox_port: 2
+    pasd:
+      smartboxes:
+        sb01:
+          fndh_port: 1
+        sb19:
+          fndh_port: 19
+---
+# Source: ska-low-mccs-pasd/templates/pasd_configuration.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pasd-configuration-itf2
+  namespace: ska-low-mccs
+  labels:
+    platform_spec: pasd
+    station: itf2
+    app: ska-low-mccs-pasd
+data:
+  pasd_configuration.yaml: |
+    antennas:
+      sb02-01:
+        masked: false
+        smartbox: sb02
+        smartbox_port: 1
+      sb02-02:
+        masked: false
+        smartbox: sb02
+        smartbox_port: 2
+      sb11-03:
+        masked: false
+        smartbox: sb11
+        smartbox_port: 3
+      sb11-04:
+        masked: false
+        smartbox: sb11
+        smartbox_port: 4
+    pasd:
+      smartboxes:
+        sb02:
+          fndh_port: 2
+        sb11:
+          fndh_port: 11
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fieldstations-role-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+rules:
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["list", "get", "watch"]
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fndhs-role-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+rules:
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["list", "get", "watch"]
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pasdbuses-role-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+rules:
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["list", "get", "watch"]
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: smartboxes-role-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+rules:
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["list", "get", "watch"]
+---
+# Source: ska-low-mccs-pasd/templates/pasd_configuration_server.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: config-watcher-role
+  namespace: ska-low-mccs
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fieldstations-role-bind-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+subjects:
+- kind: ServiceAccount
+  name: fieldstations-sa-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+roleRef:
+  kind: Role
+  name: fieldstations-role-ska-low-mccs-pasd
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fndhs-role-bind-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+subjects:
+- kind: ServiceAccount
+  name: fndhs-sa-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+roleRef:
+  kind: Role
+  name: fndhs-role-ska-low-mccs-pasd
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pasdbuses-role-bind-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+subjects:
+- kind: ServiceAccount
+  name: pasdbuses-sa-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+roleRef:
+  kind: Role
+  name: pasdbuses-role-ska-low-mccs-pasd
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: smartboxes-role-bind-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+subjects:
+- kind: ServiceAccount
+  name: smartboxes-sa-ska-low-mccs-pasd
+  namespace: ska-low-mccs
+roleRef:
+  kind: Role
+  name: smartboxes-role-ska-low-mccs-pasd
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: ska-low-mccs-pasd/templates/pasd_configuration_server.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: config-watcher-rolebind
+  namespace: ska-low-mccs
+roleRef:
+  kind: Role
+  name: config-watcher-role
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: config-watcher-acc
+  namespace: ska-low-mccs
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# one k8s service per instance
+apiVersion: v1
+kind: Service
+metadata:
+  name: fieldstations-fieldstation-itf1
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: fieldstations-fieldstation-itf1
+    function: ska-low-mccs-pasd-fieldstation
+    domain: ska-low-mccs-pasd-fieldstation
+    subsystem: low-mccs-pasd
+
+spec:
+  type: LoadBalancer
+  ports:
+  - name: tango-server
+    port: 45450
+    targetPort: 45450
+  - name: tango-heartbeat
+    port: 45460
+    targetPort: 45460
+  - name: tango-event
+    port: 45470
+    targetPort: 45470
+  selector:
+    subsystem: low-mccs-pasd
+    component: fieldstations-fieldstation-itf1
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# one k8s service per instance
+apiVersion: v1
+kind: Service
+metadata:
+  name: fieldstations-fieldstation-itf2
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: fieldstations-fieldstation-itf2
+    function: ska-low-mccs-pasd-fieldstation
+    domain: ska-low-mccs-pasd-fieldstation
+    subsystem: low-mccs-pasd
+
+spec:
+  type: LoadBalancer
+  ports:
+  - name: tango-server
+    port: 45450
+    targetPort: 45450
+  - name: tango-heartbeat
+    port: 45460
+    targetPort: 45460
+  - name: tango-event
+    port: 45470
+    targetPort: 45470
+  selector:
+    subsystem: low-mccs-pasd
+    component: fieldstations-fieldstation-itf2
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# one k8s service per instance
+apiVersion: v1
+kind: Service
+metadata:
+  name: fndhs-fndh-itf1
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: fndhs-fndh-itf1
+    function: ska-low-mccs-pasd-fndh
+    domain: ska-low-mccs-pasd-fndh
+    subsystem: low-mccs-pasd
+
+spec:
+  type: ClusterIP
+  ports:
+  - name: tango-server
+    port: 45450
+    targetPort: 45450
+  - name: tango-heartbeat
+    port: 45460
+    targetPort: 45460
+  - name: tango-event
+    port: 45470
+    targetPort: 45470
+  selector:
+    subsystem: low-mccs-pasd
+    component: fndhs-fndh-itf1
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# one k8s service per instance
+apiVersion: v1
+kind: Service
+metadata:
+  name: fndhs-fndh-itf2
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: fndhs-fndh-itf2
+    function: ska-low-mccs-pasd-fndh
+    domain: ska-low-mccs-pasd-fndh
+    subsystem: low-mccs-pasd
+
+spec:
+  type: ClusterIP
+  ports:
+  - name: tango-server
+    port: 45450
+    targetPort: 45450
+  - name: tango-heartbeat
+    port: 45460
+    targetPort: 45460
+  - name: tango-event
+    port: 45470
+    targetPort: 45470
+  selector:
+    subsystem: low-mccs-pasd
+    component: fndhs-fndh-itf2
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# one k8s service per instance
+apiVersion: v1
+kind: Service
+metadata:
+  name: pasdbuses-pasdbus-itf1
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: pasdbuses-pasdbus-itf1
+    function: ska-low-mccs-pasd-bus
+    domain: ska-low-mccs-pasd-bus
+    subsystem: low-mccs-pasd
+
+spec:
+  type: ClusterIP
+  ports:
+  - name: tango-server
+    port: 45450
+    targetPort: 45450
+  - name: tango-heartbeat
+    port: 45460
+    targetPort: 45460
+  - name: tango-event
+    port: 45470
+    targetPort: 45470
+  selector:
+    subsystem: low-mccs-pasd
+    component: pasdbuses-pasdbus-itf1
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# one k8s service per instance
+apiVersion: v1
+kind: Service
+metadata:
+  name: pasdbuses-pasdbus-itf2
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: pasdbuses-pasdbus-itf2
+    function: ska-low-mccs-pasd-bus
+    domain: ska-low-mccs-pasd-bus
+    subsystem: low-mccs-pasd
+
+spec:
+  type: ClusterIP
+  ports:
+  - name: tango-server
+    port: 45450
+    targetPort: 45450
+  - name: tango-heartbeat
+    port: 45460
+    targetPort: 45460
+  - name: tango-event
+    port: 45470
+    targetPort: 45470
+  selector:
+    subsystem: low-mccs-pasd
+    component: pasdbuses-pasdbus-itf2
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# one k8s service per instance
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartboxes-smartbox-itf1-sb01
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: smartboxes-smartbox-itf1-sb01
+    function: ska-low-mccs-pasd-smartbox
+    domain: ska-low-mccs-pasd-smartbox
+    subsystem: low-mccs-pasd
+
+spec:
+  type: ClusterIP
+  ports:
+  - name: tango-server
+    port: 45450
+    targetPort: 45450
+  - name: tango-heartbeat
+    port: 45460
+    targetPort: 45460
+  - name: tango-event
+    port: 45470
+    targetPort: 45470
+  selector:
+    subsystem: low-mccs-pasd
+    component: smartboxes-smartbox-itf1-sb01
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# one k8s service per instance
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartboxes-smartbox-itf1-sb19
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: smartboxes-smartbox-itf1-sb19
+    function: ska-low-mccs-pasd-smartbox
+    domain: ska-low-mccs-pasd-smartbox
+    subsystem: low-mccs-pasd
+
+spec:
+  type: ClusterIP
+  ports:
+  - name: tango-server
+    port: 45450
+    targetPort: 45450
+  - name: tango-heartbeat
+    port: 45460
+    targetPort: 45460
+  - name: tango-event
+    port: 45470
+    targetPort: 45470
+  selector:
+    subsystem: low-mccs-pasd
+    component: smartboxes-smartbox-itf1-sb19
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# one k8s service per instance
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartboxes-smartbox-itf2-sb02
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: smartboxes-smartbox-itf2-sb02
+    function: ska-low-mccs-pasd-smartbox
+    domain: ska-low-mccs-pasd-smartbox
+    subsystem: low-mccs-pasd
+
+spec:
+  type: ClusterIP
+  ports:
+  - name: tango-server
+    port: 45450
+    targetPort: 45450
+  - name: tango-heartbeat
+    port: 45460
+    targetPort: 45460
+  - name: tango-event
+    port: 45470
+    targetPort: 45470
+  selector:
+    subsystem: low-mccs-pasd
+    component: smartboxes-smartbox-itf2-sb02
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# one k8s service per instance
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartboxes-smartbox-itf2-sb11
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: smartboxes-smartbox-itf2-sb11
+    function: ska-low-mccs-pasd-smartbox
+    domain: ska-low-mccs-pasd-smartbox
+    subsystem: low-mccs-pasd
+
+spec:
+  type: ClusterIP
+  ports:
+  - name: tango-server
+    port: 45450
+    targetPort: 45450
+  - name: tango-heartbeat
+    port: 45460
+    targetPort: 45460
+  - name: tango-event
+    port: 45470
+    targetPort: 45470
+  selector:
+    subsystem: low-mccs-pasd
+    component: smartboxes-smartbox-itf2-sb11
+---
+# Source: ska-low-mccs-pasd/templates/pasd_configuration_server.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pasd-configuration-service
+  namespace: ska-low-mccs
+  labels:
+    component: pasd-configuration-service-low-itf
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8081
+  type: ClusterIP
+  selector:
+    component: pasd-configuration-service-low-itf
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: fieldstations-fieldstation-itf1
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: fieldstations-fieldstation-itf1
+    function: ska-low-mccs-pasd-fieldstation
+    domain: ska-low-mccs-pasd-fieldstation
+    subsystem: low-mccs-pasd
+
+spec:
+  selector:
+    matchLabels:
+      component: fieldstations-fieldstation-itf1
+      subsystem: low-mccs-pasd
+  serviceName: fieldstations-fieldstation-itf1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: fieldstations-fieldstation-itf1
+        function: ska-low-mccs-pasd-fieldstation
+        domain: ska-low-mccs-pasd-fieldstation
+        subsystem: low-mccs-pasd
+        app: ska-low-mccs-pasd
+    
+    spec:
+      volumes:
+        - name: configuration
+          configMap:
+            name: fieldstations-ska-low-mccs-pasd-dsconfig-json
+        
+      serviceAccountName: fieldstations-sa-ska-low-mccs-pasd
+      initContainers:
+      - name: wait-for-configuration
+        image: "bitnami/kubectl:latest"
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - kubectl wait job --for=jsonpath='{.status.succeeded}'=1 fieldstations-ska-low-mccs-pasd-config --timeout=120s || ( ! kubectl get job fieldstations-ska-low-mccs-pasd-config ); echo $?
+
+      - name: check-dependencies-0
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: device-server
+        image: "artefact.skao.int/ska-low-mccs-pasd:0.14.0"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - pasd_device_server
+          - "fieldstation-itf1"
+          - -ORBendPoint
+          - giop:tcp::$(TANGO_SERVER_PORT)
+          - -ORBendPointPublish
+          - giop:tcp:$(TANGO_SERVER_PUBLISH_HOSTNAME):$(TANGO_SERVER_PORT)
+        ports:
+        - containerPort: 45450
+          name: tango-server
+        - containerPort: 45460
+          name: tango-heartbeat
+        - containerPort: 45470
+          name: tango-event
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+          
+        livenessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        - name: TANGO_SERVER_PORT
+          value: "45450"
+        - name: TANGO_ZMQ_HEARTBEAT_PORT
+          value: "45460"
+        - name: TANGO_ZMQ_EVENT_PORT
+          value: "45470"
+        - name: TANGO_SERVER_PUBLISH_HOSTNAME
+          value: fieldstations-fieldstation-itf1.ska-low-mccs.svc.lowitf.internal.skao.int
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: fieldstations-fieldstation-itf2
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: fieldstations-fieldstation-itf2
+    function: ska-low-mccs-pasd-fieldstation
+    domain: ska-low-mccs-pasd-fieldstation
+    subsystem: low-mccs-pasd
+
+spec:
+  selector:
+    matchLabels:
+      component: fieldstations-fieldstation-itf2
+      subsystem: low-mccs-pasd
+  serviceName: fieldstations-fieldstation-itf2
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: fieldstations-fieldstation-itf2
+        function: ska-low-mccs-pasd-fieldstation
+        domain: ska-low-mccs-pasd-fieldstation
+        subsystem: low-mccs-pasd
+        app: ska-low-mccs-pasd
+    
+    spec:
+      volumes:
+        - name: configuration
+          configMap:
+            name: fieldstations-ska-low-mccs-pasd-dsconfig-json
+        
+      serviceAccountName: fieldstations-sa-ska-low-mccs-pasd
+      initContainers:
+      - name: wait-for-configuration
+        image: "bitnami/kubectl:latest"
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - kubectl wait job --for=jsonpath='{.status.succeeded}'=1 fieldstations-ska-low-mccs-pasd-config --timeout=120s || ( ! kubectl get job fieldstations-ska-low-mccs-pasd-config ); echo $?
+
+      - name: check-dependencies-0
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: device-server
+        image: "artefact.skao.int/ska-low-mccs-pasd:0.14.0"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - pasd_device_server
+          - "fieldstation-itf2"
+          - -ORBendPoint
+          - giop:tcp::$(TANGO_SERVER_PORT)
+          - -ORBendPointPublish
+          - giop:tcp:$(TANGO_SERVER_PUBLISH_HOSTNAME):$(TANGO_SERVER_PORT)
+        ports:
+        - containerPort: 45450
+          name: tango-server
+        - containerPort: 45460
+          name: tango-heartbeat
+        - containerPort: 45470
+          name: tango-event
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+          
+        livenessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        - name: TANGO_SERVER_PORT
+          value: "45450"
+        - name: TANGO_ZMQ_HEARTBEAT_PORT
+          value: "45460"
+        - name: TANGO_ZMQ_EVENT_PORT
+          value: "45470"
+        - name: TANGO_SERVER_PUBLISH_HOSTNAME
+          value: fieldstations-fieldstation-itf2.ska-low-mccs.svc.lowitf.internal.skao.int
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: fndhs-fndh-itf1
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: fndhs-fndh-itf1
+    function: ska-low-mccs-pasd-fndh
+    domain: ska-low-mccs-pasd-fndh
+    subsystem: low-mccs-pasd
+
+spec:
+  selector:
+    matchLabels:
+      component: fndhs-fndh-itf1
+      subsystem: low-mccs-pasd
+  serviceName: fndhs-fndh-itf1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: fndhs-fndh-itf1
+        function: ska-low-mccs-pasd-fndh
+        domain: ska-low-mccs-pasd-fndh
+        subsystem: low-mccs-pasd
+        app: ska-low-mccs-pasd
+    
+    spec:
+      volumes:
+        - name: configuration
+          configMap:
+            name: fndhs-ska-low-mccs-pasd-dsconfig-json
+        
+      serviceAccountName: fndhs-sa-ska-low-mccs-pasd
+      initContainers:
+      - name: wait-for-configuration
+        image: "bitnami/kubectl:latest"
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - kubectl wait job --for=jsonpath='{.status.succeeded}'=1 fndhs-ska-low-mccs-pasd-config --timeout=120s || ( ! kubectl get job fndhs-ska-low-mccs-pasd-config ); echo $?
+
+      - name: check-dependencies-0
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+
+      - name: check-dependencies-1
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - low-mccs/pasdbus/itf1
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: device-server
+        image: "artefact.skao.int/ska-low-mccs-pasd:0.14.0"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - pasd_device_server
+          - "fndh-itf1"
+          - -ORBendPoint
+          - giop:tcp::$(TANGO_SERVER_PORT)
+          - -ORBendPointPublish
+          - giop:tcp:$(TANGO_SERVER_PUBLISH_HOSTNAME):$(TANGO_SERVER_PORT)
+        ports:
+        - containerPort: 45450
+          name: tango-server
+        - containerPort: 45460
+          name: tango-heartbeat
+        - containerPort: 45470
+          name: tango-event
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+          
+        livenessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        - name: TANGO_SERVER_PORT
+          value: "45450"
+        - name: TANGO_ZMQ_HEARTBEAT_PORT
+          value: "45460"
+        - name: TANGO_ZMQ_EVENT_PORT
+          value: "45470"
+        - name: TANGO_SERVER_PUBLISH_HOSTNAME
+          value: fndhs-fndh-itf1.ska-low-mccs.svc.lowitf.internal.skao.int
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: fndhs-fndh-itf2
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: fndhs-fndh-itf2
+    function: ska-low-mccs-pasd-fndh
+    domain: ska-low-mccs-pasd-fndh
+    subsystem: low-mccs-pasd
+
+spec:
+  selector:
+    matchLabels:
+      component: fndhs-fndh-itf2
+      subsystem: low-mccs-pasd
+  serviceName: fndhs-fndh-itf2
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: fndhs-fndh-itf2
+        function: ska-low-mccs-pasd-fndh
+        domain: ska-low-mccs-pasd-fndh
+        subsystem: low-mccs-pasd
+        app: ska-low-mccs-pasd
+    
+    spec:
+      volumes:
+        - name: configuration
+          configMap:
+            name: fndhs-ska-low-mccs-pasd-dsconfig-json
+        
+      serviceAccountName: fndhs-sa-ska-low-mccs-pasd
+      initContainers:
+      - name: wait-for-configuration
+        image: "bitnami/kubectl:latest"
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - kubectl wait job --for=jsonpath='{.status.succeeded}'=1 fndhs-ska-low-mccs-pasd-config --timeout=120s || ( ! kubectl get job fndhs-ska-low-mccs-pasd-config ); echo $?
+
+      - name: check-dependencies-0
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+
+      - name: check-dependencies-1
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - low-mccs/pasdbus/itf2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: device-server
+        image: "artefact.skao.int/ska-low-mccs-pasd:0.14.0"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - pasd_device_server
+          - "fndh-itf2"
+          - -ORBendPoint
+          - giop:tcp::$(TANGO_SERVER_PORT)
+          - -ORBendPointPublish
+          - giop:tcp:$(TANGO_SERVER_PUBLISH_HOSTNAME):$(TANGO_SERVER_PORT)
+        ports:
+        - containerPort: 45450
+          name: tango-server
+        - containerPort: 45460
+          name: tango-heartbeat
+        - containerPort: 45470
+          name: tango-event
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+          
+        livenessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        - name: TANGO_SERVER_PORT
+          value: "45450"
+        - name: TANGO_ZMQ_HEARTBEAT_PORT
+          value: "45460"
+        - name: TANGO_ZMQ_EVENT_PORT
+          value: "45470"
+        - name: TANGO_SERVER_PUBLISH_HOSTNAME
+          value: fndhs-fndh-itf2.ska-low-mccs.svc.lowitf.internal.skao.int
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pasdbuses-pasdbus-itf1
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: pasdbuses-pasdbus-itf1
+    function: ska-low-mccs-pasd-bus
+    domain: ska-low-mccs-pasd-bus
+    subsystem: low-mccs-pasd
+
+spec:
+  selector:
+    matchLabels:
+      component: pasdbuses-pasdbus-itf1
+      subsystem: low-mccs-pasd
+  serviceName: pasdbuses-pasdbus-itf1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: pasdbuses-pasdbus-itf1
+        function: ska-low-mccs-pasd-bus
+        domain: ska-low-mccs-pasd-bus
+        subsystem: low-mccs-pasd
+        app: ska-low-mccs-pasd
+    
+    spec:
+      volumes:
+        - name: configuration
+          configMap:
+            name: pasdbuses-ska-low-mccs-pasd-dsconfig-json
+        
+      serviceAccountName: pasdbuses-sa-ska-low-mccs-pasd
+      initContainers:
+      - name: wait-for-configuration
+        image: "bitnami/kubectl:latest"
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - kubectl wait job --for=jsonpath='{.status.succeeded}'=1 pasdbuses-ska-low-mccs-pasd-config --timeout=120s || ( ! kubectl get job pasdbuses-ska-low-mccs-pasd-config ); echo $?
+
+      - name: check-dependencies-0
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: device-server
+        image: "artefact.skao.int/ska-low-mccs-pasd:0.14.0"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - pasd_device_server
+          - "pasdbus-itf1"
+          - -ORBendPoint
+          - giop:tcp::$(TANGO_SERVER_PORT)
+          - -ORBendPointPublish
+          - giop:tcp:$(TANGO_SERVER_PUBLISH_HOSTNAME):$(TANGO_SERVER_PORT)
+        ports:
+        - containerPort: 45450
+          name: tango-server
+        - containerPort: 45460
+          name: tango-heartbeat
+        - containerPort: 45470
+          name: tango-event
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+          
+        livenessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        - name: TANGO_SERVER_PORT
+          value: "45450"
+        - name: TANGO_ZMQ_HEARTBEAT_PORT
+          value: "45460"
+        - name: TANGO_ZMQ_EVENT_PORT
+          value: "45470"
+        - name: TANGO_SERVER_PUBLISH_HOSTNAME
+          value: pasdbuses-pasdbus-itf1.ska-low-mccs.svc.lowitf.internal.skao.int
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pasdbuses-pasdbus-itf2
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: pasdbuses-pasdbus-itf2
+    function: ska-low-mccs-pasd-bus
+    domain: ska-low-mccs-pasd-bus
+    subsystem: low-mccs-pasd
+
+spec:
+  selector:
+    matchLabels:
+      component: pasdbuses-pasdbus-itf2
+      subsystem: low-mccs-pasd
+  serviceName: pasdbuses-pasdbus-itf2
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: pasdbuses-pasdbus-itf2
+        function: ska-low-mccs-pasd-bus
+        domain: ska-low-mccs-pasd-bus
+        subsystem: low-mccs-pasd
+        app: ska-low-mccs-pasd
+    
+    spec:
+      volumes:
+        - name: configuration
+          configMap:
+            name: pasdbuses-ska-low-mccs-pasd-dsconfig-json
+        
+      serviceAccountName: pasdbuses-sa-ska-low-mccs-pasd
+      initContainers:
+      - name: wait-for-configuration
+        image: "bitnami/kubectl:latest"
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - kubectl wait job --for=jsonpath='{.status.succeeded}'=1 pasdbuses-ska-low-mccs-pasd-config --timeout=120s || ( ! kubectl get job pasdbuses-ska-low-mccs-pasd-config ); echo $?
+
+      - name: check-dependencies-0
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: device-server
+        image: "artefact.skao.int/ska-low-mccs-pasd:0.14.0"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - pasd_device_server
+          - "pasdbus-itf2"
+          - -ORBendPoint
+          - giop:tcp::$(TANGO_SERVER_PORT)
+          - -ORBendPointPublish
+          - giop:tcp:$(TANGO_SERVER_PUBLISH_HOSTNAME):$(TANGO_SERVER_PORT)
+        ports:
+        - containerPort: 45450
+          name: tango-server
+        - containerPort: 45460
+          name: tango-heartbeat
+        - containerPort: 45470
+          name: tango-event
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+          
+        livenessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        - name: TANGO_SERVER_PORT
+          value: "45450"
+        - name: TANGO_ZMQ_HEARTBEAT_PORT
+          value: "45460"
+        - name: TANGO_ZMQ_EVENT_PORT
+          value: "45470"
+        - name: TANGO_SERVER_PUBLISH_HOSTNAME
+          value: pasdbuses-pasdbus-itf2.ska-low-mccs.svc.lowitf.internal.skao.int
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: smartboxes-smartbox-itf1-sb01
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: smartboxes-smartbox-itf1-sb01
+    function: ska-low-mccs-pasd-smartbox
+    domain: ska-low-mccs-pasd-smartbox
+    subsystem: low-mccs-pasd
+
+spec:
+  selector:
+    matchLabels:
+      component: smartboxes-smartbox-itf1-sb01
+      subsystem: low-mccs-pasd
+  serviceName: smartboxes-smartbox-itf1-sb01
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: smartboxes-smartbox-itf1-sb01
+        function: ska-low-mccs-pasd-smartbox
+        domain: ska-low-mccs-pasd-smartbox
+        subsystem: low-mccs-pasd
+        app: ska-low-mccs-pasd
+    
+    spec:
+      volumes:
+        - name: configuration
+          configMap:
+            name: smartboxes-ska-low-mccs-pasd-dsconfig-json
+        
+      serviceAccountName: smartboxes-sa-ska-low-mccs-pasd
+      initContainers:
+      - name: wait-for-configuration
+        image: "bitnami/kubectl:latest"
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - kubectl wait job --for=jsonpath='{.status.succeeded}'=1 smartboxes-ska-low-mccs-pasd-config --timeout=120s || ( ! kubectl get job smartboxes-ska-low-mccs-pasd-config ); echo $?
+
+      - name: check-dependencies-0
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+
+      - name: check-dependencies-1
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - low-mccs/pasdbus/itf1
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: device-server
+        image: "artefact.skao.int/ska-low-mccs-pasd:0.14.0"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - pasd_device_server
+          - "smartbox-itf1-sb01"
+          - -ORBendPoint
+          - giop:tcp::$(TANGO_SERVER_PORT)
+          - -ORBendPointPublish
+          - giop:tcp:$(TANGO_SERVER_PUBLISH_HOSTNAME):$(TANGO_SERVER_PORT)
+        ports:
+        - containerPort: 45450
+          name: tango-server
+        - containerPort: 45460
+          name: tango-heartbeat
+        - containerPort: 45470
+          name: tango-event
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+          
+        livenessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        - name: TANGO_SERVER_PORT
+          value: "45450"
+        - name: TANGO_ZMQ_HEARTBEAT_PORT
+          value: "45460"
+        - name: TANGO_ZMQ_EVENT_PORT
+          value: "45470"
+        - name: TANGO_SERVER_PUBLISH_HOSTNAME
+          value: smartboxes-smartbox-itf1-sb01.ska-low-mccs.svc.lowitf.internal.skao.int
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: smartboxes-smartbox-itf1-sb19
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: smartboxes-smartbox-itf1-sb19
+    function: ska-low-mccs-pasd-smartbox
+    domain: ska-low-mccs-pasd-smartbox
+    subsystem: low-mccs-pasd
+
+spec:
+  selector:
+    matchLabels:
+      component: smartboxes-smartbox-itf1-sb19
+      subsystem: low-mccs-pasd
+  serviceName: smartboxes-smartbox-itf1-sb19
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: smartboxes-smartbox-itf1-sb19
+        function: ska-low-mccs-pasd-smartbox
+        domain: ska-low-mccs-pasd-smartbox
+        subsystem: low-mccs-pasd
+        app: ska-low-mccs-pasd
+    
+    spec:
+      volumes:
+        - name: configuration
+          configMap:
+            name: smartboxes-ska-low-mccs-pasd-dsconfig-json
+        
+      serviceAccountName: smartboxes-sa-ska-low-mccs-pasd
+      initContainers:
+      - name: wait-for-configuration
+        image: "bitnami/kubectl:latest"
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - kubectl wait job --for=jsonpath='{.status.succeeded}'=1 smartboxes-ska-low-mccs-pasd-config --timeout=120s || ( ! kubectl get job smartboxes-ska-low-mccs-pasd-config ); echo $?
+
+      - name: check-dependencies-0
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+
+      - name: check-dependencies-1
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - low-mccs/pasdbus/itf1
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: device-server
+        image: "artefact.skao.int/ska-low-mccs-pasd:0.14.0"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - pasd_device_server
+          - "smartbox-itf1-sb19"
+          - -ORBendPoint
+          - giop:tcp::$(TANGO_SERVER_PORT)
+          - -ORBendPointPublish
+          - giop:tcp:$(TANGO_SERVER_PUBLISH_HOSTNAME):$(TANGO_SERVER_PORT)
+        ports:
+        - containerPort: 45450
+          name: tango-server
+        - containerPort: 45460
+          name: tango-heartbeat
+        - containerPort: 45470
+          name: tango-event
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+          
+        livenessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        - name: TANGO_SERVER_PORT
+          value: "45450"
+        - name: TANGO_ZMQ_HEARTBEAT_PORT
+          value: "45460"
+        - name: TANGO_ZMQ_EVENT_PORT
+          value: "45470"
+        - name: TANGO_SERVER_PUBLISH_HOSTNAME
+          value: smartboxes-smartbox-itf1-sb19.ska-low-mccs.svc.lowitf.internal.skao.int
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: smartboxes-smartbox-itf2-sb02
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: smartboxes-smartbox-itf2-sb02
+    function: ska-low-mccs-pasd-smartbox
+    domain: ska-low-mccs-pasd-smartbox
+    subsystem: low-mccs-pasd
+
+spec:
+  selector:
+    matchLabels:
+      component: smartboxes-smartbox-itf2-sb02
+      subsystem: low-mccs-pasd
+  serviceName: smartboxes-smartbox-itf2-sb02
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: smartboxes-smartbox-itf2-sb02
+        function: ska-low-mccs-pasd-smartbox
+        domain: ska-low-mccs-pasd-smartbox
+        subsystem: low-mccs-pasd
+        app: ska-low-mccs-pasd
+    
+    spec:
+      volumes:
+        - name: configuration
+          configMap:
+            name: smartboxes-ska-low-mccs-pasd-dsconfig-json
+        
+      serviceAccountName: smartboxes-sa-ska-low-mccs-pasd
+      initContainers:
+      - name: wait-for-configuration
+        image: "bitnami/kubectl:latest"
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - kubectl wait job --for=jsonpath='{.status.succeeded}'=1 smartboxes-ska-low-mccs-pasd-config --timeout=120s || ( ! kubectl get job smartboxes-ska-low-mccs-pasd-config ); echo $?
+
+      - name: check-dependencies-0
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+
+      - name: check-dependencies-1
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - low-mccs/pasdbus/itf2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: device-server
+        image: "artefact.skao.int/ska-low-mccs-pasd:0.14.0"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - pasd_device_server
+          - "smartbox-itf2-sb02"
+          - -ORBendPoint
+          - giop:tcp::$(TANGO_SERVER_PORT)
+          - -ORBendPointPublish
+          - giop:tcp:$(TANGO_SERVER_PUBLISH_HOSTNAME):$(TANGO_SERVER_PORT)
+        ports:
+        - containerPort: 45450
+          name: tango-server
+        - containerPort: 45460
+          name: tango-heartbeat
+        - containerPort: 45470
+          name: tango-event
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+          
+        livenessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        - name: TANGO_SERVER_PORT
+          value: "45450"
+        - name: TANGO_ZMQ_HEARTBEAT_PORT
+          value: "45460"
+        - name: TANGO_ZMQ_EVENT_PORT
+          value: "45470"
+        - name: TANGO_SERVER_PUBLISH_HOSTNAME
+          value: smartboxes-smartbox-itf2-sb02.ska-low-mccs.svc.lowitf.internal.skao.int
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: smartboxes-smartbox-itf2-sb11
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: smartboxes-smartbox-itf2-sb11
+    function: ska-low-mccs-pasd-smartbox
+    domain: ska-low-mccs-pasd-smartbox
+    subsystem: low-mccs-pasd
+
+spec:
+  selector:
+    matchLabels:
+      component: smartboxes-smartbox-itf2-sb11
+      subsystem: low-mccs-pasd
+  serviceName: smartboxes-smartbox-itf2-sb11
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: smartboxes-smartbox-itf2-sb11
+        function: ska-low-mccs-pasd-smartbox
+        domain: ska-low-mccs-pasd-smartbox
+        subsystem: low-mccs-pasd
+        app: ska-low-mccs-pasd
+    
+    spec:
+      volumes:
+        - name: configuration
+          configMap:
+            name: smartboxes-ska-low-mccs-pasd-dsconfig-json
+        
+      serviceAccountName: smartboxes-sa-ska-low-mccs-pasd
+      initContainers:
+      - name: wait-for-configuration
+        image: "bitnami/kubectl:latest"
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - kubectl wait job --for=jsonpath='{.status.succeeded}'=1 smartboxes-ska-low-mccs-pasd-config --timeout=120s || ( ! kubectl get job smartboxes-ska-low-mccs-pasd-config ); echo $?
+
+      - name: check-dependencies-0
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+
+      - name: check-dependencies-1
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --ping-device
+          - low-mccs/pasdbus/itf2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: device-server
+        image: "artefact.skao.int/ska-low-mccs-pasd:0.14.0"
+        imagePullPolicy: IfNotPresent
+        command:
+          - retry
+          - --max=60
+          - --
+          - pasd_device_server
+          - "smartbox-itf2-sb11"
+          - -ORBendPoint
+          - giop:tcp::$(TANGO_SERVER_PORT)
+          - -ORBendPointPublish
+          - giop:tcp:$(TANGO_SERVER_PUBLISH_HOSTNAME):$(TANGO_SERVER_PORT)
+        ports:
+        - containerPort: 45450
+          name: tango-server
+        - containerPort: 45460
+          name: tango-heartbeat
+        - containerPort: 45470
+          name: tango-event
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+          
+        livenessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 45450
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        - name: TANGO_SERVER_PORT
+          value: "45450"
+        - name: TANGO_ZMQ_HEARTBEAT_PORT
+          value: "45460"
+        - name: TANGO_ZMQ_EVENT_PORT
+          value: "45470"
+        - name: TANGO_SERVER_PUBLISH_HOSTNAME
+          value: smartboxes-smartbox-itf2-sb11.ska-low-mccs.svc.lowitf.internal.skao.int
+        resources:
+          requests:
+            cpu: 20m
+            memory: 50Mi
+---
+# Source: ska-low-mccs-pasd/templates/pasd_configuration_server.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pasd-configuration-service
+  namespace: ska-low-mccs
+  labels:
+    component: pasd-configuration-service-low-itf
+spec:
+  selector:
+    matchLabels:
+      component: pasd-configuration-service-low-itf
+  replicas: 1
+  serviceName: pasd-configuration-service-low-itf
+  template:
+    metadata:
+      labels:
+        component: pasd-configuration-service-low-itf
+    spec:
+      serviceAccountName: config-watcher-acc
+      containers:
+      - name: pasd-configuration-service
+        image: artefact.skao.int/ska-low-mccs-pasd:0.14.0
+        imagePullPolicy: IfNotPresent
+        command: 
+          - "PasdConfigurationServer"
+        env:
+          - name: NAMESPACE
+            value: ska-low-mccs
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+---
+# run once Job for loading Device Server config
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fieldstations-ska-low-mccs-pasd-config
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: configurator
+    function: deployment
+    intent: enabling
+    domain: self-configuration
+
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      initContainers:
+      - name: check-databaseds-ready
+        image: artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --check-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: dsconfig
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command: # exit code 2 is CONFIG_APPLIED - https://github.com/MaxIV-KitsControls/lib-maxiv-dsconfig/blob/master/dsconfig/utils.py#L11 !!!! this should not be an error !!!!
+          - retry
+          - --max=60
+          - --
+          - sh
+          - data/bootstrap.sh
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+      volumes:
+        - name: configuration
+          configMap:
+            name: fieldstations-ska-low-mccs-pasd-dsconfig-json
+      restartPolicy: Never
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+---
+# run once Job for loading Device Server config
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fndhs-ska-low-mccs-pasd-config
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: configurator
+    function: deployment
+    intent: enabling
+    domain: self-configuration
+
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      initContainers:
+      - name: check-databaseds-ready
+        image: artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --check-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: dsconfig
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command: # exit code 2 is CONFIG_APPLIED - https://github.com/MaxIV-KitsControls/lib-maxiv-dsconfig/blob/master/dsconfig/utils.py#L11 !!!! this should not be an error !!!!
+          - retry
+          - --max=60
+          - --
+          - sh
+          - data/bootstrap.sh
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+      volumes:
+        - name: configuration
+          configMap:
+            name: fndhs-ska-low-mccs-pasd-dsconfig-json
+      restartPolicy: Never
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+---
+# run once Job for loading Device Server config
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pasdbuses-ska-low-mccs-pasd-config
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: configurator
+    function: deployment
+    intent: enabling
+    domain: self-configuration
+
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      initContainers:
+      - name: check-databaseds-ready
+        image: artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --check-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: dsconfig
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command: # exit code 2 is CONFIG_APPLIED - https://github.com/MaxIV-KitsControls/lib-maxiv-dsconfig/blob/master/dsconfig/utils.py#L11 !!!! this should not be an error !!!!
+          - retry
+          - --max=60
+          - --
+          - sh
+          - data/bootstrap.sh
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+      volumes:
+        - name: configuration
+          configMap:
+            name: pasdbuses-ska-low-mccs-pasd-dsconfig-json
+      restartPolicy: Never
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+---
+# run once Job for loading Device Server config
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: smartboxes-ska-low-mccs-pasd-config
+  namespace: ska-low-mccs
+  labels:
+    app: ska-low-mccs-pasd
+    component: configurator
+    function: deployment
+    intent: enabling
+    domain: self-configuration
+
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      initContainers:
+      - name: check-databaseds-ready
+        image: artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+        args:
+          - retry
+          - --max=60
+          - --
+          - tango_admin
+          - --check-device
+          - sys/database/2
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+      containers:
+      - name: dsconfig
+        image: "artefact.skao.int/ska-tango-images-tango-dsconfig:1.5.1"
+        imagePullPolicy: IfNotPresent
+        command: # exit code 2 is CONFIG_APPLIED - https://github.com/MaxIV-KitsControls/lib-maxiv-dsconfig/blob/master/dsconfig/utils.py#L11 !!!! this should not be an error !!!!
+          - retry
+          - --max=60
+          - --
+          - sh
+          - data/bootstrap.sh
+        env:
+        - name: TANGO_HOST
+          value: tango-databaseds:10000
+        volumeMounts:
+          - name: configuration
+            mountPath: data
+            readOnly: true
+      volumes:
+        - name: configuration
+          configMap:
+            name: smartboxes-ska-low-mccs-pasd-dsconfig-json
+      restartPolicy: Never
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+---
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+## if has
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+## if has
+
+ # range instances
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+---
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+## if has
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+## if has
+
+ # range instances
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+---
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+## if has
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+## if has
+
+ # range instances
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+---
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+## if has
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+## if has
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+## if has
+---
+# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+## if has
+
+ # range instances
+
