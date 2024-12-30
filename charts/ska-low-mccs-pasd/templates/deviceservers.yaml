@@ -2,12 +2,15 @@
 Deploy the Tango devices. For example,
 
   deviceServers:
-    fieldstations:
-      s8-1:
-        low-mccs/fieldstation/s8-1:
-          fndh_name: low-mccs/fndh/s8-1
-          fncc_name: low-mccs/fncc/s8-1
-          smartbox_names:
+    fieldstation-s8-1:
+      expose: true
+      devices:
+        MccsFieldStation:
+          low-mccs/fieldstation/s8-1:
+            StationName: s8-1
+            FndhFQDN: low-mccs/fndh/s8-1
+            FnccFQDN: low-mccs/fncc/s8-1
+            SmartBoxFQDNs:
             - low-mccs/smartbox/s8-1-sb01
             - low-mccs/smartbox/s8-1-sb02
             - low-mccs/smartbox/s8-1-sb03
@@ -32,48 +35,49 @@ Deploy the Tango devices. For example,
             - low-mccs/smartbox/s8-1-sb22
             - low-mccs/smartbox/s8-1-sb23
             - low-mccs/smartbox/s8-1-sb24
-          logging_level_default: 5
-          config_uri:
-            - "reference/data/url"
-            - "internal/path/config.yaml"
-            - "station_name"
-    pasdbuses:
-      s8-1:
-        low-mccs/pasdbus/s8-1:
-          host: 10.137.0.129
-          port: 502
-          timeout: 10
-          logging_level_default: 5
-    fndhs:
-      s8-1:
-        low-mccs/fndh/s8-1:
-          pasdbus_name: low-mccs/pasdbus/s8-1
-          logging_level_default: 5
-    fnccs:
-      s8-1:
-        low-mccs/fncc/s8-1:
-          pasdbus_name: low-mccs/pasdbus/s8-1
-          logging_level_default: 5
-    smartboxes:
-      s8-1-sb01:
-        low-mccs/smartbox/s8-1-sb01
-          smartbox_number: 1
-          fndh_name: low-mccs/fndh/s8-1
-          fndh_port: 1
-          pasdbus_name: low-mccs/pasdbus/s8-1
-          logging_level_default: 5
+            LoggingLevelDefault: 5
+            ConfigurationHost: pasd-configuration-service
+            ConfigurationPort: 8081
+    pasdbus-s8-1:
+      devices:
+        MccsPasdBus:
+          low-mccs/pasdbus/s8-1:
+            Host: 10.137.0.129
+            Port: 502
+            Timeout: 10
+            LoggingLevelDefault: 5
+    fndh-s8-1:
+      depends_on:
+      - device: low-mccs/pasdbus/s8-1
+      devices:
+        MccsFNDH:
+          low-mccs/fndh/s8-1:
+            PasdFQDN: low-mccs/pasdbus/itf1
+            LoggingLevelDefault: 5
+    fncc-s8-1:
+      devices:
+        MccsFncc:
+          low-mccs/fncc/s8-1:
+            PasdFQDN: low-mccs/pasdbus/s8-1
+            LoggingLevelDefault: 5
+    smartbox-s8-1-sb01:
+      depends_on:
+      - device: low-mccs/pasdbus/s8-1
+      devices:
+        MccsSmartbox:
+          low-mccs/smartbox/s8-1-sb01:
+            SmartboxNumber: 1
+            FieldStationName: low-mccs/fieldstation/itf1
+            FndhFQDN: low-mccs/fndh/itf1
+            PasdFQDN: low-mccs/pasdbus/itf1
+            LoggingLevelDefault: 5
 */}}
 {{ $localchart := . }}
-
-{{- range $key, $deviceserver := .Values.deviceServers }}
-
-{{- $filedeviceserver := tpl ($.Files.Get (printf "data/%s.yaml" $key)) $ | fromYaml }}
-{{- $name := $filedeviceserver.kubernetesName | default $key}}
-
-{{- $context := dict "name" $name "deviceserver" $filedeviceserver "image" $filedeviceserver.image "local" $localchart}}
+{{- if $.Values.deviceServers}}
+{{- $filedeviceserver := tpl ($.Files.Get "data/pasd_device_server.yaml") . | fromYaml }}
+{{- $context := dict "name" "mccs-pasd" "deviceserver" $filedeviceserver "image" $filedeviceserver.image "local" $localchart}}
 {{ template "ska-tango-util.multidevice-config.tpl" $context }}
 {{ template "ska-tango-util.multidevice-sacc-role.tpl" $context }}
 {{ template "ska-tango-util.multidevice-job.tpl" $context }}
 {{ template "ska-tango-util.multidevice-svc.tpl" $context }}
-
-{{- end }}
+{{- end}}

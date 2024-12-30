@@ -17,8 +17,6 @@ global:
   tango_host: databaseds-tango-base:10000
   cluster_domain: cluster.local
 
-exposeDeviceServers: true
-
 livenessProbe:
   initialDelaySeconds: 0
   periodSeconds: 10
@@ -51,57 +49,75 @@ image:
   pullPolicy: IfNotPresent
 
 deviceServers: {}  # e.g.:
-  # fieldstations:
-  #   s8-1:
-  #     low-mccs/fieldstations/s8-1:
-  #       fndh_name: low-mccs/fndh/s8-1
-  #       configuration_host: "pasd-configuration-service"
-  #       configuration_port: 8081
-  #       smartbox_names:
+  # fieldstation-s8-1:
+  #   expose: true
+  #   devices:
+  #     MccsFieldStation:
+  #       low-mccs/fieldstation/s8-1:
+  #         StationName: s8-1
+  #         FndhFQDN: low-mccs/fndh/s8-1
+  #         FnccFQDN: low-mccs/fncc/s8-1
+  #         SmartBoxFQDNs:
   #         - low-mccs/smartbox/s8-1-sb01
   #         - low-mccs/smartbox/s8-1-sb02
-  #       logging_level_default: 5
-  # fndhs:
-  #   s8-1:
-  #     low-mccs/fndh/s8-1:
-  #       pasdbus_name: low-mccs/pasdbus/s8-1
-  #       logging_level_default: 5
-  # fnccs:
-  #   s8-1:
-  #     low-mccs/fncc/s8-1:
-  #       pasdbus_name: low-mccs/pasdbus/s8-1
-  #       logging_level_default: 5
-  # smartboxes:
-  #   s8-1-sb01:
-  #     low-mccs/smartbox/s8-1-sb01:
-  #       smartbox_number: 1
-  #       fndh_name: "low-mccs/fndh/s8-1"
-  #       field_station_name: "low-mccs/fieldstation/s8-1"
-  #       fndh_port: 1
-  #       pasdbus_name: "low-mccs/pasdbus/s8-1"
-  #       logging_level_default: 5
-  #   s8-1-sb02:
-  #     low-mccs/smartbox/s8-1-sb01:
-  #       pasdbus_name: "low-mccs/pasdbus/s8-1"
-  #       fndh_name: "low-mccs/fndh/s8-1"
-  #       field_station_name: "low-mccs/fieldstation/s8-1"
-  #       smartbox_number: 1
-  #       fndh_port: 1
-  #       logging_level_default: 5
-  # pasdbuses:
-  #   s8-1:
-  #     low-mccs/pasdbus/s8-1:
-  #       host: 10.137.0.129
-  #       port: 502
-  #       timeout: 10.0
-  #       polling_rate: 1.0  # optional; defaults to 0.5
-  #       device_polling_rate: 20.0  # optional; defaults to 15.0
-  #       low_pass_filter_cutoff: 9.0  # optional; defaults to 10.0
-  #       available_smartboxes: # optional; defaults to range(1,25)
-  #         - 1
-  #         - 2
-  #         - 3
-  #       logging_level_default: 5
+  #         - low-mccs/smartbox/s8-1-sb03
+  #         - low-mccs/smartbox/s8-1-sb04
+  #         - low-mccs/smartbox/s8-1-sb05
+  #         - low-mccs/smartbox/s8-1-sb06
+  #         - low-mccs/smartbox/s8-1-sb07
+  #         - low-mccs/smartbox/s8-1-sb08
+  #         - low-mccs/smartbox/s8-1-sb09
+  #         - low-mccs/smartbox/s8-1-sb10
+  #         - low-mccs/smartbox/s8-1-sb11
+  #         - low-mccs/smartbox/s8-1-sb12
+  #         - low-mccs/smartbox/s8-1-sb13
+  #         - low-mccs/smartbox/s8-1-sb14
+  #         - low-mccs/smartbox/s8-1-sb15
+  #         - low-mccs/smartbox/s8-1-sb16
+  #         - low-mccs/smartbox/s8-1-sb17
+  #         - low-mccs/smartbox/s8-1-sb18
+  #         - low-mccs/smartbox/s8-1-sb19
+  #         - low-mccs/smartbox/s8-1-sb20
+  #         - low-mccs/smartbox/s8-1-sb21
+  #         - low-mccs/smartbox/s8-1-sb22
+  #         - low-mccs/smartbox/s8-1-sb23
+  #         - low-mccs/smartbox/s8-1-sb24
+  #         LoggingLevelDefault: 5
+  #         ConfigurationHost: pasd-configuration-service
+  #         ConfigurationPort: 8081
+  # pasdbus-s8-1:
+  #   devices:
+  #     MccsPasdBus:
+  #       low-mccs/pasdbus/s8-1:
+  #         Host: 10.137.0.129
+  #         Port: 502
+  #         Timeout: 10
+  #         LoggingLevelDefault: 5
+  # fndh-s8-1:
+  #   depends_on:
+  #   - device: low-mccs/pasdbus/s8-1
+  #   devices:
+  #     MccsFNDH:
+  #       low-mccs/fndh/s8-1:
+  #         PasdFQDN: low-mccs/pasdbus/itf1
+  #         LoggingLevelDefault: 5
+  # fncc-s8-1:
+  #   devices:
+  #     MccsFncc:
+  #       low-mccs/fncc/s8-1:
+  #         PasdFQDN: low-mccs/pasdbus/s8-1
+  #         LoggingLevelDefault: 5
+  # smartbox-s8-1-sb01:
+  #   depends_on:
+  #   - device: low-mccs/pasdbus/s8-1
+  #   devices:
+  #     MccsSmartbox:
+  #       low-mccs/smartbox/s8-1-sb01:
+  #         SmartboxNumber: 1
+  #         FieldStationName: low-mccs/fieldstation/itf1
+  #         FndhFQDN: low-mccs/fndh/itf1
+  #         PasdFQDN: low-mccs/pasdbus/itf1
+  #         LoggingLevelDefault: 5
 
 simulators: {}  # e.g.:
   # pasds:
