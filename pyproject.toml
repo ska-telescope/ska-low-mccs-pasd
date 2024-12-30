@@ -82,13 +82,8 @@ cerberus = "^1.3.5"
 
 [tool.poetry.scripts]
 pasd_device_server = "ska_low_mccs_pasd:main"
-MccsPasdBus = "ska_low_mccs_pasd.pasd_bus.pasd_bus_device:main"
 PasdBusSimulatorServer = "ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator_server:main"
-MccsSmartBox = "ska_low_mccs_pasd.smart_box.smart_box_device:main"
 PasdConfigurationServer = "ska_low_mccs_pasd.reference_data_store.pasd_config_client_server:main"
-MccsFNDH = "ska_low_mccs_pasd.fndh.fndh_device:main"
-MccsFNCC = "ska_low_mccs_pasd.fncc.fncc_device:main"
-MccsFieldStation = "ska_low_mccs_pasd.field_station.field_station_device:main"
 
 [tool.black]
 line-length = 88

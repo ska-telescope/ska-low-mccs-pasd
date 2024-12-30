@@ -40,7 +40,7 @@ from .pasd_bus_conversions import FndhStatusMap, SmartboxStatusMap
 from .pasd_bus_health_model import PasdBusHealthModel
 from .pasd_bus_register_map import DesiredPowerEnum
 
-__all__ = ["MccsPasdBus", "main"]
+__all__ = ["MccsPasdBus"]
 
 
 DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
@@ -1273,22 +1273,3 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         """
         handler = self.get_command_object("GetPasdDeviceSubscriptions")
         return handler(device_number)
-
-
-# ----------
-# Run server
-# ----------
-def main(*args: str, **kwargs: str) -> int:  # pragma: no cover
-    """
-    Entry point for module.
-
-    :param args: positional arguments
-    :param kwargs: named arguments
-
-    :return: exit code
-    """
-    return MccsPasdBus.run_server(args=args or None, **kwargs)
-
-
-if __name__ == "__main__":
-    main()

@@ -27,7 +27,7 @@ from tango.server import attribute, command, device_property
 
 from .field_station_component_manager import FieldStationComponentManager
 
-__all__ = ["MccsFieldStation", "main"]
+__all__ = ["MccsFieldStation"]
 
 
 DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
@@ -538,22 +538,3 @@ class MccsFieldStation(SKABaseDevice):
         :return: the health report.
         """
         return self._health_report
-
-
-# ----------
-# Run server
-# ----------
-def main(*args: str, **kwargs: str) -> int:
-    """
-    Entry point for module.
-
-    :param args: positional arguments
-    :param kwargs: named arguments
-
-    :return: exit code
-    """
-    return MccsFieldStation.run_server(args=args or None, **kwargs)
-
-
-if __name__ == "__main__":
-    main()
