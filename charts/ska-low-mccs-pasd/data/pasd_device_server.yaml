@@ -23,6 +23,14 @@ server:
 {{- with $this_server.expose}}
     exposeDS: {{.}}
 {{- end}}
+{{- with $this_server.image}}
+{{- $image_spec := pick . "registry" "tag"}}
+{{- with $this_server.image.name}}
+{{- $_ := set $image_spec "image" .}}
+{{- end}}
+    image:
+{{- toYaml $image_spec | nindent 6}}
+{{- end}}
     classes:
 {{- range $device_type, $device_spec := $this_server.devices}}
     - name: {{$device_type}}
