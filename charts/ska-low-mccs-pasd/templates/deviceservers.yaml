@@ -74,7 +74,7 @@ Deploy the Tango devices. For example,
 */}}
 {{ $localchart := . }}
 {{- if $.Values.deviceServers}}
-{{- $filedeviceserver := tpl ($.Files.Get "data/pasd_device_server.yaml") . | fromYaml }}
+{{- $filedeviceserver := tpl .Values.deviceServerDefinition . | fromYaml }}
 {{- $context := dict "name" "mccs-pasd" "deviceserver" $filedeviceserver "image" $filedeviceserver.image "local" $localchart}}
 {{ template "ska-tango-util.multidevice-config.tpl" $context }}
 {{ template "ska-tango-util.multidevice-sacc-role.tpl" $context }}
