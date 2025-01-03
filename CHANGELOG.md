@@ -1,5 +1,9 @@
 # Version History
 
+## 0.15.0
+
+* [THORN-51]: Helm chart support for multi-device-class device servers
+
 ## 0.14.0
 
 * [THORN-1]: Multi-class device server endpoint
