@@ -1,5 +1,9 @@
 # Version History
 
+## 0.14.1
+
+* [THORN-37] Rerelease of 0.14.0 due to pipeline issues
+
 ## 0.14.0
 
 * [THORN-1]: Multi-class device server endpoint
