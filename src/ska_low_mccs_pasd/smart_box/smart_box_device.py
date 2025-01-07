@@ -32,7 +32,7 @@ from ..pasd_utils import configure_alarms
 from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
 
-__all__ = ["MccsSmartBox", "main"]
+__all__ = ["MccsSmartBox"]
 
 
 class JsonSerialize(json.JSONEncoder):
@@ -613,22 +613,3 @@ class MccsSmartBox(SKABaseDevice):
         """
         self._health_model.use_new_health_rules = use_new_rules
         self._health_model.update_health()
-
-
-# ----------
-# Run server
-# ----------
-def main(*args: str, **kwargs: str) -> int:
-    """
-    Launch an `MccsSmartBox` Tango device server instance.
-
-    :param args: positional arguments, passed to the Tango device
-    :param kwargs: keyword arguments, passed to the sever
-
-    :return: the Tango server exit code
-    """
-    return MccsSmartBox.run_server(args=args or None, **kwargs)
-
-
-if __name__ == "__main__":
-    main()

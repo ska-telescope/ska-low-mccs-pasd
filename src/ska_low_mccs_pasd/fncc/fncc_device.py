@@ -22,7 +22,7 @@ from ..pasd_controllers_configuration import ControllerDict, PasdControllersConf
 from .fncc_component_manager import FnccComponentManager
 from .fncc_health_model import FnccHealthModel
 
-__all__ = ["MccsFNCC", "main"]
+__all__ = ["MccsFNCC"]
 
 
 @dataclass
@@ -307,22 +307,3 @@ class MccsFNCC(SKABaseDevice[FnccComponentManager]):
                 f"""The attribute {attr_name} pushed from MccsPasdBus
                 device does not exist in MccsFNCC"""
             )
-
-
-# ----------
-# Run server
-# ----------
-def main(*args: str, **kwargs: str) -> int:
-    """
-    Launch an `MccsFNCC` Tango device server instance.
-
-    :param args: positional arguments, passed to the Tango device
-    :param kwargs: keyword arguments, passed to the sever
-
-    :return: the Tango server exit code
-    """
-    return MccsFNCC.run_server(args=args or None, **kwargs)
-
-
-if __name__ == "__main__":
-    main()

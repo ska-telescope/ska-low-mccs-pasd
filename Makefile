@@ -120,9 +120,9 @@ k8s-do-test:
 	exit $$EXIT_CODE
 
 k8s-pre-install-chart:
-	pip install --extra-index-url https://artefact.skao.int/repository/pypi-internal/simple ska-telmodel
+	pip install --extra-index-url https://artefact.skao.int/repository/pypi-internal/simple ska-telmodel check-jsonschema
 k8s-pre-uninstall-chart:
-	pip install --extra-index-url https://artefact.skao.int/repository/pypi-internal/simple ska-telmodel
+	pip install --extra-index-url https://artefact.skao.int/repository/pypi-internal/simple ska-telmodel check-jsonschema
 
 #######################################
 # HELM

@@ -39,7 +39,7 @@ from ..pasd_utils import configure_alarms
 from .fndh_component_manager import FndhComponentManager
 from .fndh_health_model import FndhHealthModel
 
-__all__ = ["MccsFNDH", "main"]
+__all__ = ["MccsFNDH"]
 
 
 DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
@@ -866,22 +866,3 @@ class MccsFNDH(SKABaseDevice[FndhComponentManager]):
         :return: the health report.
         """
         return self._health_model.health_report
-
-
-# ----------
-# Run server
-# ----------
-def main(*args: str, **kwargs: str) -> int:
-    """
-    Launch an `MccsFNDH` Tango device server instance.
-
-    :param args: positional arguments, passed to the Tango device
-    :param kwargs: keyword arguments, passed to the sever
-
-    :return: the Tango server exit code
-    """
-    return MccsFNDH.run_server(args=args or None, **kwargs)
-
-
-if __name__ == "__main__":
-    main()
