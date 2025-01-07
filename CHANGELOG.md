@@ -1,5 +1,10 @@
 # Version History
 
+## 0.15.1
+
+* [THORN-55]: Fix python package build bug that prevented publication of
+  python wheel for v0.15.0
+
 ## 0.15.0
 
 * [THORN-51]: Helm chart support for multi-device-class device servers
