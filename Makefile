@@ -118,10 +118,11 @@ k8s-do-test:
 	echo $$EXIT_CODE > build/status
 	exit $$EXIT_CODE
 
-k8s-pre-install-chart:
+telmodel-deps:
 	pip install --extra-index-url https://artefact.skao.int/repository/pypi-internal/simple ska-telmodel check-jsonschema
-k8s-pre-uninstall-chart:
-	pip install --extra-index-url https://artefact.skao.int/repository/pypi-internal/simple ska-telmodel check-jsonschema
+
+k8s-pre-install-chart: telmodel-deps
+k8s-pre-uninstall-chart: telmodel-deps
 
 #######################################
 # HELM
@@ -153,7 +154,7 @@ endif
 ########################################################################
 helmfile-lint:
 	SKIPDEPS=""
-	for environment in minikube-ci stfc-ci aa0.5-production aavs3-production aavs3-minikube low-itf low-itf-minikube; do \
+	for environment in minikube-ci stfc-ci aa0.5-production low-itf low-itf-minikube; do \
         echo "Linting helmfile against environment '$$environment'" ; \
 		helmfile -e $$environment lint $$SKIPDEPS; \
 		EXIT_CODE=$$? ; \
