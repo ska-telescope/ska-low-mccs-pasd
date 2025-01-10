@@ -48,14 +48,6 @@ include:
   - project: 'ska-telescope/templates-repository'
     file: gitlab-ci/includes/notebook.gitlab-ci.yml
 
-python-lint:
-  before_script:
-    - python -V || true
-    - python3 -V || true
-    - python3.11 -V || true
-    - ls /usr/bin/python* || true
-    - ls /usr/local/bin/python* || true
-
 notebook-lint:
   when: manual
 
