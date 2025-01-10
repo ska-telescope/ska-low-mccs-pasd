@@ -21,6 +21,13 @@ PYTHON_LINE_LENGTH = 88
 PYTHON_VARS_AFTER_PYTEST = --forked
 PYTHON_LINT_TARGET = src/ tests/
 
+python-pre-lint:
+	@-python -V
+	@-python3 -V
+	@-python3.11 -V
+	@-ls /usr/bin/python*
+	@-ls /usr/local/bin/python*
+
 python-post-lint:
 	$(PYTHON_RUNNER) mypy --config-file mypy.ini src/ tests/
 
