@@ -96,6 +96,7 @@ docs-3-11-build:
   when: on_success
   before_script:
     - *install-python-3-11
+    - update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
     - !reference [docs-build, before_script]
 
 # TODO: For now this manual step deploys to the STFC cloud just like the
