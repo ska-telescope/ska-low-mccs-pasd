@@ -60,7 +60,7 @@ python3-11-lint:
   before_script:
     - export DEBIAN_FRONTEND=noninteractive
     - apt update
-    - apt install -y software-properties-common
+    - apt install -y software-properties-common gnupg dirmngr
     - add-apt-repository ppa:deadsnakes/ppa
     - apt install -y python3.11 python3.11-venv
     - python3.11 -m ensurepip
