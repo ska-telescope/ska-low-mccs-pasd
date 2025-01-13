@@ -54,20 +54,36 @@ notebook-lint:
 notebook-test:
   when: manual
 
+python-lint:
+  when: never
+
+python-test:
+  when: never
+
+install-python-3-11: &install-python-3-11
+  - export DEBIAN_FRONTEND=noninteractive
+  - apt update
+  - apt install -y software-properties-common gnupg dirmngr
+  - add-apt-repository ppa:deadsnakes/ppa
+  - apt install -y python3.11 python3.11-venv
+  - python3.11 -m ensurepip
+  - python3.11 -m pip install --upgrade pip poetry
+  - poetry config virtualenvs.create false
+  - apt clean
+
 python3-11-lint:
   extends: python-lint
   stage: lint
   before_script:
-    - export DEBIAN_FRONTEND=noninteractive
-    - apt update
-    - apt install -y software-properties-common gnupg dirmngr
-    - add-apt-repository ppa:deadsnakes/ppa
-    - apt install -y python3.11 python3.11-venv
-    - python3.11 -m ensurepip
-    - python3.11 -m pip install --upgrade pip poetry
-    - poetry config virtualenvs.create false
-    - apt clean
+    - *install-python-3-11
     - !reference [python-lint, before_script]
+
+python-3-11-test:
+  extends: python-test
+  stage: test
+  before_script:
+    - *install-python-3-11
+    - !reference [python-test, before_script]
 
 
 # TODO: For now this manual step deploys to the STFC cloud just like the
