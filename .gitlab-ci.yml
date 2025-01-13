@@ -55,10 +55,10 @@ notebook-test:
   when: manual
 
 python-lint:
-  when: never
+  when: manual
 
 python-test:
-  when: never
+  when: manual
 
 .install-python-3-11: &install-python-3-11
   - export DEBIAN_FRONTEND=noninteractive
