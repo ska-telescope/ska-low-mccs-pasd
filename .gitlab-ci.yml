@@ -92,7 +92,7 @@ python-3-11-test:
 
 docs-3-11-build:
   extends: docs-build
-  stage: test
+  stage: build
   when: on_success
   before_script:
     - *install-python-3-11
