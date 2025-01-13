@@ -60,7 +60,7 @@ python-lint:
 python-test:
   when: never
 
-install-python-3-11: &install-python-3-11
+.install-python-3-11: &install-python-3-11
   - export DEBIAN_FRONTEND=noninteractive
   - apt update
   - apt install -y software-properties-common gnupg dirmngr
