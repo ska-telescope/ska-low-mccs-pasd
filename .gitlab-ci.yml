@@ -54,7 +54,9 @@ notebook-lint:
 notebook-test:
   when: manual
 
-python-lint:
+python3-11-lint:
+  extends: python-lint
+  stage: lint
   before_script:
     - echo "Before thingy"
     - !reference [python-lint, before_script]
