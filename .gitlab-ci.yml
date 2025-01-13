@@ -54,6 +54,12 @@ notebook-lint:
 notebook-test:
   when: manual
 
+python-lint:
+  before_script:
+    - echo "Before thingy"
+    - !reference [python-lint, before_script]
+    - echo "After thingy"
+
 # TODO: For now this manual step deploys to the STFC cloud just like the
 # automatic step does.
 # In future, we'll set it to deploy to an environment with PaSD hardware
