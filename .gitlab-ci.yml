@@ -54,12 +54,6 @@ notebook-lint:
 notebook-test:
   when: manual
 
-python-lint:
-  when: manual
-
-python-test:
-  when: manual
-
 .install-python-3-11: &install-python-3-11
   - export DEBIAN_FRONTEND=noninteractive
   - apt update
@@ -71,9 +65,16 @@ python-test:
   - poetry config virtualenvs.create false
   - apt clean
 
+python-lint:
+  when: manual
+
+python-test:
+  when: manual
+
 python3-11-lint:
   extends: python-lint
   stage: lint
+  when: on_success
   before_script:
     - *install-python-3-11
     - !reference [python-lint, before_script]
@@ -81,6 +82,7 @@ python3-11-lint:
 python-3-11-test:
   extends: python-test
   stage: test
+  when: on_success
   before_script:
     - *install-python-3-11
     - !reference [python-test, before_script]
