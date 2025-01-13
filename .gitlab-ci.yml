@@ -58,16 +58,15 @@ python3-11-lint:
   extends: python-lint
   stage: lint
   before_script:
-    - |
-      export DEBIAN_FRONTEND=noninteractive
-      apt update && apt install -y \
-          software-properties-common \
-          && add-apt-repository ppa:deadsnakes/ppa \
-          && apt install -y python3.11 python3.11-venv \
-          && python3.11 -m ensurepip \
-          && python3.11 -m pip install --upgrade pip poetry \
-          && poetry config virtualenvs.create false \
-          && apt clean
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt update
+    - apt install -y software-properties-common
+    - add-apt-repository ppa:deadsnakes/ppa
+    - apt install -y python3.11 python3.11-venv
+    - python3.11 -m ensurepip
+    - python3.11 -m pip install --upgrade pip poetry
+    - poetry config virtualenvs.create false
+    - apt clean
     - !reference [python-lint, before_script]
 
 
