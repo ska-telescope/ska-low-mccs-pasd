@@ -71,7 +71,10 @@ python-lint:
 python-test:
   when: manual
 
-python3-11-lint:
+docs-build:
+  when: manual
+
+python-3-11-lint:
   extends: python-lint
   stage: lint
   when: on_success
@@ -87,6 +90,13 @@ python-3-11-test:
     - *install-python-3-11
     - !reference [python-test, before_script]
 
+docs-3-11-build:
+  extends: docs-build
+  stage: test
+  when: on_success
+  before_script:
+    - *install-python-3-11
+    - !reference [docs-build, before_script]
 
 # TODO: For now this manual step deploys to the STFC cloud just like the
 # automatic step does.
