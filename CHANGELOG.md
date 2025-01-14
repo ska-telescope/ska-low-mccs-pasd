@@ -1,5 +1,10 @@
 # Version History
 
+## 0.15.2
+
+* [SKB-713]: Fix attribute useNewHealthRules.
+* [THORN-48]: Update deployment to use local telmodel.
+
 ## 0.15.1
 
 * [THORN-55]: Fix python package build bug that prevented publication of
