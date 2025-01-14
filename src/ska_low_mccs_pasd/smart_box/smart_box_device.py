@@ -595,7 +595,7 @@ class MccsSmartBox(SKABaseDevice):
         """
         return self._health_model.health_report
 
-    @attribute(dtype=(bool,), label="useNewHealthRules")
+    @attribute(dtype="DevBoolean", label="useNewHealthRules")
     def useNewHealthRules(self: MccsSmartBox) -> bool:
         """
         Get whether to use new health rules.
