@@ -145,7 +145,6 @@ class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
         )
-        self.logger.error(f"My python version is: {sys.version}")
 
     def _setup_controller_attributes(
         self: MccsPasdBus, controller_config: ControllerDict, id_no: str = ""
