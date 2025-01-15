@@ -1,6 +1,6 @@
 # Version History
 
-## Unreleased
+## 0.16.0
 
 * [MCCS-2330] Update pytango to 10.0.0
 * [SKB-713]: Remove not implemented health monitoring points from rollup.
