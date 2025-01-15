@@ -27,16 +27,6 @@
       "minItems": 4,
       "maxItems": 4
     },
-    "psu48vvoltage2": {
-      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
-      "type": "array",
-      "items": {
-        "type": "number",
-        "minimum": 0
-      },
-      "minItems": 4,
-      "maxItems": 4
-    },
     "psu48vcurrent": {
       "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
       "type": "array",
@@ -56,15 +46,6 @@
       "maxItems": 4
     },
     "psu48vtemperature2": {
-      "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
-      "type": "array",
-      "items": {
-        "type": "number"
-      },
-      "minItems": 4,
-      "maxItems": 4
-    },
-    "paneltemperature": {
       "description": "See https://developer.skao.int/projects/ska-low-mccs-pasd/en/latest/user/fndh.html",
       "type": "array",
       "items": {
@@ -132,11 +113,9 @@
     "failed_percent_uncontrolled_smartbox",
     "degraded_percent_uncontrolled_smartbox",
     "psu48vvoltage1",
-    "psu48vvoltage2",
     "psu48vcurrent",
     "psu48vtemperature1",
     "psu48vtemperature2",
-    "paneltemperature",
     "fncbtemperature",
     "fncbhumidity",
     "commsgatewaytemperature",
