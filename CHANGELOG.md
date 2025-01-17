@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [MCCS-2330] Update pytango to 10.0.0
+
 ## 0.15.2
 
 * [SKB-713]: Fix attribute useNewHealthRules.
