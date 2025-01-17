@@ -56,11 +56,11 @@ class FndhHealthModel(BaseHealthModel):
     # This dictionary contains a list of the FNDH monitoring points supported.
     SUPPORTED_MONITORING_POINTS: Final[dict[str, Any]] = {
         "psu48vvoltage1": None,
-        "psu48vvoltage2": None,  # note: Not implemented in hardware
+        # "psu48vvoltage2": None,  # note: Not implemented in hardware, see SPRTS-347
         "psu48vcurrent": None,
         "psu48vtemperature1": None,
         "psu48vtemperature2": None,
-        "paneltemperature": None,  # note: Not implemented in hardware
+        # "paneltemperature": None,  # note: Not implemented in hardware, see SPRTS-347
         "fncbtemperature": None,
         "fncbhumidity": None,
         "commsgatewaytemperature": None,

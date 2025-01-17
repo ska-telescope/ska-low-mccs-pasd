@@ -131,6 +131,15 @@ class SmartBoxHealthModel(BaseHealthModel):
         :param params: A dictionary of parameters with the param name as key and
             threshold as value
         """
+        if params.get("pcbtemperature") is not None:
+            if self.logger:
+                self.logger.warning(
+                    "Monitoring point pcbtemperature is "
+                    "not implemented in hardware "
+                    "and is not rolled up in health. "
+                    "see SPRTS-347",
+                )
+            params.pop("pcbtemperature")
         self._health_rules._thresholds = self._merge_dicts(
             self._health_rules._thresholds, params
         )
