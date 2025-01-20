@@ -342,6 +342,7 @@ class PasdTangoTestHarness:
             FEMCurrentTripThreshold=fem_current_trip_threshold,
             SimulationConfig=int(SimulationMode.TRUE),
             AvailableSmartboxes=available_smartboxes,
+            ParentTRL=get_field_station_name(),
             LoggingLevelDefault=logging_level,
         )
 
@@ -414,6 +415,7 @@ class PasdTangoTestHarness:
             get_fndh_name(self._station_label),
             device_class,
             PasdFQDN=get_pasd_bus_name(),
+            ParentTRL=get_field_station_name(),
             LoggingLevelDefault=logging_level,
         )
 
@@ -436,6 +438,7 @@ class PasdTangoTestHarness:
             get_fncc_name(self._station_label),
             device_class,
             PasdFQDN=get_pasd_bus_name(),
+            ParentTRL=get_field_station_name(),
             LoggingLevelDefault=logging_level,
         )
 
@@ -500,6 +503,7 @@ class PasdTangoTestHarness:
             device_class,
             FieldStationName=get_field_station_name(),
             PasdFQDN=get_pasd_bus_name(),
+            ParentTRL=get_field_station_name(),
             SmartBoxNumber=smartbox_id,
             LoggingLevelDefault=logging_level,
         )
