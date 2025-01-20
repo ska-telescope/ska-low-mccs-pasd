@@ -15,7 +15,7 @@ from typing import Any, Final, Optional, cast
 
 import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState
-from ska_tango_base.base import SKABaseDevice
+from ska_low_mccs_common import MccsBaseDevice
 from tango.server import device_property
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
@@ -34,7 +34,7 @@ class FNCCAttribute:
     timestamp: float
 
 
-class MccsFNCC(SKABaseDevice[FnccComponentManager]):
+class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
     """An implementation of the FNCC device for MCCS."""
 
     # -----------------

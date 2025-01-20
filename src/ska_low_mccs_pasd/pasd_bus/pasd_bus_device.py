@@ -26,7 +26,7 @@ from ska_control_model import (
     ResultCode,
     SimulationMode,
 )
-from ska_tango_base.base import SKABaseDevice
+from ska_low_mccs_common import MccsBaseDevice
 from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidator
 from tango import AttrQuality
 from tango.device_attribute import ExtractAs
@@ -56,7 +56,7 @@ class PasdAttribute:
 
 
 # pylint: disable=too-many-lines, too-many-instance-attributes
-class MccsPasdBus(SKABaseDevice[PasdBusComponentManager]):
+class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     """An implementation of a PaSD bus Tango device for MCCS."""
 
     # pylint: disable=attribute-defined-outside-init
