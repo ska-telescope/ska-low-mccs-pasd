@@ -34,7 +34,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     )
 
 
-class TestAdminModePropagation:
+class TestAdminModePropagation:  # pylint: disable=too-few-public-methods
     """Test adminMode propagation."""
 
     def test_admin_mode_propagation(
