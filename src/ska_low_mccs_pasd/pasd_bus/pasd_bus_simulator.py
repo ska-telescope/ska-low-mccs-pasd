@@ -1732,9 +1732,12 @@ class PasdBusSimulator:
             [False] * SmartboxSimulator.NUMBER_OF_PORTS
             for _ in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
         ]
-        for antenna_config in config["antennas"].values():
-            smartbox_id = int(re.findall(r"\d+", antenna_config["smartbox"])[0])
-            smartbox_port = antenna_config["smartbox_port"]
-            self._smartboxes_ports_connected[smartbox_id - 1][smartbox_port - 1] = True
+        if "antennas" in config:
+            for antenna_config in config["antennas"].values():
+                smartbox_id = int(re.findall(r"\d+", antenna_config["smartbox"])[0])
+                smartbox_port = antenna_config["smartbox_port"]
+                self._smartboxes_ports_connected[smartbox_id - 1][
+                    smartbox_port - 1
+                ] = True
 
         return True
