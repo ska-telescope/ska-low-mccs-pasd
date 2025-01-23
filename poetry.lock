@@ -3030,7 +3030,7 @@ transitions = "^0.9.0"
 type = "git"
 url = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git"
 reference = "thorn-20-base-device"
-resolved_reference = "81878ea235aeeb208e58ef25a1fe095df962e0f8"
+resolved_reference = "915468506908db4237ae5acf9f73da9fc1730a66"
 
 [[package]]
 name = "ska-ser-devices"
