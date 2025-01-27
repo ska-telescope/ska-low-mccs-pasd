@@ -21,8 +21,6 @@ import tango
 from jsonschema import validate
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
 from ska_low_mccs_common import MccsBaseDevice
-
-# from ska_tango_base import SKABaseDevice
 from ska_tango_base.commands import (
     DeviceInitCommand,
     FastCommand,

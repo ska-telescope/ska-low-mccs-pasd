@@ -21,7 +21,7 @@ from ska_control_model import (
     ResultCode,
 )
 from ska_control_model.health_rollup import HealthRollup, HealthSummary
-from ska_tango_base.base import SKABaseDevice
+from ska_low_mccs_common import MccsBaseDevice
 from ska_tango_base.commands import JsonValidator, SubmittedSlowCommand
 from tango.server import attribute, command, device_property
 
@@ -33,7 +33,7 @@ __all__ = ["MccsFieldStation"]
 DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
 
 
-class MccsFieldStation(SKABaseDevice):
+class MccsFieldStation(MccsBaseDevice):
     """An implementation of the FieldStation device."""
 
     # -----------------
