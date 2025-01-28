@@ -1,5 +1,11 @@
 # Version History
 
+## unreleased
+
+## 0.16.1
+
+* [THORN-61] Update pasd simulator to cope with no antennas in deployment.
+
 ## 0.16.0
 
 * [MCCS-2330] Update pytango to 10.0.0
