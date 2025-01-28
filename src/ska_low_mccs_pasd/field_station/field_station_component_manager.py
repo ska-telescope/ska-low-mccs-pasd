@@ -447,7 +447,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     ) -> None:
         self._communication_states[fqdn] = communication_state
         self.logger.debug(
-            f"device {fqdn} changed communcation state to {communication_state.name}"
+            f"device {fqdn} changed communication state to {communication_state.name}"
         )
         if not self.has_antenna:
             self.logger.info("FieldStation has no antenna, Transitioning to `ON` ...")
