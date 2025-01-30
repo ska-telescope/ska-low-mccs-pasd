@@ -1,6 +1,8 @@
 # Version History
 
-## unreleased
+## Unreleased
+
+* [THORN-20] Update to use MccsBaseDevice for mode inheritance.
 
 ## 0.16.1
 
