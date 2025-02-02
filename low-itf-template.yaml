@@ -1,5 +1,5 @@
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -14,7 +14,7 @@ metadata:
   name: config-watcher-acc
   namespace: ska-low-mccs
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 # Device Server configuration
 apiVersion: v1
 kind: ConfigMap
@@ -45,9 +45,6 @@ data:
                   "FndhFQDN": [
                     "low-mccs/fndh/itf1"
                     ],
-                  "LoggingLevelDefault": [
-                    "5"
-                    ],
                   "SmartBoxFQDNs": [
                     "low-mccs/smartbox/itf1-sb01",
                     "low-mccs/smartbox/itf1-sb19"
@@ -72,9 +69,6 @@ data:
                   "FndhFQDN": [
                     "low-mccs/fndh/itf2"
                     ],
-                  "LoggingLevelDefault": [
-                    "5"
-                    ],
                   "SmartBoxFQDNs": [
                     "low-mccs/smartbox/itf2-sb02",
                     "low-mccs/smartbox/itf2-sb11"
@@ -93,6 +87,9 @@ data:
                   "LoggingLevelDefault": [
                     "5"
                     ],
+                  "ParentTRL": [
+                    "low-mccs/fieldstation/itf1"
+                    ],
                   "PasdFQDN": [
                     "low-mccs/pasdbus/itf1"
                     ]
@@ -106,6 +103,9 @@ data:
                 "properties": {
                   "LoggingLevelDefault": [
                     "5"
+                    ],
+                  "ParentTRL": [
+                    "low-mccs/fieldstation/itf2"
                     ],
                   "PasdFQDN": [
                     "low-mccs/pasdbus/itf2"
@@ -127,6 +127,9 @@ data:
                     ],
                   "LoggingLevelDefault": [
                     "5"
+                    ],
+                  "ParentTRL": [
+                    "low-mccs/fieldstation/itf1"
                     ],
                   "Port": [
                     "5000"
@@ -152,6 +155,9 @@ data:
                   "LoggingLevelDefault": [
                     "5"
                     ],
+                  "ParentTRL": [
+                    "low-mccs/fieldstation/itf2"
+                    ],
                   "Port": [
                     "5000"
                     ],
@@ -163,7 +169,7 @@ data:
             }
           },
           "smartbox-itf1-sb01": {
-            "MccsSmartbox": {
+            "MccsSmartBox": {
               "low-mccs/smartbox/itf1-sb01": {
                 "properties": {
                   "FieldStationName": [
@@ -174,6 +180,9 @@ data:
                     ],
                   "LoggingLevelDefault": [
                     "5"
+                    ],
+                  "ParentTRL": [
+                    "low-mccs/fieldstation/itf1"
                     ],
                   "PasdFQDN": [
                     "low-mccs/pasdbus/itf1"
@@ -186,7 +195,7 @@ data:
             }
           },
           "smartbox-itf1-sb19": {
-            "MccsSmartbox": {
+            "MccsSmartBox": {
               "low-mccs/smartbox/itf1-sb19": {
                 "properties": {
                   "FieldStationName": [
@@ -197,6 +206,9 @@ data:
                     ],
                   "LoggingLevelDefault": [
                     "5"
+                    ],
+                  "ParentTRL": [
+                    "low-mccs/fieldstation/itf1"
                     ],
                   "PasdFQDN": [
                     "low-mccs/pasdbus/itf1"
@@ -209,7 +221,7 @@ data:
             }
           },
           "smartbox-itf2-sb02": {
-            "MccsSmartbox": {
+            "MccsSmartBox": {
               "low-mccs/smartbox/itf2-sb02": {
                 "properties": {
                   "FieldStationName": [
@@ -220,6 +232,9 @@ data:
                     ],
                   "LoggingLevelDefault": [
                     "5"
+                    ],
+                  "ParentTRL": [
+                    "low-mccs/fieldstation/itf2"
                     ],
                   "PasdFQDN": [
                     "low-mccs/pasdbus/itf2"
@@ -232,7 +247,7 @@ data:
             }
           },
           "smartbox-itf2-sb11": {
-            "MccsSmartbox": {
+            "MccsSmartBox": {
               "low-mccs/smartbox/itf2-sb11": {
                 "properties": {
                   "FieldStationName": [
@@ -243,6 +258,9 @@ data:
                     ],
                   "LoggingLevelDefault": [
                     "5"
+                    ],
+                  "ParentTRL": [
+                    "low-mccs/fieldstation/itf2"
                     ],
                   "PasdFQDN": [
                     "low-mccs/pasdbus/itf2"
@@ -362,7 +380,7 @@ data:
         sb11:
           fndh_port: 11
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -384,7 +402,7 @@ rules:
   resources: ["configmaps"]
   verbs: ["get", "list"]
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -414,7 +432,7 @@ subjects:
   name: config-watcher-acc
   namespace: ska-low-mccs
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ---
 # one k8s service per instance
 apiVersion: v1
@@ -426,8 +444,8 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-fieldstation-itf1
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   type: LoadBalancer
@@ -442,10 +460,10 @@ spec:
     port: 45470
     targetPort: 45470
   selector:
-    subsystem: low-mccs-pasd
+    subsystem: mccs
     component: mccs-pasd-fieldstation-itf1
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 # one k8s service per instance
 apiVersion: v1
 kind: Service
@@ -456,8 +474,8 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-fieldstation-itf2
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   type: LoadBalancer
@@ -472,10 +490,10 @@ spec:
     port: 45470
     targetPort: 45470
   selector:
-    subsystem: low-mccs-pasd
+    subsystem: mccs
     component: mccs-pasd-fieldstation-itf2
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 # one k8s service per instance
 apiVersion: v1
 kind: Service
@@ -486,8 +504,8 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-fndh-itf1
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   type: ClusterIP
@@ -502,10 +520,10 @@ spec:
     port: 45470
     targetPort: 45470
   selector:
-    subsystem: low-mccs-pasd
+    subsystem: mccs
     component: mccs-pasd-fndh-itf1
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 # one k8s service per instance
 apiVersion: v1
 kind: Service
@@ -516,8 +534,8 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-fndh-itf2
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   type: ClusterIP
@@ -532,10 +550,10 @@ spec:
     port: 45470
     targetPort: 45470
   selector:
-    subsystem: low-mccs-pasd
+    subsystem: mccs
     component: mccs-pasd-fndh-itf2
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 # one k8s service per instance
 apiVersion: v1
 kind: Service
@@ -546,8 +564,8 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-pasdbus-itf1
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   type: ClusterIP
@@ -562,10 +580,10 @@ spec:
     port: 45470
     targetPort: 45470
   selector:
-    subsystem: low-mccs-pasd
+    subsystem: mccs
     component: mccs-pasd-pasdbus-itf1
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 # one k8s service per instance
 apiVersion: v1
 kind: Service
@@ -576,8 +594,8 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-pasdbus-itf2
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   type: ClusterIP
@@ -592,10 +610,10 @@ spec:
     port: 45470
     targetPort: 45470
   selector:
-    subsystem: low-mccs-pasd
+    subsystem: mccs
     component: mccs-pasd-pasdbus-itf2
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 # one k8s service per instance
 apiVersion: v1
 kind: Service
@@ -606,8 +624,8 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-smartbox-itf1-sb01
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   type: ClusterIP
@@ -622,10 +640,10 @@ spec:
     port: 45470
     targetPort: 45470
   selector:
-    subsystem: low-mccs-pasd
+    subsystem: mccs
     component: mccs-pasd-smartbox-itf1-sb01
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 # one k8s service per instance
 apiVersion: v1
 kind: Service
@@ -636,8 +654,8 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-smartbox-itf1-sb19
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   type: ClusterIP
@@ -652,10 +670,10 @@ spec:
     port: 45470
     targetPort: 45470
   selector:
-    subsystem: low-mccs-pasd
+    subsystem: mccs
     component: mccs-pasd-smartbox-itf1-sb19
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 # one k8s service per instance
 apiVersion: v1
 kind: Service
@@ -666,8 +684,8 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-smartbox-itf2-sb02
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   type: ClusterIP
@@ -682,10 +700,10 @@ spec:
     port: 45470
     targetPort: 45470
   selector:
-    subsystem: low-mccs-pasd
+    subsystem: mccs
     component: mccs-pasd-smartbox-itf2-sb02
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 # one k8s service per instance
 apiVersion: v1
 kind: Service
@@ -696,8 +714,8 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-smartbox-itf2-sb11
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   type: ClusterIP
@@ -712,7 +730,7 @@ spec:
     port: 45470
     targetPort: 45470
   selector:
-    subsystem: low-mccs-pasd
+    subsystem: mccs
     component: mccs-pasd-smartbox-itf2-sb11
 ---
 # Source: ska-low-mccs-pasd/templates/pasd_configuration_server.yaml
@@ -732,7 +750,7 @@ spec:
   selector:
     component: pasd-configuration-service-low-itf
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -742,14 +760,14 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-fieldstation-itf1
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   selector:
     matchLabels:
       component: mccs-pasd-fieldstation-itf1
-      subsystem: low-mccs-pasd
+      subsystem: mccs
   serviceName: mccs-pasd-fieldstation-itf1
   replicas: 1
   template:
@@ -757,8 +775,8 @@ spec:
       labels:
         component: mccs-pasd-fieldstation-itf1
         function: ska-low-mccs-pasd
-        domain: ska-low-mccs-pasd
-        subsystem: low-mccs-pasd
+        domain: low
+        subsystem: mccs
         app: ska-low-mccs-pasd
     
     spec:
@@ -849,7 +867,7 @@ spec:
             cpu: 20m
             memory: 50Mi
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -859,14 +877,14 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-fieldstation-itf2
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   selector:
     matchLabels:
       component: mccs-pasd-fieldstation-itf2
-      subsystem: low-mccs-pasd
+      subsystem: mccs
   serviceName: mccs-pasd-fieldstation-itf2
   replicas: 1
   template:
@@ -874,8 +892,8 @@ spec:
       labels:
         component: mccs-pasd-fieldstation-itf2
         function: ska-low-mccs-pasd
-        domain: ska-low-mccs-pasd
-        subsystem: low-mccs-pasd
+        domain: low
+        subsystem: mccs
         app: ska-low-mccs-pasd
     
     spec:
@@ -966,7 +984,7 @@ spec:
             cpu: 20m
             memory: 50Mi
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -976,14 +994,14 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-fndh-itf1
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   selector:
     matchLabels:
       component: mccs-pasd-fndh-itf1
-      subsystem: low-mccs-pasd
+      subsystem: mccs
   serviceName: mccs-pasd-fndh-itf1
   replicas: 1
   template:
@@ -991,8 +1009,8 @@ spec:
       labels:
         component: mccs-pasd-fndh-itf1
         function: ska-low-mccs-pasd
-        domain: ska-low-mccs-pasd
-        subsystem: low-mccs-pasd
+        domain: low
+        subsystem: mccs
         app: ska-low-mccs-pasd
     
     spec:
@@ -1097,7 +1115,7 @@ spec:
             cpu: 20m
             memory: 50Mi
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -1107,14 +1125,14 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-fndh-itf2
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   selector:
     matchLabels:
       component: mccs-pasd-fndh-itf2
-      subsystem: low-mccs-pasd
+      subsystem: mccs
   serviceName: mccs-pasd-fndh-itf2
   replicas: 1
   template:
@@ -1122,8 +1140,8 @@ spec:
       labels:
         component: mccs-pasd-fndh-itf2
         function: ska-low-mccs-pasd
-        domain: ska-low-mccs-pasd
-        subsystem: low-mccs-pasd
+        domain: low
+        subsystem: mccs
         app: ska-low-mccs-pasd
     
     spec:
@@ -1228,7 +1246,7 @@ spec:
             cpu: 20m
             memory: 50Mi
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -1238,14 +1256,14 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-pasdbus-itf1
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   selector:
     matchLabels:
       component: mccs-pasd-pasdbus-itf1
-      subsystem: low-mccs-pasd
+      subsystem: mccs
   serviceName: mccs-pasd-pasdbus-itf1
   replicas: 1
   template:
@@ -1253,8 +1271,8 @@ spec:
       labels:
         component: mccs-pasd-pasdbus-itf1
         function: ska-low-mccs-pasd
-        domain: ska-low-mccs-pasd
-        subsystem: low-mccs-pasd
+        domain: low
+        subsystem: mccs
         app: ska-low-mccs-pasd
     
     spec:
@@ -1345,7 +1363,7 @@ spec:
             cpu: 20m
             memory: 50Mi
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -1355,14 +1373,14 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-pasdbus-itf2
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   selector:
     matchLabels:
       component: mccs-pasd-pasdbus-itf2
-      subsystem: low-mccs-pasd
+      subsystem: mccs
   serviceName: mccs-pasd-pasdbus-itf2
   replicas: 1
   template:
@@ -1370,8 +1388,8 @@ spec:
       labels:
         component: mccs-pasd-pasdbus-itf2
         function: ska-low-mccs-pasd
-        domain: ska-low-mccs-pasd
-        subsystem: low-mccs-pasd
+        domain: low
+        subsystem: mccs
         app: ska-low-mccs-pasd
     
     spec:
@@ -1462,7 +1480,7 @@ spec:
             cpu: 20m
             memory: 50Mi
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -1472,14 +1490,14 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-smartbox-itf1-sb01
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   selector:
     matchLabels:
       component: mccs-pasd-smartbox-itf1-sb01
-      subsystem: low-mccs-pasd
+      subsystem: mccs
   serviceName: mccs-pasd-smartbox-itf1-sb01
   replicas: 1
   template:
@@ -1487,8 +1505,8 @@ spec:
       labels:
         component: mccs-pasd-smartbox-itf1-sb01
         function: ska-low-mccs-pasd
-        domain: ska-low-mccs-pasd
-        subsystem: low-mccs-pasd
+        domain: low
+        subsystem: mccs
         app: ska-low-mccs-pasd
     
     spec:
@@ -1593,7 +1611,7 @@ spec:
             cpu: 20m
             memory: 50Mi
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -1603,14 +1621,14 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-smartbox-itf1-sb19
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   selector:
     matchLabels:
       component: mccs-pasd-smartbox-itf1-sb19
-      subsystem: low-mccs-pasd
+      subsystem: mccs
   serviceName: mccs-pasd-smartbox-itf1-sb19
   replicas: 1
   template:
@@ -1618,8 +1636,8 @@ spec:
       labels:
         component: mccs-pasd-smartbox-itf1-sb19
         function: ska-low-mccs-pasd
-        domain: ska-low-mccs-pasd
-        subsystem: low-mccs-pasd
+        domain: low
+        subsystem: mccs
         app: ska-low-mccs-pasd
     
     spec:
@@ -1724,7 +1742,7 @@ spec:
             cpu: 20m
             memory: 50Mi
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -1734,14 +1752,14 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-smartbox-itf2-sb02
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   selector:
     matchLabels:
       component: mccs-pasd-smartbox-itf2-sb02
-      subsystem: low-mccs-pasd
+      subsystem: mccs
   serviceName: mccs-pasd-smartbox-itf2-sb02
   replicas: 1
   template:
@@ -1749,8 +1767,8 @@ spec:
       labels:
         component: mccs-pasd-smartbox-itf2-sb02
         function: ska-low-mccs-pasd
-        domain: ska-low-mccs-pasd
-        subsystem: low-mccs-pasd
+        domain: low
+        subsystem: mccs
         app: ska-low-mccs-pasd
     
     spec:
@@ -1855,7 +1873,7 @@ spec:
             cpu: 20m
             memory: 50Mi
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -1865,14 +1883,14 @@ metadata:
     app: ska-low-mccs-pasd
     component: mccs-pasd-smartbox-itf2-sb11
     function: ska-low-mccs-pasd
-    domain: ska-low-mccs-pasd
-    subsystem: low-mccs-pasd
+    domain: low
+    subsystem: mccs
 
 spec:
   selector:
     matchLabels:
       component: mccs-pasd-smartbox-itf2-sb11
-      subsystem: low-mccs-pasd
+      subsystem: mccs
   serviceName: mccs-pasd-smartbox-itf2-sb11
   replicas: 1
   template:
@@ -1880,8 +1898,8 @@ spec:
       labels:
         component: mccs-pasd-smartbox-itf2-sb11
         function: ska-low-mccs-pasd
-        domain: ska-low-mccs-pasd
-        subsystem: low-mccs-pasd
+        domain: low
+        subsystem: mccs
         app: ska-low-mccs-pasd
     
     spec:
@@ -2016,7 +2034,7 @@ spec:
           - name: NAMESPACE
             value: ska-low-mccs
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ---
 # run once Job for loading Device Server config
 apiVersion: batch/v1
@@ -2075,37 +2093,37 @@ spec:
             name: mccs-pasd-ska-low-mccs-pasd-dsconfig-json
       restartPolicy: Never
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 # if (.deviceserver.secrets)
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ## if has
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ## if has
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ## if has
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ## if has
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ## if has
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ## if has
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ## if has
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ## if has
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ## if has
 ---
-# Source: ska-low-mccs-pasd/templates/deviceservers.yaml
+# Source: ska-low-mccs-pasd/charts/ska-tango-devices/templates/deviceservers.yaml
 ## if has
 
  # range instances
