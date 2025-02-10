@@ -478,12 +478,15 @@ class TestFieldStationIntegration:
         change_event_callbacks["field_station_state"].assert_change_event(
             tango.DevState.DISABLE
         )
-        field_station_device.adminMode = 0
+        field_station_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["field_station_state"].assert_change_event(
             tango.DevState.UNKNOWN
         )
-        # We will stick in unknown since the adminMode of subdevices is OFFLINE.
-        change_event_callbacks["field_station_state"].assert_not_called()
+        # Subdevices will start communicating via mode inheritance
+        # so we should move to STANDBY.
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.STANDBY, lookahead=2
+        )
         assert len(fndh_device.portsWithSmartbox.tolist()) == 24
 
 
