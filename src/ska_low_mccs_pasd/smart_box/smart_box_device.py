@@ -18,7 +18,7 @@ from typing import Any, Final, Optional, cast
 import numpy
 import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
-from ska_tango_base.base import SKABaseDevice
+from ska_low_mccs_common import MccsBaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
 from tango import DevFailed
 from tango.device_attribute import ExtractAs
@@ -65,7 +65,7 @@ class SmartboxAttribute:
 
 
 # pylint: disable=too-many-instance-attributes
-class MccsSmartBox(SKABaseDevice):
+class MccsSmartBox(MccsBaseDevice):
     """An implementation of the SmartBox device for MCCS."""
 
     # -----------------

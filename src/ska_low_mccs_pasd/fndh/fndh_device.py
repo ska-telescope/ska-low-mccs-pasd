@@ -20,7 +20,7 @@ from typing import Any, Final, Optional, cast
 import tango
 from jsonschema import validate
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
-from ska_tango_base.base import SKABaseDevice
+from ska_low_mccs_common import MccsBaseDevice
 from ska_tango_base.commands import (
     DeviceInitCommand,
     FastCommand,
@@ -55,7 +55,7 @@ class FNDHAttribute:
 
 
 # pylint: disable=too-many-instance-attributes
-class MccsFNDH(SKABaseDevice[FndhComponentManager]):
+class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     """An implementation of the FNDH device for MCCS."""
 
     # -----------------
