@@ -1,5 +1,9 @@
 # Version History
 
+## 1.0.0
+
+* [THORN-17] 1.0.0 release - all MCCS repos
+
 ## 0.17.0
 
 * [THORN-20] Update to use MccsBaseDevice for mode inheritance.
