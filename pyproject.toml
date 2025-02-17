@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ska-low-mccs-pasd"
-version = "0.17.0"
+version = "1.0.0"
 description = "The Monitoring, Control and Calibration Subsystem (MCCS) of the SKA Low telescope"
 license = "BSD-3-Clause"
 authors = ["MCCS team"]
@@ -20,7 +20,7 @@ pytango = "^10.0.0"
 PyYAML = "^6.0"
 ska-tango-base = "^1.2.3"
 ska-control-model = { version = "^1.2.0", extras = ["health_rollup"] }
-ska-low-mccs-common = "^0.18.1"
+ska-low-mccs-common = "^1.0.0"
 ska-ser-devices = "^0.2.0"
 pymodbus = "~3.5.4"
 typing-extensions = "^4.6.1"
