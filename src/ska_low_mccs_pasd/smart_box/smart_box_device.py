@@ -185,6 +185,7 @@ class MccsSmartBox(MccsBaseDevice):
             self.CONFIG["number_of_ports"],
             self.FieldStationName,
             self.PasdFQDN,
+            event_serialiser=self._event_serialiser,
         )
 
     def init_command_objects(self: MccsSmartBox) -> None:

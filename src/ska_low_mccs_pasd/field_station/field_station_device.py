@@ -127,6 +127,7 @@ class MccsFieldStation(MccsBaseDevice):
             self._communication_state_changed,
             self._component_state_callback,
             self._on_configuration_change,
+            event_serialiser=self._event_serialiser,
         )
 
     def init_command_objects(self: MccsFieldStation) -> None:

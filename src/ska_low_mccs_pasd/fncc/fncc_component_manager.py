@@ -16,7 +16,7 @@ from typing import Any, Callable, Optional
 
 import tango
 from ska_control_model import CommunicationStatus
-from ska_low_mccs_common import MccsDeviceProxy
+from ska_low_mccs_common import EventSerialiser, MccsDeviceProxy
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.executor import TaskExecutorComponentManager
 
@@ -36,6 +36,7 @@ class _PasdBusProxy(DeviceComponentManager):
         communication_state_callback: Callable[[CommunicationStatus], None],
         state_change_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
+        event_serialiser: Optional[EventSerialiser] = None,
     ) -> None:
         """
         Initialise a new instance.
@@ -48,6 +49,7 @@ class _PasdBusProxy(DeviceComponentManager):
             component state changes
         :param attribute_change_callback: callback for when a subscribed attribute
             on the pasdbus changes.
+        :param event_serialiser: the event serialiser to be used by this object.
         """
         self._attribute_change_callback = attribute_change_callback
         self._pasd_device = PasdData.FNCC_DEVICE_ID
@@ -57,6 +59,7 @@ class _PasdBusProxy(DeviceComponentManager):
             logger,
             communication_state_callback,
             state_change_callback,
+            event_serialiser=event_serialiser,
         )
 
     def subscribe_to_attributes(self: _PasdBusProxy) -> None:
@@ -120,6 +123,7 @@ class FnccComponentManager(TaskExecutorComponentManager):
         component_state_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
         pasd_fqdn: str,
+        event_serialiser: Optional[EventSerialiser] = None,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
     ) -> None:
         """
@@ -134,9 +138,11 @@ class FnccComponentManager(TaskExecutorComponentManager):
         :param attribute_change_callback: callback to be
             called when a attribute changes
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
+        :param event_serialiser: the event serialiser to be used by this object.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
             purposes only. defaults to None
         """
+        self._event_serialiser = event_serialiser
         self._component_state_callback = component_state_callback
         self._attribute_change_callback = attribute_change_callback
         self._pasd_fqdn = pasd_fqdn
@@ -147,6 +153,7 @@ class FnccComponentManager(TaskExecutorComponentManager):
             self._pasdbus_communication_state_changed,
             functools.partial(component_state_callback, fqdn=self._pasd_fqdn),
             attribute_change_callback,
+            event_serialiser=self._event_serialiser,
         )
         self.logger = logger
         super().__init__(
