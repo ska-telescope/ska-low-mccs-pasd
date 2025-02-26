@@ -19,7 +19,7 @@ from typing import Any, Callable, Optional
 
 import tango
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
-from ska_low_mccs_common import MccsDeviceProxy
+from ska_low_mccs_common import EventSerialiser, MccsDeviceProxy
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
@@ -105,6 +105,7 @@ class _PasdBusProxy(DeviceComponentManager):
         smartbox_component_state_callback: Callable[..., None],
         fndh_port_power_callback: Callable[..., None],
         attribute_change_callback: Callable[..., None],
+        event_serialiser: Optional[EventSerialiser] = None,
     ) -> None:
         """
         Initialise a new instance.
@@ -120,6 +121,7 @@ class _PasdBusProxy(DeviceComponentManager):
             fndh port power states change.
         :param attribute_change_callback: callback for when a attribute relevant to
             this smartbox changes.
+        :param event_serialiser: the event serialiser to be used by this object.
         """
         self._attribute_change_callback = attribute_change_callback
         self._fndh_port_power_callback = fndh_port_power_callback
@@ -131,6 +133,7 @@ class _PasdBusProxy(DeviceComponentManager):
             logger,
             smartbox_communication_state_callback,
             smartbox_component_state_callback,
+            event_serialiser=event_serialiser,
         )
 
     def subscribe_to_attributes(self: _PasdBusProxy) -> None:
@@ -265,6 +268,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         port_count: int,
         field_station_name: str,
         pasd_fqdn: str,
+        event_serialiser: Optional[EventSerialiser] = None,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
     ) -> None:
         """
@@ -283,8 +287,10 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param port_count: the number of smartbox ports.
         :param field_station_name: the name of the field station.
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
+        :param event_serialiser: the event serialiser to be used by this object.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
         """
+        self._event_serialiser = event_serialiser
         self._pasd_fqdn = pasd_fqdn
         self.logger = logger
         self.ports = [
@@ -310,6 +316,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             logger,
             self._field_station_communication_change,
             self._field_station_state_change,
+            event_serialiser=self._event_serialiser,
         )
 
         self._pasd_bus_proxy = _pasd_bus_proxy or _PasdBusProxy(
@@ -320,6 +327,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self._pasd_bus_component_state_changed,
             self._on_fndh_ports_power_changed,
             attribute_change_callback,
+            event_serialiser=self._event_serialiser,
         )
         self._pasd_communication_state = CommunicationStatus.NOT_ESTABLISHED
         super().__init__(

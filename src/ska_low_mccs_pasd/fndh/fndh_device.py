@@ -170,6 +170,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             self._attribute_changed_callback,
             self._update_port_power_states,
             self.PasdFQDN,
+            event_serialiser=self._event_serialiser,
         )
 
     def init_command_objects(self: MccsFNDH) -> None:

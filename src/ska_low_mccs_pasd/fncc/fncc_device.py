@@ -113,6 +113,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             self._component_state_changed_callback,
             self._attribute_changed_callback,
             self.PasdFQDN,
+            event_serialiser=self._event_serialiser,
         )
 
     # ----------

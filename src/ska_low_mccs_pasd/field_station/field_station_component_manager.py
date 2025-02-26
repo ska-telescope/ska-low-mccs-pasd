@@ -21,6 +21,7 @@ import jsonschema
 import tango
 from bidict import bidict
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
+from ska_low_mccs_common import EventSerialiser
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_low_mccs_common.component.command_proxy import MccsCommandProxy
 from ska_low_mccs_common.component.composite_command_proxy import (
@@ -51,12 +52,14 @@ class _SmartboxProxy(DeviceComponentManager):
         communication_state_callback: Callable[[CommunicationStatus], None],
         component_state_callback: Callable[..., None],
         ports_power_changed_callback: Callable,
+        event_serialiser: Optional[EventSerialiser] = None,
     ) -> None:
         super().__init__(
             trl,
             logger,
             communication_state_callback,
             component_state_callback,
+            event_serialiser=event_serialiser,
         )
         self._ports_power_changed_callback = ports_power_changed_callback
 
@@ -82,12 +85,14 @@ class _FndhProxy(DeviceComponentManager):
         component_state_callback: Callable[..., None],
         ports_power_changed_callback: Callable,
         field_conditions_changed_callback: Callable,
+        event_serialiser: Optional[EventSerialiser] = None,
     ) -> None:
         super().__init__(
             trl,
             logger,
             communication_state_callback,
             component_state_callback,
+            event_serialiser=event_serialiser,
         )
         self._ports_power_changed_callback = ports_power_changed_callback
         self._field_conditions_changed_callback = field_conditions_changed_callback
@@ -132,6 +137,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         communication_state_callback: Callable[..., None],
         component_state_changed: Callable[..., None],
         configuration_change_callback: Callable[..., None],
+        event_serialiser: Optional[EventSerialiser] = None,
         _fndh_proxy: Optional[DeviceComponentManager] = None,
         _smartbox_proxys: Optional[dict[str, DeviceComponentManager]] = None,
     ) -> None:
@@ -159,9 +165,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             called when the component state changes
         :param configuration_change_callback: callback to be
             called when configuration changes.
+        :param event_serialiser: the event serialiser to be used by this object.
         :param _fndh_proxy: a injected fndh proxy for purposes of testing only.
         :param _smartbox_proxys: injected smartbox proxys for purposes of testing only.
         """
+        self._event_serialiser = event_serialiser
         self._on_configuration_change = configuration_change_callback
         self._communication_state_callback: Callable[..., None]
         self._component_state_callback: Callable[..., None]
@@ -203,6 +211,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             functools.partial(self._component_state_callback, device_name=fndh_name),
             self._on_fndh_port_change,
             self._on_field_conditions_change,
+            event_serialiser=self._event_serialiser,
         )
         self._smartbox_power_state = {}
         self._smartbox_proxys = {}
@@ -222,6 +231,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                         self._component_state_callback, device_name=smartbox_trl
                     ),
                     self._on_port_power_change,
+                    event_serialiser=self._event_serialiser,
                 )
 
         # initialise the power
