@@ -22,6 +22,7 @@ import tango
 from bidict import bidict
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_mccs_common import EventSerialiser
+from ska_low_mccs_common.communication_manager import CommunicationManager
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_low_mccs_common.component.command_proxy import MccsCommandProxy
 from ska_low_mccs_common.component.composite_command_proxy import (
@@ -197,6 +198,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             logger,
             communication_state_callback,
             component_state_changed,
+            power=PowerState.UNKNOWN,
+            fault=None,
         )
         self._communication_states = {
             fqdn: CommunicationStatus.DISABLED
@@ -233,6 +236,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     self._on_port_power_change,
                     event_serialiser=self._event_serialiser,
                 )
+                smartbox_name = re.findall("sb[0-9]+", smartbox_trl)[0]
+                self._smartbox_trl_name_map[smartbox_trl] = smartbox_name
 
         # initialise the power
         self.antenna_powers: dict[str, PowerState] = {}
@@ -244,6 +249,14 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             self._load_configuration_uri(tm_config_details)
         else:
             self._load_configuration()
+
+        self._communication_manager = CommunicationManager(
+            self._update_communication_state,
+            self._update_component_state,
+            self.logger,
+            self._smartbox_proxys,
+            {self._fndh_name: self._fndh_proxy},
+        )
 
     def _update_mappings(
         self: FieldStationComponentManager,
@@ -322,27 +335,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
     def start_communicating(self: FieldStationComponentManager) -> None:
         """Establish communication."""
-        if self._communication_state == CommunicationStatus.ESTABLISHED:
-            return
-
-        if self._communication_state == CommunicationStatus.DISABLED:
-            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
-
-        self._fndh_proxy.start_communicating()
-        for smartbox_trl, proxy in self._smartbox_proxys.items():
-            proxy.start_communicating()
-            smartbox_name = re.findall("sb[0-9]+", smartbox_trl)[0]
-            self._smartbox_trl_name_map[smartbox_trl] = smartbox_name
+        self._communication_manager.start_communicating()
 
     def stop_communicating(self: FieldStationComponentManager) -> None:
         """Break off communication with the PasdData."""
-        self._fndh_proxy.stop_communicating()
-        for proxy in self._smartbox_proxys.values():
-            proxy.stop_communicating()
-
-        if self.communication_state == CommunicationStatus.DISABLED:
-            return
-        self._update_communication_state(CommunicationStatus.DISABLED)
+        self._communication_manager.stop_communicating()
 
     def _on_field_conditions_change(
         self: FieldStationComponentManager,
@@ -455,22 +452,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         fqdn: str,
         communication_state: CommunicationStatus,
     ) -> None:
-        self._communication_states[fqdn] = communication_state
-        self.logger.debug(
-            f"device {fqdn} changed communication state to {communication_state.name}"
+        self._communication_manager.update_communication_status(
+            fqdn, communication_state
         )
-        if not self.has_antenna:
-            self.logger.info("FieldStation has no antenna, Transitioning to `ON` ...")
-            self._component_state_callback(power=PowerState.ON)
-
-        if CommunicationStatus.DISABLED in self._communication_states.values():
-            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
-        elif CommunicationStatus.NOT_ESTABLISHED in self._communication_states.values():
-            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
-        else:
-            self._update_communication_state(CommunicationStatus.ESTABLISHED)
-            self._update_smartbox_mask()
-            self._update_fndh_configuration()
 
     def on(
         self: FieldStationComponentManager, task_callback: Optional[Callable] = None
