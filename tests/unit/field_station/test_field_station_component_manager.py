@@ -407,45 +407,45 @@ class TestFieldStationComponentManager:
             mock_callbacks["configuration_change_callback"],
         )
 
-    # def test_outside_temperature(
-    #     self: TestFieldStationComponentManager,
-    #     field_station_component_manager: FieldStationComponentManager,
-    #     mock_callbacks: MockCallableGroup,
-    #     mocked_outside_temperature: float,
-    # ) -> None:
-    #     """
-    #     Test reading the outsideTemperature from the FieldStation.
+    def test_outside_temperature(
+        self: TestFieldStationComponentManager,
+        field_station_component_manager: FieldStationComponentManager,
+        mock_callbacks: MockCallableGroup,
+        mocked_outside_temperature: float,
+    ) -> None:
+        """
+        Test reading the outsideTemperature from the FieldStation.
 
-    #     :param field_station_component_manager: A FieldStation component manager
-    #         with communication established.
-    #     :param mock_callbacks: mock callables.
-    #     :param mocked_outside_temperature: the mocked value for outsideTemperature.
-    #     """
-    #     # Before communication has been started the outsideTemperature should
-    #     # report None
-    #     assert field_station_component_manager.outsideTemperature is None
+        :param field_station_component_manager: A FieldStation component manager
+            with communication established.
+        :param mock_callbacks: mock callables.
+        :param mocked_outside_temperature: the mocked value for outsideTemperature.
+        """
+        # Before communication has been started the outsideTemperature should
+        # report None
+        assert field_station_component_manager.outsideTemperature is None
 
-    #     field_station_component_manager.start_communicating()
+        field_station_component_manager.start_communicating()
 
-    #     mock_callbacks["communication_state"].assert_call(
-    #         CommunicationStatus.NOT_ESTABLISHED
-    #     )
-    #     mock_callbacks["communication_state"].assert_call(
-    #         CommunicationStatus.ESTABLISHED
-    #     )
-    #     mock_callbacks["communication_state"].assert_not_called()
-    #     assert (
-    #         field_station_component_manager.communication_state
-    #         == CommunicationStatus.ESTABLISHED
-    #     )
-    #     # Lookahead needs to take into account smartbox callbacks
-    #     mock_callbacks["component_state"].assert_call(
-    #         outsidetemperature=mocked_outside_temperature, lookahead=50
-    #     )
-    #     assert (
-    #         field_station_component_manager.outsideTemperature
-    #         == mocked_outside_temperature
-    # )
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_not_called()
+        assert (
+            field_station_component_manager.communication_state
+            == CommunicationStatus.ESTABLISHED
+        )
+        # Lookahead needs to take into account smartbox callbacks
+        mock_callbacks["component_state"].assert_call(
+            outsidetemperature=mocked_outside_temperature, lookahead=50
+        )
+        assert (
+            field_station_component_manager.outsideTemperature
+            == mocked_outside_temperature
+        )
 
     def test_communication(
         self: TestFieldStationComponentManager,
