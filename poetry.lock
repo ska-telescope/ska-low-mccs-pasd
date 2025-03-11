@@ -1098,13 +1098,13 @@ reference = "ska-nexus"
 
 [[package]]
 name = "ipython"
-version = "8.32.0"
+version = "8.33.0"
 description = "IPython: Productive Interactive Computing"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "ipython-8.32.0-py3-none-any.whl", hash = "sha256:cae85b0c61eff1fc48b0a8002de5958b6528fa9c8defb1894da63f42613708aa"},
-    {file = "ipython-8.32.0.tar.gz", hash = "sha256:be2c91895b0b9ea7ba49d33b23e2040c352b33eb6a519cca7ce6e0c743444251"},
+    {file = "ipython-8.33.0-py3-none-any.whl", hash = "sha256:aa5b301dfe1eaf0167ff3238a6825f810a029c9dad9d3f1597f30bd5ff65cc44"},
+    {file = "ipython-8.33.0.tar.gz", hash = "sha256:4c3e36a6dfa9e8e3702bd46f3df668624c975a22ff340e96ea7277afbd76217d"},
 ]
 
 [package.dependencies]
@@ -1850,13 +1850,13 @@ reference = "ska-nexus"
 
 [[package]]
 name = "prettytable"
-version = "3.14.0"
+version = "3.15.0"
 description = "A simple Python library for easily displaying tabular data in a visually appealing ASCII table format"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "prettytable-3.14.0-py3-none-any.whl", hash = "sha256:61d5c68f04a94acc73c7aac64f0f380f5bed4d2959d59edc6e4cbb7a0e7b55c4"},
-    {file = "prettytable-3.14.0.tar.gz", hash = "sha256:b804b8d51db23959b96b329094debdbbdf10c8c3aa75958c5988cfd7f78501dd"},
+    {file = "prettytable-3.15.0-py3-none-any.whl", hash = "sha256:49429c06e6721dcca25f08ede3e9401abe2afd35d87e4336a72ee89b09a53c68"},
+    {file = "prettytable-3.15.0.tar.gz", hash = "sha256:c72dff9c1ede57f9a511fddc8f10af3c8a86dd293f5adf75825a5e6bf81ff73b"},
 ]
 
 [package.dependencies]
@@ -3033,13 +3033,13 @@ reference = "ska-nexus"
 
 [[package]]
 name = "ska-low-mccs-common"
-version = "1.2.0"
+version = "1.3.0"
 description = "The Monitoring, Control and Calibration Subsystem (MCCS) of the SKA Low telescope"
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "ska_low_mccs_common-1.2.0-py3-none-any.whl", hash = "sha256:043317aa455e855b2cf8241ae1fec9764ac76d8ddc0b67fd43e0752386fbe272"},
-    {file = "ska_low_mccs_common-1.2.0.tar.gz", hash = "sha256:4f58cb330ee29285f8be5bd4963ed00b34a36feb698e7d0acc71e752d1117d4f"},
+    {file = "ska_low_mccs_common-1.3.0-py3-none-any.whl", hash = "sha256:dd5a754d1f06f0761890b72e45587fe219a99ad1875853c462d12db82dca1cb6"},
+    {file = "ska_low_mccs_common-1.3.0.tar.gz", hash = "sha256:f3253be453237ac054a7d39383da1897257ded65f1df128b310481a2c40d7fe4"},
 ]
 
 [package.dependencies]
@@ -4072,4 +4072,4 @@ reference = "ska-nexus"
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "22f76b9c7f883998d624eec44941537fd36146294f4ceb35b39e00af35571db1"
+content-hash = "6845a2e83428138d3f514348fe3a62dab335063d843c90006fc343818ea45e5a"

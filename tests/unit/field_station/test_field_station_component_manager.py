@@ -480,8 +480,9 @@ class TestFieldStationComponentManager:
         # check that the communication state goes to DISABLED after stop communication.
         field_station_component_manager.stop_communicating()
         mock_callbacks["communication_state"].assert_call(
-            CommunicationStatus.DISABLED, lookahead=10
+            CommunicationStatus.NOT_ESTABLISHED
         )
+        mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
         assert (
             field_station_component_manager.communication_state
             == CommunicationStatus.DISABLED
@@ -809,6 +810,9 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
+        field_station_component_manager.update_smartbox_mask()
+        field_station_component_manager.update_fndh_configuration()
+
         field_station_component_manager._antenna_mask["antennaMask"][
             antenna_id
         ] = antenna_masking_state
@@ -905,7 +909,7 @@ class TestFieldStationComponentManager:
         mock_callbacks["task"].assert_call(
             status=command_tracked_result[0],
             result=command_tracked_result[1],
-            lookahead=len(field_station_component_manager._smartbox_proxys),
+            lookahead=len(field_station_component_manager._smartbox_proxys) + 1,
         )
 
     @pytest.mark.parametrize(
@@ -1016,6 +1020,8 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
         mock_callbacks["communication_state"].assert_not_called()
+
+        field_station_component_manager.update_smartbox_mask()
 
         for smartbox_no, smartbox in enumerate(mock_smartboxes):
             if smartbox_no < 20:  # all these smartboxes have antennas on every port.
