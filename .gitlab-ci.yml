@@ -9,6 +9,7 @@ cache:
 stages:
   - lint
   - build
+  - deploy
   - test
   - test-temp
   - publish
@@ -47,6 +48,10 @@ include:
   # Notebooks
   - project: 'ska-telescope/templates-repository'
     file: gitlab-ci/includes/notebook.gitlab-ci.yml
+
+  # Deploy stage
+  - project: 'ska-telescope/templates-repository'
+    file: 'gitlab-ci/includes/deploy.dev.gitlab-ci.yml'
 
 notebook-lint:
   when: manual
