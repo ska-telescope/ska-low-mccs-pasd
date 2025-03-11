@@ -219,8 +219,8 @@ class MccsFieldStation(MccsBaseDevice):
             self._component_state_callback(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._component_state_callback(power=self.component_manager._power_state)
-            self.component_manager._update_smartbox_mask()
-            self.component_manager._update_fndh_configuration()
+            self.component_manager.update_smartbox_mask()
+            self.component_manager.update_fndh_configuration()
 
     def _component_state_callback(  # noqa: C901
         self: MccsFieldStation,

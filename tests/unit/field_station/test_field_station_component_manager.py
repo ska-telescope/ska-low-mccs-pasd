@@ -810,8 +810,8 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        field_station_component_manager._update_smartbox_mask()
-        field_station_component_manager._update_fndh_configuration()
+        field_station_component_manager.update_smartbox_mask()
+        field_station_component_manager.update_fndh_configuration()
 
         field_station_component_manager._antenna_mask["antennaMask"][
             antenna_id
@@ -1021,7 +1021,7 @@ class TestFieldStationComponentManager:
         )
         mock_callbacks["communication_state"].assert_not_called()
 
-        field_station_component_manager._update_smartbox_mask()
+        field_station_component_manager.update_smartbox_mask()
 
         for smartbox_no, smartbox in enumerate(mock_smartboxes):
             if smartbox_no < 20:  # all these smartboxes have antennas on every port.

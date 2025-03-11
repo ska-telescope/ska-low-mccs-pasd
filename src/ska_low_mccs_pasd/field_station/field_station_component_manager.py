@@ -299,10 +299,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         if self._antenna_mapping:
             self.has_antenna = True
 
-        self._update_smartbox_mask()
-        self._update_fndh_configuration()
+        self.update_smartbox_mask()
+        self.update_fndh_configuration()
 
-    def _update_smartbox_mask(self: FieldStationComponentManager) -> None:
+    def update_smartbox_mask(self: FieldStationComponentManager) -> None:
         """Update the mask on the smartboxe for their ports."""
         try:
             for smartbox_trl, smartbox_proxy in self._smartbox_proxys.items():
@@ -317,7 +317,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 "Will try again when connection established."
             )
 
-    def _update_fndh_configuration(self: FieldStationComponentManager) -> None:
+    def update_fndh_configuration(self: FieldStationComponentManager) -> None:
         """Update the fndh with configuration."""
         try:
             assert self._fndh_proxy._proxy is not None
