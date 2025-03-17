@@ -1,6 +1,6 @@
 # Version History
 
-## Unreleased
+## 1.1.0
 
 * [THORN-86] FieldStation now uses the CommunicationManager from ska-low-mccs-common to manage it's communication status, this should flush out issues with rapid changes of adminmode.
 * [THORN-85] Update devices to serialise their events through the EventSerialiser. This should have no operational
