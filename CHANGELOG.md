@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [THORN-121] Add deploy stage to pipeline.
+
 ## 1.1.0
 
 * [THORN-86] FieldStation now uses the CommunicationManager from ska-low-mccs-common to manage it's communication status, this should flush out issues with rapid changes of adminmode.
