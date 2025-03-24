@@ -53,7 +53,7 @@ include:
 
   # Deploy stage
   - project: 'ska-telescope/templates-repository'
-    file: 'gitlab-ci/includes/deploy.dev.gitlab-ci.yml'
+    file: 'gitlab-ci/includes/deploy.gitlab-ci.yml'
 
 notebook-lint:
   when: manual
