@@ -10,6 +10,8 @@ stages:
   - lint
   - build
   - deploy
+  - integration
+  - staging
   - test
   - test-temp
   - publish
