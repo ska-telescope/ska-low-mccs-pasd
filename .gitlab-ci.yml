@@ -55,6 +55,12 @@ include:
   - project: 'ska-telescope/templates-repository'
     file: 'gitlab-ci/includes/deploy.gitlab-ci.yml'
 
+deploy-staging:
+  when: manual
+
+deploy-integration:
+  when: manual
+
 notebook-lint:
   when: manual
 
