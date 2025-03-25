@@ -10,6 +10,8 @@ stages:
   - lint
   - build
   - deploy
+  - integration
+  - staging
   - test
   - test-temp
   - publish
@@ -51,7 +53,13 @@ include:
 
   # Deploy stage
   - project: 'ska-telescope/templates-repository'
-    file: 'gitlab-ci/includes/deploy.dev.gitlab-ci.yml'
+    file: 'gitlab-ci/includes/deploy.gitlab-ci.yml'
+
+deploy-staging:
+  when: manual
+
+deploy-integration:
+  when: manual
 
 notebook-lint:
   when: manual
