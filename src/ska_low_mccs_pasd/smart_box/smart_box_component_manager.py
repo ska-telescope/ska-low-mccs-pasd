@@ -65,7 +65,7 @@ class Port:
         :param task_callback: the command_tracker callback
             for this command.
         """
-        self.logger.info("Port desired on. To be turned on when smartbox is on.")
+        self.logger.debug("Port desired on. To be turned on when smartbox is on.")
         self.desire_on = True
         self._task_callback = task_callback  # type: ignore[assignment]
 
@@ -76,7 +76,7 @@ class Port:
         :param task_callback: the command_tracker callback
             for this command.
         """
-        self.logger.info(f"Turning on Power to port {self._port_id}.......")
+        self.logger.info(f"Turning on power to port {self._port_id}.......")
         assert (
             self._task_callback or task_callback
         ), "We need task callback in order to keep track of command status"
@@ -356,7 +356,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         event_value: str,
         event_quality: tango.AttrQuality,
     ) -> None:
-        self.logger.warning(f"Mapping changed to {event_value}")
         assert event_name.lower() == "smartboxmapping"
 
         mapping = json.loads(event_value)
@@ -370,9 +369,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             if smartbox_name == self._readable_name:
                 if 0 < fndh_port < PasdData.NUMBER_OF_FNDH_PORTS + 1:
                     self.update_fndh_port(fndh_port)
-                    self.logger.info(
-                        f"Smartbox has been moved to fndh port {fndh_port}"
-                    )
                     return
                 self.logger.error(
                     f"Unable to put smartbox on port {fndh_port}," "Out of range 0 - 28"
@@ -460,6 +456,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 port.desire_on = False
             self._fndh_port = fndh_port
             self._evaluate_power()
+            self.logger.info(f"Smartbox has been moved to fndh port {fndh_port}")
 
     def _evaluate_power(self: SmartBoxComponentManager) -> None:
         """
@@ -815,7 +812,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         if self._fndh_port is None:
             self.logger.info(
-                "Cannot turn on SmartBox, we do not yet know what port it is on"
+                "Cannot turn off SmartBox, we do not yet know what port it is on"
             )
             raise ValueError("cannot turn off Unknown FNDH port.")
 

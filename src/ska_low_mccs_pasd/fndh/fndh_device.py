@@ -106,7 +106,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self._overVoltageThreshold: float
         self._humidityThreshold: float
 
-        # Health monitor points contains a cache of monitring points as they are updated
+        # Health monitor points contains a cache of monitoring points as they are updated
         # in a poll. When communication is lost this cache is reset to empty again.
         self._health_monitor_points: dict[str, list[float]] = {}
         self._ports_with_smartbox: list[int] = []
@@ -519,10 +519,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         # Register the request with the component manager
         tango_attr_name = fndh_attribute.get_name()
         value = fndh_attribute.get_write_value(ExtractAs.List)
-        self.logger.debug(
-            f"Requesting to write FNDH attribute: {tango_attr_name} with value"
-            f" {value}"
-        )
         self.component_manager.write_attribute(tango_attr_name, value)
 
     @attribute(dtype="DevDouble", label="Over current threshold", unit="Amp")
@@ -687,9 +683,9 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 self._fndh_attributes[attr_name.lower()].value = power_states[port]
                 # Set Quality to VALID as the UNKNOWN value already captures a
                 # faulty communication status
-                self._fndh_attributes[
-                    attr_name.lower()
-                ].quality = tango.AttrQuality.ATTR_VALID
+                self._fndh_attributes[attr_name.lower()].quality = (
+                    tango.AttrQuality.ATTR_VALID
+                )
                 self._fndh_attributes[attr_name.lower()].timestamp = timestamp
                 self.push_change_event(
                     attr_name,
@@ -823,7 +819,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 
         except AssertionError:
-            self.logger.debug(
+            self.logger.error(
                 f"""The attribute {attr_name} pushed from MccsPasdBus
                 device does not exist in MccsSmartBox"""
             )

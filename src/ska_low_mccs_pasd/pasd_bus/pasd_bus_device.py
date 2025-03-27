@@ -501,16 +501,16 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 tango_attribute_name = _get_tango_attribute_name(
                     pasd_device_number, pasd_attribute_name
                 )
-                self.logger.debug(f"Tango attribute name: {tango_attribute_name}.")
+                self.logger.debug(f"Setting attribute invalid: {tango_attribute_name}.")
                 self._pasd_state[tango_attribute_name].timestamp = timestamp
                 # Only push out a change event if the attribute was previously valid
                 if (
                     self._pasd_state[tango_attribute_name].quality
                     != AttrQuality.ATTR_INVALID
                 ):
-                    self._pasd_state[
-                        tango_attribute_name
-                    ].quality = AttrQuality.ATTR_INVALID
+                    self._pasd_state[tango_attribute_name].quality = (
+                        AttrQuality.ATTR_INVALID
+                    )
                     self.push_change_event(
                         tango_attribute_name,
                         self._pasd_state[tango_attribute_name].value,
@@ -523,16 +523,17 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             tango_attribute_name = _get_tango_attribute_name(
                 pasd_device_number, pasd_attribute_name
             )
-            self.logger.debug(
-                f"Tango attribute name: {tango_attribute_name}, "
-                f"value: {pasd_attribute_value}"
-            )
             if tango_attribute_name == "":
                 self.logger.error(
                     f"Received update for unknown PaSD attribute {pasd_attribute_name} "
                     f"(for PaSD device {pasd_device_number})."
                 )
                 # Continue on to allow other attributes to be updated
+            else:
+                self.logger.debug(
+                    f"Tango attribute name: {tango_attribute_name}, "
+                    f"value: {pasd_attribute_value}"
+                )
 
             # Update the timestamp
             self._pasd_state[tango_attribute_name].timestamp = timestamp

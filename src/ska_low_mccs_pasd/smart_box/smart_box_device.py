@@ -356,10 +356,6 @@ class MccsSmartBox(MccsBaseDevice):
         # Register the request with the component manager
         tango_attr_name = smartbox_attribute.get_name()
         value = smartbox_attribute.get_write_value(ExtractAs.List)
-        self.logger.debug(
-            f"Requesting to write smartbox {self.SmartBoxNumber} "
-            f"attribute: {tango_attr_name} with value {value}"
-        )
         self.component_manager.write_attribute(tango_attr_name, value)
 
     # ----------

@@ -105,12 +105,12 @@ class SmartBoxHealthModel(BaseHealthModel):
 
         intermediate_healths = {}
         for health_key, parameters in self.health_params.items():
-            intermediate_healths[
-                health_key
-            ] = self._health_rules.compute_intermediate_state(
-                health_key,
-                monitoring_points.get(health_key),
-                parameters,
+            intermediate_healths[health_key] = (
+                self._health_rules.compute_intermediate_state(
+                    health_key,
+                    monitoring_points.get(health_key),
+                    parameters,
+                )
             )
         return intermediate_healths
 
@@ -132,13 +132,8 @@ class SmartBoxHealthModel(BaseHealthModel):
             threshold as value
         """
         if params.get("pcbtemperature") is not None:
-            if self.logger:
-                self.logger.warning(
-                    "Monitoring point pcbtemperature is "
-                    "not implemented in hardware "
-                    "and is not rolled up in health. "
-                    "see SPRTS-347",
-                )
+            # Monitoring point pcbtemperature is not implemented in h/w
+            # and is not rolled up in health. see SPRTS-347
             params.pop("pcbtemperature")
         self._health_rules._thresholds = self._merge_dicts(
             self._health_rules._thresholds, params
