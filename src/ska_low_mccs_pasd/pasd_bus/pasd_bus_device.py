@@ -508,9 +508,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     self._pasd_state[tango_attribute_name].quality
                     != AttrQuality.ATTR_INVALID
                 ):
-                    self._pasd_state[tango_attribute_name].quality = (
-                        AttrQuality.ATTR_INVALID
-                    )
+                    self._pasd_state[
+                        tango_attribute_name
+                    ].quality = AttrQuality.ATTR_INVALID
                     self.push_change_event(
                         tango_attribute_name,
                         self._pasd_state[tango_attribute_name].value,

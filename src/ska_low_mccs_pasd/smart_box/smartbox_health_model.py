@@ -105,12 +105,12 @@ class SmartBoxHealthModel(BaseHealthModel):
 
         intermediate_healths = {}
         for health_key, parameters in self.health_params.items():
-            intermediate_healths[health_key] = (
-                self._health_rules.compute_intermediate_state(
-                    health_key,
-                    monitoring_points.get(health_key),
-                    parameters,
-                )
+            intermediate_healths[
+                health_key
+            ] = self._health_rules.compute_intermediate_state(
+                health_key,
+                monitoring_points.get(health_key),
+                parameters,
             )
         return intermediate_healths
 
