@@ -3,6 +3,7 @@
 ## Unreleased
 
 * [THORN-121] Add deploy stage to pipeline.
+* [THORN-116] Prune log messages.
 
 ## 1.1.0
 
