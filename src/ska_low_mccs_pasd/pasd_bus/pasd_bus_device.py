@@ -497,13 +497,14 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
         if "error" in kwargs:
             # Mark the quality factor for the attribute(s) as INVALID
+            attributes_marked_invalid = []
             for pasd_attribute_name in kwargs["attributes"]:
                 tango_attribute_name = _get_tango_attribute_name(
                     pasd_device_number, pasd_attribute_name
                 )
-                self.logger.debug(f"Tango attribute name: {tango_attribute_name}.")
                 self._pasd_state[tango_attribute_name].timestamp = timestamp
-                # Only push out a change event if the attribute was previously valid
+                # Only push out a change event and log message
+                # if the attribute was previously valid
                 if (
                     self._pasd_state[tango_attribute_name].quality
                     != AttrQuality.ATTR_INVALID
@@ -511,21 +512,23 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     self._pasd_state[
                         tango_attribute_name
                     ].quality = AttrQuality.ATTR_INVALID
+                    attributes_marked_invalid.append(tango_attribute_name)
                     self.push_change_event(
                         tango_attribute_name,
                         self._pasd_state[tango_attribute_name].value,
                         timestamp,
                         AttrQuality.ATTR_INVALID,
                     )
+            if attributes_marked_invalid:
+                self.logger.debug(
+                    f"Marking attributes invalid: {attributes_marked_invalid}"
+                )
             return
 
+        updated_attributes = {}
         for pasd_attribute_name, pasd_attribute_value in kwargs.items():
             tango_attribute_name = _get_tango_attribute_name(
                 pasd_device_number, pasd_attribute_name
-            )
-            self.logger.debug(
-                f"Tango attribute name: {tango_attribute_name}, "
-                f"value: {pasd_attribute_value}"
             )
             if tango_attribute_name == "":
                 self.logger.error(
@@ -533,6 +536,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     f"(for PaSD device {pasd_device_number})."
                 )
                 # Continue on to allow other attributes to be updated
+                continue
 
             # Update the timestamp
             self._pasd_state[tango_attribute_name].timestamp = timestamp
@@ -565,12 +569,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
             self._pasd_state[tango_attribute_name].value = pasd_attribute_value
             self._pasd_state[tango_attribute_name].quality = AttrQuality.ATTR_VALID
+            updated_attributes[tango_attribute_name] = pasd_attribute_value
             self.push_change_event(
                 tango_attribute_name,
                 pasd_attribute_value,
                 timestamp,
                 AttrQuality.ATTR_VALID,
             )
+        if updated_attributes:
+            self.logger.debug(f"Updated PaSD state with values: {updated_attributes}")
 
     def _health_changed(
         self: MccsPasdBus,

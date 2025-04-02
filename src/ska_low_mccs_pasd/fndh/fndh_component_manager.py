@@ -76,7 +76,7 @@ class _PasdBusProxy(DeviceComponentManager):
         subscriptions = self._proxy.GetPasdDeviceSubscriptions(self._pasd_device)
         for attribute in subscriptions:
             if attribute not in self._proxy._change_event_subscription_ids.keys():
-                self.logger.info(f"subscribing to attribute {attribute}.....")
+                self.logger.debug(f"Subscribing to attribute {attribute}.....")
                 self._proxy.add_change_event_callback(
                     attribute, self._on_attribute_change
                 )

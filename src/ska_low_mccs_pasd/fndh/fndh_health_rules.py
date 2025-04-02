@@ -581,9 +581,9 @@ class FndhHealthRules(HealthRules):
                 f"Threshold for {attribute_name} has been "
                 f"initialised to {new_threshold}"
             )
-        else:
+        elif old_threshold != new_threshold:
             self._logger.info(
-                f"Threshold for {attribute_name} has being updated "
+                f"Threshold for {attribute_name} has been updated "
                 f"from {old_threshold} to {new_threshold}"
             )
 
