@@ -13,6 +13,7 @@ import json
 import logging
 import re
 import threading
+import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
@@ -27,6 +28,11 @@ from ska_tango_base.executor import TaskExecutorComponentManager
 from ska_low_mccs_pasd.pasd_data import PasdData
 
 __all__ = ["FndhComponentManager", "_PasdBusProxy"]
+
+RESULT_TO_TASK = {
+    ResultCode.OK: TaskStatus.COMPLETED,
+    ResultCode.FAILED: TaskStatus.FAILED,
+}
 
 
 class _PasdBusProxy(DeviceComponentManager):
@@ -169,6 +175,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         attribute_change_callback: Callable[..., None],
         update_port_power_states: Callable[..., None],
         pasd_fqdn: str,
+        ports_with_smartbox: list[int],
         event_serialiser: Optional[EventSerialiser] = None,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
     ) -> None:
@@ -186,6 +193,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         :param update_port_power_states: callback to be
             called when the power state changes.
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
+        :param ports_with_smartbox: the list of ports with smartboxes.
         :param event_serialiser: the event serialiser to be used by this object.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
             purposes only. defaults to None
@@ -195,6 +203,10 @@ class FndhComponentManager(TaskExecutorComponentManager):
         self._attribute_change_callback = attribute_change_callback
         self._update_port_power_states = update_port_power_states
         self._pasd_fqdn = pasd_fqdn
+        self._ports_with_smartbox = ports_with_smartbox
+        self._fndh_port_powers = [PowerState.UNKNOWN] * PasdData.NUMBER_OF_FNDH_PORTS
+        self.fndh_ports_change = threading.Event()
+        self._power_state = PowerState.UNKNOWN
 
         self._pasd_bus_proxy = _pasd_bus_proxy or _PasdBusProxy(
             pasd_fqdn,
@@ -422,6 +434,160 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 result="Set port powers success",
             )
         return result_code, unique_id
+
+    def _power_fndh_ports(
+        self: FndhComponentManager, power_state: PowerState, timeout: int
+    ) -> tuple[ResultCode, int]:
+        desired_port_powers: list[bool] = [False] * PasdData.NUMBER_OF_FNDH_PORTS
+        for port in self._ports_with_smartbox:
+            desired_port_powers[port - 1] = power_state == PowerState.ON
+        json_argument = json.dumps(
+            {
+                "port_powers": desired_port_powers,
+                "stay_on_when_offline": True,
+            }
+        )
+        self._pasd_bus_proxy.set_fndh_port_powers(json_argument)
+        return self._wait_for_fndh_ports_state(desired_port_powers, timeout)
+
+    def _wait_for_fndh_ports_state(
+        self: FndhComponentManager, desired_port_powers: list[bool], timeout: int
+    ) -> tuple[ResultCode, int]:
+        desired_port_power_states = [
+            PowerState.ON if power else PowerState.OFF for power in desired_port_powers
+        ]
+        while not self._fndh_port_powers == desired_port_power_states:
+            self.logger.debug("Waiting for unmasked smartbox ports to change state")
+            t1 = time.time()
+            self.fndh_ports_change.wait(timeout)
+            t2 = time.time()
+            timeout -= int(t2 - t1)
+            self.fndh_ports_change.clear()
+            if timeout <= 0:
+                self.logger.error("Timeout reached waiting for Smartbox port state.")
+                return ResultCode.FAILED, timeout
+        return ResultCode.OK, timeout
+
+    @check_communicating
+    def on(
+        self: FndhComponentManager,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Turn the Fndh on.
+
+        :param task_callback: Update task state, defaults to None
+
+        :return: a result code and a unique_id or message.
+        """
+        return self.submit_task(
+            self._on,  # type: ignore[arg-type]
+            args=[],
+            task_callback=task_callback,
+        )
+
+    def _on(
+        self: FndhComponentManager,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
+        if task_callback:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+
+        result = ResultCode.OK
+
+        try:
+            timeout = 60  # seconds
+            result, time_left = self._power_fndh_ports(PowerState.ON, timeout)
+
+        except Exception as ex:  # pylint: disable=broad-except
+            self.logger.error(f"error {ex}")
+            if task_callback:
+                task_callback(
+                    status=TaskStatus.FAILED,
+                    result=(ResultCode.FAILED, f"{ex}"),
+                )
+
+        if task_callback:
+            task_callback(
+                status=RESULT_TO_TASK[result],
+                result=(
+                    result,
+                    f"Powering on FNDH ports {result.name} in {time_left} seconds",
+                ),
+            )
+
+    @check_communicating
+    def standby(
+        self: FndhComponentManager,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Turn the Fndh to standby.
+
+        :param task_callback: Update task state, defaults to None
+
+        :return: a result code and a unique_id or message.
+        """
+        return self.submit_task(
+            self._standby,  # type: ignore[arg-type]
+            args=[],
+            task_callback=task_callback,
+        )
+
+    def _standby(
+        self: FndhComponentManager,
+        task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
+        if task_callback:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+
+        result = ResultCode.OK
+
+        try:
+            timeout = 60  # seconds
+            result, time_left = self._power_fndh_ports(PowerState.OFF, timeout)
+
+        except Exception as ex:  # pylint: disable=broad-except
+            self.logger.error(f"error {ex}")
+            if task_callback:
+                task_callback(
+                    status=TaskStatus.FAILED,
+                    result=(ResultCode.FAILED, f"{ex}"),
+                )
+
+        if task_callback:
+            task_callback(
+                status=RESULT_TO_TASK[result],
+                result=(
+                    result,
+                    f"Powering off FNDH ports {result.name} in {time_left} seconds",
+                ),
+            )
+
+    def _evaluate_power(self: FndhComponentManager) -> None:
+        """
+        Evaluate the power state of the fndh device.
+
+        * If the FNDH's ports are all OFF, the FNDH is STANDBY.
+        * If at least one of the FNDH's ports are ON, the FNDH is ON.
+        * If the FNDH is not in any of the states above, it is UNKNOWN.
+        """
+        if all(power == PowerState.OFF for power in self._fndh_port_powers):
+            self.logger.debug("All ports are OFF, the FNDH is STANDBY")
+            self._power_state = PowerState.STANDBY
+        elif any(power == PowerState.ON for power in self._fndh_port_powers):
+            self.logger.debug("At least one port is ON, FNDH is ON.")
+            self._power_state = PowerState.ON
+        else:
+            self.logger.error(
+                f"FNDH reported port power states are {self._fndh_port_powers}."
+                "This is an unexpected state, moving to UNKNOWN."
+            )
+            self._power_state = PowerState.UNKNOWN
+
+        self._update_component_state(power=self._power_state)
 
     @check_communicating
     def write_attribute(

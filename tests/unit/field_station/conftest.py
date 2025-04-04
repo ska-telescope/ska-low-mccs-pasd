@@ -44,6 +44,8 @@ def mock_fndh_fixture(mocked_outside_temperature: float) -> unittest.mock.Mock:
     builder.add_attribute("PortsPowerSensed", [False for _ in range(28)])
     builder.add_command("dev_name", "low-mccs/fndh/ci-1")
     builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
+    builder.add_result_command("Standby", ResultCode.OK)
+    builder.add_result_command("On", ResultCode.OK)
     return builder()
 
 

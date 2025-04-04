@@ -9,7 +9,6 @@
 
 from __future__ import annotations
 
-import importlib.resources
 import json
 from typing import Any, Final, Optional
 
@@ -40,12 +39,8 @@ class MccsFieldStation(MccsBaseDevice):
     # Device Properties
     # -----------------
     StationName = device_property(dtype=(str), mandatory=True)
-    ConfigurationHost = device_property(dtype=(str), mandatory=True)
-    ConfigurationPort = device_property(dtype=(int), mandatory=True)
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), default_value=[])
-    TMConfigURI = device_property(dtype=(str,), default_value=[])
-    ConfigurationTimeout = device_property(dtype=(int), default_value=15)
     # --------------
     # Initialisation
     # --------------
@@ -69,10 +64,11 @@ class MccsFieldStation(MccsBaseDevice):
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_report: str
         self._health_rollup: HealthRollup
+        self._antenna_powers: dict
 
     def init_device(self: MccsFieldStation) -> None:
         """Initialise the device."""
-        self._antenna_power_json: Optional[str] = None
+        self._antenna_powers = {}
         self._component_state_on: Optional[bool] = None
 
         super().init_device()
@@ -81,10 +77,6 @@ class MccsFieldStation(MccsBaseDevice):
             "Initialised MccsFieldStation device with properties:\n"
             f"\tFndhFQDN: {self.FndhFQDN}\n"
             f"\tSmartBoxFQDNs: {self.SmartBoxFQDNs}\n"
-            f"\tTMConfigURI: {self.TMConfigURI}\n"
-            f"\tConfigurationHost: {self.ConfigurationHost}\n"
-            f"\tConfigurationPort: {self.ConfigurationPort}\n"
-            f"\tConfigurationTimeout: {self.ConfigurationTimeout}\n"
             f"\tStationName: {self.StationName}\n"
         )
         self.logger.info(message)
@@ -117,16 +109,11 @@ class MccsFieldStation(MccsBaseDevice):
         """
         return FieldStationComponentManager(
             self.logger,
-            self.ConfigurationHost,
-            self.ConfigurationPort,
-            self.ConfigurationTimeout,
             self.StationName,
             self.FndhFQDN,
             self.SmartBoxFQDNs,
-            self.TMConfigURI,
             self._communication_state_changed,
             self._component_state_callback,
-            self._on_configuration_change,
             event_serialiser=self._event_serialiser,
         )
 
@@ -143,43 +130,9 @@ class MccsFieldStation(MccsBaseDevice):
             },
         }
 
-        mask_schema: Final = json.loads(
-            importlib.resources.read_text(
-                "ska_low_mccs_pasd.field_station.schemas",
-                "MccsFieldStation_UpdateAntennaMask.json",
-            )
-        )
-
-        antenna_mapping_schema: Final = json.loads(
-            importlib.resources.read_text(
-                "ska_low_mccs_pasd.field_station.schemas",
-                "MccsFieldStation_UpdateAntennaMapping.json",
-            )
-        )
-
-        smartbox_mapping_schema: Final = json.loads(
-            importlib.resources.read_text(
-                "ska_low_mccs_pasd.field_station.schemas",
-                "MccsFieldStation_UpdateSmartboxMapping.json",
-            )
-        )
-
         for command_name, method_name, schema in [
-            ("PowerOnAntenna", "turn_on_antenna", None),
-            ("PowerOffAntenna", "turn_off_antenna", None),
-            ("UpdateAntennaMask", "update_antenna_mask", mask_schema),
-            (
-                "UpdateAntennaMapping",
-                "update_antenna_mapping",
-                antenna_mapping_schema,
-            ),
-            (
-                "UpdateSmartboxMapping",
-                "update_smartbox_mapping",
-                smartbox_mapping_schema,
-            ),
-            ("LoadConfiguration", "load_configuration", None),
-            ("LoadConfigurationUri", "load_configuration_uri", None),
+            ("PowerOnAntenna", "power_on_antenna", None),
+            ("PowerOffAntenna", "power_off_antenna", None),
             ("Configure", "configure", configure_schema),
         ]:
             validator = (
@@ -201,7 +154,6 @@ class MccsFieldStation(MccsBaseDevice):
                 ),
             )
         self.set_change_event("antennaPowerStates", True, False)
-        self.set_change_event("smartboxMapping", True, False)
         self.set_change_event("outsideTemperature", True, False)
 
     # ----------
@@ -219,8 +171,6 @@ class MccsFieldStation(MccsBaseDevice):
             self._component_state_callback(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._component_state_callback(power=self.component_manager._power_state)
-            self.component_manager.update_smartbox_mask()
-            self.component_manager.update_fndh_configuration()
 
     def _component_state_callback(  # noqa: C901
         self: MccsFieldStation,
@@ -262,25 +212,12 @@ class MccsFieldStation(MccsBaseDevice):
             self.push_change_event("outsideTemperature", kwargs["outsidetemperature"])
 
         if "antenna_powers" in kwargs:
-            self.logger.debug("antenna power state changed")
-            # Antenna powers have changed delete json and reload.
-            # pylint: disable=attribute-defined-outside-init
-            self._antenna_power_json = None
+            self._antenna_powers |= json.loads(kwargs["antenna_powers"])
             self.push_change_event(
-                "antennaPowerStates", json.dumps(kwargs["antenna_powers"])
+                "antennaPowerStates", json.dumps(self._antenna_powers)
             )
 
         super()._component_state_changed(fault=fault, power=power)
-
-    def _on_configuration_change(
-        self: MccsFieldStation, smartbox_mapping: dict[str, PowerState]
-    ) -> None:
-        """
-        Handle a change in the field station configuration.
-
-        :param smartbox_mapping: a dictionary containing the smartboxMapping.
-        """
-        self.push_change_event("smartboxMapping", json.dumps(smartbox_mapping))
 
     def _update_admin_mode(self, admin_mode: AdminMode) -> None:
         super()._update_admin_mode(admin_mode)
@@ -406,107 +343,9 @@ class MccsFieldStation(MccsBaseDevice):
         (return_code, message) = handler(antenna_name)
         return ([return_code], [message])
 
-    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
-    def UpdateAntennaMask(
-        self: MccsFieldStation, argin: str
-    ) -> DevVarLongStringArrayType:
-        """
-        Manually update the antenna mask.
-
-        :param argin: the configuration for the antenna mask in
-            stringified json format
-
-        :return: A tuple containing a return code and a string
-            message indicating status. The message is for
-            information purpose only.
-        """
-        handler = self.get_command_object("UpdateAntennaMask")
-        (return_code, message) = handler(argin)
-        return ([return_code], [message])
-
-    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
-    def UpdateAntennaMapping(
-        self: MccsFieldStation, argin: str
-    ) -> DevVarLongStringArrayType:
-        """
-        Manually update the antenna mapping.
-
-        :param argin: the configuration for the antenna mapping in
-            stringified json format
-
-        :return: A tuple containing a return code and a string
-            message indicating status. The message is for
-            information purpose only.
-        """
-        handler = self.get_command_object("UpdateAntennaMapping")
-        (return_code, message) = handler(argin)
-        return ([return_code], [message])
-
-    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
-    def UpdateSmartboxMapping(
-        self: MccsFieldStation, argin: str
-    ) -> DevVarLongStringArrayType:
-        """
-        Manually update the smartbox mapping.
-
-        :param argin: the configuration for the smartbox mapping in
-            stringified json format
-
-        :return: A tuple containing a return code and a string
-            message indicating status. The message is for
-            information purpose only.
-        """
-        handler = self.get_command_object("UpdateSmartboxMapping")
-        (return_code, message) = handler(argin)
-        return ([return_code], [message])
-
-    @command(dtype_out="DevVarLongStringArray")
-    def UpdateConfiguration(
-        self: MccsFieldStation,
-    ) -> DevVarLongStringArrayType:
-        """
-        Update the configuration of the FieldStation.
-
-        This updates the antenna mask, antenna mapping and smartbox mapping.
-
-        :return: A tuple containing a return code and a string
-            message indicating status. The message is for
-            information purpose only.
-        """
-        handler = self.get_command_object("UpdateConfiguration")
-        (return_code, message) = handler()
-        return ([return_code], [message])
-
     # ----------
     # Attributes
     # ----------
-
-    @attribute(dtype="DevString", label="AntennaMask")
-    def antennaMask(self: MccsFieldStation) -> str:
-        """
-        Return the antenna mask attribute.
-
-        :return: antenna mask
-        """
-        return json.dumps(self.component_manager._antenna_mask)
-
-    @attribute(dtype="DevString", label="AntennaMapping")
-    def antennaMapping(self: MccsFieldStation) -> str:
-        """
-        Return the antenna mapping attribute.
-
-        :return: antenna mappping
-        """
-        return json.dumps(self.component_manager._antenna_mapping)
-
-    @attribute(dtype="DevString", label="SmartboxMapping")
-    def smartboxMapping(self: MccsFieldStation) -> str:
-        """
-        Return the smartbox mapping attribute.
-
-        :return: smartbox mapping
-        """
-        return json.dumps(self.component_manager._smartbox_mapping)
 
     @attribute(dtype="DevString", label="antennaPowerStates")
     def antennaPowerStates(self: MccsFieldStation) -> str:
@@ -515,10 +354,7 @@ class MccsFieldStation(MccsBaseDevice):
 
         :return: the power of the logical antennas.
         """
-        # pylint: disable=attribute-defined-outside-init
-        if self._antenna_power_json is None:
-            self._antenna_power_json = json.dumps(self.component_manager.antenna_powers)
-        return self._antenna_power_json
+        return json.dumps(self._antenna_powers)
 
     @attribute(dtype="float", label="OutsideTemperature")
     def outsideTemperature(self: MccsFieldStation) -> float:

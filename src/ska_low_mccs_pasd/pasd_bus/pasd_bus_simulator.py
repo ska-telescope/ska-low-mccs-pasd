@@ -1662,6 +1662,14 @@ class PasdBusSimulator:
         """
         return self._smartbox_attached_ports
 
+    def get_smartbox_ports_connected(self: PasdBusSimulator) -> list[list[bool]]:
+        """
+        Return a list of lists of bool for connected ports of each smartbox.
+
+        :return: a list of lists of bool for connected ports of each smartbox.
+        """
+        return self._smartboxes_ports_connected
+
     def _instantiate_smartbox(
         self: PasdBusSimulator, port_number: int
     ) -> Optional[bool]:

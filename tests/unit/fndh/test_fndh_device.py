@@ -347,7 +347,7 @@ def test_ports_with_smartbox(
         :py:class:`tango.DeviceProxy` to the device under test, in a
         :py:class:`tango.test_context.DeviceTestContext`.
     """
-    assert fndh_device.portsWithSmartbox.tolist() == []
+    assert fndh_device.portsWithSmartbox.tolist() == [1, 2, 3]
     mocked_ports_bad = [i + 1 for i in range(25)]
     with pytest.raises(tango.DevFailed):
         fndh_device.portsWithSmartbox = mocked_ports_bad

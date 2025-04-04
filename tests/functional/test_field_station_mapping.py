@@ -11,81 +11,18 @@ from __future__ import annotations
 import gc
 import json
 import time
-from typing import Any, Callable, Final
+from typing import Callable
 
-import jsonschema
 import pytest
 import tango
 from pytest_bdd import given, parsers, scenarios, then, when
 from ska_control_model import AdminMode, PowerState, SimulationMode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-from tests.conftest import MAX_NUMBER_OF_SMARTBOXES_PER_STATION
-
 gc.disable()
 
-ANTENNA_MAPPING_SCHEMA: Final = {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://skao.int/UpdateAntennaMapping.json",
-    "title": "MccsFieldStation UpdateAntennaMapping schema",
-    "description": "Schema for MccsFieldStation's UpdateAntennaMapping command",
-    "type": "object",
-    "properties": {
-        "antennaMapping": {
-            "description": "the antennas",
-            "type": "object",
-            "minProperties": 0,
-            "maxProperties": 256,
-            "patternProperties": {
-                "[a-zA-Z0-9_]+": {
-                    "description": "the antennas",
-                    "type": "array",
-                }
-            },
-        }
-    },
-    "required": ["antennaMapping"],
-}
-ANTENNA_MASK_SCHEMA: Final = {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://skao.int/UpdateAntennaMask.json",
-    "title": "MccsFieldStation UpdateAntennaMask schema",
-    "description": "Schema for MccsFieldStation's UpdateAntennaMask command",
-    "type": "object",
-    "properties": {
-        "antennaMask": {
-            "description": "the antennas",
-            "type": "object",
-            "minProperties": 0,
-            "maxProperties": 256,
-            "patternProperties": {
-                "[a-zA-Z0-9_]+": {"description": "the antennas", "type": "boolean"}
-            },
-        }
-    },
-    "required": ["antennaMask"],
-}
-SMARTBOX_MAPPING_SCHEMA: Final = {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://skao.int/UpdateSmartboxMapping.json",
-    "title": "MccsFieldStation UpdateSmartboxMapping schema",
-    "description": "Schema for MccsFieldStation's UpdateSmartboxMapping command",
-    "type": "object",
-    "properties": {
-        "smartboxMapping": {
-            "description": "the smartbox mappings",
-            "type": "object",
-            "minProperties": 0,
-            "maxProperties": 24,
-            "patternProperties": {
-                "[a-zA-Z0-9_]+": {"description": "fqdns", "type": "integer"}
-            },
-        }
-    },
-    "required": ["smartboxMapping"],
-}
 
-scenarios("./features/field_station_mapping.feature")
+scenarios("./features/field_station_antenna_power_control.feature")
 
 
 @given(parsers.parse("A {device_ref} which is ready"))
@@ -357,52 +294,3 @@ def correct_smartbox_port_turns_off(
         assert False
     smartbox_index = int(smartbox_port) - 1
     assert smartbox_under_test.portspowersensed[smartbox_index] == port_has_power
-
-
-@when("we check the fieldstations maps", target_fixture="maps")
-def check_port_mapping(
-    field_station_device: tango.DeviceProxy,
-) -> dict[str, dict[Any, Any]]:
-    """
-    Ask for the port mapping.
-
-    :param field_station_device: a proxy to the field station device.
-
-    :return: the maps reported by the field station.
-    """
-    return {
-        "antenna_map": json.loads(field_station_device.antennaMapping),
-        "smartbox_map": json.loads(field_station_device.smartboxMapping),
-        "antenna_mask": json.loads(field_station_device.antennaMask),
-    }
-
-
-@then("we get valid mappings")
-def check_the_mapping_is_valid(
-    maps: dict[str, dict], smartboxes_under_test: list, is_true_context: bool
-) -> None:
-    """
-    Check that the mapping passes the validation.
-
-    :param smartboxes_under_test: a list of the smartboxes under test.
-    :param maps: the maps reported by the field station.
-    :param is_true_context: Is this test runnning in a true context.
-    """
-    # Validate against the
-    jsonschema.validate(maps["antenna_map"], ANTENNA_MAPPING_SCHEMA)
-
-    jsonschema.validate(maps["smartbox_map"], SMARTBOX_MAPPING_SCHEMA)
-
-    jsonschema.validate(maps["antenna_mask"], ANTENNA_MASK_SCHEMA)
-
-    # Check that we have a configuration for every smartbox under test.
-    number_of_configured_smartboxes = 0
-    for smartbox_config in maps["smartbox_map"]["smartboxMapping"]:
-        number_of_configured_smartboxes += 1
-    if is_true_context:
-        # Currently the store is configured with the deployed configuration from
-        # helm. We check that for the devices deployed we have a configuration.
-        assert number_of_configured_smartboxes == len(smartboxes_under_test)
-    else:
-        # We have mocked the store with a configuration for all 24 smartboxes
-        assert number_of_configured_smartboxes == MAX_NUMBER_OF_SMARTBOXES_PER_STATION

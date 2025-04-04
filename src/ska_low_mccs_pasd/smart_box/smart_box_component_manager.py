@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
 import tango
+from bidict import bidict
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_mccs_common import EventSerialiser, MccsDeviceProxy
 from ska_low_mccs_common.component import DeviceComponentManager
@@ -266,8 +267,10 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         smartbox_nr: int,
         readable_name: str,
         port_count: int,
-        field_station_name: str,
         pasd_fqdn: str,
+        ports_with_antennas: list[int],
+        antenna_names: list[str],
+        fndh_port: int,
         event_serialiser: Optional[EventSerialiser] = None,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
     ) -> None:
@@ -285,8 +288,10 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param smartbox_nr: the smartbox's ID number.
         :param readable_name: the smartbox's name
         :param port_count: the number of smartbox ports.
-        :param field_station_name: the name of the field station.
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
+        :param ports_with_antennas: list of ports which have antennas attached.
+        :param antenna_names: list of antenna names attached to ports.
+        :param fndh_port: the fndh port to which this smartbox is attached.
         :param event_serialiser: the event serialiser to be used by this object.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
         """
@@ -300,8 +305,18 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self._desire_standby = False
         self._smartbox_nr = smartbox_nr
         self._readable_name = readable_name
-        self._fndh_port: Optional[int] = None
-        self._port_mask = [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS
+        self._fndh_port: int = fndh_port
+        self._ports_with_antennas: list[int] = ports_with_antennas
+        self._antenna_names: list[str] = antenna_names
+        self._antenna_powers: dict[str, PowerState] = dict.fromkeys(
+            self._antenna_names, PowerState.UNKNOWN
+        )
+        self._port_to_antenna_map: bidict[int, str] = bidict(
+            zip(self._ports_with_antennas, self._antenna_names)
+        )
+        self._port_mask = [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS
+        for idx in self._ports_with_antennas:
+            self._port_mask[idx - 1] = False
         self._attribute_change_callback = attribute_change_callback
         self.fndh_ports_change = threading.Event()
         self.smartbox_ports_change = threading.Event()
@@ -310,14 +325,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self._smartbox_port_powers = [
             PowerState.UNKNOWN
         ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
-
-        self._field_station_proxy = DeviceComponentManager(
-            field_station_name,
-            logger,
-            self._field_station_communication_change,
-            self._field_station_state_change,
-            event_serialiser=self._event_serialiser,
-        )
 
         self._pasd_bus_proxy = _pasd_bus_proxy or _PasdBusProxy(
             pasd_fqdn,
@@ -340,45 +347,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             pasdbus_status=None,
         )
 
-    def _field_station_communication_change(
-        self: SmartBoxComponentManager,
-        communication_state: CommunicationStatus,
-    ) -> None:
-        if communication_state == CommunicationStatus.ESTABLISHED:
-            assert self._field_station_proxy._proxy is not None
-            self._field_station_proxy._proxy.add_change_event_callback(
-                "smartboxMapping", self._on_mapping_change
-            )
-
-    def _on_mapping_change(
-        self: SmartBoxComponentManager,
-        event_name: str,
-        event_value: str,
-        event_quality: tango.AttrQuality,
-    ) -> None:
-        assert event_name.lower() == "smartboxmapping"
-
-        mapping = json.loads(event_value)
-        if mapping is None:
-            self.logger.warning(
-                "Smartbox mapping is not present, "
-                "Check FieldStation `smartboxMapping`."
-            )
-            return
-        for smartbox_name, fndh_port in mapping["smartboxMapping"].items():
-            if smartbox_name == self._readable_name:
-                if 0 < fndh_port < PasdData.NUMBER_OF_FNDH_PORTS + 1:
-                    self.update_fndh_port(fndh_port)
-                    return
-                self.logger.error(
-                    f"Unable to put smartbox on port {fndh_port}," "Out of range 0 - 28"
-                )
-                return
-
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """Establish communication."""
         self._pasd_bus_proxy.start_communicating()
-        self._field_station_proxy.start_communicating()
 
     def _pasd_bus_communication_state_changed(
         self: SmartBoxComponentManager,
@@ -404,14 +375,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
         elif power == PowerState.ON:
             self._update_communication_state(CommunicationStatus.ESTABLISHED)
-
-    def _field_station_state_change(
-        self: SmartBoxComponentManager,
-        power: PowerState | None = None,
-        **kwargs: Any,
-    ) -> None:
-        # MccsSmartbox does not care about the state of fieldstation!
-        return
 
     def _on_fndh_ports_power_changed(
         self: SmartBoxComponentManager,
@@ -442,21 +405,17 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         for idx, attr in enumerate(attr_value):
             self._smartbox_port_powers[idx] = PowerState.ON if attr else PowerState.OFF
+            antenna_name = self._port_to_antenna_map.get(idx + 1, None)
+            if antenna_name:
+                self._antenna_powers[antenna_name] = (
+                    PowerState.ON if attr else PowerState.OFF
+                )
+                if self._component_state_callback:
+                    self._component_state_callback(
+                        antenna_powers=json.dumps(self._antenna_powers)
+                    )
         self.smartbox_ports_change.set()
         self._evaluate_power()
-
-    def update_fndh_port(self: SmartBoxComponentManager, fndh_port: int) -> None:
-        """
-        Update the fndh port this smartbox is on.
-
-        :param fndh_port: The fndh port this smartbox is on.
-        """
-        if self._fndh_port != fndh_port and fndh_port is not None:
-            for port in self.ports:
-                port.desire_on = False
-            self._fndh_port = fndh_port
-            self._evaluate_power()
-            self.logger.info(f"Smartbox has been moved to fndh port {fndh_port}")
 
     def _evaluate_power(self: SmartBoxComponentManager) -> None:
         """
@@ -477,14 +436,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         * If the Smartbox is not in any of the states above, it is UNKNOWN.
         """
         timestamp = datetime.now(timezone.utc).timestamp()
-        if self._fndh_port is None:
-            self.logger.info(
-                "The fndh port this smartbox is attached to is unknown,"
-                "Therefore smartbox state transitions to UNKNOWN."
-            )
-            self._update_component_state(power=PowerState.UNKNOWN)
-            return
-
         match self._fndh_port_powers[self._fndh_port - 1]:
             # If the FNDH port is OFF, the Smartbox is OFF
             case PowerState.OFF:
@@ -677,12 +628,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         result = ResultCode.OK
         if self._pasd_bus_proxy is None:
             raise ValueError(f"Power on smartbox '{self._fndh_port} failed'")
-
-        if self._fndh_port is None:
-            self.logger.info(
-                "Cannot turn on SmartBox, we do not yet know what port it is on"
-            )
-            raise ValueError("cannot turn on Unknown FNDH port.")
 
         # So we can differentiate between ON and STANDBY when all ports are masked.
         self._desire_standby = False

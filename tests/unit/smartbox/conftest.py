@@ -8,16 +8,12 @@
 """This module defines a pytest harness for testing the MCCS SmartBox module."""
 from __future__ import annotations
 
-import json
 import unittest.mock
-from typing import Any
 
 import pytest
 import tango
 from ska_control_model import ResultCode
 from ska_low_mccs_common.testing.mock import MockDeviceBuilder
-
-from ska_low_mccs_pasd import PasdData
 
 
 @pytest.fixture(name="smartbox_number")
@@ -47,7 +43,7 @@ def fndh_port_fixture() -> int:
 
     :return: the fndh port this smartbox is attached.
     """
-    return 2
+    return 1
 
 
 @pytest.fixture(name="changed_fndh_port")
@@ -104,45 +100,4 @@ def mock_pasdbus_fixture(
     )
     builder.add_result_command("SetSmartboxPortPowers", ResultCode.OK)
     builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
-    return builder()
-
-
-@pytest.fixture(name="input_smartbox_mapping")
-def input_smartbox_mapping_fixture(
-    smartbox_number: int, fndh_port: int
-) -> dict[str, Any]:
-    """
-    Fixture providing a made up smartboxMapping in FieldStation.
-
-    :param smartbox_number: The logical id given to this smartbox.
-    :param fndh_port: The port under test.
-
-    :returns: the smartboxMapping.
-    """
-    smartbox_mapping: dict = {}
-    for fndh_port_idx in range(1, PasdData.NUMBER_OF_FNDH_PORTS + 1):
-        smartbox_mapping[f"sb{fndh_port_idx:02d}"] = fndh_port_idx
-
-    # The smartbox under test is attached to the port
-    # given by fixture fndh_port!!
-    smartbox_mapping[f"sb{smartbox_number:02d}"] = fndh_port
-
-    return {"smartboxMapping": smartbox_mapping}
-
-
-@pytest.fixture(name="mock_field_station")
-def mock_field_station_fixture(
-    input_smartbox_mapping: dict[str, Any]
-) -> unittest.mock.Mock:
-    """
-    Fixture that provides a mock FieldStation device.
-
-    :param input_smartbox_mapping: the mocked smartboxMapping
-        attribute value.
-
-    :return: a mock FieldStation device.
-    """
-    builder = MockDeviceBuilder()
-    builder.set_state(tango.DevState.ON)
-    builder.add_attribute("smartboxMapping", json.dumps(input_smartbox_mapping))
     return builder()

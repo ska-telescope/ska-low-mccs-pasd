@@ -11,8 +11,7 @@
 from __future__ import annotations
 
 import logging
-import unittest.mock
-from typing import Any, Iterator
+from typing import Iterator
 
 import pytest
 import tango
@@ -219,37 +218,19 @@ def off_smartbox_attached_port_fixture(
     return smartbox_attached_ports[off_smartbox_id - 1]
 
 
-@pytest.fixture(name="configuration_manager", scope="module")
-def configuration_manager_fixture(
-    simulated_configuration: dict[Any, Any]
-) -> unittest.mock.Mock:
-    """
-    Return a mock configuration_manager.
-
-    :param simulated_configuration: a fixture containing the
-        simulated configuration.
-
-    :return: a mock configuration_manager.
-    """
-    manager = unittest.mock.Mock()
-    manager.connect = unittest.mock.Mock(return_value=True)
-    manager.read_data = unittest.mock.Mock(return_value=simulated_configuration)
-    return manager
-
-
 @pytest.fixture(name="test_context")
 def test_context_fixture(
     pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
-    configuration_manager: unittest.mock.Mock,
     smartbox_ids_to_test: list[int],
+    smartbox_attached_ports: list[int],
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
 
     :param pasd_hw_simulators: the FNDH and smartbox simulators against which to test
-    :param configuration_manager: the configuration manager to manage configuration
-        for field station.
     :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
+    :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
+        is connected to.
     :yield: a test context in which to run the integration tests.
     """
     harness = PasdTangoTestHarness()
@@ -264,8 +245,11 @@ def test_context_fixture(
     harness.set_fndh_device(int(LoggingLevel.ERROR))
     harness.set_fncc_device(int(LoggingLevel.ERROR))
     for smartbox_id in smartbox_ids_to_test:
-        harness.add_smartbox_device(smartbox_id, int(LoggingLevel.ERROR))
-    harness.set_configuration_server(configuration_manager)
+        harness.add_smartbox_device(
+            smartbox_id,
+            int(LoggingLevel.ERROR),
+            fndh_port=smartbox_attached_ports[smartbox_id - 1],
+        )
     harness.set_field_station_device(smartbox_ids_to_test, int(LoggingLevel.ERROR))
 
     with harness as context:

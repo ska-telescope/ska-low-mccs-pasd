@@ -2,11 +2,10 @@
 """This module provides a flexible test harness for testing PaSD Tango devices."""
 from __future__ import annotations
 
-import logging
 import threading
 from contextlib import contextmanager
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Callable, Iterator
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional
 
 import tango
 from ska_control_model import LoggingLevel, SimulationMode
@@ -152,16 +151,6 @@ class PasdTangoTestHarnessContext:
         """
         return self._tango_context.get_context("pasd_bus")
 
-    def get_pasd_configuration_server_address(
-        self: PasdTangoTestHarnessContext,
-    ) -> tuple[str, int]:
-        """
-        Get the address of the PaSD configuration server.
-
-        :returns: the address (hostname and port) of the PaSD configuration server.
-        """
-        return self._tango_context.get_context("configuration_manager")
-
     def get_smartbox_device(
         self: PasdTangoTestHarnessContext, smartbox_id: int
     ) -> tango.DeviceProxy:
@@ -244,37 +233,6 @@ class PasdTangoTestHarness:
         self._tango_test_harness.add_context_manager(
             "pasd_bus",
             server_context_manager_factory(pasd_bus_simulator_server),
-        )
-
-    def set_configuration_server(
-        self: PasdTangoTestHarness,
-        config_manager: Any,
-    ) -> None:
-        """
-        Set the FieldStation configuration server for the test harness.
-
-        :param config_manager: a configuration manager to manage
-            configuration resource.
-        """
-        # Defer importing from ska_low_mccs_pasd
-        # until we know we need to launch a PaSD simulator to test against.
-        # This ensures that we can use this harness to run tests against a real cluster,
-        # from within a pod that does not have ska_low_mccs_pasd installed.
-        # pylint: disable-next=import-outside-toplevel
-        from ska_low_mccs_pasd.reference_data_store import (
-            PasdConfigurationServerContextManager,
-            PasdConfigurationService,
-        )
-
-        logger: logging.Logger = logging.getLogger()
-        configuration_service = PasdConfigurationService(
-            "ska-low-mccs", logger, config_manager
-        )
-        configuration_server = PasdConfigurationServerContextManager(
-            configuration_service
-        )
-        self._tango_test_harness.add_context_manager(
-            "configuration_manager", configuration_server
         )
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
@@ -379,18 +337,12 @@ class PasdTangoTestHarness:
         if smartbox_numbers is None:
             smartbox_numbers = list(range(1, MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1))
 
-        def port(context: dict[str, Any]) -> int:
-            return context["configuration_manager"][1]
-
         smartbox_names = [get_smartbox_name(number) for number in smartbox_numbers]
 
         self._tango_test_harness.add_device(
             get_field_station_name(self._station_label),
             device_class,
             StationName=self._station_label,
-            ConfigurationHost="localhost",
-            ConfigurationPort=port,
-            ConfigurationTimeout=5,
             FndhFQDN=get_fndh_name(),
             SmartBoxFQDNs=smartbox_names,
             LoggingLevelDefault=logging_level,
@@ -400,6 +352,7 @@ class PasdTangoTestHarness:
         self: PasdTangoTestHarness,
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsFNDH",
+        ports_with_smartbox: Optional[list[int]] = None,
     ) -> None:
         """
         Set the FNDH Tango device in the test harness.
@@ -410,12 +363,17 @@ class PasdTangoTestHarness:
         :param device_class: The device class to use.
             This may be used to override the usual device class,
             for example with a patched subclass.
+        :param ports_with_smartbox: ports which have smartboxes attached.
         """
+        if ports_with_smartbox is None:
+            ports_with_smartbox = [1, 2, 3]
+
         self._tango_test_harness.add_device(
             get_fndh_name(self._station_label),
             device_class,
             PasdFQDN=get_pasd_bus_name(),
             ParentTRL=get_field_station_name(),
+            PortsWithSmartbox=ports_with_smartbox,
             LoggingLevelDefault=logging_level,
         )
 
@@ -488,6 +446,8 @@ class PasdTangoTestHarness:
         smartbox_id: int,
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsSmartBox",
+        ports_with_antennas: Optional[list[int]] = None,
+        fndh_port: int = 1,
     ) -> None:
         """
         Add a smartbox Tango device to the test harness.
@@ -497,7 +457,12 @@ class PasdTangoTestHarness:
         :param device_class: The device class to use.
             This may be used to override the usual device class,
             for example with a patched subclass.
+        :param ports_with_antennas: ports which have antennas attached.
+        :param fndh_port: the FNDH port this smartbox is attached to.
         """
+        if ports_with_antennas is None:
+            ports_with_antennas = [1, 2, 3]
+
         self._tango_test_harness.add_device(
             get_smartbox_name(smartbox_id, station_label=self._station_label),
             device_class,
@@ -506,6 +471,8 @@ class PasdTangoTestHarness:
             ParentTRL=get_field_station_name(),
             SmartBoxNumber=smartbox_id,
             LoggingLevelDefault=logging_level,
+            PortsWithAntennas=ports_with_antennas,
+            FndhPort=fndh_port,
         )
 
     def __enter__(
