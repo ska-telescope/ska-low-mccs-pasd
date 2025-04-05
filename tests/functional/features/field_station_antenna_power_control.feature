@@ -17,4 +17,4 @@ Feature: field station antenna power control
         Examples:
             | station_name | antenna_number | smartbox_id | smartbox_port | setup_state | desired_state |
             | "ci-1"       | sb01-07        | 1           | 7             | OFF         | ON            |
-# | "ci-1"       | sb01-07        | 1           | 7             | ON          | OFF           |
+            | "ci-1"       | sb01-07        | 1           | 7             | ON          | OFF           |

@@ -447,6 +447,7 @@ class PasdTangoTestHarness:
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsSmartBox",
         ports_with_antennas: Optional[list[int]] = None,
+        antenna_names: Optional[list[str]] = None,
         fndh_port: int = 1,
     ) -> None:
         """
@@ -458,10 +459,16 @@ class PasdTangoTestHarness:
             This may be used to override the usual device class,
             for example with a patched subclass.
         :param ports_with_antennas: ports which have antennas attached.
+        :param antenna_names: names of the antennas attached to the smartbox.
         :param fndh_port: the FNDH port this smartbox is attached to.
         """
         if ports_with_antennas is None:
             ports_with_antennas = [1, 2, 3]
+
+        if antenna_names is None:
+            antenna_names = [
+                f"sb{fndh_port:02d}-{port:02d}" for port in ports_with_antennas
+            ]
 
         self._tango_test_harness.add_device(
             get_smartbox_name(smartbox_id, station_label=self._station_label),
@@ -472,6 +479,7 @@ class PasdTangoTestHarness:
             SmartBoxNumber=smartbox_id,
             LoggingLevelDefault=logging_level,
             PortsWithAntennas=ports_with_antennas,
+            AntennaNames=antenna_names,
             FndhPort=fndh_port,
         )
 

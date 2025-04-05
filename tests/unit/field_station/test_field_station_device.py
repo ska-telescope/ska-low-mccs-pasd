@@ -160,14 +160,14 @@ def test_outside_temperature(
     [
         pytest.param(
             "PowerOnAntenna",
-            "turn_on_antenna",
+            "power_on_antenna",
             "4",
             [True, True],
             id="Power on an antenna",
         ),
         pytest.param(
             "PowerOffAntenna",
-            "turn_off_antenna",
+            "power_off_antenna",
             "4",
             [True, True],
             id="Power off an antenna",

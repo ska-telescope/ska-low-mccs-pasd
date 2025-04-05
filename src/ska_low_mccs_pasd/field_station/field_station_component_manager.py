@@ -32,6 +32,7 @@ from ska_tango_base.executor import TaskExecutorComponentManager
 __all__ = ["FieldStationComponentManager"]
 
 
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 class _SmartboxProxy(DeviceComponentManager):
     """A proxy to a MccsSmartbox device, for a station to use."""
 

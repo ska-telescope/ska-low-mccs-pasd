@@ -1602,6 +1602,7 @@ class PasdBusSimulator:
         self._smartbox_attached_ports: list[int] = [
             0
         ] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
+        self._antenna_name_on_smartbox: list[list[str]] = []
         self._time_multiplier: int = time_multiplier
 
         if smartboxes_depend_on_attached_ports:
@@ -1669,6 +1670,14 @@ class PasdBusSimulator:
         :return: a list of lists of bool for connected ports of each smartbox.
         """
         return self._smartboxes_ports_connected
+
+    def get_antenna_names_on_smartbox(self: PasdBusSimulator) -> list[list[str]]:
+        """
+        Return a list of lists of str for antenna names on each smartbox.
+
+        :return: a list of lists of bool for antenna names on each smartbox.
+        """
+        return self._antenna_name_on_smartbox
 
     def _instantiate_smartbox(
         self: PasdBusSimulator, port_number: int
@@ -1740,12 +1749,16 @@ class PasdBusSimulator:
             [False] * SmartboxSimulator.NUMBER_OF_PORTS
             for _ in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
         ]
+        self._antenna_name_on_smartbox = [
+            [] for _ in range(PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION)
+        ]
         if "antennas" in config:
-            for antenna_config in config["antennas"].values():
+            for antenna_name, antenna_config in config["antennas"].items():
                 smartbox_id = int(re.findall(r"\d+", antenna_config["smartbox"])[0])
                 smartbox_port = antenna_config["smartbox_port"]
                 self._smartboxes_ports_connected[smartbox_id - 1][
                     smartbox_port - 1
                 ] = True
+                self._antenna_name_on_smartbox[smartbox_id - 1].append(antenna_name)
 
         return True

@@ -9,11 +9,9 @@
 
 from __future__ import annotations
 
-import copy
 import gc
 import json
 import time
-from typing import Any
 
 import pytest
 import tango
@@ -23,7 +21,6 @@ from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
-from ska_low_mccs_pasd.pasd_data import PasdData
 
 gc.disable()
 
@@ -51,50 +48,6 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     )
 
 
-@pytest.fixture(name="invalid_simulated_configuration", scope="module")
-def invalid_simulated_configuration_fixture() -> dict[Any, Any]:
-    """
-    Return a invalid configuration.
-
-    This is invalid because all 256 antenna must be specified.
-    And the masked key is required.
-    This configuration only specifies 230.
-
-    :return: a configuration for representing the antenna port mapping information.
-    """
-    number_of_antenna = 230
-    antennas = {}
-    smartboxes = {}
-    for i in range(1, number_of_antenna + 1):
-        antennas[i] = {"smartbox": i % 13 + 1, "smartbox_port": i % 11}
-    for i in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
-        smartboxes[i] = {"fndh_port": str(i), "modbus_id": i}
-
-    configuration = {"antennas": antennas, "pasd": {"smartboxes": smartboxes}}
-    return configuration
-
-
-@pytest.fixture(name="simulated_configuration_alternative", scope="session")
-def simulated_configuration_alternative_fixture(
-    simulated_configuration: dict[Any, Any],
-) -> dict[Any, Any]:
-    """
-    Return an alternate configuration for the fieldstation.
-
-    :param simulated_configuration: the default simulated configuration.
-
-    :return: an alternate configuration for fieldstation
-    """
-    alternate_config = copy.deepcopy(simulated_configuration)
-    antenna1 = alternate_config["antennas"]["sb01-01"]
-    antenna2 = alternate_config["antennas"]["sb01-02"]
-
-    alternate_config["antennas"]["sb01-01"] = antenna2
-    alternate_config["antennas"]["sb01-02"] = antenna1
-
-    return alternate_config
-
-
 @pytest.fixture(name="antenna_to_turn_on")
 def antenna_to_turn_on_fixture() -> str:
     """
@@ -105,29 +58,11 @@ def antenna_to_turn_on_fixture() -> str:
     return "sb01-04"
 
 
-def antenna_mapping_from_reference_data(
-    reference_data: dict[str, Any]
-) -> dict[str, Any]:
-    """
-    Return the antenna mapping expected from a reference configuration.
-
-    :param reference_data: the backend reference data.
-
-    :return: the antenna_mapping that adheres to
-        'schemas.MccsFieldStation_UpdateAntennaMapping.json'
-    """
-    antenna_mapping: dict = {}
-    for antenna_name, values in reference_data["antennas"].items():
-        antenna_mapping[antenna_name] = [values["smartbox"], values["smartbox_port"]]
-
-    return {"antennaMapping": antenna_mapping}
-
-
 class TestFieldStationIntegration:
     """Test pasdbus and fndh integration."""
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
-    # pylint: disable=too-many-locals, too-many-statements
+    # pylint: disable=too-many-locals
     def test_turn_on_off_antenna(
         self: TestFieldStationIntegration,
         field_station_device: tango.DeviceProxy,
@@ -241,7 +176,6 @@ class TestFieldStationIntegration:
         ]
 
         antenna_power_states = json.loads(field_station_device.antennapowerstates)
-        assert False, antenna_power_states
         assert antenna_power_states[antenna_to_turn_on] != PowerState.ON
 
         # Turn on Antenna
@@ -249,7 +183,7 @@ class TestFieldStationIntegration:
 
         # Check power changed.
         change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
-        assert smartbox_proxys[chosen_smartbox_id].portspowersensed[
+        assert smartbox_proxys[chosen_smartbox_id - 1].portspowersensed[
             chosen_smartbox_port - 1
         ]
 
@@ -301,6 +235,7 @@ class TestFieldStationIntegration:
         self: TestFieldStationIntegration,
         field_station_device: tango.DeviceProxy,
         fndh_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
         """
@@ -308,6 +243,7 @@ class TestFieldStationIntegration:
 
         :param field_station_device: provide to the field station device
         :param fndh_device: proxy to the FNDH device
+        :param pasd_bus_device: proxy to the pasd bus device.
         :param change_event_callbacks: group of Tango change event
             callbacks with asynchrony support
         """
@@ -323,6 +259,7 @@ class TestFieldStationIntegration:
 
         fndh_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
+        pasd_bus_device.adminMode = AdminMode.ONLINE
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
 
         assert fndh_device.overCurrentThreshold == 0.0

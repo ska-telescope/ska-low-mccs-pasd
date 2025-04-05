@@ -101,6 +101,32 @@ def smartbox_attached_ports_fixture(
     return pasd_bus_simulator.get_smartbox_attached_ports()
 
 
+@pytest.fixture(name="smartbox_attached_antennas")
+def smartbox_attached_antennas_fixture(
+    pasd_bus_simulator: PasdBusSimulator,
+) -> list[list[bool]]:
+    """
+    Return smartbox port numbers each antenna is connected to for each smartbox.
+
+    :param pasd_bus_simulator: a PasdBusSimulator.
+    :return: smartbox port numbers each antenna is connected to for each smartbox.
+    """
+    return pasd_bus_simulator.get_smartbox_ports_connected()
+
+
+@pytest.fixture(name="smartbox_attached_antenna_names")
+def smartbox_attached_antenna_names_fixture(
+    pasd_bus_simulator: PasdBusSimulator,
+) -> list[list[str]]:
+    """
+    Return names of each antenna connected to each smartbox.
+
+    :param pasd_bus_simulator: a PasdBusSimulator.
+    :return: names of each antenna connected to each smartbox.
+    """
+    return pasd_bus_simulator.get_antenna_names_on_smartbox()
+
+
 @pytest.fixture(name="pasd_hw_simulators")
 def pasd_hw_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
@@ -223,6 +249,8 @@ def test_context_fixture(
     pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
     smartbox_ids_to_test: list[int],
     smartbox_attached_ports: list[int],
+    smartbox_attached_antennas: list[list[bool]],
+    smartbox_attached_antenna_names: list[list[str]],
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
@@ -231,6 +259,10 @@ def test_context_fixture(
     :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
     :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
         is connected to.
+    :param smartbox_attached_antennas: smartbox port numbers each antenna is
+        connected to for each smartbox.
+    :param smartbox_attached_antenna_names: names of each antenna connected to
+        each smartbox.
     :yield: a test context in which to run the integration tests.
     """
     harness = PasdTangoTestHarness()
@@ -249,6 +281,14 @@ def test_context_fixture(
             smartbox_id,
             int(LoggingLevel.ERROR),
             fndh_port=smartbox_attached_ports[smartbox_id - 1],
+            ports_with_antennas=[
+                idx + 1
+                for idx, attached in enumerate(
+                    smartbox_attached_antennas[smartbox_id - 1]
+                )
+                if attached
+            ],
+            antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
         )
     harness.set_field_station_device(smartbox_ids_to_test, int(LoggingLevel.ERROR))
 

@@ -222,6 +222,12 @@ def functional_test_context_fixture(
             fndh_ports_with_smartboxes = (
                 pasd_bus_simulator.get_smartbox_attached_ports()
             )
+            smartbox_attached_antennas = (
+                pasd_bus_simulator.get_smartbox_ports_connected()
+            )
+            smartbox_attached_antenna_names = (
+                pasd_bus_simulator.get_antenna_names_on_smartbox()
+            )
             # Set devices for test harness
             harness.set_pasd_bus_simulator(pasd_hw_simulators)
             harness.set_pasd_bus_device(
@@ -237,6 +243,14 @@ def functional_test_context_fixture(
                     smartbox_id,
                     int(LoggingLevel.ERROR),
                     fndh_port=fndh_ports_with_smartboxes[smartbox_id - 1],
+                    ports_with_antennas=[
+                        idx + 1
+                        for idx, attached in enumerate(
+                            smartbox_attached_antennas[smartbox_id - 1]
+                        )
+                        if attached
+                    ],
+                    antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
                 )
             harness.set_fndh_device(
                 int(LoggingLevel.ERROR), ports_with_smartbox=fndh_ports_with_smartboxes

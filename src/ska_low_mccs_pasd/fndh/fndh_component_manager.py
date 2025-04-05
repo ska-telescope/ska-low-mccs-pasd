@@ -158,7 +158,7 @@ class _PasdBusProxy(DeviceComponentManager):
         setattr(self._proxy, "fndh" + tango_attribute_name, value)
 
 
-# pylint: disable-next=abstract-method
+# pylint: disable-next=abstract-method, too-many-instance-attributes
 class FndhComponentManager(TaskExecutorComponentManager):
     """
     A component manager for an fndh.

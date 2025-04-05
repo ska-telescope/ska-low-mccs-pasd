@@ -45,6 +45,13 @@ def mock_smartboxes_fixture() -> unittest.mock.Mock:
     builder.add_result_command("SetPortPowers", ResultCode.QUEUED)
     builder.add_attribute("fndhPort", json.dumps(1))
     builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
+    builder.add_result_command(
+        "PowerOnAntenna", ResultCode.OK, "power on antenna sb18-01 success."
+    )
+    builder.add_result_command(
+        "PowerOffAntenna", ResultCode.OK, "power off antenna sb18-01 success."
+    )
+    builder.add_attribute("antennaNames", ["sb18-01"])
     return builder()
 
 
@@ -197,228 +204,77 @@ class TestFieldStationComponentManager:
             == CommunicationStatus.DISABLED
         )
 
-    # @pytest.mark.parametrize(
-    #     (
-    #         "antenna_id",
-    #         "antenna_masking_state",
-    #         "expected_manager_result",
-    #         "command_tracked_result",
-    #     ),
-    #     [
-    #         (
-    #             "sb18-01",
-    #             True,  # antenna is masked
-    #             (TaskStatus.QUEUED, "Task queued"),
-    #             (
-    #                 TaskStatus.REJECTED,
-    #                 (
-    #                     "Antenna number sb18-01 is masked, call with"
-    #                     " ignore_mask=True to ignore"
-    #                 ),
-    #             ),
-    #         ),
-    #         (
-    #             "sb18-01",
-    #             False,  # antenna is not masked
-    #             (TaskStatus.QUEUED, "Task queued"),
-    #             (TaskStatus.COMPLETED, "turn on antenna sb18-01 success."),
-    #         ),
-    #     ],
-    # )
-    # # pylint: disable=too-many-arguments, too-many-positional-arguments
-    # def test_antenna_power_on(
-    #     self: TestFieldStationComponentManager,
-    #     field_station_component_manager: FieldStationComponentManager,
-    #     antenna_id: str,
-    #     antenna_masking_state: bool,
-    #     expected_manager_result: tuple[TaskStatus, str],
-    #     command_tracked_result: tuple[TaskStatus, str],
-    #     mock_callbacks: MockCallableGroup,
-    # ) -> None:
-    #     """
-    #     Test the antenna power on command.
+    @pytest.mark.parametrize(
+        (
+            "antenna_id",
+            "component_manager_command",
+            "expected_manager_result",
+            "command_tracked_result",
+        ),
+        [
+            (
+                "sb18-01",
+                "power_on_antenna",
+                (TaskStatus.QUEUED, "Task queued"),
+                (
+                    TaskStatus.COMPLETED,
+                    (ResultCode.OK, "power on antenna sb18-01 success."),
+                ),
+            ),
+            (
+                "sb18-01",
+                "power_off_antenna",
+                (TaskStatus.QUEUED, "Task queued"),
+                (
+                    TaskStatus.COMPLETED,
+                    (ResultCode.OK, "power off antenna sb18-01 success."),
+                ),
+            ),
+        ],
+    )
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_antenna_power_commands(
+        self: TestFieldStationComponentManager,
+        field_station_component_manager: FieldStationComponentManager,
+        antenna_id: str,
+        component_manager_command: str,
+        expected_manager_result: tuple[TaskStatus, str],
+        command_tracked_result: tuple[TaskStatus, str],
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test the antenna power on command.
 
-    #     :param field_station_component_manager: A FieldStation component manager
-    #         with communication established.
-    #     :param antenna_id: antenna number under test.
-    #     :param antenna_masking_state: whether the antenna is masked.
-    #     :param expected_manager_result: expected response from the call
-    #     :param command_tracked_result: The result of the command.
-    #     :param mock_callbacks: mock callables.
-    #     """
-    #     field_station_component_manager.start_communicating()
+        :param field_station_component_manager: A FieldStation component manager
+            with communication established.
+        :param antenna_id: antenna number under test.
+        :param component_manager_command: command to call on the component manager.
+        :param expected_manager_result: expected response from the call
+        :param command_tracked_result: The result of the command.
+        :param mock_callbacks: mock callables.
+        """
+        field_station_component_manager.start_communicating()
 
-    #     mock_callbacks["communication_state"].assert_call(
-    #         CommunicationStatus.NOT_ESTABLISHED
-    #     )
-    #     mock_callbacks["communication_state"].assert_call(
-    #         CommunicationStatus.ESTABLISHED
-    #     )
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.ESTABLISHED
+        )
 
-    #     field_station_component_manager._antenna_mask["antennaMask"][
-    #         antenna_id
-    #     ] = antenna_masking_state
-    #     assert field_station_component_manager._antenna_mapping is not None
-    #     smartbox_id = field_station_component_manager._antenna_mapping[
-    #         "antennaMapping"
-    #     ][antenna_id][0]
-    #     smartbox_port = field_station_component_manager._antenna_mapping[
-    #         "antennaMapping"
-    #     ][antenna_id][1]
+        assert (
+            getattr(field_station_component_manager, component_manager_command)(
+                antenna_id, mock_callbacks["task"]
+            )
+            == expected_manager_result
+        )
 
-    #     fndh_port = field_station_component_manager._smartbox_mapping[
-    #         "smartboxMapping"
-    #     ][smartbox_id]
-
-    #     assert (
-    #         field_station_component_manager.turn_on_antenna(
-    #             antenna_id, mock_callbacks["task"]
-    #         )
-    #         == expected_manager_result
-    #     )
-
-    #     if antenna_masking_state is False:
-    #         assert field_station_component_manager._fndh_proxy._proxy is not None
-    #         fndh_proxy_command = (
-    #             field_station_component_manager._fndh_proxy._proxy.PowerOnPort
-    #         )
-
-    #         smartbox_trl = (
-    #             field_station_component_manager._smartbox_trl_name_map.inverse[
-    #                 smartbox_id
-    #             ]
-    #         )
-    #         smartbox_proxy = field_station_component_manager._smartbox_proxys[
-    #             smartbox_trl
-    #         ]
-
-    #         assert smartbox_proxy._proxy is not None
-    #         smartbox_proxy_command = smartbox_proxy._proxy.PowerOnPort
-
-    #         fndh_proxy_command.assert_next_call(int(fndh_port))
-    #         smartbox_proxy_command.assert_next_call(int(smartbox_port))
-
-    #     mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
-    #     if command_tracked_result[0] == TaskStatus.COMPLETED:
-    #         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
-    #     mock_callbacks["task"].assert_call(
-    #         status=command_tracked_result[0], result=command_tracked_result[1]
-    #     )
-
-    # @pytest.mark.parametrize(
-    #     (
-    #         "antenna_id",
-    #         "antenna_masking_state",
-    #         "expected_manager_result",
-    #         "command_tracked_result",
-    #     ),
-    #     [
-    #         (
-    #             "sb18-01",
-    #             True,  # antenna is masked
-    #             (TaskStatus.QUEUED, "Task queued"),
-    #             (
-    #                 TaskStatus.REJECTED,
-    #                 "Antenna number sb18-01 is masked, "
-    #                 "call with ignore_mask=True to ignore",
-    #             ),
-    #         ),
-    #         (
-    #             "sb18-11",
-    #             False,  # antenna is not masked
-    #             (TaskStatus.QUEUED, "Task queued"),
-    #             (TaskStatus.COMPLETED, "turn off antenna sb18-11 success."),
-    #         ),
-    #         (
-    #             "sb10-12",
-    #             False,  # antenna is not masked
-    #             (TaskStatus.QUEUED, "Task queued"),
-    #             (
-    #                 TaskStatus.REJECTED,
-    #                 (
-    #                     "Tried to turn off antenna sb10-12, this is mapped to "
-    #                     "smartbox sb10, which is on fndh port 10."
-    #                     " However this port is not powered on."
-    #                 ),
-    #             ),
-    #         ),
-    #     ],
-    # )
-    # # pylint: disable=too-many-arguments, too-many-positional-arguments
-    # def test_antenna_power_off(
-    #     self: TestFieldStationComponentManager,
-    #     field_station_component_manager: FieldStationComponentManager,
-    #     antenna_id: str,
-    #     antenna_masking_state: bool,
-    #     expected_manager_result: tuple[TaskStatus, str],
-    #     command_tracked_result: tuple[TaskStatus, str],
-    #     mock_callbacks: MockCallableGroup,
-    # ) -> None:
-    #     """
-    #     Test the antenna power off command.
-
-    #     :param field_station_component_manager: A FieldStation component manager
-    #         with communication established.
-    #     :param antenna_id: antenna number under test.
-    #     :param antenna_masking_state: whether the antenna is masked.
-    #     :param expected_manager_result: expected response from the call
-    #     :param command_tracked_result: The result of the command.
-    #     :param mock_callbacks: mock callables.
-    #     """
-    #     field_station_component_manager.start_communicating()
-
-    #     mock_callbacks["communication_state"].assert_call(
-    #         CommunicationStatus.NOT_ESTABLISHED
-    #     )
-    #     mock_callbacks["communication_state"].assert_call(
-    #         CommunicationStatus.ESTABLISHED
-    #     )
-
-    #     field_station_component_manager._antenna_mask["antennaMask"][
-    #         antenna_id
-    #     ] = antenna_masking_state
-    #     assert field_station_component_manager._antenna_mapping is not None
-    #     smartbox_id = field_station_component_manager._antenna_mapping[
-    #         "antennaMapping"
-    #     ][antenna_id][0]
-    #     smartbox_port = field_station_component_manager._antenna_mapping[
-    #         "antennaMapping"
-    #     ][antenna_id][1]
-
-    #     assert (
-    #         field_station_component_manager.turn_off_antenna(
-    #             antenna_id, mock_callbacks["task"]
-    #         )
-    #         == expected_manager_result
-    #     )
-
-    #     if command_tracked_result[0] == TaskStatus.COMPLETED:
-    #         assert field_station_component_manager._fndh_proxy._proxy is not None
-    #         fndh_proxy_command = (
-    #             field_station_component_manager._fndh_proxy._proxy.PowerOffPort
-    #         )
-
-    #         smartbox_trl = (
-    #             field_station_component_manager._smartbox_trl_name_map.inverse[
-    #                 smartbox_id
-    #             ]
-    #         )
-    #         smartbox_proxy = field_station_component_manager._smartbox_proxys[
-    #             smartbox_trl
-    #         ]
-
-    #         assert smartbox_proxy._proxy is not None
-    #         smartbox_proxy_command = smartbox_proxy._proxy.PowerOffPort
-
-    #         fndh_proxy_command.assert_not_called()
-    #         smartbox_proxy_command.assert_next_call(smartbox_port)
-
-    #     mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
-    #     if command_tracked_result[0] == TaskStatus.COMPLETED:
-    #         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
-    #     mock_callbacks["task"].assert_call(
-    #         status=command_tracked_result[0], result=command_tracked_result[1]
-    #     )
+        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
+        if command_tracked_result[0] == TaskStatus.COMPLETED:
+            mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
+        mock_callbacks["task"].assert_call(
+            status=command_tracked_result[0], result=command_tracked_result[1]
+        )
 
     @pytest.mark.parametrize(
         (
@@ -453,6 +309,7 @@ class TestFieldStationComponentManager:
             ),
         ],
     )
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def test_on_off_commands(
         self: TestFieldStationComponentManager,
         field_station_component_manager: FieldStationComponentManager,

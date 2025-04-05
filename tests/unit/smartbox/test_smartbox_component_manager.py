@@ -223,7 +223,7 @@ class TestSmartBoxComponentManager:
                 f"sb{smartbox_number:02d}-02",
                 f"sb{smartbox_number:02d}-03",
             ],
-            1,
+            fndh_port,
         )
         return component_manager
 
@@ -291,14 +291,21 @@ class TestSmartBoxComponentManager:
             [True] * PasdData.NUMBER_OF_FNDH_PORTS,
             tango.AttrQuality.ATTR_VALID,
         )
-        mock_callbacks["component_state"].assert_call(power=PowerState.STANDBY)
-
+        mock_callbacks["component_state"].assert_call(
+            power=PowerState.STANDBY,
+            lookahead=2,
+            consume_nonmatches=True,
+        )
         smartbox_component_manager._on_smartbox_ports_power_changed(
             "portspowersensed",
             [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
             tango.AttrQuality.ATTR_VALID,
         )
-        mock_callbacks["component_state"].assert_call(power=PowerState.ON)
+        mock_callbacks["component_state"].assert_call(
+            power=PowerState.ON,
+            lookahead=2,
+            consume_nonmatches=True,
+        )
 
     @pytest.mark.parametrize(
         (
@@ -368,7 +375,7 @@ class TestSmartBoxComponentManager:
             power=PowerState.OFF
             if component_manager_command == "on"
             else PowerState.ON,
-            lookahead=2,
+            lookahead=3,
             consume_nonmatches=True,
         )
 
@@ -452,7 +459,7 @@ class TestSmartBoxComponentManager:
 
         mock_callbacks["component_state"].assert_call(
             power=PowerState.ON if initial_state == "on" else PowerState.OFF,
-            lookahead=2,
+            lookahead=3,
             consume_nonmatches=True,
         )
 

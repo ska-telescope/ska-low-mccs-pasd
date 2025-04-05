@@ -410,10 +410,10 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 self._antenna_powers[antenna_name] = (
                     PowerState.ON if attr else PowerState.OFF
                 )
-                if self._component_state_callback:
-                    self._component_state_callback(
-                        antenna_powers=json.dumps(self._antenna_powers)
-                    )
+        if self._component_state_callback:
+            self._component_state_callback(
+                antenna_powers=json.dumps(self._antenna_powers)
+            )
         self.smartbox_ports_change.set()
         self._evaluate_power()
 
