@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2.0.0
+
+* [THORN-136] Refactor port configuration to be deploy-time instead of run-time. The PaSD configuration server has been removed, and has instead been replaced with 4 device properties to be populated at deployment: MccsFNDH.PortsWithSmartbox, MccsSmartbox.FndhPort, MccsSmartbox.PortsWithAntennas, MccsSmartbox.AntennaNames.
+
 ## 1.1.1
 
 * Update ska-tango-base 1.3.1 -> 1.3.2 (https://gitlab.com/ska-telescope/ska-tango-base/-/releases)
