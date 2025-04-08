@@ -134,6 +134,7 @@ class MccsSmartBox(MccsBaseDevice):
             f"\tSmartBoxNumber: {self.SmartBoxNumber}\n"
             f"\tPortsWithAntennas: {self.PortsWithAntennas}\n"
             f"\tAntennaNames: {self.AntennaNames}\n"
+            f"\tFndhPort: {self.FndhPort}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties

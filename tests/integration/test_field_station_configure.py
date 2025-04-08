@@ -168,6 +168,7 @@ class TestFieldStationIntegration:
             change_event_callbacks["antenna_power_states"].assert_change_event(Anything)
 
         # Jank using the knowledge that sb01-03 is on port 3 of smartbox 1
+        # (see add_smartbox_device in PasdTangoTestHarness)
         chosen_smartbox_port = int(antenna_to_turn_on.split("-")[1])
         chosen_smartbox_id = int(antenna_to_turn_on.split("-")[0][2:])
         # Check initial state.

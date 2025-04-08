@@ -481,41 +481,10 @@ class FndhComponentManager(TaskExecutorComponentManager):
         :return: a result code and a unique_id or message.
         """
         return self.submit_task(
-            self._on,  # type: ignore[arg-type]
-            args=[],
+            self._power_ports,
+            args=[PowerState.ON],
             task_callback=task_callback,
         )
-
-    def _on(
-        self: FndhComponentManager,
-        task_callback: Optional[Callable] = None,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> None:
-        if task_callback:
-            task_callback(status=TaskStatus.IN_PROGRESS)
-
-        result = ResultCode.OK
-
-        try:
-            timeout = 60  # seconds
-            result, time_left = self._power_fndh_ports(PowerState.ON, timeout)
-
-        except Exception as ex:  # pylint: disable=broad-except
-            self.logger.error(f"error {ex}")
-            if task_callback:
-                task_callback(
-                    status=TaskStatus.FAILED,
-                    result=(ResultCode.FAILED, f"{ex}"),
-                )
-
-        if task_callback:
-            task_callback(
-                status=RESULT_TO_TASK[result],
-                result=(
-                    result,
-                    f"Powering on FNDH ports {result.name} in {time_left} seconds",
-                ),
-            )
 
     @check_communicating
     def standby(
@@ -530,13 +499,14 @@ class FndhComponentManager(TaskExecutorComponentManager):
         :return: a result code and a unique_id or message.
         """
         return self.submit_task(
-            self._standby,  # type: ignore[arg-type]
-            args=[],
+            self._power_ports,  # type: ignore[arg-type]
+            args=[PowerState.OFF],
             task_callback=task_callback,
         )
 
-    def _standby(
+    def _power_ports(
         self: FndhComponentManager,
+        power_state: PowerState,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> None:
@@ -547,7 +517,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
 
         try:
             timeout = 60  # seconds
-            result, time_left = self._power_fndh_ports(PowerState.OFF, timeout)
+            result, time_left = self._power_fndh_ports(power_state, timeout)
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
@@ -562,7 +532,10 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 status=RESULT_TO_TASK[result],
                 result=(
                     result,
-                    f"Powering off FNDH ports {result.name} in {time_left} seconds",
+                    (
+                        f"Powering {power_state.name} FNDH "
+                        f"ports {result.name} in {time_left} seconds"
+                    ),
                 ),
             )
 
@@ -575,19 +548,25 @@ class FndhComponentManager(TaskExecutorComponentManager):
         * If the FNDH is not in any of the states above, it is UNKNOWN.
         """
         if all(power == PowerState.OFF for power in self._fndh_port_powers):
-            self.logger.debug("All ports are OFF, the FNDH is STANDBY")
-            self._power_state = PowerState.STANDBY
+            msg = "All ports are OFF, the FNDH is STANDBY"
+            power_state = PowerState.STANDBY
         elif any(power == PowerState.ON for power in self._fndh_port_powers):
-            self.logger.debug("At least one port is ON, FNDH is ON.")
-            self._power_state = PowerState.ON
+            msg = "At least one port is ON, FNDH is ON."
+            power_state = PowerState.ON
         else:
-            self.logger.error(
+            msg = (
                 f"FNDH reported port power states are {self._fndh_port_powers}."
                 "This is an unexpected state, moving to UNKNOWN."
             )
-            self._power_state = PowerState.UNKNOWN
+            power_state = PowerState.UNKNOWN
 
-        self._update_component_state(power=self._power_state)
+        if self._power_state != power_state:
+            if power_state == PowerState.UNKNOWN:
+                self.logger.warning(msg)
+            else:
+                self.logger.debug(msg)
+            self._power_state = power_state
+            self._update_component_state(power=power_state)
 
     @check_communicating
     def write_attribute(

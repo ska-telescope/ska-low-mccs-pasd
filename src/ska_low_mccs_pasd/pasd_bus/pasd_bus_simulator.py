@@ -1675,7 +1675,7 @@ class PasdBusSimulator:
         """
         Return a list of lists of str for antenna names on each smartbox.
 
-        :return: a list of lists of bool for antenna names on each smartbox.
+        :return: a list of lists of str for antenna names on each smartbox.
         """
         return self._antenna_name_on_smartbox
 

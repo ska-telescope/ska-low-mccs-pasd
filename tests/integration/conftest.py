@@ -106,10 +106,10 @@ def smartbox_attached_antennas_fixture(
     pasd_bus_simulator: PasdBusSimulator,
 ) -> list[list[bool]]:
     """
-    Return smartbox port numbers each antenna is connected to for each smartbox.
+    Return connected status for each antenna for each smartbox.
 
     :param pasd_bus_simulator: a PasdBusSimulator.
-    :return: smartbox port numbers each antenna is connected to for each smartbox.
+    :return: connected status for each antenna for each smartbox.
     """
     return pasd_bus_simulator.get_smartbox_ports_connected()
 

@@ -148,6 +148,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         properties = (
             f"Initialised {device_name} device with properties:\n"
             f"\tPasdFQDN: {self.PasdFQDN}\n"
+            f"\tPortsWithSmartbox: {self.PortsWithSmartbox}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -157,6 +158,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._health_model = FndhHealthModel(self._health_changed_callback, self.logger)
+        self._health_model.update_state(ports_with_smartbox=self.PortsWithSmartbox)
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
 
@@ -642,6 +644,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 f"maximum for a station: {len(port_numbers)}."
             )
         self._ports_with_smartbox = port_numbers
+        self.component_manager._ports_with_smartbox = port_numbers
         self._health_model.update_state(ports_with_smartbox=self._ports_with_smartbox)
 
     # ----------
