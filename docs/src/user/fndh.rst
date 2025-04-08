@@ -141,8 +141,10 @@ sensor values return to within their alarm thresholds. To return the FNDH to an 
 state after such an event, the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.InitializeFndh` command must be executed.
 
 
-Health Evaluation
------------------
+.. _fndh-health-evaluation:
+
+FNDH health evaluation
+----------------------
 
 The health of the FNDH is determined by two primary factors:
 
@@ -155,7 +157,7 @@ The thresholds are read from the hardware during the initial polling and after a
 
 **Configuration via healthModelParams**
 
-All health-related values are configurable through the ``healthModelParams`` parameter. 
+All health-related values are configurable through the ``healthModelParams`` attribute. 
 Below is an example of how the desired thresholds can be set (**Note**: values set are arbitrary):
 
 .. code-block:: python
