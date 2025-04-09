@@ -3,10 +3,10 @@ Fieldstation device
 ===================
 
 The Fieldstation Tango device is used to control the Power and Signal Distribution System components
-for a field station, comprising a single FNDH and 24 smartboxes. Most of the control and monitoring
-is done directly through the relevant lower level Tango devices, but the antennas can be powered on
-and off through this device, and the thermistor mounted on the floor of the FNDH EP Enclosure is
-also exposed as an attribute.
+for a field station, comprising a single FNDH and 24 smartboxes (see :ref:`pasd-tango-devices` for an
+overview of the architecture). Most of the control and monitoring is done directly through the
+relevant lower level Tango devices, but the antennas can be powered on and off through this device,
+and the thermistor mounted on the floor of the FNDH EP Enclosure is also exposed as an attribute.
 
 In addition, the Fieldstation device provides a way of setting AdminMode on all PaSD components
 from a single place, and captures an overall health state of the field station. The health state is
@@ -20,6 +20,7 @@ calculated from the health of the FNDH and smartboxes; possible values are:
 The following attributes are provided by the Fieldstation device:
 
 1. `OutsideTemperature` - the outside temperature in degrees Celsius, as reported by the FNDH
+   (thermistor mounted on the floor of the FNDH EP Enclosure)
 2. `HealthState` - the overall health state of the field station
 3. `HealthReport` - A report of the health state of the field station, including the health state of
    each component.
