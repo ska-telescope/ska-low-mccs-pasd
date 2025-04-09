@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* [THORN-139] Add Fieldstation docs.
+
 ## 1.1.1
 
 * Update ska-tango-base 1.3.1 -> 1.3.2 (https://gitlab.com/ska-telescope/ska-tango-base/-/releases)
