@@ -141,6 +141,7 @@ class TestFndhComponentManager:
             mock_callbacks["attribute_update"],
             mock_callbacks["port_power_state"],
             get_pasd_bus_name(),
+            [1, 2, 3],
         )
 
     def test_communication(

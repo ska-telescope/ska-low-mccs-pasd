@@ -72,14 +72,6 @@
                                   "type": "string",
                                   "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
                                 },
-                                "ConfigurationHost": {
-                                  "type": "string",
-                                  "format": "hostname"
-                                },
-                                "ConfigurationPort": {
-                                  "type": "integer",
-                                  "minimum": 1
-                                },
                                 "SmartBoxFQDNs": {
                                   "type": "array",
                                   "items": {
@@ -87,12 +79,6 @@
                                     "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
                                   },
                                   "maxLength": 24
-                                },
-                                "TMConfigURI": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "string"
-                                  }
                                 },
                                 "LoggingLevelDefault": {
                                   "type": "integer",
@@ -102,8 +88,6 @@
                               },
                               "required": [
                                 "FndhFQDN",
-                                "ConfigurationHost",
-                                "ConfigurationPort",
                                 "SmartBoxFQDNs"
                               ],
                               "additionalProperties": true
@@ -363,140 +347,6 @@
                 }
               }
             }
-          },
-          "configServers": {
-            "type": "object",
-            "propertyNames": {
-              "$comment": "Slug used to construct server name, k8s pods, etc",
-              "format": "hostname"
-            },
-            "additionalProperties": {
-              "oneOf": [
-                {
-                  "type": "null"
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "host": {
-                      "type": "string",
-                      "format": "hostname"
-                    },
-                    "port": {
-                      "type": "integer",
-                      "minimum": 1
-                    }
-                  },
-                  "required": [
-                    "host",
-                    "port"
-                  ],
-                  "additionalProperties": false
-                }
-              ]
-            }
-          },
-          "referenceData": {
-            "type": "object",
-            "properties": {
-              "pasdconfiguration": {
-                "propertyNames": {
-                  "$comment": "Slug used to construct server name, k8s pods, etc",
-                  "format": "hostname"
-                },
-                "additionalProperties": {
-                  "type": "object",
-                  "properties": {
-                    "pasd": {
-                      "oneOf": [
-                        {
-                          "type": "null"
-                        },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "smartboxes": {
-                              "oneOf": [
-                                {
-                                  "type": "null"
-                                },
-                                {
-                                  "type": "object",
-                                  "additionalProperties": {
-                                    "oneOf": [
-                                      {
-                                        "type": "null"
-                                      },
-                                      {
-                                        "type": "object",
-                                        "properties": {
-                                          "fndh_port": {
-                                            "type": "integer",
-                                            "minimum": 1,
-                                            "maximum": 28
-                                          }
-                                        },
-                                        "required": [
-                                          "fndh_port"
-                                        ],
-                                        "additionalProperties": false
-                                      }
-                                    ]
-                                  }
-                                }
-                              ]
-                            }
-                          },
-                          "required": [
-                            "smartboxes"
-                          ],
-                          "additionalProperties": false
-                        }
-                      ]
-                    },
-                    "antennas": {
-                      "oneOf": [
-                        {
-                          "type": "null"
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "oneOf": [
-                              {
-                                "type": "null"
-                              },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "smartbox": {
-                                    "type": "string"
-                                  },
-                                  "smartbox_port": {
-                                    "type": "integer",
-                                    "minimum": 1,
-                                    "maximum": 12
-                                  },
-                                  "masked": {
-                                    "type": "boolean"
-                                  }
-                                },
-                                "required": [
-                                  "smartbox",
-                                  "smartbox_port"
-                                ],
-                                "additionalProperties": false
-                              }
-                            ]
-                          }
-                        }
-                      ]
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              }
-            }
           }
         }
       }
@@ -504,8 +354,6 @@
   },
   "required": [
     "deviceServers",
-    "configServers",
-    "simulators",
-    "referenceData"
+    "simulators"
   ]
 }

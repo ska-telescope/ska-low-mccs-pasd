@@ -14,11 +14,10 @@ functional (BDD).
 from __future__ import annotations
 
 import logging
-from typing import Any, Final
+from typing import Final
 
 import pytest
 import tango
-import yaml
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 MAX_NUMBER_OF_SMARTBOXES_PER_STATION: Final = 24
@@ -59,42 +58,6 @@ def logger_fixture() -> logging.Logger:
     debug_logger = logging.getLogger()
     debug_logger.setLevel(logging.DEBUG)
     return debug_logger
-
-
-@pytest.fixture(name="simulated_configuration", scope="session")
-def simulated_configuration_fixture(pasd_config_path: str) -> dict[Any, Any]:
-    """
-    Return a configuration for the fieldstation to use.
-
-    WARNING: the configuration we load into the FieldStation must match that
-    we configure the PaSDSimulator with. Otherwise we have a configuration issues.
-    i.e. we are simulating that TelModel has the wrong data stored.
-
-    :param pasd_config_path: this is the configuration that the
-        PaSDSimulator is configured with.
-
-    :return: a configuration for representing the antenna port mapping information.
-    """
-    with open(pasd_config_path, "r", encoding="utf-8") as f:
-        simulator_configuration = yaml.safe_load(f)
-
-    antennas = simulator_configuration["antennas"]
-    for _, config in antennas.items():
-        config["masked"] = False
-
-    smartboxes = simulator_configuration["pasd"]["smartboxes"]
-    smartbox_mapping = {}
-    for smartbox_id, config in smartboxes.items():
-        smartbox_mapping[smartbox_id] = {
-            "fndh_port": config["fndh_port"],
-            "modbus_id": config["fndh_port"],
-        }
-
-    configuration: Final = {
-        "antennas": antennas,
-        "pasd": {"smartboxes": smartbox_mapping},
-    }
-    return configuration
 
 
 # pylint: disable=too-few-public-methods

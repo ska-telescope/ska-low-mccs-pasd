@@ -25,7 +25,6 @@ from ska_low_mccs_pasd.smart_box import SmartBoxComponentManager, _PasdBusProxy
 from tests.harness import (
     PasdTangoTestHarness,
     PasdTangoTestHarnessContext,
-    get_field_station_name,
     get_pasd_bus_name,
 )
 
@@ -35,18 +34,15 @@ SMARTBOX_PORTS = 12
 @pytest.fixture(name="test_context")
 def test_context_fixture(
     mock_pasdbus: unittest.mock.Mock,
-    mock_field_station: unittest.mock.Mock,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Create a test context containing mock PaSD bus and FNDH devices.
 
     :param mock_pasdbus: A mock PaSD bus device.
-    :param mock_field_station: A mock FieldStation device.
 
     :yield: the test context
     """
     harness = PasdTangoTestHarness()
-    harness.set_mock_field_station_device(mock_field_station)
     harness.set_mock_pasd_bus_device(mock_pasdbus)
     with harness as context:
         yield context
@@ -220,8 +216,14 @@ class TestSmartBoxComponentManager:
             smartbox_number,
             f"sb{smartbox_number:02d}",
             SMARTBOX_PORTS,
-            get_field_station_name(),
             get_pasd_bus_name(),
+            [1, 2, 3],
+            [
+                f"sb{smartbox_number:02d}-01",
+                f"sb{smartbox_number:02d}-02",
+                f"sb{smartbox_number:02d}-03",
+            ],
+            fndh_port,
         )
         return component_manager
 
@@ -256,6 +258,7 @@ class TestSmartBoxComponentManager:
         self: TestSmartBoxComponentManager,
         smartbox_component_manager: SmartBoxComponentManager,
         mock_callbacks: MockCallableGroup,
+        mock_pasdbus: unittest.mock.Mock,
     ) -> None:
         """
         Test the state change callbacks upon start_communicating.
@@ -263,7 +266,10 @@ class TestSmartBoxComponentManager:
         :param smartbox_component_manager: A SmartBox component manager
             with communication established.
         :param mock_callbacks: A group of callables.
+        :param mock_pasdbus: the mock PaSD bus that is set in the test harness
         """
+        mock_setup = [False] * 28
+        mock_pasdbus.configure_mock(fndhPortsPowerSensed=mock_setup)
         smartbox_component_manager.start_communicating()
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.NOT_ESTABLISHED
@@ -272,24 +278,34 @@ class TestSmartBoxComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        mock_callbacks["attribute_update"].assert_call(
+        mock_callbacks["component_state"].assert_call(power=PowerState.OFF)
+
+        smartbox_component_manager._on_smartbox_ports_power_changed(
             "portspowersensed",
-            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-            pytest.approx(datetime.now(timezone.utc).timestamp()),
+            [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
             tango.AttrQuality.ATTR_VALID,
         )
 
+        smartbox_component_manager._on_fndh_ports_power_changed(
+            "fndhportspowersensed",
+            [True] * PasdData.NUMBER_OF_FNDH_PORTS,
+            tango.AttrQuality.ATTR_VALID,
+        )
+        mock_callbacks["component_state"].assert_call(
+            power=PowerState.STANDBY,
+            lookahead=2,
+            consume_nonmatches=True,
+        )
         smartbox_component_manager._on_smartbox_ports_power_changed(
             "portspowersensed",
             [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
             tango.AttrQuality.ATTR_VALID,
         )
-
-        # To transition to a state we need to know what fndh port we are on.
-        # Lookahead 2 is needed incase this information is not initially known
-        # We first transtion to UNKNOWN,
-        # then when we know the state we transition to ON/OFF
-        mock_callbacks["component_state"].assert_call(power=PowerState.ON, lookahead=2)
+        mock_callbacks["component_state"].assert_call(
+            power=PowerState.ON,
+            lookahead=2,
+            consume_nonmatches=True,
+        )
 
     @pytest.mark.parametrize(
         (
@@ -325,6 +341,7 @@ class TestSmartBoxComponentManager:
         command_tracked_response: Any,
         fndh_port: int,
         mock_callbacks: MockCallableGroup,
+        mock_pasdbus: unittest.mock.Mock,
     ) -> None:
         """
         Test the SmartBox On/Off Commands.
@@ -336,7 +353,12 @@ class TestSmartBoxComponentManager:
         :param command_tracked_response: The result of the command.
         :param fndh_port: the fndh port the smartbox is attached to.
         :param mock_callbacks: the mock_callbacks.
+        :param mock_pasdbus: the mock PaSD bus that is set in the test harness
         """
+        # make all other ports the opposite.
+        mock_setup = [component_manager_command == "on"] * 28
+        mock_setup[fndh_port - 1] = not mock_setup[fndh_port - 1]
+        mock_pasdbus.configure_mock(fndhPortsPowerSensed=mock_setup)
         smartbox_component_manager.start_communicating()
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.NOT_ESTABLISHED
@@ -344,22 +366,19 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        mock_callbacks["component_state"].assert_call(power=PowerState.UNKNOWN)
-
-        mock_callbacks["attribute_update"].assert_call(
-            "portspowersensed",
-            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-            pytest.approx(datetime.now(timezone.utc).timestamp()),
-            tango.AttrQuality.ATTR_VALID,
-        )
-
         smartbox_component_manager._on_smartbox_ports_power_changed(
             "portspowersensed",
-            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            [component_manager_command != "on"] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
             tango.AttrQuality.ATTR_VALID,
         )
+        mock_callbacks["component_state"].assert_call(
+            power=PowerState.OFF
+            if component_manager_command == "on"
+            else PowerState.ON,
+            lookahead=3,
+            consume_nonmatches=True,
+        )
 
-        mock_callbacks["component_state"].assert_call(power=PowerState.ON)
         assert (
             getattr(smartbox_component_manager, component_manager_command)(
                 mock_callbacks["task"]
@@ -376,6 +395,17 @@ class TestSmartBoxComponentManager:
             [component_manager_command == "on"] * PasdData.NUMBER_OF_FNDH_PORTS,
             tango.AttrQuality.ATTR_VALID,
         )
+        desired_smartbox_powers = [
+            component_manager_command != "on"
+        ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
+        if component_manager_command == "on":
+            for port in smartbox_component_manager._ports_with_antennas:
+                desired_smartbox_powers[port - 1] = True
+            smartbox_component_manager._on_smartbox_ports_power_changed(
+                "portspowersensed",
+                desired_smartbox_powers,
+                tango.AttrQuality.ATTR_VALID,
+            )
 
         mock_callbacks["task"].assert_call(
             status=command_tracked_response[0],
@@ -421,27 +451,17 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(
             CommunicationStatus.ESTABLISHED
         )
-        mock_callbacks["component_state"].assert_call(power=PowerState.UNKNOWN)
-
-        mock_callbacks["attribute_update"].assert_call(
-            "portspowersensed",
-            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-            pytest.approx(datetime.now(timezone.utc).timestamp()),
-            tango.AttrQuality.ATTR_VALID,
-        )
-
         smartbox_component_manager._on_smartbox_ports_power_changed(
             "portspowersensed",
-            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            [initial_state == "on"] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
             tango.AttrQuality.ATTR_VALID,
         )
-        match initial_state:
-            case "off":
-                mock_callbacks["component_state"].assert_call(power=PowerState.OFF)
-            case "on":
-                mock_callbacks["component_state"].assert_call(power=PowerState.ON)
-            case _:
-                pytest.fail("Unknown initial state.")
+
+        mock_callbacks["component_state"].assert_call(
+            power=PowerState.ON if initial_state == "on" else PowerState.OFF,
+            lookahead=3,
+            consume_nonmatches=True,
+        )
 
         smartbox_component_manager.standby(task_callback=mock_callbacks["task"])
 
@@ -776,96 +796,3 @@ class TestSmartBoxComponentManager:
         mock_callbacks["task"].assert_call(
             status=TaskStatus.FAILED, result=command_tracked_response
         )
-
-    def test_configuration_change(
-        self: TestSmartBoxComponentManager,
-        smartbox_component_manager: SmartBoxComponentManager,
-        mock_callbacks: MockCallableGroup,
-        mock_pasdbus: unittest.mock.Mock,
-        alternate_input_smartbox_mapping: str,
-        changed_fndh_port: int,
-    ) -> None:
-        """
-        Test that a change in fieldstation configuration is noticed.
-
-        :param smartbox_component_manager: A SmartBox component manager
-            with communication established.
-        :param mock_callbacks: A group of callables.
-        :param mock_pasdbus: A mock pasdBus
-        :param alternate_input_smartbox_mapping: an alternate smartbox mapping to use.
-        :param changed_fndh_port: the new port for this smartbox.
-        """
-        smartbox_component_manager.start_communicating()
-        mock_callbacks["communication_state"].assert_call(
-            CommunicationStatus.NOT_ESTABLISHED
-        )
-        mock_callbacks["communication_state"].assert_call(
-            CommunicationStatus.ESTABLISHED
-        )
-
-        mock_callbacks["component_state"].assert_call(power=PowerState.UNKNOWN)
-
-        mock_callbacks["attribute_update"].assert_call(
-            "portspowersensed",
-            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-            pytest.approx(datetime.now(timezone.utc).timestamp()),
-            tango.AttrQuality.ATTR_VALID,
-        )
-
-        smartbox_component_manager._on_smartbox_ports_power_changed(
-            "portspowersensed",
-            [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
-            tango.AttrQuality.ATTR_VALID,
-        )
-
-        mock_callbacks["component_state"].assert_call(power=PowerState.ON)
-
-        # mock a callback from the fieldstation when it changes state.
-        # We are placing the smartbox on a new port that is OFF.
-        smartbox_component_manager._on_mapping_change(
-            "smartboxmapping",
-            alternate_input_smartbox_mapping,
-            tango.AttrQuality.ATTR_VALID,
-        )
-        mock_callbacks["component_state"].assert_call(power=PowerState.OFF, lookahead=2)
-
-        mock_pasdbus.set_fndh_port_powers = unittest.mock.Mock()
-
-        # Check that when we turn on the correct port for this new configuration.
-        smartbox_component_manager.on()
-        desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
-        desired_port_powers[changed_fndh_port - 1] = True
-        json_argument = json.dumps(
-            {
-                "port_powers": desired_port_powers,
-                "stay_on_when_offline": True,
-            }
-        )
-        mock_pasdbus.SetFndhPortPowers.assert_next_call(json_argument)
-
-
-@pytest.fixture(name="alternate_input_smartbox_mapping")
-def alternate_input_smartbox_mapping_fixture(
-    input_smartbox_mapping: dict[str, Any],
-    smartbox_number: int,
-    changed_fndh_port: int,
-) -> str:
-    """
-    Alternate configuration to use in smartbox.
-
-    This is to simulate a change in the fieldstations configuration.
-
-    :param input_smartbox_mapping: A mocked fieldstation smartboxMapping
-        attribute value.
-    :param smartbox_number: the id of this smartbox
-    :param changed_fndh_port: the new port to place this smartbox.
-
-    :return: a string representing the smartbox mapping reported by fieldstation.
-    """
-    smartbox_mapping = input_smartbox_mapping["smartboxMapping"]
-
-    # The smartbox under test is attached to the port
-    # given by fixture changed_fndh_port!!
-    smartbox_mapping[f"sb{(smartbox_number):02d}"] = changed_fndh_port
-
-    return json.dumps({"smartboxMapping": smartbox_mapping})

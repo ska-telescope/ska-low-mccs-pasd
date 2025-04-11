@@ -8,9 +8,8 @@
 """This module contains pytest-specific test harness for PaSD functional tests."""
 import os
 import time
-import unittest.mock
 from functools import lru_cache
-from typing import Any, Callable, Iterator, Optional
+from typing import Callable, Iterator, Optional
 
 import _pytest
 import pytest
@@ -141,24 +140,6 @@ def smartbox_id_under_test_fixture() -> int:
     return 1
 
 
-@pytest.fixture(name="configuration_manager", scope="module")
-def configuration_manager_fixture(
-    simulated_configuration: dict[Any, Any]
-) -> unittest.mock.Mock:
-    """
-    Return a mock configuration_manager.
-
-    :param simulated_configuration: a fixture containing the
-        simulated configuration.
-
-    :return: a mock configuration_manager.
-    """
-    manager = unittest.mock.Mock()
-    manager.connect = unittest.mock.Mock(return_value=True)
-    manager.read_data = unittest.mock.Mock(return_value=simulated_configuration)
-    return manager
-
-
 @pytest.fixture(name="smartboxes_under_test", scope="module")
 def smartboxes_under_test_fixture(
     is_true_context: bool,
@@ -204,7 +185,6 @@ def functional_test_context_fixture(
     pasd_config_path: str,
     pasd_timeout: float,
     smartbox_ids: list[int],
-    configuration_manager: unittest.mock.Mock,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Yield a Tango context containing the device/s under test.
@@ -217,8 +197,6 @@ def functional_test_context_fixture(
         a simulator if necessary
     :param pasd_timeout: timeout to use with the PaSD
     :param smartbox_ids: a list of the smarbox id's used in this test.
-    :param configuration_manager: a mock configuration manager to manage a
-        configuration for the field station
 
     :yields: a Tango context containing the devices under test
     """
@@ -241,9 +219,17 @@ def functional_test_context_fixture(
                 smartboxes_depend_on_attached_ports=True,
             )
             pasd_hw_simulators = pasd_bus_simulator.get_all_devices()
+            fndh_ports_with_smartboxes = (
+                pasd_bus_simulator.get_smartbox_attached_ports()
+            )
+            smartbox_attached_antennas = (
+                pasd_bus_simulator.get_smartbox_ports_connected()
+            )
+            smartbox_attached_antenna_names = (
+                pasd_bus_simulator.get_antenna_names_on_smartbox()
+            )
             # Set devices for test harness
             harness.set_pasd_bus_simulator(pasd_hw_simulators)
-            harness.set_configuration_server(configuration_manager)
             harness.set_pasd_bus_device(
                 timeout=pasd_timeout,
                 polling_rate=0.05,
@@ -253,8 +239,22 @@ def functional_test_context_fixture(
             )
 
             for smartbox_id in smartbox_ids:
-                harness.add_smartbox_device(smartbox_id, int(LoggingLevel.ERROR))
-            harness.set_fndh_device(int(LoggingLevel.ERROR))
+                harness.add_smartbox_device(
+                    smartbox_id,
+                    int(LoggingLevel.ERROR),
+                    fndh_port=fndh_ports_with_smartboxes[smartbox_id - 1],
+                    ports_with_antennas=[
+                        idx + 1
+                        for idx, attached in enumerate(
+                            smartbox_attached_antennas[smartbox_id - 1]
+                        )
+                        if attached
+                    ],
+                    antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
+                )
+            harness.set_fndh_device(
+                int(LoggingLevel.ERROR), ports_with_smartbox=fndh_ports_with_smartboxes
+            )
             harness.set_fncc_device(int(LoggingLevel.ERROR))
             harness.set_field_station_device(smartbox_ids, int(LoggingLevel.ERROR))
 

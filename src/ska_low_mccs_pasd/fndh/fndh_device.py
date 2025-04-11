@@ -62,6 +62,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     # Device Properties
     # -----------------
     PasdFQDN: Final = device_property(dtype=(str), mandatory=True)
+    PortsWithSmartbox: Final = device_property(dtype=(int,), mandatory=True)
 
     # ---------
     # Constants
@@ -105,12 +106,13 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self._overCurrentThreshold: float
         self._overVoltageThreshold: float
         self._humidityThreshold: float
+        self.component_manager: FndhComponentManager
 
         # Health monitor points contains a cache of monitoring points as they
         # are updated in a poll. When communication is lost this cache is
         # reset to empty again.
         self._health_monitor_points: dict[str, list[float]] = {}
-        self._ports_with_smartbox: list[int] = []
+        self._ports_with_smartbox: list[int] = self.PortsWithSmartbox
 
     def init_device(self: MccsFNDH) -> None:
         """
@@ -146,6 +148,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         properties = (
             f"Initialised {device_name} device with properties:\n"
             f"\tPasdFQDN: {self.PasdFQDN}\n"
+            f"\tPortsWithSmartbox: {self.PortsWithSmartbox}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -155,6 +158,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._health_model = FndhHealthModel(self._health_changed_callback, self.logger)
+        self._health_model.update_state(ports_with_smartbox=self.PortsWithSmartbox)
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
 
@@ -171,6 +175,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             self._attribute_changed_callback,
             self._update_port_power_states,
             self.PasdFQDN,
+            self.PortsWithSmartbox,
             event_serialiser=self._event_serialiser,
         )
 
@@ -639,6 +644,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 f"maximum for a station: {len(port_numbers)}."
             )
         self._ports_with_smartbox = port_numbers
+        self.component_manager._ports_with_smartbox = port_numbers
         self._health_model.update_state(ports_with_smartbox=self._ports_with_smartbox)
 
     # ----------
@@ -663,8 +669,8 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
             self._component_state_changed_callback(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self._component_state_changed_callback(power=PowerState.ON)
             self._update_port_power_states(self._port_power_states)
+            self._component_state_changed(power=self.component_manager._power_state)
 
         super()._communication_state_changed(communication_state)
 
@@ -696,6 +702,9 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 )
                 if power_states[port] != PowerState.UNKNOWN:
                     self._port_power_states[port] = power_states[port]
+        self.component_manager._fndh_port_powers = self._port_power_states
+        self.component_manager.fndh_ports_change.set()
+        self.component_manager._evaluate_power()
 
     def _component_state_changed_callback(
         self: MccsFNDH,

@@ -74,6 +74,9 @@ class MccsSmartBox(MccsBaseDevice):
     FieldStationName: Final = device_property(dtype=(str), mandatory=True)
     PasdFQDN: Final = device_property(dtype=(str), mandatory=True)
     SmartBoxNumber: Final = device_property(dtype=int, mandatory=True)
+    PortsWithAntennas: Final = device_property(dtype=(int,), default_value=[])
+    AntennaNames: Final = device_property(dtype=(str,), default_value=[])
+    FndhPort: Final = device_property(dtype=int, mandatory=True)
 
     CONFIG: Final[ControllerDict] = PasdControllersConfig.get_smartbox()
     TYPES: Final[dict[str, type]] = {
@@ -129,6 +132,9 @@ class MccsSmartBox(MccsBaseDevice):
             f"\tFieldStationName: {self.FieldStationName}\n"
             f"\tPasdFQDN: {self.PasdFQDN}\n"
             f"\tSmartBoxNumber: {self.SmartBoxNumber}\n"
+            f"\tPortsWithAntennas: {self.PortsWithAntennas}\n"
+            f"\tAntennaNames: {self.AntennaNames}\n"
+            f"\tFndhPort: {self.FndhPort}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -142,6 +148,8 @@ class MccsSmartBox(MccsBaseDevice):
         )
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
+        self.set_change_event("antennaPowers", True, False)
+        self.set_archive_event("antennaPowers", True, False)
 
     # ----------
     # Properties
@@ -183,8 +191,10 @@ class MccsSmartBox(MccsBaseDevice):
             self.SmartBoxNumber,
             self._readable_name,
             self.CONFIG["number_of_ports"],
-            self.FieldStationName,
             self.PasdFQDN,
+            self.PortsWithAntennas,
+            self.AntennaNames,
+            self.FndhPort,
             event_serialiser=self._event_serialiser,
         )
 
@@ -212,6 +222,54 @@ class MccsSmartBox(MccsBaseDevice):
     # ----------
     # Commands
     # ----------
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def PowerOnAntenna(
+        self: MccsSmartBox, antenna_name: str
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Power up an antenna.
+
+        :param antenna_name: the antenna to power up
+
+        :return: A tuple containing a return code and a string message
+            indicating status. The message is for information purposes
+            only.
+        """
+        if antenna_name not in self.AntennaNames:
+            msg = f"{antenna_name} not on this smartbox: {self.AntennaNames}"
+            self.logger.error(msg)
+            return ([ResultCode.REJECTED], [msg])
+        port_number = self.component_manager._port_to_antenna_map.inverse.get(
+            antenna_name
+        )
+        handler = self.get_command_object("PowerOnPort")
+        result_code, message = handler(port_number)
+        return ([result_code], [message])
+
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def PowerOffAntenna(
+        self: MccsSmartBox, antenna_name: str
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Power off an antenna.
+
+        :param antenna_name: the antenna to power down
+
+        :return: A tuple containing a return code and a string message
+            indicating status. The message is for information purposes
+            only.
+        """
+        if antenna_name not in self.AntennaNames:
+            msg = f"{antenna_name} not on this smartbox: {self.AntennaNames}"
+            self.logger.error(msg)
+            return ([ResultCode.REJECTED], [msg])
+        port_number = self.component_manager._port_to_antenna_map.inverse.get(
+            antenna_name
+        )
+        handler = self.get_command_object("PowerOffPort")
+        result_code, message = handler(port_number)
+        return ([result_code], [message])
+
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
     def PowerOnPort(
         self: MccsSmartBox, port_number: int
@@ -228,7 +286,6 @@ class MccsSmartBox(MccsBaseDevice):
             only.
         """
         handler = self.get_command_object("PowerOnPort")
-
         result_code, message = handler(port_number)
         return ([result_code], [message])
 
@@ -393,6 +450,7 @@ class MccsSmartBox(MccsBaseDevice):
         pasdbus_status: Optional[str] = None,
         fqdn: Optional[str] = None,
         power_state: Optional[PowerState] = None,
+        antenna_powers: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -406,6 +464,7 @@ class MccsSmartBox(MccsBaseDevice):
         :param pasdbus_status: the status of the pasd_bus
         :param fqdn: the fqdn of the device passing calling.
         :param power_state: the power_state change.
+        :param antenna_powers: the antenna powers.
         :param kwargs: additional keyword arguments defining component
             state.
         """
@@ -423,6 +482,8 @@ class MccsSmartBox(MccsBaseDevice):
             self._health_model.update_state(power=power)
         if pasdbus_status is not None:
             self._health_model.update_state(pasdbus_status=pasdbus_status)
+        if antenna_powers is not None:
+            self.push_change_event("antennaPowers", antenna_powers)
 
     def _health_changed_callback(self: MccsSmartBox, health: HealthState) -> None:
         """
@@ -560,6 +621,31 @@ class MccsSmartBox(MccsBaseDevice):
                 f"Can't set port mask with wrong number of values: {len(port_mask)}."
             )
         self.component_manager.port_mask = port_mask
+
+    @attribute(
+        dtype="DevString",
+        label="AntennaPowers",
+    )
+    def antennaPowers(self: MccsSmartBox) -> str:
+        """
+        Get the antenna powers.
+
+        :return: the antenna powers.
+        """
+        return json.dumps(self.component_manager._antenna_powers)
+
+    @attribute(
+        dtype=("str",),
+        label="AntennaNames",
+        max_dim_x=12,
+    )
+    def antennaNames(self: MccsSmartBox) -> str:
+        """
+        Get the names of antennas on this smartbox.
+
+        :return: the names of antennas on this smartbox.
+        """
+        return self.AntennaNames
 
     @attribute(
         dtype="DevString",

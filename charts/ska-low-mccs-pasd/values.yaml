@@ -194,12 +194,6 @@ simulators: {}  # e.g.:
   #     host: pasd-simulator-s8-1  # mandatory
   #     port: 8502  # optional, defaults to 502
   #     time_multiplier: 1  # optional, defaults to 1
-
-configServers: {}  # e.g.:
-  # ska-low:
-  #   host: pasd-configuration-service
-  #   port: 8081
-
 # Reference data from Helm. (mainly used for simulator configuration.)
 referenceData: {}
   # pasdconfiguration:
