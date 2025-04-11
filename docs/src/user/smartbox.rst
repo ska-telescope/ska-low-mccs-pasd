@@ -130,25 +130,18 @@ sensor values return to within their alarm thresholds. To return a SMART Box to 
 state after such an event, the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.InitializeSmartbox` command must
 be executed.
 
+.. _smartbox-health-evaluation:
+
 Smartbox health
 ---------------
-The smartbox health is decided entirley by the monitoring points, their values and thresholds.
+The smartbox health is decided by comparing the values of the monitoring points against their configured thresholds. Each
+monitoring point has four thresholds: [min_fault, min_warning, max_warning, max_fault]. If any value is less than the
+min_fault or greater than the max_fault, it triggers a FAILED health status. If a value is between the min_fault and
+min_warning, or between max_fault and max_warning, it triggers a DEGRADED health state.
 
-If we look at the monitoring points we can see 3 types of threshold.
-1. Monitoring points that are unused
-2. Monitoring points with a single value
-3. Monitoring points with multiple values
+We can change the thresholds at run time on the smartbox by setting the ``healthModelParams`` attribute.
 
-The first case can be ignored, maybe the values will get used in the future but for now we ignore them
-The second case represents a maximum threshold that the value of the monitoring point should not exceed, if it does, it triggers a FAILED health state, otherwise an OK health state
-The third case represents a range, [min_fault, min_warning, max_warning, max_fault]
-If the value is below the min_fault or above the max_fault, it triggers a FAILED health state
-If the value is between min_fault and min_warning, or between max_fault and max_warning it triggers a DEGRADED health state
-If it between min_warning and max_warning then its in OK health state.
-
-We can change the thresholds at run time on the smartbox by setting smartbox.healthModelParams
-
-For example
+For example:
 
 .. code-block:: python
 

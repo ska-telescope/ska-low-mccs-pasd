@@ -1,3 +1,5 @@
+.. _pasd-tango-devices:
+
 ==================
 PaSD Tango devices
 ==================
