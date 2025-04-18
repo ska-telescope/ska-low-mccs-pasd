@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+* [LOW-1296] Breaking changes to helm chart values schema.
+  The `ska-low-mccs-pasd` helm chart now uses `ska-tango-devices`
+  to configure and deploy its Tango devices.
+  For details, see the "Direct deployment of helm charts" section of the
+  "Deploying" page in the documentation.
+
 ## 2.0.0
 
 * [THORN-136] Refactor port configuration to be deploy-time instead of run-time. The PaSD configuration server has been removed, and has instead been replaced with 4 device properties to be populated at deployment: MccsFNDH.PortsWithSmartbox, MccsSmartbox.FndhPort, MccsSmartbox.PortsWithAntennas, MccsSmartbox.AntennaNames.

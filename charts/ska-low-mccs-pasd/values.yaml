@@ -17,176 +17,18 @@ global:
   tango_host: databaseds-tango-base:10000
   cluster_domain: cluster.local
 
-livenessProbe:
-  initialDelaySeconds: 0
-  periodSeconds: 10
-  timeoutSeconds: 3
-  successThreshold: 1
-  failureThreshold: 3
-readinessProbe:
-  initialDelaySeconds: 0
-  periodSeconds: 10
-  timeoutSeconds: 3
-  successThreshold: 1
-  failureThreshold: 3
-
-dsconfig:
-  image:
-    registry: artefact.skao.int
-    image: ska-tango-images-tango-dsconfig
-    tag: 1.5.1
-    pullPolicy: IfNotPresent
-
-resources:
-  requests:
-    cpu: 20m
-    memory: 50Mi
-
+# Image to be used for simulators etc.
 image:
   registry: artefact.skao.int
   name: ska-low-mccs-pasd
   tag: ~ # defaults to chart's appVersion when empty
   pullPolicy: IfNotPresent
 
-deviceServerDefinition: |
-  {{- $pasd_device_servers := dict}}
-  {{- range $server_name, $this_server := .Values.deviceServers}}
-  {{- if $this_server}}
-  {{- $_ := set $pasd_device_servers $server_name $this_server}}
-  {{- end}}
-  {{- end}}
-  {{- if $pasd_device_servers}}
-  name: "pasd-{{.Release.Name}}"
-  function: ska-low-mccs-pasd
-  domain: ska-low-mccs-pasd
-  instances:
-  {{keys $pasd_device_servers | toYaml}}
-  command: pasd_device_server
-  server:
-    name: pasd_device_server
-    instances:
-  {{- range $server_key, $this_server := $pasd_device_servers}}
-    - name: {{$server_key}}
-  {{- with $this_server.depends_on}}
-      depends_on:
-  {{- toYaml . | nindent 4}}
-  {{- end}}
-  {{- with $this_server.expose}}
-      exposeDS: {{.}}
-  {{- end}}
-  {{- with $this_server.image}}
-  {{- $image_spec := pick . "registry" "tag"}}
-  {{- with $this_server.image.name}}
-  {{- $_ := set $image_spec "image" .}}
-  {{- end}}
-      image:
-  {{- toYaml $image_spec | nindent 6}}
-  {{- end}}
-      classes:
-  {{- range $device_type, $device_spec := $this_server.devices}}
-      - name: {{$device_type}}
-        devices:
-  {{- range $device_trl, $this_device := $device_spec}}
-  {{- if $this_device}}
-        - name: {{$device_trl}}
-          properties:
-  {{- range $property_name, $property_value := $this_device}}
-  {{- if not (kindIs "slice" $property_value)}}
-  {{- $property_value = list $property_value}}
-  {{- end}}
-          - name: {{$property_name | quote}}
-            values:
-  {{- $property_value | toStrings | toYaml | nindent 10}}
-  {{- end}}
-  {{- end}}
-  {{- end}}
-  {{- end}}
-  {{- end}}
-  depends_on:
-    - device: sys/database/2
-  image:
-  {{- with .Values.image}}
-    registry: {{.registry | quote}}
-    image: {{.name | quote}}
-    tag: {{.tag | default $.Chart.AppVersion | quote}}
-    pullPolicy: {{.pullPolicy | quote}}
-  {{- end}}
-  livenessProbe:
-  {{ toYaml .Values.livenessProbe | indent 2 }}
-  readinessProbe:
-  {{ toYaml .Values.readinessProbe | indent 2 }}
-  {{- end}}
-
-deviceServers: {}  # e.g.:
-  # fieldstation-s8-1:
-  #   expose: true
-  #   devices:
-  #     MccsFieldStation:
-  #       low-mccs/fieldstation/s8-1:
-  #         StationName: s8-1
-  #         FndhFQDN: low-mccs/fndh/s8-1
-  #         FnccFQDN: low-mccs/fncc/s8-1
-  #         SmartBoxFQDNs:
-  #         - low-mccs/smartbox/s8-1-sb01
-  #         - low-mccs/smartbox/s8-1-sb02
-  #         - low-mccs/smartbox/s8-1-sb03
-  #         - low-mccs/smartbox/s8-1-sb04
-  #         - low-mccs/smartbox/s8-1-sb05
-  #         - low-mccs/smartbox/s8-1-sb06
-  #         - low-mccs/smartbox/s8-1-sb07
-  #         - low-mccs/smartbox/s8-1-sb08
-  #         - low-mccs/smartbox/s8-1-sb09
-  #         - low-mccs/smartbox/s8-1-sb10
-  #         - low-mccs/smartbox/s8-1-sb11
-  #         - low-mccs/smartbox/s8-1-sb12
-  #         - low-mccs/smartbox/s8-1-sb13
-  #         - low-mccs/smartbox/s8-1-sb14
-  #         - low-mccs/smartbox/s8-1-sb15
-  #         - low-mccs/smartbox/s8-1-sb16
-  #         - low-mccs/smartbox/s8-1-sb17
-  #         - low-mccs/smartbox/s8-1-sb18
-  #         - low-mccs/smartbox/s8-1-sb19
-  #         - low-mccs/smartbox/s8-1-sb20
-  #         - low-mccs/smartbox/s8-1-sb21
-  #         - low-mccs/smartbox/s8-1-sb22
-  #         - low-mccs/smartbox/s8-1-sb23
-  #         - low-mccs/smartbox/s8-1-sb24
-  #         LoggingLevelDefault: 5
-  #         ConfigurationHost: pasd-configuration-service
-  #         ConfigurationPort: 8081
-  # pasdbus-s8-1:
-  #   devices:
-  #     MccsPasdBus:
-  #       low-mccs/pasdbus/s8-1:
-  #         Host: 10.137.0.129
-  #         Port: 502
-  #         Timeout: 10
-  #         LoggingLevelDefault: 5
-  # fndh-s8-1:
-  #   depends_on:
-  #   - device: low-mccs/pasdbus/s8-1
-  #   devices:
-  #     MccsFNDH:
-  #       low-mccs/fndh/s8-1:
-  #         PasdFQDN: low-mccs/pasdbus/itf1
-  #         LoggingLevelDefault: 5
-  # fncc-s8-1:
-  #   devices:
-  #     MccsFncc:
-  #       low-mccs/fncc/s8-1:
-  #         PasdFQDN: low-mccs/pasdbus/s8-1
-  #         LoggingLevelDefault: 5
-  # smartbox-s8-1-sb01:
-  #   depends_on:
-  #   - device: low-mccs/pasdbus/s8-1
-  #   devices:
-  #     MccsSmartbox:
-  #       low-mccs/smartbox/s8-1-sb01:
-  #         SmartboxNumber: 1
-  #         FieldStationName: low-mccs/fieldstation/itf1
-  #         FndhFQDN: low-mccs/fndh/itf1
-  #         PasdFQDN: low-mccs/pasdbus/itf1
-  #         LoggingLevelDefault: 5
+# Resources for simulators etc.
+resources:
+  requests:
+    cpu: 20m
+    memory: 50Mi
 
 simulators: {}  # e.g.:
   # pasds:
@@ -194,6 +36,7 @@ simulators: {}  # e.g.:
   #     host: pasd-simulator-s8-1  # mandatory
   #     port: 8502  # optional, defaults to 502
   #     time_multiplier: 1  # optional, defaults to 1
+
 # Reference data from Helm. (mainly used for simulator configuration.)
 referenceData: {}
   # pasdconfiguration:
@@ -207,3 +50,128 @@ referenceData: {}
   #         smartbox: "1"
   #         smartbox_port: 3
   #         masked: false
+
+
+ska-tango-devices:
+  domain: low
+  subsystem: mccs
+  labels:
+    app: ska-low-mccs-pasd
+
+  # deviceDefaults:
+  #   MccsFieldStation:
+  #     LoggingLevelDefault: 5
+  #     ConfigurationPort: 8081
+  #   MccsPasdBus:
+  #     Port: 502
+  #     Timeout: 10
+  #     LoggingLevelDefault: 5
+  #   MccsFNDH:
+  #     LoggingLevelDefault: 5
+  #   MccsFncc:
+  #     LoggingLevelDefault: 5
+  #   MccsSmartbox:
+  #     LoggingLevelDefault: 5
+
+  # devices:
+  #   MccsFieldStation:
+  #     low-mccs/fieldstation/s8-1:
+  #       StationName: s8-1
+  #       FndhFQDN: low-mccs/fndh/s8-1
+  #       FnccFQDN: low-mccs/fncc/s8-1
+  #       SmartBoxFQDNs:
+  #       - low-mccs/smartbox/s8-1-sb01
+  #       - low-mccs/smartbox/s8-1-sb02
+  #       - low-mccs/smartbox/s8-1-sb03
+  #       - low-mccs/smartbox/s8-1-sb04
+  #       - low-mccs/smartbox/s8-1-sb05
+  #       - low-mccs/smartbox/s8-1-sb06
+  #       - low-mccs/smartbox/s8-1-sb07
+  #       - low-mccs/smartbox/s8-1-sb08
+  #       - low-mccs/smartbox/s8-1-sb09
+  #       - low-mccs/smartbox/s8-1-sb10
+  #       - low-mccs/smartbox/s8-1-sb11
+  #       - low-mccs/smartbox/s8-1-sb12
+  #       - low-mccs/smartbox/s8-1-sb13
+  #       - low-mccs/smartbox/s8-1-sb14
+  #       - low-mccs/smartbox/s8-1-sb15
+  #       - low-mccs/smartbox/s8-1-sb16
+  #       - low-mccs/smartbox/s8-1-sb17
+  #       - low-mccs/smartbox/s8-1-sb18
+  #       - low-mccs/smartbox/s8-1-sb19
+  #       - low-mccs/smartbox/s8-1-sb20
+  #       - low-mccs/smartbox/s8-1-sb21
+  #       - low-mccs/smartbox/s8-1-sb22
+  #       - low-mccs/smartbox/s8-1-sb23
+  #       - low-mccs/smartbox/s8-1-sb24
+  #       ConfigurationHost: pasd-configuration-service
+  #   MccsPasdBus:
+  #     low-mccs/pasdbus/s8-1:
+  #       Host: 10.137.0.129
+  #   MccsFNDH:
+  #     low-mccs/fndh/s8-1:
+  #       PasdFQDN: low-mccs/pasdbus/itf1
+  #   MccsFNCC:
+  #     low-mccs/fncc/s8-1:
+  #       PasdFQDN: low-mccs/pasdbus/s8-1
+  #   MccsSmartbox:
+  #     low-mccs/smartbox/s8-1-sb01:
+  #       SmartboxNumber: 1
+  #       FieldStationName: low-mccs/fieldstation/itf1
+  #       FndhFQDN: low-mccs/fndh/itf1
+  #       PasdFQDN: low-mccs/pasdbus/itf1
+
+  deviceServerTypes:
+    pasd:
+      metadata:
+        component: pasd
+      image:
+        registry: artefact.skao.int
+        name: ska-low-mccs-pasd
+        tag: 2.0.0
+        pullPolicy: IfNotPresent
+      command: pasd
+      resources:
+        requests:
+          cpu: 20m
+          memory: 50Mi
+      livenessProbe:
+        initialDelaySeconds: 0
+        periodSeconds: 10
+        timeoutSeconds: 3
+        successThreshold: 1
+        failureThreshold: 3
+      readinessProbe:
+        initialDelaySeconds: 0
+        periodSeconds: 10
+        timeoutSeconds: 3
+        successThreshold: 1
+        failureThreshold: 3
+
+  # deviceServers:
+  #   pasd:
+  #     fieldstation-s8-1:
+  #       expose: true
+  #       devices:
+  #         MccsFieldStation:
+  #         - low-mccs/fieldstation/s8-1
+  #     pasdbus-s8-1:
+  #       devices:
+  #         MccsPasdBus:
+  #         - low-mccs/pasdbus/s8-1:
+  #     fndh-s8-1:
+  #       depends_on:
+  #       - device: low-mccs/pasdbus/s8-1
+  #       devices:
+  #         MccsFNDH:
+  #         - low-mccs/fndh/s8-1:
+  #     fncc-s8-1:
+  #       devices:
+  #         MccsFncc:
+  #         - low-mccs/fncc/s8-1:
+  #     smartbox-s8-1-sb01:
+  #       depends_on:
+  #       - device: low-mccs/pasdbus/s8-1
+  #       devices:
+  #         MccsSmartbox:
+  #         - low-mccs/smartbox/s8-1-sb01:

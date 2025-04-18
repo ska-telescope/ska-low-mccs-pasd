@@ -54,7 +54,8 @@ K8S_CHART_PARAMS = \
 	--selector chart=ska-tango-base \
 	--set image.registry=$(CI_REGISTRY_IMAGE) \
 	--set image.tag=$(VERSION)-dev.c$(CI_COMMIT_SHORT_SHA) \
-	--set global.exposeAllDS=false
+	--set ska-tango-devices.deviceServerTypes.pasd.image.registry=$(CI_REGISTRY_IMAGE) \
+	--set ska-tango-devices.deviceServerTypes.pasd.image.tag=$(VERSION)-dev.c$(CI_COMMIT_SHORT_SHA) \	--set global.exposeAllDS=false
 endif
 
 JUNITXML_REPORT_PATH ?= build/reports/functional-tests.xml
@@ -154,7 +155,7 @@ endif
 ########################################################################
 helmfile-lint:
 	SKIPDEPS=""
-	for environment in minikube-ci stfc-ci aa0.5-production low-itf low-itf-minikube; do \
+	for environment in minikube-ci stfc-ci aa0.5 low-itf low-itf-minikube; do \
         echo "Linting helmfile against environment '$$environment'" ; \
 		helmfile -e $$environment lint $$SKIPDEPS; \
 		EXIT_CODE=$$? ; \

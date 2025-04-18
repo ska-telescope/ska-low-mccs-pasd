@@ -22,7 +22,7 @@ environments:
         - ci-1.yaml
       config_files:
       - values/values-ci.yaml
-  aa0.5-production:
+  aa0.5:
     values:
     - telmodel:
       - source: gitlab://gitlab.com/ska-telescope/ska-low-tmdata?472b05c11be5cbecc863d3b5bee9ff020e657339#tmdata
@@ -83,7 +83,8 @@ repositories:
     url: https://charts.bitnami.com/bitnami
   - name: jupyterhub
     url: https://jupyterhub.github.io/helm-chart
-
+  - name: ska-tango-devices
+    url: https://gitlab.com/api/v4/projects/66823602/packages/helm/dev
 
 releases:
   - name: ska-low-mccs-pasd

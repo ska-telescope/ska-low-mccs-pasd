@@ -231,83 +231,89 @@ There are two keys:
 --------------------------------
 Direct deployment of helm charts
 --------------------------------
-It is possible to deploy helm charts directly.
-However note that platform-specific chart configuration is handled by helmfile,
-so the helm chart values files are expected to provide
-a deterministic, fully-configured specification
-of what devices and simulators should be deployed.
+The `ska-low-mccs-pasd` helm chart uses `ska-tango-devices`
+to configure and deploy its Tango devices. 
+For details on `ska-tango-devices`,
+see its `README <hhttps://gitlab.com/ska-telescope/ska-tango-devices/-/blob/main/README.md>`_
+
+Defining devices
+~~~~~~~~~~~~~~~~
+Devices are defined under `ska-tango-devices.devices`,
+as a nested dictionary in which the bottom-level key is the name of a device class,
+the next is the name of a device TRL,
+and the last is device property names and values.
 For example:
 
 .. code-block:: yaml
 
-   deviceServers:
-     fieldstations:
-       ci-1:
-         low-mccs/fieldstation/ci-1:
-           fndh_name: low-mccs/fndh/ci-1
-           smartbox_names:
-           - low-mccs/smartbox/ci-1-sb01
-           logging_level_default: 5
-     fndhs:
-       ci-1:
-         low-mccs/fndh/ci-1:
-           pasdbus_name: low-mccs/pasdbus/ci-1
-           logging_level_default: 5
-     smartboxes:
-       ci-1-sb01:
-         low-mccs/smartbox/ci-1-sb01:
-           smartbox_number: 1
-           fndh_name: low-mccs/fndh/ci-1
-           fndh_port: 1
-           pasdbus_name: low-mccs/pasdbus/ci-1
-           logging_level_default: 5
-     pasdbuses:
-       ci-1:
-         low-mccs/pasdbus/ci-1:
-           host: pasd-simulator-ci-1
-           port: 502
-           timeout: 10
-           logging_level_default: 5
-           device_properties:
-             FemCurrentTripThreshold: 489
-   simulators:
-     pasdbuses:
-       ci-1:
-         host: pasd-simulator-ci-1
-         port: 502
-         config:
-           pasd:
-             smartboxes:
-               "1":
-                 fndh_port: 1
-           antennas:
-             "100":
-               smartbox: "1"
-               smartbox_port: 5
-             "113":
-               smartbox: "1"
-               smartbox_port: 7
-             "121":
-               smartbox: "1"
-               smartbox_port: 4
-             "134":
-               smartbox: "1"
-               smartbox_port: 6
-             "155":
-               smartbox: "1"
-               smartbox_port: 3
-             "168":
-               smartbox: "1"
-               smartbox_port: 8
-             "189":
-               smartbox: "1"
-               smartbox_port: 2
-             "202":
-               smartbox: "1"
-               smartbox_port: 9
-             "223":
-               smartbox: "1"
-               smartbox_port: 10
-             "244":
-               smartbox: "1"
-               smartbox_port: 1
+  ska-tango-devices:
+    devices:
+      MccsSmartbox:
+        low-mccs/smartbox/ci-1-sb01:
+          SmartboxNumber: 1
+          FndhFQDN: low-mccs/fndh/ci-1
+          FndhPort: 1
+          PasdbusFQDN: low-mccs/pasdbus/ci-1
+
+It is also possible to specify default values for a device class
+in the `deviceDefaults` key:
+
+.. code-block:: yaml
+
+  ska-tango-devices:
+    deviceDefaults:
+     MccsSmartbox:
+       LoggingLevelDefault: 5
+
+Defaults are applied to all devices of the specified class,
+but any device-specific value provided under the `devices` key takes precedence.
+
+Defining device servers
+~~~~~~~~~~~~~~~~~~~~~~~
+Device servers are specified under the `ska-tango-devices.deviceServers` key.
+This contains configuration specific to the device server,
+and the kubernetes pod in which it runs.
+
+The key hierarchy is:
+
+.. code-block:: yaml
+
+  ska-tango-devices:
+    <device_server_type>:
+      <device_server_instance>:
+        <property_name>: <property_value>
+
+For example:
+
+.. code-block:: yaml
+
+  ska-tango-devices:
+    pasd:
+      smartbox-ci-1-sb01:
+        expose: false
+        devices:
+          MccsSmartbox:
+          - low-mccs/smartbox/ci-1-sb01
+      pasdbus-ci-1:
+        devices:
+          MccsPasdBus:
+          - low-mccs/pasdbus/ci-1
+
+The device server type `pasd` is already defined by the `ska-low-mccs-pasd` chart,
+and it is the only device server type available;
+so all your device instances should sit under this.
+
+Most of the keys that specify a device server instance are optional,
+but one is mandatory:
+the `devices` key specifies the devices to be run by the device server instance,
+and is a list of device TRLs, grouped by device class.
+These device TRLs must refer to an entry in the `devices` key.
+That is, first we specify the devices that we want under the `device` key,
+and then we allocate those devices to device servers under the `deviceServers` key.
+
+It is possible to add device server types, or modify the existing one,
+via the `deviceServerTypes` key,
+but this should not normally be done.
+If it should be necessary to do so,
+that indicates a problem with the `ska-low-mccs-pasd` chart
+that should be fixed.
