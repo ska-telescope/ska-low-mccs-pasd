@@ -7,17 +7,13 @@ defaults:
 #
 helm_values:
   # Null ParentTRL given by platform spec, currently the only place to do this.
-  deviceServers:
-    fieldstation-itf1:
-      devices:
-        MccsFieldStation:
-          low-mccs/fieldstation/itf1:
-            ParentTRL: ""
-    fieldstation-itf2:
-      devices:
-        MccsFieldStation:
-          low-mccs/fieldstation/itf2:
-            ParentTRL: ""
+  ska-tango-devices:
+    devices:
+      MccsFieldStation:
+        low-mccs/fieldstation/itf1:
+          ParentTRL: ""
+        low-mccs/fieldstation/itf2:
+          ParentTRL: ""
 #   image:
 #     registry: registry.gitlab.com/ska-telescope/mccs/ska-low-mccs-pasd
 #     tag: 0.11.0-dev.cae7b6bc2

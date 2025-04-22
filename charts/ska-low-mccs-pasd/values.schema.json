@@ -28,16 +28,15 @@
         }
       }
     },
-    "deviceServers": {
+    "simulators": {
       "type": "object",
-      "propertyNames": {
-        "$comment": "device server name",
-        "format": "hostname"
-      },
-      "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "devices": {
+      "properties": {
+        "pasds": {
+          "propertyNames": {
+            "$comment": "Slug used to construct server name, k8s pods, etc",
+            "format": "hostname"
+          },
+          "additionalProperties": {
             "oneOf": [
               {
                 "type": "null"
@@ -45,315 +44,80 @@
               {
                 "type": "object",
                 "properties": {
-                  "MccsFieldStation": {
-                    "oneOf": [
-                      {
-                        "type": "null"
-                      },
-                      {
-                        "type": "object",
-                        "propertyNames": {
-                          "$comment": "device TRL",
-                          "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                        },
-                        "additionalProperties": {
-                          "oneOf": [
-                            {
-                              "type": "null"
-                            },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "StationName": {
-                                  "type": "string",
-                                  "format": "hostname"
-                                },
-                                "FndhFQDN": {
-                                  "type": "string",
-                                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                                },
-                                "SmartBoxFQDNs": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "string",
-                                    "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                                  },
-                                  "maxLength": 24
-                                },
-                                "LoggingLevelDefault": {
-                                  "type": "integer",
-                                  "minimum": 0,
-                                  "maximum": 5
-                                }
-                              },
-                              "required": [
-                                "FndhFQDN",
-                                "SmartBoxFQDNs"
-                              ],
-                              "additionalProperties": true
-                            }
-                          ]
-                        }
-                      }
-                    ]
+                  "host": {
+                    "type": "string",
+                    "format": "hostname"
                   },
-                  "MccsFNDH": {
-                    "oneOf": [
-                      {
-                        "type": "null"
-                      },
-                      {
-                        "type": "object",
-                        "propertyNames": {
-                          "$comment": "device TRL",
-                          "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                        },
-                        "additionalProperties": {
-                          "oneOf": [
-                            {
-                              "type": "null"
-                            },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "PasdFQDN": {
-                                  "type": "string",
-                                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                                },
-                                "LoggingLevelDefault": {
-                                  "type": "integer",
-                                  "minimum": 0,
-                                  "maximum": 5
-                                }
-                              },
-                              "required": [
-                                "PasdFQDN"
-                              ],
-                              "additionalProperties": true
-                            }
-                          ]
-                        }
-                      }
-                    ]
+                  "port": {
+                    "type": "integer",
+                    "minimum": 1
                   },
-                  "MccsFncc": {
-                    "oneOf": [
-                      {
-                        "type": "null"
-                      },
-                      {
-                        "type": "object",
-                        "propertyNames": {
-                          "$comment": "device TRL",
-                          "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                        },
-                        "additionalProperties": {
-                          "oneOf": [
-                            {
-                              "type": "null"
-                            },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "PasdFQDN": {
-                                  "type": "string",
-                                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                                },
-                                "LoggingLevelDefault": {
-                                  "type": "integer",
-                                  "minimum": 0,
-                                  "maximum": 5
-                                }
-                              },
-                              "required": [
-                                "PasdFQDN"
-                              ],
-                              "additionalProperties": true
-                            }
-                          ]
-                        }
-                      }
-                    ]
-                  },
-                  "MccsSmartbox": {
-                    "oneOf": [
-                      {
-                        "type": "null"
-                      },
-                      {
-                        "type": "object",
-                        "propertyNames": {
-                          "$comment": "device TRL",
-                          "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                        },
-                        "additionalProperties": {
-                          "oneOf": [
-                            {
-                              "type": "null"
-                            },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "SmartboxNumber": {
-                                  "type": "integer",
-                                  "minimum": 1,
-                                  "maximum": 24
-                                },
-                                "FndhFQDN": {
-                                  "type": "string",
-                                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                                },
-                                "FieldStationName": {
-                                  "type": "string",
-                                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                                },
-                                "PasdFQDN": {
-                                  "type": "string",
-                                  "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                                },
-                                "LoggingLevelDefault": {
-                                  "type": "integer",
-                                  "minimum": 0,
-                                  "maximum": 5
-                                }
-                              },
-                              "required": [
-                                "SmartboxNumber",
-                                "FndhFQDN",
-                                "FieldStationName",
-                                "PasdFQDN"
-                              ],
-                              "additionalProperties": true
-                            }
-                          ]
-                        }
-                      }
-                    ]
-                  },
-                  "MccsPasdBus": {
-                    "oneOf": [
-                      {
-                        "type": "null"
-                      },
-                      {
-                        "type": "object",
-                        "propertyNames": {
-                          "$comment": "device TRL",
-                          "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$"
-                        },
-                        "additionalProperties": {
-                          "oneOf": [
-                            {
-                              "type": "null"
-                            },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "Host": {
-                                  "type": "string",
-                                  "format": "hostname"
-                                },
-                                "Port": {
-                                  "type": "integer",
-                                  "minimum": 1
-                                },
-                                "Timeout": {
-                                  "type": "number",
-                                  "minimum": 0
-                                },
-                                "PollingRate": {
-                                  "type": "number",
-                                  "minimum": 0
-                                },
-                                "DevicePollingRate": {
-                                  "type": "number",
-                                  "minimum": 0
-                                },
-                                "LowPassFilterCutoff": {
-                                  "type": "number",
-                                  "minimum": 0
-                                },
-                                "SimulationConfig": {
-                                  "type": "integer",
-                                  "minimum": 0,
-                                  "maximum": 1
-                                },
-                                "LoggingLevelDefault": {
-                                  "type": "integer",
-                                  "minimum": 0,
-                                  "maximum": 5
-                                },
-                                "AvailableSmartboxes": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "integer"
-                                  },
-                                  "maxLength": 24
-                                }
-                              },
-                              "required": [
-                                "Host",
-                                "Port",
-                                "Timeout"
-                              ],
-                              "additionalProperties": true
-                            }
-                          ]
-                        }
-                      }
-                    ]
+                  "time_multiplier": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
                   }
                 },
+                "required": [
+                  "host",
+                  "port"
+                ],
                 "additionalProperties": false
               }
             ]
-          },
-          "simulators": {
-            "type": "object",
-            "properties": {
-              "pasds": {
-                "propertyNames": {
-                  "$comment": "Slug used to construct server name, k8s pods, etc",
-                  "format": "hostname"
-                },
-                "additionalProperties": {
-                  "oneOf": [
-                    {
-                      "type": "null"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "host": {
-                          "type": "string",
-                          "format": "hostname"
-                        },
-                        "port": {
-                          "type": "integer",
-                          "minimum": 1
-                        },
-                        "time_multiplier": {
-                          "type": "number",
-                          "exclusiveMinimum": 0
-                        }
-                      },
-                      "required": [
-                        "host",
-                        "port"
-                      ],
-                      "additionalProperties": false
-                    }
-                  ]
-                }
-              }
-            }
           }
         }
       }
+    },
+    "ska-tango-devices": {
+      "type": "object",
+      "properties": {
+        "deviceDefaults": {
+          "type": "object",
+          "properties": {
+            "MccsFieldStation": {
+              "type": "object"
+            },
+            "MccsFNDH": {
+              "type": "object"
+            },
+            "MccsFNCC": {
+              "type": "object"
+            },
+            "MccsSmartbox": {
+              "type": "object"
+            },
+            "MccsPasdBus": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false          
+        },
+        "devices": {
+          "type": "object",
+          "properties": {
+            "MccsFieldStation": {
+              "type": "object"
+            },
+            "MccsFNDH": {
+              "type": "object"
+            },
+            "MccsFNCC": {
+              "type": "object"
+            },
+            "MccsSmartbox": {
+              "type": "object"
+            },
+            "MccsPasdBus": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": []        
     }
   },
   "required": [
-    "deviceServers",
     "simulators"
   ]
 }
