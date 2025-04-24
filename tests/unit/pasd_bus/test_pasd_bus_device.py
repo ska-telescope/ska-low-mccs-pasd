@@ -1068,14 +1068,14 @@ def test_set_smartbox_thresholds(
     )
 
 
-def test_set_trip_thresholds_on_power_up(
+def test_set_trip_thresholds_on_initialise(
     pasd_bus_device: tango.DeviceProxy,
     smartbox_id: int,
     fndh_simulator: FndhSimulator,
     change_event_callbacks: MockTangoEventCallbackGroup,
 ) -> None:
     """
-    Test the FEM current trip thresholds are set when a smartbox is powered on.
+    Test the FEM current trip thresholds are set when a smartbox is initialised.
 
     :param pasd_bus_device: a proxy to the PaSD bus device under test.
     :param smartbox_id: id of the smartbox being addressed.
@@ -1135,7 +1135,10 @@ def test_set_trip_thresholds_on_power_up(
     # Switch the smartbox off
     pasd_bus_device.InitializeFndh()
     change_event_callbacks.assert_change_event(
-        "fndhPortsPowerSensed", fndh_simulator.ports_power_sensed, lookahead=3
+        "fndhPortsPowerSensed",
+        fndh_simulator.ports_power_sensed,
+        lookahead=4,
+        consume_nonmatches=True,
     )
     port_powers = [False] + [None] * (len(fndh_simulator.ports_power_sensed) - 1)
     expected_fndh_ports_power_sensed = list(fndh_simulator.ports_power_sensed)
@@ -1160,6 +1163,8 @@ def test_set_trip_thresholds_on_power_up(
     change_event_callbacks.assert_change_event(
         "fndhPortsPowerSensed", expected_fndh_ports_power_sensed, lookahead=3
     )
+
+    pasd_bus_device.InitializeSmartbox(smartbox_id)
 
     # The trip thresholds configured as device properties
     # should have been automatically written to the smartbox

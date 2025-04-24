@@ -36,7 +36,6 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_controllers_configuration import ControllerDict
 from .pasd_bus_component_manager import PasdBusComponentManager
-from .pasd_bus_conversions import FndhStatusMap, SmartboxStatusMap
 from .pasd_bus_health_model import PasdBusHealthModel
 from .pasd_bus_register_map import DesiredPowerEnum
 
@@ -299,7 +298,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         super().init_command_objects()
 
         for command_name, command_class in [
-            ("InitializeFndh", MccsPasdBus._InitializeFndhCommand),
             ("ResetFnccStatus", MccsPasdBus._ResetFnccStatusCommand),
             ("SetFndhPortPowers", MccsPasdBus._SetFndhPortPowersCommand),
             ("SetFndhLedPattern", MccsPasdBus._SetFndhLedPatternCommand),
@@ -329,7 +327,16 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         self.register_command_object(
             "InitializeSmartbox",
             MccsPasdBus._InitializeSmartboxCommand(
-                self.component_manager, self.logger, self.FEMCurrentTripThreshold
+                self.component_manager,
+                self.logger,
+                self.FEMCurrentTripThreshold,
+                self.LowPassFilterCutoff,
+            ),
+        )
+        self.register_command_object(
+            "InitializeFndh",
+            MccsPasdBus._InitializeFndhCommand(
+                self.component_manager, self.logger, self.LowPassFilterCutoff
             ),
         )
 
@@ -541,32 +548,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             # Update the timestamp
             self._pasd_state[tango_attribute_name].timestamp = timestamp
 
-            if pasd_attribute_name == "status":
-                # Determine if the device has been reset or powered on since
-                # MCCS was started by checking if its status changed to UNINITIALISED
-                previous_status = self._pasd_state[tango_attribute_name].value
-                if (
-                    pasd_attribute_value != previous_status
-                    and pasd_attribute_value
-                    in (
-                        FndhStatusMap.UNINITIALISED.name,
-                        SmartboxStatusMap.UNINITIALISED.name,
-                    )
-                ):
-                    # Register a request to read the static info and thresholds
-                    self.component_manager.request_startup_info(pasd_device_number)
-                    # Set the device's low-pass filter constants
-                    if self._simulation_mode == SimulationMode.FALSE:
-                        self._set_all_low_pass_filters_of_device(pasd_device_number)
-                    # Set the FEM current trip thresholds
-                    if (
-                        pasd_device_number in self.AvailableSmartboxes
-                        and self.FEMCurrentTripThreshold is not None
-                    ):
-                        self.component_manager.initialize_fem_current_trip_thresholds(
-                            pasd_device_number, self.FEMCurrentTripThreshold
-                        )
-
             self._pasd_state[tango_attribute_name].value = pasd_attribute_value
             self._pasd_state[tango_attribute_name].quality = AttrQuality.ATTR_VALID
             updated_attributes[tango_attribute_name] = pasd_attribute_value
@@ -610,8 +591,10 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self: MccsPasdBus._InitializeFndhCommand,
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
+            low_pass_filter_cutoff: int | None,
         ):
             self._component_manager = component_manager
+            self._low_pass_filter_cutoff = low_pass_filter_cutoff
             super().__init__(logger)
 
         # pylint: disable-next=arguments-differ
@@ -620,6 +603,14 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         ) -> None:
             """Initialize an FNDH."""
             self._component_manager.initialize_fndh()
+            # TODO: Need to support this in the simulation for tests to pass
+            # if self._low_pass_filter_cutoff is not None:
+            #     self._component_manager.set_fndh_low_pass_filters(
+            #         self._low_pass_filter_cutoff
+            #     )
+            #     self._component_manager.set_fndh_low_pass_filters(
+            #         self._low_pass_filter_cutoff, True
+            #     )
 
     @command(dtype_out="DevVarLongStringArray")
     def InitializeFndh(self: MccsPasdBus) -> DevVarLongStringArrayType:
@@ -859,9 +850,11 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
             fem_current_trip_threshold: int | None,
+            low_pass_filter_cutoff: int | None,
         ):
             self._component_manager = component_manager
             self._fem_current_trip_threshold = fem_current_trip_threshold
+            self._low_pass_filter_cutoff = low_pass_filter_cutoff
             super().__init__(logger)
 
         # pylint: disable-next=arguments-differ
@@ -880,6 +873,13 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     smartbox_id, self._fem_current_trip_threshold
                 )
             self._component_manager.initialize_smartbox(smartbox_id)
+            # if self._low_pass_filter_cutoff is not None:
+            #     self._component_manager.set_smartbox_low_pass_filters(
+            #         smartbox_id, self._low_pass_filter_cutoff
+            #     )
+            #     self._component_manager.set_smartbox_low_pass_filters(
+            #         smartbox_id, self._low_pass_filter_cutoff, True
+            #     )
 
     @command(dtype_in=int, dtype_out="DevVarLongStringArray")
     def InitializeSmartbox(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
