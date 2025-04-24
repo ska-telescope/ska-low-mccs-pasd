@@ -471,6 +471,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     def initialize_fndh(self: PasdBusComponentManager) -> None:
         """Initialize the FNDH by writing to its status register."""
         self._request_provider.desire_initialize(PasdData.FNDH_DEVICE_ID)
+        self._request_provider.desire_read_startup_info(PasdData.FNDH_DEVICE_ID)
 
     @check_communicating
     def initialize_smartbox(self: PasdBusComponentManager, smartbox_id: int) -> None:
@@ -480,6 +481,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param: smartbox_id: id of the smartbox being addressed
         """
         self._request_provider.desire_initialize(smartbox_id)
+        self._request_provider.desire_read_startup_info(smartbox_id)
 
     @check_communicating
     def initialize_fem_current_trip_thresholds(
