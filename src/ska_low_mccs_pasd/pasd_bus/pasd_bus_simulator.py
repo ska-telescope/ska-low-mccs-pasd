@@ -601,6 +601,9 @@ class PasdHardwareSimulator(BaseControllerSimulator):
 
         :param request_ok: optional request to transition to "OK"
         """
+        if request_ok is False and self._status == FndhStatusMap.UNINITIALISED:
+            self._status_led = LedStatusMap.YELLOWFAST
+            return
         if (
             request_ok is False
             and self._status in {FndhStatusMap.ALARM, FndhStatusMap.RECOVERY}

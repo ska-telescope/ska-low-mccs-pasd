@@ -155,12 +155,6 @@ class TestPasdBusComponentManager:
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
 
-        pasd_bus_component_manager.initialize_fndh()
-        for smartbox_number in range(
-            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
-        ):
-            pasd_bus_component_manager.initialize_smartbox(smartbox_number)
-
         # First we'll receive static info about the FNDH
         mock_callbacks.assert_call(
             "pasd_device_state_for_fndh",
@@ -307,7 +301,8 @@ class TestPasdBusComponentManager:
                     )
                 ),
             )
-        # Then FNDH status info
+        # Then FNDH status info. Note that FNDH was initialized in the
+        # test setup in order to be able to switch the ports on.
         mock_callbacks["pasd_device_state_for_fndh"].assert_call(
             uptime=Anything,
             sys_address=FndhSimulator.SYS_ADDRESS,
@@ -390,8 +385,8 @@ class TestPasdBusComponentManager:
             ].assert_call(
                 uptime=Anything,
                 sys_address=smartbox_number,
-                status="OK",
-                led_pattern="service: OFF, status: GREENSLOW",
+                status="UNINITIALISED",
+                led_pattern="service: OFF, status: YELLOWFAST",
                 input_voltage=PasdConversionUtility.scale_volts(
                     [SmartboxSimulator.DEFAULT_INPUT_VOLTAGE]
                 )[0],
