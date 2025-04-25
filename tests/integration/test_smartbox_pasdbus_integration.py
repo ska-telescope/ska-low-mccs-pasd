@@ -948,12 +948,7 @@ class TestSmartBoxPasdBusIntegration:
         ) == PasdConversionUtility.scale_signed_16bit(
             smartbox_simulator.fem_heatsink_temperature_2_thresholds
         )
-        # The trip thresholds are initialised from the device
-        # configuration in the test harness
-        assert (
-            list(smartbox_device.FemCurrentTripThresholds)
-            == [harness.FEM_CURRENT_TRIP_THRESHOLD] * SmartboxSimulator.NUMBER_OF_PORTS
-        )
+
         assert smartbox_device.WarningFlags == SmartboxAlarmFlags.NONE.name
         assert smartbox_device.AlarmFlags == SmartboxAlarmFlags.NONE.name
 
@@ -1082,13 +1077,17 @@ class TestSmartBoxPasdBusIntegration:
         # When we mock a change in an attribute at the simulator level.
         # This is received and pushed onward by the MccsSmartbox device.
 
-        # Initialize smartbox simulator status
+        # Initialize smartbox simulator
         assert pasd_bus_device.InitializeSmartbox(smartbox_id)[0] == ResultCode.OK
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status", "OK", lookahead=10, consume_nonmatches=True
         )
         assert smartbox_device.PasdStatus == "OK"
         assert smartbox_device.LedPattern == "service: OFF, status: GREENSLOW"
+        assert (
+            list(smartbox_device.FemCurrentTripThresholds)
+            == [harness.FEM_CURRENT_TRIP_THRESHOLD] * SmartboxSimulator.NUMBER_OF_PORTS
+        )
 
         smartbox_simulator.input_voltage = 3000
         change_event_callbacks.assert_change_event(
