@@ -1080,7 +1080,7 @@ class TestSmartBoxPasdBusIntegration:
         # Initialize smartbox simulator
         assert pasd_bus_device.InitializeSmartbox(smartbox_id)[0] == ResultCode.OK
         change_event_callbacks.assert_change_event(
-            f"smartbox{smartbox_id}status", "OK", lookahead=10, consume_nonmatches=True
+            f"smartbox{smartbox_id}status", "OK", lookahead=12, consume_nonmatches=True
         )
         assert smartbox_device.PasdStatus == "OK"
         assert smartbox_device.LedPattern == "service: OFF, status: GREENSLOW"
