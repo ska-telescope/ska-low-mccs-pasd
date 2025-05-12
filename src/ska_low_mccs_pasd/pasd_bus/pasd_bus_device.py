@@ -331,12 +331,16 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 self.logger,
                 self.FEMCurrentTripThreshold,
                 self.LowPassFilterCutoff,
+                self.simulationMode,
             ),
         )
         self.register_command_object(
             "InitializeFndh",
             MccsPasdBus._InitializeFndhCommand(
-                self.component_manager, self.logger, self.LowPassFilterCutoff
+                self.component_manager,
+                self.logger,
+                self.LowPassFilterCutoff,
+                self.simulationMode,
             ),
         )
 
@@ -592,9 +596,11 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
             low_pass_filter_cutoff: int | None,
+            simulation_mode: SimulationMode,
         ):
             self._component_manager = component_manager
             self._low_pass_filter_cutoff = low_pass_filter_cutoff
+            self._simulation_mode = simulation_mode
             super().__init__(logger)
 
         # pylint: disable-next=arguments-differ
@@ -603,14 +609,16 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         ) -> None:
             """Initialize an FNDH."""
             self._component_manager.initialize_fndh()
-            # TODO: Need to support this in the simulation for tests to pass
-            # if self._low_pass_filter_cutoff is not None:
-            #     self._component_manager.set_fndh_low_pass_filters(
-            #         self._low_pass_filter_cutoff
-            #     )
-            #     self._component_manager.set_fndh_low_pass_filters(
-            #         self._low_pass_filter_cutoff, True
-            #     )
+            if self._simulation_mode == SimulationMode.FALSE:
+                # Simulation does not support setting the filter constants
+                # as there is no way to read them back
+                if self._low_pass_filter_cutoff is not None:
+                    self._component_manager.set_fndh_low_pass_filters(
+                        self._low_pass_filter_cutoff
+                    )
+                    self._component_manager.set_fndh_low_pass_filters(
+                        self._low_pass_filter_cutoff, True
+                    )
 
     @command(dtype_out="DevVarLongStringArray")
     def InitializeFndh(self: MccsPasdBus) -> DevVarLongStringArrayType:
@@ -845,16 +853,20 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         return ([ResultCode.OK], ["ResetFndhwarnings command requested."])
 
     class _InitializeSmartboxCommand(FastCommand):
+        # pylint: disable=too-many-positional-arguments,
+        # pylint: disable=too-many-arguments
         def __init__(
             self: MccsPasdBus._InitializeSmartboxCommand,
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
             fem_current_trip_threshold: int | None,
             low_pass_filter_cutoff: int | None,
+            simulation_mode: SimulationMode,
         ):
             self._component_manager = component_manager
             self._fem_current_trip_threshold = fem_current_trip_threshold
             self._low_pass_filter_cutoff = low_pass_filter_cutoff
+            self._simulation_mode = simulation_mode
             super().__init__(logger)
 
         # pylint: disable-next=arguments-differ
@@ -873,13 +885,16 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     smartbox_id, self._fem_current_trip_threshold
                 )
             self._component_manager.initialize_smartbox(smartbox_id)
-            # if self._low_pass_filter_cutoff is not None:
-            #     self._component_manager.set_smartbox_low_pass_filters(
-            #         smartbox_id, self._low_pass_filter_cutoff
-            #     )
-            #     self._component_manager.set_smartbox_low_pass_filters(
-            #         smartbox_id, self._low_pass_filter_cutoff, True
-            #     )
+            if self._simulation_mode == SimulationMode.FALSE:
+                # The simulation does not support setting the filter constants
+                # as there is no way to read them back
+                if self._low_pass_filter_cutoff is not None:
+                    self._component_manager.set_smartbox_low_pass_filters(
+                        smartbox_id, self._low_pass_filter_cutoff
+                    )
+                    self._component_manager.set_smartbox_low_pass_filters(
+                        smartbox_id, self._low_pass_filter_cutoff, True
+                    )
 
     @command(dtype_in=int, dtype_out="DevVarLongStringArray")
     def InitializeSmartbox(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
