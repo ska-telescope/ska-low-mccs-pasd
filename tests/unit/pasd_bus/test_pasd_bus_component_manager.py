@@ -1112,3 +1112,107 @@ class TestPasdBusComponentManager:
             warning_flags=SmartboxAlarmFlags.NONE.name,
             lookahead=11,
         )
+
+    def test_initialize_fndh(
+        self: TestPasdBusComponentManager,
+        pasd_bus_component_manager: PasdBusComponentManager,
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test the component manager can initialize an FNDH.
+
+        :param pasd_bus_component_manager: the PaSD bus component
+            manager under test.
+        :param mock_callbacks: a group of mock callables for the component
+            manager under test to use as callbacks
+        """
+        pasd_bus_component_manager.start_communicating()
+        mock_callbacks.assert_call(
+            "communication_state", CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks.assert_call(
+            "communication_state", CommunicationStatus.ESTABLISHED
+        )
+        mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
+
+        mock_callbacks.assert_call(
+            "pasd_device_state_for_fndh",
+            modbus_register_map_revision=FndhSimulator.MODBUS_REGISTER_MAP_REVISION,
+            pcb_revision=FndhSimulator.PCB_REVISION,
+            cpu_id=PasdConversionUtility.convert_cpu_id(FndhSimulator.CPU_ID)[0],
+            chip_id=PasdConversionUtility.convert_chip_id(FndhSimulator.CHIP_ID)[0],
+            firmware_version=PasdConversionUtility.convert_firmware_version(
+                [FndhSimulator.DEFAULT_FIRMWARE_VERSION]
+            )[0],
+        )
+
+        pasd_bus_component_manager.initialize_fndh()
+
+        # The static information should be re-requested
+        mock_callbacks.assert_call(
+            "pasd_device_state_for_fndh",
+            modbus_register_map_revision=FndhSimulator.MODBUS_REGISTER_MAP_REVISION,
+            pcb_revision=FndhSimulator.PCB_REVISION,
+            cpu_id=PasdConversionUtility.convert_cpu_id(FndhSimulator.CPU_ID)[0],
+            chip_id=PasdConversionUtility.convert_chip_id(FndhSimulator.CHIP_ID)[0],
+            firmware_version=PasdConversionUtility.convert_firmware_version(
+                [FndhSimulator.DEFAULT_FIRMWARE_VERSION]
+            )[0],
+            lookahead=30,
+        )
+
+    def test_initialize_smartbox(
+        self: TestPasdBusComponentManager,
+        pasd_bus_component_manager: PasdBusComponentManager,
+        smartbox_id: int,
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test the component manager can initialize a Smartbox.
+
+        :param pasd_bus_component_manager: the PaSD bus component
+            manager under test.
+        :param smartbox_id: the ID of the Smartbox under test.
+        :param mock_callbacks: a group of mock callables for the component
+            manager under test to use as callbacks
+        """
+        pasd_bus_component_manager.start_communicating()
+        mock_callbacks.assert_call(
+            "communication_state", CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks.assert_call(
+            "communication_state", CommunicationStatus.ESTABLISHED
+        )
+        mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
+
+        mock_callbacks.assert_call(
+            f"pasd_device_state_for_smartbox{smartbox_id}",
+            modbus_register_map_revision=(
+                SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
+            ),
+            pcb_revision=SmartboxSimulator.PCB_REVISION,
+            cpu_id=PasdConversionUtility.convert_cpu_id(SmartboxSimulator.CPU_ID)[0],
+            chip_id=PasdConversionUtility.convert_chip_id(SmartboxSimulator.CHIP_ID)[0],
+            firmware_version=PasdConversionUtility.convert_firmware_version(
+                [SmartboxSimulator.DEFAULT_FIRMWARE_VERSION]
+            )[0],
+            lookahead=30,
+        )
+
+        pasd_bus_component_manager.initialize_smartbox(smartbox_id)
+
+        # The static information should be re-requested
+
+        mock_callbacks.assert_call(
+            f"pasd_device_state_for_smartbox{smartbox_id}",
+            modbus_register_map_revision=(
+                SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
+            ),
+            pcb_revision=SmartboxSimulator.PCB_REVISION,
+            cpu_id=PasdConversionUtility.convert_cpu_id(SmartboxSimulator.CPU_ID)[0],
+            chip_id=PasdConversionUtility.convert_chip_id(SmartboxSimulator.CHIP_ID)[0],
+            firmware_version=PasdConversionUtility.convert_firmware_version(
+                [SmartboxSimulator.DEFAULT_FIRMWARE_VERSION]
+            )[0],
+            lookahead=30,
+        )
