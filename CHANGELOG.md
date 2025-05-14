@@ -4,6 +4,7 @@
 
 * [THORN-129] Make pytest pipeline parallel
 * [SKB-455] Add delay before reconnecting after failed poll.
+* [SKB-876] Fix strategy for re-requesting 'read once' attributes if the h/w is unavailable at startup.
 * [LOW-1296] Breaking changes to helm chart values schema.
   The `ska-low-mccs-pasd` helm chart now uses `ska-tango-devices`
   to configure and deploy its Tango devices.
