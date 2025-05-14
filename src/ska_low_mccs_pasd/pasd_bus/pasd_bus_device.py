@@ -331,7 +331,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 self.logger,
                 self.FEMCurrentTripThreshold,
                 self.LowPassFilterCutoff,
-                self.simulationMode,
             ),
         )
         self.register_command_object(
@@ -340,7 +339,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 self.component_manager,
                 self.logger,
                 self.LowPassFilterCutoff,
-                self.simulationMode,
             ),
         )
 
@@ -596,20 +594,21 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
             low_pass_filter_cutoff: int | None,
-            simulation_mode: SimulationMode,
         ):
             self._component_manager = component_manager
             self._low_pass_filter_cutoff = low_pass_filter_cutoff
-            self._simulation_mode = simulation_mode
             super().__init__(logger)
 
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
-            self: MccsPasdBus._InitializeFndhCommand,
+            self: MccsPasdBus._InitializeFndhCommand, simulation_mode: SimulationMode
         ) -> None:
-            """Initialize an FNDH."""
+            """Initialize an FNDH.
+
+            :param simulation_mode: whether we are in simulation mode.
+            """
             self._component_manager.initialize_fndh()
-            if self._simulation_mode == SimulationMode.FALSE:
+            if simulation_mode == SimulationMode.FALSE:
                 # Simulation does not support setting the filter constants
                 # as there is no way to read them back
                 if self._low_pass_filter_cutoff is not None:
@@ -628,7 +627,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("InitializeFndh")
-        handler()
+        handler(self._simulation_mode)
         return ([ResultCode.OK], ["InitializeFndh command requested."])
 
     class _SetFndhPortPowersCommand(FastCommand):
@@ -853,30 +852,29 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         return ([ResultCode.OK], ["ResetFndhwarnings command requested."])
 
     class _InitializeSmartboxCommand(FastCommand):
-        # pylint: disable=too-many-positional-arguments,
-        # pylint: disable=too-many-arguments
         def __init__(
             self: MccsPasdBus._InitializeSmartboxCommand,
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
             fem_current_trip_threshold: int | None,
             low_pass_filter_cutoff: int | None,
-            simulation_mode: SimulationMode,
         ):
             self._component_manager = component_manager
             self._fem_current_trip_threshold = fem_current_trip_threshold
             self._low_pass_filter_cutoff = low_pass_filter_cutoff
-            self._simulation_mode = simulation_mode
             super().__init__(logger)
 
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
-            self: MccsPasdBus._InitializeSmartboxCommand, smartbox_id: int
+            self: MccsPasdBus._InitializeSmartboxCommand,
+            smartbox_id: int,
+            simulation_mode: SimulationMode,
         ) -> None:
             """
             Initialize a Smartbox.
 
             :param smartbox_id: id of the smartbox being addressed.
+            :param simulation_mode: whether we are in simulation mode.
             """
             # We set the current trip thresholds here just in case
             # it hasn't been done yet
@@ -885,7 +883,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     smartbox_id, self._fem_current_trip_threshold
                 )
             self._component_manager.initialize_smartbox(smartbox_id)
-            if self._simulation_mode == SimulationMode.FALSE:
+            if simulation_mode == SimulationMode.FALSE:
                 # The simulation does not support setting the filter constants
                 # as there is no way to read them back
                 if self._low_pass_filter_cutoff is not None:
@@ -906,7 +904,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("InitializeSmartbox")
-        handler(argin)
+        handler(argin, self._simulation_mode)
         return ([ResultCode.OK], ["InitializeSmartbox command requested."])
 
     class _SetSmartboxPortPowersCommand(FastCommand):
