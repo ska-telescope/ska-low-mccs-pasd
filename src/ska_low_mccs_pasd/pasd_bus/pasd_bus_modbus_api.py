@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Any, Final
 
@@ -602,4 +603,6 @@ class PasdBusModbusApiClient:
                     f"recycling connection after discarding bytes:\n{data.hex()}"
                 )
             self._client.close()
+            # Wait a few seconds to make sure the socket is properly closed
+            time.sleep(5)
         self._client.connect()

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [SKB-455] Add delay before reconnecting after failed poll.
 * [LOW-1296] Breaking changes to helm chart values schema.
   The `ska-low-mccs-pasd` helm chart now uses `ska-tango-devices`
   to configure and deploy its Tango devices.
