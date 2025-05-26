@@ -1,6 +1,6 @@
 # Version History
 
-## Unreleased
+## 3.0.0
 
 * [SKB-455] Add delay before reconnecting after failed poll.
 * [LOW-1296] Breaking changes to helm chart values schema.
