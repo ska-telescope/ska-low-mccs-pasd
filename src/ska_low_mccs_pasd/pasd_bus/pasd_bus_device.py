@@ -593,7 +593,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     attr for attr in self._one_time_read_list if attr.startswith(prefix)
                 ]
                 if any(
-                    self._pasd_state[attribute].value is None
+                    self._pasd_state[attribute].quality is AttrQuality.ATTR_INVALID
                     for attribute in filtered_list
                 ):
                     self.logger.debug(f"Re-requesting startup info for {prefix})")
