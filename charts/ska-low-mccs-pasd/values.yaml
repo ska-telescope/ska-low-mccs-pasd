@@ -128,7 +128,7 @@ ska-tango-devices:
       image:
         registry: artefact.skao.int
         name: ska-low-mccs-pasd
-        tag: 2.0.0
+        tag: 3.0.0
         pullPolicy: IfNotPresent
       command: pasd
       resources:

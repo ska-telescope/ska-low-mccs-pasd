@@ -1,7 +1,8 @@
 # Version History
 
-## Unreleased
+## 3.0.0
 
+* [THORN-129] Make pytest pipeline parallel
 * [SKB-455] Add delay before reconnecting after failed poll.
 * [LOW-1296] Breaking changes to helm chart values schema.
   The `ska-low-mccs-pasd` helm chart now uses `ska-tango-devices`
