@@ -49,9 +49,11 @@ DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 class PasdAttribute:
     """Class representing the internal state of a PaSD attribute."""
 
+    tango_attribute_name: str
     value: Any
     quality: AttrQuality
     timestamp: float
+    read_once: bool
 
 
 # pylint: disable=too-many-lines, too-many-instance-attributes
@@ -125,6 +127,13 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             else:
                 self._setup_controller_attributes(controller)
 
+        # Maintain a list of attributes which are normally only read once, on startup
+        self._one_time_read_list = [
+            attribute.tango_attribute_name
+            for attribute in self._pasd_state.values()
+            if attribute.read_once
+        ]
+
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
         device_name = f'{str(self.__class__).rsplit(".", maxsplit=1)[-1][0:-2]}'
@@ -164,6 +173,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     if register["writable"]
                     else tango.AttrWriteType.READ
                 ),
+                read_once=register["read_once"],
             )
 
     def _read_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
@@ -218,16 +228,22 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 )
                 break
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def _setup_pasd_attribute(
         self: MccsPasdBus,
         attribute_name: str,
         data_type: type | tuple[type],
         max_dim_x: Optional[int] = None,
         access: tango.AttrWriteType = tango.AttrWriteType.READ,
+        read_once: bool = False,
     ) -> None:
         # Initialize all attributes as INVALID until read from the h/w
         self._pasd_state[attribute_name] = PasdAttribute(
-            value=None, timestamp=0, quality=AttrQuality.ATTR_INVALID
+            value=None,
+            timestamp=0,
+            quality=AttrQuality.ATTR_INVALID,
+            read_once=read_once,
+            tango_attribute_name=attribute_name,
         )
         attr = tango.server.attribute(
             name=attribute_name,
@@ -559,6 +575,30 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 timestamp,
                 AttrQuality.ATTR_VALID,
             )
+            if tango_attribute_name.endswith("AlarmFlags") or (
+                pasd_device_number == PasdData.FNCC_DEVICE_ID
+                and tango_attribute_name.endswith("FieldNodeNumber")
+            ):
+                # This is the last register in the poll cycle, so at this point
+                # we check to see if any of the static 'read once' information has
+                # not yet been read successfully
+                match pasd_device_number:
+                    case PasdData.FNCC_DEVICE_ID:
+                        prefix = PasdData.FNCC_PREFIX
+                    case PasdData.FNDH_DEVICE_ID:
+                        prefix = PasdData.FNDH_PREFIX
+                    case _:
+                        prefix = PasdData.SMARTBOX_PREFIX + str(pasd_device_number)
+                filtered_list = [
+                    attr for attr in self._one_time_read_list if attr.startswith(prefix)
+                ]
+                if any(
+                    self._pasd_state[attribute].value is None
+                    for attribute in filtered_list
+                ):
+                    self.logger.debug(f"Re-requesting startup info for {prefix})")
+                    self.component_manager.request_startup_info(pasd_device_number)
+
         if updated_attributes:
             self.logger.debug(f"Updated PaSD state with values: {updated_attributes}")
 
