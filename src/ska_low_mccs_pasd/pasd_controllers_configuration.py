@@ -54,6 +54,10 @@ class RegisterDict(TypedDict, total=False):
         Default thresholds for alarms and warnings.
         Contains keys 'high_alarm', 'high_warning', 'low_warning', and 'low_alarm',
         all of which are integers. Optional key.
+    read_once (bool):
+        If True, the register is read only once at initialisation (except for thresholds
+        which are re-requested if written to) NB: This is configured in the
+        DeviceRequestProvider and just stored here for convenience.
     """
 
     address: int
@@ -73,6 +77,7 @@ class RegisterDict(TypedDict, total=False):
     desired_info: str
     default_value: int
     default_thresholds: dict[str, int]
+    read_once: bool
 
 
 REGISTER_SCHEMA: Final = {
@@ -154,6 +159,10 @@ REGISTER_SCHEMA: Final = {
                     "low_warning": {"type": "integer", "required": True},
                     "low_alarm": {"type": "integer", "required": True},
                 },
+            },
+            "read_once": {
+                "type": "boolean",
+                "default": False,
             },
         },
     },

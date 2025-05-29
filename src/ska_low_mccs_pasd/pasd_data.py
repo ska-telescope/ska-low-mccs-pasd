@@ -40,3 +40,12 @@ class PasdData:  # pylint: disable=too-few-public-methods
 
     FNCC_DEVICE_ID: Final = CONTROLLERS_CONFIG["FNCC"]["pasd_number"]
     """The device identifier for an FNCC"""
+
+    FNDH_PREFIX: Final = CONTROLLERS_CONFIG["FNPC"]["prefix"]
+    """The Tango attribute prefix for an FNDH"""
+
+    FNCC_PREFIX: Final = CONTROLLERS_CONFIG["FNCC"]["prefix"]
+    """The Tango attribute prefix for an FNCC"""
+
+    SMARTBOX_PREFIX: Final = CONTROLLERS_CONFIG["FNSC"]["prefix"]
+    """The Tango attribute prefix for a smartbox"""

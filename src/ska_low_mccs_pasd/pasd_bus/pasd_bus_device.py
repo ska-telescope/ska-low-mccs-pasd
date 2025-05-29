@@ -36,7 +36,6 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_controllers_configuration import ControllerDict
 from .pasd_bus_component_manager import PasdBusComponentManager
-from .pasd_bus_conversions import FndhStatusMap, SmartboxStatusMap
 from .pasd_bus_health_model import PasdBusHealthModel
 from .pasd_bus_register_map import DesiredPowerEnum
 
@@ -50,9 +49,11 @@ DevVarLongStringArrayType = tuple[list[ResultCode], list[Optional[str]]]
 class PasdAttribute:
     """Class representing the internal state of a PaSD attribute."""
 
+    tango_attribute_name: str
     value: Any
     quality: AttrQuality
     timestamp: float
+    read_once: bool
 
 
 # pylint: disable=too-many-lines, too-many-instance-attributes
@@ -126,6 +127,13 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             else:
                 self._setup_controller_attributes(controller)
 
+        # Maintain a list of attributes which are normally only read once, on startup
+        self._one_time_read_list = [
+            attribute.tango_attribute_name
+            for attribute in self._pasd_state.values()
+            if attribute.read_once
+        ]
+
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
         device_name = f'{str(self.__class__).rsplit(".", maxsplit=1)[-1][0:-2]}'
@@ -165,6 +173,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     if register["writable"]
                     else tango.AttrWriteType.READ
                 ),
+                read_once=register["read_once"],
             )
 
     def _read_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
@@ -219,16 +228,22 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 )
                 break
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def _setup_pasd_attribute(
         self: MccsPasdBus,
         attribute_name: str,
         data_type: type | tuple[type],
         max_dim_x: Optional[int] = None,
         access: tango.AttrWriteType = tango.AttrWriteType.READ,
+        read_once: bool = False,
     ) -> None:
         # Initialize all attributes as INVALID until read from the h/w
         self._pasd_state[attribute_name] = PasdAttribute(
-            value=None, timestamp=0, quality=AttrQuality.ATTR_INVALID
+            value=None,
+            timestamp=0,
+            quality=AttrQuality.ATTR_INVALID,
+            read_once=read_once,
+            tango_attribute_name=attribute_name,
         )
         attr = tango.server.attribute(
             name=attribute_name,
@@ -299,7 +314,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         super().init_command_objects()
 
         for command_name, command_class in [
-            ("InitializeFndh", MccsPasdBus._InitializeFndhCommand),
             ("ResetFnccStatus", MccsPasdBus._ResetFnccStatusCommand),
             ("SetFndhPortPowers", MccsPasdBus._SetFndhPortPowersCommand),
             ("SetFndhLedPattern", MccsPasdBus._SetFndhLedPatternCommand),
@@ -329,7 +343,18 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         self.register_command_object(
             "InitializeSmartbox",
             MccsPasdBus._InitializeSmartboxCommand(
-                self.component_manager, self.logger, self.FEMCurrentTripThreshold
+                self.component_manager,
+                self.logger,
+                self.FEMCurrentTripThreshold,
+                self.LowPassFilterCutoff,
+            ),
+        )
+        self.register_command_object(
+            "InitializeFndh",
+            MccsPasdBus._InitializeFndhCommand(
+                self.component_manager,
+                self.logger,
+                self.LowPassFilterCutoff,
             ),
         )
 
@@ -541,19 +566,37 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             # Update the timestamp
             self._pasd_state[tango_attribute_name].timestamp = timestamp
 
-            if pasd_attribute_name == "status":
-                # Determine if the device has been reset or powered on since
-                # MCCS was started by checking if its status changed to UNINITIALISED
-                previous_status = self._pasd_state[tango_attribute_name].value
-                if (
-                    pasd_attribute_value != previous_status
-                    and pasd_attribute_value
-                    in (
-                        FndhStatusMap.UNINITIALISED.name,
-                        SmartboxStatusMap.UNINITIALISED.name,
-                    )
+            self._pasd_state[tango_attribute_name].value = pasd_attribute_value
+            self._pasd_state[tango_attribute_name].quality = AttrQuality.ATTR_VALID
+            updated_attributes[tango_attribute_name] = pasd_attribute_value
+            self.push_change_event(
+                tango_attribute_name,
+                pasd_attribute_value,
+                timestamp,
+                AttrQuality.ATTR_VALID,
+            )
+            if tango_attribute_name.endswith("AlarmFlags") or (
+                pasd_device_number == PasdData.FNCC_DEVICE_ID
+                and tango_attribute_name.endswith("FieldNodeNumber")
+            ):
+                # This is the last register in the poll cycle, so at this point
+                # we check to see if any of the static 'read once' information has
+                # not yet been read successfully
+                match pasd_device_number:
+                    case PasdData.FNCC_DEVICE_ID:
+                        prefix = PasdData.FNCC_PREFIX
+                    case PasdData.FNDH_DEVICE_ID:
+                        prefix = PasdData.FNDH_PREFIX
+                    case _:
+                        prefix = PasdData.SMARTBOX_PREFIX + str(pasd_device_number)
+                filtered_list = [
+                    attr for attr in self._one_time_read_list if attr.startswith(prefix)
+                ]
+                if any(
+                    self._pasd_state[attribute].quality is AttrQuality.ATTR_INVALID
+                    for attribute in filtered_list
                 ):
-                    # Register a request to read the static info and thresholds
+                    self.logger.debug(f"Re-requesting startup info for {prefix})")
                     self.component_manager.request_startup_info(pasd_device_number)
                     # Set the device's low-pass filter constants
                     if self._simulation_mode == SimulationMode.FALSE:
@@ -567,15 +610,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                             pasd_device_number, self.FEMCurrentTripThreshold
                         )
 
-            self._pasd_state[tango_attribute_name].value = pasd_attribute_value
-            self._pasd_state[tango_attribute_name].quality = AttrQuality.ATTR_VALID
-            updated_attributes[tango_attribute_name] = pasd_attribute_value
-            self.push_change_event(
-                tango_attribute_name,
-                pasd_attribute_value,
-                timestamp,
-                AttrQuality.ATTR_VALID,
-            )
         if updated_attributes:
             self.logger.debug(f"Updated PaSD state with values: {updated_attributes}")
 
@@ -610,16 +644,31 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self: MccsPasdBus._InitializeFndhCommand,
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
+            low_pass_filter_cutoff: int | None,
         ):
             self._component_manager = component_manager
+            self._low_pass_filter_cutoff = low_pass_filter_cutoff
             super().__init__(logger)
 
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
-            self: MccsPasdBus._InitializeFndhCommand,
+            self: MccsPasdBus._InitializeFndhCommand, simulation_mode: SimulationMode
         ) -> None:
-            """Initialize an FNDH."""
+            """Initialize an FNDH.
+
+            :param simulation_mode: whether we are in simulation mode.
+            """
             self._component_manager.initialize_fndh()
+            if simulation_mode == SimulationMode.FALSE:
+                # Simulation does not support setting the filter constants
+                # as there is no way to read them back
+                if self._low_pass_filter_cutoff is not None:
+                    self._component_manager.set_fndh_low_pass_filters(
+                        self._low_pass_filter_cutoff
+                    )
+                    self._component_manager.set_fndh_low_pass_filters(
+                        self._low_pass_filter_cutoff, True
+                    )
 
     @command(dtype_out="DevVarLongStringArray")
     def InitializeFndh(self: MccsPasdBus) -> DevVarLongStringArrayType:
@@ -629,7 +678,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("InitializeFndh")
-        handler()
+        handler(self._simulation_mode)
         return ([ResultCode.OK], ["InitializeFndh command requested."])
 
     class _SetFndhPortPowersCommand(FastCommand):
@@ -859,19 +908,24 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
             fem_current_trip_threshold: int | None,
+            low_pass_filter_cutoff: int | None,
         ):
             self._component_manager = component_manager
             self._fem_current_trip_threshold = fem_current_trip_threshold
+            self._low_pass_filter_cutoff = low_pass_filter_cutoff
             super().__init__(logger)
 
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
-            self: MccsPasdBus._InitializeSmartboxCommand, smartbox_id: int
+            self: MccsPasdBus._InitializeSmartboxCommand,
+            smartbox_id: int,
+            simulation_mode: SimulationMode,
         ) -> None:
             """
             Initialize a Smartbox.
 
             :param smartbox_id: id of the smartbox being addressed.
+            :param simulation_mode: whether we are in simulation mode.
             """
             # We set the current trip thresholds here just in case
             # it hasn't been done yet
@@ -880,6 +934,16 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     smartbox_id, self._fem_current_trip_threshold
                 )
             self._component_manager.initialize_smartbox(smartbox_id)
+            if simulation_mode == SimulationMode.FALSE:
+                # The simulation does not support setting the filter constants
+                # as there is no way to read them back
+                if self._low_pass_filter_cutoff is not None:
+                    self._component_manager.set_smartbox_low_pass_filters(
+                        smartbox_id, self._low_pass_filter_cutoff
+                    )
+                    self._component_manager.set_smartbox_low_pass_filters(
+                        smartbox_id, self._low_pass_filter_cutoff, True
+                    )
 
     @command(dtype_in=int, dtype_out="DevVarLongStringArray")
     def InitializeSmartbox(self: MccsPasdBus, argin: int) -> DevVarLongStringArrayType:
@@ -891,7 +955,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         :return: A tuple containing a result code and a human-readable status message.
         """
         handler = self.get_command_object("InitializeSmartbox")
-        handler(argin)
+        handler(argin, self._simulation_mode)
         return ([ResultCode.OK], ["InitializeSmartbox command requested."])
 
     class _SetSmartboxPortPowersCommand(FastCommand):

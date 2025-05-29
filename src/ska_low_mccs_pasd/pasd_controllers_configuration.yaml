@@ -17,12 +17,14 @@ common_registers: &common_registers
     data_type: int
     address: 0
     static: true
+    read_once: true
   pcb_revision:
     tango_attr_name: PcbRevisionNumber
     description: "PCB revision number"
     data_type: int
     address: 1
     static: true
+    read_once: true
   cpu_id:
     data_type: str
     description: "Microcontroller part id"
@@ -30,6 +32,7 @@ common_registers: &common_registers
     size: 2
     static: true
     conversion_function: convert_cpu_id
+    read_once: true
   chip_id:
     data_type: str
     description: "Microcontroller serial number"
@@ -37,12 +40,14 @@ common_registers: &common_registers
     size: 8
     static: true
     conversion_function: convert_chip_id
+    read_once: true
   firmware_version:
     data_type: str
     description: "Firmware revision number"
     address: 12
     static: true
     conversion_function: convert_firmware_version
+    read_once: true
   uptime:
     data_type: int
     description: "Time since last booted"
@@ -222,6 +227,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   5200
             high_warning: 5000
@@ -235,6 +241,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   5200
             high_warning: 5000
@@ -248,6 +255,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   1800
             high_warning: 1600
@@ -261,6 +269,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   10000
             high_warning: 8500
@@ -274,6 +283,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   10000
             high_warning: 8500
@@ -287,6 +297,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   8500
             high_warning: 7000
@@ -300,6 +311,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   8500
             high_warning: 7000
@@ -312,6 +324,7 @@ PaSD_controllers:
           size: 4
           tango_dim_x: 4
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   85
             high_warning: 70
@@ -327,6 +340,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   8500
             high_warning: 7000
@@ -340,6 +354,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   8500
             high_warning: 7000
@@ -353,6 +368,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   8500
             high_warning: 7000
@@ -366,6 +382,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   8500
             high_warning: 7000
@@ -518,6 +535,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   5000
             high_warning: 4900
@@ -531,6 +549,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   500
             high_warning: 490
@@ -544,6 +563,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   8500
             high_warning: 7000
@@ -557,6 +577,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   8500
             high_warning: 7000
@@ -570,6 +591,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   6000
             high_warning: 4500
@@ -583,6 +605,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   6000
             high_warning: 4500
@@ -596,6 +619,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           format_string: "%.2f"
           default_thresholds:
             high_alarm:   6000
@@ -610,6 +634,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   6000
             high_warning: 4500
@@ -623,6 +648,7 @@ PaSD_controllers:
           tango_dim_x: 4
           conversion_function: scale_signed_16bit
           writable: true
+          read_once: true
           default_thresholds:
             high_alarm:   6000
             high_warning: 4500
@@ -635,6 +661,7 @@ PaSD_controllers:
           size: 12
           tango_dim_x: 12
           writable: true
+          read_once: true
           default_value: 496
           description: "List of FEM current trip thresholds"
         warning_flags:

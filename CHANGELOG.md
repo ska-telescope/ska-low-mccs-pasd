@@ -1,5 +1,8 @@
 # Version History
 
+## 3.0.1
+* [SKB-876] Fix strategy for re-requesting 'read once' attributes if the h/w is unavailable at startup.
+
 ## 3.0.0
 
 * [THORN-129] Make pytest pipeline parallel
