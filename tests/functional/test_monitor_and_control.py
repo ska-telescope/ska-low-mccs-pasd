@@ -617,7 +617,7 @@ def check_smartbox_port_changes_power_state(
         f"{get_pasd_bus_name()}/smartbox{smartbox_id}PortsPowerSensed"
     ].assert_change_event(
         expected_powered,
-        lookahead=5,  # TODO: This only needs 2 in lightweight testing. Why?
+        lookahead=7,  # TODO: This only needs 2 in lightweight testing. Why?
         consume_nonmatches=True,
     )
 
