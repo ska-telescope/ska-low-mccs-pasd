@@ -1,5 +1,8 @@
 # Version History
 
+## 3.1.0
+* [THORN-212] Allow fieldStation healthThresholds to be reconfigurable.
+
 ## 3.0.1
 * [SKB-876] Fix strategy for re-requesting 'read once' attributes if the h/w is unavailable at startup.
 
