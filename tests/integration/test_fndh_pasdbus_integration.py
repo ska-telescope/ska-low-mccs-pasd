@@ -29,7 +29,7 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
 
 from ..conftest import Helpers
 
-gc.disable()  # TODO: why is this needed?
+gc.disable()  # Bug in garbage collection causes tests to hang.
 
 # Strings with a placeholder to check health report.
 STUCK_ON_PDOC_TEMPLATE = (

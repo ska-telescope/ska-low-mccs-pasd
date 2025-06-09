@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Final, Optional
+from typing import Any, Final, Optional, cast
 
 from ska_control_model import (
     AdminMode,
@@ -70,6 +70,10 @@ class MccsFieldStation(MccsBaseDevice):
         """Initialise the device."""
         self._antenna_powers = {}
         self._component_state_on: Optional[bool] = None
+        self._health_thresholds: dict[str, Any] = {
+            "fndh": (1, 1, 1),  # Default thresholds for FNDH
+            "smartboxes": (0, 1, 1),  # Default thresholds for SmartBoxes
+        }
 
         super().init_device()
 
@@ -87,17 +91,7 @@ class MccsFieldStation(MccsBaseDevice):
         self._health_state = HealthState.UNKNOWN
         self._health_report = ""
 
-        self._health_rollup = HealthRollup(
-            [self.FndhFQDN, "smartboxes"],
-            (1, 1, 1),
-            self._health_changed,
-            self._health_summary_changed,
-        )
-        self._health_rollup.define(
-            "smartboxes",
-            self.SmartBoxFQDNs,
-            (0, 1, 1),
-        )
+        self._health_rollup = self._setup_health_rollup()
 
     def create_component_manager(
         self: MccsFieldStation,
@@ -116,6 +110,84 @@ class MccsFieldStation(MccsBaseDevice):
             self._component_state_callback,
             event_serialiser=self._event_serialiser,
         )
+
+    def _setup_health_rollup(
+        self: MccsFieldStation,
+    ) -> HealthRollup:
+        #   Rollup is based on three configurable thresholds:
+        # * the number of FAILED (or UNKNOWN) sources that cause health
+        #   to roll up to overall FAILED;
+        # * the number of FAILED (or UNKNOWN) sources that cause health
+        #   to roll up to overall DEGRADED;
+        # * the number of DEGRADED sources that cause health to roll up to
+        #   overall DEGRADED.
+
+        rollup_members = [self.FndhFQDN]
+        # TODO: Make these thresholds fully dynamic based on deployment.
+        thresholds = {}
+        thresholds["fndh"] = self._health_thresholds["fndh"]
+        if len(self.SmartBoxFQDNs) > 0:
+            rollup_members.append("smartboxes")
+            thresholds["smartboxes"] = self._health_thresholds["smartboxes"]
+
+        health_rollup = HealthRollup(
+            rollup_members,
+            thresholds["fndh"],
+            self._health_changed,
+            self._health_summary_changed,
+        )
+
+        # Fndh Default Thresholds: 1 failed = failed, 1 failed = deg, 1 deg = deg
+        if "smartboxes" in rollup_members:
+            # SmartBox Default Thresholds: zero ok/all fail=fail, 1 fail=deg, 1 deg=deg
+            health_rollup.define(
+                "smartboxes", self.SmartBoxFQDNs, thresholds["smartboxes"]
+            )
+
+        return health_rollup
+
+    def _redefine_health_rollup(self: MccsFieldStation) -> None:
+        """
+        Redefine the health rollup members and thresholds.
+
+        Redefines the health rollup following a change in subdevice thresholds.
+        This pulls the old/current healths from the health report, instantiates
+        a new health_rollup instance and restores those healthstates.
+        """
+
+        def _flatten_dict(d: dict[str, Any]) -> dict[str, Any]:
+            """
+            Return a flattened dictionary given nested dicts.
+
+            Returns a flattened dictionary containing the key-value pairs
+            of the nested dictionaries. Where a key-value pair is itself
+            a dictionary this will also be flattened and the parent key
+            omitted.
+
+            :param d: the nested dictionary to flatten
+            :return: flattened dictionary.
+            """
+
+            def _flatten(d: dict[str, Any]) -> dict[str, Any]:
+                items: list[Any] = []
+                for k, v in d.items():
+                    if isinstance(v, dict):
+                        items.extend(_flatten(v).items())
+                    else:
+                        items.append((k, v))
+                return dict(items)
+
+            return _flatten(d)
+
+        # Pull out the old healthstates.
+        old_report = json.loads(self._health_report)
+        old_subdevice_healths = _flatten_dict(old_report)
+        old_online = self._health_rollup.online
+        self._health_rollup = self._setup_health_rollup()
+        self._health_rollup.online = old_online
+        # Restore old healthstates.
+        for subdevice, health in old_subdevice_healths.items():
+            self._health_rollup.health_changed(subdevice, cast(HealthState, health))
 
     def init_command_objects(self: MccsFieldStation) -> None:
         """Initialise the command handlers for commands supported by this device."""
@@ -344,3 +416,66 @@ class MccsFieldStation(MccsBaseDevice):
         :return: the health report.
         """
         return self._health_report
+
+    @attribute(
+        dtype="DevString",
+        format="%s",
+    )
+    def healthThresholds(self: MccsFieldStation) -> str:
+        """
+        Get the health params from the health model.
+
+        Default health thresholds:
+
+            "fndh": (f2f, d2f, d2d),
+                tuple(int, int, int): Number of fndh failed before health failed,
+                                      Number of fndh degraded before health failed,
+                                      Number of fndh degraded before health degraded
+            "smartboxes": (f2f, d2f, d2d),
+                tuple(int, int, int): Number of smartboxes failed before health failed,
+                                      Number of smartboxes degraded before health fail,
+                                      Number of smartboxes degraded before health deg.
+
+        :return: the health params
+        """
+        return json.dumps(self._health_thresholds)
+
+    @healthThresholds.write  # type: ignore[no-redef]
+    def healthThresholds(self: MccsFieldStation, argin: str) -> None:
+        """
+        Set the params for health transition rules.
+
+        Default health thresholds:
+
+            "fndh": (f2f, d2f, d2d),
+                tuple(int, int, int): Number of fndh failed before health failed,
+                                      Number of fndh degraded before health failed,
+                                      Number of fndh degraded before health degraded
+            "smartboxes": (f2f, d2f, d2d),
+                tuple(int, int, int): Number of smartboxes failed before health failed,
+                                      Number of smartboxes degraded before health fail,
+                                      Number of smartboxes degraded before health deg.
+
+
+        :param argin: JSON-string of dictionary of health thresholds
+        """
+        thresholds = json.loads(argin)
+        for key, threshold in thresholds.items():
+            if key not in self._health_thresholds:
+                self.logger.info(
+                    f"Invalid Key Supplied: {key}. "
+                    f"Allowed keys: {self._health_thresholds.keys()}"
+                )
+                continue
+            self._health_thresholds[key] = threshold
+
+            # TODO: Modify rollup classes to allow this.
+            # Redefine health thresholds if needed.
+            # if key == "fndh":
+            #     self._health_rollup.define("fndh", self.FndhFQDNs, threshold)
+            # if key == "smartboxes":
+            #     self._health_rollup.define("smartboxes", self.SmartBoxFQDNs, thresh)
+        # If we changed thresholds for subdevices, redefine health rollup.
+        if any(subdevice in thresholds for subdevice in ["fndh", "smartboxes"]):
+            self.logger.info("Reconfiguring subdevice health thresholds.")
+            self._redefine_health_rollup()
