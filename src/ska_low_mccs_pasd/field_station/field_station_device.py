@@ -462,7 +462,7 @@ class MccsFieldStation(MccsBaseDevice):
         thresholds = json.loads(argin)
         for key, threshold in thresholds.items():
             if key not in self._health_thresholds:
-                self.logger.info(
+                self.logger.warning(
                     f"Invalid Key Supplied: {key}. "
                     f"Allowed keys: {self._health_thresholds.keys()}"
                 )
