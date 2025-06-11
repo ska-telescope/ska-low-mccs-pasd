@@ -1,5 +1,8 @@
 # Version History
 
+## Unreleased
+* [THORN-212] Add tests for fieldStation health aggregation and reconfigure.
+
 ## 3.1.0
 * [THORN-212] Allow fieldStation healthThresholds to be reconfigurable.
 
