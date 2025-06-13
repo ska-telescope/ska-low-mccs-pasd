@@ -77,7 +77,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     }
     UPDATE_HEALTH_PARAMS_SCHEMA: Final = json.loads(
         importlib.resources.read_text(
-            "ska_low_mccs_pasd.fndh.schemas", "MccsFndh_UpdateHealthParams.json"
+            "ska_low_mccs_pasd.schemas.fndh", "MccsFndh_UpdateHealthParams.json"
         )
     )
 
