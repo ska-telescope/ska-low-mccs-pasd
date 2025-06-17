@@ -27,6 +27,11 @@ prototype for the Power and Signal Distribution (PaSD) of the
 
    api/index
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Schemas
+
+   schemas/index
 
 Indices and tables
 ------------------

@@ -126,6 +126,15 @@ telmodel-deps:
 k8s-pre-install-chart: telmodel-deps
 k8s-pre-uninstall-chart: telmodel-deps
 
+python-pre-format:
+	python docs/scripts/document_schemas.py
+
+python-pre-lint:
+	python docs/scripts/document_schemas.py -c
+
+.PHONY: docs-pre-build python-post-format python-post-lint k8s-do-test k8s-pre-install-chart k8s-pre-uninstall-chart
+
+
 #######################################
 # HELM
 #######################################
