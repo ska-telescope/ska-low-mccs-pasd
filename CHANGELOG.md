@@ -1,7 +1,9 @@
 # Version History
 
 ## Unreleased
+
 * [THORN-212] Add tests for fieldStation health aggregation and reconfigure.
+* [THORN-71] Update PASD to include command schemas in docs
 
 ## 3.1.0
 * [THORN-212] Allow fieldStation healthThresholds to be reconfigurable.

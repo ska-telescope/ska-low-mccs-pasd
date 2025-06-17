@@ -684,7 +684,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     class _SetFndhPortPowersCommand(FastCommand):
         SCHEMA: Final = json.loads(
             importlib.resources.read_text(
-                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "ska_low_mccs_pasd.schemas.pasd_bus",
                 "MccsPasdBus_SetFndhPortPowers.json",
             )
         )
@@ -726,7 +726,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         This command takes as input a JSON string that conforms to the
         following schema:
 
-        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetFndhPortPowers.json
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/schemas/pasd_bus/MccsPasdBus_SetFndhPortPowers.json
            :language: json
 
         :param argin: a JSON string specifying the request.
@@ -740,7 +740,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     class _SetFndhLedPatternCommand(FastCommand):
         SCHEMA: Final = json.loads(
             importlib.resources.read_text(
-                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "ska_low_mccs_pasd.schemas.pasd_bus",
                 "MccsPasdBus_SetFndhLedPattern.json",
             )
         )
@@ -773,7 +773,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         """
         Set the FNDH service LED pattern.
 
-        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetFndhLedPattern.json
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/schemas/pasd_bus/MccsPasdBus_SetFndhLedPattern.json
            :language: json
 
         :param argin: a JSON string specifying the request.
@@ -787,7 +787,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     class _SetFndhLowPassFiltersCommand(FastCommand):
         SCHEMA: Final = json.loads(
             importlib.resources.read_text(
-                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "ska_low_mccs_pasd.schemas.pasd_bus",
                 "MccsPasdBus_SetFndhLowPassFilters.json",
             )
         )
@@ -830,7 +830,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         and smartboxes after MccsPasdBus is initialised and set ONLINE, and after any of
         them are powered on or reset later.
 
-        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetFndhLowPassFilters.json
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/schemas/pasd_bus/MccsPasdBus_SetFndhLowPassFilters.json
            :language: json
 
         :param argin: a JSON string specifying the request.
@@ -961,7 +961,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     class _SetSmartboxPortPowersCommand(FastCommand):
         SCHEMA: Final = json.loads(
             importlib.resources.read_text(
-                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "ska_low_mccs_pasd.schemas.pasd_bus",
                 "MccsPasdBus_SetSmartboxPortPowers.json",
             )
         )
@@ -1008,7 +1008,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         This command takes as input a JSON string that conforms to the
         following schema:
 
-        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetSmartboxPortPowers.json
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/schemas/pasd_bus/MccsPasdBus_SetSmartboxPortPowers.json
            :language: json
 
         :param argin: arguments encoded as a JSON string
@@ -1022,7 +1022,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     class _SetSmartboxLedPatternCommand(FastCommand):
         SCHEMA: Final = json.loads(
             importlib.resources.read_text(
-                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "ska_low_mccs_pasd.schemas.pasd_bus",
                 "MccsPasdBus_SetSmartboxLedPattern.json",
             )
         )
@@ -1048,7 +1048,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     class _SetSmartboxLowPassFiltersCommand(FastCommand):
         SCHEMA: Final = json.loads(
             importlib.resources.read_text(
-                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "ska_low_mccs_pasd.schemas.pasd_bus",
                 "MccsPasdBus_SetSmartboxLowPassFilters.json",
             )
         )
@@ -1095,7 +1095,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         and smartboxes after MccsPasdBus is initialised and set ONLINE, and after any of
         them are powered on or reset later.
 
-        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetSmartboxLowPassFilters.json
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/schemas/pasd_bus/MccsPasdBus_SetSmartboxLowPassFilters.json
            :language: json
 
         :param argin: arguments encoded as a JSON string
@@ -1120,7 +1120,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         """
         Set a Smartbox's service LED pattern.
 
-        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_SetSmartboxLedPattern.json
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/schemas/pasd_bus/MccsPasdBus_SetSmartboxLedPattern.json
            :language: json
 
         :param argin: arguments encoded as a JSON string
@@ -1134,7 +1134,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     class _ResetSmartboxPortBreakerCommand(FastCommand):
         SCHEMA: Final = json.loads(
             importlib.resources.read_text(
-                "ska_low_mccs_pasd.pasd_bus.schemas",
+                "ska_low_mccs_pasd.schemas.pasd_bus",
                 "MccsPasdBus_ResetSmartboxPortBreaker.json",
             )
         )
@@ -1174,7 +1174,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         """
         Reset a Smartbox's port's breaker.
 
-        .. literalinclude:: /../../src/ska_low_mccs_pasd/pasd_bus/schemas/MccsPasdBus_ResetSmartboxPortBreaker.json
+        .. literalinclude:: /../../src/ska_low_mccs_pasd/schemas/pasd_bus/MccsPasdBus_ResetSmartboxPortBreaker.json
            :language: json
 
         :param argin: arguments encoded as a JSON string
