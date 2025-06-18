@@ -36,6 +36,7 @@ class FndhHealthModel(BaseHealthModel):
         >>>     "pasd_power": PowerState.ON
         >>>     "ignore_pasd_power": False
         >>>     "ports_with_smartbox": [1, 3, 4, 6]
+        >>>     "status": "OK",
         >>>     "monitoring_points" :{
         >>>         "portspowercontrol" : [True] * 28,
         >>>         "portspowersensed"  : [True] * 28,
@@ -129,6 +130,7 @@ class FndhHealthModel(BaseHealthModel):
                 ports_power_sensed=self._state.get("monitoring_points", {}).get(
                     "portspowersensed"
                 ),
+                status=self._state.get("status"),
             )
             if result:
                 return health_value, report
