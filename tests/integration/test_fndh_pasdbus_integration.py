@@ -24,6 +24,7 @@ from ska_low_mccs_pasd.fndh import FndhHealthModel
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     FndhAlarmFlags,
+    FndhStatusMap,
     PasdConversionUtility,
 )
 
@@ -825,6 +826,7 @@ def change_event_callbacks_fixture(
         "fndhPortPowerState",
         "fndhPort2PowerState",
         "outsideTemperatureThresholds",
+        "pasdStatus",
         timeout=26.0,
         assert_no_error=False,
     )
@@ -931,7 +933,21 @@ def healthy_fndh_fixture(
         28,
     ]
     fndh_device.adminMode = AdminMode.ONLINE
-    change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+
+    fndh_device.subscribe_event(
+        "pasdStatus",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["pasdStatus"],
+    )
+    change_event_callbacks.assert_change_event(
+        "pasdStatus",
+        FndhStatusMap.OK.name,
+        lookahead=20,
+        consume_nonmatches=True,
+    )
+    change_event_callbacks.assert_change_event(
+        "fndhhealthState", HealthState.OK, lookahead=20
+    )
     assert fndh_device.healthState == HealthState.OK
 
     yield fndh_device

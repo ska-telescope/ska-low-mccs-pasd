@@ -18,7 +18,7 @@ from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.testing.mock import MockCallable
 
 from ska_low_mccs_pasd.fndh.fndh_health_model import FndhHealthModel
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import FnccStatusMap, LedServiceMap
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import FndhStatusMap, LedServiceMap
 
 
 class TestFNDHHealthModel:
@@ -37,6 +37,7 @@ class TestFNDHHealthModel:
         """
         health_model = FndhHealthModel(MockCallable(), logger)
         health_model.update_state(communicating=True, power=PowerState.ON)
+        health_model.update_state(status="OK")
 
         return health_model
 
@@ -314,7 +315,7 @@ class TestFNDHHealthModel:
                     "psu48v_temperature_2": 66.0,
                     "panel_temperature": 67.0,
                     "fncb_temperature": 65.0,
-                    "status": FnccStatusMap.OK,
+                    "status": FndhStatusMap.OK,
                     "led_pattern": LedServiceMap.OFF,
                     "comms_gateway_temperature": 46.0,
                     "power_module_temperature": 34.0,
@@ -333,7 +334,7 @@ class TestFNDHHealthModel:
                     "psu48v_temperature_2": 66.0,
                     "panel_temperature": 67.0,
                     "fncb_temperature": 65.0,
-                    "status": FnccStatusMap.OK,
+                    "status": FndhStatusMap.OK,
                     "led_pattern": LedServiceMap.OFF,
                     "comms_gateway_temperature": 46.0,
                     "power_module_temperature": 34.0,
@@ -352,7 +353,7 @@ class TestFNDHHealthModel:
                     "psu48v_temperature_2": 76.0,
                     "panel_temperature": 77.0,
                     "fncb_temperature": 75.0,
-                    "status": FnccStatusMap.UNDEFINED,
+                    "status": FndhStatusMap.UNDEFINED,
                     "led_pattern": LedServiceMap.ON,
                     "comms_gateway_temperature": 56.0,
                     "power_module_temperature": 44.0,
@@ -371,7 +372,7 @@ class TestFNDHHealthModel:
                     "psu48v_temperature_2": 76.0,
                     "panel_temperature": 77.0,
                     "fncb_temperature": 75.0,
-                    "status": FnccStatusMap.UNDEFINED,
+                    "status": FndhStatusMap.UNDEFINED,
                     "led_pattern": LedServiceMap.ON,
                     "comms_gateway_temperature": 56.0,
                     "power_module_temperature": 44.0,
@@ -431,7 +432,7 @@ class TestFNDHHealthModel:
                     "paneltemperature": 56.0,
                     "fncbtemperature": 56.0,
                     "fncbhumidity": 54.0,
-                    "status": FnccStatusMap.UNDEFINED,
+                    "status": FndhStatusMap.UNDEFINED,
                     "ledpattern": LedServiceMap.ON,
                     "commsgatewaytemperature": 56.0,
                     "powermoduletemperature": 56.0,
