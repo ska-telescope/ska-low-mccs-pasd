@@ -17,6 +17,7 @@ import pytest
 from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.testing.mock import MockCallable
 
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import SmartboxStatusMap
 from ska_low_mccs_pasd.smart_box.smartbox_health_model import SmartBoxHealthModel
 
 
@@ -31,7 +32,9 @@ class TestSmartboxHealthModel:
         :return: Health model to be used.
         """
         health_model = SmartBoxHealthModel(MockCallable(), Logger("test"))
-        health_model.update_state(communicating=True, power=PowerState.ON)
+        health_model.update_state(
+            communicating=True, power=PowerState.ON, status=SmartboxStatusMap.OK.name
+        )
 
         return health_model
 

@@ -567,6 +567,8 @@ class MccsSmartBox(MccsBaseDevice):
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass
+            elif attr_name.endswith("status"):
+                self._health_model.update_state(status=attr_value)
             else:
                 self._health_monitor_points[attr_name] = attr_value
                 self._health_model.update_state(

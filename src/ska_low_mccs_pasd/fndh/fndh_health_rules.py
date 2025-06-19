@@ -17,6 +17,7 @@ from ska_control_model import HealthState
 from ska_low_mccs_common.health import HealthRules
 
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import FndhStatusMap
+from ska_low_mccs_pasd.pasd_utils import join_health_reports
 
 __all__ = ["FndhHealthRules", "join_health_reports"]
 
@@ -31,26 +32,6 @@ def merge_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> dict[str, Any]:
     :returns: a dictionary containing the merge of dict1 and dict2
     """
     return {**dict1, **dict2}
-
-
-def join_health_reports(messages: list[str]) -> str:
-    """
-    Join the messages removing duplicates and empty strings.
-
-    :param messages: a list of messages.
-
-    :returns: a string with result.
-    """
-    seen = set()
-    unique_messages = []
-
-    for message in messages:
-        # Ignore empty strings and duplicates
-        if message and message not in seen:
-            seen.add(message)
-            unique_messages.append(message)
-
-    return "\n".join(unique_messages)
 
 
 def _calculate_pdoc_fault(
@@ -372,7 +353,7 @@ class FndhHealthRules(HealthRules):
         pasd_status = kwargs.get("status")
 
         if pasd_status == FndhStatusMap.ALARM.name:
-            failed_points.append("FNDH is reporting ALARM state.")
+            failed_points.append(f"FNDH is reporting {pasd_status}.")
 
         # Only evaluate pdoc faults if we can work out this information.
         if (ports_with_smartbox is not None and len(ports_with_smartbox) > 0) and (
@@ -442,7 +423,7 @@ class FndhHealthRules(HealthRules):
         pasd_status = kwargs.get("status")
 
         if pasd_status == FndhStatusMap.WARNING.name:
-            degraded_points.append("FNDH is reporting WARNING state.")
+            degraded_points.append(f"FNDH is reporting {pasd_status}.")
 
         # Only evaluate pdoc faults if we can work out this information.
         if (ports_with_smartbox is not None and len(ports_with_smartbox) > 0) and (
@@ -499,12 +480,16 @@ class FndhHealthRules(HealthRules):
             >>>     ...
             >>> }
             >>> kwargs = {
-            >>>    ...
+            >>>    "status": "OK"
             >>> }
             >>> healthy_rule(monitoring_points=monitoring_points, **kwargs)
         """
         messages: list[str] = []
         states: list[bool] = []
+
+        pasd_status = kwargs.get("status")
+        states.append(pasd_status == FndhStatusMap.OK.name)
+        messages.append(f"FNDH is reporting {pasd_status}")
 
         # Iterate through monitoring_points, appending to messages and states
         for state, message in monitoring_points.values():

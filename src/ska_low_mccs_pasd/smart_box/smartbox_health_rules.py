@@ -15,6 +15,9 @@ import numpy
 from ska_control_model import HealthState
 from ska_low_mccs_common.health import HealthRules
 
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import SmartboxStatusMap
+from ska_low_mccs_pasd.pasd_utils import join_health_reports
+
 
 class SmartboxHealthRules(HealthRules):
     """A class to handle transition rules for station."""
@@ -40,75 +43,103 @@ class SmartboxHealthRules(HealthRules):
     def unknown_rule(  # type: ignore[override]
         self: SmartboxHealthRules,
         intermediate_healths: dict[str, tuple[HealthState, str]],
+        status: str,
     ) -> tuple[bool, str]:
         """
         Test whether UNKNOWN is valid for the smartbox.
 
         :param intermediate_healths: dictionary of intermediate healths
+        :param status: reported value of the status register
 
         :return: True if UNKNOWN is a valid state, along with a text report.
         """
+        unknown_points: list[str] = []
+
+        if status is None:
+            unknown_points.append(
+                "No value has been read from the pasdStatus register."
+            )
+
         for key, value in intermediate_healths.items():
             if value[0] == HealthState.UNKNOWN:
-                return (
-                    True,
+                unknown_points.append(
                     f"Intermediate health {key} is in {value[0].name} HealthState. "
-                    f"Cause: {value[1]}",
+                    f"Cause: {value[1]}"
                 )
+        if unknown_points:
+            return True, join_health_reports(unknown_points)
         return False, ""
 
     def failed_rule(  # type: ignore[override]
         self: SmartboxHealthRules,
         intermediate_healths: dict[str, tuple[HealthState, str]],
+        status: str,
     ) -> tuple[bool, str]:
         """
         Test whether FAILED is valid for the smartbox.
 
         :param intermediate_healths: dictionary of intermediate healths
+        :param status: reported value of the status register
 
         :return: True if FAILED is a valid state, along with a text report.
         """
+        failed_points: list[str] = []
+        if status == SmartboxStatusMap.WARNING.name:
+            failed_points.append(f"Smartbox is reporting {status}.")
+
         for key, value in intermediate_healths.items():
             if value[0] == HealthState.FAILED:
-                return (
-                    True,
+                failed_points.append(
                     f"Intermediate health {key} is in {value[0].name} HealthState. "
-                    f"Cause: {value[1]}",
+                    f"Cause: {value[1]}"
                 )
+        if failed_points:
+            return True, join_health_reports(failed_points)
         return False, ""
 
     def degraded_rule(  # type: ignore[override]
         self: SmartboxHealthRules,
         intermediate_healths: dict[str, tuple[HealthState, str]],
+        status: str,
     ) -> tuple[bool, str]:
         """
         Test whether DEGRADED is valid for the smartbox.
 
         :param intermediate_healths: dictionary of intermediate healths
+        :param status: reported value of the status register
 
         :return: True if DEGRADED is a valid state, along with a text report.
         """
+        degraded_points: list[str] = []
+        if status == SmartboxStatusMap.WARNING.name:
+            degraded_points.append(f"Smartbox is reporting {status}.")
+
         for key, value in intermediate_healths.items():
             if value[0] == HealthState.DEGRADED:
-                return (
-                    True,
+                degraded_points.append(
                     f"Intermediate health {key} is in {value[0].name} HealthState. "
-                    f"Cause: {value[1]}",
+                    f"Cause: {value[1]}"
                 )
+        if degraded_points:
+            return True, join_health_reports(degraded_points)
         return False, ""
 
     def healthy_rule(  # type: ignore[override]
         self: SmartboxHealthRules,
         intermediate_healths: dict[str, tuple[HealthState, str]],
+        status: str,
     ) -> tuple[bool, str]:
         """
         Test whether OK is valid for the smartbox.
 
         :param intermediate_healths: dictionary of intermediate healths
+        :param status: reported value of the status register
 
         :return: True if OK is a valid state
         """
-        if all(state == HealthState.OK for state, _ in intermediate_healths.values()):
+        if status == SmartboxStatusMap.OK.name and all(
+            state == HealthState.OK for state, _ in intermediate_healths.values()
+        ):
             return True, "Health is OK"
         return False, "Health not OK"
 
