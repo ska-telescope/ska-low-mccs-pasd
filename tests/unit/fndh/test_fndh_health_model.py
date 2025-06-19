@@ -36,8 +36,9 @@ class TestFNDHHealthModel:
         :return: Health model to be used.
         """
         health_model = FndhHealthModel(MockCallable(), logger)
-        health_model.update_state(communicating=True, power=PowerState.ON)
-        health_model.update_state(status="OK")
+        health_model.update_state(
+            communicating=True, power=PowerState.ON, status=FndhStatusMap.OK.name
+        )
 
         return health_model
 

@@ -53,3 +53,23 @@ def configure_alarms(
         multi_prop.min_warning = alarm_values[2]
         multi_prop.min_alarm = alarm_values[3]
     attribute.set_properties(multi_prop)
+
+
+def join_health_reports(messages: list[str]) -> str:
+    """
+    Join the messages removing duplicates and empty strings.
+
+    :param messages: a list of messages.
+
+    :returns: a string with result.
+    """
+    seen = set()
+    unique_messages = []
+
+    for message in messages:
+        # Ignore empty strings and duplicates
+        if message and message not in seen:
+            seen.add(message)
+            unique_messages.append(message)
+
+    return "\n".join(unique_messages)

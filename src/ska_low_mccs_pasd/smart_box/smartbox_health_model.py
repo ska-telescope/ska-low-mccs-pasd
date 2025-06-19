@@ -87,7 +87,9 @@ class SmartBoxHealthModel(BaseHealthModel):
         ]:
             if health == smartbox_health:
                 return smartbox_health, smartbox_report
-            result, report = self._health_rules.rules[health](intermediate_healths)
+            result, report = self._health_rules.rules[health](
+                intermediate_healths, status=self._state.get("status")
+            )
             if result:
                 return health, report
         return HealthState.UNKNOWN, "No rules matched"
