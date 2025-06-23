@@ -1,6 +1,6 @@
 # Version History
 
-## Unreleased
+## 3.1.1
 
 * [THORN-212] Add tests for fieldStation health aggregation and reconfigure.
 * [THORN-71] Update PASD to include command schemas in docs
