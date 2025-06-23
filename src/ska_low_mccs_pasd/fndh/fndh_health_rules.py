@@ -303,6 +303,8 @@ class FndhHealthRules(HealthRules):
             unknown_points.append(
                 "No value has been read from the FNDH pasdStatus register."
             )
+        elif pasd_status not in FndhStatusMap.__members__:
+            unknown_points.append(f"FNDH is reporting unknown status {pasd_status}")
 
         # Iterate over monitoring points and check for UNKNOWN health state
         for attribute_name, attr_health_info in monitoring_points.items():
@@ -352,7 +354,14 @@ class FndhHealthRules(HealthRules):
         ports_with_smartbox = kwargs.get("ports_with_smartbox")
         pasd_status = kwargs.get("status")
 
-        if pasd_status == FndhStatusMap.ALARM.name:
+        # Status register mapping to health:
+        # UNINITIALISED -> OK
+        # OK -> OK
+        # WARNING -> DEGRADED
+        # ALARM -> FAILED
+        # RECOVERY -> FAILED
+
+        if pasd_status in [FndhStatusMap.ALARM.name, FndhStatusMap.RECOVERY.name]:
             failed_points.append(f"FNDH is reporting {pasd_status}.")
 
         # Only evaluate pdoc faults if we can work out this information.
@@ -488,8 +497,10 @@ class FndhHealthRules(HealthRules):
         states: list[bool] = []
 
         pasd_status = kwargs.get("status")
-        states.append(pasd_status == FndhStatusMap.OK.name)
-        messages.append(f"FNDH is reporting {pasd_status}")
+
+        if pasd_status in [FndhStatusMap.OK.name, FndhStatusMap.UNINITIALISED.name]:
+            states.append(pasd_status == FndhStatusMap.OK.name)
+            messages.append(f"FNDH is reporting {pasd_status}")
 
         # Iterate through monitoring_points, appending to messages and states
         for state, message in monitoring_points.values():
