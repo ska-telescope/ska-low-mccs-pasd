@@ -43,7 +43,14 @@ class TestSmartboxHealthModel:
 
     # pylint: disable=too-many-positional-arguments
     @pytest.mark.parametrize(
-        ("thresholds", "data", "expected_final_health", "expected_final_report"),
+        (
+            "thresholds",
+            "monitoring_points",
+            "port_breakers_tripped",
+            "status",
+            "expected_final_health",
+            "expected_final_report",
+        ),
         [
             pytest.param(
                 {
@@ -51,6 +58,8 @@ class TestSmartboxHealthModel:
                     "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"SYS_48V_V_TH": 81.0, "SYS_PSU_V_TH": 4.7},
+                [],
+                "OK",
                 HealthState.OK,
                 "Health is OK.",
                 id="All devices healthy, expect OK",
@@ -61,7 +70,10 @@ class TestSmartboxHealthModel:
                     "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"SYS_48V_V_TH": 110.0, "SYS_PSU_V_TH": 4.7},
+                [],
+                "ALARM",
                 HealthState.FAILED,
+                f"Smartbox is reporting {SmartboxStatusMap.ALARM.name}.\n"
                 "Intermediate health SYS_48V_V_TH is in FAILED HealthState. "
                 "Cause: Monitoring point SYS_48V_V_TH: outside of max/min "
                 "values, value: 110.0, max: 100.0, min: 0.0",
@@ -73,6 +85,9 @@ class TestSmartboxHealthModel:
                     "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"SYS_48V_V_TH": -10.0, "SYS_PSU_V_TH": 4.7},
+                [],
+                "OK",  # Normally should be "ALARM" but health model should
+                # not solely depend on the status register value.
                 HealthState.FAILED,
                 "Intermediate health SYS_48V_V_TH is in FAILED HealthState. "
                 "Cause: Monitoring point SYS_48V_V_TH: outside of max/min "
@@ -85,7 +100,10 @@ class TestSmartboxHealthModel:
                     "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"SYS_48V_V_TH": 90.0, "SYS_PSU_V_TH": 4.7},
+                [],
+                "WARNING",
                 HealthState.DEGRADED,
+                f"Smartbox is reporting {SmartboxStatusMap.WARNING.name}.\n"
                 "Intermediate health SYS_48V_V_TH is in DEGRADED HealthState. "
                 "Cause: Monitoring point SYS_48V_V_TH: in warning range, "
                 "max fault: 100.0 > value: 90.0 > max warning: 84.0",
@@ -97,6 +115,9 @@ class TestSmartboxHealthModel:
                     "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"SYS_48V_V_TH": 40.0, "SYS_PSU_V_TH": 4.7},
+                [],
+                "OK",  # Normally should be "WARNING" but health model should
+                # not solely depend on the status register value.
                 HealthState.DEGRADED,
                 "Intermediate health SYS_48V_V_TH is in DEGRADED HealthState. "
                 "Cause: Monitoring point SYS_48V_V_TH: in warning range, "
@@ -109,6 +130,8 @@ class TestSmartboxHealthModel:
                     "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"P05_CURRENT_TH": 400, "SYS_PSU_V_TH": 4.7},
+                [],
+                "OK",
                 HealthState.OK,
                 "Health is OK.",
                 id="single point within range, expect ok",
@@ -119,9 +142,102 @@ class TestSmartboxHealthModel:
                     "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
                 },
                 {"P05_CURRENT_TH": 500, "SYS_PSU_V_TH": 4.7},
+                [],
+                "OK",
                 HealthState.FAILED,
                 "Monitoring point P05_CURRENT_TH: 500 > 496",
-                id="single point outside range, expect ok",
+                id="single point outside range, expect failed",
+            ),
+            pytest.param(
+                {
+                    "P05_CURRENT_TH": [496],
+                    "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
+                },
+                {"P05_CURRENT_TH": 400, "SYS_PSU_V_TH": 4.7},
+                [],
+                "ALARM",
+                HealthState.FAILED,
+                f"Smartbox is reporting {SmartboxStatusMap.ALARM.name}.",
+                id="Status register is reporting ALARM, expect failed",
+            ),
+            pytest.param(
+                {
+                    "P05_CURRENT_TH": [496],
+                    "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
+                },
+                {"P05_CURRENT_TH": 400, "SYS_PSU_V_TH": 4.7},
+                [
+                    False,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    True,
+                ],
+                "OK",
+                HealthState.FAILED,
+                "FEM circuit breakers have tripped on ports [2, 7, 12]",
+                id="FEM port breakers have tripped, expect failed",
+            ),
+            pytest.param(
+                {
+                    "P05_CURRENT_TH": [496],
+                    "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
+                },
+                {"P05_CURRENT_TH": 400, "SYS_PSU_V_TH": 4.7},
+                [
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    True,
+                    False,
+                    False,
+                    False,
+                ],
+                "OK",
+                HealthState.FAILED,
+                "FEM circuit breakers have tripped on ports [9]",
+                id="Single FEM port breaker has tripped, expect failed",
+            ),
+            pytest.param(
+                {
+                    "P05_CURRENT_TH": [496],
+                    "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
+                },
+                {"P05_CURRENT_TH": 497, "SYS_PSU_V_TH": 4.5},
+                [
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    True,
+                ],
+                "ALARM",
+                HealthState.FAILED,
+                f"Smartbox is reporting {SmartboxStatusMap.ALARM.name}.\n"
+                "FEM circuit breakers have tripped on ports [12]\n"
+                "Intermediate health P05_CURRENT_TH is in FAILED HealthState. "
+                "Cause: Monitoring point P05_CURRENT_TH: 497 > 496",
+                id="FEM port breaker has tripped and monitoring points "
+                "out of range, expect failed",
             ),
         ],
     )
@@ -129,7 +245,9 @@ class TestSmartboxHealthModel:
         self: TestSmartboxHealthModel,
         health_model: SmartBoxHealthModel,
         thresholds: dict[str, np.ndarray],
-        data: dict[str, Any],
+        monitoring_points: dict[str, Any],
+        port_breakers_tripped: list[bool],
+        status: str,
         expected_final_health: HealthState,
         expected_final_report: str,
     ) -> None:
@@ -138,13 +256,19 @@ class TestSmartboxHealthModel:
 
         :param thresholds: the thresholds defined for this monitoring point.
         :param health_model: Health model fixture.
-        :param data: Health data values for health model.
+        :param monitoring_points: Health data values for health model.
+        :param port_breakers_tripped: Port breaker trip status.
+        :param status: Smartbox status register value.
         :param expected_final_health: Expected final health.
         :param expected_final_report: Expected final health report.
         """
         health_model.health_params = thresholds
 
-        health_model.update_state(monitoring_points=data)
+        health_model.update_state(
+            monitoring_points=monitoring_points,
+            port_breakers_tripped=port_breakers_tripped,
+            status=status,
+        )
 
         final_health, final_report = health_model.evaluate_health()
         assert final_health == expected_final_health
