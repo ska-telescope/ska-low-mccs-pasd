@@ -56,7 +56,9 @@ class SmartboxHealthRules(HealthRules):
         :return: True if UNKNOWN is a valid state, along with a text report.
         """
         unknown_points: list[str] = []
-        port_breakers_tripped: list[bool] = kwargs.get("port_breakers_tripped", None)
+        port_breakers_tripped: list[bool] | None = kwargs.get(
+            "port_breakers_tripped", None
+        )
 
         if status is None:
             unknown_points.append(
