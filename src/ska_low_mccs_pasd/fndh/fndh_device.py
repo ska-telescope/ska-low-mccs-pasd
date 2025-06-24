@@ -795,8 +795,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 )
                 > 0
             )
-            # TODO: These attributes may factor into the FNDH health.
-            # we should notify the health model of any relevant changes.
             if attr_value is None:
                 # This happens when the upstream attribute's quality factor has
                 # been set to INVALID. Pushing a change event with None
@@ -806,6 +804,9 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 self._fndh_attributes[attr_name].value = attr_value
             self._fndh_attributes[attr_name].quality = attr_quality
             self._fndh_attributes[attr_name].timestamp = timestamp
+
+            self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
+            self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 
             # If we are reading alarm thresholds, update the alarm configuration
             # for the corresponding Tango attribute
@@ -832,9 +833,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 self._health_model.update_state(
                     monitoring_points=self._health_monitor_points
                 )
-
-            self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
-            self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 
         except AssertionError:
             self.logger.error(

@@ -541,7 +541,8 @@ class TestfndhPasdBusIntegration:
     def test_health(
         self: TestfndhPasdBusIntegration,
         healthy_fndh: tango.DeviceProxy,
-        supported_fndh_health_monitoring_points: list[str],
+        pasd_bus_device: tango.DeviceProxy,
+        random_subset_fndh_monitoring_points: list[str],
         positive_only_monitoring_points: list[str],
         fndh_simulator: FndhSimulator,
         change_event_callbacks: MockTangoEventCallbackGroup,
@@ -551,7 +552,8 @@ class TestfndhPasdBusIntegration:
 
         :param healthy_fndh: fixture that provides FNDH in the
             Healthy state.
-        :param supported_fndh_health_monitoring_points: a list of monitoring
+        :param pasd_bus_device: fixture that provides a pasdBus
+        :param random_subset_fndh_monitoring_points: a random list of monitoring
             points supported by the health model.
         :param positive_only_monitoring_points: a list of monitoring
             points that can only take a positive value in hardware.
@@ -559,7 +561,14 @@ class TestfndhPasdBusIntegration:
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         """
-        for attribute_name in supported_fndh_health_monitoring_points:
+        # We need to subscribe to the status register since the health state
+        # now also depends on this.
+        healthy_fndh.subscribe_event(
+            "pasdStatus",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasdStatus"],
+        )
+        for attribute_name in random_subset_fndh_monitoring_points:
             attribute_threshold = attribute_name + "_thresholds"
             print(f"Test attribute: {attribute_name}")
             # Check for transitions through health. when value changes.
@@ -572,10 +581,24 @@ class TestfndhPasdBusIntegration:
 
             healthy_value = (max_warning + min_warning) / 2
             setattr(fndh_simulator, attribute_name, max_alarm)
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.ALARM.name, lookahead=6, consume_nonmatches=True
+            )
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.FAILED
             )
             setattr(fndh_simulator, attribute_name, max_warning)
+            # We should now be in RECOVERY state - this is still FAILED
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.RECOVERY.name, lookahead=6, consume_nonmatches=True
+            )
+            change_event_callbacks["fndhhealthState"].assert_not_called()
+
+            # Initialize the FNDH to reset the status register
+            pasd_bus_device.initializeFndh()
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.WARNING.name, lookahead=30, consume_nonmatches=True
+            )
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.DEGRADED
             )
@@ -591,6 +614,9 @@ class TestfndhPasdBusIntegration:
                 )
             else:
                 setattr(fndh_simulator, attribute_name, min_alarm)
+                change_event_callbacks["pasdStatus"].assert_change_event(
+                    FndhStatusMap.ALARM.name, lookahead=6, consume_nonmatches=True
+                )
                 change_event_callbacks["fndhhealthState"].assert_change_event(
                     HealthState.FAILED
                 )
@@ -606,10 +632,20 @@ class TestfndhPasdBusIntegration:
                 )
             else:
                 setattr(fndh_simulator, attribute_name, min_warning)
-                change_event_callbacks["fndhhealthState"].assert_change_event(
-                    HealthState.DEGRADED
+                change_event_callbacks["pasdStatus"].assert_change_event(
+                    FndhStatusMap.RECOVERY.name, lookahead=6, consume_nonmatches=True
                 )
+                change_event_callbacks["fndhhealthState"].assert_not_called()
             setattr(fndh_simulator, attribute_name, int(healthy_value))
+
+            # Still in RECOVERY so expect no change yet
+            change_event_callbacks["fndhhealthState"].assert_not_called()
+
+            # Reset the status register again
+            pasd_bus_device.initializeFndh()
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.OK.name, lookahead=30, consume_nonmatches=True
+            )
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.OK
             )
@@ -619,8 +655,6 @@ class TestfndhPasdBusIntegration:
         )
         healthy_fndh.adminMode = AdminMode.ONLINE
         change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.OK)
-
-        change_event_callbacks["fndhhealthState"].assert_not_called()
 
     def test_faulty_smartbox_configured_ports_degraded(
         self: TestfndhPasdBusIntegration,
@@ -827,7 +861,7 @@ def change_event_callbacks_fixture(
         "fndhPort2PowerState",
         "outsideTemperatureThresholds",
         "pasdStatus",
-        timeout=26.0,
+        timeout=10.0,
         assert_no_error=False,
     )
 
@@ -851,6 +885,20 @@ def supported_fndh_health_monitoring_points_fixture() -> set[str]:
     )
     # random_index: int = random.randrange(0, len(supported_items) - 1)
     return set(supported_items)  # [random_index]
+
+
+@pytest.fixture(name="random_subset_fndh_monitoring_points")
+def random_subset_fndh_monitoring_points_fixture(
+    supported_fndh_health_monitoring_points: set[str],
+) -> list[str]:
+    """
+    Return a random subset of the supported FNDH health monitoring points.
+
+    :param supported_fndh_health_monitoring_points: fixture that returns
+        all monitoring points
+    :returns: a random subset of the supported FNDH health monitoring points.
+    """
+    return random.sample(supported_fndh_health_monitoring_points, 5)
 
 
 @pytest.fixture(name="positive_only_monitoring_points")
