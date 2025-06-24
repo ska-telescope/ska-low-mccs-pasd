@@ -33,7 +33,10 @@ class TestSmartboxHealthModel:
         """
         health_model = SmartBoxHealthModel(MockCallable(), Logger("test"))
         health_model.update_state(
-            communicating=True, power=PowerState.ON, status=SmartboxStatusMap.OK.name
+            communicating=True,
+            power=PowerState.ON,
+            status=SmartboxStatusMap.OK.name,
+            port_breakers_tripped=[],
         )
 
         return health_model
