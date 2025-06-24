@@ -304,7 +304,7 @@ class FndhHealthRules(HealthRules):
                 "No value has been read from the FNDH pasdStatus register."
             )
         elif pasd_status not in FndhStatusMap.__members__:
-            unknown_points.append(f"FNDH is reporting unknown status {pasd_status}")
+            unknown_points.append(f"FNDH is reporting unknown status: {pasd_status}")
 
         # Iterate over monitoring points and check for UNKNOWN health state
         for attribute_name, attr_health_info in monitoring_points.items():
