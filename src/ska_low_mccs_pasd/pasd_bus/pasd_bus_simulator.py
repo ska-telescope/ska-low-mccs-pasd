@@ -1562,6 +1562,18 @@ class SmartboxSimulator(PasdHardwareSimulator):
         """
         return self._ports[port_number - 1].simulate_over_current(False)
 
+    def simulate_breaker_trip(
+        self: SmartboxSimulator, port_number: int
+    ) -> Optional[bool]:
+        """
+        Simulate a port breaker trip.
+
+        :param port_number: number of the port for which a breaker trip
+            will be simulated.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        return self._ports[port_number - 1].simulate_over_current(True)
+
 
 class PasdBusSimulator:
     """
