@@ -78,7 +78,12 @@ class SmartBoxHealthModel(BaseHealthModel):
         smartbox_health, smartbox_report = super().evaluate_health()
         if not self._use_new_health_rules:
             return smartbox_health, smartbox_report
+
+        # Retrieve the values first so we are using consistent data to
+        # evaluate the health rules.
         intermediate_healths = self.intermediate_healths
+        status = self._state.get("status")
+        port_breakers_tripped = self._state.get("port_breakers_tripped")
         for health in [
             HealthState.FAILED,
             HealthState.UNKNOWN,
@@ -89,8 +94,8 @@ class SmartBoxHealthModel(BaseHealthModel):
                 return smartbox_health, smartbox_report
             result, report = self._health_rules.rules[health](
                 intermediate_healths,
-                status=self._state.get("status"),
-                port_breakers_tripped=self._state.get("port_breakers_tripped"),
+                status=status,
+                port_breakers_tripped=port_breakers_tripped,
             )
             if result:
                 return health, report

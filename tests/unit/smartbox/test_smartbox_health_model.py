@@ -59,7 +59,7 @@ class TestSmartboxHealthModel:
                 },
                 {"SYS_48V_V_TH": 81.0, "SYS_PSU_V_TH": 4.7},
                 [],
-                "OK",
+                SmartboxStatusMap.OK.name,
                 HealthState.OK,
                 "Health is OK.",
                 id="All devices healthy, expect OK",
@@ -71,7 +71,7 @@ class TestSmartboxHealthModel:
                 },
                 {"SYS_48V_V_TH": 110.0, "SYS_PSU_V_TH": 4.7},
                 [],
-                "ALARM",
+                SmartboxStatusMap.ALARM.name,
                 HealthState.FAILED,
                 f"Smartbox is reporting {SmartboxStatusMap.ALARM.name}.\n"
                 "Intermediate health SYS_48V_V_TH is in FAILED HealthState. "
@@ -86,8 +86,8 @@ class TestSmartboxHealthModel:
                 },
                 {"SYS_48V_V_TH": -10.0, "SYS_PSU_V_TH": 4.7},
                 [],
-                "OK",  # Normally should be "ALARM" but health model should
-                # not solely depend on the status register value.
+                SmartboxStatusMap.OK.name,  # Normally should be "ALARM" but
+                # health model should not solely depend on the status register value.
                 HealthState.FAILED,
                 "Intermediate health SYS_48V_V_TH is in FAILED HealthState. "
                 "Cause: Monitoring point SYS_48V_V_TH: outside of max/min "
@@ -101,7 +101,7 @@ class TestSmartboxHealthModel:
                 },
                 {"SYS_48V_V_TH": 90.0, "SYS_PSU_V_TH": 4.7},
                 [],
-                "WARNING",
+                SmartboxStatusMap.WARNING.name,
                 HealthState.DEGRADED,
                 f"Smartbox is reporting {SmartboxStatusMap.WARNING.name}.\n"
                 "Intermediate health SYS_48V_V_TH is in DEGRADED HealthState. "
@@ -116,8 +116,8 @@ class TestSmartboxHealthModel:
                 },
                 {"SYS_48V_V_TH": 40.0, "SYS_PSU_V_TH": 4.7},
                 [],
-                "OK",  # Normally should be "WARNING" but health model should
-                # not solely depend on the status register value.
+                SmartboxStatusMap.OK.name,  # Normally should be "WARNING" but
+                # health model should not solely depend on the status register value.
                 HealthState.DEGRADED,
                 "Intermediate health SYS_48V_V_TH is in DEGRADED HealthState. "
                 "Cause: Monitoring point SYS_48V_V_TH: in warning range, "
@@ -131,7 +131,7 @@ class TestSmartboxHealthModel:
                 },
                 {"P05_CURRENT_TH": 400, "SYS_PSU_V_TH": 4.7},
                 [],
-                "OK",
+                SmartboxStatusMap.OK.name,
                 HealthState.OK,
                 "Health is OK.",
                 id="single point within range, expect ok",
@@ -143,7 +143,7 @@ class TestSmartboxHealthModel:
                 },
                 {"P05_CURRENT_TH": 500, "SYS_PSU_V_TH": 4.7},
                 [],
-                "OK",
+                SmartboxStatusMap.OK.name,
                 HealthState.FAILED,
                 "Monitoring point P05_CURRENT_TH: 500 > 496",
                 id="single point outside range, expect failed",
@@ -155,10 +155,22 @@ class TestSmartboxHealthModel:
                 },
                 {"P05_CURRENT_TH": 400, "SYS_PSU_V_TH": 4.7},
                 [],
-                "ALARM",
+                SmartboxStatusMap.ALARM.name,
                 HealthState.FAILED,
                 f"Smartbox is reporting {SmartboxStatusMap.ALARM.name}.",
                 id="Status register is reporting ALARM, expect failed",
+            ),
+            pytest.param(
+                {
+                    "P05_CURRENT_TH": [496],
+                    "SYS_PSU_V_TH": [4.0, 4.4, 4.9, 5.0],
+                },
+                {"P05_CURRENT_TH": 400, "SYS_PSU_V_TH": 4.7},
+                [],
+                SmartboxStatusMap.WARNING.name,
+                HealthState.DEGRADED,
+                f"Smartbox is reporting {SmartboxStatusMap.WARNING.name}.",
+                id="Status register is reporting WARNING, expect degraded",
             ),
             pytest.param(
                 {
@@ -180,7 +192,7 @@ class TestSmartboxHealthModel:
                     False,
                     True,
                 ],
-                "OK",
+                SmartboxStatusMap.OK.name,
                 HealthState.FAILED,
                 "FEM circuit breakers have tripped on ports [2, 7, 12]",
                 id="FEM port breakers have tripped, expect failed",
@@ -205,7 +217,7 @@ class TestSmartboxHealthModel:
                     False,
                     False,
                 ],
-                "OK",
+                SmartboxStatusMap.OK.name,
                 HealthState.FAILED,
                 "FEM circuit breakers have tripped on ports [9]",
                 id="Single FEM port breaker has tripped, expect failed",
@@ -230,7 +242,7 @@ class TestSmartboxHealthModel:
                     False,
                     True,
                 ],
-                "ALARM",
+                SmartboxStatusMap.ALARM.name,
                 HealthState.FAILED,
                 f"Smartbox is reporting {SmartboxStatusMap.ALARM.name}.\n"
                 "FEM circuit breakers have tripped on ports [12]\n"
