@@ -1,5 +1,9 @@
 # Version History
 
+## 3.1.2
+
+* [THORN-220] Update dependencies, add cleanup methods for component managers and proxies.
+
 ## 3.1.1
 
 * [THORN-212] Add tests for fieldStation health aggregation and reconfigure.
