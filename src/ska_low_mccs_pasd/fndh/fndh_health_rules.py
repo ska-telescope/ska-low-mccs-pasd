@@ -304,7 +304,7 @@ class FndhHealthRules(HealthRules):
                 "No value has been read from the FNDH pasdStatus register."
             )
         elif pasd_status not in FndhStatusMap.__members__:
-            unknown_points.append(f"FNDH is reporting unknown status: {pasd_status}")
+            unknown_points.append(f"FNDH is reporting unknown status: {pasd_status}.")
 
         # Iterate over monitoring points and check for UNKNOWN health state
         for attribute_name, attr_health_info in monitoring_points.items():
@@ -361,7 +361,10 @@ class FndhHealthRules(HealthRules):
         # ALARM -> FAILED
         # RECOVERY -> FAILED
 
-        if pasd_status in [FndhStatusMap.ALARM.name, FndhStatusMap.RECOVERY.name]:
+        if pasd_status is not None and pasd_status in [
+            FndhStatusMap.ALARM.name,
+            FndhStatusMap.RECOVERY.name,
+        ]:
             failed_points.append(f"FNDH is reporting {pasd_status}.")
 
         # Only evaluate pdoc faults if we can work out this information.
@@ -497,19 +500,18 @@ class FndhHealthRules(HealthRules):
         states: list[bool] = []
 
         pasd_status = kwargs.get("status")
-
-        if pasd_status in [FndhStatusMap.OK.name, FndhStatusMap.UNINITIALISED.name]:
-            states.append(pasd_status == FndhStatusMap.OK.name)
-            messages.append(f"FNDH is reporting {pasd_status}")
+        states.append(
+            pasd_status in [FndhStatusMap.OK.name, FndhStatusMap.UNINITIALISED.name]
+        )
+        messages.append(f"FNDH is reporting {pasd_status}.")
 
         # Iterate through monitoring_points, appending to messages and states
         for state, message in monitoring_points.values():
             messages.append(message)
             states.append(state == HealthState.OK)
 
-        if all(states):
-            return True, join_health_reports(messages) or "Health is OK"
-        return False, "Health not OK"
+        # 'Health is OK' message is added by the BaseHealthModel
+        return all(states), join_health_reports(messages)
 
     def compute_monitoring_point_health(
         self: FndhHealthRules,

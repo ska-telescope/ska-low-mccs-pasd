@@ -170,17 +170,22 @@ class SmartboxHealthRules(HealthRules):
 
         :return: True if OK is a valid state
         """
+        messages: list[str] = []
+        states: list[bool] = []
+
         status = kwargs.get("status")
-        port_breakers_tripped = kwargs.get("port_breakers_tripped", [])
-        if (
+        states.append(
             status in [SmartboxStatusMap.OK.name, SmartboxStatusMap.UNINITIALISED.name]
-            and not any(port_breakers_tripped)
-            and all(
-                state == HealthState.OK for state, _ in intermediate_healths.values()
-            )
-        ):
-            return True, "Health is OK"
-        return False, "Health not OK"
+        )
+        messages.append(f"Smartbox is reporting {status}")
+
+        # Iterate through monitoring_points, appending to messages and states
+        for state, message in intermediate_healths.values():
+            messages.append(message)
+            states.append(state == HealthState.OK)
+
+        # 'Health is OK' message is added by the BaseHealthModel
+        return all(states), join_health_reports(messages)
 
     # pylint: disable=too-many-return-statements
     def compute_intermediate_state(
