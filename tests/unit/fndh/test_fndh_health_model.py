@@ -562,10 +562,7 @@ class TestFNDHHealthModel:
         initial_health, initial_report = health_model.evaluate_health()
         assert initial_health == HealthState.UNKNOWN, initial_report
         health_model.update_state(ports_with_smartbox=[i + 1 for i in range(24)])
-        health_model.update_state(
-            monitoring_points=health_data.get("monitoring_points")
-        )
-        health_model.update_state(status=health_data.get("status"))
+        health_model.update_state(**health_data)
         for threshold, values in init_thresholds.items():
             health_model.update_monitoring_point_threshold(
                 threshold.removesuffix("thresholds"), values

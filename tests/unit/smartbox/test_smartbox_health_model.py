@@ -18,6 +18,7 @@ from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.testing.mock import MockCallable
 
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import SmartboxStatusMap
+from ska_low_mccs_pasd.pasd_data import PasdData
 from ska_low_mccs_pasd.smart_box.smartbox_health_model import SmartBoxHealthModel
 
 
@@ -35,8 +36,6 @@ class TestSmartboxHealthModel:
         health_model.update_state(
             communicating=True,
             power=PowerState.ON,
-            status=SmartboxStatusMap.OK.name,
-            port_breakers_tripped=[],
         )
 
         return health_model
@@ -341,7 +340,7 @@ class TestSmartboxHealthModel:
     # pylint: disable=too-many-positional-arguments
     @pytest.mark.parametrize(
         (
-            "monitoring_values",
+            "health_data",
             "init_thresholds",
             "end_thresholds",
             "init_expected_health",
@@ -352,9 +351,14 @@ class TestSmartboxHealthModel:
         [
             pytest.param(
                 {
-                    "SYS_48V_V_TH": 45.0,
-                    "SYS_PSU_V_TH": 46.0,
-                    "SYS_PSUTEMP_TH": 46.0,
+                    "monitoring_points": {
+                        "SYS_48V_V_TH": 45.0,
+                        "SYS_PSU_V_TH": 46.0,
+                        "SYS_PSUTEMP_TH": 46.0,
+                    },
+                    "status": SmartboxStatusMap.OK.name,
+                    "port_breakers_tripped": [False]
+                    * PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 },
                 {
                     "SYS_48V_V_TH": [0.0, 43.0, 84.0, 100.0],
@@ -372,9 +376,14 @@ class TestSmartboxHealthModel:
             ),
             pytest.param(
                 {
-                    "SYS_48V_V_TH": 45.0,
-                    "SYS_PSU_V_TH": 46.0,
-                    "SYS_PSUTEMP_TH": 46.0,
+                    "monitoring_points": {
+                        "SYS_48V_V_TH": 45.0,
+                        "SYS_PSU_V_TH": 46.0,
+                        "SYS_PSUTEMP_TH": 46.0,
+                    },
+                    "status": SmartboxStatusMap.OK.name,
+                    "port_breakers_tripped": [False]
+                    * PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 },
                 {
                     "SYS_48V_V_TH": [0.0, 43.0, 84.0, 100.0],
@@ -395,7 +404,7 @@ class TestSmartboxHealthModel:
     def test_smartbox_can_change_thresholds(
         self: TestSmartboxHealthModel,
         health_model: SmartBoxHealthModel,
-        monitoring_values: dict[str, Any],
+        health_data: dict[str, Any],
         init_thresholds: dict[str, np.ndarray],
         end_thresholds: dict[str, np.ndarray],
         init_expected_health: HealthState,
@@ -406,7 +415,7 @@ class TestSmartboxHealthModel:
         """
         Test subrack can change threshold values.
 
-        :param monitoring_values: the monitoring values.
+        :param health_data: the health model data.
         :param health_model: Health model fixture.
         :param init_thresholds: Initial thresholds to set it to.
         :param end_thresholds: End thresholds to set it to.
@@ -417,11 +426,14 @@ class TestSmartboxHealthModel:
 
         """
         # We are communicating and we have not seen any scary looking monitoring points.
+        health_model.update_state(
+            status=SmartboxStatusMap.UNINITIALISED.name, port_breakers_tripped=[]
+        )
         initial_health, initial_report = health_model.evaluate_health()
         assert initial_health == HealthState.OK
         assert "Health is OK." in initial_report
 
-        health_model.update_state(monitoring_points=monitoring_values)
+        health_model.update_state(**health_data)
         health_model.health_params = init_thresholds
 
         initial_health, initial_report = health_model.evaluate_health()
