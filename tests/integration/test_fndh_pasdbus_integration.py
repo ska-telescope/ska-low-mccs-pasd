@@ -612,6 +612,12 @@ class TestfndhPasdBusIntegration:
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.OK
             )
+        healthy_fndh.adminMode = AdminMode.OFFLINE
+        change_event_callbacks["fndhhealthState"].assert_change_event(
+            HealthState.UNKNOWN
+        )
+        healthy_fndh.adminMode = AdminMode.ONLINE
+        change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.OK)
 
         change_event_callbacks["fndhhealthState"].assert_not_called()
 
