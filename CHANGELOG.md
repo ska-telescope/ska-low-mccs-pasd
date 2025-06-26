@@ -1,6 +1,6 @@
 # Version History
 
-## Unreleased
+## 3.1.2
 
 * [THORN-225] Fix health rediscovery after adminMode cycle.
 
