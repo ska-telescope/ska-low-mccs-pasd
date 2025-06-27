@@ -85,7 +85,7 @@ class MccsFieldStation(MccsBaseDevice):
         )
         self.logger.info(message)
 
-    def delete_device(self) -> None:
+    def delete_device(self: MccsFieldStation) -> None:
         """Delete the device."""
         self.component_manager._fndh_proxy._cleanup()
         for smartbox in self.component_manager._smartbox_proxys.values():

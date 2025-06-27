@@ -94,7 +94,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
         )
 
-    def delete_device(self) -> None:
+    def delete_device(self: MccsFNCC) -> None:
         """Delete the device."""
         self.component_manager._pasd_bus_proxy._cleanup()
         self.component_manager._task_executor._executor.shutdown()
