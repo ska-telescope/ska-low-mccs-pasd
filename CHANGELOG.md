@@ -1,5 +1,9 @@
 # Version History
 
+## 3.1.3
+
+* [THORN-220] Update dependencies, add cleanup methods for component managers and proxies.
+
 ## 3.1.2
 
 * [THORN-225] Fix health rediscovery after adminMode cycle.

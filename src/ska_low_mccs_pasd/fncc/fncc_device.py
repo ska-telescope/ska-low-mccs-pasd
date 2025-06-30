@@ -65,7 +65,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         # "attribute-defined-outside-init" etc. We still need to make sure that
         # `init_device` re-initialises any values defined in here.
         super().__init__(*args, **kwargs)
-
+        self.component_manager: FnccComponentManager
         # Initialise with unknown.
         self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: FnccHealthModel
@@ -93,6 +93,12 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
         )
+
+    def delete_device(self: MccsFNCC) -> None:
+        """Delete the device."""
+        self.component_manager._pasd_bus_proxy.cleanup()
+        self.component_manager._task_executor._executor.shutdown()
+        super().delete_device()
 
     def _init_state_model(self: MccsFNCC) -> None:
         super()._init_state_model()
