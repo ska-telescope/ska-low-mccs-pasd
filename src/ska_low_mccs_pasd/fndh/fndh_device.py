@@ -156,7 +156,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
     def delete_device(self: MccsFNDH) -> None:
         """Delete the device."""
-        self.component_manager._pasd_bus_proxy._cleanup()
+        self.component_manager._pasd_bus_proxy.cleanup()
         self.component_manager._task_executor._executor.shutdown()
         super().delete_device()
 
