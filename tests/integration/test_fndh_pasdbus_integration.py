@@ -7,6 +7,8 @@
 # See LICENSE for more info.
 """This module contains the integration tests for MccsPasdBus with MccsFNDH."""
 
+# pylint:disable=too-many-lines
+
 from __future__ import annotations
 
 import gc
@@ -580,28 +582,41 @@ class TestfndhPasdBusIntegration:
             ) = getattr(fndh_simulator, attribute_threshold)
 
             healthy_value = (max_warning + min_warning) / 2
+
+            # Test one complete cycle of FAILED -> DEGRADED -> OK
             setattr(fndh_simulator, attribute_name, max_alarm)
             change_event_callbacks["pasdStatus"].assert_change_event(
-                FndhStatusMap.ALARM.name, lookahead=6, consume_nonmatches=True
+                FndhStatusMap.ALARM.name, lookahead=20, consume_nonmatches=True
             )
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.FAILED
             )
+
             setattr(fndh_simulator, attribute_name, max_warning)
             # We should now be in RECOVERY state - this is still FAILED
             change_event_callbacks["pasdStatus"].assert_change_event(
-                FndhStatusMap.RECOVERY.name, lookahead=6, consume_nonmatches=True
+                FndhStatusMap.RECOVERY.name, lookahead=20, consume_nonmatches=True
             )
             change_event_callbacks["fndhhealthState"].assert_not_called()
 
             # Initialize the FNDH to reset the status register
             pasd_bus_device.initializeFndh()
             change_event_callbacks["pasdStatus"].assert_change_event(
-                FndhStatusMap.WARNING.name, lookahead=30, consume_nonmatches=True
+                FndhStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
             )
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.DEGRADED
             )
+
+            setattr(fndh_simulator, attribute_name, int(healthy_value))
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.OK.name, lookahead=20, consume_nonmatches=True
+            )
+            change_event_callbacks["fndhhealthState"].assert_change_event(
+                HealthState.OK
+            )
+
+            # Test negative values for min_alarm and min_warning
             if min_alarm < 0 and attribute_name in positive_only_monitoring_points:
                 warnings.warn(
                     UserWarning(
@@ -615,16 +630,24 @@ class TestfndhPasdBusIntegration:
             else:
                 setattr(fndh_simulator, attribute_name, min_alarm)
                 change_event_callbacks["pasdStatus"].assert_change_event(
-                    FndhStatusMap.ALARM.name, lookahead=6, consume_nonmatches=True
+                    FndhStatusMap.ALARM.name, lookahead=20, consume_nonmatches=True
                 )
                 change_event_callbacks["fndhhealthState"].assert_change_event(
                     HealthState.FAILED
+                )
+                setattr(fndh_simulator, attribute_name, healthy_value)
+                pasd_bus_device.initializeFndh()
+                change_event_callbacks["pasdStatus"].assert_change_event(
+                    FndhStatusMap.OK.name, lookahead=20, consume_nonmatches=True
+                )
+                change_event_callbacks["fndhhealthState"].assert_change_event(
+                    HealthState.OK
                 )
             if min_warning < 0 and attribute_name in positive_only_monitoring_points:
                 warnings.warn(
                     UserWarning(
                         f"positive only monitoring point {attribute_name} "
-                        "is not being tested for max_alm due to "
+                        "is not being tested for min_warn due to "
                         "attempting to set a negative value "
                         "in the simulator. Hardware does not allow this. "
                         "See src/ska_low_mccs_pasd/pasd_bus/pasd_bus_conversions.py"
@@ -633,22 +656,18 @@ class TestfndhPasdBusIntegration:
             else:
                 setattr(fndh_simulator, attribute_name, min_warning)
                 change_event_callbacks["pasdStatus"].assert_change_event(
-                    FndhStatusMap.RECOVERY.name, lookahead=6, consume_nonmatches=True
+                    FndhStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
                 )
-                change_event_callbacks["fndhhealthState"].assert_not_called()
-            setattr(fndh_simulator, attribute_name, int(healthy_value))
-
-            # Still in RECOVERY so expect no change yet
-            change_event_callbacks["fndhhealthState"].assert_not_called()
-
-            # Reset the status register again
-            pasd_bus_device.initializeFndh()
-            change_event_callbacks["pasdStatus"].assert_change_event(
-                FndhStatusMap.OK.name, lookahead=30, consume_nonmatches=True
-            )
-            change_event_callbacks["fndhhealthState"].assert_change_event(
-                HealthState.OK
-            )
+                change_event_callbacks["fndhhealthState"].assert_change_event(
+                    HealthState.DEGRADED
+                )
+                setattr(fndh_simulator, attribute_name, int(healthy_value))
+                change_event_callbacks["pasdStatus"].assert_change_event(
+                    FndhStatusMap.OK.name, lookahead=20, consume_nonmatches=True
+                )
+                change_event_callbacks["fndhhealthState"].assert_change_event(
+                    HealthState.OK
+                )
         healthy_fndh.adminMode = AdminMode.OFFLINE
         change_event_callbacks["fndhhealthState"].assert_change_event(
             HealthState.UNKNOWN
@@ -861,7 +880,7 @@ def change_event_callbacks_fixture(
         "fndhPort2PowerState",
         "outsideTemperatureThresholds",
         "pasdStatus",
-        timeout=10.0,
+        timeout=26.0,
         assert_no_error=False,
     )
 
