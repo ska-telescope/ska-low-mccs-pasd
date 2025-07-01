@@ -992,7 +992,10 @@ class _Sensor:
         :param obj: The instance of the class where the descriptor is being used.
         :param value: The value to be set for the sensor attribute.
         """
-        obj.__dict__[self.name] = value
+        if isinstance(value, list):
+            obj.__dict__[self.name] = [int(v) for v in value]
+        else:
+            obj.__dict__[self.name] = int(value)
         obj._update_sensor_status(self.name)
         obj._update_system_status()
         obj._update_ports_state()
