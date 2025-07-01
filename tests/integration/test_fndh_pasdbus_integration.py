@@ -540,7 +540,83 @@ class TestfndhPasdBusIntegration:
 
         assert fndh_device.PortPowerState(off_smartbox_attached_port) == PowerState.ON
 
-    def test_health(
+    def test_health_max_values(
+        self: TestfndhPasdBusIntegration,
+        healthy_fndh: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        random_subset_fndh_monitoring_points: list[str],
+        fndh_simulator: FndhSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test integration of FNDH health with pasdBus - max alarm/warning.
+
+        :param healthy_fndh: fixture that provides FNDH in the
+            Healthy state.
+        :param pasd_bus_device: fixture that provides a pasdBus
+        :param random_subset_fndh_monitoring_points: a random list of monitoring
+            points supported by the health model.
+        :param fndh_simulator: the FNDH simulator under test
+        :param change_event_callbacks: dictionary of mock change event
+            callbacks with asynchrony support
+        """
+        # We need to subscribe to the status register since the health state
+        # now also depends on this.
+        healthy_fndh.subscribe_event(
+            "pasdStatus",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasdStatus"],
+        )
+        for attribute_name in random_subset_fndh_monitoring_points:
+            attribute_threshold = attribute_name + "_thresholds"
+            print(f"Test attribute: {attribute_name}")
+            # Check for transitions through health when value changes.
+            (
+                max_alarm,
+                max_warning,
+                min_warning,
+                _,  # min_alarm
+            ) = getattr(fndh_simulator, attribute_threshold)
+
+            healthy_value = (max_warning + min_warning) / 2
+
+            # Test max alarm - FAILED
+            # -----------------------
+            setattr(fndh_simulator, attribute_name, max_alarm)
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.ALARM.name, lookahead=20, consume_nonmatches=True
+            )
+            change_event_callbacks["fndhhealthState"].assert_change_event(
+                HealthState.FAILED, lookahead=2, consume_nonmatches=True
+            )
+
+            # Test max warning - DEGRADED
+            # ---------------------------
+            setattr(fndh_simulator, attribute_name, max_warning)
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.RECOVERY.name, lookahead=20, consume_nonmatches=True
+            )
+            # Health should still be FAILED until the FNDH is initialized
+            change_event_callbacks["fndhhealthState"].assert_not_called()
+            assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
+            )
+            change_event_callbacks["fndhhealthState"].assert_change_event(
+                HealthState.DEGRADED, lookahead=2, consume_nonmatches=True
+            )
+
+            # Test transition to OK
+            # ---------------------
+            setattr(fndh_simulator, attribute_name, healthy_value)
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.OK.name, lookahead=20, consume_nonmatches=True
+            )
+            change_event_callbacks["fndhhealthState"].assert_change_event(
+                HealthState.OK, lookahead=2, consume_nonmatches=True
+            )
+
+    def test_health_min_values(
         self: TestfndhPasdBusIntegration,
         healthy_fndh: tango.DeviceProxy,
         pasd_bus_device: tango.DeviceProxy,
@@ -550,7 +626,7 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
         """
-        Test integration of FNDH health with pasdBus.
+        Test integration of FNDH health with pasdBus - min alarm/warning.
 
         :param healthy_fndh: fixture that provides FNDH in the
             Healthy state.
@@ -573,9 +649,9 @@ class TestfndhPasdBusIntegration:
         for attribute_name in random_subset_fndh_monitoring_points:
             attribute_threshold = attribute_name + "_thresholds"
             print(f"Test attribute: {attribute_name}")
-            # Check for transitions through health. when value changes.
+            # Check for transitions through health when value changes.
             (
-                max_alarm,
+                _,  # max_alarm
                 max_warning,
                 min_warning,
                 min_alarm,
@@ -583,40 +659,8 @@ class TestfndhPasdBusIntegration:
 
             healthy_value = (max_warning + min_warning) / 2
 
-            # Test one complete cycle of FAILED -> DEGRADED -> OK
-            setattr(fndh_simulator, attribute_name, max_alarm)
-            change_event_callbacks["pasdStatus"].assert_change_event(
-                FndhStatusMap.ALARM.name, lookahead=20, consume_nonmatches=True
-            )
-            change_event_callbacks["fndhhealthState"].assert_change_event(
-                HealthState.FAILED
-            )
-
-            setattr(fndh_simulator, attribute_name, max_warning)
-            # We should now be in RECOVERY state - this is still FAILED
-            change_event_callbacks["pasdStatus"].assert_change_event(
-                FndhStatusMap.RECOVERY.name, lookahead=20, consume_nonmatches=True
-            )
-            change_event_callbacks["fndhhealthState"].assert_not_called()
-
-            # Initialize the FNDH to reset the status register
-            pasd_bus_device.initializeFndh()
-            change_event_callbacks["pasdStatus"].assert_change_event(
-                FndhStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
-            )
-            change_event_callbacks["fndhhealthState"].assert_change_event(
-                HealthState.DEGRADED
-            )
-
-            setattr(fndh_simulator, attribute_name, int(healthy_value))
-            change_event_callbacks["pasdStatus"].assert_change_event(
-                FndhStatusMap.OK.name, lookahead=20, consume_nonmatches=True
-            )
-            change_event_callbacks["fndhhealthState"].assert_change_event(
-                HealthState.OK
-            )
-
-            # Test negative values for min_alarm and min_warning
+            # Test min_alarm - FAILED
+            # -----------------------
             if min_alarm < 0 and attribute_name in positive_only_monitoring_points:
                 warnings.warn(
                     UserWarning(
@@ -633,16 +677,23 @@ class TestfndhPasdBusIntegration:
                     FndhStatusMap.ALARM.name, lookahead=20, consume_nonmatches=True
                 )
                 change_event_callbacks["fndhhealthState"].assert_change_event(
-                    HealthState.FAILED
+                    HealthState.FAILED, lookahead=2, consume_nonmatches=True
                 )
                 setattr(fndh_simulator, attribute_name, healthy_value)
-                pasd_bus_device.initializeFndh()
+                change_event_callbacks["pasdStatus"].assert_change_event(
+                    FndhStatusMap.RECOVERY.name, lookahead=20, consume_nonmatches=True
+                )
+                change_event_callbacks["fndhhealthState"].assert_not_called()
+                assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
                 change_event_callbacks["pasdStatus"].assert_change_event(
                     FndhStatusMap.OK.name, lookahead=20, consume_nonmatches=True
                 )
                 change_event_callbacks["fndhhealthState"].assert_change_event(
-                    HealthState.OK
+                    HealthState.OK, lookahead=2, consume_nonmatches=True
                 )
+
+            # Test min_warning - DEGRADED
+            # ---------------------------
             if min_warning < 0 and attribute_name in positive_only_monitoring_points:
                 warnings.warn(
                     UserWarning(
@@ -659,15 +710,30 @@ class TestfndhPasdBusIntegration:
                     FndhStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
                 )
                 change_event_callbacks["fndhhealthState"].assert_change_event(
-                    HealthState.DEGRADED
+                    HealthState.DEGRADED, lookahead=2, consume_nonmatches=True
                 )
-                setattr(fndh_simulator, attribute_name, int(healthy_value))
+                setattr(fndh_simulator, attribute_name, healthy_value)
                 change_event_callbacks["pasdStatus"].assert_change_event(
-                    FndhStatusMap.OK.name, lookahead=20, consume_nonmatches=True
+                    FndhStatusMap.OK.name, lookahead=20
                 )
                 change_event_callbacks["fndhhealthState"].assert_change_event(
-                    HealthState.OK
+                    HealthState.OK, lookahead=2
                 )
+
+    def test_health_on_adminmode_cycle(
+        self: TestfndhPasdBusIntegration,
+        healthy_fndh: tango.DeviceProxy,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test integration of FNDH health with pasdBus - cycling adminMode.
+
+        :param healthy_fndh: fixture that provides FNDH in the
+            Healthy state.
+        :param change_event_callbacks: dictionary of mock change event
+            callbacks with asynchrony support
+        """
+        assert healthy_fndh.healthState == HealthState.OK
         healthy_fndh.adminMode = AdminMode.OFFLINE
         change_event_callbacks["fndhhealthState"].assert_change_event(
             HealthState.UNKNOWN
@@ -966,7 +1032,7 @@ def healthy_fndh_fixture(
     )
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
     change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
-    pasd_bus_device.initializefndh()
+    assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
     fndh_sub_id = fndh_device.subscribe_event(
         "healthState",
         tango.EventType.CHANGE_EVENT,

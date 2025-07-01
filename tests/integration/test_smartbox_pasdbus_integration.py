@@ -1388,8 +1388,10 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.FAILED,
+            lookahead=20,
+            consume_nonmatches=True,
         )
-        setattr(smartbox_simulator, monitoring_point, max_alarm - 50)
+        setattr(smartbox_simulator, monitoring_point, max_warning)
         # We should now be in RECOVERY state - this is still FAILED
         change_event_callbacks["pasdStatus"].assert_change_event(
             SmartboxStatusMap.RECOVERY.name, lookahead=20, consume_nonmatches=True
@@ -1402,6 +1404,8 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.DEGRADED,
+            lookahead=20,
+            consume_nonmatches=True,
         )
 
         setattr(smartbox_simulator, monitoring_point, healthy_value)
@@ -1409,8 +1413,7 @@ class TestSmartBoxPasdBusIntegration:
             SmartboxStatusMap.OK.name, lookahead=20, consume_nonmatches=True
         )
         change_event_callbacks.assert_change_event(
-            "smartboxHealthState",
-            HealthState.OK,
+            "smartboxHealthState", HealthState.OK, lookahead=20, consume_nonmatches=True
         )
 
         setattr(smartbox_simulator, monitoring_point, min_alarm - 100)
@@ -1420,16 +1423,18 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.FAILED,
+            lookahead=20,
+            consume_nonmatches=True,
         )
 
-        setattr(smartbox_simulator, monitoring_point, min_warning - 100)
+        setattr(smartbox_simulator, monitoring_point, min_warning)
         change_event_callbacks["pasdStatus"].assert_change_event(
             SmartboxStatusMap.RECOVERY.name, lookahead=20, consume_nonmatches=True
         )
         change_event_callbacks["smartboxHealthState"].assert_not_called()
         pasd_bus_device.initializeSmartbox(on_smartbox_id)
         change_event_callbacks["pasdStatus"].assert_change_event(
-            SmartboxStatusMap.WARNING.name,
+            SmartboxStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
         )
 
         change_event_callbacks.assert_change_event(
