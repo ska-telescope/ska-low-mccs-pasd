@@ -26,7 +26,7 @@ def configure_alarms(
     # Threshold values always reported in the order:
     # high alarm - high warning - low warning - low alarm
     if min(alarm_values[0], alarm_values[1]) <= max(alarm_values[2], alarm_values[3]):
-        logger.warn(
+        logger.warning(
             f"Invalid alarm configuration detected for {attribute.get_name()}: "
             f"[{alarm_values[0]}, {alarm_values[1]}, "
             f"{alarm_values[2]}, {alarm_values[3]}]"
@@ -34,7 +34,7 @@ def configure_alarms(
         return
 
     if alarm_values[0] <= alarm_values[1]:
-        logger.warn(
+        logger.warning(
             f"High alarm value {alarm_values[0]} for {attribute.get_name()} "
             f"is <= warning value {alarm_values[1]}"
         )
@@ -44,7 +44,7 @@ def configure_alarms(
         multi_prop.max_warning = alarm_values[1]
 
     if alarm_values[2] <= alarm_values[3]:
-        logger.warn(
+        logger.warning(
             f"Low warning value {alarm_values[2]} for {attribute.get_name()} "
             f"is <= alarm value {alarm_values[3]}"
         )
