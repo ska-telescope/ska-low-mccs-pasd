@@ -1381,6 +1381,12 @@ class TestSmartBoxPasdBusIntegration:
             change_event_callbacks["pasdStatus"],
         )
 
+        change_event_callbacks.assert_change_event(
+            "smartboxHealthState",
+            HealthState.OK,
+        )
+
+        # Test ALARM / FAILED state
         setattr(smartbox_simulator, monitoring_point, max_alarm + 100)
         change_event_callbacks["pasdStatus"].assert_change_event(
             SmartboxStatusMap.ALARM.name, lookahead=20, consume_nonmatches=True
@@ -1388,8 +1394,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.FAILED,
-            lookahead=20,
-            consume_nonmatches=True,
         )
         setattr(smartbox_simulator, monitoring_point, max_warning)
         # We should now be in RECOVERY state - this is still FAILED
@@ -1397,25 +1401,27 @@ class TestSmartBoxPasdBusIntegration:
             SmartboxStatusMap.RECOVERY.name, lookahead=20, consume_nonmatches=True
         )
         change_event_callbacks["smartboxHealthState"].assert_not_called()
-        pasd_bus_device.initializeSmartbox(on_smartbox_id)
+
+        # Test transition to WARNING / DEGRADED
+        assert pasd_bus_device.initializeSmartbox(on_smartbox_id)[0] == ResultCode.OK
         change_event_callbacks["pasdStatus"].assert_change_event(
             SmartboxStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
         )
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.DEGRADED,
-            lookahead=20,
-            consume_nonmatches=True,
         )
 
+        # Test transition to OK / HEALTHY
         setattr(smartbox_simulator, monitoring_point, healthy_value)
         change_event_callbacks["pasdStatus"].assert_change_event(
             SmartboxStatusMap.OK.name, lookahead=20, consume_nonmatches=True
         )
         change_event_callbacks.assert_change_event(
-            "smartboxHealthState", HealthState.OK, lookahead=20, consume_nonmatches=True
+            "smartboxHealthState", HealthState.OK
         )
 
+        # Test minimum alarm and warning thresholds
         setattr(smartbox_simulator, monitoring_point, min_alarm - 100)
         change_event_callbacks["pasdStatus"].assert_change_event(
             SmartboxStatusMap.ALARM.name, lookahead=20, consume_nonmatches=True
@@ -1423,8 +1429,6 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.FAILED,
-            lookahead=20,
-            consume_nonmatches=True,
         )
 
         setattr(smartbox_simulator, monitoring_point, min_warning)
@@ -1432,7 +1436,8 @@ class TestSmartBoxPasdBusIntegration:
             SmartboxStatusMap.RECOVERY.name, lookahead=20, consume_nonmatches=True
         )
         change_event_callbacks["smartboxHealthState"].assert_not_called()
-        pasd_bus_device.initializeSmartbox(on_smartbox_id)
+
+        assert pasd_bus_device.initializeSmartbox(on_smartbox_id)[0] == ResultCode.OK
         change_event_callbacks["pasdStatus"].assert_change_event(
             SmartboxStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
         )
@@ -1442,6 +1447,7 @@ class TestSmartBoxPasdBusIntegration:
             HealthState.DEGRADED,
         )
 
+        # Test breaker trip causes FAILED health state
         smartbox_simulator.simulate_breaker_trip(
             random.randint(1, PasdData.NUMBER_OF_SMARTBOX_PORTS)
         )
