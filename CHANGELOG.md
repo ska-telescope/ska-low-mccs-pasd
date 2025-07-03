@@ -1,5 +1,9 @@
 # Version History
 
+## 3.2.3
+
+* [THORN-142] Incorporate status registers and FEM breaker trips into healthState.
+
 ## 3.1.3
 
 * [THORN-220] Update dependencies, add cleanup methods for component managers and proxies.
