@@ -225,6 +225,14 @@ class FndhHealthRules(HealthRules):
         ),
     }
 
+    # Status register mapping to health:
+    # UNINITIALISED -> OK
+    # OK -> OK
+    # WARNING -> DEGRADED
+    # ALARM -> FAILED
+    # RECOVERY -> FAILED
+    # POWERUP -> UNKNOWN (this should not be seen in normal operation)
+
     def __init__(
         self,
         logger: logging.Logger,
@@ -303,6 +311,8 @@ class FndhHealthRules(HealthRules):
             unknown_points.append(
                 "No value has been read from the FNDH pasdStatus register."
             )
+        elif pasd_status == FndhStatusMap.POWERUP.name:
+            unknown_points.append(f"FNDH is in {FndhStatusMap.POWERUP.name} state.")
         elif pasd_status not in FndhStatusMap.__members__:
             unknown_points.append(f"FNDH is reporting unknown status: {pasd_status}.")
 
@@ -353,13 +363,6 @@ class FndhHealthRules(HealthRules):
         ports_power_control = kwargs.get("ports_power_control")
         ports_with_smartbox = kwargs.get("ports_with_smartbox")
         pasd_status = kwargs.get("status")
-
-        # Status register mapping to health:
-        # UNINITIALISED -> OK
-        # OK -> OK
-        # WARNING -> DEGRADED
-        # ALARM -> FAILED
-        # RECOVERY -> FAILED
 
         if pasd_status is not None and pasd_status in [
             FndhStatusMap.ALARM.name,

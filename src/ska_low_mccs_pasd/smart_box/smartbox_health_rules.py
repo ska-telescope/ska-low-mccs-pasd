@@ -22,6 +22,14 @@ from ska_low_mccs_pasd.pasd_utils import join_health_reports
 class SmartboxHealthRules(HealthRules):
     """A class to handle transition rules for station."""
 
+    # Status register mapping to health:
+    # UNINITIALISED -> OK
+    # OK -> OK
+    # WARNING -> DEGRADED
+    # ALARM -> FAILED
+    # RECOVERY -> FAILED
+    # POWERDOWN -> UNKNOWN (this should not be seen in normal operation)
+
     def __init__(self, *args: Any, **kwargs: Any):
         """
         Initialise this device object.
@@ -64,6 +72,10 @@ class SmartboxHealthRules(HealthRules):
             unknown_points.append(
                 "No value has been read from the pasdStatus register."
             )
+        elif status == SmartboxStatusMap.POWERDOWN.name:
+            unknown_points.append(
+                f"Smartbox is in {SmartboxStatusMap.POWERDOWN.name} state."
+            )
         elif status not in SmartboxStatusMap.__members__:
             unknown_points.append(f"Smartbox is reporting unknown status: {status}")
 
@@ -98,13 +110,6 @@ class SmartboxHealthRules(HealthRules):
         status = kwargs.get("status")
         port_breakers_tripped: list[bool] = kwargs.get("port_breakers_tripped", [])
         failed_points: list[str] = []
-
-        # Status register mapping to health:
-        # UNINITIALISED -> OK
-        # OK -> OK
-        # WARNING -> DEGRADED
-        # ALARM -> FAILED
-        # RECOVERY -> FAILED
 
         if status in [SmartboxStatusMap.ALARM.name, SmartboxStatusMap.RECOVERY.name]:
             failed_points.append(f"Smartbox is reporting {status}.")
