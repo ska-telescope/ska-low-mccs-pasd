@@ -727,6 +727,8 @@ class TestfndhPasdBusIntegration:
         healthy_fndh.adminMode = AdminMode.ONLINE
         change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.OK)
 
+        change_event_callbacks["fndhhealthState"].assert_not_called()
+
     def test_faulty_smartbox_configured_ports_degraded(
         self: TestfndhPasdBusIntegration,
         healthy_fndh_with_smartboxes: tango.DeviceProxy,
