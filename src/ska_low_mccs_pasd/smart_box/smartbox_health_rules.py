@@ -51,7 +51,7 @@ class SmartboxHealthRules(HealthRules):
     def unknown_rule(  # type: ignore[override]
         self: SmartboxHealthRules,
         intermediate_healths: dict[str, tuple[HealthState, str]],
-        status: str,
+        status: str | None,
         **kwargs: Any,
     ) -> tuple[bool, str]:
         """
