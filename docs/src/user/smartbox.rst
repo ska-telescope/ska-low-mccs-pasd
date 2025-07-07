@@ -134,7 +134,7 @@ be executed.
 
 Smartbox health
 ---------------
-The smartbox health is decided by determined by three factors:
+The smartbox health is determined by three factors:
 
 1. The value of monitoring points in relation to their defined thresholds.
 2. The status as reported in the Smartbox's SYS_STATUS register.
