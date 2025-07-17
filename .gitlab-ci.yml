@@ -79,6 +79,7 @@ temp-k8s-test:
   variables:
     TANGO_HOST: "tango-databaseds.$KUBE_NAMESPACE:10000"
     KUBE_NAMESPACE: 'ci-$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA'
+    CLUSTER_DOMAIN: cluster.local
   before_script:
     - make k8s-install-chart
     - make k8s-wait
