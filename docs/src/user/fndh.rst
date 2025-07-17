@@ -146,10 +146,11 @@ state after such an event, the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_de
 FNDH health evaluation
 ----------------------
 
-The health of the FNDH is determined by two primary factors:
+The health of the FNDH is determined by three factors:
 
 1. The value of monitoring points in relation to their defined thresholds.
 2. The percentage of `smartbox-configured-ports` with a fault.
+3. The status as reported in the FNDH's SYS_STATUS register.
 
 **Threshold Evaluation**
 
@@ -178,5 +179,15 @@ Below is an example of how the desired thresholds can be set (**Note**: values s
     }
 
     fndh.healthModelParams = json.dumps(desired_thresholds)
+
+**Status Register Evaluation**
+
+The following translation of the FNDH's SYS_STATUS register values to health states is applied:
+
+- 'ALARM' or 'RECOVERY' indicates a health state of 'FAILED'.
+- 'WARNING' indicates a health state of 'DEGRADED'.
+- 'UNINITIALISED' or 'OK' indicates a health state of 'OK'.
+- 'POWERUP' indicates a health state of 'UNKNOWN' (this state should not be used).
+  
 
 

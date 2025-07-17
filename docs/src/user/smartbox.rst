@@ -134,8 +134,14 @@ be executed.
 
 Smartbox health
 ---------------
-The smartbox health is decided by comparing the values of the monitoring points against their configured thresholds. Each
-monitoring point has four thresholds: [min_fault, min_warning, max_warning, max_fault]. If any value is less than the
+The smartbox health is determined by three factors:
+
+1. The value of monitoring points in relation to their defined thresholds.
+2. The status as reported in the Smartbox's SYS_STATUS register.
+3. The status of the FEM port breakers.
+
+**Threshold Evaluation**
+Each monitoring point has four thresholds: [min_fault, min_warning, max_warning, max_fault]. If any value is less than the
 min_fault or greater than the max_fault, it triggers a FAILED health status. If a value is between the min_fault and
 min_warning, or between max_fault and max_warning, it triggers a DEGRADED health state.
 
@@ -151,3 +157,17 @@ For example:
     }
 
     smartbox.healthModelParams = json.dumps(desired_thresholds)
+
+**Status Register Evaluation**
+
+The following translation of the Smartbox's SYS_STATUS register values to health states is applied:
+
+- 'ALARM' or 'RECOVERY' indicates a health state of 'FAILED'.
+- 'WARNING' indicates a health state of 'DEGRADED'.
+- 'UNINITIALISED' or 'OK' indicates a health state of 'OK'.
+- 'POWERDOWN' indicates a health state of 'UNKNOWN' (this state should not be used).
+
+**Port Breaker Status**
+
+If any of the port breakers are tripped, the health state of the Smartbox is set to 'FAILED'.
+  

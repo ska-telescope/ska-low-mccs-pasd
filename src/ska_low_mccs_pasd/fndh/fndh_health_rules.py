@@ -16,6 +16,9 @@ import numpy as np
 from ska_control_model import HealthState
 from ska_low_mccs_common.health import HealthRules
 
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import FndhStatusMap
+from ska_low_mccs_pasd.pasd_utils import join_health_reports
+
 __all__ = ["FndhHealthRules", "join_health_reports"]
 
 
@@ -29,26 +32,6 @@ def merge_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> dict[str, Any]:
     :returns: a dictionary containing the merge of dict1 and dict2
     """
     return {**dict1, **dict2}
-
-
-def join_health_reports(messages: list[str]) -> str:
-    """
-    Join the messages removing duplicates and empty strings.
-
-    :param messages: a list of messages.
-
-    :returns: a string with result.
-    """
-    seen = set()
-    unique_messages = []
-
-    for message in messages:
-        # Ignore empty strings and duplicates
-        if message and message not in seen:
-            seen.add(message)
-            unique_messages.append(message)
-
-    return "\n".join(unique_messages)
 
 
 def _calculate_pdoc_fault(
@@ -242,6 +225,14 @@ class FndhHealthRules(HealthRules):
         ),
     }
 
+    # Status register mapping to health:
+    # UNINITIALISED -> OK
+    # OK -> OK
+    # WARNING -> DEGRADED
+    # ALARM -> FAILED
+    # RECOVERY -> FAILED
+    # POWERUP -> UNKNOWN (this should not be seen in normal operation)
+
     def __init__(
         self,
         logger: logging.Logger,
@@ -294,6 +285,7 @@ class FndhHealthRules(HealthRules):
         ports_power_sensed = kwargs.get("ports_power_sensed")
         ports_power_control = kwargs.get("ports_power_control")
         ports_with_smartbox = kwargs.get("ports_with_smartbox")
+        pasd_status = kwargs.get("status")
 
         if ports_with_smartbox is None:
             unknown_points.append(
@@ -315,6 +307,14 @@ class FndhHealthRules(HealthRules):
                 f"{ports_power_control=}, "
                 f"{ports_power_sensed=}, "
             )
+        if pasd_status is None:
+            unknown_points.append(
+                "No value has been read from the FNDH pasdStatus register."
+            )
+        elif pasd_status == FndhStatusMap.POWERUP.name:
+            unknown_points.append(f"FNDH is in {FndhStatusMap.POWERUP.name} state.")
+        elif pasd_status not in FndhStatusMap.__members__:
+            unknown_points.append(f"FNDH is reporting unknown status: {pasd_status}.")
 
         # Iterate over monitoring points and check for UNKNOWN health state
         for attribute_name, attr_health_info in monitoring_points.items():
@@ -354,6 +354,7 @@ class FndhHealthRules(HealthRules):
             >>> kwargs = {
             >>>    "ports_with_smartbox": [1,2,6],
             >>>    "ports_power_control": [True]*28,
+            >>>     "status": "OK",
             >>> }
             >>> failed_rule(monitoring_points=monitoring_points, **kwargs)
         """
@@ -361,6 +362,13 @@ class FndhHealthRules(HealthRules):
         ports_power_sensed = kwargs.get("ports_power_sensed")
         ports_power_control = kwargs.get("ports_power_control")
         ports_with_smartbox = kwargs.get("ports_with_smartbox")
+        pasd_status = kwargs.get("status")
+
+        if pasd_status is not None and pasd_status in [
+            FndhStatusMap.ALARM.name,
+            FndhStatusMap.RECOVERY.name,
+        ]:
+            failed_points.append(f"FNDH is reporting {pasd_status}.")
 
         # Only evaluate pdoc faults if we can work out this information.
         if (ports_with_smartbox is not None and len(ports_with_smartbox) > 0) and (
@@ -419,6 +427,7 @@ class FndhHealthRules(HealthRules):
             >>>    "ignore_pasd_power": True,
             >>>    "ports_with_smartbox": [1,2,6],
             >>>    "ports_power_control": [True]*28,
+            >>>     "status": "OK",
             >>> }
             >>> degraded_rule(monitoring_points=monitoring_points, **kwargs)
         """
@@ -426,6 +435,10 @@ class FndhHealthRules(HealthRules):
         ports_power_sensed = kwargs.get("ports_power_sensed")
         ports_power_control = kwargs.get("ports_power_control")
         ports_with_smartbox = kwargs.get("ports_with_smartbox")
+        pasd_status = kwargs.get("status")
+
+        if pasd_status == FndhStatusMap.WARNING.name:
+            degraded_points.append(f"FNDH is reporting {pasd_status}.")
 
         # Only evaluate pdoc faults if we can work out this information.
         if (ports_with_smartbox is not None and len(ports_with_smartbox) > 0) and (
@@ -482,21 +495,26 @@ class FndhHealthRules(HealthRules):
             >>>     ...
             >>> }
             >>> kwargs = {
-            >>>    ...
+            >>>    "status": "OK"
             >>> }
             >>> healthy_rule(monitoring_points=monitoring_points, **kwargs)
         """
         messages: list[str] = []
         states: list[bool] = []
 
+        pasd_status = kwargs.get("status")
+        states.append(
+            pasd_status in [FndhStatusMap.OK.name, FndhStatusMap.UNINITIALISED.name]
+        )
+        messages.append(f"FNDH is reporting {pasd_status}.")
+
         # Iterate through monitoring_points, appending to messages and states
         for state, message in monitoring_points.values():
             messages.append(message)
             states.append(state == HealthState.OK)
 
-        if all(states):
-            return True, join_health_reports(messages) or "Health is OK"
-        return False, "Health not OK"
+        # 'Health is OK' message is added by the BaseHealthModel
+        return all(states), join_health_reports(messages)
 
     def compute_monitoring_point_health(
         self: FndhHealthRules,

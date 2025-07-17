@@ -18,7 +18,7 @@ from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.testing.mock import MockCallable
 
 from ska_low_mccs_pasd.fndh.fndh_health_model import FndhHealthModel
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import FnccStatusMap, LedServiceMap
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import FndhStatusMap, LedServiceMap
 
 
 class TestFNDHHealthModel:
@@ -51,9 +51,24 @@ class TestFNDHHealthModel:
                     "portspowercontrol": [True] * 28,
                     "portspowersensed": [True] * 28,
                     "psu48vvoltage1": 81.0,
+                    "status": FndhStatusMap.UNINITIALISED.name,
                 },
                 HealthState.OK,
-                "Health is OK.",
+                "Health is OK.\n"
+                f"FNDH is reporting {FndhStatusMap.UNINITIALISED.name}.",
+                id="All devices healthy and FNDH uninitialised, expect OK",
+            ),
+            pytest.param(
+                {"psu48vvoltage1": [100.0, 84.0, 43.0, 0.0]},
+                {
+                    "ports_with_smartbox": [i + 1 for i in range(24)],
+                    "portspowercontrol": [True] * 28,
+                    "portspowersensed": [True] * 28,
+                    "psu48vvoltage1": 81.0,
+                    "status": FndhStatusMap.OK.name,
+                },
+                HealthState.OK,
+                f"Health is OK.\nFNDH is reporting {FndhStatusMap.OK.name}.",
                 id="All devices healthy, expect OK",
             ),
             pytest.param(
@@ -63,6 +78,7 @@ class TestFNDHHealthModel:
                     "portspowercontrol": [True] * 28,
                     "portspowersensed": [True] * 28,
                     "psu48vvoltage1": 85.0,
+                    "status": FndhStatusMap.WARNING.name,
                 },
                 HealthState.DEGRADED,
                 "Monitoring point psu48vvoltage1 is in DEGRADED HealthState. "
@@ -78,6 +94,7 @@ class TestFNDHHealthModel:
                     "portspowercontrol": [True] * 28,
                     "portspowersensed": [True] * 28,
                     "psu48vvoltage1": 105.0,
+                    "status": FndhStatusMap.ALARM.name,
                 },
                 HealthState.FAILED,
                 "Monitoring point psu48vvoltage1 is in FAILED HealthState. "
@@ -85,6 +102,32 @@ class TestFNDHHealthModel:
                 "this is in the alarm region for thresholds "
                 "max_alm=100.0, min_alm=0.0",
                 id="voltage too high, expect FAILED",
+            ),
+            pytest.param(
+                {"psu48vvoltage1": [100.0, 84.0, 43.0, 0.0]},
+                {
+                    "ports_with_smartbox": [i + 1 for i in range(24)],
+                    "portspowercontrol": [True] * 28,
+                    "portspowersensed": [True] * 28,
+                    "psu48vvoltage1": 81.0,
+                    "status": FndhStatusMap.ALARM.name,
+                },
+                HealthState.FAILED,
+                "FNDH is reporting ALARM.",
+                id="Status register is reporting ALARM, expect FAILED",
+            ),
+            pytest.param(
+                {"psu48vvoltage1": [100.0, 84.0, 43.0, 0.0]},
+                {
+                    "ports_with_smartbox": [i + 1 for i in range(24)],
+                    "portspowercontrol": [True] * 28,
+                    "portspowersensed": [True] * 28,
+                    "psu48vvoltage1": 81.0,
+                    "status": FndhStatusMap.WARNING.name,
+                },
+                HealthState.DEGRADED,
+                "FNDH is reporting WARNING.",
+                id="Status register is reporting WARNING, expect DEGRADED",
             ),
             pytest.param(
                 {
@@ -95,6 +138,7 @@ class TestFNDHHealthModel:
                     "ports_with_smartbox": [i + 1 for i in range(24)],
                     "portspowercontrol": [True] * 28,
                     "portspowersensed": [True] * 28,
+                    "status": FndhStatusMap.OK.name,
                 },
                 HealthState.OK,
                 "Health is OK.",
@@ -109,6 +153,7 @@ class TestFNDHHealthModel:
                     "ports_with_smartbox": [i + 1 for i in range(22)] + [25, 28],
                     "portspowercontrol": [False] * 27 + [True],
                     "portspowersensed": [True] * 27 + [False],
+                    "status": FndhStatusMap.OK.name,
                 },
                 HealthState.FAILED,
                 "Percent of faulty smartbox-configured-ports is 100%, "
@@ -198,6 +243,7 @@ class TestFNDHHealthModel:
                     "ports_with_smartbox": [i + 1 for i in range(24)],
                     "portspowersensed": [True] * 28,
                     "portspowercontrol": [False] + [True] * 27,
+                    "status": FndhStatusMap.OK.name,
                 },
                 HealthState.DEGRADED,
                 "Percent of faulty smartbox-configured-ports is 4%, "
@@ -215,6 +261,7 @@ class TestFNDHHealthModel:
                 {
                     "ports_with_smartbox": [i + 1 for i in range(24)],
                     "portspowercontrol": [i + 1 for i in range(24)],
+                    "status": FndhStatusMap.OK.name,
                 },
                 HealthState.UNKNOWN,
                 "Unable to evaluate PDOC port faults in configured smartbox",
@@ -228,6 +275,7 @@ class TestFNDHHealthModel:
                 {
                     "ports_with_smartbox": [i + 1 for i in range(24)],
                     "portspowercontrol": [False] + [True] * 27,
+                    "status": FndhStatusMap.OK.name,
                 },
                 HealthState.UNKNOWN,
                 "Unable to evaluate PDOC port faults in configured smartbox",
@@ -242,6 +290,7 @@ class TestFNDHHealthModel:
                     "ports_with_smartbox": [],
                     "portspowercontrol": [],
                     "portspowersensed": [],
+                    "status": FndhStatusMap.OK.name,
                 },
                 HealthState.OK,
                 "Health is OK",
@@ -280,9 +329,11 @@ class TestFNDHHealthModel:
         monitoring_point_thresholds = default_monitoring_point_thresholds.copy()
         monitoring_point_thresholds.update(thresholds)
         health_model.health_params = monitoring_point_thresholds
-        health, _ = health_model.evaluate_health()
+        health, report = health_model.evaluate_health()
         assert health == HealthState.UNKNOWN
+        assert "No value has been read from the FNDH pasdStatus register." in report
 
+        health_model.update_state(status=data.get("status"))
         health_model.update_state(ports_with_smartbox=data.get("ports_with_smartbox"))
         monitoring_points = healthy_monitoring_points.copy()
         monitoring_points.update(data)
@@ -314,7 +365,7 @@ class TestFNDHHealthModel:
                     "psu48v_temperature_2": 66.0,
                     "panel_temperature": 67.0,
                     "fncb_temperature": 65.0,
-                    "status": FnccStatusMap.OK,
+                    "status": FndhStatusMap.OK.name,
                     "led_pattern": LedServiceMap.OFF,
                     "comms_gateway_temperature": 46.0,
                     "power_module_temperature": 34.0,
@@ -333,7 +384,7 @@ class TestFNDHHealthModel:
                     "psu48v_temperature_2": 66.0,
                     "panel_temperature": 67.0,
                     "fncb_temperature": 65.0,
-                    "status": FnccStatusMap.OK,
+                    "status": FndhStatusMap.OK.name,
                     "led_pattern": LedServiceMap.OFF,
                     "comms_gateway_temperature": 46.0,
                     "power_module_temperature": 34.0,
@@ -352,7 +403,7 @@ class TestFNDHHealthModel:
                     "psu48v_temperature_2": 76.0,
                     "panel_temperature": 77.0,
                     "fncb_temperature": 75.0,
-                    "status": FnccStatusMap.UNDEFINED,
+                    "status": FndhStatusMap.UNDEFINED.name,
                     "led_pattern": LedServiceMap.ON,
                     "comms_gateway_temperature": 56.0,
                     "power_module_temperature": 44.0,
@@ -371,7 +422,7 @@ class TestFNDHHealthModel:
                     "psu48v_temperature_2": 76.0,
                     "panel_temperature": 77.0,
                     "fncb_temperature": 75.0,
-                    "status": FnccStatusMap.UNDEFINED,
+                    "status": FndhStatusMap.UNDEFINED.name,
                     "led_pattern": LedServiceMap.ON,
                     "comms_gateway_temperature": 56.0,
                     "power_module_temperature": 44.0,
@@ -412,7 +463,7 @@ class TestFNDHHealthModel:
     # pylint: disable=too-many-positional-arguments
     @pytest.mark.parametrize(
         (
-            "monitoring_values",
+            "health_data",
             "init_thresholds",
             "end_thresholds",
             "init_expected_health",
@@ -423,25 +474,28 @@ class TestFNDHHealthModel:
         [
             pytest.param(
                 {
-                    "psu48vvoltage1": 55.0,
-                    "psu48vvoltage2": 56.0,
-                    "psu48vcurrent": 56.0,
-                    "psu48vtemperature1": 56.0,
-                    "psu48vtemperature2": 56.0,
-                    "paneltemperature": 56.0,
-                    "fncbtemperature": 56.0,
-                    "fncbhumidity": 54.0,
-                    "status": FnccStatusMap.UNDEFINED,
-                    "ledpattern": LedServiceMap.ON,
-                    "commsgatewaytemperature": 56.0,
-                    "powermoduletemperature": 56.0,
-                    "outsidetemperature": 46.0,
-                    "internalambienttemperature": 56.0,
-                    "portforcings": np.array([False] * 12),
-                    "portsdesiredpowerwhenonline": np.array([False] * 28),
-                    "portsdesiredpowerwhenoffline": np.array([False] * 28),
-                    "portspowersensed": np.array([False] * 28),
-                    "portspowercontrol": np.array([False] * 28),
+                    "monitoring_points": {
+                        "psu48vvoltage1": 55.0,
+                        "psu48vvoltage2": 56.0,
+                        "psu48vcurrent": 56.0,
+                        "psu48vtemperature1": 56.0,
+                        "psu48vtemperature2": 56.0,
+                        "paneltemperature": 56.0,
+                        "fncbtemperature": 56.0,
+                        "fncbhumidity": 54.0,
+                        "status": FndhStatusMap.OK.name,
+                        "ledpattern": LedServiceMap.ON,
+                        "commsgatewaytemperature": 56.0,
+                        "powermoduletemperature": 56.0,
+                        "outsidetemperature": 46.0,
+                        "internalambienttemperature": 56.0,
+                        "portforcings": np.array([False] * 12),
+                        "portsdesiredpowerwhenonline": np.array([False] * 28),
+                        "portsdesiredpowerwhenoffline": np.array([False] * 28),
+                        "portspowersensed": np.array([False] * 28),
+                        "portspowercontrol": np.array([False] * 28),
+                    },
+                    "status": FndhStatusMap.OK.name,
                 },
                 {
                     "psu48vvoltage1thresholds": np.array([100.0, 84.0, 43.0, 0.0]),
@@ -483,7 +537,7 @@ class TestFNDHHealthModel:
     def test_fndh_can_change_thresholds(
         self: TestFNDHHealthModel,
         health_model: FndhHealthModel,
-        monitoring_values: dict[str, Any],
+        health_data: dict[str, Any],
         init_thresholds: dict[str, np.ndarray],
         end_thresholds: dict[str, np.ndarray],
         init_expected_health: HealthState,
@@ -494,7 +548,7 @@ class TestFNDHHealthModel:
         """
         Test FNDH can change threshold values.
 
-        :param monitoring_values: the monitoring values.
+        :param health_data: the health model data.
         :param health_model: Health model fixture.
         :param init_thresholds: Initial thresholds to set it to.
         :param end_thresholds: End thresholds to set it to.
@@ -508,7 +562,7 @@ class TestFNDHHealthModel:
         initial_health, initial_report = health_model.evaluate_health()
         assert initial_health == HealthState.UNKNOWN, initial_report
         health_model.update_state(ports_with_smartbox=[i + 1 for i in range(24)])
-        health_model.update_state(monitoring_points=monitoring_values)
+        health_model.update_state(**health_data)
         for threshold, values in init_thresholds.items():
             health_model.update_monitoring_point_threshold(
                 threshold.removesuffix("thresholds"), values

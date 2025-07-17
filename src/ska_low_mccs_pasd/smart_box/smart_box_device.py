@@ -553,6 +553,9 @@ class MccsSmartBox(MccsBaseDevice):
             self._smartbox_state[attr_name].quality = attr_quality
             self._smartbox_state[attr_name].timestamp = timestamp
 
+            self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
+            self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
+
             # If we are reading alarm thresholds, update the alarm configuration
             # for the corresponding Tango attribute
             if attr_name.endswith("thresholds"):
@@ -567,14 +570,15 @@ class MccsSmartBox(MccsBaseDevice):
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass
+            elif attr_name.endswith("status"):
+                self._health_model.update_state(status=attr_value)
+            elif "portbreakerstripped" in attr_name.lower():
+                self._health_model.update_state(port_breakers_tripped=attr_value)
             else:
                 self._health_monitor_points[attr_name] = attr_value
                 self._health_model.update_state(
                     monitoring_points=self._health_monitor_points
                 )
-
-            self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
-            self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
 
         except AssertionError as e:
             self.logger.debug(

@@ -992,7 +992,10 @@ class _Sensor:
         :param obj: The instance of the class where the descriptor is being used.
         :param value: The value to be set for the sensor attribute.
         """
-        obj.__dict__[self.name] = value
+        if isinstance(value, list):
+            obj.__dict__[self.name] = [int(v) for v in value]
+        else:
+            obj.__dict__[self.name] = int(value)
         obj._update_sensor_status(self.name)
         obj._update_system_status()
         obj._update_ports_state()
@@ -1561,6 +1564,18 @@ class SmartboxSimulator(PasdHardwareSimulator):
         :return: whether successful, or None if there was nothing to do.
         """
         return self._ports[port_number - 1].simulate_over_current(False)
+
+    def simulate_breaker_trip(
+        self: SmartboxSimulator, port_number: int
+    ) -> Optional[bool]:
+        """
+        Simulate a port breaker trip.
+
+        :param port_number: number of the port for which a breaker trip
+            will be simulated.
+        :return: whether successful, or None if there was nothing to do.
+        """
+        return self._ports[port_number - 1].simulate_over_current(True)
 
 
 class PasdBusSimulator:

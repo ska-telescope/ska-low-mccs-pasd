@@ -36,6 +36,7 @@ class FndhHealthModel(BaseHealthModel):
         >>>     "pasd_power": PowerState.ON
         >>>     "ignore_pasd_power": False
         >>>     "ports_with_smartbox": [1, 3, 4, 6]
+        >>>     "status": "OK",
         >>>     "monitoring_points" :{
         >>>         "portspowercontrol" : [True] * 28,
         >>>         "portspowersensed"  : [True] * 28,
@@ -117,18 +118,29 @@ class FndhHealthModel(BaseHealthModel):
             self.evaluate_health()
 
     def _get_report_from_rules(self: FndhHealthModel) -> tuple[HealthState, str]:
+        # Retrieve the values first so we are using consistent data to
+        # evaluate the health rules.
+        monitoring_points = self.monitoring_points_health_status
+        pasd_power = self._state.get("pasd_power")
+        ignore_pasd_power = self._state.get("ignore_pasd_power")
+        ports_with_smartbox = self._state.get("ports_with_smartbox")
+        ports_power_control = self._state.get("monitoring_points", {}).get(
+            "portspowercontrol"
+        )
+        ports_power_sensed = self._state.get("monitoring_points", {}).get(
+            "portspowersensed"
+        )
+        status = self._state.get("status")
+
         for health_value in self.ORDERED_HEALTH_PRECEDENCE:
             result, report = self._health_rules.rules[health_value](
-                monitoring_points=self.monitoring_points_health_status,
-                pasd_power=self._state.get("pasd_power"),
-                ignore_pasd_power=self._state.get("ignore_pasd_power"),
-                ports_with_smartbox=self._state.get("ports_with_smartbox"),
-                ports_power_control=self._state.get("monitoring_points", {}).get(
-                    "portspowercontrol"
-                ),
-                ports_power_sensed=self._state.get("monitoring_points", {}).get(
-                    "portspowersensed"
-                ),
+                monitoring_points=monitoring_points,
+                pasd_power=pasd_power,
+                ignore_pasd_power=ignore_pasd_power,
+                ports_with_smartbox=ports_with_smartbox,
+                ports_power_control=ports_power_control,
+                ports_power_sensed=ports_power_sensed,
+                status=status,
             )
             if result:
                 return health_value, report

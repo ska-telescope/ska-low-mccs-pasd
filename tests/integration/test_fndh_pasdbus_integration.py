@@ -7,6 +7,8 @@
 # See LICENSE for more info.
 """This module contains the integration tests for MccsPasdBus with MccsFNDH."""
 
+# pylint:disable=too-many-lines
+
 from __future__ import annotations
 
 import gc
@@ -24,6 +26,7 @@ from ska_low_mccs_pasd.fndh import FndhHealthModel
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     FndhAlarmFlags,
+    FndhStatusMap,
     PasdConversionUtility,
 )
 
@@ -537,20 +540,98 @@ class TestfndhPasdBusIntegration:
 
         assert fndh_device.PortPowerState(off_smartbox_attached_port) == PowerState.ON
 
-    def test_health(
+    def test_health_max_values(
         self: TestfndhPasdBusIntegration,
         healthy_fndh: tango.DeviceProxy,
-        supported_fndh_health_monitoring_points: list[str],
+        pasd_bus_device: tango.DeviceProxy,
+        random_subset_fndh_monitoring_points: list[str],
+        fndh_simulator: FndhSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test integration of FNDH health with pasdBus - max alarm/warning.
+
+        :param healthy_fndh: fixture that provides FNDH in the
+            Healthy state.
+        :param pasd_bus_device: fixture that provides a pasdBus
+        :param random_subset_fndh_monitoring_points: a random list of monitoring
+            points supported by the health model.
+        :param fndh_simulator: the FNDH simulator under test
+        :param change_event_callbacks: dictionary of mock change event
+            callbacks with asynchrony support
+        """
+        # We need to subscribe to the status register since the health state
+        # now also depends on this.
+        healthy_fndh.subscribe_event(
+            "pasdStatus",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasdStatus"],
+        )
+        for attribute_name in random_subset_fndh_monitoring_points:
+            attribute_threshold = attribute_name + "_thresholds"
+            print(f"Test attribute: {attribute_name}")
+            # Check for transitions through health when value changes.
+            (
+                max_alarm,
+                max_warning,
+                min_warning,
+                _,  # min_alarm
+            ) = getattr(fndh_simulator, attribute_threshold)
+
+            healthy_value = (max_warning + min_warning) / 2
+
+            # Test max alarm - FAILED
+            # -----------------------
+            setattr(fndh_simulator, attribute_name, max_alarm)
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.ALARM.name, lookahead=20, consume_nonmatches=True
+            )
+            change_event_callbacks["fndhhealthState"].assert_change_event(
+                HealthState.FAILED
+            )
+
+            # Test max warning - DEGRADED
+            # ---------------------------
+            setattr(fndh_simulator, attribute_name, max_warning)
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.RECOVERY.name, lookahead=20, consume_nonmatches=True
+            )
+            # Health should still be FAILED until the FNDH is initialized
+            change_event_callbacks["fndhhealthState"].assert_not_called()
+            assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
+            )
+            change_event_callbacks["fndhhealthState"].assert_change_event(
+                HealthState.DEGRADED
+            )
+
+            # Test transition to OK
+            # ---------------------
+            setattr(fndh_simulator, attribute_name, healthy_value)
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.OK.name, lookahead=20, consume_nonmatches=True
+            )
+            change_event_callbacks["fndhhealthState"].assert_change_event(
+                HealthState.OK
+            )
+
+    def test_health_min_values(
+        self: TestfndhPasdBusIntegration,
+        healthy_fndh: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        random_subset_fndh_monitoring_points: list[str],
         positive_only_monitoring_points: list[str],
         fndh_simulator: FndhSimulator,
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
         """
-        Test integration of FNDH health with pasdBus.
+        Test integration of FNDH health with pasdBus - min alarm/warning.
 
         :param healthy_fndh: fixture that provides FNDH in the
             Healthy state.
-        :param supported_fndh_health_monitoring_points: a list of monitoring
+        :param pasd_bus_device: fixture that provides a pasdBus
+        :param random_subset_fndh_monitoring_points: a random list of monitoring
             points supported by the health model.
         :param positive_only_monitoring_points: a list of monitoring
             points that can only take a positive value in hardware.
@@ -558,26 +639,28 @@ class TestfndhPasdBusIntegration:
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         """
-        for attribute_name in supported_fndh_health_monitoring_points:
+        # We need to subscribe to the status register since the health state
+        # now also depends on this.
+        healthy_fndh.subscribe_event(
+            "pasdStatus",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasdStatus"],
+        )
+        for attribute_name in random_subset_fndh_monitoring_points:
             attribute_threshold = attribute_name + "_thresholds"
             print(f"Test attribute: {attribute_name}")
-            # Check for transitions through health. when value changes.
+            # Check for transitions through health when value changes.
             (
-                max_alarm,
+                _,  # max_alarm
                 max_warning,
                 min_warning,
                 min_alarm,
             ) = getattr(fndh_simulator, attribute_threshold)
 
             healthy_value = (max_warning + min_warning) / 2
-            setattr(fndh_simulator, attribute_name, max_alarm)
-            change_event_callbacks["fndhhealthState"].assert_change_event(
-                HealthState.FAILED
-            )
-            setattr(fndh_simulator, attribute_name, max_warning)
-            change_event_callbacks["fndhhealthState"].assert_change_event(
-                HealthState.DEGRADED
-            )
+
+            # Test min alarm - FAILED
+            # -----------------------
             if min_alarm < 0 and attribute_name in positive_only_monitoring_points:
                 warnings.warn(
                     UserWarning(
@@ -588,30 +671,55 @@ class TestfndhPasdBusIntegration:
                         "see src/ska_low_mccs_pasd/pasd_bus/pasd_bus_conversions.py"
                     )
                 )
-            else:
-                setattr(fndh_simulator, attribute_name, min_alarm)
-                change_event_callbacks["fndhhealthState"].assert_change_event(
-                    HealthState.FAILED
-                )
-            if min_warning < 0 and attribute_name in positive_only_monitoring_points:
-                warnings.warn(
-                    UserWarning(
-                        f"positive only monitoring point {attribute_name} "
-                        "is not being tested for max_alm due to "
-                        "attempting to set a negative value "
-                        "in the simulator. Hardware does not allow this. "
-                        "See src/ska_low_mccs_pasd/pasd_bus/pasd_bus_conversions.py"
-                    )
-                )
-            else:
-                setattr(fndh_simulator, attribute_name, min_warning)
-                change_event_callbacks["fndhhealthState"].assert_change_event(
-                    HealthState.DEGRADED
-                )
-            setattr(fndh_simulator, attribute_name, int(healthy_value))
+                continue
+            setattr(fndh_simulator, attribute_name, min_alarm)
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.ALARM.name, lookahead=20, consume_nonmatches=True
+            )
+            change_event_callbacks["fndhhealthState"].assert_change_event(
+                HealthState.FAILED
+            )
+
+            # Test min warning - DEGRADED
+            # ---------------------------
+            setattr(fndh_simulator, attribute_name, min_warning)
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.RECOVERY.name, lookahead=20, consume_nonmatches=True
+            )
+            # Health should still be FAILED until the FNDH is initialized
+            change_event_callbacks["fndhhealthState"].assert_not_called()
+            assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
+            )
+            change_event_callbacks["fndhhealthState"].assert_change_event(
+                HealthState.DEGRADED
+            )
+
+            # Test transition to OK
+            # ---------------------
+            setattr(fndh_simulator, attribute_name, healthy_value)
+            change_event_callbacks["pasdStatus"].assert_change_event(
+                FndhStatusMap.OK.name, lookahead=20, consume_nonmatches=True
+            )
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.OK
             )
+
+    def test_health_on_adminmode_cycle(
+        self: TestfndhPasdBusIntegration,
+        healthy_fndh: tango.DeviceProxy,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test integration of FNDH health with pasdBus - cycling adminMode.
+
+        :param healthy_fndh: fixture that provides FNDH in the
+            Healthy state.
+        :param change_event_callbacks: dictionary of mock change event
+            callbacks with asynchrony support
+        """
+        assert healthy_fndh.healthState == HealthState.OK
         healthy_fndh.adminMode = AdminMode.OFFLINE
         change_event_callbacks["fndhhealthState"].assert_change_event(
             HealthState.UNKNOWN
@@ -623,7 +731,7 @@ class TestfndhPasdBusIntegration:
 
     def test_faulty_smartbox_configured_ports_degraded(
         self: TestfndhPasdBusIntegration,
-        healthy_fndh: tango.DeviceProxy,
+        healthy_fndh_with_smartboxes: tango.DeviceProxy,
         fndh_simulator: FndhSimulator,
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
@@ -636,13 +744,14 @@ class TestfndhPasdBusIntegration:
 
         Check the HealthReport and HealthState for expected response.
 
-        :param healthy_fndh: Fixture that provides an FNDH in the Healthy state.
+        :param healthy_fndh_with_smartboxes: Fixture that provides an FNDH in the
+            Healthy state with a number of smartboxes.
         :param fndh_simulator: The FNDH simulator under test.
         :param change_event_callbacks: A dictionary of mock change event callbacks
             with support for asynchrony.
         """
         # Just renaming since it is not always healthy
-        fndh_device = healthy_fndh
+        fndh_device = healthy_fndh_with_smartboxes
 
         ports_with_smartbox = list(fndh_device.portswithsmartbox)
         random_stuck_off_port = random.choice(ports_with_smartbox)
@@ -672,7 +781,7 @@ class TestfndhPasdBusIntegration:
 
     def test_faulty_smartbox_configured_ports_failed_stuck_on(
         self: TestfndhPasdBusIntegration,
-        healthy_fndh: tango.DeviceProxy,
+        healthy_fndh_with_smartboxes: tango.DeviceProxy,
         fndh_simulator: FndhSimulator,
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
@@ -684,12 +793,13 @@ class TestfndhPasdBusIntegration:
 
         Check the HealthReport and HealthState for expected response.
 
-        :param healthy_fndh: Fixture that provides an FNDH in the Healthy state.
+        :param healthy_fndh_with_smartboxes: Fixture that provides an FNDH in the
+            Healthy state with a number of smartbox ports.
         :param fndh_simulator: The FNDH simulator under test.
         :param change_event_callbacks: A dictionary of mock change event callbacks
             with support for asynchrony.
         """
-        fndh_device = healthy_fndh
+        fndh_device = healthy_fndh_with_smartboxes
 
         # +++++++++++++++++++++++++++++++++++++++++
 
@@ -739,7 +849,7 @@ class TestfndhPasdBusIntegration:
 
     def test_faulty_smartbox_configured_ports_failed_stuck_off(
         self: TestfndhPasdBusIntegration,
-        healthy_fndh: tango.DeviceProxy,
+        healthy_fndh_with_smartboxes: tango.DeviceProxy,
         fndh_simulator: FndhSimulator,
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
@@ -751,12 +861,13 @@ class TestfndhPasdBusIntegration:
 
         Check the HealthReport and HealthState for expected response.
 
-        :param healthy_fndh: Fixture that provides an FNDH in the Healthy state.
+        :param healthy_fndh_with_smartboxes: Fixture that provides an FNDH in
+            the Healthy state with a number of smartbox ports.
         :param fndh_simulator: The FNDH simulator under test.
         :param change_event_callbacks: A dictionary of mock change event callbacks
             with support for asynchrony.
         """
-        fndh_device = healthy_fndh
+        fndh_device = healthy_fndh_with_smartboxes
 
         # +++++++++++++++++++++++++++++++++++++++++
         # Simulate a stuck OFF condition.
@@ -825,6 +936,7 @@ def change_event_callbacks_fixture(
         "fndhPortPowerState",
         "fndhPort2PowerState",
         "outsideTemperatureThresholds",
+        "pasdStatus",
         timeout=26.0,
         assert_no_error=False,
     )
@@ -849,6 +961,20 @@ def supported_fndh_health_monitoring_points_fixture() -> set[str]:
     )
     # random_index: int = random.randrange(0, len(supported_items) - 1)
     return set(supported_items)  # [random_index]
+
+
+@pytest.fixture(name="random_subset_fndh_monitoring_points")
+def random_subset_fndh_monitoring_points_fixture(
+    supported_fndh_health_monitoring_points: set[str],
+) -> list[str]:
+    """
+    Return a random subset of the supported FNDH health monitoring points.
+
+    :param supported_fndh_health_monitoring_points: fixture that returns
+        all monitoring points
+    :returns: a random subset of the supported FNDH health monitoring points.
+    """
+    return random.sample(supported_fndh_health_monitoring_points, 5)
 
 
 @pytest.fixture(name="positive_only_monitoring_points")
@@ -897,15 +1023,52 @@ def healthy_fndh_fixture(
     )
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
     change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
-    pasd_bus_device.initializefndh()
+    assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
     fndh_sub_id = fndh_device.subscribe_event(
         "healthState",
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["fndhhealthState"],
     )
     change_event_callbacks.assert_change_event("fndhhealthState", HealthState.UNKNOWN)
+
+    # Configure no smartbox ports until required as these
+    # can interfere with the FNDH health state.
+    fndh_device.portswithsmartbox = []
+
+    fndh_device.adminMode = AdminMode.ONLINE
+
+    pasd_status_sub = fndh_device.subscribe_event(
+        "pasdStatus",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["pasdStatus"],
+    )
+    change_event_callbacks.assert_change_event(
+        "pasdStatus", FndhStatusMap.OK.name, lookahead=20, consume_nonmatches=True
+    )
+    change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+    assert fndh_device.healthState == HealthState.OK
+
+    fndh_device.unsubscribe_event(pasd_status_sub)
+
+    yield fndh_device
+
+    fndh_device.unsubscribe_event(fndh_sub_id)
+    pasd_bus_device.unsubscribe_event(pasd_sub_id)
+
+
+@pytest.fixture(name="healthy_fndh_with_smartboxes")
+def healthy_fndh_with_smartboxes_fixture(
+    healthy_fndh: tango.DeviceProxy,
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns a FNDH in the Healthy State.
+
+    :param healthy_fndh: a proxy to the FNDH device under test.
+
+    :return: a FNDH with configured smartbox ports.
+    """
     # Carefully configure smartbox on unfaulty ports
-    fndh_device.portswithsmartbox = [
+    healthy_fndh.portswithsmartbox = [
         1,
         2,
         4,
@@ -930,11 +1093,4 @@ def healthy_fndh_fixture(
         26,
         28,
     ]
-    fndh_device.adminMode = AdminMode.ONLINE
-    change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
-    assert fndh_device.healthState == HealthState.OK
-
-    yield fndh_device
-
-    fndh_device.unsubscribe_event(fndh_sub_id)
-    pasd_bus_device.unsubscribe_event(pasd_sub_id)
+    return healthy_fndh
