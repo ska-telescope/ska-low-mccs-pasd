@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [THORN-232] Update README file.
+
 ## 3.2.0
 
 * [THORN-142] Incorporate status registers and FEM breaker trips into healthState.
