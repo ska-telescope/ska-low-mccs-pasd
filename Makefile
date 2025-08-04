@@ -113,16 +113,14 @@ k8s-do-test:
 		"cd $(K8S_TEST_RUNNER_WORKING_DIRECTORY) && \
 		mkdir -p build/reports && \
 		$(K8S_TEST_RUNNER_PIP_INSTALL_COMMAND) && \
-		pytest $(K8S_TEST_RUNNER_PYTEST_OPTIONS) $(K8S_TEST_RUNNER_PYTEST_TARGET)"
-	@bash -c ' \
-		source $(K8S_SUPPORT); \
-		EXIT_CODE=$$?; \
+		pytest $(K8S_TEST_RUNNER_PYTEST_OPTIONS) $(K8S_TEST_RUNNER_PYTEST_TARGET)" ; \
+	EXIT_CODE=$$? ; \
 		kubectl -n $(KUBE_NAMESPACE) cp ska-low-mccs-k8s-test-runner:$(K8S_TEST_RUNNER_WORKING_DIRECTORY)/build/ ./build/; \
+		source $(K8S_SUPPORT); \
 		k8sSaveLogs $(KUBE_NAMESPACE); \
 		helm -n $(KUBE_NAMESPACE) uninstall $(K8S_TEST_RUNNER_CHART_RELEASE); \
 		echo $$EXIT_CODE > build/status; \
 		exit $$EXIT_CODE; \
-	'
 
 
 telmodel-deps:
