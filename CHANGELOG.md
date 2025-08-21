@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 3.2.1
+
+* [LOW-1593] Update to latest ska-tango-devices, thus removing dependency on bitnami image.
 * [THORN-232] Update README file.
 
 ## 3.2.0
