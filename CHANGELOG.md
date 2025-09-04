@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 3.3.0
+
+* [THORN-248] Update ska-low-mccs-common dependency to use refactored MccsCommandProxy.
+
 ## 3.2.1
 
 * [LOW-1593] Update to latest ska-tango-devices, thus removing dependency on bitnami image.
