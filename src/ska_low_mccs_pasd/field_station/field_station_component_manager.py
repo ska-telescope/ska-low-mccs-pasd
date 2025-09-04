@@ -471,12 +471,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     command_name="PowerOnAntenna",
                     logger=self.logger,
                 )
-                result, message = antenna_on_command(
+                result = antenna_on_command(
                     arg=antenna_name, is_lrc=True, wait_for_result=True
                 )
                 task_callback(
                     status=TaskStatus.COMPLETED,
-                    result=(result, message),
+                    result=result,
                 )
 
     @check_communicating

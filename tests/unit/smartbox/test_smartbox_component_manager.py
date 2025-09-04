@@ -540,7 +540,7 @@ class TestSmartBoxComponentManager:
                 (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
-                    "Set port powers success",
+                    (ResultCode.OK, "Set port powers success"),
                 ),
             ),
         ],
@@ -606,7 +606,7 @@ class TestSmartBoxComponentManager:
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(
             status=command_tracked_response[0],
-            result=command_tracked_response[1].format(fndh_port=fndh_port),
+            result=command_tracked_response[1],
         )
 
     @pytest.mark.parametrize(
@@ -621,13 +621,13 @@ class TestSmartBoxComponentManager:
                 "turn_on_port",
                 3,
                 (TaskStatus.QUEUED, "Task queued"),
-                f"Power on port '{3} success'",
+                (ResultCode.OK, f"Power on port '{3} success'"),
             ),
             (
                 "turn_off_port",
                 3,
                 (TaskStatus.QUEUED, "Task queued"),
-                f"Power off port '{3} success'",
+                (ResultCode.OK, f"Power off port '{3} success'"),
             ),
         ],
     )
@@ -710,14 +710,14 @@ class TestSmartBoxComponentManager:
                 3,
                 "SetSmartboxPortPowers",
                 (TaskStatus.QUEUED, "Task queued"),
-                f"Power on port '{3} failed'",
+                (ResultCode.FAILED, f"Power on port '{3} failed'"),
             ),
             (
                 "turn_off_port",
                 3,
                 "SetSmartboxPortPowers",
                 (TaskStatus.QUEUED, "Task queued"),
-                f"Power off port '{3} failed'",
+                (ResultCode.FAILED, f"Power off port '{3} failed'"),
             ),
         ],
     )
