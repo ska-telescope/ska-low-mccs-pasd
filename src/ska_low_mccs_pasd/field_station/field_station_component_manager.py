@@ -274,14 +274,18 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         failure_log = ""
 
         timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
-        fndh_on_command = MccsCommandProxy(self._fndh_name, "On", self.logger)
-        result, message = fndh_on_command(timeout=timeout, run_in_thread=False)
+        fndh_on_command = MccsCommandProxy(
+            device_name=self._fndh_name, command_name="On", logger=self.logger
+        )
+        result, message = fndh_on_command(
+            timeout=timeout, is_lrc=True, wait_for_result=True
+        )
 
         if result == ResultCode.OK:
             smartbox_on_commands = MccsCompositeCommandProxy(self.logger)
             for smartbox_trl in self._smartbox_proxys:
                 smartbox_on_commands += MccsCommandProxy(
-                    smartbox_trl, "On", self.logger
+                    device_name=smartbox_trl, command_name="On", logger=self.logger
                 )
             result, message = smartbox_on_commands(
                 command_evaluator=CompositeCommandResultEvaluator(),
@@ -336,14 +340,18 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         failure_log = ""
 
         timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
-        fndh_on_command = MccsCommandProxy(self._fndh_name, "On", self.logger)
-        result, message = fndh_on_command(timeout=timeout)
+        fndh_on_command = MccsCommandProxy(
+            device_name=self._fndh_name, command_name="On", logger=self.logger
+        )
+        result, message = fndh_on_command(
+            timeout=timeout, is_lrc=True, wait_for_result=True
+        )
 
         if result == ResultCode.OK:
             smartbox_standby_commands = MccsCompositeCommandProxy(self.logger)
             for smartbox_trl in self._smartbox_proxys:
                 smartbox_standby_commands += MccsCommandProxy(
-                    smartbox_trl, "Standby", self.logger
+                    device_name=smartbox_trl, command_name="Standby", logger=self.logger
                 )
             result, message = smartbox_standby_commands(
                 command_evaluator=CompositeCommandResultEvaluator(),
@@ -401,8 +409,12 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         failure_log = ""
 
         timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
-        fndh_on_command = MccsCommandProxy(self._fndh_name, "Standby", self.logger)
-        result, message = fndh_on_command(timeout=timeout, run_in_thread=False)
+        fndh_on_command = MccsCommandProxy(
+            device_name=self._fndh_name, command_name="Standby", logger=self.logger
+        )
+        result, message = fndh_on_command(
+            timeout=timeout, is_lrc=True, wait_for_result=True
+        )
 
         if failure_log:
             self.logger.error(f"Failure in the `OFF` command -> {failure_log}")
@@ -455,12 +467,16 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 and antenna_name in smartbox_proxy._proxy.antennaNames
             ):
                 antenna_on_command = MccsCommandProxy(
-                    smartbox_trl, "PowerOnAntenna", self.logger
+                    device_name=smartbox_trl,
+                    command_name="PowerOnAntenna",
+                    logger=self.logger,
                 )
-                result, message = antenna_on_command(antenna_name, run_in_thread=False)
+                result = antenna_on_command(
+                    arg=antenna_name, is_lrc=True, wait_for_result=True
+                )
                 task_callback(
                     status=TaskStatus.COMPLETED,
-                    result=(result, message),
+                    result=result,
                 )
 
     @check_communicating
@@ -500,9 +516,13 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 and antenna_name in smartbox_proxy._proxy.antennaNames
             ):
                 antenna_on_command = MccsCommandProxy(
-                    smartbox_trl, "PowerOffAntenna", self.logger
+                    device_name=smartbox_trl,
+                    command_name="PowerOffAntenna",
+                    logger=self.logger,
                 )
-                result, message = antenna_on_command(antenna_name, run_in_thread=False)
+                result, message = antenna_on_command(
+                    arg=antenna_name, is_lrc=True, wait_for_result=True
+                )
                 task_callback(
                     status=TaskStatus.COMPLETED,
                     result=(result, message),
@@ -524,8 +544,28 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         :return: the task status and a human-readable status message
         """
-        command_proxy = MccsCommandProxy(self._fndh_name, "Configure", self.logger)
-        return command_proxy(json.dumps(kwargs), task_callback=task_callback)
+        return self.submit_task(
+            self._configure,  # type: ignore[arg-type]
+            args=[json.dumps(kwargs)],
+            task_callback=task_callback,
+        )
+
+    def _configure(
+        self: FieldStationComponentManager,
+        configure_args: str,
+        task_callback: Callable,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
+        command_proxy = MccsCommandProxy(
+            device_name=self._fndh_name,
+            command_name="Configure",
+            logger=self.logger,
+        )
+        command_proxy(
+            configure_args,
+            is_lrc=False,
+            task_callback=task_callback,
+        )
 
     def _evaluate_power_state(self: FieldStationComponentManager) -> None:  # noqa: C901
         """

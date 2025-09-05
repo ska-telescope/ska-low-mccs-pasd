@@ -169,7 +169,9 @@ class PasdTangoTestHarnessContext:
 @contextmanager
 def server_context_manager_factory(
     backend: Callable[[Iterator[bytes]], bytes | None],
-) -> Iterator[tuple[str | bytes | bytearray, int]]:
+) -> Iterator[
+    tuple[str | bytes | bytearray, int] | tuple[str | bytes | bytearray, int, int, int]
+]:
     """
     Return a context manager factory for a server.
 

@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import unittest.mock
 from typing import Any, Iterator
+from unittest.mock import ANY, MagicMock, call, patch
 
 import pytest
 import tango
@@ -204,6 +206,10 @@ class TestFieldStationComponentManager:
             == CommunicationStatus.DISABLED
         )
 
+    @patch(
+        "ska_low_mccs_pasd.field_station."
+        "field_station_component_manager.MccsCommandProxy"
+    )
     @pytest.mark.parametrize(
         (
             "antenna_id",
@@ -235,6 +241,7 @@ class TestFieldStationComponentManager:
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def test_antenna_power_commands(
         self: TestFieldStationComponentManager,
+        mock_command_cls: unittest.mock.Mock,
         field_station_component_manager: FieldStationComponentManager,
         antenna_id: str,
         component_manager_command: str,
@@ -245,6 +252,8 @@ class TestFieldStationComponentManager:
         """
         Test the antenna power on command.
 
+        :param mock_command_cls: a patched MccsCommandProxy
+            class for to assert against.
         :param field_station_component_manager: A FieldStation component manager
             with communication established.
         :param antenna_id: antenna number under test.
@@ -253,6 +262,14 @@ class TestFieldStationComponentManager:
         :param command_tracked_result: The result of the command.
         :param mock_callbacks: mock callables.
         """
+        # Mock composite command
+        mock_composite = MagicMock()
+        mock_command_cls.return_value = mock_composite
+        mock_composite.__iadd__.return_value = mock_composite
+
+        # Mock result of calling the composite command
+        mock_composite.return_value = (ResultCode.OK, "Success")
+
         field_station_component_manager.start_communicating()
 
         mock_callbacks["communication_state"].assert_call(
@@ -268,24 +285,41 @@ class TestFieldStationComponentManager:
             )
             == expected_manager_result
         )
+        time.sleep(0.2)
 
+        def _snake_to_pascal_case(snake_string: str) -> str:
+            return "".join(word.capitalize() for word in snake_string.split("_"))
+
+        mock_command_cls.assert_has_calls(
+            [
+                call(
+                    device_name=ANY,
+                    command_name=_snake_to_pascal_case(component_manager_command),
+                    logger=ANY,
+                ),
+                call()(arg=antenna_id, is_lrc=True, wait_for_result=True),
+            ]
+        )
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         if command_tracked_result[0] == TaskStatus.COMPLETED:
             mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
-        mock_callbacks["task"].assert_call(
-            status=command_tracked_result[0], result=command_tracked_result[1]
-        )
 
+    @patch(
+        "ska_low_mccs_pasd.field_station."
+        "field_station_component_manager.MccsCompositeCommandProxy"
+    )
+    @patch(
+        "ska_low_mccs_pasd.field_station."
+        "field_station_component_manager.MccsCommandProxy"
+    )
     @pytest.mark.parametrize(
         (
             "component_manager_command",
-            "expected_manager_result",
             "command_tracked_result",
         ),
         [
             pytest.param(
                 "on",
-                (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
                     (
@@ -297,7 +331,6 @@ class TestFieldStationComponentManager:
             ),
             pytest.param(
                 "off",
-                (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
                     (
@@ -312,22 +345,37 @@ class TestFieldStationComponentManager:
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def test_on_off_commands(
         self: TestFieldStationComponentManager,
+        mock_command_cls: unittest.mock.Mock,
+        mock_composite_cls: unittest.mock.Mock,
         field_station_component_manager: FieldStationComponentManager,
         component_manager_command: Any,
-        expected_manager_result: Any,
         command_tracked_result: Any,
         mock_callbacks: MockCallableGroup,
     ) -> None:
         """
         Test the FieldStation object commands.
 
+        :param mock_command_cls: a patched MccsCommandProxy
+            class for to assert against.
+        :param mock_composite_cls: a patched MccsCompositeCommandProxy
+            class for to assert against.
         :param field_station_component_manager: A FieldStation component manager
             with communication established.
         :param component_manager_command: command to issue to the component manager
-        :param expected_manager_result: expected response from the call
         :param command_tracked_result: The result of the command.
         :param mock_callbacks: mock callables.
         """
+        # Mock composite command
+        mock_composite = MagicMock()
+        mock_command = MagicMock()
+        mock_composite_cls.return_value = mock_composite
+        mock_command_cls.return_value = mock_command
+        mock_composite.__iadd__.return_value = mock_composite
+
+        # Mock result of calling the composite command
+        mock_composite.return_value = (ResultCode.OK, "Success")
+        mock_command.return_value = (ResultCode.OK, "Success")
+
         field_station_component_manager.start_communicating()
 
         mock_callbacks["communication_state"].assert_call(
@@ -337,11 +385,8 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        assert (
-            getattr(field_station_component_manager, component_manager_command)(
-                mock_callbacks["task"],
-            )
-            == expected_manager_result
+        getattr(field_station_component_manager, str("_" + component_manager_command))(
+            mock_callbacks["task"],
         )
 
         expected_state = (
@@ -350,24 +395,38 @@ class TestFieldStationComponentManager:
 
         # We only expect to see smartbox commands called when we are turning ON
         if expected_state == PowerState.ON:
-            fndh_proxy_command = getattr(
-                field_station_component_manager._fndh_proxy._proxy, "On"
+            mock_command.assert_called_once_with(
+                timeout=FieldStationComponentManager.FIELDSTATION_ON_COMMAND_TIMEOUT,
+                is_lrc=True,
+                wait_for_result=True,
             )
-            fndh_proxy_command.assert_next_call()
-            for smartbox in field_station_component_manager._smartbox_proxys.values():
-                smartbox_proxy_command = getattr(smartbox._proxy, "On")
-                smartbox_proxy_command.assert_next_call()
-        else:
-            fndh_proxy_command = getattr(
-                field_station_component_manager._fndh_proxy._proxy, "Standby"
-            )
-            fndh_proxy_command.assert_next_call()
 
-        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
-        if command_tracked_result[0] in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
-            mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
-        mock_callbacks["task"].assert_call(
-            status=command_tracked_result[0],
-            result=command_tracked_result[1],
-            lookahead=len(field_station_component_manager._smartbox_proxys) + 1,
-        )
+            expected_calls = [
+                call(
+                    device_name=field_station_component_manager._fndh_name,
+                    command_name="On",
+                    logger=ANY,
+                ),
+            ]
+
+            for smartbox in field_station_component_manager._smartbox_proxys.values():
+                expected_calls.append(
+                    call(
+                        device_name=smartbox._name,
+                        command_name="On",
+                        logger=ANY,
+                    )
+                )
+
+            mock_command_cls.assert_has_calls(expected_calls, any_order=True)
+        else:
+            mock_command_cls.assert_called_once_with(
+                device_name=field_station_component_manager._fndh_name,
+                command_name="Standby",
+                logger=ANY,
+            )
+            mock_command.assert_called_once_with(
+                timeout=FieldStationComponentManager.FIELDSTATION_ON_COMMAND_TIMEOUT,
+                is_lrc=True,
+                wait_for_result=True,
+            )

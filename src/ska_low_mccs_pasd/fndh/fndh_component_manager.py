@@ -299,7 +299,10 @@ class FndhComponentManager(TaskExecutorComponentManager):
             if task_callback:
                 task_callback(
                     status=TaskStatus.FAILED,
-                    result=f"Power off port '{port_number} failed'",
+                    result=(
+                        ResultCode.FAILED,
+                        f"Power off port '{port_number} failed'",
+                    ),
                 )
 
             return ResultCode.FAILED, "0"
@@ -307,7 +310,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(
                 status=TaskStatus.COMPLETED,
-                result=f"Power off port '{port_number} success'",
+                result=(ResultCode.OK, f"Power off port '{port_number} success'"),
             )
         return result_code, return_message
 
@@ -366,7 +369,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
             if task_callback:
                 task_callback(
                     status=TaskStatus.FAILED,
-                    result=f"Power on port '{port_number} failed'",
+                    result=(ResultCode.FAILED, f"Power on port '{port_number} failed'"),
                 )
 
             return ResultCode.FAILED, "0"
@@ -374,7 +377,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(
                 status=TaskStatus.COMPLETED,
-                result=f"Power on port '{port_number} success'",
+                result=(ResultCode.OK, f"Power on port '{port_number} success'"),
             )
         return result_code, unique_id
 
@@ -423,7 +426,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
             if task_callback:
                 task_callback(
                     status=TaskStatus.FAILED,
-                    result="Set port powers failed",
+                    result=(ResultCode.FAILED, "Set port powers failed"),
                 )
 
             return ResultCode.FAILED, "0"
@@ -431,7 +434,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(
                 status=TaskStatus.COMPLETED,
-                result="Set port powers success",
+                result=(ResultCode.OK, "Set port powers success"),
             )
         return result_code, unique_id
 
