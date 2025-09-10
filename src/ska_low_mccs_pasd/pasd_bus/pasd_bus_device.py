@@ -81,8 +81,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         dtype=float, default_value=10.0, update_db=True
     )
     # Current trip threshold, used for all FEMs (optional).
-    # If set, it is automatically written to all smartboxes on power up / reset.
-    FEMCurrentTripThreshold: int = tango.server.device_property(dtype=int)
+    # If set, it is automatically written to all smartboxes on initialization.
+    FEMCurrentTripThreshold: Final[int] = tango.server.device_property(dtype=int)
+
+    # Smartbox input voltage thresholds
+    # If set, they are automatically written to all smartboxes on initialization.
+    SBInputVoltageThresholds: Final[list[float]] = tango.server.device_property(
+        dtype="DevVarFloatArray"
+    )
+
     SimulationConfig: Final = tango.server.device_property(
         dtype=int, default_value=SimulationMode.FALSE
     )
@@ -147,6 +154,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             f"\tTimeout: {self.Timeout}\n"
             f"\tLowPassFilterCutoff: {self.LowPassFilterCutoff}\n"
             f"\tFEMCurrentTripThreshold: {self.FEMCurrentTripThreshold}\n"
+            f"\tSBInputVoltageThresholds: {self.SBInputVoltageThresholds}\n"
             f"\tSimulationConfig: {self.SimulationConfig}\n"
             f"\tAvailableSmartboxes: {self.AvailableSmartboxes}\n"
         )
@@ -346,6 +354,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 self.component_manager,
                 self.logger,
                 self.FEMCurrentTripThreshold,
+                self.SBInputVoltageThresholds,
                 self.LowPassFilterCutoff,
             ),
         )
@@ -432,7 +441,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
         if (
             self._init_pasd_devices
-            and self._simulation_mode == SimulationMode.FALSE
             and communication_state == CommunicationStatus.ESTABLISHED
         ):
             self._init_pasd_devices = False
@@ -442,6 +450,11 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 for device_number in self.AvailableSmartboxes:
                     self.component_manager.initialize_fem_current_trip_thresholds(
                         device_number, self.FEMCurrentTripThreshold
+                    )
+            if self.SBInputVoltageThresholds is not None:
+                for device_number in self.AvailableSmartboxes:
+                    self.component_manager.initialize_sb_input_voltage_thresholds(
+                        device_number, self.SBInputVoltageThresholds
                     )
 
     def _component_state_callback(
@@ -908,10 +921,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
             fem_current_trip_threshold: int | None,
+            sb_input_voltage_thresholds: list[float] | None,
             low_pass_filter_cutoff: int | None,
         ):
             self._component_manager = component_manager
             self._fem_current_trip_threshold = fem_current_trip_threshold
+            self._sb_input_voltage_thresholds = sb_input_voltage_thresholds
             self._low_pass_filter_cutoff = low_pass_filter_cutoff
             super().__init__(logger)
 
@@ -927,11 +942,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             :param smartbox_id: id of the smartbox being addressed.
             :param simulation_mode: whether we are in simulation mode.
             """
-            # We set the current trip thresholds here just in case
+            # We set the threshold overrides here just in case
             # it hasn't been done yet
             if self._fem_current_trip_threshold is not None:
                 self._component_manager.initialize_fem_current_trip_thresholds(
                     smartbox_id, self._fem_current_trip_threshold
+                )
+            if self._sb_input_voltage_thresholds is not None:
+                self._component_manager.initialize_sb_input_voltage_thresholds(
+                    smartbox_id, self._sb_input_voltage_thresholds
                 )
             self._component_manager.initialize_smartbox(smartbox_id)
             if simulation_mode == SimulationMode.FALSE:

@@ -70,6 +70,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     ALARM_FLAGS_ATTRIBUTE: Final = "alarm_flags"
 
     FEM_CURRENT_TRIP_THRESHOLDS_ATTRIBUTE: Final = "fem_current_trip_thresholds"
+    INPUT_VOLTAGE_THRESHOLDS_ATTRIBUTE: Final = "input_voltage_thresholds"
 
     STATIC_INFO_ATTRIBUTES: Final[list[str]] = []
     FNCC_STATUS_ATTRIBUTES: Final[list[str]] = []
@@ -497,6 +498,24 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             smartbox_id,
             self.FEM_CURRENT_TRIP_THRESHOLDS_ATTRIBUTE,
             [fem_current_trip_threshold] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+        )
+
+    @check_communicating
+    def initialize_sb_input_voltage_thresholds(
+        self: PasdBusComponentManager,
+        smartbox_id: int,
+        input_voltage_thresholds: list[float],
+    ) -> None:
+        """
+        Initialize the input voltage thresholds.
+
+        :param: smartbox_id: id of the smartbox being addressed
+        :param: input_voltage_thresholds: alarm hi, warn hi, warn lo, alarm lo values
+        """
+        self._request_provider.desire_attribute_write(
+            smartbox_id,
+            self.INPUT_VOLTAGE_THRESHOLDS_ATTRIBUTE,
+            input_voltage_thresholds,
         )
 
     @check_communicating
