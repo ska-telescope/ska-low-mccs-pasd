@@ -14,6 +14,7 @@ from tango.server import Device
 
 from tests.conftest import (
     FEM_CURRENT_TRIP_THRESHOLD,
+    INPUT_VOLTAGE_THRESHOLDS,
     MAX_NUMBER_OF_SMARTBOXES_PER_STATION,
 )
 
@@ -249,6 +250,7 @@ class PasdTangoTestHarness:
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsPasdBus",
         available_smartboxes: list[int] | None = None,
+        input_voltage_thresholds: list[float] | None = None,
     ) -> None:
         """
         Set the PaSD bus Tango device in the test harness.
@@ -266,6 +268,7 @@ class PasdTangoTestHarness:
             the devices' sensors' low-pass filtering.
         :param fem_current_trip_threshold: the default current trip threshold
              to set for the FEMs.
+        :param input_voltage_thresholds: the default input voltage thresholds
         :param timeout: timeout to use when interacting with the PaSD
         :param logging_level: the Tango device's default logging level.
         :param device_class: The device class to use.
@@ -290,6 +293,9 @@ class PasdTangoTestHarness:
                 range(1, MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
             )
 
+        if input_voltage_thresholds is None:
+            input_voltage_thresholds = INPUT_VOLTAGE_THRESHOLDS
+
         self._tango_test_harness.add_device(
             get_pasd_bus_name(self._station_label),
             device_class,
@@ -300,6 +306,7 @@ class PasdTangoTestHarness:
             Timeout=timeout,
             LowPassFilterCutoff=low_pass_filter_cutoff,
             FEMCurrentTripThreshold=fem_current_trip_threshold,
+            SBInputVoltageThresholds=input_voltage_thresholds,
             SimulationConfig=int(SimulationMode.TRUE),
             AvailableSmartboxes=available_smartboxes,
             ParentTRL=get_field_station_name(),

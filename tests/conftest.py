@@ -25,6 +25,7 @@ NUMBER_OF_ANTENNAS: Final = 256
 NUMBER_OF_SMARTBOX_PORTS: Final = 12
 NUMBER_OF_FNDH_PORTS: Final = 28
 FEM_CURRENT_TRIP_THRESHOLD: Final = 496
+INPUT_VOLTAGE_THRESHOLDS: Final = [50.0, 49.0, 45.0, 40.0]
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:

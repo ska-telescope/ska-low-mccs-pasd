@@ -26,7 +26,11 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     SmartboxAlarmFlags,
 )
 from ska_low_mccs_pasd.pasd_data import PasdData
-from tests.harness import FEM_CURRENT_TRIP_THRESHOLD, PasdTangoTestHarness
+from tests.harness import (
+    FEM_CURRENT_TRIP_THRESHOLD,
+    INPUT_VOLTAGE_THRESHOLDS,
+    PasdTangoTestHarness,
+)
 
 # TODO: Weird hang-at-garbage-collection bug
 gc.disable()
@@ -61,6 +65,7 @@ def change_event_callbacks_fixture(
         f"smartbox{smartbox_id}AlarmFlags",
         f"smartbox{smartbox_id}PcbTemperatureThresholds",
         f"smartbox{smartbox_id}FemCurrentTripThresholds",
+        f"smartbox{smartbox_id}InputVoltageThresholds",
         timeout=45.0,
         assert_no_error=False,
     )
@@ -1068,14 +1073,14 @@ def test_set_smartbox_thresholds(
     )
 
 
-def test_set_trip_thresholds_on_initialise(
+def test_set_thresholds_on_initialise(
     pasd_bus_device: tango.DeviceProxy,
     smartbox_id: int,
     fndh_simulator: FndhSimulator,
     change_event_callbacks: MockTangoEventCallbackGroup,
 ) -> None:
     """
-    Test the FEM current trip thresholds are set when a smartbox is initialised.
+    Test the threshold overrides are set when a smartbox is initialised.
 
     :param pasd_bus_device: a proxy to the PaSD bus device under test.
     :param smartbox_id: id of the smartbox being addressed.
@@ -1108,6 +1113,15 @@ def test_set_trip_thresholds_on_initialise(
         f"smartbox{smartbox_id}FemCurrentTripThresholds", None
     )
 
+    pasd_bus_device.subscribe_event(
+        f"smartbox{smartbox_id}InputVoltageThresholds",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks[f"smartbox{smartbox_id}InputVoltageThresholds"],
+    )
+    change_event_callbacks.assert_change_event(
+        f"smartbox{smartbox_id}InputVoltageThresholds", None
+    )
+
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
     change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
@@ -1118,9 +1132,12 @@ def test_set_trip_thresholds_on_initialise(
     assert (
         SmartboxSimulator.DEFAULT_PORT_CURRENT_THRESHOLD != FEM_CURRENT_TRIP_THRESHOLD
     )
+    assert (
+        SmartboxSimulator.DEFAULT_INPUT_VOLTAGE_THRESHOLDS != INPUT_VOLTAGE_THRESHOLDS
+    )
 
-    # Set a different value for the current trip threshold
-    # and make sure it has been written
+    # Set different values for the threshold overrides
+    # and make sure they have been written
     setattr(
         pasd_bus_device,
         f"smartbox{smartbox_id}FemCurrentTripThresholds",
@@ -1132,12 +1149,23 @@ def test_set_trip_thresholds_on_initialise(
         [15] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
     )
 
+    setattr(
+        pasd_bus_device,
+        f"smartbox{smartbox_id}InputVoltageThresholds",
+        [60, 50, 40, 30],
+    )
+
+    change_event_callbacks.assert_change_event(
+        f"smartbox{smartbox_id}InputVoltageThresholds",
+        [60, 50, 40, 30],
+    )
+
     # Switch the smartbox off
     pasd_bus_device.InitializeFndh()
     change_event_callbacks.assert_change_event(
         "fndhPortsPowerSensed",
         fndh_simulator.ports_power_sensed,
-        lookahead=4,
+        lookahead=5,
         consume_nonmatches=True,
     )
     port_powers = [False] + [None] * (len(fndh_simulator.ports_power_sensed) - 1)
@@ -1166,10 +1194,15 @@ def test_set_trip_thresholds_on_initialise(
 
     pasd_bus_device.InitializeSmartbox(smartbox_id)
 
-    # The trip thresholds configured as device properties
+    # The thresholds configured as device properties
     # should have been automatically written to the smartbox
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}FemCurrentTripThresholds",
         [FEM_CURRENT_TRIP_THRESHOLD] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+        lookahead=3,
+    )
+    change_event_callbacks.assert_change_event(
+        f"smartbox{smartbox_id}InputVoltageThresholds",
+        INPUT_VOLTAGE_THRESHOLDS,
         lookahead=3,
     )
