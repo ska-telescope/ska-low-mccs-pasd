@@ -487,6 +487,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         super()._component_state_changed(fault=fault, power=power)
         self._health_model.update_state(fault=fault, power=power)
 
+    # pylint: disable=too-many-branches
     def _pasd_device_state_callback(  # noqa: C901
         self: MccsPasdBus,
         pasd_device_number: int,
@@ -616,17 +617,13 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     if self._simulation_mode == SimulationMode.FALSE:
                         self._set_all_low_pass_filters_of_device(pasd_device_number)
                     # Set the threshold overrides
-                    if (
-                        pasd_device_number in self.AvailableSmartboxes
-                        and self.FEMCurrentTripThreshold is not None
-                    ):
+                    if pasd_device_number not in self.AvailableSmartboxes:
+                        continue
+                    if self.FEMCurrentTripThreshold is not None:
                         self.component_manager.initialize_fem_current_trip_thresholds(
                             pasd_device_number, self.FEMCurrentTripThreshold
                         )
-                    if (
-                        pasd_device_number in self.AvailableSmartboxes
-                        and self.SBInputVoltageThresholds is not None
-                    ):
+                    if self.SBInputVoltageThresholds is not None:
                         self.component_manager.initialize_sb_input_voltage_thresholds(
                             pasd_device_number, self.SBInputVoltageThresholds
                         )
