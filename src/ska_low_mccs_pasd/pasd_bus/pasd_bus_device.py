@@ -441,6 +441,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
         if (
             self._init_pasd_devices
+            and self._simulation_mode == SimulationMode.FALSE
             and communication_state == CommunicationStatus.ESTABLISHED
         ):
             self._init_pasd_devices = False
@@ -614,13 +615,20 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     # Set the device's low-pass filter constants
                     if self._simulation_mode == SimulationMode.FALSE:
                         self._set_all_low_pass_filters_of_device(pasd_device_number)
-                    # Set the FEM current trip thresholds
+                    # Set the threshold overrides
                     if (
                         pasd_device_number in self.AvailableSmartboxes
                         and self.FEMCurrentTripThreshold is not None
                     ):
                         self.component_manager.initialize_fem_current_trip_thresholds(
                             pasd_device_number, self.FEMCurrentTripThreshold
+                        )
+                    if (
+                        pasd_device_number in self.AvailableSmartboxes
+                        and self.SBInputVoltageThresholds is not None
+                    ):
+                        self.component_manager.initialize_sb_input_voltage_thresholds(
+                            pasd_device_number, self.SBInputVoltageThresholds
                         )
 
         if updated_attributes:
