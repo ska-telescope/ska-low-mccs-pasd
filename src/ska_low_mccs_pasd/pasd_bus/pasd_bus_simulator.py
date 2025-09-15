@@ -629,10 +629,7 @@ class PasdHardwareSimulator(BaseControllerSimulator):
 
         Enable or disable all the ports based on the system status.
         """
-        if (
-            self._status in {FndhStatusMap.OK, FndhStatusMap.WARNING}
-            and not self._ports[0].enabled
-        ):
+        if self._status in {FndhStatusMap.OK, FndhStatusMap.WARNING}:
             for port in self._ports:
                 port.enabled = True
         elif self._ports[0].enabled:
