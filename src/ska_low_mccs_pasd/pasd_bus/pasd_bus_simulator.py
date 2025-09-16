@@ -629,10 +629,7 @@ class PasdHardwareSimulator(BaseControllerSimulator):
 
         Enable or disable all the ports based on the system status.
         """
-        if (
-            self._status in {FndhStatusMap.OK, FndhStatusMap.WARNING}
-            and not self._ports[0].enabled
-        ):
+        if self._status in {FndhStatusMap.OK, FndhStatusMap.WARNING}:
             for port in self._ports:
                 port.enabled = True
         elif self._ports[0].enabled:
@@ -1341,11 +1338,12 @@ class SmartboxSimulator(PasdHardwareSimulator):
     DEFAULT_FEM_HEATSINK_TEMPERATURE_1: Final = 4280
     DEFAULT_FEM_HEATSINK_TEMPERATURE_2: Final = 4250
     DEFAULT_PORT_CURRENT_DRAW: Final = 421
-    DEFAULT_PORT_CURRENT_THRESHOLD: Final = (
-        398  # Intentionally set to a different value
-        # to the default device property configuration so
-        # that we can test it is being set at init
-    )
+
+    # Intentionally set the following thresholds differently
+    # to the default device property configuration so
+    # that we can test it is being set at init
+    DEFAULT_PORT_CURRENT_THRESHOLD: Final = 398
+    DEFAULT_INPUT_VOLTAGE_THRESHOLDS: Final = [6000, 5000, 4000, 3200]
 
     ALARM_MAPPING = {
         "input_voltage": SmartboxAlarmFlags.SYS_48V_V,
@@ -1418,6 +1416,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
         self._fem_current_trip_thresholds = [
             self.DEFAULT_PORT_CURRENT_THRESHOLD
         ] * self.NUMBER_OF_PORTS
+        self._input_voltage_thresholds = self.DEFAULT_INPUT_VOLTAGE_THRESHOLDS
 
     @property
     def sys_address(self: SmartboxSimulator) -> int:

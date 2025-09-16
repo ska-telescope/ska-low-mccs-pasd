@@ -70,6 +70,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     ALARM_FLAGS_ATTRIBUTE: Final = "alarm_flags"
 
     FEM_CURRENT_TRIP_THRESHOLDS_ATTRIBUTE: Final = "fem_current_trip_thresholds"
+    INPUT_VOLTAGE_THRESHOLDS_ATTRIBUTE: Final = "input_voltage_thresholds"
 
     STATIC_INFO_ATTRIBUTES: Final[list[str]] = []
     FNCC_STATUS_ATTRIBUTES: Final[list[str]] = []
@@ -498,6 +499,36 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             self.FEM_CURRENT_TRIP_THRESHOLDS_ATTRIBUTE,
             [fem_current_trip_threshold] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
         )
+
+    @check_communicating
+    def initialize_sb_input_voltage_thresholds(
+        self: PasdBusComponentManager,
+        smartbox_id: int,
+        input_voltage_thresholds: list[float],
+    ) -> None:
+        """
+        Initialize the input voltage thresholds.
+
+        :param: smartbox_id: id of the smartbox being addressed
+        :param: input_voltage_thresholds: alarm hi, warn hi, warn lo, alarm lo values
+        """
+        if (
+            input_voltage_thresholds[0]
+            > input_voltage_thresholds[1]
+            > input_voltage_thresholds[2]
+            > input_voltage_thresholds[3]
+        ):
+            self._request_provider.desire_attribute_write(
+                smartbox_id,
+                self.INPUT_VOLTAGE_THRESHOLDS_ATTRIBUTE,
+                input_voltage_thresholds,
+            )
+        else:
+            self._logger.error(
+                f"Not initializing SB{smartbox_id} input voltage thresholds as "
+                "they are not in decreasing order: "
+                f"{input_voltage_thresholds}"
+            )
 
     @check_communicating
     def set_fndh_port_powers(

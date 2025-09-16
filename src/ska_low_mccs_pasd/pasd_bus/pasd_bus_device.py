@@ -81,8 +81,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         dtype=float, default_value=10.0, update_db=True
     )
     # Current trip threshold, used for all FEMs (optional).
-    # If set, it is automatically written to all smartboxes on power up / reset.
-    FEMCurrentTripThreshold: int = tango.server.device_property(dtype=int)
+    # If set, it is automatically written to all smartboxes on initialization.
+    FEMCurrentTripThreshold: Final[int] = tango.server.device_property(dtype=int)
+
+    # Smartbox input voltage thresholds
+    # If set, they are automatically written to all smartboxes on initialization.
+    SBInputVoltageThresholds: Final[list[float]] = tango.server.device_property(
+        dtype="DevVarFloatArray"
+    )
+
     SimulationConfig: Final = tango.server.device_property(
         dtype=int, default_value=SimulationMode.FALSE
     )
@@ -147,6 +154,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             f"\tTimeout: {self.Timeout}\n"
             f"\tLowPassFilterCutoff: {self.LowPassFilterCutoff}\n"
             f"\tFEMCurrentTripThreshold: {self.FEMCurrentTripThreshold}\n"
+            f"\tSBInputVoltageThresholds: {self.SBInputVoltageThresholds}\n"
             f"\tSimulationConfig: {self.SimulationConfig}\n"
             f"\tAvailableSmartboxes: {self.AvailableSmartboxes}\n"
         )
@@ -346,6 +354,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 self.component_manager,
                 self.logger,
                 self.FEMCurrentTripThreshold,
+                self.SBInputVoltageThresholds,
                 self.LowPassFilterCutoff,
             ),
         )
@@ -443,6 +452,11 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     self.component_manager.initialize_fem_current_trip_thresholds(
                         device_number, self.FEMCurrentTripThreshold
                     )
+            if self.SBInputVoltageThresholds is not None:
+                for device_number in self.AvailableSmartboxes:
+                    self.component_manager.initialize_sb_input_voltage_thresholds(
+                        device_number, self.SBInputVoltageThresholds
+                    )
 
     def _component_state_callback(
         self: MccsPasdBus,
@@ -473,6 +487,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         super()._component_state_changed(fault=fault, power=power)
         self._health_model.update_state(fault=fault, power=power)
 
+    # pylint: disable=too-many-branches
     def _pasd_device_state_callback(  # noqa: C901
         self: MccsPasdBus,
         pasd_device_number: int,
@@ -601,13 +616,16 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     # Set the device's low-pass filter constants
                     if self._simulation_mode == SimulationMode.FALSE:
                         self._set_all_low_pass_filters_of_device(pasd_device_number)
-                    # Set the FEM current trip thresholds
-                    if (
-                        pasd_device_number in self.AvailableSmartboxes
-                        and self.FEMCurrentTripThreshold is not None
-                    ):
+                    # Set the threshold overrides
+                    if pasd_device_number not in self.AvailableSmartboxes:
+                        continue
+                    if self.FEMCurrentTripThreshold is not None:
                         self.component_manager.initialize_fem_current_trip_thresholds(
                             pasd_device_number, self.FEMCurrentTripThreshold
+                        )
+                    if self.SBInputVoltageThresholds is not None:
+                        self.component_manager.initialize_sb_input_voltage_thresholds(
+                            pasd_device_number, self.SBInputVoltageThresholds
                         )
 
         if updated_attributes:
@@ -908,10 +926,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             component_manager: PasdBusComponentManager,
             logger: logging.Logger,
             fem_current_trip_threshold: int | None,
+            sb_input_voltage_thresholds: list[float] | None,
             low_pass_filter_cutoff: int | None,
         ):
             self._component_manager = component_manager
             self._fem_current_trip_threshold = fem_current_trip_threshold
+            self._sb_input_voltage_thresholds = sb_input_voltage_thresholds
             self._low_pass_filter_cutoff = low_pass_filter_cutoff
             super().__init__(logger)
 
@@ -927,11 +947,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             :param smartbox_id: id of the smartbox being addressed.
             :param simulation_mode: whether we are in simulation mode.
             """
-            # We set the current trip thresholds here just in case
+            # We set the threshold overrides here just in case
             # it hasn't been done yet
             if self._fem_current_trip_threshold is not None:
                 self._component_manager.initialize_fem_current_trip_thresholds(
                     smartbox_id, self._fem_current_trip_threshold
+                )
+            if self._sb_input_voltage_thresholds is not None:
+                self._component_manager.initialize_sb_input_voltage_thresholds(
+                    smartbox_id, self._sb_input_voltage_thresholds
                 )
             self._component_manager.initialize_smartbox(smartbox_id)
             if simulation_mode == SimulationMode.FALSE:

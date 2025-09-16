@@ -39,6 +39,18 @@ supports the following commands:
 | ResetSmartboxWarnings     | SMART Box device ID                 | Clear the SMART Box's warning flags register                                                    |
 +---------------------------+-------------------------------------+-------------------------------------------------------------------------------------------------+
 
+Initialization
+--------------
+When the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.InitializeSmartbox` or
+:py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.InitializeFndh` command is called, the PaSD bus device will attempt to
+initialize the specified SMART Box / FNDH. This involves:
+
+1. Setting the FEM current trip thresholds and input voltage thresholds to the values specified in the device properties (SMART Boxes only)
+2. Writing to the device's SYS_STATUS register to request it to enter normal operation
+3. Setting the low-pass filter constant to the value specified in the device properties
+4. Requesting the device to update all its static attributes e.g. firmware version, CPU ID etc.
+
+
 Setting filter constants
 ------------------------
 The :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.SetFndhLowPassFilters` command accepts a JSON object with the following keys:

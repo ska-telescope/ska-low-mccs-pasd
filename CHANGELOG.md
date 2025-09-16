@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 3.4.0
+
+* [SKB-1021] Add device property SBInputVoltageThresholds to override firmware values.
+
 ## 3.3.0
 
 * [THORN-248] Update ska-low-mccs-common dependency to use refactored MccsCommandProxy.
