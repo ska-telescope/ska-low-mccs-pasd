@@ -512,11 +512,23 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param: smartbox_id: id of the smartbox being addressed
         :param: input_voltage_thresholds: alarm hi, warn hi, warn lo, alarm lo values
         """
-        self._request_provider.desire_attribute_write(
-            smartbox_id,
-            self.INPUT_VOLTAGE_THRESHOLDS_ATTRIBUTE,
-            input_voltage_thresholds,
-        )
+        if (
+            input_voltage_thresholds[0]
+            > input_voltage_thresholds[1]
+            > input_voltage_thresholds[2]
+            > input_voltage_thresholds[3]
+        ):
+            self._request_provider.desire_attribute_write(
+                smartbox_id,
+                self.INPUT_VOLTAGE_THRESHOLDS_ATTRIBUTE,
+                input_voltage_thresholds,
+            )
+        else:
+            self._logger.error(
+                f"Not initializing SB{smartbox_id} input voltage thresholds as "
+                "they are not in decreasing order: "
+                f"{input_voltage_thresholds}"
+            )
 
     @check_communicating
     def set_fndh_port_powers(
