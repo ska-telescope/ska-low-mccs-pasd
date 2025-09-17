@@ -441,7 +441,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
     def _power_fndh_ports(
         self: FndhComponentManager, power_state: PowerState, timeout: int
     ) -> tuple[ResultCode, int]:
-        desired_port_powers: list[bool] = [False] * PasdData.NUMBER_OF_FNDH_PORTS
+        desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
         for port in self._ports_with_smartbox:
             desired_port_powers[port - 1] = power_state == PowerState.ON
         json_argument = json.dumps(
@@ -454,10 +454,11 @@ class FndhComponentManager(TaskExecutorComponentManager):
         return self._wait_for_fndh_ports_state(desired_port_powers, timeout)
 
     def _wait_for_fndh_ports_state(
-        self: FndhComponentManager, desired_port_powers: list[bool], timeout: int
+        self: FndhComponentManager, desired_port_powers: list[bool | None], timeout: int
     ) -> tuple[ResultCode, int]:
         desired_port_power_states = [
-            PowerState.ON if power else PowerState.OFF for power in desired_port_powers
+            Any if power is None else PowerState.ON if power else PowerState.OFF
+            for power in desired_port_powers
         ]
         while not self._fndh_port_powers == desired_port_power_states:
             self.logger.debug("Waiting for unmasked smartbox ports to change state")
