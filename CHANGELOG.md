@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* [LOW-1745] Bump ska-tango-devices to 0.10.0, with support for suppressing the deployment of check-dependencies initContainers that wait for databaseDS, when deploying to a persistent platform.
+
 ## 3.4.0
 
 * [SKB-1021] Add device property SBInputVoltageThresholds to override firmware values.
