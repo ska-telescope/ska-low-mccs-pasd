@@ -70,15 +70,17 @@ class TestFieldStationIntegration:
         field_station_device: tango.DeviceProxy,
         fndh_device: tango.DeviceProxy,
         fndh_simulator: FndhSimulator,
+        off_smartbox_id: int,
         smartbox_attached_ports: list[int],
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
         """
         Test Off command turns off only the FNDH ports with attached smartboxes.
 
-        :param field_station_device: provide to the field station device
+        :param field_station_device: proxy to the field station device
         :param fndh_device: proxy to the FNDH device
         :param fndh_simulator: the backend fndh simulator
+        :param off_smartbox_id: the id of the smartbox which is simulated to be off.
         :param smartbox_attached_ports: list of ports with attached smartboxes
         :param change_event_callbacks: group of Tango change event
             callbacks with asynchrony support
@@ -106,8 +108,7 @@ class TestFieldStationIntegration:
             i + 1 in smartbox_attached_ports
             for i in range(PasdData.NUMBER_OF_FNDH_PORTS)
         ]
-        # TODO: Why is port 5 always off?
-        expected_port_status[4] = False
+        expected_port_status[smartbox_attached_ports[off_smartbox_id - 1] - 1] = False
         assert all(
             a == b for a, b in zip(fndh_device.portsPowerSensed, expected_port_status)
         )
@@ -149,7 +150,6 @@ class TestFieldStationIntegration:
         fndh_device: tango.DeviceProxy,
         change_event_callbacks: MockTangoEventCallbackGroup,
         smartbox_proxys: list[tango.DeviceProxy],
-        off_smartbox_id: int,
         antenna_to_turn_on: str,
         fndh_simulator: FndhSimulator,
     ) -> None:
@@ -163,8 +163,6 @@ class TestFieldStationIntegration:
             callbacks with asynchrony support
         :param smartbox_proxys: a dict of device proxies to the stations
             smartboxes.
-        :param off_smartbox_id: a fixture containing the id of a smartbox
-            simulated to be off.
         :param antenna_to_turn_on: the antenne under test.
         :param fndh_simulator: the backend fndh simulator.
         """
