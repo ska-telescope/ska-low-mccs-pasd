@@ -133,7 +133,7 @@ class TestFieldStationIntegration:
         # are turned off
         expected_port_status = [False] * PasdData.NUMBER_OF_FNDH_PORTS
         expected_port_status[random_port - 1] = True
-        field_station_device.Off()
+        assert field_station_device.Off()[0] == ResultCode.QUEUED
         change_event_callbacks["field_station_state"].assert_change_event(
             tango.DevState.OFF, lookahead=2
         )
