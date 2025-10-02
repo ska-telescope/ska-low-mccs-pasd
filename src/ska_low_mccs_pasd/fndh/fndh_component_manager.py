@@ -461,7 +461,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
             for power in desired_port_powers
         ]
         while not all(
-            port_state == demanded_state or demanded_state == Any
+            demanded_state in (Any, port_state)
             for port_state, demanded_state in zip(
                 self._fndh_port_powers, desired_port_power_states
             )
