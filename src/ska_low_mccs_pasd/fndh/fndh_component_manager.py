@@ -460,7 +460,12 @@ class FndhComponentManager(TaskExecutorComponentManager):
             Any if power is None else PowerState.ON if power else PowerState.OFF
             for power in desired_port_powers
         ]
-        while not self._fndh_port_powers == desired_port_power_states:
+        while not all(
+            port_state == demanded_state or demanded_state == Any
+            for port_state, demanded_state in zip(
+                self._fndh_port_powers, desired_port_power_states
+            )
+        ):
             self.logger.debug("Waiting for unmasked smartbox ports to change state")
             t1 = time.time()
             self.fndh_ports_change.wait(timeout)
