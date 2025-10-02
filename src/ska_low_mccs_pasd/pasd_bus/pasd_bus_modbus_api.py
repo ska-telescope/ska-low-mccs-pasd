@@ -317,6 +317,9 @@ class PasdBusModbusApiClient:
         :param logger_object: the logger to use
         :param timeout: the timeout period in seconds
         """
+        self._host = host
+        self._port = port
+        self._timeout = timeout
         self._client = ModbusTcpClient(host, port, ModbusAsciiFramer, timeout=timeout)
         logger_object.info(f"Created Modbus TCP client for address {host}, port {port}")
         self._logger = logger_object
@@ -591,18 +594,13 @@ class PasdBusModbusApiClient:
         """
         Reset the connection to the device.
 
-        Read from the device until the timeout
-        to flush the input buffer, then close
-        the connection and reconnect.
+        Re-create the Modbus client to ensure
+        the transaction manager is properly reset.
         """
         if self._client.connected:
-            data = self._client.recv(None)
-            if data:
-                self._logger.debug(
-                    "Recovering from communications error (SPRTS-98 / SKB-455): "
-                    f"recycling connection after discarding bytes:\n{data.hex()}"
-                )
             self._client.close()
-            # Wait a few seconds to make sure the socket is properly closed
-            time.sleep(5)
+            time.sleep(1)
+        self._client = ModbusTcpClient(
+            self._host, self._port, ModbusAsciiFramer, timeout=self._timeout
+        )
         self._client.connect()
