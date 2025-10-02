@@ -70,7 +70,7 @@ class TestFieldStationIntegration:
         field_station_device: tango.DeviceProxy,
         fndh_device: tango.DeviceProxy,
         fndh_simulator: FndhSimulator,
-        off_smartbox_id: int,
+        off_smartbox_attached_port: int,
         smartbox_attached_ports: list[int],
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
@@ -80,7 +80,7 @@ class TestFieldStationIntegration:
         :param field_station_device: proxy to the field station device
         :param fndh_device: proxy to the FNDH device
         :param fndh_simulator: the backend fndh simulator
-        :param off_smartbox_id: the id of the smartbox which is simulated to be off.
+        :param off_smartbox_attached_port: the FNDH port connected to the off smartbox.
         :param smartbox_attached_ports: list of ports with attached smartboxes
         :param change_event_callbacks: group of Tango change event
             callbacks with asynchrony support
@@ -105,10 +105,10 @@ class TestFieldStationIntegration:
 
         # All FNDH ports with attached smartboxes should now be turned on
         expected_port_status = [
-            i + 1 in smartbox_attached_ports
-            for i in range(PasdData.NUMBER_OF_FNDH_PORTS)
+            i in smartbox_attached_ports
+            for i in range(1, PasdData.NUMBER_OF_FNDH_PORTS + 1)
         ]
-        expected_port_status[smartbox_attached_ports[off_smartbox_id - 1] - 1] = False
+        expected_port_status[off_smartbox_attached_port - 1] = False
         assert all(
             a == b for a, b in zip(fndh_device.portsPowerSensed, expected_port_status)
         )
