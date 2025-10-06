@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* [THORN-305] Prevent unhandled exception when handling errors from write requests.
+
 ## 3.4.1
 
 * [THORN-284] Only power on/off ports with smartboxes attached.
