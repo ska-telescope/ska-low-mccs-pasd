@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 3.4.1
+
+* [THORN-284] Only power on/off ports with smartboxes attached.
+
 * [LOW-1745] Bump ska-tango-devices to 0.10.0, with support for suppressing the deployment of check-dependencies initContainers that wait for databaseDS, when deploying to a persistent platform.
 
 ## 3.4.0

@@ -4,6 +4,9 @@
     "dockerfile": "Dockerfile",
     "context": ".."
   },
+  "mounts": [
+    "source=${localWorkspaceFolder}/../ska-control-model,target=/workspaces/ska-control-model,type=bind"
+  ],
   "customizations": {
     "vscode": {
       "settings": {
