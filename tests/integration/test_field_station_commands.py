@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import gc
 import json
+import random
 import time
 
 import pytest
@@ -21,6 +22,7 @@ from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FndhSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
+from ska_low_mccs_pasd.pasd_data import PasdData
 
 gc.disable()
 
@@ -44,6 +46,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "fndh_outside_temperature",
         "smartbox1_state",
         "smartbox2_state",
+        "fndh_ports_power_sensed",
         timeout=20.0,
     )
 
@@ -62,6 +65,83 @@ class TestFieldStationIntegration:
     """Test pasdbus and fndh integration."""
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_off_command(
+        self: TestFieldStationIntegration,
+        field_station_device: tango.DeviceProxy,
+        fndh_device: tango.DeviceProxy,
+        fndh_simulator: FndhSimulator,
+        off_smartbox_attached_port: int,
+        smartbox_attached_ports: list[int],
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test Off command turns off only the FNDH ports with attached smartboxes.
+
+        :param field_station_device: proxy to the field station device
+        :param fndh_device: proxy to the FNDH device
+        :param fndh_simulator: the backend fndh simulator
+        :param off_smartbox_attached_port: the FNDH port connected to the off smartbox.
+        :param smartbox_attached_ports: list of ports with attached smartboxes
+        :param change_event_callbacks: group of Tango change event
+            callbacks with asynchrony support
+        """
+        fndh_device.PortsWithSmartbox = smartbox_attached_ports
+        field_station_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["field_station_state"],
+        )
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
+
+        field_station_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.UNKNOWN, lookahead=2
+        )
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.STANDBY, lookahead=2
+        )
+
+        # All FNDH ports with attached smartboxes should now be turned on
+        expected_port_status = [
+            i in smartbox_attached_ports
+            for i in range(1, PasdData.NUMBER_OF_FNDH_PORTS + 1)
+        ]
+        expected_port_status[off_smartbox_attached_port - 1] = False
+        assert all(
+            a == b for a, b in zip(fndh_device.portsPowerSensed, expected_port_status)
+        )
+
+        # Manually turn on an additional random port
+        # which is not connected to this FNDH
+        unattached_ports: set[int] = set(range(PasdData.NUMBER_OF_FNDH_PORTS)) - set(
+            smartbox_attached_ports
+        )
+        random_port: int = random.choice(list(unattached_ports))
+        expected_port_status[random_port - 1] = True
+
+        fndh_simulator.simulate_port_stuck_on(random_port)
+
+        fndh_device.subscribe_event(
+            "portsPowerSensed",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndh_ports_power_sensed"],
+        )
+
+        # Turn Field Station Off and verify only attached smartbox ports
+        # are turned off
+        expected_port_status = [False] * PasdData.NUMBER_OF_FNDH_PORTS
+        expected_port_status[random_port - 1] = True
+        assert field_station_device.Off()[0] == ResultCode.QUEUED
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.OFF, lookahead=2
+        )
+        change_event_callbacks["fndh_ports_power_sensed"].assert_change_event(
+            expected_port_status, lookahead=2
+        )
+
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     # pylint: disable=too-many-locals
     def test_turn_on_off_antenna(
         self: TestFieldStationIntegration,
@@ -70,7 +150,6 @@ class TestFieldStationIntegration:
         fndh_device: tango.DeviceProxy,
         change_event_callbacks: MockTangoEventCallbackGroup,
         smartbox_proxys: list[tango.DeviceProxy],
-        off_smartbox_id: int,
         antenna_to_turn_on: str,
         fndh_simulator: FndhSimulator,
     ) -> None:
@@ -84,8 +163,6 @@ class TestFieldStationIntegration:
             callbacks with asynchrony support
         :param smartbox_proxys: a dict of device proxies to the stations
             smartboxes.
-        :param off_smartbox_id: a fixture containing the id of a smartbox
-            simulated to be off.
         :param antenna_to_turn_on: the antenne under test.
         :param fndh_simulator: the backend fndh simulator.
         """
