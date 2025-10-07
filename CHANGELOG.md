@@ -3,6 +3,7 @@
 ## Unreleased
 
 * [THORN-305] Prevent unhandled exception when handling errors from write requests.
+* [SKB-455] Re-create the Modbus client after a failed poll to workaround the connection issues.
 
 ## 3.4.1
 
