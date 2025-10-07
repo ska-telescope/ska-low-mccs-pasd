@@ -536,9 +536,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             return ""
 
         if "error" in kwargs:
+            attr_list = kwargs.get("attributes")
+            if not attr_list:
+                # This was a write request, nothing further to do
+                # (note error was already logged by the Modbus API)
+                return
+
             # Mark the quality factor for the attribute(s) as INVALID
             attributes_marked_invalid = []
-            for pasd_attribute_name in kwargs["attributes"]:
+            for pasd_attribute_name in attr_list:
                 tango_attribute_name = _get_tango_attribute_name(
                     pasd_device_number, pasd_attribute_name
                 )
