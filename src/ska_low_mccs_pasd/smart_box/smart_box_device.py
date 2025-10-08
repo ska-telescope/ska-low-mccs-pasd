@@ -28,7 +28,6 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
 from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
-from ..pasd_utils import configure_alarms
 from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
 
@@ -561,11 +560,6 @@ class MccsSmartBox(MccsBaseDevice):
             if attr_name.endswith("thresholds"):
                 try:
                     attr_true = attr_name.removesuffix("thresholds")
-                    configure_alarms(
-                        self.get_device_attr().get_attr_by_name(attr_true),
-                        attr_value,
-                        self.logger,
-                    )
                     self._health_model.health_params = {attr_true: attr_value}
                 except DevFailed:
                     # No corresponding attribute to update, continue
