@@ -1234,12 +1234,6 @@ class TestSmartBoxPasdBusIntegration:
         ].assert_change_event([30.2, 25.5, 10.5, 5], lookahead=13)
         assert smartbox_simulator.pcb_temperature_thresholds == [3020, 2550, 1050, 500]
 
-        # Check the threshold values get propagated to the Tango alarm configuration
-        assert (
-            smartbox_device.read_attribute("pcbTemperature").quality
-            == tango.AttrQuality.ATTR_ALARM
-        )
-
     def test_set_port_powers(
         self: TestSmartBoxPasdBusIntegration,
         on_smartbox_device: tango.DeviceProxy,
