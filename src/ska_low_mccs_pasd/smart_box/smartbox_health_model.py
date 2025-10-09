@@ -144,6 +144,10 @@ class SmartBoxHealthModel(BaseHealthModel):
             # Monitoring point pcbtemperature is not implemented in h/w
             # and is not rolled up in health. see SPRTS-347
             params.pop("pcbtemperature")
+        if params.get("femcurrenttrip") is not None:
+            # No associated attribute for FEM current trip thresholds,
+            # this is handled via reading back the port breakers tripped.
+            params.pop("femcurrenttrip")
         self._health_rules._thresholds = self._merge_dicts(
             self._health_rules._thresholds, params
         )
