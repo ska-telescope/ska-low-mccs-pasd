@@ -1234,12 +1234,6 @@ class TestSmartBoxPasdBusIntegration:
         ].assert_change_event([30.2, 25.5, 10.5, 5], lookahead=13)
         assert smartbox_simulator.pcb_temperature_thresholds == [3020, 2550, 1050, 500]
 
-        # Check the threshold values get propagated to the Tango alarm configuration
-        assert (
-            smartbox_device.read_attribute("pcbTemperature").quality
-            == tango.AttrQuality.ATTR_ALARM
-        )
-
     def test_set_port_powers(
         self: TestSmartBoxPasdBusIntegration,
         on_smartbox_device: tango.DeviceProxy,
@@ -1389,11 +1383,13 @@ class TestSmartBoxPasdBusIntegration:
         # Test ALARM / FAILED state
         setattr(smartbox_simulator, monitoring_point, max_alarm + 100)
         change_event_callbacks["pasdStatus"].assert_change_event(
-            SmartboxStatusMap.ALARM.name, lookahead=20, consume_nonmatches=True
+            SmartboxStatusMap.ALARM.name, lookahead=20
         )
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.FAILED,
+            lookahead=20,
+            consume_nonmatches=True,
         )
         setattr(smartbox_simulator, monitoring_point, max_warning)
         # We should now be in RECOVERY state - this is still FAILED
@@ -1405,30 +1401,34 @@ class TestSmartBoxPasdBusIntegration:
         # Test transition to WARNING / DEGRADED
         assert pasd_bus_device.initializeSmartbox(on_smartbox_id)[0] == ResultCode.OK
         change_event_callbacks["pasdStatus"].assert_change_event(
-            SmartboxStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
+            SmartboxStatusMap.WARNING.name, lookahead=20
         )
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.DEGRADED,
+            lookahead=20,
+            consume_nonmatches=True,
         )
 
         # Test transition to OK / HEALTHY
         setattr(smartbox_simulator, monitoring_point, healthy_value)
         change_event_callbacks["pasdStatus"].assert_change_event(
-            SmartboxStatusMap.OK.name, lookahead=20, consume_nonmatches=True
+            SmartboxStatusMap.OK.name, lookahead=20
         )
         change_event_callbacks.assert_change_event(
-            "smartboxHealthState", HealthState.OK
+            "smartboxHealthState", HealthState.OK, lookahead=20, consume_nonmatches=True
         )
 
         # Test minimum alarm and warning thresholds
         setattr(smartbox_simulator, monitoring_point, min_alarm - 100)
         change_event_callbacks["pasdStatus"].assert_change_event(
-            SmartboxStatusMap.ALARM.name, lookahead=20, consume_nonmatches=True
+            SmartboxStatusMap.ALARM.name, lookahead=20
         )
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.FAILED,
+            lookahead=20,
+            consume_nonmatches=True,
         )
 
         setattr(smartbox_simulator, monitoring_point, min_warning)

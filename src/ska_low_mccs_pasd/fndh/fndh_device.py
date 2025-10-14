@@ -35,7 +35,6 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
 from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
-from ..pasd_utils import configure_alarms
 from .fndh_component_manager import FndhComponentManager
 from .fndh_health_model import FndhHealthModel
 
@@ -815,13 +814,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                     threshold_attribute_name = attr_name.removesuffix("thresholds")
                     self._health_model.update_monitoring_point_threshold(
                         threshold_attribute_name, attr_value
-                    )
-                    configure_alarms(
-                        self.get_device_attr().get_attr_by_name(
-                            threshold_attribute_name
-                        ),
-                        attr_value,
-                        self.logger,
                     )
                 except DevFailed:
                     # No corresponding attribute to update, continue

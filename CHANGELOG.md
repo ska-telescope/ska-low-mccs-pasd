@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* [THORN-253] Populate attribute alarm configuration from tmdata.
+
 ## 3.4.2
 
 * [THORN-305] Prevent unhandled exception when handling errors from write requests.

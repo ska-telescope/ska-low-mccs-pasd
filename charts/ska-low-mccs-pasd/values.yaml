@@ -58,20 +58,106 @@ ska-tango-devices:
   labels:
     app: ska-low-mccs-pasd
 
-  # deviceDefaults:
-  #   MccsFieldStation:
-  #     LoggingLevelDefault: 5
-  #     ConfigurationPort: 8081
-  #   MccsPasdBus:
-  #     Port: 502
-  #     Timeout: 10
-  #     LoggingLevelDefault: 5
-  #   MccsFNDH:
-  #     LoggingLevelDefault: 5
-  #   MccsFncc:
-  #     LoggingLevelDefault: 5
-  #   MccsSmartbox:
-  #     LoggingLevelDefault: 5
+  deviceDefaults:
+    # MccsFieldStation:
+    #   LoggingLevelDefault: 5
+    #   ConfigurationPort: 8081
+    # MccsPasdBus:
+    #   Port: 502
+    #   Timeout: 10
+    #   LoggingLevelDefault: 5
+    # MccsFNDH:
+    #   LoggingLevelDefault: 5
+    # MccsFncc:
+    #   LoggingLevelDefault: 5
+    # MccsSmartbox:
+    #   LoggingLevelDefault: 5
+    MccsFNDH:
+      Psu48vVoltage1->max_alarm: 51
+      Psu48vVoltage1->max_warning: 49
+      Psu48vVoltage1->min_warning: 46
+      Psu48vVoltage1->min_alarm: 41
+      Psu48vVoltage2->max_alarm: 51
+      Psu48vVoltage2->max_warning: 49
+      Psu48vVoltage2->min_warning: 46
+      Psu48vVoltage2->min_alarm: 41
+      Psu48vCurrent->max_alarm: 17
+      Psu48vCurrent->max_warning: 15
+      Psu48vCurrent->min_warning: 0
+      Psu48vCurrent->min_alarm: -4
+      Psu48vTemperature1->max_alarm: 95
+      Psu48vTemperature1->max_warning: 80
+      Psu48vTemperature1->min_warning: 5
+      Psu48vTemperature1->min_alarm: -2
+      Psu48vTemperature2->max_alarm: 95
+      Psu48vTemperature2->max_warning: 80
+      Psu48vTemperature2->min_warning: 5
+      Psu48vTemperature2->min_alarm: -2
+      PanelTemperature->max_alarm: 80
+      PanelTemperature->max_warning: 65
+      PanelTemperature->min_warning: 5
+      PanelTemperature->min_alarm: -2
+      FncbTemperature->max_alarm: 80
+      FncbTemperature->max_warning: 65
+      FncbTemperature->min_warning: 5
+      FncbTemperature->min_alarm: -2
+      FncbHumidity->max_alarm: 80
+      FncbHumidity->max_warning: 65
+      FncbHumidity->min_warning: 15
+      FncbHumidity->min_alarm: 5
+      CommsGatewayTemperature->max_alarm: 80
+      CommsGatewayTemperature->max_warning: 65
+      CommsGatewayTemperature->min_warning: 5
+      CommsGatewayTemperature->min_alarm: -2
+      PowerModuleTemperature->max_alarm: 80
+      PowerModuleTemperature->max_warning: 65
+      PowerModuleTemperature->min_warning: 5
+      PowerModuleTemperature->min_alarm: -2
+      OutsideTemperature->max_alarm: 80
+      OutsideTemperature->max_warning: 65
+      OutsideTemperature->min_warning: 5
+      OutsideTemperature->min_alarm: -2
+      InternalAmbientTemperature->max_alarm: 80
+      InternalAmbientTemperature->max_warning: 65
+      InternalAmbientTemperature->min_warning: 5
+      InternalAmbientTemperature->min_alarm: -2
+    MccsSmartbox:
+      InputVoltage->max_alarm: 49.5
+      InputVoltage->max_warning: 48.5
+      InputVoltage->min_warning: 45.5
+      InputVoltage->min_alarm: 41
+      PowerSupplyOutputVoltage->max_alarm: 4.95
+      PowerSupplyOutputVoltage->max_warning: 48
+      PowerSupplyOutputVoltage->min_warning: 4.5
+      PowerSupplyOutputVoltage->min_alarm: 4.1
+      PowerSupplyTemperature->max_alarm: 80
+      PowerSupplyTemperature->max_warning: 65
+      PowerSupplyTemperature->min_warning: 5
+      PowerSupplyTemperature->min_alarm: -2
+      PcbTemperature->max_alarm: 80
+      PcbTemperature->max_warning: 65
+      PcbTemperature->min_warning: 5
+      PcbTemperature->min_alarm: -2
+      FemAmbientTemperature->max_alarm: 55
+      FemAmbientTemperature->max_warning: 40
+      FemAmbientTemperature->min_warning: 5
+      FemAmbientTemperature->min_alarm: -2
+      FemCaseTemperature1->max_alarm: 55
+      FemCaseTemperature1->max_warning: 40
+      FemCaseTemperature1->min_warning: 5
+      FemCaseTemperature1->min_alarm: -2
+      FemCaseTemperature2->max_alarm: 55
+      FemCaseTemperature2->max_warning: 40
+      FemCaseTemperature2->min_warning: 5
+      FemCaseTemperature2->min_alarm: -2
+      FemHeatsinkTemperature1->max_alarm: 55
+      FemHeatsinkTemperature1->max_warning: 40
+      FemHeatsinkTemperature1->min_warning: 5
+      FemHeatsinkTemperature1->min_alarm: -2
+      FemHeatsinkTemperature2->max_alarm: 55
+      FemHeatsinkTemperature2->max_warning: 40
+      FemHeatsinkTemperature2->min_warning: 5
+      FemHeatsinkTemperature2->min_alarm: -2
 
   # devices:
   #   MccsFieldStation:
