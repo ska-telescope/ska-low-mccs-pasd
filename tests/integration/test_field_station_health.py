@@ -42,7 +42,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "smartbox_state",
         "smartbox_healthstate",
         "smartbox_adminMode",
-        timeout=30.0,
+        timeout=TIMEOUT,
     )
 
 
@@ -255,6 +255,7 @@ class TestFieldStationHealth:
                 f"{[(d.name(), d.state(), d.healthState) for d in bad_devices]}"
             )
 
+    # pylint: disable = too-many-locals
     # flake8: noqa
     def test_health_aggregation(
         self: TestFieldStationHealth,
@@ -284,6 +285,10 @@ class TestFieldStationHealth:
         :param smartbox_proxys: list of smartbox proxies to test
         :param wait_for_lrcs_to_finish: a callable that waits for all LRCs to finish
         """
+        # Change events come in thick and fast so we need to allow some time
+        # between us seeing them here and the code under test actually finishing
+        # everything it has to do with it.
+        event_processing_time = 0.2
         field_station_device.subscribe_event(
             "healthState",
             tango.EventType.CHANGE_EVENT,
@@ -314,6 +319,7 @@ class TestFieldStationHealth:
             change_event_callbacks=change_event_callbacks,
         )
         wait_for_lrcs_to_finish(devices)
+        sleep(1)
         self._check_devices_on_and_healthy(devices)
 
         assert json.loads(field_station_device.healthThresholds)["smartboxes"] == [
@@ -344,7 +350,7 @@ class TestFieldStationHealth:
                 change_event_callbacks["field_station_healthstate"].assert_change_event(
                     HealthState.DEGRADED, lookahead=10, consume_nonmatches=True
                 )
-                sleep(0.5)  # Allow the event to be processed.
+                sleep(event_processing_time)
             assert field_station_device.healthState == HealthState.DEGRADED
 
         # Reset thresholds to get devices back to healthy state
@@ -371,11 +377,13 @@ class TestFieldStationHealth:
                 )
             # Should be degraded until the last smartbox fails.
             if smartbox != smartbox_proxys[-1]:
+                sleep(event_processing_time)
                 assert field_station_device.healthState == HealthState.DEGRADED
 
         change_event_callbacks["field_station_healthstate"].assert_change_event(
             HealthState.FAILED, lookahead=10, consume_nonmatches=True
         )
+        sleep(event_processing_time)
         assert field_station_device.healthState == HealthState.FAILED
 
         # Get back to healthy.
@@ -385,6 +393,7 @@ class TestFieldStationHealth:
         change_event_callbacks["field_station_healthstate"].assert_change_event(
             HealthState.OK, lookahead=10, consume_nonmatches=True
         )
+        sleep(event_processing_time)
         assert field_station_device.healthState == HealthState.OK
 
         # Change thresholds and repeat the above test.
@@ -412,6 +421,7 @@ class TestFieldStationHealth:
         change_event_callbacks["field_station_healthstate"].assert_change_event(
             HealthState.DEGRADED, lookahead=10, consume_nonmatches=True
         )
+        sleep(event_processing_time)
         assert field_station_device.healthState == HealthState.DEGRADED
 
         # Reset
@@ -422,6 +432,7 @@ class TestFieldStationHealth:
         change_event_callbacks["field_station_healthstate"].assert_change_event(
             HealthState.OK, lookahead=10, consume_nonmatches=True
         )
+        sleep(event_processing_time)
         assert field_station_device.healthState == HealthState.OK
 
         # Check f2d threshold.
@@ -431,6 +442,7 @@ class TestFieldStationHealth:
         change_event_callbacks["field_station_healthstate"].assert_change_event(
             HealthState.DEGRADED, lookahead=10, consume_nonmatches=True
         )
+        sleep(event_processing_time)
         assert field_station_device.healthState == HealthState.DEGRADED
 
         # Check f2f threshold.
@@ -440,6 +452,7 @@ class TestFieldStationHealth:
         change_event_callbacks["field_station_healthstate"].assert_change_event(
             HealthState.FAILED, lookahead=10, consume_nonmatches=True
         )
+        sleep(event_processing_time)
         assert field_station_device.healthState == HealthState.FAILED
 
         # Reset
@@ -452,6 +465,7 @@ class TestFieldStationHealth:
             }
         )
         change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.OK, lookahead=10, consume_nonmatches=True
+            HealthState.OK, lookahead=15, consume_nonmatches=True
         )
+        sleep(event_processing_time)
         assert field_station_device.healthState == HealthState.OK

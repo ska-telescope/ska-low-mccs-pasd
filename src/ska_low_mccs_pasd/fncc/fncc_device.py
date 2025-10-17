@@ -202,9 +202,9 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             communication_state.name,
         )
         if communication_state != CommunicationStatus.ESTABLISHED:
-            self._component_state_changed_callback(power=PowerState.UNKNOWN)
+            self.component_manager._update_component_state(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self._component_state_changed_callback(power=PowerState.ON)
+            self.component_manager._update_component_state(power=PowerState.ON)
 
         super()._communication_state_changed(communication_state)
 

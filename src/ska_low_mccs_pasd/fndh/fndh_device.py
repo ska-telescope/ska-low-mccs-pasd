@@ -672,10 +672,12 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             # Clear the cached monitoring points due to loss of communication.
             self._health_monitor_points = {}
 
-            self._component_state_changed(power=PowerState.UNKNOWN)
+            self.component_manager._update_component_state(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._update_port_power_states(self._port_power_states)
-            self._component_state_changed(power=self.component_manager._power_state)
+            self.component_manager._update_component_state(
+                power=self.component_manager._power_state
+            )
 
         super()._communication_state_changed(communication_state)
 

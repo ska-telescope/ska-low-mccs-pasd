@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 3.4.3
+
+* [THORN-313] Correct some power callbacks to use `_update_component_state` instead of `_component_state_changed` for internal state consistency.
 * [THORN-253] Populate attribute alarm configuration from tmdata.
 
 ## 3.4.2

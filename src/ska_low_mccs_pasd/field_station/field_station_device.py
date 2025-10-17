@@ -248,9 +248,11 @@ class MccsFieldStation(MccsBaseDevice):
         # We need to subscribe and re-emit change events.
         super()._communication_state_changed(communication_state)
         if communication_state != CommunicationStatus.ESTABLISHED:
-            self._component_state_callback(power=PowerState.UNKNOWN)
+            self.component_manager._update_component_state(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self._component_state_callback(power=self.component_manager._power_state)
+            self.component_manager._update_component_state(
+                power=self.component_manager._power_state
+            )
 
     def _component_state_callback(  # noqa: C901
         self: MccsFieldStation,
