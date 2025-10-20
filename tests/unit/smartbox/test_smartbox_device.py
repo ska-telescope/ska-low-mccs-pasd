@@ -256,6 +256,7 @@ def test_command_queued(
         ),
     ],
 )
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 def test_health(
     smartbox_device: tango.DeviceProxy,
     change_event_callbacks: MockTangoEventCallbackGroup,
@@ -273,6 +274,11 @@ def test_health(
         :py:class:`tango.test_context.DeviceTestContext`.
     :param smartbox_device: the smartbox device under test
     :param change_event_callbacks: a collection of change event callbacks.
+    :param attribute: the attribute to test health for.
+    :param max_alarm: maximum alarm threshold for the attribute.
+    :param max_warning: maximum warning threshold for the attribute.
+    :param min_warning: minimum warning threshold for the attribute.
+    :param min_alarm: minimum alarm threshold for the attribute.
     """
     smartbox_device.subscribe_event(
         "state",
@@ -289,7 +295,7 @@ def test_health(
     change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
 
     smartbox_device.subscribe_event(
-        "femHeatsinkTemperature2",
+        "powersupplyOutputVoltage",
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["attribute"],
     )
@@ -310,6 +316,8 @@ def test_health(
         alarm_config = attribute_config.alarms
         alarm_config.max_warning = str(max_warning)
         alarm_config.max_alarm = str(max_alarm)
+        alarm_config.min_warning = str(min_warning)
+        alarm_config.min_alarm = str(min_alarm)
         attribute_config.alarms = alarm_config
         smartbox_device.set_attribute_config(attribute_config)
     except tango.DevFailed:
@@ -319,7 +327,7 @@ def test_health(
         json.dumps(
             {
                 "attr_name": attribute.lower(),
-                "attr_value": int(max_alarm * 1.5),
+                "attr_value": float(max_alarm * 1.5),
                 "timestamp": datetime.now(timezone.utc).timestamp(),
             }
         )
@@ -331,7 +339,7 @@ def test_health(
         json.dumps(
             {
                 "attr_name": attribute.lower(),
-                "attr_value": int((max_warning + min_warning) / 2),
+                "attr_value": float((max_warning + min_warning) / 2),
                 "timestamp": datetime.now(timezone.utc).timestamp(),
             }
         )
@@ -347,7 +355,7 @@ def test_health(
         "dev_state",
     ),
     [
-        ("UNITIALISED", HealthState.OK, tango.DevState.ON),
+        ("UNINITIALISED", HealthState.OK, tango.DevState.ON),
         ("OK", HealthState.OK, tango.DevState.ON),
         ("WARNING", HealthState.DEGRADED, tango.DevState.ALARM),
         ("ALARM", HealthState.FAILED, tango.DevState.ALARM),
@@ -371,6 +379,9 @@ def test_pasd_status_health(
         :py:class:`tango.test_context.DeviceTestContext`.
     :param smartbox_device: the smartbox device under test
     :param change_event_callbacks: a collection of change event callbacks.
+    :param pasd_status: the PaSD status to simulate.
+    :param health_state: the expected health state.
+    :param dev_state: the expected device state.
     """
     smartbox_device.subscribe_event(
         "state",

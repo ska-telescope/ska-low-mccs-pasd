@@ -192,26 +192,26 @@ class TestAdminModePropagation:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["smartbox_adminMode"],
         )
+        change_event_callbacks["smartbox_adminMode"].assert_change_event(
+            AdminMode.OFFLINE
+        )
 
         field_station_device.adminMode = AdminMode.ONLINE
-
-        # First change events might be subscription errors so we set
-        # a higher lookahead value
-        change_event_callbacks.assert_change_event(
-            "smartbox_adminMode", AdminMode.ONLINE, lookahead=2, consume_nonmatches=True
+        change_event_callbacks["smartbox_adminMode"].assert_change_event(
+            AdminMode.ONLINE
         )
         assert on_smartbox_device.adminMode == AdminMode.ONLINE
 
         field_station_device.adminMode = AdminMode.OFFLINE
-        change_event_callbacks.assert_change_event(
-            "smartbox_adminMode", AdminMode.OFFLINE
+        change_event_callbacks["smartbox_adminMode"].assert_change_event(
+            AdminMode.OFFLINE
         )
         assert on_smartbox_device.adminMode == AdminMode.OFFLINE
 
         # Turn inheritance off by setting directly
         on_smartbox_device.adminMode = AdminMode.ENGINEERING
-        change_event_callbacks.assert_change_event(
-            "smartbox_adminMode", AdminMode.ENGINEERING
+        change_event_callbacks["smartbox_adminMode"].assert_change_event(
+            AdminMode.ENGINEERING
         )
 
         field_station_device.adminMode = AdminMode.ONLINE
@@ -220,14 +220,14 @@ class TestAdminModePropagation:
 
         # Go back to inheriting
         on_smartbox_device.inheritModes = True
-        change_event_callbacks.assert_change_event(
-            "smartbox_adminMode", AdminMode.ONLINE
+        change_event_callbacks["smartbox_adminMode"].assert_change_event(
+            AdminMode.ONLINE
         )
         assert on_smartbox_device.adminMode == AdminMode.ONLINE
 
         field_station_device.adminMode = AdminMode.OFFLINE
-        change_event_callbacks.assert_change_event(
-            "smartbox_adminMode", AdminMode.OFFLINE
+        change_event_callbacks["smartbox_adminMode"].assert_change_event(
+            AdminMode.OFFLINE
         )
         assert on_smartbox_device.adminMode == AdminMode.OFFLINE
 

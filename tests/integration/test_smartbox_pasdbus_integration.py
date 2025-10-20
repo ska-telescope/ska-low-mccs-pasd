@@ -584,7 +584,7 @@ class TestSmartBoxPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["fndhstatus"],
         )
-        change_event_callbacks.assert_change_event("fndhstatus", "OK")
+        change_event_callbacks["fndhstatus"].assert_change_event("OK")
         assert fndh_device.PasdStatus == "OK"
         smartbox_device.subscribe_event(
             "PasdStatus",
@@ -705,7 +705,7 @@ class TestSmartBoxPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["fndhstatus"],
         )
-        change_event_callbacks.assert_change_event("fndhstatus", "OK")
+        change_event_callbacks["fndhstatus"].assert_change_event("OK")
         assert fndh_device.PasdStatus == "OK"
 
         # Smartbox ports' states
@@ -1379,7 +1379,6 @@ class TestSmartBoxPasdBusIntegration:
             "smartboxHealthState",
             HealthState.OK,
         )
-        time.sleep(10)
 
         # Test ALARM / FAILED state
         setattr(smartbox_simulator, monitoring_point, max_alarm + 100)

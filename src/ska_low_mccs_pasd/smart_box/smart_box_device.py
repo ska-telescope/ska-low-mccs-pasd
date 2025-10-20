@@ -10,13 +10,11 @@
 from __future__ import annotations
 
 import json
-import logging
 import re
 import sys
 from dataclasses import dataclass
 from typing import Any, Callable, Final, Optional, cast
 
-import backoff
 import numpy
 import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
@@ -34,44 +32,6 @@ from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
 
 __all__ = ["MccsSmartBox"]
-
-
-class MyHealthRecorder(HealthRecorder):
-    @backoff.on_exception(
-        backoff.expo,
-        tango.DevFailed,
-        max_time=60,
-        backoff_log_level=logging.ERROR,
-    )
-    def _wait_for_connection(self) -> None:
-        """Wait for the proxy to connect."""
-        if self._proxy:
-            self._proxy.ping()
-
-    def evaluate_health(self) -> None:
-        """Evaluate the health of the device given stored attribute quality factors."""
-        worst_name, (worst_quality, worst_value) = min(
-            self._attribute_state.items(),
-            key=lambda item: self.QUALITY_SEVERITY.get(item[1][0], 3),
-        )
-
-        overall_health = self.QUALITY_TO_HEALTH.get(worst_quality, HealthState.UNKNOWN)
-        if overall_health != self._last_health:
-            if overall_health == HealthState.OK:
-                health_report = "Health is OK."
-            else:
-                health_report = (
-                    f"{worst_name} is in {worst_quality} with value {worst_value}"
-                )
-            # if self._finished.is_set():
-            # return
-            self._logger.error(self._attribute_state)
-            self._logger.error(overall_health)
-            self._health_callback(
-                overall_health,
-                health_report,
-            )
-            self._last_health = overall_health
 
 
 class JsonSerialize(json.JSONEncoder):
@@ -227,14 +187,14 @@ class MccsSmartBox(MccsBaseDevice):
             "femHeatsinkTemperature2": lambda: self._smartbox_state.get(
                 "femheatsinktemperature2"
             ),
-            # "numberOfPortBreakersTripped": lambda: self._nof_port_breakers_tripped,
+            "numberOfPortBreakersTripped": lambda: self._nof_port_breakers_tripped,
         }
         if not self.UseAttributesForHealth:
             self._health_model = SmartBoxHealthModel(
                 self._health_changed_callback, self.logger
             )
         else:
-            self._health_recorder = MyHealthRecorder(
+            self._health_recorder = HealthRecorder(
                 self.get_name(),
                 self.logger,
                 attributes=list(self._healthful_attributes.keys()),
@@ -645,6 +605,7 @@ class MccsSmartBox(MccsBaseDevice):
                 attribute_name, self._healthful_attributes[attribute_name]()
             )
 
+    # pylint: disable=too-many-branches
     def _attribute_changed_callback(  # noqa: C901
         self: MccsSmartBox,
         attr_name: str,
@@ -702,6 +663,7 @@ class MccsSmartBox(MccsBaseDevice):
                     tango.AttrQuality.ATTR_WARNING,
                 ]:
                     self.set_state(tango.DevState.ALARM)
+                attr_quality = pasd_status_quality
             self._smartbox_state[attr_name].quality = attr_quality
             self._smartbox_state[attr_name].timestamp = timestamp
 
@@ -750,7 +712,7 @@ class MccsSmartBox(MccsBaseDevice):
         match pasd_status:
             case None | "POWERDOWN":
                 return tango.AttrQuality.ATTR_INVALID
-            case "UNITIALISED" | "OK":
+            case "UNINITIALISED" | "OK":
                 return tango.AttrQuality.ATTR_VALID
             case "WARNING":
                 return tango.AttrQuality.ATTR_WARNING
