@@ -250,9 +250,8 @@ class MccsFieldStation(MccsBaseDevice):
         if communication_state != CommunicationStatus.ESTABLISHED:
             self.component_manager._update_component_state(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self.component_manager._update_component_state(
-                power=self.component_manager._power_state
-            )
+            # Re-evaluate power state instead of restoring previous state
+            self.component_manager._evaluate_power_state()
 
     def _component_state_callback(  # noqa: C901
         self: MccsFieldStation,

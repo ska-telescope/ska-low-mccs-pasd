@@ -594,29 +594,37 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 self._power_state = power_state
                 self._update_component_state(power=power_state)
 
-        if trimmed_smartbox_power_states:
-            with self._power_state_lock:
-                match self._smartbox_power_state:
-                    case _ if PowerState.ON in trimmed_smartbox_power_states:
-                        transition_to(PowerState.ON)
-                    case _ if PowerState.STANDBY in trimmed_smartbox_power_states:
-                        transition_to(PowerState.STANDBY)
-                    case _ if all(
-                        power == PowerState.OFF
-                        for power in trimmed_smartbox_power_states
-                    ):
-                        transition_to(
-                            PowerState.OFF,
-                            msg=(
-                                "All smartboxes are `OFF`, "
-                                "FieldStation transitioning to `OFF` state ...."
-                            ),
-                        )
-                    case _:
-                        transition_to(
-                            PowerState.UNKNOWN,
-                            msg=(
-                                "No PowerState rules matched, "
-                                "FieldStation transitioning to `UNKNOWN` state ...."
-                            ),
-                        )
+        with self._power_state_lock:
+            if trimmed_smartbox_power_states:
+                # Evaluate based on the filtered (non-UNKNOWN) smartbox states
+                if PowerState.ON in trimmed_smartbox_power_states:
+                    transition_to(PowerState.ON)
+                elif PowerState.STANDBY in trimmed_smartbox_power_states:
+                    transition_to(PowerState.STANDBY)
+                elif all(
+                    power == PowerState.OFF for power in trimmed_smartbox_power_states
+                ):
+                    transition_to(
+                        PowerState.OFF,
+                        msg=(
+                            "All smartboxes are `OFF`, "
+                            "FieldStation transitioning to `OFF` state ...."
+                        ),
+                    )
+                else:
+                    transition_to(
+                        PowerState.UNKNOWN,
+                        msg=(
+                            "No PowerState rules matched, "
+                            "FieldStation transitioning to `UNKNOWN` state ...."
+                        ),
+                    )
+            else:
+                # All smartboxes are UNKNOWN - transition to UNKNOWN only if not already
+                transition_to(
+                    PowerState.UNKNOWN,
+                    msg=(
+                        "All smartboxes have UNKNOWN power state, "
+                        "FieldStation transitioning to `UNKNOWN` state ...."
+                    ),
+                )

@@ -438,9 +438,7 @@ class MccsSmartBox(MccsBaseDevice):
             self.component_manager._update_component_state(power=PowerState.UNKNOWN)
             self._health_monitor_points = {}
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self.component_manager._update_component_state(
-                power=self.component_manager._power_state
-            )
+            self.component_manager._evaluate_power()
 
         super()._communication_state_changed(communication_state)
 
