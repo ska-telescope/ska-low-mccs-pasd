@@ -12,13 +12,16 @@ from __future__ import annotations
 import gc
 import json
 import unittest.mock
+from datetime import datetime, timezone
 from typing import Any
 
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel, ResultCode
+from ska_control_model import AdminMode, HealthState, LoggingLevel, ResultCode
+from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
+from ska_low_mccs_pasd import MccsSmartBox
 from tests.harness import PasdTangoTestHarness
 
 # TODO: Weird hang-at-garbage-collection bug
@@ -38,11 +41,27 @@ def smartbox_device_fixture(
 
     :yield: a proxy to the smartbox Tango device under test.
     """
+
+    class _PatchedMccsSmartbox(MccsSmartBox):
+        """A daq class with a method to call the component state callback."""
+
+        @tango.server.command
+        def CallAttributeCallback(self, argin: str) -> None:
+            """
+            Patched method to call attribute callback directly.
+
+            :param argin: json-ified dict to call attribute callback with.
+            """
+            self._attribute_changed_callback(
+                **json.loads(argin), attr_quality=tango.AttrQuality.ATTR_VALID
+            )
+
     harness = PasdTangoTestHarness()
     harness.set_mock_pasd_bus_device(mock_pasdbus)
     harness.add_smartbox_device(
         smartbox_number,
         logging_level=int(LoggingLevel.DEBUG),
+        device_class=_PatchedMccsSmartbox,
     )
 
     with harness as context:
@@ -156,6 +175,252 @@ def test_command_queued(
     assert command_return[1][0].split("_")[-1] == device_command
 
 
+@pytest.mark.parametrize(
+    (
+        "attribute",
+        "max_alarm",
+        "max_warning",
+        "min_warning",
+        "min_alarm",
+    ),
+    [
+        (
+            "InputVoltage",
+            49.5,
+            48.5,
+            45.5,
+            41,
+        ),
+        (
+            "PowerSupplyOutputVoltage",
+            4.95,
+            4.8,
+            4.5,
+            4.1,
+        ),
+        (
+            "PowerSupplyTemperature",
+            80,
+            65,
+            5,
+            -2,
+        ),
+        (
+            "PcbTemperature",
+            80,
+            65,
+            5,
+            -2,
+        ),
+        (
+            "FemAmbientTemperature",
+            55,
+            40,
+            5,
+            -2,
+        ),
+        (
+            "FemCaseTemperature1",
+            55,
+            40,
+            5,
+            -2,
+        ),
+        (
+            "FemCaseTemperature2",
+            55,
+            40,
+            5,
+            -2,
+        ),
+        (
+            "FemHeatsinkTemperature1",
+            55,
+            40,
+            5,
+            -2,
+        ),
+        (
+            "FemHeatsinkTemperature2",
+            55,
+            40,
+            5,
+            -2,
+        ),
+        (
+            "portBreakersTripped",
+            4,
+            2,
+            -1,
+            -2,
+        ),
+    ],
+)
+def test_health(
+    smartbox_device: tango.DeviceProxy,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+    attribute: str,
+    max_alarm: float,
+    max_warning: float,
+    min_warning: float,
+    min_alarm: float,
+) -> None:
+    """
+    Test commands return the correct result code.
+
+    :param smartbox_device: fixture that provides a
+        :py:class:`tango.DeviceProxy` to the device under test, in a
+        :py:class:`tango.test_context.DeviceTestContext`.
+    :param smartbox_device: the smartbox device under test
+    :param change_event_callbacks: a collection of change event callbacks.
+    """
+    smartbox_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
+
+    smartbox_device.subscribe_event(
+        "healthState",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["healthState"],
+    )
+    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
+
+    smartbox_device.subscribe_event(
+        "femHeatsinkTemperature2",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["attribute"],
+    )
+    change_event_callbacks.assert_change_event("attribute", Anything)
+
+    smartbox_device.adminMode = AdminMode.ONLINE
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.OK)
+
+    # This is a bit reliant on implementation details. This is the last attribute we
+    # poll for health, so we wait on a change event for this attribute as a proxy for
+    # a full poll cycle completing.
+    change_event_callbacks.assert_change_event("attribute", Anything)
+
+    try:
+        attribute_config = smartbox_device.get_attribute_config(attribute.lower())
+        alarm_config = attribute_config.alarms
+        alarm_config.max_warning = str(max_warning)
+        alarm_config.max_alarm = str(max_alarm)
+        attribute_config.alarms = alarm_config
+        smartbox_device.set_attribute_config(attribute_config)
+    except tango.DevFailed:
+        pytest.xfail("Ran into PyTango monitor lock issue, to be fixed in 10.1.0")
+
+    smartbox_device.CallAttributeCallback(
+        json.dumps(
+            {
+                "attr_name": attribute.lower(),
+                "attr_value": int(max_alarm * 1.5),
+                "timestamp": datetime.now(timezone.utc).timestamp(),
+            }
+        )
+    )
+    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
+    assert smartbox_device.state() == tango.DevState.ALARM
+
+    smartbox_device.CallAttributeCallback(
+        json.dumps(
+            {
+                "attr_name": attribute.lower(),
+                "attr_value": int((max_warning + min_warning) / 2),
+                "timestamp": datetime.now(timezone.utc).timestamp(),
+            }
+        )
+    )
+    change_event_callbacks["healthState"].assert_change_event(HealthState.OK)
+    assert smartbox_device.state() == tango.DevState.ON
+
+
+@pytest.mark.parametrize(
+    (
+        "pasd_status",
+        "health_state",
+        "dev_state",
+    ),
+    [
+        ("UNITIALISED", HealthState.OK, tango.DevState.ON),
+        ("OK", HealthState.OK, tango.DevState.ON),
+        ("WARNING", HealthState.DEGRADED, tango.DevState.ALARM),
+        ("ALARM", HealthState.FAILED, tango.DevState.ALARM),
+        ("RECOVERY", HealthState.FAILED, tango.DevState.ALARM),
+        ("POWERDOWN", HealthState.UNKNOWN, tango.DevState.ON),
+        ("FAKE_STATUS", HealthState.UNKNOWN, tango.DevState.ON),
+    ],
+)
+def test_pasd_status_health(
+    smartbox_device: tango.DeviceProxy,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+    pasd_status: str,
+    health_state: HealthState,
+    dev_state: tango.DevState,
+) -> None:
+    """
+    Test commands return the correct result code.
+
+    :param smartbox_device: fixture that provides a
+        :py:class:`tango.DeviceProxy` to the device under test, in a
+        :py:class:`tango.test_context.DeviceTestContext`.
+    :param smartbox_device: the smartbox device under test
+    :param change_event_callbacks: a collection of change event callbacks.
+    """
+    smartbox_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
+
+    smartbox_device.subscribe_event(
+        "healthState",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["healthState"],
+    )
+    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
+
+    smartbox_device.subscribe_event(
+        "femHeatsinkTemperature2",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["attribute"],
+    )
+    change_event_callbacks.assert_change_event("attribute", Anything)
+
+    smartbox_device.adminMode = AdminMode.ONLINE
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.OK)
+
+    # This is a bit reliant on implementation details. This is the last attribute we
+    # poll for health, so we wait on a change event for this attribute as a proxy for
+    # a full poll cycle completing.
+    change_event_callbacks.assert_change_event("attribute", Anything)
+
+    smartbox_device.CallAttributeCallback(
+        json.dumps(
+            {
+                "attr_name": "pasdstatus",
+                "attr_value": pasd_status,
+                "timestamp": datetime.now(timezone.utc).timestamp(),
+            }
+        )
+    )
+    # Device starts in OK, we'll only get an event if its changing.
+    if health_state != HealthState.OK:
+        change_event_callbacks["healthState"].assert_change_event(health_state)
+    else:
+        change_event_callbacks["healthState"].assert_not_called()
+    assert smartbox_device.healthstate == health_state
+    assert smartbox_device.state() == dev_state
+
+
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     """
@@ -170,6 +435,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "longRunningCommandResult",
         "longRunningCommandStatus",
         "state",
-        timeout=10.0,
+        "attribute",
+        timeout=3.0,
         assert_no_error=False,
     )

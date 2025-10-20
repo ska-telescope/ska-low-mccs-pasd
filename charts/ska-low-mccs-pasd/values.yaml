@@ -127,7 +127,7 @@ ska-tango-devices:
       InputVoltage->min_warning: 45.5
       InputVoltage->min_alarm: 41
       PowerSupplyOutputVoltage->max_alarm: 4.95
-      PowerSupplyOutputVoltage->max_warning: 48
+      PowerSupplyOutputVoltage->max_warning: 4.8
       PowerSupplyOutputVoltage->min_warning: 4.5
       PowerSupplyOutputVoltage->min_alarm: 4.1
       PowerSupplyTemperature->max_alarm: 80

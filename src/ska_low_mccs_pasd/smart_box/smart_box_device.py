@@ -10,15 +10,17 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import sys
 from dataclasses import dataclass
-from typing import Any, Final, Optional, cast
+from typing import Any, Callable, Final, Optional, cast
 
+import backoff
 import numpy
 import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
-from ska_low_mccs_common import MccsBaseDevice
+from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
 from tango import DevFailed
 from tango.device_attribute import ExtractAs
@@ -32,6 +34,44 @@ from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
 
 __all__ = ["MccsSmartBox"]
+
+
+class MyHealthRecorder(HealthRecorder):
+    @backoff.on_exception(
+        backoff.expo,
+        tango.DevFailed,
+        max_time=60,
+        backoff_log_level=logging.ERROR,
+    )
+    def _wait_for_connection(self) -> None:
+        """Wait for the proxy to connect."""
+        if self._proxy:
+            self._proxy.ping()
+
+    def evaluate_health(self) -> None:
+        """Evaluate the health of the device given stored attribute quality factors."""
+        worst_name, (worst_quality, worst_value) = min(
+            self._attribute_state.items(),
+            key=lambda item: self.QUALITY_SEVERITY.get(item[1][0], 3),
+        )
+
+        overall_health = self.QUALITY_TO_HEALTH.get(worst_quality, HealthState.UNKNOWN)
+        if overall_health != self._last_health:
+            if overall_health == HealthState.OK:
+                health_report = "Health is OK."
+            else:
+                health_report = (
+                    f"{worst_name} is in {worst_quality} with value {worst_value}"
+                )
+            # if self._finished.is_set():
+            # return
+            self._logger.error(self._attribute_state)
+            self._logger.error(overall_health)
+            self._health_callback(
+                overall_health,
+                health_report,
+            )
+            self._last_health = overall_health
 
 
 class JsonSerialize(json.JSONEncoder):
@@ -76,6 +116,11 @@ class MccsSmartBox(MccsBaseDevice):
     PortsWithAntennas: Final = device_property(dtype=(int,), default_value=[])
     AntennaNames: Final = device_property(dtype=(str,), default_value=[])
     FndhPort: Final = device_property(dtype=int, mandatory=True)
+    UseAttributesForHealth: Final = device_property(
+        doc="Use the attribute quality factor in health. ADR-115.",
+        dtype=bool,
+        default_value=True,
+    )
 
     CONFIG: Final[ControllerDict] = PasdControllersConfig.get_smartbox()
     TYPES: Final[dict[str, type]] = {
@@ -107,9 +152,14 @@ class MccsSmartBox(MccsBaseDevice):
 
         # Initialise with unknown.
         self._health_state: HealthState = HealthState.UNKNOWN
-        self._health_model: SmartBoxHealthModel
+        self._health_model: Optional[SmartBoxHealthModel] = None
+        self._health_recorder: Optional[HealthRecorder] = None
+        self._health_report: str = ""
+        self._stopping: bool = False
+        self._healthful_attributes: dict[str, Callable]
         self.component_manager: SmartBoxComponentManager
         self._health_monitor_points: dict[str, list[float]] = {}
+        self._nof_port_breakers_tripped: int
 
     def init_device(self: MccsSmartBox) -> None:
         """
@@ -141,6 +191,10 @@ class MccsSmartBox(MccsBaseDevice):
 
     def delete_device(self: MccsSmartBox) -> None:
         """Delete the device."""
+        self._stopping = True
+        if self._health_recorder is not None:
+            self._health_recorder.cleanup()
+            self._health_recorder = None
         self.component_manager._pasd_bus_proxy.cleanup()
         self.component_manager._task_executor._executor.shutdown()
         super().delete_device()
@@ -148,13 +202,53 @@ class MccsSmartBox(MccsBaseDevice):
     def _init_state_model(self: MccsSmartBox) -> None:
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
-        self._health_model = SmartBoxHealthModel(
-            self._health_changed_callback, self.logger
-        )
+        self._healthful_attributes = {
+            "pasdStatus": lambda: self._smartbox_state.get("pasdstatus"),
+            "inputVoltage": lambda: self._smartbox_state.get("inputvoltage"),
+            "powerSupplyOutputVoltage": lambda: self._smartbox_state.get(
+                "powersupplyoutputvoltage"
+            ),
+            "powerSupplyTemperature": lambda: self._smartbox_state.get(
+                "powersupplytemperature"
+            ),
+            "pcbTemperature": lambda: self._smartbox_state.get("pcbtemperature"),
+            "femAmbientTemperature": lambda: self._smartbox_state.get(
+                "femambienttemperature"
+            ),
+            "femCaseTemperature1": lambda: self._smartbox_state.get(
+                "femcasetemperature1"
+            ),
+            "femCaseTemperature2": lambda: self._smartbox_state.get(
+                "femcasetemperature2"
+            ),
+            "femHeatsinkTemperature1": lambda: self._smartbox_state.get(
+                "femheatsinktemperature1"
+            ),
+            "femHeatsinkTemperature2": lambda: self._smartbox_state.get(
+                "femheatsinktemperature2"
+            ),
+            # "numberOfPortBreakersTripped": lambda: self._nof_port_breakers_tripped,
+        }
+        if not self.UseAttributesForHealth:
+            self._health_model = SmartBoxHealthModel(
+                self._health_changed_callback, self.logger
+            )
+        else:
+            self._health_recorder = MyHealthRecorder(
+                self.get_name(),
+                self.logger,
+                attributes=list(self._healthful_attributes.keys()),
+                health_callback=self._health_changed,
+                attr_conf_callback=self._attr_conf_changed,
+            )
+
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
         self.set_change_event("antennaPowers", True, False)
         self.set_archive_event("antennaPowers", True, False)
+        self._nof_port_breakers_tripped = 0
+        self.set_change_event("numberOfPortBreakersTripped", True, False)
+        self.set_archive_event("numberOfPortBreakersTripped", True, False)
 
     # ----------
     # Properties
@@ -442,10 +536,11 @@ class MccsSmartBox(MccsBaseDevice):
 
         super()._communication_state_changed(communication_state)
 
-        self._health_model.update_state(
-            communicating=True,
-            monitoring_points=self._health_monitor_points,
-        )
+        if self._health_model:
+            self._health_model.update_state(
+                communicating=True,
+                monitoring_points=self._health_monitor_points,
+            )
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def _component_state_callback(
@@ -481,12 +576,13 @@ class MccsSmartBox(MccsBaseDevice):
                 self._communication_state_changed(CommunicationStatus.NOT_ESTABLISHED)
             return
         super()._component_state_changed(fault=fault, power=power)
-        if fault is not None:
-            self._health_model.update_state(fault=fault)
-        if power is not None:
-            self._health_model.update_state(power=power)
-        if pasdbus_status is not None:
-            self._health_model.update_state(pasdbus_status=pasdbus_status)
+        if self._health_model is not None:
+            if fault is not None:
+                self._health_model.update_state(fault=fault)
+            if power is not None:
+                self._health_model.update_state(power=power)
+            if pasdbus_status is not None:
+                self._health_model.update_state(pasdbus_status=pasdbus_status)
         if antenna_powers is not None:
             self.push_change_event("antennaPowers", antenna_powers)
 
@@ -506,7 +602,50 @@ class MccsSmartBox(MccsBaseDevice):
             self.push_change_event("healthState", health)
             self.push_archive_event("healthState", health)
 
-    def _attribute_changed_callback(
+    def _health_changed(
+        self: MccsSmartBox, health: HealthState, health_report: str
+    ) -> None:
+        """
+        Handle change in this device's health state.
+
+        This is a callback hook, called whenever the HealthModel's
+        evaluated health state changes. It is responsible for updating
+        the tango side of things i.e. making sure the attribute is up to
+        date, and events are pushed.
+
+        :param health: the new health value
+        :param health_report: the health report
+        """
+        self.logger.debug(f"Health changed to {health.name}: {health_report}")
+        if self._stopping:
+            return
+        if self._health_state != health:
+            self._health_state = health
+            self._health_report = health_report
+            self.push_change_event("healthState", health)
+            self.push_archive_event("healthState", health)
+
+    def _attr_conf_changed(self: MccsSmartBox, attribute_name: str) -> None:
+        """
+        Handle change in configuration of an attribute.
+
+        This is a workaround as if you configure an attribute
+        which is not alarming to have alarm/warning thresholds
+        such that it would be alarming, Tango does not push an event
+        until the attribute value changes.
+
+        :param attribute_name: the name of the attribute whose
+            configuration has changed.
+        """
+        if (
+            attribute_name in self._healthful_attributes
+            and self._healthful_attributes[attribute_name]() is not None
+        ):
+            self.push_change_event(
+                attribute_name, self._healthful_attributes[attribute_name]()
+            )
+
+    def _attribute_changed_callback(  # noqa: C901
         self: MccsSmartBox,
         attr_name: str,
         attr_value: Any,
@@ -549,6 +688,20 @@ class MccsSmartBox(MccsBaseDevice):
                 self.component_manager._on_smartbox_ports_power_changed(
                     attr_name, attr_value, attr_quality
                 )
+            # Status register mapping to quality to health:
+            # UNINITIALISED -> ATTR_VALID -> OK
+            # OK -> ATTR_VALID -> OK
+            # WARNING -> ATTR_WARNING -> DEGRADED
+            # ALARM -> ATTR_ALARM -> FAILED
+            # RECOVERY -> ATTR_ALARM -> FAILED
+            # POWERDOWN -> ATTR_INVALID -> UNKNOWN (shouldn't be seen in operation)
+            if "pasdstatus" in attr_name.lower():
+                pasd_status_quality = self._convert_status_to_quality(attr_value)
+                if pasd_status_quality in [
+                    tango.AttrQuality.ATTR_ALARM,
+                    tango.AttrQuality.ATTR_WARNING,
+                ]:
+                    self.set_state(tango.DevState.ALARM)
             self._smartbox_state[attr_name].quality = attr_quality
             self._smartbox_state[attr_name].timestamp = timestamp
 
@@ -560,19 +713,30 @@ class MccsSmartBox(MccsBaseDevice):
             if attr_name.endswith("thresholds"):
                 try:
                     attr_true = attr_name.removesuffix("thresholds")
-                    self._health_model.health_params = {attr_true: attr_value}
+                    if self._health_model is not None:
+                        self._health_model.health_params = {attr_true: attr_value}
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass
             elif attr_name.endswith("status"):
-                self._health_model.update_state(status=attr_value)
+                if self._health_model is not None:
+                    self._health_model.update_state(status=attr_value)
             elif "portbreakerstripped" in attr_name.lower():
-                self._health_model.update_state(port_breakers_tripped=attr_value)
+                self._nof_port_breakers_tripped = sum(attr_value)
+                self.push_change_event(
+                    "numberOfPortBreakersTripped", self._nof_port_breakers_tripped
+                )
+                self.push_archive_event(
+                    "numberOfPortBreakersTripped", self._nof_port_breakers_tripped
+                )
+                if self._health_model is not None:
+                    self._health_model.update_state(port_breakers_tripped=attr_value)
             else:
                 self._health_monitor_points[attr_name] = attr_value
-                self._health_model.update_state(
-                    monitoring_points=self._health_monitor_points
-                )
+                if self._health_model is not None:
+                    self._health_model.update_state(
+                        monitoring_points=self._health_monitor_points
+                    )
 
         except AssertionError as e:
             self.logger.debug(
@@ -580,6 +744,20 @@ class MccsSmartBox(MccsBaseDevice):
                 device does not exist in MccsSmartBox"""
             )
             self.logger.error(repr(e))
+
+    @staticmethod
+    def _convert_status_to_quality(pasd_status: Optional[str]) -> tango.AttrQuality:
+        match pasd_status:
+            case None | "POWERDOWN":
+                return tango.AttrQuality.ATTR_INVALID
+            case "UNITIALISED" | "OK":
+                return tango.AttrQuality.ATTR_VALID
+            case "WARNING":
+                return tango.AttrQuality.ATTR_WARNING
+            case "ALARM" | "RECOVERY":
+                return tango.AttrQuality.ATTR_ALARM
+            case _:
+                return tango.AttrQuality.ATTR_INVALID
 
     @attribute(dtype="DevString", label="FndhPort")
     def fndhPort(self: MccsSmartBox) -> str:
@@ -680,7 +858,20 @@ class MccsSmartBox(MccsBaseDevice):
 
         :return: the health report.
         """
-        return self._health_model.health_report
+        if self._health_model is not None:
+            return self._health_model.health_report
+        return self._health_report
+
+    @attribute(dtype="DevShort", max_alarm=1)
+    def numberOfPortBreakersTripped(self: MccsSmartBox) -> int:
+        """
+        Return the total number of breakers which have tripped.
+
+        This is used for alarm configuration.
+
+        :return: the total number of breakers which have been tripped.
+        """
+        return self._nof_port_breakers_tripped
 
     @attribute(dtype="DevBoolean", label="useNewHealthRules")
     def useNewHealthRules(self: MccsSmartBox) -> bool:

@@ -484,7 +484,7 @@ class PasdTangoTestHarness:
             device_class,
             FieldStationName=get_field_station_name(),
             PasdFQDN=get_pasd_bus_name(),
-            ParentTRL=get_field_station_name(),
+            # ParentTRL=get_field_station_name(),
             SmartBoxNumber=smartbox_id,
             LoggingLevelDefault=logging_level,
             PortsWithAntennas=ports_with_antennas,

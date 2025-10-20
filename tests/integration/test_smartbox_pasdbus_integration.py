@@ -1379,6 +1379,7 @@ class TestSmartBoxPasdBusIntegration:
             "smartboxHealthState",
             HealthState.OK,
         )
+        time.sleep(10)
 
         # Test ALARM / FAILED state
         setattr(smartbox_simulator, monitoring_point, max_alarm + 100)
