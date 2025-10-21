@@ -300,6 +300,14 @@ class MccsFieldStation(MccsBaseDevice):
 
         super()._component_state_changed(fault=fault, power=power)
 
+        if power is not None:
+            print(f"GOT POWER CHANGE CALLBACK: {power.name=}")
+            print(f"CURRENT STATE (dev state): {self.dev_state()=}")
+            print(f"CURRENT STATE (get state): {self.get_state()=}")
+            print(
+                f"CURRENT STATE (component): {self.component_manager.component_state=}"
+            )
+
     def _update_admin_mode(self, admin_mode: AdminMode) -> None:
         super()._update_admin_mode(admin_mode)
         self._health_rollup.online = admin_mode in [

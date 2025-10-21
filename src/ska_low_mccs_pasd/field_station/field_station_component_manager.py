@@ -585,6 +585,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         ]
 
         def transition_to(power_state: PowerState, msg: str | None = None) -> None:
+            print(f"TRANSITION FROM {self._power_state} TO {power_state}")
             if self._power_state != power_state:
                 self.logger.info(
                     msg
@@ -592,7 +593,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     f"FieldStation transitioning to {power_state.name} state ...."
                 )
                 self._power_state = power_state
-                self._update_component_state(power=power_state)
+            self._update_component_state(power=power_state)
+            print(f"NEW STATE (local): {self._power_state}")
+            print(f"NEW STATE (base): {self._component_state['power']}")
 
         with self._power_state_lock:
             if trimmed_smartbox_power_states:
