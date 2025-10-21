@@ -298,15 +298,27 @@ class MccsFieldStation(MccsBaseDevice):
                 "antennaPowerStates", json.dumps(self._antenna_powers)
             )
 
-        super()._component_state_changed(fault=fault, power=power)
-
         if power is not None:
-            print(f"GOT POWER CHANGE CALLBACK: {power.name=}")
+            print("-----------------------------------------------")
+            print(f"BEFORE CPT STATE CHANGE: {power.name=}")
             print(f"CURRENT STATE (dev state): {self.dev_state()=}")
             print(f"CURRENT STATE (get state): {self.get_state()=}")
             print(
                 f"CURRENT STATE (component): {self.component_manager.component_state=}"
             )
+            print(f"{self.op_state_model.op_state=}")
+
+        super()._component_state_changed(fault=fault, power=power)
+
+        if power is not None:
+            print(f"AFTER CPT STATE CHANGE: {power.name=}")
+            print(f"CURRENT STATE (dev state): {self.dev_state()=}")
+            print(f"CURRENT STATE (get state): {self.get_state()=}")
+            print(
+                f"CURRENT STATE (component): {self.component_manager.component_state=}"
+            )
+            print(f"{self.op_state_model.op_state=}")
+            print("-----------------------------------------------")
 
     def _update_admin_mode(self, admin_mode: AdminMode) -> None:
         super()._update_admin_mode(admin_mode)
