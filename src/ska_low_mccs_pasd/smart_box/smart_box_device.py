@@ -576,12 +576,11 @@ class MccsSmartBox(MccsBaseDevice):
         :param health: the new health value
         :param health_report: the health report
         """
-        self.logger.debug(f"Health changed to {health.name}: {health_report}")
         if self._stopping:
             return
+        self._health_report = health_report
         if self._health_state != health:
             self._health_state = health
-            self._health_report = health_report
             self.push_change_event("healthState", health)
             self.push_archive_event("healthState", health)
 
