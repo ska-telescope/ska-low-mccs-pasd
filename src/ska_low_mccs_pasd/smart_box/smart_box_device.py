@@ -112,14 +112,14 @@ class MccsSmartBox(MccsBaseDevice):
 
         # Initialise with unknown.
         self._health_state: HealthState = HealthState.UNKNOWN
-        self._health_model: Optional[SmartBoxHealthModel] = None
-        self._health_recorder: Optional[HealthRecorder] = None
+        self._health_model: Optional[SmartBoxHealthModel]
+        self._health_recorder: Optional[HealthRecorder]
         self._health_report: str = ""
         self._stopping: bool = False
         self._healthful_attributes: dict[str, Callable]
         self.component_manager: SmartBoxComponentManager
         self._health_monitor_points: dict[str, list[float]] = {}
-        self._nof_port_breakers_tripped: int
+        self._nof_port_breakers_tripped: Optional[int]
 
     def init_device(self: MccsSmartBox) -> None:
         """
@@ -193,6 +193,7 @@ class MccsSmartBox(MccsBaseDevice):
             self._health_model = SmartBoxHealthModel(
                 self._health_changed_callback, self.logger
             )
+            self._health_recorder = None
         else:
             self._health_recorder = HealthRecorder(
                 self.get_name(),
@@ -201,12 +202,13 @@ class MccsSmartBox(MccsBaseDevice):
                 health_callback=self._health_changed,
                 attr_conf_callback=self._attr_conf_changed,
             )
+            self._health_model = None
 
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
         self.set_change_event("antennaPowers", True, False)
         self.set_archive_event("antennaPowers", True, False)
-        self._nof_port_breakers_tripped = 0
+        self._nof_port_breakers_tripped = None
         self.set_change_event("numberOfPortBreakersTripped", True, False)
         self.set_archive_event("numberOfPortBreakersTripped", True, False)
 
@@ -491,6 +493,8 @@ class MccsSmartBox(MccsBaseDevice):
         if communication_state != CommunicationStatus.ESTABLISHED:
             self._component_state_callback(power=PowerState.UNKNOWN)
             self._health_monitor_points = {}
+            if self._health_recorder is not None:
+                self._health_recorder.clear_attribute_state()
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._component_state_callback(power=self.component_manager._power_state)
 
@@ -824,7 +828,7 @@ class MccsSmartBox(MccsBaseDevice):
         return self._health_report
 
     @attribute(dtype="DevShort", max_alarm=1)
-    def numberOfPortBreakersTripped(self: MccsSmartBox) -> int:
+    def numberOfPortBreakersTripped(self: MccsSmartBox) -> Optional[int]:
         """
         Return the total number of breakers which have tripped.
 
