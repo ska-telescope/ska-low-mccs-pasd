@@ -15,12 +15,12 @@ import logging
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Final, Optional, cast
+from typing import Any, Callable, Final, Optional, cast
 
 import tango
 from jsonschema import validate
 from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
-from ska_low_mccs_common import MccsBaseDevice
+from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_tango_base.commands import (
     DeviceInitCommand,
     FastCommand,
@@ -62,6 +62,11 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     # -----------------
     PasdFQDN: Final = device_property(dtype=(str), mandatory=True)
     PortsWithSmartbox: Final = device_property(dtype=(int,), mandatory=True)
+    UseAttributesForHealth: Final = device_property(
+        doc="Use the attribute quality factor in health. ADR-115.",
+        dtype=bool,
+        default_value=True,
+    )
 
     # ---------
     # Constants
@@ -101,11 +106,16 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         # Initialise with unknown.
         self._port_power_states = [PowerState.UNKNOWN] * self.CONFIG["number_of_ports"]
         self._health_state: HealthState = HealthState.UNKNOWN
-        self._health_model: FndhHealthModel
+        self._health_model: Optional[FndhHealthModel]
+        self._health_recorder: Optional[HealthRecorder]
+        self._health_report: str = ""
+        self._stopping: bool = False
+        self._healthful_attributes: dict[str, Callable]
         self._overCurrentThreshold: float
         self._overVoltageThreshold: float
         self._humidityThreshold: float
         self.component_manager: FndhComponentManager
+        self._nof_faulty_smartbox_ports: Optional[int] = None
 
         # Health monitor points contains a cache of monitoring points as they
         # are updated in a poll. When communication is lost this cache is
@@ -157,13 +167,60 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         """Delete the device."""
         self.component_manager._pasd_bus_proxy.cleanup()
         self.component_manager._task_executor._executor.shutdown()
+        self._stopping = True
+        if self._health_recorder is not None:
+            self._health_recorder.cleanup()
+            self._health_recorder = None
         super().delete_device()
 
     def _init_state_model(self: MccsFNDH) -> None:
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
-        self._health_model = FndhHealthModel(self._health_changed_callback, self.logger)
-        self._health_model.update_state(ports_with_smartbox=self.PortsWithSmartbox)
+        self._healthful_attributes = {
+            "pasdStatus": lambda: self._fndh_attributes.get("pasdstatus"),
+            "psu48vVoltage1": lambda: self._fndh_attributes.get("psu48vvoltage1"),
+            "psu48vVoltage2": lambda: self._fndh_attributes.get("psu48vvoltage2"),
+            "psu48vCurrent": lambda: self._fndh_attributes.get("psu48vcurrent"),
+            "psu48vTemperature1": lambda: self._fndh_attributes.get(
+                "psu48vtemperature1"
+            ),
+            "psu48vTemperature2": lambda: self._fndh_attributes.get(
+                "psu48vtemperature2"
+            ),
+            "panelTemperature": lambda: self._fndh_attributes.get("paneltemperature"),
+            "fncbTemperature": lambda: self._fndh_attributes.get("fncbtemperature"),
+            "fncbHumidity": lambda: self._fndh_attributes.get("fncbhumidity"),
+            "commsGatewayTemperature": lambda: self._fndh_attributes.get(
+                "commsgatewaytemperature"
+            ),
+            "powerModuleTemperature": lambda: self._fndh_attributes.get(
+                "powermoduletemperature"
+            ),
+            "outsideTemperature": lambda: self._fndh_attributes.get(
+                "outsidetemperature"
+            ),
+            "internalAmbientTemperature": lambda: self._fndh_attributes.get(
+                "internalambienttemperature"
+            ),
+            "numberOfFaultySmartboxPorts": lambda: self._nof_faulty_smartbox_ports,
+        }
+        self.set_change_event("numberOfFaultySmartboxPorts", True, False)
+        self.set_archive_event("numberOfFaultySmartboxPorts", True, False)
+        if not self.UseAttributesForHealth:
+            self._health_model = FndhHealthModel(
+                self._health_changed_callback, self.logger
+            )
+            self._health_model.update_state(ports_with_smartbox=self.PortsWithSmartbox)
+            self._health_recorder = None
+        else:
+            self._health_recorder = HealthRecorder(
+                self.get_name(),
+                self.logger,
+                attributes=list(self._healthful_attributes.keys()),
+                health_callback=self._health_changed,
+                attr_conf_callback=self._attr_conf_changed,
+            )
+            self._health_model = None
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
 
@@ -650,7 +707,21 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             )
         self._ports_with_smartbox = port_numbers
         self.component_manager._ports_with_smartbox = port_numbers
-        self._health_model.update_state(ports_with_smartbox=self._ports_with_smartbox)
+        if self._health_model is not None:
+            self._health_model.update_state(
+                ports_with_smartbox=self._ports_with_smartbox
+            )
+
+    @attribute(dtype="DevShort")
+    def numberOfFaultySmartboxPorts(self: MccsFNDH) -> Optional[int]:
+        """
+        Return the total number of faulty smartbox ports.
+
+        This is used for alarm configuration.
+
+        :return: the total number of faulty smartbox ports.
+        """
+        return self._nof_faulty_smartbox_ports
 
     # ----------
     # Callbacks
@@ -671,6 +742,8 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             )
             # Clear the cached monitoring points due to loss of communication.
             self._health_monitor_points = {}
+            if self._health_recorder is not None:
+                self._health_recorder.clear_attribute_state()
 
             self._component_state_changed(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
@@ -678,11 +751,11 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             self._component_state_changed(power=self.component_manager._power_state)
 
         super()._communication_state_changed(communication_state)
-
-        self._health_model.update_state(
-            communicating=(communication_state == CommunicationStatus.ESTABLISHED),
-            monitoring_points=self._health_monitor_points,
-        )
+        if self._health_model is not None:
+            self._health_model.update_state(
+                communicating=(communication_state == CommunicationStatus.ESTABLISHED),
+                monitoring_points=self._health_monitor_points,
+            )
 
     def _update_port_power_states(
         self: MccsFNDH, power_states: list[PowerState]
@@ -730,7 +803,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         :param kwargs: additional keyword arguments defining component
             state.
         """
-        if fqdn is not None:
+        if fqdn is not None and self._health_model is not None:
             if "health" in kwargs:
                 # NOTE: If the health is updated with None it means
                 # we do not roll up the power.
@@ -741,9 +814,9 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             self._health_model.update_state(pasd_power=power)
             return
         super()._component_state_changed(fault=fault, power=power)
-        if fault is not None:
+        if fault is not None and self._health_model is not None:
             self._health_model.update_state(fault=fault)
-        if power is not None:
+        if power is not None and self._health_model is not None:
             self._health_model.update_state(power=power)
 
     def _health_changed_callback(self: MccsFNDH, health: HealthState) -> None:
@@ -762,7 +835,49 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             self.push_change_event("healthState", health)
             self.push_archive_event("healthState", health)
 
-    def _attribute_changed_callback(
+    def _health_changed(
+        self: MccsFNDH, health: HealthState, health_report: str
+    ) -> None:
+        """
+        Handle change in this device's health state.
+
+        This is a callback hook, called whenever the HealthModel's
+        evaluated health state changes. It is responsible for updating
+        the tango side of things i.e. making sure the attribute is up to
+        date, and events are pushed.
+
+        :param health: the new health value
+        :param health_report: the health report
+        """
+        if self._stopping:
+            return
+        self._health_report = health_report
+        if self._health_state != health:
+            self._health_state = health
+            self.push_change_event("healthState", health)
+            self.push_archive_event("healthState", health)
+
+    def _attr_conf_changed(self: MccsFNDH, attribute_name: str) -> None:
+        """
+        Handle change in configuration of an attribute.
+
+        This is a workaround as if you configure an attribute
+        which is not alarming to have alarm/warning thresholds
+        such that it would be alarming, Tango does not push an event
+        until the attribute value changes.
+
+        :param attribute_name: the name of the attribute whose
+            configuration has changed.
+        """
+        if (
+            attribute_name in self._healthful_attributes
+            and self._healthful_attributes[attribute_name]() is not None
+        ):
+            self.push_change_event(
+                attribute_name, self._healthful_attributes[attribute_name]()
+            )
+
+    def _attribute_changed_callback(  # noqa: C901
         self: MccsFNDH,
         attr_name: str,
         attr_value: Any,
@@ -801,6 +916,21 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 attr_value = self._fndh_attributes[attr_name].value
             else:
                 self._fndh_attributes[attr_name].value = attr_value
+            # Status register mapping to quality to health:
+            # UNINITIALISED -> ATTR_VALID -> OK
+            # OK -> ATTR_VALID -> OK
+            # WARNING -> ATTR_WARNING -> DEGRADED
+            # ALARM -> ATTR_ALARM -> FAILED
+            # RECOVERY -> ATTR_ALARM -> FAILED
+            # POWERDOWN -> ATTR_INVALID -> UNKNOWN (shouldn't be seen in operation)
+            if "pasdstatus" in attr_name.lower():
+                pasd_status_quality = self._convert_status_to_quality(attr_value)
+                if pasd_status_quality in [
+                    tango.AttrQuality.ATTR_ALARM,
+                    tango.AttrQuality.ATTR_WARNING,
+                ]:
+                    self.set_state(tango.DevState.ALARM)
+                attr_quality = pasd_status_quality
             self._fndh_attributes[attr_name].quality = attr_quality
             self._fndh_attributes[attr_name].timestamp = timestamp
 
@@ -809,28 +939,59 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
             # If we are reading alarm thresholds, update the alarm configuration
             # for the corresponding Tango attribute
-            if attr_name.endswith("thresholds"):
-                try:
-                    threshold_attribute_name = attr_name.removesuffix("thresholds")
-                    self._health_model.update_monitoring_point_threshold(
-                        threshold_attribute_name, attr_value
+            if self._health_model is not None:
+                if attr_name.endswith("thresholds"):
+                    try:
+                        threshold_attribute_name = attr_name.removesuffix("thresholds")
+                        self._health_model.update_monitoring_point_threshold(
+                            threshold_attribute_name, attr_value
+                        )
+                    except DevFailed:
+                        # No corresponding attribute to update, continue
+                        pass
+                elif attr_name.endswith("status"):
+                    self._health_model.update_state(status=attr_value)
+                else:
+                    self._health_monitor_points[attr_name] = attr_value
+                    self._health_model.update_state(
+                        monitoring_points=self._health_monitor_points
                     )
-                except DevFailed:
-                    # No corresponding attribute to update, continue
-                    pass
-            elif attr_name.endswith("status"):
-                self._health_model.update_state(status=attr_value)
-            else:
-                self._health_monitor_points[attr_name] = attr_value
-                self._health_model.update_state(
-                    monitoring_points=self._health_monitor_points
-                )
+            if attr_name in ("portspowersensed", "portspowercontrol"):
+                port_power_control = self._fndh_attributes.get("portspowercontrol")
+                port_power_sensed = self._fndh_attributes.get("portspowersensed")
+                if port_power_control is not None and port_power_sensed is not None:
+                    self._nof_faulty_smartbox_ports = sum(
+                        powered != controlled
+                        for powered, controlled in zip(
+                            port_power_sensed.value, port_power_control.value
+                        )
+                    )
+                    self.push_change_event(
+                        "numberOfFaultySmartboxPorts", self._nof_faulty_smartbox_ports
+                    )
+                    self.push_archive_event(
+                        "numberOfFaultySmartboxPorts", self._nof_faulty_smartbox_ports
+                    )
 
         except AssertionError:
             self.logger.error(
                 f"""The attribute {attr_name} pushed from MccsPasdBus
                 device does not exist in MccsSmartBox"""
             )
+
+    @staticmethod
+    def _convert_status_to_quality(pasd_status: Optional[str]) -> tango.AttrQuality:
+        match pasd_status:
+            case None | "POWERDOWN":
+                return tango.AttrQuality.ATTR_INVALID
+            case "UNINITIALISED" | "OK":
+                return tango.AttrQuality.ATTR_VALID
+            case "WARNING":
+                return tango.AttrQuality.ATTR_WARNING
+            case "ALARM" | "RECOVERY":
+                return tango.AttrQuality.ATTR_ALARM
+            case _:
+                return tango.AttrQuality.ATTR_INVALID
 
     @attribute(
         dtype="DevString",
@@ -870,4 +1031,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
         :return: the health report.
         """
-        return self._health_model.health_report
+        if self._health_model is not None:
+            return self._health_model.health_report
+        return self._health_report

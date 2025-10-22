@@ -13,12 +13,20 @@ import gc
 import json
 import unittest.mock
 from contextlib import nullcontext
+from datetime import datetime, timezone
 from typing import Any, ContextManager
 
 import numpy as np
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel, PowerState, ResultCode
+from ska_control_model import (
+    AdminMode,
+    HealthState,
+    LoggingLevel,
+    PowerState,
+    ResultCode,
+)
+from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd import MccsFNDH
@@ -42,6 +50,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
         "longRunningCommandResult",
         "longRunningCommandStatus",
         "state",
+        "attribute",
         timeout=2.0,
         assert_no_error=False,
     )
@@ -81,19 +90,30 @@ def patched_fndh_device_class_fixture(
         def __init__(self: PatchedMccsFNDH, *args: Any, **kwargs: Any):
             super().__init__(*args, **kwargs)
 
-        def create_component_manager(
-            self: PatchedMccsFNDH,
-        ) -> unittest.mock.Mock:
-            """
-            Return a mock component manager instead of the usual one.
+        # def create_component_manager(
+        #     self: PatchedMccsFNDH,
+        # ) -> unittest.mock.Mock:
+        #     """
+        #     Return a mock component manager instead of the usual one.
 
-            :return: a mock component manager
+        #     :return: a mock component manager
+        #     """
+        #     mock_component_manager._component_state_changed_callback = (
+        #         self._component_state_changed_callback
+        #     )
+
+        #     return mock_component_manager
+
+        @tango.server.command
+        def CallAttributeCallback(self, argin: str) -> None:
             """
-            mock_component_manager._component_state_changed_callback = (
-                self._component_state_changed_callback
+            Patched method to call attribute callback directly.
+
+            :param argin: json-ified dict to call attribute callback with.
+            """
+            self._attribute_changed_callback(
+                **json.loads(argin), attr_quality=tango.AttrQuality.ATTR_VALID
             )
-
-            return mock_component_manager
 
     return PatchedMccsFNDH
 
@@ -101,6 +121,7 @@ def patched_fndh_device_class_fixture(
 @pytest.fixture(name="fndh_device")
 def fndh_device_fixture(
     patched_fndh_device_class: type[MccsFNDH],
+    mock_pasdbus: unittest.mock.Mock,
 ) -> tango.DeviceProxy:
     """
     Fixture that returns a proxy to the FNDH Tango device under test.
@@ -114,6 +135,7 @@ def fndh_device_fixture(
         logging_level=int(LoggingLevel.DEBUG),
         device_class=patched_fndh_device_class,
     )
+    harness.set_mock_pasd_bus_device(mock_pasdbus)
 
     with harness as context:
         yield context.get_fndh_device()
@@ -358,3 +380,112 @@ def test_ports_with_smartbox(
     mocked_ports = [i + 1 for i in range(4)]
     fndh_device.portsWithSmartbox = np.array(mocked_ports)
     assert fndh_device.portsWithSmartbox.tolist() == mocked_ports
+
+
+@pytest.mark.parametrize(
+    ("attribute", "max_alarm", "max_warning", "min_warning", "min_alarm"),
+    [
+        ("Psu48vVoltage1", 51, 49, 46, 41),
+        ("Psu48vVoltage2", 51, 49, 46, 41),
+        ("Psu48vCurrent", 17, 15, 0, -4),
+        ("Psu48vTemperature1", 95, 80, 5, -2),
+        ("Psu48vTemperature2", 95, 80, 5, -2),
+        ("PanelTemperature", 80, 65, 5, -2),
+        ("FncbTemperature", 80, 65, 5, -2),
+        ("FncbHumidity", 80, 65, 15, 5),
+        ("CommsGatewayTemperature", 80, 65, 5, -2),
+        ("PowerModuleTemperature", 80, 65, 5, -2),
+        ("OutsideTemperature", 80, 65, 5, -2),
+        ("InternalAmbientTemperature", 80, 65, 5, -2),
+    ],
+)
+# pylint: disable=too-many-arguments, too-many-positional-arguments
+def test_health(
+    fndh_device: tango.DeviceProxy,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+    attribute: str,
+    max_alarm: float,
+    max_warning: float,
+    min_warning: float,
+    min_alarm: float,
+) -> None:
+    """
+    Test commands return the correct result code.
+
+    :param fndh_device: fixture that provides a
+        :py:class:`tango.DeviceProxy` to the device under test, in a
+        :py:class:`tango.test_context.DeviceTestContext`.
+    :param fndh_device: the  device under test
+    :param change_event_callbacks: a collection of change event callbacks.
+    :param attribute: the attribute to test health for.
+    :param max_alarm: maximum alarm threshold for the attribute.
+    :param max_warning: maximum warning threshold for the attribute.
+    :param min_warning: minimum warning threshold for the attribute.
+    :param min_alarm: minimum alarm threshold for the attribute.
+    """
+    fndh_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
+
+    fndh_device.subscribe_event(
+        "healthState",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["healthState"],
+    )
+    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
+
+    fndh_device.subscribe_event(
+        "internalAmbientTemperature",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["attribute"],
+    )
+    change_event_callbacks.assert_change_event("attribute", Anything)
+
+    fndh_device.adminMode = AdminMode.ONLINE
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.OK)
+
+    # This is a bit reliant on implementation details. This is the last attribute we
+    # poll for health, so we wait on a change event for this attribute as a proxy for
+    # a full poll cycle completing.
+    change_event_callbacks.assert_change_event("attribute", Anything)
+
+    try:
+        attribute_config = fndh_device.get_attribute_config(attribute.lower())
+        alarm_config = attribute_config.alarms
+        alarm_config.max_warning = str(max_warning)
+        alarm_config.max_alarm = str(max_alarm)
+        alarm_config.min_warning = str(min_warning)
+        alarm_config.min_alarm = str(min_alarm)
+        attribute_config.alarms = alarm_config
+        fndh_device.set_attribute_config(attribute_config)
+    except tango.DevFailed:
+        pytest.xfail("Ran into PyTango monitor lock issue, to be fixed in 10.1.0")
+    converter = float if attribute.lower() != "fncbhumidity" else int
+    fndh_device.CallAttributeCallback(
+        json.dumps(
+            {
+                "attr_name": attribute.lower(),
+                "attr_value": converter(max_alarm * 1.5),
+                "timestamp": datetime.now(timezone.utc).timestamp(),
+            }
+        )
+    )
+    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
+    assert fndh_device.state() == tango.DevState.ALARM
+
+    fndh_device.CallAttributeCallback(
+        json.dumps(
+            {
+                "attr_name": attribute.lower(),
+                "attr_value": converter((max_warning + min_warning) / 2),
+                "timestamp": datetime.now(timezone.utc).timestamp(),
+            }
+        )
+    )
+    change_event_callbacks["healthState"].assert_change_event(HealthState.OK)
+    assert fndh_device.state() == tango.DevState.ON
