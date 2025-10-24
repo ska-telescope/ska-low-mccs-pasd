@@ -5,6 +5,7 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
+# pylint: disable=too-many-lines
 """This module implements the MCCS FNDH device."""
 
 from __future__ import annotations
@@ -712,7 +713,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 ports_with_smartbox=self._ports_with_smartbox
             )
 
-    @attribute(dtype="DevShort")
+    @attribute(dtype="DevShort", max_alarm=5, max_warning=1)
     def numberOfFaultySmartboxPorts(self: MccsFNDH) -> Optional[int]:
         """
         Return the total number of faulty smartbox ports.
@@ -959,12 +960,19 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             if attr_name in ("portspowersensed", "portspowercontrol"):
                 port_power_control = self._fndh_attributes.get("portspowercontrol")
                 port_power_sensed = self._fndh_attributes.get("portspowersensed")
-                if port_power_control is not None and port_power_sensed is not None:
+                if (
+                    port_power_control is not None
+                    and port_power_control.value is not None
+                    and port_power_sensed is not None
+                    and port_power_sensed.value is not None
+                ):
                     self._nof_faulty_smartbox_ports = sum(
                         powered != controlled
-                        for powered, controlled in zip(
-                            port_power_sensed.value, port_power_control.value
+                        for i, (powered, controlled) in enumerate(
+                            zip(port_power_sensed.value, port_power_control.value),
+                            start=1,
                         )
+                        if i in self._ports_with_smartbox
                     )
                     self.push_change_event(
                         "numberOfFaultySmartboxPorts", self._nof_faulty_smartbox_ports
