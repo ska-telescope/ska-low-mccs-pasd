@@ -274,12 +274,15 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         failure_log = ""
 
         timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
-        fndh_on_command = MccsCommandProxy(
-            device_name=self._fndh_name, command_name="On", logger=self.logger
-        )
-        result, message = fndh_on_command(
-            timeout=timeout, is_lrc=True, wait_for_result=True
-        )
+        if self._fndh_proxy.power_state != PowerState.ON:
+            fndh_on_command = MccsCommandProxy(
+                device_name=self._fndh_name, command_name="On", logger=self.logger
+            )
+            result, message = fndh_on_command(
+                timeout=timeout, is_lrc=True, wait_for_result=True
+            )
+        else:
+            result = ResultCode.OK
 
         if result == ResultCode.OK:
             smartbox_on_commands = MccsCompositeCommandProxy(self.logger)
@@ -592,7 +595,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     f"FieldStation transitioning to {power_state.name} state ...."
                 )
                 self._power_state = power_state
-                self._component_state_callback(power=power_state)
+                self._update_component_state(power=power_state)
 
         if trimmed_smartbox_power_states:
             with self._power_state_lock:

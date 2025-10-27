@@ -205,7 +205,6 @@ def test_context_fixture(
 class TestFieldStationHealth:
     """Class to test Field Station health."""
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def _get_devices_on_and_healthy(
         self: TestFieldStationHealth,
         field_station_device: tango.DeviceProxy,
@@ -274,7 +273,7 @@ class TestFieldStationHealth:
             )
 
     # flake8: noqa
-    # pylint: disable=too-many-locals, too-many-branches
+    # pylint: disable=too-many-branches
     def test_health_aggregation(
         self: TestFieldStationHealth,
         field_station_device: tango.DeviceProxy,
@@ -282,7 +281,6 @@ class TestFieldStationHealth:
         fncc_device: tango.DeviceProxy,
         pasd_bus_device: tango.DeviceProxy,
         change_event_callbacks: MockTangoEventCallbackGroup,
-        fndh_simulator: FndhSimulator,
         smartbox_proxys: list[tango.DeviceProxy],
         wait_for_lrcs_to_finish: Callable,
     ) -> (
@@ -297,7 +295,6 @@ class TestFieldStationHealth:
             :py:class:`tango.test_context.DeviceTestContext`.
         :param fncc_device: Proxy to the FNCC device under test.
         :param pasd_bus_device: a proxy to the PaSD bus device under test.
-        :param fndh_simulator: the FNDH simulator under test
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         :param smartbox_proxys: list of smartbox proxies to test
