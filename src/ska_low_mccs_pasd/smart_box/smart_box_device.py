@@ -589,9 +589,10 @@ class MccsSmartBox(MccsBaseDevice):
             attribute_name in self._healthful_attributes
             and self._healthful_attributes[attribute_name]() is not None
         ):
-            self.push_change_event(
-                attribute_name, self._healthful_attributes[attribute_name]()
-            )
+            attr = self._healthful_attributes[attribute_name]()
+            value = attr.value if isinstance(attr, SmartboxAttribute) else attr
+            if value is not None:
+                self.push_change_event(attribute_name, value)
 
     # pylint: disable=too-many-branches
     def _attribute_changed_callback(  # noqa: C901
