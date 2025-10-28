@@ -13,6 +13,7 @@ import json
 import re
 import sys
 from dataclasses import dataclass
+from functools import partial
 from typing import Any, Callable, Final, Optional, cast
 
 import numpy
@@ -102,6 +103,7 @@ class MccsSmartBox(MccsBaseDevice):
         :param args: positional args to the init
         :param kwargs: keyword args to the init
         """
+        self._smartbox_state: dict[str, SmartboxAttribute] = {}
         # We aren't supposed to define initialisation methods for Tango
         # devices; we are only supposed to define an `init_device` method. But
         # we insist on doing so here, just so that we can define some
@@ -129,7 +131,6 @@ class MccsSmartBox(MccsBaseDevice):
         """
         self._readable_name = re.findall("sb[0-9]+", self.get_name())[0]
         super().init_device()
-        self._smartbox_state: dict[str, SmartboxAttribute] = {}
         self._setup_smartbox_attributes()
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
@@ -163,32 +164,16 @@ class MccsSmartBox(MccsBaseDevice):
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._healthful_attributes = {
-            "pasdStatus": lambda: self._smartbox_state.get("pasdstatus"),
-            "inputVoltage": lambda: self._smartbox_state.get("inputvoltage"),
-            "powerSupplyOutputVoltage": lambda: self._smartbox_state.get(
-                "powersupplyoutputvoltage"
-            ),
-            "powerSupplyTemperature": lambda: self._smartbox_state.get(
-                "powersupplytemperature"
-            ),
-            "pcbTemperature": lambda: self._smartbox_state.get("pcbtemperature"),
-            "femAmbientTemperature": lambda: self._smartbox_state.get(
-                "femambienttemperature"
-            ),
-            "femCaseTemperature1": lambda: self._smartbox_state.get(
-                "femcasetemperature1"
-            ),
-            "femCaseTemperature2": lambda: self._smartbox_state.get(
-                "femcasetemperature2"
-            ),
-            "femHeatsinkTemperature1": lambda: self._smartbox_state.get(
-                "femheatsinktemperature1"
-            ),
-            "femHeatsinkTemperature2": lambda: self._smartbox_state.get(
-                "femheatsinktemperature2"
-            ),
+            "pasdStatus": partial(self._smartbox_state.get, "pasdstatus"),
             "numberOfPortBreakersTripped": lambda: self._nof_port_breakers_tripped,
         }
+        for register in self.CONFIG["registers"].values():
+            attr = register["tango_attr_name"]
+            if attr.endswith("Thresholds"):
+                health_attr = attr.removesuffix("Thresholds")
+                self._healthful_attributes[health_attr] = partial(
+                    self._smartbox_state.get, health_attr.lower()
+                )
         if not self.UseAttributesForHealth:
             self._health_model = SmartBoxHealthModel(
                 self._health_changed_callback, self.logger
