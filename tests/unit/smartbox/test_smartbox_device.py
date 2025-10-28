@@ -267,7 +267,7 @@ def test_health(
     min_alarm: float,
 ) -> None:
     """
-    Test commands return the correct result code.
+    Test healthstate responds correctly to attribute changes.
 
     :param smartbox_device: fixture that provides a
         :py:class:`tango.DeviceProxy` to the device under test, in a
@@ -372,7 +372,7 @@ def test_pasd_status_health(
     dev_state: tango.DevState,
 ) -> None:
     """
-    Test commands return the correct result code.
+    Test the healthstate responds correctly to the pasdstatus.
 
     :param smartbox_device: fixture that provides a
         :py:class:`tango.DeviceProxy` to the device under test, in a

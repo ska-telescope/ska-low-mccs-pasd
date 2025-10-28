@@ -141,22 +141,41 @@ The smartbox health is determined by three factors:
 3. The status of the FEM port breakers.
 
 **Threshold Evaluation**
-Each monitoring point has four thresholds: [min_fault, min_warning, max_warning, max_fault]. If any value is less than the
-min_fault or greater than the max_fault, it triggers a FAILED health status. If a value is between the min_fault and
-min_warning, or between max_fault and max_warning, it triggers a DEGRADED health state.
+Each monitoring point has four thresholds: [min_alarm, min_warning, max_warning, max_alarm]. These set on the attributes and the attributes
+respond by moving through ``tango.AttrQuality.WARNING`` and ``tango.AttrQuality.ALARM`` respectively dependent on monitoring point value. The
+``healthState`` then reflects this as ``HealthState.DEGRADED`` -> ``tango.AttrQuality.WARNING`` and ``HealthState.FAILED`` -> ``tango.AttrQuality.ALARM``
 
-We can change the thresholds at run time on the smartbox by setting the ``healthModelParams`` attribute.
+We can change the thresholds at run time on the smartbox by using the Tango API:
 
 For example:
 
 .. code-block:: python
 
-    desired_thresholds = {
-        "pcb_temperature": [48.5, 48.3, 48.7, 48.6],
-        "input_voltage": [10.2, 10.5, 9.8, 10.1],
-    }
+    attribute_config = smartbox.get_attribute_config("InputVoltage")
+    alarm_config = attribute_config.alarms
+    alarm_config.max_warning = "49.5"
+    alarm_config.max_alarm = "48.5"
+    alarm_config.min_warning = "45.5"
+    alarm_config.min_alarm = "41"
+    attribute_config.alarms = alarm_config
+    smartbox.set_attribute_config(attribute_config)
 
-    smartbox.healthModelParams = json.dumps(desired_thresholds)
+We can also change the thresholds at deploy time on the smartbox through the helm charts:
+
+.. code-block:: yaml
+
+    ska-tango-devices:
+      deviceDefaults:
+        MccsSmartbox:
+          InputVoltage->max_alarm: 49.5
+          InputVoltage->max_warning: 48.5
+          InputVoltage->min_warning: 45.5
+          InputVoltage->min_alarm: 41    
+
+      devices:
+        MccsSmartbox:
+          low-mccs/smartbox/s8-1-sb11:
+            InputVoltage->max_alarm: 51.2
 
 **Status Register Evaluation**
 
@@ -169,5 +188,6 @@ The following translation of the Smartbox's SYS_STATUS register values to health
 
 **Port Breaker Status**
 
-If any of the port breakers are tripped, the health state of the Smartbox is set to 'FAILED'.
-  
+The number of port breakers tripped is reflected through the ``numberOfPortBreakersTripped`` attribute,
+this attribute can have thresholds configured as the other attributes above, by default it only has 
+max alarm configured as such we go to ``HealthState.FAILED`` at a single port breaker tripped.
