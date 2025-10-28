@@ -82,7 +82,7 @@ ska-tango-devices:
       Psu48vVoltage2->min_warning: 46
       Psu48vVoltage2->min_alarm: 41
       Psu48vCurrent->max_alarm: 17
-      Psu48vCurrent->max_warning: 15
+      Psu48vCurrent->max_warning: 16
       Psu48vCurrent->min_warning: 0
       Psu48vCurrent->min_alarm: -4
       Psu48vTemperature1->max_alarm: 95

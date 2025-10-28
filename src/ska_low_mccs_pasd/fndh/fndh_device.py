@@ -16,6 +16,7 @@ import logging
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import partial
 from typing import Any, Callable, Final, Optional, cast
 
 import tango
@@ -96,6 +97,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         :param args: positional args to the init
         :param kwargs: keyword args to the init
         """
+        self._fndh_attributes: dict[str, FNDHAttribute] = {}
         # We aren't supposed to define initialisation methods for Tango
         # devices; we are only supposed to define an `init_device` method. But
         # we insist on doing so here, just so that we can define some
@@ -133,7 +135,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         super().init_device()
 
         # Setup attributes shared with the MccsPasdBus.
-        self._fndh_attributes: dict[str, FNDHAttribute] = {}
         self._setup_fndh_attributes()
 
         # Attributes for specific ports on the FNDH.
@@ -159,6 +160,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             f"Initialised {device_name} device with properties:\n"
             f"\tPasdFQDN: {self.PasdFQDN}\n"
             f"\tPortsWithSmartbox: {self.PortsWithSmartbox}\n"
+            f"\tUseAttributesForHealth: {self.UseAttributesForHealth}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -178,33 +180,16 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._healthful_attributes = {
-            "pasdStatus": lambda: self._fndh_attributes.get("pasdstatus"),
-            "psu48vVoltage1": lambda: self._fndh_attributes.get("psu48vvoltage1"),
-            "psu48vVoltage2": lambda: self._fndh_attributes.get("psu48vvoltage2"),
-            "psu48vCurrent": lambda: self._fndh_attributes.get("psu48vcurrent"),
-            "psu48vTemperature1": lambda: self._fndh_attributes.get(
-                "psu48vtemperature1"
-            ),
-            "psu48vTemperature2": lambda: self._fndh_attributes.get(
-                "psu48vtemperature2"
-            ),
-            "panelTemperature": lambda: self._fndh_attributes.get("paneltemperature"),
-            "fncbTemperature": lambda: self._fndh_attributes.get("fncbtemperature"),
-            "fncbHumidity": lambda: self._fndh_attributes.get("fncbhumidity"),
-            "commsGatewayTemperature": lambda: self._fndh_attributes.get(
-                "commsgatewaytemperature"
-            ),
-            "powerModuleTemperature": lambda: self._fndh_attributes.get(
-                "powermoduletemperature"
-            ),
-            "outsideTemperature": lambda: self._fndh_attributes.get(
-                "outsidetemperature"
-            ),
-            "internalAmbientTemperature": lambda: self._fndh_attributes.get(
-                "internalambienttemperature"
-            ),
+            "pasdStatus": partial(self._fndh_attributes.get, "pasdstatus"),
             "numberOfFaultySmartboxPorts": lambda: self._nof_faulty_smartbox_ports,
         }
+        for register in self.CONFIG["registers"].values():
+            attr = register["tango_attr_name"]
+            if attr.endswith("Thresholds"):
+                health_attr = attr.removesuffix("Thresholds")
+                self._healthful_attributes[health_attr] = partial(
+                    self._fndh_attributes.get, health_attr.lower()
+                )
         self.set_change_event("numberOfFaultySmartboxPorts", True, False)
         self.set_archive_event("numberOfFaultySmartboxPorts", True, False)
         if not self.UseAttributesForHealth:
@@ -874,9 +859,10 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             attribute_name in self._healthful_attributes
             and self._healthful_attributes[attribute_name]() is not None
         ):
-            self.push_change_event(
-                attribute_name, self._healthful_attributes[attribute_name]()
-            )
+            attr = self._healthful_attributes[attribute_name]()
+            value = attr.value if isinstance(attr, FNDHAttribute) else attr
+            if value is not None:
+                self.push_change_event(attribute_name, value)
 
     def _attribute_changed_callback(  # noqa: C901
         self: MccsFNDH,
