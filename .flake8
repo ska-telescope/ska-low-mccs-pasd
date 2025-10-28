@@ -15,6 +15,7 @@ per-file-ignores =
     # N802 = PEP8 lowercase function name -- conflicts with Tango conventions
     src/ska_low_mccs_pasd/pasd_bus/pasd_bus_device.py: N802
     tests/unit/pasd_bus/test_pasd_bus_device.py: N802
+    tests/unit/smartbox/test_smartbox_device.py: N802
     src/ska_low_mccs_pasd/smart_box/smart_box_device.py: N802
     src/ska_low_mccs_pasd/fndh/fndh_device.py: N802
     src/ska_low_mccs_pasd/field_station/field_station_device.py: N802

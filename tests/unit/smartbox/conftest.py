@@ -95,9 +95,28 @@ def mock_pasdbus_fixture(
 
     builder.add_attribute("fndhPortsPowerSensed", mocked_initial_smartbox_ports)
     builder.add_attribute(f"smartbox{smartbox_number}PortsPowerSensed", [True] * 12)
-    builder.add_command(
-        "GetPasdDeviceSubscriptions", [f"smartbox{smartbox_number}PortsPowerSensed"]
-    )
+    builder.add_attribute(f"smartbox{smartbox_number}PortBreakersTripped", [False] * 12)
+
+    attrs = {
+        f"smartbox{smartbox_number}inputVoltage": [49.5, 48.5, 45.5, 41.0],
+        f"smartbox{smartbox_number}PowerSupplyOutputVoltage": [4.95, 4.8, 4.5, 4.1],
+        f"smartbox{smartbox_number}PowerSupplyTemperature": [80.0, 65.0, 5.0, -2.0],
+        f"smartbox{smartbox_number}PcbTemperature": [80.0, 65.0, 5.0, -2.0],
+        f"smartbox{smartbox_number}FemAmbientTemperature": [55.0, 40.0, 5.0, -2.0],
+        f"smartbox{smartbox_number}FemCaseTemperature1": [55.0, 40.0, 5.0, -2.0],
+        f"smartbox{smartbox_number}FemCaseTemperature2": [55.0, 40.0, 5.0, -2.0],
+        f"smartbox{smartbox_number}FemHeatsinkTemperature1": [55.0, 40.0, 5.0, -2.0],
+        f"smartbox{smartbox_number}FemHeatsinkTemperature2": [55.0, 40.0, 5.0, -2.0],
+    }
+    subscriptions = [
+        f"smartbox{smartbox_number}PortsPowerSensed",
+        f"smartbox{smartbox_number}PortBreakersTripped",
+    ] + list(attrs.keys())
+    for attr, thresholds in attrs.items():
+        value = float((thresholds[1] + thresholds[2]) / 2)
+        builder.add_attribute(attr, value)
+
+    builder.add_command("GetPasdDeviceSubscriptions", subscriptions)
     builder.add_result_command("SetSmartboxPortPowers", ResultCode.OK)
     builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
     return builder()

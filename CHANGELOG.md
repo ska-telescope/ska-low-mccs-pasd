@@ -3,6 +3,18 @@
 ## Unreleased
 
 * [THORN-253] Populate attribute alarm configuration from tmdata.
+* [THORN-268] MccsSmartbox healthstate is now an aggregate of attribute alarms.
+  The attributes used in health are:
+  * InputVoltage
+  * PowerSupplyOutputVoltage
+  * PowerSupplyTemperature
+  * PcbTemperature
+  * FemAmbientTemperature
+  * FemCaseTemperature1
+  * FemCaseTemperature2
+  * FemHeatsinkTemperature1
+  * FemHeatsinkTemperature2
+* [THORN-268] MccsSmartbox.numberOfPortBreakersTripped added.
 
 ## 3.4.2
 

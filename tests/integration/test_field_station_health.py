@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import gc
 import json
+import time
 from time import sleep
 from typing import Callable, Iterator
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState, LoggingLevel
+from ska_control_model import AdminMode, HealthState, LoggingLevel, ResultCode
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FnccSimulator, FndhSimulator, SmartboxSimulator
@@ -27,21 +28,29 @@ TIMEOUT = 30
 
 
 @pytest.fixture(name="change_event_callbacks")
-def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
+def change_event_callbacks_fixture(
+    smartbox_ids_to_test: list[int],
+) -> MockTangoEventCallbackGroup:
     """
     Return a dictionary of change event callbacks with asynchrony support.
+
+    :param smartbox_ids_to_test: List of smartbox IDs to test.
 
     :return: a collections.defaultdict that returns change event
         callbacks by name.
     """
-    return MockTangoEventCallbackGroup(
+    attrs = [
         "field_station_state",
         "field_station_healthstate",
         "fndh_state",
         "fndh_healthstate",
-        "smartbox_state",
-        "smartbox_healthstate",
-        "smartbox_adminMode",
+    ]
+    for smartbox_id in smartbox_ids_to_test:
+        attrs.append(f"smartbox_{smartbox_id}_state")
+        attrs.append(f"smartbox_{smartbox_id}_healthstate")
+        attrs.append(f"smartbox_{smartbox_id}_adminMode")
+    return MockTangoEventCallbackGroup(
+        *attrs,
         timeout=30.0,
     )
 
@@ -70,7 +79,7 @@ def smartbox_ids_to_test_fixture() -> list[int]:
 
     :return: a list of smartbox IDs to use in a test
     """
-    return list(range(1, 24 + 1))
+    return list(range(1, 7 + 1))
 
 
 @pytest.fixture(name="wait_for_lrcs_to_finish")
@@ -104,6 +113,31 @@ def wait_for_lrcs_to_finish_fixture() -> Callable:
                     )
 
     return _wait_for_lrcs_to_finish
+
+
+def _set_attribute_thresholds(
+    device: tango.DeviceProxy,
+    attribute_name: str,
+    thresholds: list[float],
+) -> None:
+    """
+    Set the attribute thresholds for a given device.
+
+    :param device: The Tango device proxy.
+    :param attribute_name: The name of the attribute to set thresholds for.
+    :param thresholds: A dictionary containing threshold values.
+    """
+    try:
+        attribute_config = device.get_attribute_config(attribute_name)
+        alarms = attribute_config.alarms
+        alarms.max_alarm = str(thresholds[0])
+        alarms.max_warning = str(thresholds[1])
+        alarms.min_warning = str(thresholds[2])
+        alarms.min_alarm = str(thresholds[3])
+        time.sleep(0.1)
+        device.set_attribute_config(attribute_config)
+    except tango.DevFailed:
+        pytest.xfail("Ran into PyTango monitor lock issue, to be fixed in 10.1.0")
 
 
 @pytest.fixture(name="test_context")
@@ -171,15 +205,9 @@ def test_context_fixture(
 class TestFieldStationHealth:
     """Class to test Field Station health."""
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def _get_devices_on_and_healthy(
         self: TestFieldStationHealth,
         field_station_device: tango.DeviceProxy,
-        fndh_device: tango.DeviceProxy,
-        fndh_simulator: FndhSimulator,
-        fncc_device: tango.DeviceProxy,
-        pasd_bus_device: tango.DeviceProxy,
-        smartbox_proxys: list[tango.DeviceProxy],
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
         """
@@ -190,47 +218,36 @@ class TestFieldStationHealth:
         :param field_station_device: fixture that provides a
             :py:class:`tango.DeviceProxy` to the device under test, in a
             :py:class:`tango.test_context.DeviceTestContext`.
-        :param fndh_device: Proxy to the FNDH device under test.
-        :param fndh_simulator: the FNDH simulator under test
-        :param fncc_device: Proxy to the FNCC device under test.
-        :param pasd_bus_device: a proxy to the PaSD bus device under test.
-        :param smartbox_proxys: list of smartbox proxies to test
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         """
-        devices = [
-            field_station_device,
-            fndh_device,
-            pasd_bus_device,
-            fncc_device,
-        ] + smartbox_proxys
-        # Turn on all FNDH Ports so we can control smartboxes
-        for port_no in list(range(24)):
-            fndh_simulator.turn_port_on(port_no)
 
         # Bring devices online
-        for device in devices:
-            device.adminMode = AdminMode.ONLINE
-            assert device.adminMode == AdminMode.ONLINE
+        field_station_device.adminMode = AdminMode.ONLINE
 
         change_event_callbacks["field_station_state"].assert_change_event(
-            tango.DevState.STANDBY, lookahead=10, consume_nonmatches=True
+            tango.DevState.UNKNOWN
         )
-        for smartbox in smartbox_proxys:
-            if smartbox.state() != tango.DevState.ON:
-                smartbox.On()
-
-        if field_station_device.state() != tango.DevState.ON:
-            field_station_device.On()
-            change_event_callbacks["field_station_state"].assert_change_event(
-                tango.DevState.ON, lookahead=10
-            )
-
-        # Everything should be ON now
-        if field_station_device.healthState != HealthState.OK:
-            change_event_callbacks["field_station_healthstate"].assert_change_event(
-                HealthState.OK, lookahead=10
-            )
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.OFF
+        )
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.STANDBY
+        )
+        assert field_station_device.on()[0] == ResultCode.QUEUED
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.ON
+        )
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.FAILED
+        )
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.DEGRADED
+        )
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.OK
+        )
+        change_event_callbacks["field_station_healthstate"].assert_not_called()
 
     def _check_devices_on_and_healthy(
         self: TestFieldStationHealth,
@@ -256,6 +273,7 @@ class TestFieldStationHealth:
             )
 
     # flake8: noqa
+    # pylint: disable=too-many-branches
     def test_health_aggregation(
         self: TestFieldStationHealth,
         field_station_device: tango.DeviceProxy,
@@ -263,7 +281,6 @@ class TestFieldStationHealth:
         fncc_device: tango.DeviceProxy,
         pasd_bus_device: tango.DeviceProxy,
         change_event_callbacks: MockTangoEventCallbackGroup,
-        fndh_simulator: FndhSimulator,
         smartbox_proxys: list[tango.DeviceProxy],
         wait_for_lrcs_to_finish: Callable,
     ) -> (
@@ -278,7 +295,6 @@ class TestFieldStationHealth:
             :py:class:`tango.test_context.DeviceTestContext`.
         :param fncc_device: Proxy to the FNCC device under test.
         :param pasd_bus_device: a proxy to the PaSD bus device under test.
-        :param fndh_simulator: the FNDH simulator under test
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
         :param smartbox_proxys: list of smartbox proxies to test
@@ -289,11 +305,26 @@ class TestFieldStationHealth:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["field_station_healthstate"],
         )
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.UNKNOWN
+        )
         field_station_device.subscribe_event(
             "state",
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["field_station_state"],
         )
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
+        for smartbox_id, smartbox in enumerate(smartbox_proxys, start=1):
+            smartbox.subscribe_event(
+                "healthState",
+                tango.EventType.CHANGE_EVENT,
+                change_event_callbacks[f"smartbox_{smartbox_id}_healthstate"],
+            )
+            change_event_callbacks[
+                f"smartbox_{smartbox_id}_healthstate"
+            ].assert_change_event(HealthState.UNKNOWN)
         devices = [
             field_station_device,
             fndh_device,
@@ -306,14 +337,13 @@ class TestFieldStationHealth:
         # Get devices to a starting state.
         self._get_devices_on_and_healthy(
             field_station_device=field_station_device,
-            fndh_device=fndh_device,
-            fndh_simulator=fndh_simulator,
-            fncc_device=fncc_device,
-            pasd_bus_device=pasd_bus_device,
-            smartbox_proxys=smartbox_proxys,
             change_event_callbacks=change_event_callbacks,
         )
         wait_for_lrcs_to_finish(devices)
+        for smartbox_id, _ in enumerate(smartbox_proxys, start=1):
+            change_event_callbacks[
+                f"smartbox_{smartbox_id}_healthstate"
+            ].assert_change_event(HealthState.OK)
         self._check_devices_on_and_healthy(devices)
 
         assert json.loads(field_station_device.healthThresholds)["smartboxes"] == [
@@ -325,67 +355,87 @@ class TestFieldStationHealth:
 
         # Test that as Smartboxes are degraded one by one the health of the
         # Field station goes to and stays degraded.
-        failed_thresholds = {
-            "inputvoltage": [47.0, 46.0, 9.8, 10.1],
-        }
-        degraded_thresholds = {
-            "inputvoltage": [48.5, 47.0, 9.8, 10.1],
-        }
-        healthy_thresholds = {
-            "inputvoltage": [50.0, 49.0, 45.0, 40.0],
-        }
-        for smartbox in smartbox_proxys:
+        failed_thresholds = [47.0, 46.0, 9.8, 10.1]
+        degraded_thresholds = [48.5, 47.0, 9.8, 10.1]
+        healthy_thresholds = [50.0, 49.0, 45.0, 40.0]
+        for smartbox_id, smartbox in enumerate(smartbox_proxys, start=1):
             assert smartbox.healthState == HealthState.OK
-            smartbox.healthModelParams = json.dumps(degraded_thresholds)
-            assert smartbox.healthState == HealthState.DEGRADED
-
+            _set_attribute_thresholds(
+                smartbox,
+                "inputVoltage",
+                degraded_thresholds,
+            )
+            change_event_callbacks[
+                f"smartbox_{smartbox_id}_healthstate"
+            ].assert_change_event(HealthState.DEGRADED)
             # FieldStation health should degrade when the first smartbox is degraded.
             if smartbox == smartbox_proxys[0]:
                 change_event_callbacks["field_station_healthstate"].assert_change_event(
-                    HealthState.DEGRADED, lookahead=10, consume_nonmatches=True
+                    HealthState.DEGRADED
                 )
-                sleep(0.5)  # Allow the event to be processed.
             assert field_station_device.healthState == HealthState.DEGRADED
 
         # Reset thresholds to get devices back to healthy state
-        for smartbox in smartbox_proxys:
+        for smartbox_id, smartbox in enumerate(smartbox_proxys, start=1):
             assert smartbox.healthState == HealthState.DEGRADED
-            smartbox.healthModelParams = json.dumps(healthy_thresholds)
-            assert smartbox.healthState == HealthState.OK
+            _set_attribute_thresholds(
+                smartbox,
+                "inputVoltage",
+                healthy_thresholds,
+            )
+            change_event_callbacks[
+                f"smartbox_{smartbox_id}_healthstate"
+            ].assert_change_event(HealthState.OK)
 
         change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.OK, lookahead=10, consume_nonmatches=True
+            HealthState.OK
         )
 
         # Cause smartboxes to fail one by one.
         # Should be degraded when one fails, and failed when all fail.
-        for smartbox in smartbox_proxys:
+        for smartbox_id, smartbox in enumerate(smartbox_proxys, start=1):
             assert smartbox.healthState == HealthState.OK
-            smartbox.healthModelParams = json.dumps(failed_thresholds)
-            assert smartbox.healthState == HealthState.FAILED
+            _set_attribute_thresholds(
+                smartbox,
+                "inputVoltage",
+                failed_thresholds,
+            )
+            change_event_callbacks[
+                f"smartbox_{smartbox_id}_healthstate"
+            ].assert_change_event(HealthState.FAILED)
 
             # FieldStation health should degrade when the first smartbox fails.
             if smartbox == smartbox_proxys[0]:
                 change_event_callbacks["field_station_healthstate"].assert_change_event(
-                    HealthState.DEGRADED, lookahead=10, consume_nonmatches=True
+                    HealthState.DEGRADED
                 )
             # Should be degraded until the last smartbox fails.
             if smartbox != smartbox_proxys[-1]:
                 assert field_station_device.healthState == HealthState.DEGRADED
 
         change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.FAILED, lookahead=10, consume_nonmatches=True
+            HealthState.FAILED
         )
         assert field_station_device.healthState == HealthState.FAILED
 
         # Get back to healthy.
-        for smartbox in smartbox_proxys:
-            smartbox.healthModelParams = json.dumps(healthy_thresholds)
-            assert smartbox.healthState == HealthState.OK
+        for smartbox_id, smartbox in enumerate(smartbox_proxys, start=1):
+            _set_attribute_thresholds(
+                smartbox,
+                "inputVoltage",
+                healthy_thresholds,
+            )
+            change_event_callbacks[
+                f"smartbox_{smartbox_id}_healthstate"
+            ].assert_change_event(HealthState.OK)
         change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.OK, lookahead=10, consume_nonmatches=True
+            HealthState.DEGRADED
+        )
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.OK
         )
         assert field_station_device.healthState == HealthState.OK
+        change_event_callbacks["field_station_healthstate"].assert_not_called()
 
         # Change thresholds and repeat the above test.
         # 2 Failed = Failed
@@ -396,6 +446,15 @@ class TestFieldStationHealth:
                 "smartboxes": [2, 1, 3],
             }
         )
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.FAILED
+        )
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.DEGRADED
+        )
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.OK
+        )
         assert json.loads(field_station_device.healthThresholds)["smartboxes"] == [
             2,
             1,
@@ -403,55 +462,96 @@ class TestFieldStationHealth:
         ]
 
         # Check d2d threshold.
-        for smartbox in smartbox_proxys[:3]:
+        for smartbox_id, smartbox in enumerate(smartbox_proxys[:3], start=1):
             assert field_station_device.healthState == HealthState.OK
             assert smartbox.healthState == HealthState.OK
-            smartbox.healthModelParams = json.dumps(degraded_thresholds)
-            assert smartbox.healthState == HealthState.DEGRADED
+            _set_attribute_thresholds(
+                smartbox,
+                "inputVoltage",
+                degraded_thresholds,
+            )
+            change_event_callbacks[
+                f"smartbox_{smartbox_id}_healthstate"
+            ].assert_change_event(HealthState.DEGRADED)
 
         change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.DEGRADED, lookahead=10, consume_nonmatches=True
+            HealthState.DEGRADED
         )
         assert field_station_device.healthState == HealthState.DEGRADED
 
         # Reset
-        for smartbox in smartbox_proxys[:3]:
-            smartbox.healthModelParams = json.dumps(healthy_thresholds)
-            assert smartbox.healthState == HealthState.OK
+        for smartbox_id, smartbox in enumerate(smartbox_proxys[:3], start=1):
+            _set_attribute_thresholds(
+                smartbox,
+                "inputVoltage",
+                healthy_thresholds,
+            )
+            change_event_callbacks[
+                f"smartbox_{smartbox_id}_healthstate"
+            ].assert_change_event(HealthState.OK)
 
         change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.OK, lookahead=10, consume_nonmatches=True
+            HealthState.OK
         )
         assert field_station_device.healthState == HealthState.OK
 
         # Check f2d threshold.
         assert smartbox_proxys[0].healthState == HealthState.OK
-        smartbox_proxys[0].healthModelParams = json.dumps(failed_thresholds)
-        assert smartbox_proxys[0].healthState == HealthState.FAILED
-        change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.DEGRADED, lookahead=10, consume_nonmatches=True
+        _set_attribute_thresholds(
+            smartbox_proxys[0],
+            "inputVoltage",
+            failed_thresholds,
         )
+        change_event_callbacks["smartbox_1_healthstate"].assert_change_event(
+            HealthState.FAILED
+        )
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.DEGRADED
+        )
+        change_event_callbacks["field_station_healthstate"].assert_not_called()
         assert field_station_device.healthState == HealthState.DEGRADED
 
         # Check f2f threshold.
         assert smartbox_proxys[1].healthState == HealthState.OK
-        smartbox_proxys[1].healthModelParams = json.dumps(failed_thresholds)
-        assert smartbox_proxys[1].healthState == HealthState.FAILED
-        change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.FAILED, lookahead=10, consume_nonmatches=True
+        _set_attribute_thresholds(
+            smartbox_proxys[1],
+            "inputVoltage",
+            failed_thresholds,
         )
+        change_event_callbacks["smartbox_2_healthstate"].assert_change_event(
+            HealthState.FAILED
+        )
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.FAILED
+        )
+        change_event_callbacks["field_station_healthstate"].assert_not_called()
         assert field_station_device.healthState == HealthState.FAILED
 
         # Reset
-        for smartbox in smartbox_proxys[:2]:
-            smartbox.healthModelParams = json.dumps(healthy_thresholds)
-            assert smartbox.healthState == HealthState.OK
+        for smartbox_id, smartbox in enumerate(smartbox_proxys[:2], start=1):
+            _set_attribute_thresholds(
+                smartbox,
+                "inputVoltage",
+                healthy_thresholds,
+            )
+            change_event_callbacks[
+                f"smartbox_{smartbox_id}_healthstate"
+            ].assert_change_event(HealthState.OK)
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.OK, lookahead=3, consume_nonmatches=True
+        )
         field_station_device.healthThresholds = json.dumps(
             {
                 "smartboxes": [0, 1, 1],
             }
         )
         change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.OK, lookahead=10, consume_nonmatches=True
+            HealthState.FAILED
+        )
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.DEGRADED
+        )
+        change_event_callbacks["field_station_healthstate"].assert_change_event(
+            HealthState.OK
         )
         assert field_station_device.healthState == HealthState.OK

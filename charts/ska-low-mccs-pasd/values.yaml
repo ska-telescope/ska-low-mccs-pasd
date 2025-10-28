@@ -127,7 +127,7 @@ ska-tango-devices:
       InputVoltage->min_warning: 45.5
       InputVoltage->min_alarm: 41
       PowerSupplyOutputVoltage->max_alarm: 4.95
-      PowerSupplyOutputVoltage->max_warning: 48
+      PowerSupplyOutputVoltage->max_warning: 4.81
       PowerSupplyOutputVoltage->min_warning: 4.5
       PowerSupplyOutputVoltage->min_alarm: 4.1
       PowerSupplyTemperature->max_alarm: 80
@@ -139,23 +139,23 @@ ska-tango-devices:
       PcbTemperature->min_warning: 5
       PcbTemperature->min_alarm: -2
       FemAmbientTemperature->max_alarm: 55
-      FemAmbientTemperature->max_warning: 40
+      FemAmbientTemperature->max_warning: 41
       FemAmbientTemperature->min_warning: 5
       FemAmbientTemperature->min_alarm: -2
       FemCaseTemperature1->max_alarm: 55
-      FemCaseTemperature1->max_warning: 40
+      FemCaseTemperature1->max_warning: 45
       FemCaseTemperature1->min_warning: 5
       FemCaseTemperature1->min_alarm: -2
       FemCaseTemperature2->max_alarm: 55
-      FemCaseTemperature2->max_warning: 40
+      FemCaseTemperature2->max_warning: 45
       FemCaseTemperature2->min_warning: 5
       FemCaseTemperature2->min_alarm: -2
       FemHeatsinkTemperature1->max_alarm: 55
-      FemHeatsinkTemperature1->max_warning: 40
+      FemHeatsinkTemperature1->max_warning: 43
       FemHeatsinkTemperature1->min_warning: 5
       FemHeatsinkTemperature1->min_alarm: -2
       FemHeatsinkTemperature2->max_alarm: 55
-      FemHeatsinkTemperature2->max_warning: 40
+      FemHeatsinkTemperature2->max_warning: 43
       FemHeatsinkTemperature2->min_warning: 5
       FemHeatsinkTemperature2->min_alarm: -2
 

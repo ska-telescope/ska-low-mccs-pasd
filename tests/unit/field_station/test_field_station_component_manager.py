@@ -67,7 +67,7 @@ def mock_fndh_fixture(mocked_outside_temperature: float) -> unittest.mock.Mock:
     :return: a mock MccsFndh device.
     """
     builder = MockDeviceBuilder()
-    builder.set_state(tango.DevState.ON)
+    builder.set_state(tango.DevState.STANDBY)
     builder.add_result_command("PowerOnPort", ResultCode.OK)
     builder.add_result_command("PowerOffPort", ResultCode.OK)
     builder.add_result_command("SetPortPowers", ResultCode.QUEUED)
