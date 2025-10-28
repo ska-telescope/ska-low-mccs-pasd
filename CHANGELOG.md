@@ -15,6 +15,21 @@
   * FemHeatsinkTemperature1
   * FemHeatsinkTemperature2
 * [THORN-268] MccsSmartbox.numberOfPortBreakersTripped added.
+* [THORN-268] MccsFndh healthstate is now an aggregate of attribute alarms.
+  The attributes used in health are:
+  * Psu48vVoltage1
+  *  Psu48vVoltage2
+  *  Psu48vCurrent
+  *  Psu48vTemperature1
+  *  Psu48vTemperature2
+  *  PanelTemperature
+  *  FncbTemperature
+  *  FncbHumidity
+  *  CommsGatewayTemperature
+  *  PowerModuleTemperature
+  *  OutsideTemperature
+  *  InternalAmbientTemperature
+* [THORN-268] MccsFndh.numberOfFaultySmartboxPorts added.
 
 ## 3.4.2
 
