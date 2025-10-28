@@ -169,6 +169,8 @@ class MccsSmartBox(MccsBaseDevice):
         }
         for register in self.CONFIG["registers"].values():
             attr = register["tango_attr_name"]
+            if attr.lower().startswith("femcurrenttrip"):
+                continue
             if attr.endswith("Thresholds"):
                 health_attr = attr.removesuffix("Thresholds")
                 self._healthful_attributes[health_attr] = partial(
