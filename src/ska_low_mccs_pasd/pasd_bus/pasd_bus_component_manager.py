@@ -126,6 +126,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         component_state_callback: Callable[..., None],
         pasd_device_state_callback: Callable[..., None],
         available_smartboxes: list[int],
+        smartbox_ids: list[int] | None,
     ) -> None:
         """
         Initialise a new instance.
@@ -156,6 +157,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             number), and keyword arguments representing the state
             changes.
         :param available_smartboxes: a list of available smartbox ids to poll.
+        :param smartbox_ids: optional list of smartbox IDs associated with
+            each FNDH port.
         """
         self._logger = logger
         self._pasd_bus_api_client = PasdBusModbusApiClient(
@@ -164,7 +167,10 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._pasd_bus_device_state_callback = pasd_device_state_callback
         self._polling_rate = polling_rate
         self._request_provider = PasdBusRequestProvider(
-            int(device_polling_rate / polling_rate), self._logger, available_smartboxes
+            int(device_polling_rate / polling_rate),
+            self._logger,
+            available_smartboxes,
+            smartbox_ids,
         )
         self._last_request_timestamp: float = 0
         self._connection_reset_count = 0
@@ -692,3 +698,13 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param value: the new value to write
         """
         self._request_provider.desire_attribute_write(device_id, attribute_name, value)
+
+    def set_port_power_states(
+        self: PasdBusComponentManager, port_power_states: list[bool]
+    ) -> None:
+        """
+        Set the list of smartboxes to poll.
+
+        :param port_power_states: list of port power statuses (true=On, false=Off).
+        """
+        self._request_provider.set_port_power_states(port_power_states)
