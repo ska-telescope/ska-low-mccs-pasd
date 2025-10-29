@@ -168,8 +168,8 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["pasd_bus_state"],
         )
-        change_event_callbacks.assert_change_event(
-            "pasd_bus_state", tango.DevState.DISABLE
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.DISABLE
         )
 
         fndh_device.subscribe_event(
@@ -185,8 +185,8 @@ class TestfndhPasdBusIntegration:
             change_event_callbacks["pasdBushealthState"],
         )
 
-        change_event_callbacks.assert_change_event(
-            "pasdBushealthState", HealthState.UNKNOWN
+        change_event_callbacks["pasdBushealthState"].assert_change_event(
+            HealthState.UNKNOWN
         )
         assert pasd_bus_device.healthState == HealthState.UNKNOWN
         # -----------------------------------------------------------------
@@ -202,9 +202,9 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
         )
-        change_event_callbacks.assert_change_event(
-            f"smartbox{last_smartbox_id}AlarmFlags", Anything
-        )
+        change_event_callbacks[
+            f"smartbox{last_smartbox_id}AlarmFlags"
+        ].assert_change_event(Anything)
 
         pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
@@ -219,7 +219,7 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.ON, 2, True
         )
-        change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
+        change_event_callbacks["pasdBushealthState"].assert_change_event(HealthState.OK)
         assert pasd_bus_device.healthState == HealthState.OK
 
         fndh_device.adminMode = AdminMode.ONLINE
@@ -461,8 +461,8 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["pasd_bus_state"],
         )
-        change_event_callbacks.assert_change_event(
-            "pasd_bus_state", tango.DevState.DISABLE
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.DISABLE
         )
 
         fndh_device.subscribe_event(
@@ -478,8 +478,8 @@ class TestfndhPasdBusIntegration:
             change_event_callbacks["pasdBushealthState"],
         )
 
-        change_event_callbacks.assert_change_event(
-            "pasdBushealthState", HealthState.UNKNOWN
+        change_event_callbacks["pasdBushealthState"].assert_change_event(
+            HealthState.UNKNOWN
         )
         assert pasd_bus_device.healthState == HealthState.UNKNOWN
 
@@ -494,9 +494,9 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
         )
-        change_event_callbacks.assert_change_event(
-            f"smartbox{last_smartbox_id}AlarmFlags", Anything
-        )
+        change_event_callbacks[
+            f"smartbox{last_smartbox_id}AlarmFlags"
+        ].assert_change_event(Anything)
 
         pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
@@ -511,7 +511,7 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks["pasd_bus_state"].assert_change_event(
             tango.DevState.ON, 2, True
         )
-        change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
+        change_event_callbacks["pasdBushealthState"].assert_change_event(HealthState.OK)
         assert pasd_bus_device.healthState == HealthState.OK
         assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
 
@@ -757,8 +757,8 @@ class TestfndhPasdBusIntegration:
         fndh_simulator._ports[random_stuck_off_port - 1].enabled = True
         # ++++++++++++++++++++++++++++++++++++++++
 
-        change_event_callbacks.assert_change_event(
-            "fndhhealthState", HealthState.DEGRADED
+        change_event_callbacks["fndhhealthState"].assert_change_event(
+            HealthState.DEGRADED
         )
         assert fndh_device.healthreport == (
             "numberoffaultysmartboxports is in ATTR_WARNING with value 2"
@@ -794,8 +794,8 @@ class TestfndhPasdBusIntegration:
             fndh_simulator._ports[i - 1].enabled = False
         # ++++++++++++++++++++++++++++++++++++++++
 
-        change_event_callbacks.assert_change_event(
-            "fndhhealthState", HealthState.FAILED
+        change_event_callbacks["fndhhealthState"].assert_change_event(
+            HealthState.FAILED
         )
         # Example usage
         expected_stuck_on_faults = fndh_device.portswithsmartbox
@@ -809,7 +809,7 @@ class TestfndhPasdBusIntegration:
         for i in fndh_device.portswithsmartbox:
             fndh_simulator.simulate_port_stuck_on(i, False)
         # ++++++++++++++++++++++++++++++++++++++++
-        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+        change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.OK)
         assert fndh_device.healthreport == "Health is OK."
 
     def test_faulty_smartbox_configured_ports_failed_stuck_off(
@@ -841,8 +841,8 @@ class TestfndhPasdBusIntegration:
             fndh_simulator._ports[i - 1].enabled = True
         # ++++++++++++++++++++++++++++++++++++++++
 
-        change_event_callbacks.assert_change_event(
-            "fndhhealthState", HealthState.FAILED
+        change_event_callbacks["fndhhealthState"].assert_change_event(
+            HealthState.FAILED
         )
         assert fndh_device.healthreport == (
             "numberoffaultysmartboxports is in ATTR_ALARM"
@@ -855,7 +855,7 @@ class TestfndhPasdBusIntegration:
             fndh_simulator.simulate_port_stuck_off(i, False)
         # ++++++++++++++++++++++++++++++++++++++++
 
-        change_event_callbacks.assert_change_event("fndhhealthState", HealthState.OK)
+        change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.OK)
         assert fndh_device.healthreport == "Health is OK."
 
 

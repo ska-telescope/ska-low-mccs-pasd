@@ -348,18 +348,24 @@ def check_monitoring_point_is_reported(
 @then("MCCS-for-PaSD health becomes OK")
 def check_health_becomes_okay(
     change_event_callbacks: MockTangoEventCallbackGroup,
+    pasd_bus_device: tango.DeviceProxy,
 ) -> None:
     """
     Check that the health of the PaSD bus device becomes OK.
 
     :param change_event_callbacks: dictionary of Tango change event
         callbacks with asynchrony support.
+    :param pasd_bus_device: a proxy to the PaSD bus device.
     """
-    change_event_callbacks[f"{get_pasd_bus_name()}/healthState"].assert_change_event(
-        HealthState.OK,
-        lookahead=6,  # TODO: This isn't needed at all in lightweight testing. Why?
-        consume_nonmatches=True,
-    )
+    if pasd_bus_device.healthstate != HealthState.OK:
+        change_event_callbacks[
+            f"{get_pasd_bus_name()}/healthState"
+        ].assert_change_event(
+            HealthState.OK,
+            lookahead=6,  # TODO: This isn't needed at all in lightweight testing. Why?
+            consume_nonmatches=True,
+        )
+    assert pasd_bus_device.healthstate == HealthState.OK
 
 
 @given("the FNDH port is off")
