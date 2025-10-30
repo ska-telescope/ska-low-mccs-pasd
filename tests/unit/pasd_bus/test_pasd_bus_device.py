@@ -17,6 +17,7 @@ import random
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState, SimulationMode
+from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FnccSimulator, FndhSimulator, SmartboxSimulator
@@ -88,6 +89,86 @@ def pasd_bus_device_fixture(
     harness = PasdTangoTestHarness()
     harness.set_pasd_bus_simulator(mock_pasd_hw_simulators)
     harness.set_pasd_bus_device(polling_rate=0.1, device_polling_rate=0.1)
+    with harness as context:
+        pasd_bus_device = context.get_pasd_bus_device()
+        pasd_bus_device.simulationMode = SimulationMode.TRUE
+        yield pasd_bus_device
+
+
+@pytest.fixture(name="smartbox_ids")
+def smartbox_ids_fixture() -> list[int]:
+    """
+    Return the smartbox_ids to be set on the pasd_bus_device.
+
+    :return: the list of smartbox_ids for each FNDH port.
+    """
+    # Initialize the list to 0 (i.e. no smartbox connected)
+    ids = [0] * PasdData.NUMBER_OF_FNDH_PORTS
+    ids[0] = 1
+    ids[1] = 2
+    ids[2] = 3
+    ids[3] = 7
+    ids[12] = PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
+    return ids
+
+
+@pytest.fixture(name="change_event_callbacks_multiple_smartboxes")
+def change_event_callbacks_multiple_smartboxes_fixture(
+    smartbox_ids: list[int],
+) -> MockTangoEventCallbackGroup:
+    """
+    Return a dictionary of change event callbacks with asynchrony support.
+
+    :param smartbox_ids: list of smartbox IDs being addressed.
+
+    :return: a collections.defaultdict that returns change event
+        callbacks by name.
+    """
+    attributes = [
+        "adminMode",
+        "healthState",
+        "longRunningCommandResult",
+        "longRunningCommandStatus",
+        "state",
+        "fndhPortsPowerSensed",
+    ]
+    for smartbox_id in smartbox_ids:
+        if smartbox_id != 0:
+            attributes.append(f"smartbox{smartbox_id}FirmwareVersion")
+            attributes.append(f"smartbox{smartbox_id}InputVoltage")
+            attributes.append(f"smartbox{smartbox_id}AlarmFlags")
+            attributes.append(f"smartbox{smartbox_id}Uptime")
+
+    return MockTangoEventCallbackGroup(
+        *attributes,
+        timeout=45.0,
+        assert_no_error=False,
+    )
+
+
+@pytest.fixture(name="pasd_bus_device_using_smartbox_ids")
+def pasd_bus_device_using_smartbox_ids_fixture(
+    mock_pasd_hw_simulators: dict[
+        int, FndhSimulator | FnccSimulator | SmartboxSimulator
+    ],
+    smartbox_ids: list[int],
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns a proxy to the PaSD bus Tango device under test.
+
+    :param mock_pasd_hw_simulators:
+        the FNDH and smartbox simulator backends that the TCP server will front,
+        each wrapped with a mock so that we can assert calls.
+    :param smartbox_ids: list of smartbox IDs to set on the PaSD bus device.
+    :yield: a proxy to the PaSD bus Tango device under test.
+    """
+    harness = PasdTangoTestHarness()
+    harness.set_pasd_bus_simulator(mock_pasd_hw_simulators)
+    harness.set_pasd_bus_device(
+        polling_rate=0.1,
+        device_polling_rate=0.1,
+        smartbox_ids=smartbox_ids,
+    )
     with harness as context:
         pasd_bus_device = context.get_pasd_bus_device()
         pasd_bus_device.simulationMode = SimulationMode.TRUE
@@ -1206,3 +1287,151 @@ def test_set_thresholds_on_initialise(
         INPUT_VOLTAGE_THRESHOLDS,
         lookahead=3,
     )
+
+
+# pylint: disable=too-many-locals
+def test_only_poll_on_smartboxes(
+    pasd_bus_device_using_smartbox_ids: tango.DeviceProxy,
+    smartbox_ids: list[int],
+    smartbox_simulator: SmartboxSimulator,
+    change_event_callbacks_multiple_smartboxes: MockTangoEventCallbackGroup,
+) -> None:
+    """
+    Test that only smartboxes for powered ports are polled.
+
+    NB: This only applies when the device property SmartboxIDs
+    has been set.
+
+    :param pasd_bus_device_using_smartbox_ids: a proxy to the
+        PaSD bus device under test.
+    :param smartbox_ids: the SmartboxIDs property set on the PaSD bus device.
+    :param smartbox_simulator: the Smartbox simulator under test.
+    :param change_event_callbacks_multiple_smartboxes: dictionary of mock
+        change event callbacks with asynchrony support
+    """
+    # Rename fixtures for readability
+    pasd_bus_device = pasd_bus_device_using_smartbox_ids
+    change_event_callbacks = change_event_callbacks_multiple_smartboxes
+
+    # Record the current uptime to compare against later
+    starting_uptime = PasdConversionUtility.convert_uptime(smartbox_simulator.uptime)[0]
+
+    assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+
+    pasd_bus_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
+
+    pasd_bus_device.subscribe_event(
+        "fndhPortsPowerSensed",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["fndhPortsPowerSensed"],
+    )
+    change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(None)
+
+    # This is a bit of a cheat.
+    # It's an implementation-dependent detail that
+    # this is one of the last attributes to be read from the simulator.
+    # We subscribe events on this attribute because we know that
+    # once we have an updated value for this attribute,
+    # we have an updated value for all of them.
+    last_smartbox_id = max(smartbox_ids)
+    pasd_bus_device.subscribe_event(
+        f"smartbox{last_smartbox_id}AlarmFlags",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
+    )
+    change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"].assert_change_event(
+        None
+    )
+
+    pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
+
+    pasd_bus_device.InitializeFndh()
+
+    # Turn on all the attached smartboxes
+    desired_port_powers: list[bool] = [smartbox_id != 0 for smartbox_id in smartbox_ids]
+
+    json_arg = {
+        "port_powers": desired_port_powers,
+        "stay_on_when_offline": False,
+    }
+    pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
+    change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
+        desired_port_powers, lookahead=5
+    )
+
+    # Wait for the last smartbox's attributes to be updated
+    change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"].assert_against_call(
+        lookahead=5
+    )
+
+    # Check that attributes for only powered on smartboxes
+    # have been updated
+    expected_firmware_version = PasdConversionUtility.convert_firmware_version(
+        [SmartboxSimulator.DEFAULT_FIRMWARE_VERSION]
+    )[0]
+    expected_input_voltage = PasdConversionUtility.scale_volts(
+        [SmartboxSimulator.DEFAULT_INPUT_VOLTAGE]
+    )[0]
+    first_uptime_callbacks: dict[int, int] = {}
+    for smartbox_id in smartbox_ids:
+        if smartbox_id != 0:
+            assert (
+                getattr(pasd_bus_device, f"smartbox{smartbox_id}FirmwareVersion")
+                == expected_firmware_version
+            )
+            assert (
+                getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltage")
+                == expected_input_voltage
+            )
+            first_uptime_callbacks[smartbox_id] = getattr(
+                pasd_bus_device, f"smartbox{smartbox_id}Uptime"
+            )
+            assert first_uptime_callbacks[smartbox_id] >= starting_uptime
+        else:
+            with pytest.raises(AttributeError):
+                getattr(pasd_bus_device, f"smartbox{smartbox_id}FirmwareVersion")
+            with pytest.raises(AttributeError):
+                getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltage")
+
+    # Turn off a random port and check attributes not updated
+    off_smartbox_index, off_smartbox_id = random.choice(
+        [
+            (i, smartbox_id)
+            for i, smartbox_id in enumerate(smartbox_ids)
+            if smartbox_id != 0
+        ]
+    )
+    desired_port_powers[off_smartbox_index] = False
+    json_arg = {
+        "port_powers": desired_port_powers,
+        "stay_on_when_offline": False,
+    }
+    off_smartbox_uptime = getattr(pasd_bus_device, f"smartbox{off_smartbox_id}Uptime")
+    pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
+    change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
+        desired_port_powers, lookahead=5
+    )
+
+    for smartbox_id in smartbox_ids:
+        if smartbox_id == off_smartbox_id:
+            change_event_callbacks[f"smartbox{smartbox_id}Uptime"].assert_not_called()
+            assert (
+                getattr(pasd_bus_device, f"smartbox{smartbox_id}Uptime")
+                == off_smartbox_uptime
+            )
+        elif smartbox_id != 0:
+            change_event_callbacks[f"smartbox{smartbox_id}Uptime"].assert_change_event(
+                Anything, lookahead=20
+            )
+            assert (
+                getattr(pasd_bus_device, f"smartbox{smartbox_id}Uptime")
+                > first_uptime_callbacks[smartbox_id]
+            )
