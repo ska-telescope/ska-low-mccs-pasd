@@ -760,9 +760,13 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks["fndhhealthState"].assert_change_event(
             HealthState.DEGRADED
         )
-        assert fndh_device.healthreport == (
-            "numberoffaultysmartboxports is in ATTR_WARNING with value 2"
-        )
+        report = fndh_device.healthreport
+        report_lines = [line.strip() for line in report.splitlines() if line.strip()]
+        expected_lines = {
+            "numberofstuckonsmartboxports is in ATTR_WARNING with value 1",
+            "numberofstuckoffsmartboxports is in ATTR_WARNING with value 1",
+        }
+        assert set(report_lines) == expected_lines
 
     def test_faulty_smartbox_configured_ports_failed_stuck_on(
         self: TestfndhPasdBusIntegration,
@@ -800,7 +804,7 @@ class TestfndhPasdBusIntegration:
         # Example usage
         expected_stuck_on_faults = fndh_device.portswithsmartbox
         assert fndh_device.healthreport == (
-            "numberoffaultysmartboxports is in ATTR_ALARM"
+            "numberofstuckonsmartboxports is in ATTR_ALARM"
             f" with value {len(expected_stuck_on_faults)}"
         )
 
@@ -845,7 +849,7 @@ class TestfndhPasdBusIntegration:
             HealthState.FAILED
         )
         assert fndh_device.healthreport == (
-            "numberoffaultysmartboxports is in ATTR_ALARM"
+            "numberofstuckoffsmartboxports is in ATTR_ALARM"
             f" with value {len(fndh_device.portswithsmartbox)}"
         )
 

@@ -36,6 +36,7 @@ from tango.server import attribute, command, device_property
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
 from ska_low_mccs_pasd.pasd_data import PasdData
 
+from ..pasd_bus.pasd_bus_conversions import FndhStatusMap
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .fndh_component_manager import FndhComponentManager
 from .fndh_health_model import FndhHealthModel
@@ -118,7 +119,8 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self._overVoltageThreshold: float
         self._humidityThreshold: float
         self.component_manager: FndhComponentManager
-        self._nof_faulty_smartbox_ports: Optional[int] = None
+        self._nof_stuck_on_smartbox_ports: Optional[int] = None
+        self._nof_stuck_off_smartbox_ports: Optional[int] = None
 
         # Health monitor points contains a cache of monitoring points as they
         # are updated in a poll. When communication is lost this cache is
@@ -181,7 +183,8 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._healthful_attributes = {
             "pasdStatus": partial(self._fndh_attributes.get, "pasdstatus"),
-            "numberOfFaultySmartboxPorts": lambda: self._nof_faulty_smartbox_ports,
+            "numberOfStuckOnSmartboxPorts": lambda: self._nof_stuck_on_smartbox_ports,
+            "numberOfStuckOffSmartboxPorts": lambda: self._nof_stuck_off_smartbox_ports,
         }
         for register in self.CONFIG["registers"].values():
             attr = register["tango_attr_name"]
@@ -190,8 +193,10 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 self._healthful_attributes[health_attr] = partial(
                     self._fndh_attributes.get, health_attr.lower()
                 )
-        self.set_change_event("numberOfFaultySmartboxPorts", True, False)
-        self.set_archive_event("numberOfFaultySmartboxPorts", True, False)
+        self.set_change_event("numberOfStuckOnSmartboxPorts", True, False)
+        self.set_archive_event("numberOfStuckOnSmartboxPorts", True, False)
+        self.set_change_event("numberOfStuckOffSmartboxPorts", True, False)
+        self.set_archive_event("numberOfStuckOffSmartboxPorts", True, False)
         if not self.UseAttributesForHealth:
             self._health_model = FndhHealthModel(
                 self._health_changed_callback, self.logger
@@ -699,15 +704,26 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             )
 
     @attribute(dtype="DevShort", max_alarm=5, max_warning=1)
-    def numberOfFaultySmartboxPorts(self: MccsFNDH) -> Optional[int]:
+    def numberOfStuckOnSmartboxPorts(self: MccsFNDH) -> Optional[int]:
         """
-        Return the total number of faulty smartbox ports.
+        Return the total number of stuck on smartbox ports.
 
         This is used for alarm configuration.
 
-        :return: the total number of faulty smartbox ports.
+        :return: the total number of stuck on smartbox ports.
         """
-        return self._nof_faulty_smartbox_ports
+        return self._nof_stuck_on_smartbox_ports
+
+    @attribute(dtype="DevShort", max_alarm=5, max_warning=1)
+    def numberOfStuckOffSmartboxPorts(self: MccsFNDH) -> Optional[int]:
+        """
+        Return the total number of stuck off smartbox ports.
+
+        This is used for alarm configuration.
+
+        :return: the total number of stuck off smartbox ports.
+        """
+        return self._nof_stuck_off_smartbox_ports
 
     # ----------
     # Callbacks
@@ -944,45 +960,69 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                         monitoring_points=self._health_monitor_points
                     )
             if attr_name in ("portspowersensed", "portspowercontrol"):
-                port_power_control = self._fndh_attributes.get("portspowercontrol")
-                port_power_sensed = self._fndh_attributes.get("portspowersensed")
-                if (
-                    port_power_control is not None
-                    and port_power_control.value is not None
-                    and port_power_sensed is not None
-                    and port_power_sensed.value is not None
-                ):
-                    self._nof_faulty_smartbox_ports = sum(
-                        powered != controlled
-                        for i, (powered, controlled) in enumerate(
-                            zip(port_power_sensed.value, port_power_control.value),
-                            start=1,
-                        )
-                        if i in self._ports_with_smartbox
-                    )
-                    self.push_change_event(
-                        "numberOfFaultySmartboxPorts", self._nof_faulty_smartbox_ports
-                    )
-                    self.push_archive_event(
-                        "numberOfFaultySmartboxPorts", self._nof_faulty_smartbox_ports
-                    )
-
+                self._evaluate_faulty_ports()
         except AssertionError:
             self.logger.error(
                 f"""The attribute {attr_name} pushed from MccsPasdBus
                 device does not exist in MccsSmartBox"""
             )
 
+    def _evaluate_faulty_ports(self: MccsFNDH) -> None:
+        port_power_control = self._fndh_attributes.get("portspowercontrol")
+        port_power_sensed = self._fndh_attributes.get("portspowersensed")
+        if (
+            port_power_control is not None
+            and port_power_control.value is not None
+            and port_power_sensed is not None
+            and port_power_sensed.value is not None
+        ):
+            nof_stuck_off_smartbox_ports = sum(
+                not powered and controlled
+                for i, (powered, controlled) in enumerate(
+                    zip(port_power_sensed.value, port_power_control.value),
+                    start=1,
+                )
+                if i in self._ports_with_smartbox
+            )
+            nof_stuck_on_smartbox_ports = sum(
+                powered and not controlled
+                for i, (powered, controlled) in enumerate(
+                    zip(port_power_sensed.value, port_power_control.value),
+                    start=1,
+                )
+                if i in self._ports_with_smartbox
+            )
+            if nof_stuck_off_smartbox_ports != self._nof_stuck_off_smartbox_ports:
+                self._nof_stuck_off_smartbox_ports = nof_stuck_off_smartbox_ports
+                self.push_change_event(
+                    "numberOfStuckOffSmartboxPorts",
+                    self._nof_stuck_off_smartbox_ports,
+                )
+                self.push_archive_event(
+                    "numberOfStuckOffSmartboxPorts",
+                    self._nof_stuck_off_smartbox_ports,
+                )
+            if nof_stuck_on_smartbox_ports != self._nof_stuck_on_smartbox_ports:
+                self._nof_stuck_on_smartbox_ports = nof_stuck_on_smartbox_ports
+                self.push_change_event(
+                    "numberOfStuckOnSmartboxPorts",
+                    self._nof_stuck_on_smartbox_ports,
+                )
+                self.push_archive_event(
+                    "numberOfStuckOnSmartboxPorts",
+                    self._nof_stuck_on_smartbox_ports,
+                )
+
     @staticmethod
     def _convert_status_to_quality(pasd_status: Optional[str]) -> tango.AttrQuality:
         match pasd_status:
-            case None | "POWERDOWN":
+            case None | FndhStatusMap.POWERUP.name:
                 return tango.AttrQuality.ATTR_INVALID
-            case "UNINITIALISED" | "OK":
+            case FndhStatusMap.UNINITIALISED.name | FndhStatusMap.OK.name:
                 return tango.AttrQuality.ATTR_VALID
-            case "WARNING":
+            case FndhStatusMap.WARNING.name:
                 return tango.AttrQuality.ATTR_WARNING
-            case "ALARM" | "RECOVERY":
+            case FndhStatusMap.ALARM.name | FndhStatusMap.RECOVERY.name:
                 return tango.AttrQuality.ATTR_ALARM
             case _:
                 return tango.AttrQuality.ATTR_INVALID

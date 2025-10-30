@@ -434,7 +434,7 @@ def test_health(
     min_alarm: float,
 ) -> None:
     """
-    Test commands return the correct result code.
+    Test the FNDH health model.
 
     :param healthful_fndh_device: the  device under test
     :param change_event_callbacks: a collection of change event callbacks.
@@ -524,7 +524,7 @@ def test_health(
         ("WARNING", HealthState.DEGRADED, tango.DevState.ALARM),
         ("ALARM", HealthState.FAILED, tango.DevState.ALARM),
         ("RECOVERY", HealthState.FAILED, tango.DevState.ALARM),
-        ("POWERDOWN", HealthState.UNKNOWN, tango.DevState.ON),
+        ("POWERUP", HealthState.UNKNOWN, tango.DevState.ON),
         ("FAKE_STATUS", HealthState.UNKNOWN, tango.DevState.ON),
     ],
 )
@@ -536,7 +536,7 @@ def test_pasd_status_health(
     dev_state: tango.DevState,
 ) -> None:
     """
-    Test commands return the correct result code.
+    Test pasdstatus converted to correct health state.
 
     :param healthful_fndh_device: fixture that provides a
         :py:class:`tango.DeviceProxy` to the device under test, in a

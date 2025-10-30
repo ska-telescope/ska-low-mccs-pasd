@@ -153,6 +153,7 @@ The health of the FNDH is determined by three factors:
 3. The status as reported in the FNDH's SYS_STATUS register.
 
 **Threshold Evaluation**
+
 Each monitoring point has four thresholds: [min_alarm, min_warning, max_warning, max_alarm]. These set on the attributes and the attributes
 respond by moving through ``tango.AttrQuality.WARNING`` and ``tango.AttrQuality.ALARM`` respectively dependent on monitoring point value. The
 ``healthState`` then reflects this as ``HealthState.DEGRADED`` -> ``tango.AttrQuality.WARNING`` and ``HealthState.FAILED`` -> ``tango.AttrQuality.ALARM``
@@ -200,6 +201,6 @@ The following translation of the FNDH's SYS_STATUS register values to health sta
   
 **Faulty Smartbox Port Status**
 
-The number of smartbox ports which are faulty is reflected through the ``numberOfFaultySmartboxPorts`` attribute,
-this attribute can have thresholds configured as the other attributes above, by default it only has 
-max alarm configured as such we go to ``HealthState.FAILED`` if a single smartbox port is faulty.
+The number of smartbox ports which are faulty is reflected through the ``numberOfStuckOnSmartboxPorts``
+and ``numberOfStuckOffSmartboxPorts`` attributes. These attributes can have thresholds configured as the   
+other attributes above, by default they are set to max_warning: 1 and max_alarm: 5.

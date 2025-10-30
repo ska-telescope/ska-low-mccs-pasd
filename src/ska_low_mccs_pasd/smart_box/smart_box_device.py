@@ -28,6 +28,7 @@ from tango.server import attribute, command, device_property
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
 from ska_low_mccs_pasd.pasd_data import PasdData
 
+from ..pasd_bus.pasd_bus_conversions import SmartboxStatusMap
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .smart_box_component_manager import SmartBoxComponentManager
 from .smartbox_health_model import SmartBoxHealthModel
@@ -701,13 +702,13 @@ class MccsSmartBox(MccsBaseDevice):
     @staticmethod
     def _convert_status_to_quality(pasd_status: Optional[str]) -> tango.AttrQuality:
         match pasd_status:
-            case None | "POWERDOWN":
+            case None | SmartboxStatusMap.POWERDOWN.name:
                 return tango.AttrQuality.ATTR_INVALID
-            case "UNINITIALISED" | "OK":
+            case SmartboxStatusMap.UNINITIALISED.name | SmartboxStatusMap.OK.name:
                 return tango.AttrQuality.ATTR_VALID
-            case "WARNING":
+            case SmartboxStatusMap.WARNING.name:
                 return tango.AttrQuality.ATTR_WARNING
-            case "ALARM" | "RECOVERY":
+            case SmartboxStatusMap.ALARM.name | SmartboxStatusMap.RECOVERY.name:
                 return tango.AttrQuality.ATTR_ALARM
             case _:
                 return tango.AttrQuality.ATTR_INVALID

@@ -29,7 +29,7 @@
   *  PowerModuleTemperature
   *  OutsideTemperature
   *  InternalAmbientTemperature
-* [THORN-268] MccsFndh.numberOfFaultySmartboxPorts added.
+* [THORN-268] MccsFndh.numberOfStuckOnSmartboxPorts, MccsFndh.numberOfStuckOffSmartboxPorts added.
 
 ## 3.4.2
 
