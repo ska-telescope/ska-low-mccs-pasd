@@ -17,7 +17,13 @@ from typing import Any, Final, Optional, cast
 
 import numpy
 import tango
-from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
+from ska_control_model import (
+    AdminMode,
+    CommunicationStatus,
+    HealthState,
+    PowerState,
+    ResultCode,
+)
 from ska_low_mccs_common import MccsBaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
 from tango import DevFailed
@@ -29,6 +35,7 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .smart_box_component_manager import SmartBoxComponentManager
+from .smart_box_thresholds import SmartBoxThresholds
 from .smartbox_health_model import SmartBoxHealthModel
 
 __all__ = ["MccsSmartBox"]
@@ -110,6 +117,9 @@ class MccsSmartBox(MccsBaseDevice):
         self._health_model: SmartBoxHealthModel
         self.component_manager: SmartBoxComponentManager
         self._health_monitor_points: dict[str, list[float]] = {}
+
+        self._thresholds_tango = SmartBoxThresholds()
+        self._thresholds_pasd = SmartBoxThresholds()
 
     def init_device(self: MccsSmartBox) -> None:
         """
@@ -408,6 +418,8 @@ class MccsSmartBox(MccsBaseDevice):
 
     def _read_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
         attribute_name = smartbox_attribute.get_name().lower()
+        self.logger.error(f"smartbox_attribute == {smartbox_attribute}")
+        self.logger.error(f"_smartbox_state == {self._smartbox_state}")
         smartbox_attribute.set_value_date_quality(
             self._smartbox_state[attribute_name].value,
             self._smartbox_state[attribute_name].timestamp,
@@ -416,9 +428,27 @@ class MccsSmartBox(MccsBaseDevice):
 
     def _write_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
         # Register the request with the component manager
-        tango_attr_name = smartbox_attribute.get_name()
-        value = smartbox_attribute.get_write_value(ExtractAs.List)
-        self.component_manager.write_attribute(tango_attr_name, value)
+        if smartbox_attribute.get_name().endswith("thresholds"):
+            if self._admin_mode == AdminMode.ENGINEERING:
+                tango_attr_name = smartbox_attribute.get_name()
+                value = smartbox_attribute.get_write_value(ExtractAs.List)
+                self.component_manager.write_attribute(tango_attr_name, value)
+                self._thresholds_tango.update({tango_attr_name: value})
+            else:
+                self.logger.warning(
+                    "Cannot write attributes unless in engineering mode"
+                )
+                raise AttributeError(
+                    "Cannot write attributes unless in engineering mode"
+                )
+        else:
+            tango_attr_name = smartbox_attribute.get_name()
+            value = smartbox_attribute.get_write_value(ExtractAs.List)
+            self.component_manager.write_attribute(tango_attr_name, value)
+
+        if self._threshold_differences():
+            self.logger.error("Mismatch between firmware and tango thresholds")
+            self._component_state_changed(fault=True)
 
     # ----------
     # Callbacks
@@ -506,7 +536,7 @@ class MccsSmartBox(MccsBaseDevice):
             self.push_change_event("healthState", health)
             self.push_archive_event("healthState", health)
 
-    def _attribute_changed_callback(
+    def _attribute_changed_callback(  # noqa: C901
         self: MccsSmartBox,
         attr_name: str,
         attr_value: Any,
@@ -561,6 +591,12 @@ class MccsSmartBox(MccsBaseDevice):
                 try:
                     attr_true = attr_name.removesuffix("thresholds")
                     self._health_model.health_params = {attr_true: attr_value}
+                    self._thresholds_pasd.update({attr_name: attr_value})
+                    if self._threshold_differences():
+                        self.logger.error(
+                            "Mismatch between firmware and tango thresholds"
+                        )
+                        self._component_state_changed(fault=True)
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass
@@ -580,6 +616,43 @@ class MccsSmartBox(MccsBaseDevice):
                 device does not exist in MccsSmartBox"""
             )
             self.logger.error(repr(e))
+
+    def _threshold_differences(self: MccsSmartBox) -> dict:
+        """
+        Compare the tango and firmware thresholds.
+
+        :return: The differences between thresholds.
+        """
+
+        def create_diff(thresholds_1: dict, thresholds_2: dict) -> dict:
+            diff = {}
+            for thresholds_type, value in thresholds_1.items():
+                if value != thresholds_2[thresholds_type]:
+                    diff[
+                        thresholds_type
+                    ] = f"""mismatch tango value != firmware value:
+                        {value} != {thresholds_2[thresholds_type]}"""
+            return diff
+
+        differences = {}
+
+        for name, thresholds in self._thresholds_tango.all_thresholds().items():
+            if thresholds != self._thresholds_pasd.all_thresholds()[name]:
+                difference = create_diff(
+                    thresholds, self._thresholds_pasd.all_thresholds()[name]
+                )
+                differences[name] = difference
+
+        return differences
+
+    @attribute(dtype="DevString", label="ThresholdDifferences")
+    def threshold_differences(self: MccsSmartBox) -> str:
+        """
+        Return the differences between threshold values.
+
+        :return: Return the differences between threshold values.
+        """
+        return json.dumps(self._threshold_differences())
 
     @attribute(dtype="DevString", label="FndhPort")
     def fndhPort(self: MccsSmartBox) -> str:
