@@ -154,31 +154,41 @@ The health of the FNDH is determined by three factors:
 
 **Threshold Evaluation**
 
-The thresholds are read from the hardware during the initial polling and after any write events.
+Each monitoring point has four thresholds: [min_alarm, min_warning, max_warning, max_alarm]. These set on the attributes and the attributes
+respond by moving through ``tango.AttrQuality.WARNING`` and ``tango.AttrQuality.ALARM`` respectively dependent on monitoring point value. The
+``healthState`` then reflects this as ``HealthState.DEGRADED`` -> ``tango.AttrQuality.WARNING`` and ``HealthState.FAILED`` -> ``tango.AttrQuality.ALARM``
 
-**Configuration via healthModelParams**
+We can change the thresholds at run time on the FNDH by using the Tango API:
 
-All health-related values are configurable through the ``healthModelParams`` attribute. 
-Below is an example of how the desired thresholds can be set (**Note**: values set are arbitrary):
+For example:
 
 .. code-block:: python
 
-    desired_thresholds = {
-        "failed_percent_uncontrolled_smartbox": 100,
-        "degraded_percent_uncontrolled_smartbox": 100,
-        "psu48vvoltage1": [48.5, 48.3, 48.7, 48.6],
-        "psu48vcurrent": [10.2, 10.5, 9.8, 10.1],
-        "psu48vtemperature1": [35.0, 36.0, 34.5, 35.5],
-        "psu48vtemperature2": [33.0, 32.5, 33.5, 33.2],
-        "fncbtemperature": [28.5, 29.0, 28.8, 29.2],
-        "fncbhumidity": [65, 70, 68, 66],
-        "commsgatewaytemperature": [30.0, 30.5, 29.8, 30.2],
-        "powermoduletemperature": [40.0, 40.5, 39.8, 40.2],
-        "outsidetemperature": [22.0, 21.5, 22.5, 22.1],
-        "internalambienttemperature": [24.5, 24.8, 24.3, 24.7]
-    }
+    attribute_config = fndh.get_attribute_config("Psu48vVoltage1")
+    alarm_config = attribute_config.alarms
+    alarm_config.max_warning = "49.5"
+    alarm_config.max_alarm = "48.5"
+    alarm_config.min_warning = "45.5"
+    alarm_config.min_alarm = "41"
+    attribute_config.alarms = alarm_config
+    fndh.set_attribute_config(attribute_config)
 
-    fndh.healthModelParams = json.dumps(desired_thresholds)
+We can also change the thresholds at deploy time on the FNDH through the helm charts:
+
+.. code-block:: yaml
+
+    ska-tango-devices:
+      deviceDefaults:
+        MccsFNDH:
+          Psu48vVoltage1->max_alarm: 51
+          Psu48vVoltage1->max_warning: 49
+          Psu48vVoltage1->min_warning: 46
+          Psu48vVoltage1->min_alarm: 41  
+
+      devices:
+        MccsFNDH:
+          low-mccs/fndh/s8-1:
+            Psu48vVoltage1->max_alarm: 53.2
 
 **Status Register Evaluation**
 
@@ -189,5 +199,8 @@ The following translation of the FNDH's SYS_STATUS register values to health sta
 - 'UNINITIALISED' or 'OK' indicates a health state of 'OK'.
 - 'POWERUP' indicates a health state of 'UNKNOWN' (this state should not be used).
   
+**Faulty Smartbox Port Status**
 
-
+The number of smartbox ports which are faulty is reflected through the ``numberOfStuckOnSmartboxPorts``
+and ``numberOfStuckOffSmartboxPorts`` attributes. These attributes can have thresholds configured as the   
+other attributes above, by default they are set to max_warning: 1 and max_alarm: 5.

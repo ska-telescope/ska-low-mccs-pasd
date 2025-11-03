@@ -6,7 +6,11 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module defines a pytest harness for testing the MCCS Fndh."""
+import unittest.mock
+
 import pytest
+import tango
+from ska_low_mccs_common.testing.mock import MockDeviceBuilder
 
 
 @pytest.fixture(name="default_monitoring_point_thresholds")
@@ -49,3 +53,38 @@ def healthy_monitoring_points_fixture(
         mon_value[key] = (threshold[1] + threshold[2]) / 2
 
     return mon_value
+
+
+@pytest.fixture(name="mock_pasdbus")
+def mock_pasdbus_fixture() -> unittest.mock.Mock:
+    """
+    Fixture that provides a mock MccsPaSDBus device.
+
+    :return: a mock MccsPaSDBus device.
+    """
+    builder = MockDeviceBuilder()
+    builder.set_state(tango.DevState.ON)
+    builder.add_command("GetPasdDeviceSubscriptions", {})
+
+    builder.add_attribute("fndhPortsPowerSensed", [True] * 28)
+
+    attrs = {
+        "fndhpsu48vvoltage1": [51, 49, 46, 41],
+        "fndhpsu48vvoltage2": [51, 49, 46, 41],
+        "fndhpsu48vcurrent": [17, 15, 0, -4],
+        "fndhpsu48vtemperature1": [95, 80, 5, -2],
+        "fndhpsu48vtemperature2": [95, 80, 5, -2],
+        "fndhpaneltemperature": [80, 65, 5, -2],
+        "fndhfncbtemperature": [80, 65, 5, -2],
+        "fndhfncbhumidity": [80, 65, 15, 5],
+        "fndhcommsgatewaytemperature": [80, 65, 5, -2],
+        "fndhpowermoduletemperature": [80, 65, 5, -2],
+        "fndhoutsidetemperature": [80, 65, 5, -2],
+        "fndhinternalambienttemperature": [80, 65, 5, -2],
+    }
+    for attr, thresholds in attrs.items():
+        value = float((thresholds[1] + thresholds[2]) / 2)
+        builder.add_attribute(attr, value)
+
+    builder.add_command("GetPasdDeviceSubscriptions", list(attrs.keys()))
+    return builder()
