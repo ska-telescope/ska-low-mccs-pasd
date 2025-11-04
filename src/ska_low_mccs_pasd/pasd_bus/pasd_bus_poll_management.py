@@ -384,11 +384,13 @@ class PasdBusRequestProvider:
         for fndh_port, power_state in enumerate(port_power_states, start=1):
             smartbox_id = self._smartboxIDs.get(fndh_port)
             if smartbox_id is None:
-                self._logger.error(f"FNDH port {fndh_port} has no associated smartbox")
+                # No associated smartbox on this port
                 continue
-            if power_state:
+            if power_state and smartbox_id not in self._ticks:
+                self._logger.info(f"Starting to poll smartbox {smartbox_id}")
                 self._ticks.update({smartbox_id: self._min_ticks})
-            elif smartbox_id in self._ticks:
+            elif not power_state and smartbox_id in self._ticks:
+                self._logger.info(f"Stopping polling smartbox {smartbox_id}")
                 self._ticks.pop(smartbox_id, None)
 
     def desire_read_startup_info(self, device_id: int) -> None:
