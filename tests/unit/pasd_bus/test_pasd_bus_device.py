@@ -17,7 +17,6 @@ import random
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState, SimulationMode
-from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_bus import FnccSimulator, FndhSimulator, SmartboxSimulator
@@ -1355,8 +1354,17 @@ def test_only_poll_on_smartboxes(
 
     pasd_bus_device.InitializeFndh()
 
-    # Turn on all the attached smartboxes
+    # Turn on all the attached smartboxes except one (not the last one as we're using
+    # that to detect when polling has finished)
     desired_port_powers: list[bool] = [smartbox_id != 0 for smartbox_id in smartbox_ids]
+    isolated_sb_index, isolated_sb_id = random.choice(
+        [
+            (i, smartbox_id)
+            for i, smartbox_id in enumerate(smartbox_ids)
+            if smartbox_id not in (0, last_smartbox_id)
+        ]
+    )
+    desired_port_powers[isolated_sb_index] = False
 
     json_arg = {
         "port_powers": desired_port_powers,
@@ -1380,9 +1388,8 @@ def test_only_poll_on_smartboxes(
     expected_input_voltage = PasdConversionUtility.scale_volts(
         [SmartboxSimulator.DEFAULT_INPUT_VOLTAGE]
     )[0]
-    first_uptime_callbacks: dict[int, int] = {}
     for smartbox_id in smartbox_ids:
-        if smartbox_id != 0:
+        if smartbox_id not in [0, isolated_sb_id]:
             assert (
                 getattr(pasd_bus_device, f"smartbox{smartbox_id}FirmwareVersion")
                 == expected_firmware_version
@@ -1391,47 +1398,34 @@ def test_only_poll_on_smartboxes(
                 getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltage")
                 == expected_input_voltage
             )
-            first_uptime_callbacks[smartbox_id] = getattr(
-                pasd_bus_device, f"smartbox{smartbox_id}Uptime"
-            )
-            assert first_uptime_callbacks[smartbox_id] >= starting_uptime
-        else:
-            with pytest.raises(AttributeError):
+            uptime = getattr(pasd_bus_device, f"smartbox{smartbox_id}Uptime")
+            assert uptime > starting_uptime
+        elif smartbox_id == isolated_sb_id:
+            with pytest.raises(tango.DevFailed):
                 getattr(pasd_bus_device, f"smartbox{smartbox_id}FirmwareVersion")
-            with pytest.raises(AttributeError):
+            with pytest.raises(tango.DevFailed):
                 getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltage")
+            with pytest.raises(tango.DevFailed):
+                getattr(pasd_bus_device, f"smartbox{smartbox_id}Uptime")
 
-    # Turn off a random port and check attributes not updated
-    off_smartbox_index, off_smartbox_id = random.choice(
-        [
-            (i, smartbox_id)
-            for i, smartbox_id in enumerate(smartbox_ids)
-            if smartbox_id != 0
-        ]
+    # Turn on the remaining smartbox and check its Uptime attribute is updated
+    pasd_bus_device.subscribe_event(
+        f"smartbox{isolated_sb_id}Uptime",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks[f"smartbox{isolated_sb_id}Uptime"],
     )
-    desired_port_powers[off_smartbox_index] = False
+    change_event_callbacks[f"smartbox{isolated_sb_id}Uptime"].assert_change_event(None)
+    desired_port_powers[isolated_sb_index] = True
     json_arg = {
         "port_powers": desired_port_powers,
         "stay_on_when_offline": False,
     }
-    off_smartbox_uptime = getattr(pasd_bus_device, f"smartbox{off_smartbox_id}Uptime")
     pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
     change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
         desired_port_powers, lookahead=5
     )
-
-    for smartbox_id in smartbox_ids:
-        if smartbox_id == off_smartbox_id:
-            change_event_callbacks[f"smartbox{smartbox_id}Uptime"].assert_not_called()
-            assert (
-                getattr(pasd_bus_device, f"smartbox{smartbox_id}Uptime")
-                == off_smartbox_uptime
-            )
-        elif smartbox_id != 0:
-            change_event_callbacks[f"smartbox{smartbox_id}Uptime"].assert_change_event(
-                Anything, lookahead=20
-            )
-            assert (
-                getattr(pasd_bus_device, f"smartbox{smartbox_id}Uptime")
-                > first_uptime_callbacks[smartbox_id]
-            )
+    change_event_callbacks[f"smartbox{isolated_sb_id}Uptime"].assert_against_call(
+        lookahead=5
+    )
+    uptime = getattr(pasd_bus_device, f"smartbox{isolated_sb_id}Uptime")
+    assert uptime > starting_uptime
