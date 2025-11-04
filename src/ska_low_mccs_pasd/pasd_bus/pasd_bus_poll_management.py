@@ -343,10 +343,6 @@ class PasdBusRequestProvider:
             PasdData.FNDH_DEVICE_ID: self._min_ticks,
             PasdData.FNCC_DEVICE_ID: self._min_ticks,
         }
-        self._ticks = {
-            PasdData.FNDH_DEVICE_ID: self._min_ticks,
-            PasdData.FNCC_DEVICE_ID: self._min_ticks,
-        }
 
         if not self._smartboxIDs:
             # We don't know the port mapping so we poll all available
