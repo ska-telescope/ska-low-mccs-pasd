@@ -13,6 +13,7 @@ import gc
 import json
 import unittest.mock
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 import tango
@@ -38,15 +39,16 @@ def smartbox_device_fixture(
 
     :yield: a proxy to the smartbox Tango device under test.
     """
-    harness = PasdTangoTestHarness()
-    harness.set_mock_pasd_bus_device(mock_pasdbus)
-    harness.add_smartbox_device(
-        smartbox_number,
-        logging_level=int(LoggingLevel.DEBUG),
-    )
+    with patch("ska_low_mccs_pasd.smart_box.smart_box_device.Database"):
+        harness = PasdTangoTestHarness()
+        harness.set_mock_pasd_bus_device(mock_pasdbus)
+        harness.add_smartbox_device(
+            smartbox_number,
+            logging_level=int(LoggingLevel.DEBUG),
+        )
 
-    with harness as context:
-        yield context.get_smartbox_device(smartbox_number)
+        with harness as context:
+            yield context.get_smartbox_device(smartbox_number)
 
 
 def test_device_transitions_to_power_state_of_fndh_port(

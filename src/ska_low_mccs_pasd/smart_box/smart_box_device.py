@@ -26,7 +26,7 @@ from ska_control_model import (
 )
 from ska_low_mccs_common import MccsBaseDevice
 from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
-from tango import DevFailed
+from tango import Database, DevFailed
 from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
 
@@ -120,6 +120,7 @@ class MccsSmartBox(MccsBaseDevice):
 
         self._thresholds_tango = SmartBoxThresholds()
         self._thresholds_pasd = SmartBoxThresholds()
+        self._db_connection: Database
 
     def init_device(self: MccsSmartBox) -> None:
         """
@@ -148,6 +149,7 @@ class MccsSmartBox(MccsBaseDevice):
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
         )
+        self._db_connection = Database()
 
     def delete_device(self: MccsSmartBox) -> None:
         """Delete the device."""
@@ -237,6 +239,24 @@ class MccsSmartBox(MccsBaseDevice):
     # ----------
     # Commands
     # ----------
+    @command(dtype_out="DevVarLongStringArray")
+    def UpdateThresholdCache(
+        self: MccsSmartBox,
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Update the threshold caches.
+
+        :return: A tuple containing a return code and a string message
+            indicating status.
+        """
+        self.update_threshold_cache()
+        diff = self._threshold_differences()
+        if diff:
+            return ([ResultCode.OK], ["UpdateThresholdCache completed"])
+
+        message = f"Thresholds do not match: {diff}"
+        return ([ResultCode.FAILED], [message])
+
     @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
     def PowerOnAntenna(
         self: MccsSmartBox, antenna_name: str
@@ -418,22 +438,26 @@ class MccsSmartBox(MccsBaseDevice):
 
     def _read_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
         attribute_name = smartbox_attribute.get_name().lower()
-        self.logger.error(f"smartbox_attribute == {smartbox_attribute}")
-        self.logger.error(f"_smartbox_state == {self._smartbox_state}")
         smartbox_attribute.set_value_date_quality(
             self._smartbox_state[attribute_name].value,
             self._smartbox_state[attribute_name].timestamp,
             self._smartbox_state[attribute_name].quality,
         )
 
-    def _write_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
+    def _write_smartbox_attribute(
+        self: MccsSmartBox, smartbox_attribute: tango.Attribute
+    ) -> None:
         # Register the request with the component manager
         if smartbox_attribute.get_name().endswith("thresholds"):
             if self._admin_mode == AdminMode.ENGINEERING:
                 tango_attr_name = smartbox_attribute.get_name()
                 value = smartbox_attribute.get_write_value(ExtractAs.List)
                 self.component_manager.write_attribute(tango_attr_name, value)
+                self._db_connection.put_device_attribute_property(
+                    self.get_name(), {tango_attr_name: value}
+                )
                 self._thresholds_tango.update({tango_attr_name: value})
+                self._thresholds_pasd.update({tango_attr_name: value})
             else:
                 self.logger.warning(
                     "Cannot write attributes unless in engineering mode"
@@ -449,6 +473,14 @@ class MccsSmartBox(MccsBaseDevice):
         if self._threshold_differences():
             self.logger.error("Mismatch between firmware and tango thresholds")
             self._component_state_changed(fault=True)
+
+    def update_threshold_cache(self: MccsSmartBox) -> None:
+        """Update smartbox thresholds cache from database and firmware."""
+        for name in self._thresholds_tango.all_thresholds():
+            self._thresholds_tango.update(self._smartbox_state[name].value)
+
+        for name in self._thresholds_pasd.all_thresholds():
+            self._thresholds_pasd.update(self._smartbox_state[name].value)
 
     # ----------
     # Callbacks
