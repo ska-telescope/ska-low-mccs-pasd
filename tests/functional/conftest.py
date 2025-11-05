@@ -201,10 +201,9 @@ def functional_test_context_fixture(
 
     :yields: a Tango context containing the devices under test
     """
-    with patch("ska_low_mccs_pasd.smart_box.smart_box_device.Database"):
-        harness = PasdTangoTestHarness(station_label)
-
-        if not is_true_context:
+    if not is_true_context:
+        with patch("ska_low_mccs_pasd.smart_box.smart_box_device.Database"):
+            harness = PasdTangoTestHarness(station_label)
             if pasd_address is None:
                 # Defer importing from ska_low_mccs_pasd
                 # until we know we need to launch a PaSD bus simulator to test against.
@@ -263,6 +262,10 @@ def functional_test_context_fixture(
                 harness.set_fncc_device(int(LoggingLevel.ERROR))
                 harness.set_field_station_device(smartbox_ids, int(LoggingLevel.ERROR))
 
+            with harness as context:
+                yield context
+    else:
+        harness = PasdTangoTestHarness(station_label)
         with harness as context:
             yield context
 
