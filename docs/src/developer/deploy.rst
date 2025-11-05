@@ -42,6 +42,67 @@ use the ``K8S_HELMFILE_ENV``environment variable to specify the environment.
 For example, ``make K8S_HELMFILE_ENV=aavs3 install-chart`` and
 ``make K8S_HELMFILE_ENV=aavs3 uninstall-chart``.
 
+-----------------
+Device properties
+-----------------
+
+The following properties are supported for each device type:
+
+MccsPasdBus
+~~~~~~~~~~~
+
+- **Host**: IP address of the host
+- **Port**: Communications port
+- **PollingRate**: Polling period, in seconds
+- **DevicePollingRate**: Minimum time between polls of a device, in seconds
+- **Timeout**: Communication timeout, in seconds
+- **LowPassFilterCutoff**: Low-pass filter cutoff frequency, in Hz
+- **FEMCurrentTripThreshold**: Current trip threshold for all FEMs, in Amps
+- **SBInputVoltageThresholds**: List of smartbox input voltage thresholds, in Volts
+- **SimulationConfig**: Set to 1 to enable simulation mode
+- **AvailableSmartboxes**: List of available smartbox IDs
+- **SmartboxIDs**: List of smartbox (Modbus) IDs associated with each FNDH port (see note below)
+
+To only poll smartboxes that are powered on, set the ``SmartboxIDs`` property to the list
+of smartbox IDs associated with each FNDH port, and use 0 for any port with no smartbox
+attached. For example, to indicate that smartboxes 5, 6 and 7 are attached to FNDH ports
+1, 2 and 4 respectively, and that port 3 has no smartbox attached, set the property to:
+``[5, 6, 0, 7]``. The ``AvailableSmartboxes`` property is ignored if this is set.
+
+To poll all smartboxes regardless of power state, leave the ``SmartboxIDs`` property unset
+and list all smartbox IDs in the ``AvailableSmartboxes`` property.
+
+
+MccsFNDH
+~~~~~~~~
+
+- **PasdFQDN**: Tango FQDN of the associated PaSD bus device
+- **PortsWithSmartbox**: List of FNDH ports that have an associated smartbox
+- **UseAttributesForHealth**: Set to ``True`` to use attribute quality factor in health evaluation
+
+MccsSmartbox
+~~~~~~~~~~~~
+
+- **PasdFQDN**: Tango FQDN of the associated PaSD bus device
+- **FieldStationName**: Field station identifier
+- **SmartBoxNumber**: Smartbox Modbus ID
+- **PortsWithAntennas**: List of ports that have an antenna attached
+- **AntennaNames**: List of antenna names attached to ports
+- **FndhPort**: FNDH port number this smartbox is connected to
+- **UseAttributesForHealth**: Set to ``True`` to use attribute quality factor in health evaluation
+
+MccsFncc
+~~~~~~~~
+
+- **PasdFQDN**: Tango FQDN of the associated PaSD bus device
+  
+MccsFieldStation
+~~~~~~~~~~~~~~~~
+
+- **StationName**: Station identifier
+- **FndhFQDN**: Tango FQDN of the associated FNDH device
+- **SmartboxFQDNs**: List of Tango FQDNs of associated smartbox devices
+
 ------------
 How it works
 ------------

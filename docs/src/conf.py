@@ -73,7 +73,7 @@ for line in open(release_filename).readlines():
     if line.startswith(("__version__")):
         exec(line)
 
-project = "SKA-Low MCCS PaSD prototype"
+project = "SKA-Low MCCS PaSD Software"
 release = __version__
 copyright = "2024, SKAO MCCS and Wombat Teams"
 
