@@ -202,7 +202,19 @@ def functional_test_context_fixture(
     :yields: a Tango context containing the devices under test
     """
     if not is_true_context:
-        with patch("ska_low_mccs_pasd.smart_box.smart_box_device.Database"):
+        with patch("ska_low_mccs_pasd.smart_box.smart_box_device.Database") as db:
+            db.return_value.get_device_attribute_property.return_value = {
+                "input_voltage_thresholds": [0, 1, 2, 3],
+                "power_supply_output_voltage_thresholds": [0, 1, 2, 3],
+                "power_supply_temperature_thresholds": [0, 1, 2, 3],
+                "pcb_temperature_thresholds": [0, 1, 2, 3],
+                "fem_ambient_temperature_thresholds": [0, 1, 2, 3],
+                "fem_case_temperature_1_thresholds": [0, 1, 2, 3],
+                "fem_case_temperature_2_thresholds": [0, 1, 2, 3],
+                "fem_heatsink_temperature_1_thresholds": [0, 1, 2, 3],
+                "fem_heatsink_temperature_2_thresholds": [0, 1, 2, 3],
+                "fem_current_trip_thresholds": [0, 1, 2, 3],
+            }
             harness = PasdTangoTestHarness(station_label)
             if pasd_address is None:
                 # Defer importing from ska_low_mccs_pasd

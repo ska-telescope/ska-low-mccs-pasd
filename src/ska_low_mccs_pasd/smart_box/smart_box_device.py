@@ -118,8 +118,6 @@ class MccsSmartBox(MccsBaseDevice):
         self.component_manager: SmartBoxComponentManager
         self._health_monitor_points: dict[str, list[float]] = {}
 
-        self._thresholds_tango = SmartBoxThresholds()
-        self._thresholds_pasd = SmartBoxThresholds()
         self._db_connection: Database
 
     def init_device(self: MccsSmartBox) -> None:
@@ -150,6 +148,23 @@ class MccsSmartBox(MccsBaseDevice):
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
         )
         self._db_connection = Database()
+
+        self._thresholds_tango = SmartBoxThresholds()
+        self._thresholds_pasd = SmartBoxThresholds()
+
+        self._sync_class_cache_with_db()
+
+    def _sync_class_cache_with_db(self: MccsSmartBox) -> None:
+        """Update threshold cache from database."""
+        self.logger.info("Syncing class cache with DB...")
+
+        for name in self._thresholds_tango.all_thresholds():
+            value = self._db_connection.get_device_attribute_property(
+                self.get_name(), name
+            )
+            self._thresholds_tango.update({name: value})
+
+        self.logger.info("Thresholds synced with DB.")
 
     def delete_device(self: MccsSmartBox) -> None:
         """Delete the device."""
