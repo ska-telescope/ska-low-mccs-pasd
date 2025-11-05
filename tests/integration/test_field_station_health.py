@@ -164,7 +164,19 @@ def test_context_fixture(
         each smartbox.
     :yield: a test context in which to run the integration tests.
     """
-    with patch("ska_low_mccs_pasd.smart_box.smart_box_device.Database"):
+    with patch("ska_low_mccs_pasd.smart_box.smart_box_device.Database") as db:
+        db.return_value.get_device_attribute_property.return_value = {
+            "input_voltage_thresholds": [0, 1, 2, 3],
+            "power_supply_output_voltage_thresholds": [0, 1, 2, 3],
+            "power_supply_temperature_thresholds": [0, 1, 2, 3],
+            "pcb_temperature_thresholds": [0, 1, 2, 3],
+            "fem_ambient_temperature_thresholds": [0, 1, 2, 3],
+            "fem_case_temperature_1_thresholds": [0, 1, 2, 3],
+            "fem_case_temperature_2_thresholds": [0, 1, 2, 3],
+            "fem_heatsink_temperature_1_thresholds": [0, 1, 2, 3],
+            "fem_heatsink_temperature_2_thresholds": [0, 1, 2, 3],
+            "fem_current_trip_thresholds": [0, 1, 2, 3],
+        }
         harness = PasdTangoTestHarness()
         # Set up pasdbus
         harness.set_pasd_bus_simulator(pasd_hw_simulators)

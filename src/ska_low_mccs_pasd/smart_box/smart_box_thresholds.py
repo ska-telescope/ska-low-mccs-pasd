@@ -43,7 +43,7 @@ class SmartBoxThresholds:
     fem_heatsink_temperature_2_thresholds: dict[str, float] = {}
     fem_current_trip_thresholds: dict[str, float] = {}
 
-    def update(self: SmartBoxThresholds, new_thresholds: dict[str, dict]) -> None:
+    def update(self: SmartBoxThresholds, new_thresholds: dict) -> None:
         """
         Update the thresholds with new values.
 
