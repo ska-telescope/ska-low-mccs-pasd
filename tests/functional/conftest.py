@@ -10,6 +10,7 @@ import os
 import time
 from functools import lru_cache
 from typing import Callable, Iterator, Optional
+from unittest.mock import patch
 
 import _pytest
 import pytest
@@ -200,66 +201,70 @@ def functional_test_context_fixture(
 
     :yields: a Tango context containing the devices under test
     """
-    harness = PasdTangoTestHarness(station_label)
+    with patch("ska_low_mccs_pasd.smart_box.smart_box_device.Database"):
+        harness = PasdTangoTestHarness(station_label)
 
-    if not is_true_context:
-        if pasd_address is None:
-            # Defer importing from ska_low_mccs_pasd
-            # until we know we need to launch a PaSD bus simulator to test against.
-            # This ensures that we can use this harness
-            # to run tests against a real cluster,
-            # from within a pod that does not have ska_low_mccs_pasd installed.
-            # pylint: disable-next=import-outside-toplevel
-            from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import PasdBusSimulator
-
-            # Initialise simulator
-            pasd_bus_simulator = PasdBusSimulator(
-                pasd_config_path,
-                station_label,
-                smartboxes_depend_on_attached_ports=True,
-            )
-            pasd_hw_simulators = pasd_bus_simulator.get_all_devices()
-            fndh_ports_with_smartboxes = (
-                pasd_bus_simulator.get_smartbox_attached_ports()
-            )
-            smartbox_attached_antennas = (
-                pasd_bus_simulator.get_smartbox_ports_connected()
-            )
-            smartbox_attached_antenna_names = (
-                pasd_bus_simulator.get_antenna_names_on_smartbox()
-            )
-            # Set devices for test harness
-            harness.set_pasd_bus_simulator(pasd_hw_simulators)
-            harness.set_pasd_bus_device(
-                timeout=pasd_timeout,
-                polling_rate=0.05,
-                device_polling_rate=0.1,
-                logging_level=int(LoggingLevel.FATAL),
-                available_smartboxes=smartbox_ids,
-            )
-
-            for smartbox_id in smartbox_ids:
-                harness.add_smartbox_device(
-                    smartbox_id,
-                    int(LoggingLevel.ERROR),
-                    fndh_port=fndh_ports_with_smartboxes[smartbox_id - 1],
-                    ports_with_antennas=[
-                        idx + 1
-                        for idx, attached in enumerate(
-                            smartbox_attached_antennas[smartbox_id - 1]
-                        )
-                        if attached
-                    ],
-                    antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
+        if not is_true_context:
+            if pasd_address is None:
+                # Defer importing from ska_low_mccs_pasd
+                # until we know we need to launch a PaSD bus simulator to test against.
+                # This ensures that we can use this harness
+                # to run tests against a real cluster,
+                # from within a pod that does not have ska_low_mccs_pasd installed.
+                # pylint: disable-next=import-outside-toplevel
+                from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
+                    PasdBusSimulator,
                 )
-            harness.set_fndh_device(
-                int(LoggingLevel.ERROR), ports_with_smartbox=fndh_ports_with_smartboxes
-            )
-            harness.set_fncc_device(int(LoggingLevel.ERROR))
-            harness.set_field_station_device(smartbox_ids, int(LoggingLevel.ERROR))
 
-    with harness as context:
-        yield context
+                # Initialise simulator
+                pasd_bus_simulator = PasdBusSimulator(
+                    pasd_config_path,
+                    station_label,
+                    smartboxes_depend_on_attached_ports=True,
+                )
+                pasd_hw_simulators = pasd_bus_simulator.get_all_devices()
+                fndh_ports_with_smartboxes = (
+                    pasd_bus_simulator.get_smartbox_attached_ports()
+                )
+                smartbox_attached_antennas = (
+                    pasd_bus_simulator.get_smartbox_ports_connected()
+                )
+                smartbox_attached_antenna_names = (
+                    pasd_bus_simulator.get_antenna_names_on_smartbox()
+                )
+                # Set devices for test harness
+                harness.set_pasd_bus_simulator(pasd_hw_simulators)
+                harness.set_pasd_bus_device(
+                    timeout=pasd_timeout,
+                    polling_rate=0.05,
+                    device_polling_rate=0.1,
+                    logging_level=int(LoggingLevel.FATAL),
+                    available_smartboxes=smartbox_ids,
+                )
+
+                for smartbox_id in smartbox_ids:
+                    harness.add_smartbox_device(
+                        smartbox_id,
+                        int(LoggingLevel.ERROR),
+                        fndh_port=fndh_ports_with_smartboxes[smartbox_id - 1],
+                        ports_with_antennas=[
+                            idx + 1
+                            for idx, attached in enumerate(
+                                smartbox_attached_antennas[smartbox_id - 1]
+                            )
+                            if attached
+                        ],
+                        antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
+                    )
+                harness.set_fndh_device(
+                    int(LoggingLevel.ERROR),
+                    ports_with_smartbox=fndh_ports_with_smartboxes,
+                )
+                harness.set_fncc_device(int(LoggingLevel.ERROR))
+                harness.set_field_station_device(smartbox_ids, int(LoggingLevel.ERROR))
+
+        with harness as context:
+            yield context
 
 
 @pytest.fixture(name="change_event_callbacks")

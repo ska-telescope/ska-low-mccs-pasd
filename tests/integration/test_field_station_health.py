@@ -14,6 +14,7 @@ import json
 import time
 from time import sleep
 from typing import Callable, Iterator
+from unittest.mock import patch
 
 import pytest
 import tango
@@ -163,42 +164,43 @@ def test_context_fixture(
         each smartbox.
     :yield: a test context in which to run the integration tests.
     """
-    harness = PasdTangoTestHarness()
-    # Set up pasdbus
-    harness.set_pasd_bus_simulator(pasd_hw_simulators)
-    harness.set_pasd_bus_device(
-        polling_rate=0.1,
-        device_polling_rate=0.1,
-        available_smartboxes=smartbox_ids_to_test,
-        logging_level=int(LoggingLevel.FATAL),
-    )
-    # Set up FNDH
-    harness.set_fndh_device(
-        int(LoggingLevel.ERROR), ports_with_smartbox=smartbox_attached_ports
-    )
-    # Set up fncc
-    harness.set_fncc_device(int(LoggingLevel.ERROR))
-
-    # set up smartboxes
-    for smartbox_id in smartbox_ids_to_test:
-        harness.add_smartbox_device(
-            smartbox_id,
-            int(LoggingLevel.ERROR),
-            fndh_port=smartbox_attached_ports[smartbox_id - 1],
-            ports_with_antennas=[
-                idx + 1
-                for idx, attached in enumerate(
-                    smartbox_attached_antennas[smartbox_id - 1]
-                )
-                if attached
-            ],
-            antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
+    with patch("ska_low_mccs_pasd.smart_box.smart_box_device.Database"):
+        harness = PasdTangoTestHarness()
+        # Set up pasdbus
+        harness.set_pasd_bus_simulator(pasd_hw_simulators)
+        harness.set_pasd_bus_device(
+            polling_rate=0.1,
+            device_polling_rate=0.1,
+            available_smartboxes=smartbox_ids_to_test,
+            logging_level=int(LoggingLevel.FATAL),
         )
-    # Set up field station
-    harness.set_field_station_device(smartbox_ids_to_test, int(LoggingLevel.ERROR))
+        # Set up FNDH
+        harness.set_fndh_device(
+            int(LoggingLevel.ERROR), ports_with_smartbox=smartbox_attached_ports
+        )
+        # Set up fncc
+        harness.set_fncc_device(int(LoggingLevel.ERROR))
 
-    with harness as context:
-        yield context
+        # set up smartboxes
+        for smartbox_id in smartbox_ids_to_test:
+            harness.add_smartbox_device(
+                smartbox_id,
+                int(LoggingLevel.ERROR),
+                fndh_port=smartbox_attached_ports[smartbox_id - 1],
+                ports_with_antennas=[
+                    idx + 1
+                    for idx, attached in enumerate(
+                        smartbox_attached_antennas[smartbox_id - 1]
+                    )
+                    if attached
+                ],
+                antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
+            )
+        # Set up field station
+        harness.set_field_station_device(smartbox_ids_to_test, int(LoggingLevel.ERROR))
+
+        with harness as context:
+            yield context
 
 
 # pylint: disable=too-few-public-methods

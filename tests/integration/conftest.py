@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 from typing import Iterator
+from unittest.mock import patch
 
 import pytest
 import tango
@@ -265,35 +266,36 @@ def test_context_fixture(
         each smartbox.
     :yield: a test context in which to run the integration tests.
     """
-    harness = PasdTangoTestHarness()
+    with patch("ska_low_mccs_pasd.smart_box.smart_box_device.Database"):
+        harness = PasdTangoTestHarness()
 
-    harness.set_pasd_bus_simulator(pasd_hw_simulators)
-    harness.set_pasd_bus_device(
-        polling_rate=0.1,
-        device_polling_rate=0.1,
-        available_smartboxes=smartbox_ids_to_test,
-        logging_level=int(LoggingLevel.FATAL),
-    )
-    harness.set_fndh_device(int(LoggingLevel.ERROR))
-    harness.set_fncc_device(int(LoggingLevel.ERROR))
-    for smartbox_id in smartbox_ids_to_test:
-        harness.add_smartbox_device(
-            smartbox_id,
-            int(LoggingLevel.ERROR),
-            fndh_port=smartbox_attached_ports[smartbox_id - 1],
-            ports_with_antennas=[
-                idx + 1
-                for idx, attached in enumerate(
-                    smartbox_attached_antennas[smartbox_id - 1]
-                )
-                if attached
-            ],
-            antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
+        harness.set_pasd_bus_simulator(pasd_hw_simulators)
+        harness.set_pasd_bus_device(
+            polling_rate=0.1,
+            device_polling_rate=0.1,
+            available_smartboxes=smartbox_ids_to_test,
+            logging_level=int(LoggingLevel.FATAL),
         )
-    harness.set_field_station_device(smartbox_ids_to_test, int(LoggingLevel.ERROR))
+        harness.set_fndh_device(int(LoggingLevel.ERROR))
+        harness.set_fncc_device(int(LoggingLevel.ERROR))
+        for smartbox_id in smartbox_ids_to_test:
+            harness.add_smartbox_device(
+                smartbox_id,
+                int(LoggingLevel.ERROR),
+                fndh_port=smartbox_attached_ports[smartbox_id - 1],
+                ports_with_antennas=[
+                    idx + 1
+                    for idx, attached in enumerate(
+                        smartbox_attached_antennas[smartbox_id - 1]
+                    )
+                    if attached
+                ],
+                antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
+            )
+        harness.set_field_station_device(smartbox_ids_to_test, int(LoggingLevel.ERROR))
 
-    with harness as context:
-        yield context
+        with harness as context:
+            yield context
 
 
 @pytest.fixture(name="pasd_bus_device")
