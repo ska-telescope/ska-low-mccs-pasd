@@ -699,12 +699,12 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """
         self._request_provider.desire_attribute_write(device_id, attribute_name, value)
 
-    def set_port_power_states(
+    def update_port_power_states(
         self: PasdBusComponentManager, port_power_states: list[bool]
     ) -> None:
         """
-        Set the list of smartboxes to poll.
+        Update the port power states and therefore the list of smartboxes to poll.
 
         :param port_power_states: list of port power statuses (true=On, false=Off).
         """
-        self._request_provider.set_port_power_states(port_power_states)
+        self._request_provider.update_port_power_states(port_power_states)

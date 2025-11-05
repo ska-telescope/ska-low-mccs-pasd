@@ -601,7 +601,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             ):
                 # Inform the component manager of the new power states so that
                 # we can update the smartbox polling list
-                self.component_manager.set_port_power_states(pasd_attribute_value)
+                self.component_manager.update_port_power_states(pasd_attribute_value)
 
             # Update the timestamp
             self._pasd_state[tango_attribute_name].timestamp = timestamp

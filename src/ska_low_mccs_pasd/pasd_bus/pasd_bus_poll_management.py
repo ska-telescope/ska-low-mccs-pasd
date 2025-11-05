@@ -371,9 +371,9 @@ class PasdBusRequestProvider:
         self._device_request_providers[PasdData.FNDH_DEVICE_ID] = fndh_request_provider
         self._device_request_providers[PasdData.FNCC_DEVICE_ID] = fncc_request_provider
 
-    def set_port_power_states(self, port_power_states: list[bool]) -> None:
+    def update_port_power_states(self, port_power_states: list[bool]) -> None:
         """
-        Set the port power states and update the smartbox polling list.
+        Use the new power states to update the smartbox polling list.
 
         :param port_power_states: list of FNDH port power states.
         """
