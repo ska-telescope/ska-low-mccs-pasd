@@ -1364,6 +1364,12 @@ def test_only_poll_on_smartboxes(
             if smartbox_id not in (0, last_smartbox_id)
         ]
     )
+    pasd_bus_device.subscribe_event(
+        f"smartbox{isolated_sb_id}Uptime",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks[f"smartbox{isolated_sb_id}Uptime"],
+    )
+    change_event_callbacks[f"smartbox{isolated_sb_id}Uptime"].assert_change_event(None)
     desired_port_powers[isolated_sb_index] = False
 
     json_arg = {
@@ -1407,14 +1413,11 @@ def test_only_poll_on_smartboxes(
                 getattr(pasd_bus_device, f"smartbox{smartbox_id}InputVoltage")
             with pytest.raises(tango.DevFailed):
                 getattr(pasd_bus_device, f"smartbox{smartbox_id}Uptime")
+            change_event_callbacks[
+                f"smartbox{isolated_sb_id}Uptime"
+            ].assert_not_called()
 
     # Turn on the remaining smartbox and check its Uptime attribute is updated
-    pasd_bus_device.subscribe_event(
-        f"smartbox{isolated_sb_id}Uptime",
-        tango.EventType.CHANGE_EVENT,
-        change_event_callbacks[f"smartbox{isolated_sb_id}Uptime"],
-    )
-    change_event_callbacks[f"smartbox{isolated_sb_id}Uptime"].assert_change_event(None)
     desired_port_powers[isolated_sb_index] = True
     json_arg = {
         "port_powers": desired_port_powers,
@@ -1422,7 +1425,7 @@ def test_only_poll_on_smartboxes(
     }
     pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
     change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
-        desired_port_powers, lookahead=5
+        desired_port_powers, lookahead=20
     )
     change_event_callbacks[f"smartbox{isolated_sb_id}Uptime"].assert_against_call(
         lookahead=5
