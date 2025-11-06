@@ -9,7 +9,7 @@
 
 
 import logging
-from typing import Any, Callable, Iterator, Sequence
+from typing import Any, Callable, Iterator, Optional, Sequence
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
@@ -298,7 +298,11 @@ class PasdBusRequestProvider:
     """
 
     def __init__(
-        self, min_ticks: int, logger: logging.Logger, available_smartboxes: list[int]
+        self,
+        min_ticks: int,
+        logger: logging.Logger,
+        available_smartboxes: list[int],
+        smartbox_ids: Optional[list[int]] = None,
     ) -> None:
         """
         Initialise a new instance.
@@ -307,10 +311,23 @@ class PasdBusRequestProvider:
             with any given device
         :param logger: a logger.
         :param available_smartboxes: list of available smartbox ids to poll
+        :param smartbox_ids: optional list of smartbox IDs associated with
+            each FNDH port
         """
         self._min_ticks = min_ticks
         self._logger = logger
-        self._available_smartboxes = available_smartboxes
+
+        # Create a dict mapping FNDH ports to smartbox Modbus IDs
+        # if smartboxIDs is provided, otherwise just use available_smartboxes
+        self._smartboxIDs = {}
+        if smartbox_ids:
+            for fndh_port, smartbox_id in enumerate(smartbox_ids, start=1):
+                if smartbox_id != 0:
+                    self._smartboxIDs[fndh_port] = smartbox_id
+            self._available_smartboxes = list(self._smartboxIDs.values())
+        else:
+            self._available_smartboxes = available_smartboxes
+
         self.initialise()
 
     def initialise(self) -> None:
@@ -320,17 +337,22 @@ class PasdBusRequestProvider:
         all the request providers.
         """
         # Instantiate ticks dict in the order the devices will be polled:
-        # First FNDH, then FNCC, then all Smartboxes
+        # First FNDH, then FNCC, then all available Smartboxes
+        # (Smartboxes are added manually once they are powered on)
         self._ticks = {
             PasdData.FNDH_DEVICE_ID: self._min_ticks,
             PasdData.FNCC_DEVICE_ID: self._min_ticks,
         }
-        self._ticks.update(
-            {
-                device_number: self._min_ticks
-                for device_number in self._available_smartboxes
-            }
-        )
+
+        if not self._smartboxIDs:
+            # We don't know the port mapping so we poll all available
+            # smartboxes immediately
+            self._ticks.update(
+                {
+                    device_number: self._min_ticks
+                    for device_number in self._available_smartboxes
+                }
+            )
 
         fndh_request_provider = DeviceRequestProvider(
             PasdData.NUMBER_OF_FNDH_PORTS, fndh_read_request_iterator, self._logger
@@ -348,6 +370,28 @@ class PasdBusRequestProvider:
         }
         self._device_request_providers[PasdData.FNDH_DEVICE_ID] = fndh_request_provider
         self._device_request_providers[PasdData.FNCC_DEVICE_ID] = fncc_request_provider
+
+    def update_port_power_states(self, port_power_states: list[bool]) -> None:
+        """
+        Use the new power states to update the smartbox polling list.
+
+        :param port_power_states: list of FNDH port power states.
+        """
+        if not self._smartboxIDs:
+            # We don't have the port mapping so we cannot update the polling list
+            return
+
+        for fndh_port, power_state in enumerate(port_power_states, start=1):
+            smartbox_id = self._smartboxIDs.get(fndh_port)
+            if smartbox_id is None:
+                # No associated smartbox on this port
+                continue
+            if power_state and smartbox_id not in self._ticks:
+                self._logger.info(f"Starting to poll smartbox {smartbox_id}")
+                self._ticks.update({smartbox_id: self._min_ticks})
+            elif not power_state and smartbox_id in self._ticks:
+                self._logger.info(f"Stopping polling smartbox {smartbox_id}")
+                self._ticks.pop(smartbox_id, None)
 
     def desire_read_startup_info(self, device_id: int) -> None:
         """

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 3.5.0
+
+* [SKB-455] Add new optional device property 'SmartboxIDs' to pasdBus. When set,
+  only smartboxes which are powered on are polled.
 * [THORN-253] Populate attribute alarm configuration from tmdata.
 * [THORN-268] MccsSmartbox healthstate is now an aggregate of attribute alarms.
   The attributes used in health are:

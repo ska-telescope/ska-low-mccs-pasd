@@ -250,6 +250,7 @@ class PasdTangoTestHarness:
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsPasdBus",
         available_smartboxes: list[int] | None = None,
+        smartbox_ids: list[int] | None = None,
         input_voltage_thresholds: list[float] | None = None,
     ) -> None:
         """
@@ -276,6 +277,8 @@ class PasdTangoTestHarness:
             for example with a patched subclass.
         :param available_smartboxes: Optional list of smartbox IDs that the PaSD bus
             device should poll.
+        :param smartbox_ids: Optional list of smartbox IDs associated with each
+            FNDH port.
         """
         port: Callable[[dict[str, Any]], int] | int  # for the type checker
 
@@ -296,21 +299,25 @@ class PasdTangoTestHarness:
         if input_voltage_thresholds is None:
             input_voltage_thresholds = INPUT_VOLTAGE_THRESHOLDS
 
+        properties = {
+            "Host": host,
+            "Port": port,
+            "PollingRate": polling_rate,
+            "DevicePollingRate": device_polling_rate,
+            "Timeout": timeout,
+            "LowPassFilterCutoff": low_pass_filter_cutoff,
+            "FEMCurrentTripThreshold": fem_current_trip_threshold,
+            "SBInputVoltageThresholds": input_voltage_thresholds,
+            "SimulationConfig": int(SimulationMode.TRUE),
+            "AvailableSmartboxes": available_smartboxes,
+            "ParentTRL": get_field_station_name(),
+            "LoggingLevelDefault": logging_level,
+        }
+        if smartbox_ids:
+            properties["SmartboxIDs"] = smartbox_ids
+
         self._tango_test_harness.add_device(
-            get_pasd_bus_name(self._station_label),
-            device_class,
-            Host=host,
-            Port=port,
-            PollingRate=polling_rate,
-            DevicePollingRate=device_polling_rate,
-            Timeout=timeout,
-            LowPassFilterCutoff=low_pass_filter_cutoff,
-            FEMCurrentTripThreshold=fem_current_trip_threshold,
-            SBInputVoltageThresholds=input_voltage_thresholds,
-            SimulationConfig=int(SimulationMode.TRUE),
-            AvailableSmartboxes=available_smartboxes,
-            ParentTRL=get_field_station_name(),
-            LoggingLevelDefault=logging_level,
+            get_pasd_bus_name(self._station_label), device_class, **properties
         )
 
     def set_mock_pasd_bus_device(

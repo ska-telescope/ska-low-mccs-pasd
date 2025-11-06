@@ -106,6 +106,7 @@ def pasd_bus_component_manager_fixture(
             mock_callbacks["component_state"],
             _pasd_device_state_splitter,
             list(range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)),
+            None,
         )
         yield component_manager
 

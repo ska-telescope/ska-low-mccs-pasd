@@ -93,9 +93,17 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     SimulationConfig: Final = tango.server.device_property(
         dtype=int, default_value=SimulationMode.FALSE
     )
+
+    # TODO: Remove this property when SmartboxIDs is setup in all the charts
     AvailableSmartboxes: Final[list[int]] = tango.server.device_property(
         dtype="DevVarShortArray",
         default_value=list(range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)),
+    )
+
+    # Smartbox IDs associated with each FNDH port (0 if no smartbox connected)
+    SmartboxIDs: Final[list[int]] = tango.server.device_property(
+        dtype="DevVarShortArray",
+        default_value=[],
     )
 
     # ---------
@@ -157,6 +165,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             f"\tSBInputVoltageThresholds: {self.SBInputVoltageThresholds}\n"
             f"\tSimulationConfig: {self.SimulationConfig}\n"
             f"\tAvailableSmartboxes: {self.AvailableSmartboxes}\n"
+            f"\tSmartboxIDs: {self.SmartboxIDs}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -315,6 +324,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self._component_state_callback,
             self._pasd_device_state_callback,
             self.AvailableSmartboxes,
+            self.SmartboxIDs,
         )
 
     def init_command_objects(self: MccsPasdBus) -> None:
@@ -583,6 +593,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 )
                 # Continue on to allow other attributes to be updated
                 continue
+            if (
+                pasd_device_number == PasdData.FNDH_DEVICE_ID
+                and tango_attribute_name.endswith("PortsPowerSensed")
+                and self._pasd_state[tango_attribute_name].value != pasd_attribute_value
+                and self.SmartboxIDs
+            ):
+                # Inform the component manager of the new power states so that
+                # we can update the smartbox polling list
+                self.component_manager.update_port_power_states(pasd_attribute_value)
 
             # Update the timestamp
             self._pasd_state[tango_attribute_name].timestamp = timestamp
