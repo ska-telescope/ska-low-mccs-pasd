@@ -266,19 +266,33 @@ def test_context_fixture(
         each smartbox.
     :yield: a test context in which to run the integration tests.
     """
-    with patch("ska_low_mccs_pasd.smart_box.smart_box_device.Database") as db:
-        db.return_value.get_device_attribute_property.return_value = {
-            "input_voltage_thresholds": [0, 1, 2, 3],
-            "power_supply_output_voltage_thresholds": [0, 1, 2, 3],
-            "power_supply_temperature_thresholds": [0, 1, 2, 3],
-            "pcb_temperature_thresholds": [0, 1, 2, 3],
-            "fem_ambient_temperature_thresholds": [0, 1, 2, 3],
-            "fem_case_temperature_1_thresholds": [0, 1, 2, 3],
-            "fem_case_temperature_2_thresholds": [0, 1, 2, 3],
-            "fem_heatsink_temperature_1_thresholds": [0, 1, 2, 3],
-            "fem_heatsink_temperature_2_thresholds": [0, 1, 2, 3],
-            "fem_current_trip_thresholds": [0, 1, 2, 3],
-        }
+    with patch("ska_low_mccs_pasd.pasd_utils.Database") as db:
+        # pylint: disable=too-many-return-statements
+        def my_func(device_name: str, property_name: str) -> list:
+            match property_name:
+                case "inputvoltagethresholds":
+                    return [50.0, 49.0, 45.0, 40.0]
+                case "powersupplyoutputvoltagethresholds":
+                    return [5.0, 4.9, 4.4, 4.0]
+                case "powersupplytemperaturethresholds":
+                    return [85.0, 70.0, 0.0, -5.0]
+                case "pcbtemperaturethresholds":
+                    return [85.0, 70.0, 0.0, -5.0]
+                case "femambienttemperaturethresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femcasetemperature1thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femcasetemperature2thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femheatsinktemperature1thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femheatsinktemperature2thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femcurrenttripthresholds":
+                    return [496, 496, 496, 496, 496, 496, 496, 496, 496, 496, 496, 496]
+            return []
+
+        db.return_value.get_device_attribute_property = my_func
 
         harness = PasdTangoTestHarness()
 
