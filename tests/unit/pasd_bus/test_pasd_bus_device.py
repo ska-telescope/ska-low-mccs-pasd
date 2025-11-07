@@ -26,14 +26,12 @@ from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     SmartboxAlarmFlags,
 )
 from ska_low_mccs_pasd.pasd_data import PasdData
-from tests.harness import (
-    FEM_CURRENT_TRIP_THRESHOLD,
-    INPUT_VOLTAGE_THRESHOLDS,
-    PasdTangoTestHarness,
-)
+from tests.harness import INPUT_VOLTAGE_THRESHOLDS, PasdTangoTestHarness
 
 # TODO: Weird hang-at-garbage-collection bug
 gc.disable()
+
+FEM_CURRENT_TRIP_THRESHOLD = 300
 
 
 @pytest.fixture(name="change_event_callbacks")
@@ -1278,7 +1276,7 @@ def test_set_thresholds_on_initialise(
     # should have been automatically written to the smartbox
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}FemCurrentTripThresholds",
-        [FEM_CURRENT_TRIP_THRESHOLD] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+        [496] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
         lookahead=3,
     )
     change_event_callbacks.assert_change_event(

@@ -13,9 +13,7 @@ __all__ = [
     "SmartBoxComponentManager",
     "MccsSmartBox",
     "_PasdBusProxy",
-    "SmartBoxThresholds",
 ]
 from .smart_box_component_manager import SmartBoxComponentManager, _PasdBusProxy
 from .smart_box_device import MccsSmartBox
-from .smart_box_thresholds import SmartBoxThresholds
 from .smartbox_health_model import SmartBoxHealthModel

@@ -1342,7 +1342,7 @@ class SmartboxSimulator(PasdHardwareSimulator):
     # Intentionally set the following thresholds differently
     # to the default device property configuration so
     # that we can test it is being set at init
-    DEFAULT_PORT_CURRENT_THRESHOLD: Final = 398
+    DEFAULT_PORT_CURRENT_THRESHOLD: Final = 496
     DEFAULT_INPUT_VOLTAGE_THRESHOLDS: Final = [6000, 5000, 4000, 3200]
 
     ALARM_MAPPING = {

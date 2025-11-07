@@ -21,7 +21,13 @@ from typing import Any, Callable, Final, Optional, cast
 
 import tango
 from jsonschema import validate
-from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
+from ska_control_model import (
+    AdminMode,
+    CommunicationStatus,
+    HealthState,
+    PowerState,
+    ResultCode,
+)
 from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_tango_base.commands import (
     DeviceInitCommand,
@@ -38,6 +44,7 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_bus.pasd_bus_conversions import FndhStatusMap
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
+from ..pasd_utils import PasdDatabase, PasdThresholds
 from .fndh_component_manager import FndhComponentManager
 from .fndh_health_model import FndhHealthModel
 
@@ -121,6 +128,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self.component_manager: FndhComponentManager
         self._nof_stuck_on_smartbox_ports: Optional[int] = None
         self._nof_stuck_off_smartbox_ports: Optional[int] = None
+        self._db_connection: PasdDatabase
 
         # Health monitor points contains a cache of monitoring points as they
         # are updated in a poll. When communication is lost this cache is
@@ -153,6 +161,12 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 1,
                 PowerState.UNKNOWN,
             )
+        self._db_connection = PasdDatabase()
+
+        self._thresholds_tango = PasdThresholds(self.CONFIG)
+        self._thresholds_pasd = PasdThresholds(self.CONFIG)
+
+        self.update_threshold_cache()
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
@@ -264,6 +278,24 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     # ----------
     # Commands
     # ----------
+    @command(dtype_out="DevVarLongStringArray")
+    def UpdateThresholdCache(
+        self: MccsFNDH,
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Update the threshold caches.
+
+        :return: A tuple containing a return code and a string message
+            indicating status.
+        """
+        self.update_threshold_cache()
+        diff = self._threshold_differences()
+        if diff:
+            message = f"Thresholds do not match: {diff}"
+            return ([ResultCode.FAILED], [message])
+
+        return ([ResultCode.OK], ["UpdateThresholdCache completed"])
+
     class InitCommand(DeviceInitCommand):
         """Initialisation command class for this base device."""
 
@@ -576,9 +608,77 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
     def _write_fndh_attribute(self: MccsFNDH, fndh_attribute: tango.Attribute) -> None:
         # Register the request with the component manager
-        tango_attr_name = fndh_attribute.get_name()
-        value = fndh_attribute.get_write_value(ExtractAs.List)
-        self.component_manager.write_attribute(tango_attr_name, value)
+        if fndh_attribute.get_name().endswith("thresholds"):
+            attr_name = fndh_attribute.get_name()
+            if self._admin_mode == AdminMode.ENGINEERING:
+                value = fndh_attribute.get_write_value(ExtractAs.List)
+                self.component_manager.write_attribute(attr_name, value)
+                self._db_connection.put_value(self.get_name(), attr_name, value)
+                self._thresholds_tango.update({attr_name: value})
+                self._thresholds_pasd.update({attr_name: value})
+            else:
+                self.logger.warning(
+                    f"Cannot write attributes {attr_name} unless in engineering mode"
+                )
+                raise AttributeError(
+                    f"Cannot write attribute {attr_name} unless in engineering mode"
+                )
+        else:
+            tango_attr_name = fndh_attribute.get_name()
+            value = fndh_attribute.get_write_value(ExtractAs.List)
+            self.component_manager.write_attribute(tango_attr_name, value)
+
+        diff = self._threshold_differences()
+        if diff:
+            self.logger.error(f"Mismatch between firmware and tango thresholds: {diff}")
+            self._component_state_changed(fault=True)
+
+    def update_threshold_cache(self: MccsFNDH) -> None:
+        """Update fndh thresholds cache from database and firmware."""
+        for name in self._thresholds_tango.all_thresholds:
+            value = self._db_connection.get_value(self.get_name(), name)
+            self._thresholds_tango.update({name: value})
+
+        for name in self._thresholds_pasd.all_thresholds:
+            self._thresholds_pasd.update({name: self._fndh_attributes[name].value})
+
+    def _threshold_differences(self: MccsFNDH) -> dict:
+        """
+        Compare the tango and firmware thresholds.
+
+        :return: The differences between thresholds.
+        """
+        differences = {}
+
+        for (
+            name,
+            thresholds_tango,
+        ) in self._thresholds_tango.all_thresholds.items():
+            thresholds_pasd = self._thresholds_pasd.all_thresholds[name]
+            if isinstance(thresholds_pasd, numpy.ndarray):
+                assert isinstance(thresholds_pasd, numpy.ndarray)
+                thresholds_pasd = thresholds_pasd.tolist()
+            if isinstance(thresholds_tango, numpy.ndarray):
+                assert isinstance(thresholds_tango, numpy.ndarray)
+                thresholds_tango = thresholds_tango.tolist()
+            if thresholds_pasd is None:
+                self.logger.debug("Not yet retrieved value from firmware, skipping..")
+                continue
+            if thresholds_tango != thresholds_pasd:
+                differences[
+                    name
+                ] = f"tango:{thresholds_tango} != pasd:{thresholds_pasd}"
+
+        return differences
+
+    @attribute(dtype="DevString", label="ThresholdDifferences")
+    def threshold_differences(self: MccsFNDH) -> str:
+        """
+        Return the differences between threshold values.
+
+        :return: Return the differences between threshold values.
+        """
+        return json.dumps(self._threshold_differences())
 
     @attribute(dtype="DevDouble", label="Over current threshold", unit="Amp")
     def overCurrentThreshold(self: MccsFNDH) -> float:
@@ -949,6 +1049,13 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                         self._health_model.update_monitoring_point_threshold(
                             threshold_attribute_name, attr_value
                         )
+                        self._thresholds_pasd.update({attr_name: attr_value})
+                        diff = self._threshold_differences()
+                        if diff:
+                            self.logger.error(
+                                f"Mismatch between firmware and tango thresholds: {diff}"
+                            )
+                            self._component_state_changed(fault=True)
                     except DevFailed:
                         # No corresponding attribute to update, continue
                         pass

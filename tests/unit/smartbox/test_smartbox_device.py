@@ -14,6 +14,7 @@ import json
 import unittest.mock
 from datetime import datetime, timezone
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 import tango
@@ -41,6 +42,31 @@ def smartbox_device_fixture(
 
     :yield: a proxy to the smartbox Tango device under test.
     """
+    with patch("ska_low_mccs_pasd.pasd_utils.Database") as db:
+        # pylint: disable=too-many-return-statements
+        def my_func(device_name: str, property_name: str) -> list:
+            match property_name:
+                case "inputvoltagethresholds":
+                    return [50.0, 49.0, 45.0, 40.0]
+                case "powersupplyoutputvoltagethresholds":
+                    return [5.0, 4.9, 4.4, 4.0]
+                case "powersupplytemperaturethresholds":
+                    return [85.0, 70.0, 0.0, -5.0]
+                case "pcbtemperaturethresholds":
+                    return [85.0, 70.0, 0.0, -5.0]
+                case "femambienttemperaturethresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femcasetemperature1thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femcasetemperature2thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femheatsinktemperature1thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femheatsinktemperature2thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femcurrenttripthresholds":
+                    return [496, 496, 496, 496, 496, 496, 496, 496, 496, 496, 496, 496]
+            return []
 
     class _PatchedMccsSmartbox(MccsSmartBox):
         """A daq class with a method to call the component state callback."""
@@ -56,16 +82,17 @@ def smartbox_device_fixture(
                 **json.loads(argin), attr_quality=tango.AttrQuality.ATTR_VALID
             )
 
-    harness = PasdTangoTestHarness()
-    harness.set_mock_pasd_bus_device(mock_pasdbus)
-    harness.add_smartbox_device(
-        smartbox_number,
-        logging_level=int(LoggingLevel.DEBUG),
-        device_class=_PatchedMccsSmartbox,
-    )
+        db.return_value.get_device_attribute_property = my_func
+        harness = PasdTangoTestHarness()
+        harness.set_mock_pasd_bus_device(mock_pasdbus)
+        harness.add_smartbox_device(
+            smartbox_number,
+            logging_level=int(LoggingLevel.DEBUG),
+            device_class=_PatchedMccsSmartbox,
+        )
 
-    with harness as context:
-        yield context.get_smartbox_device(smartbox_number)
+        with harness as context:
+            yield context.get_smartbox_device(smartbox_number)
 
 
 def test_device_transitions_to_power_state_of_fndh_port(

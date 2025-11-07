@@ -8,6 +8,17 @@
 """Module provides common code for all PaSD devices."""
 
 
+from __future__ import annotations
+
+from typing import Any
+
+from tango import Database
+
+from .pasd_controllers_configuration import ControllerDict
+
+__all__ = ["PasdThresholds"]
+
+
 def join_health_reports(messages: list[str]) -> str:
     """
     Join the messages removing duplicates and empty strings.
@@ -26,3 +37,68 @@ def join_health_reports(messages: list[str]) -> str:
             unique_messages.append(message)
 
     return "\n".join(unique_messages)
+
+
+class PasdThresholds:
+    """Pasd thresholds."""
+
+    def __init__(self: PasdThresholds, config: ControllerDict) -> None:
+        """
+        Init thresholds.
+
+        :param config: Pasd config
+        """
+        self._thresholds: dict = {}
+        for register in config["registers"].values():
+            name = register["tango_attr_name"]
+            if name.endswith("thresholds"):
+                setattr(self, name, {})
+                self._thresholds[name] = []
+
+    def update(self: PasdThresholds, new_thresholds: dict) -> None:
+        """
+        Update the thresholds with new values.
+
+        :param new_thresholds: New thresholds to be updated.
+        """
+        for name, values in new_thresholds.items():
+            setattr(self, name, values)
+            self._thresholds[name] = values
+
+    @property
+    def all_thresholds(self: PasdThresholds) -> dict:
+        """
+        Return all thresholds in dict.
+
+        :return: all thresholds in dict.
+        """
+        return self._thresholds
+
+
+class PasdDatabase:
+    """Wrapper around the tango database for testing purposes."""
+
+    def __init__(self) -> None:
+        self.database = Database()
+
+    def put_value(
+        self: PasdDatabase, dev_name: str, attr_name: str, value: str
+    ) -> None:
+        """
+        Put the vlaue to the tango database.
+
+        :param dev_name: name of the device.
+        :param attr_name: name of the attribute.
+        :param value: Value to be put in the database
+        """
+        self.database.put_device_attribute_property(dev_name, {attr_name: value})
+
+    def get_value(self: PasdDatabase, dev_name: str, attr_name: str) -> Any:
+        """Get teh value from the database.
+
+        :param dev_name: Name of the device.
+        :param attr_name: Name of the attribute.
+
+        :return: The value from the tango database.
+        """
+        return self.database.get_device_attribute_property(dev_name, attr_name)
