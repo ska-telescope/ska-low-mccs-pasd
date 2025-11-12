@@ -1218,12 +1218,90 @@ class TestSmartBoxPasdBusIntegration:
         assert smartbox_device.FemHeatsinkTemperature1 == 51.00
         assert smartbox_device.FemHeatsinkTemperature2 == 50.00
 
+    def test_thresholds(
+        self: TestSmartBoxPasdBusIntegration,
+        pasd_bus_device: tango.DeviceProxy,
+        fndh_device: tango.DeviceProxy,
+        on_smartbox_device: tango.DeviceProxy,
+        on_smartbox_id: int,
+        smartbox_simulator: SmartboxSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+        last_smartbox_id: int,
+    ) -> None:
+        """
+        Test the setting of thresholds.
+
+        :param on_smartbox_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param pasd_bus_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param fndh_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param smartbox_simulator: the smartbox simulator under test.
+        :param on_smartbox_id: the smartbox of interest in this test.
+        :param change_event_callbacks: group of Tango change event
+            callback with asynchrony support
+        :param last_smartbox_id: ID of the last smartbox polled
+        """
+        smartbox_device = on_smartbox_device
+        smartbox_id = on_smartbox_id
+
+        # ==========
+        # PaSD SETUP
+        # ==========
+        setup_devices_with_subscriptions(
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
+        )
+
+        turn_pasd_devices_online(
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
+            last_smartbox_id,
+        )
+
         # When we write an attribute, check the simulator gets updated
         smartbox_device.subscribe_event(
             "PcbTemperatureThresholds",
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks[f"smartbox{smartbox_id}pcbtemperaturethresholds"],
         )
+
+        smartbox_device.subscribe_event(
+            "adminMode",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartbox_adminMode"],
+        )
+
+        old_vals = smartbox_device.PcbTemperatureThresholds
+
+        setattr(
+            smartbox_device,
+            "PcbTemperatureThresholds",
+            [30.2, 25.5, 10.5, 5],
+        )
+        # Can't change thresholds in adminmode online
+        for i, val in enumerate(old_vals):
+            assert smartbox_device.PcbTemperatureThresholds[i] == val
+
+        smartbox_device.adminMode = AdminMode.ENGINEERING
+
+        change_event_callbacks.assert_change_event(
+            "smartbox_adminMode",
+            AdminMode.ENGINEERING,
+            lookahead=4,
+            consume_nonmatches=True,
+        )
+
+        time.sleep(1)
+
         setattr(
             smartbox_device,
             "PcbTemperatureThresholds",
@@ -1474,6 +1552,7 @@ def change_event_callbacks_fixture(
     """
     return MockTangoEventCallbackGroup(
         "smartbox_state",
+        "smartbox_adminMode",
         "pasd_bus_state",
         "fndh_state",
         "healthState",
