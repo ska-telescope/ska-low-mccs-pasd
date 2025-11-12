@@ -512,7 +512,6 @@ class MccsSmartBox(MccsBaseDevice):
             value = smartbox_attribute.get_write_value(ExtractAs.List)
             self.component_manager.write_attribute(attr_name, value)
 
-
     def update_threshold_cache(self: MccsSmartBox) -> None:
         """Update smartbox thresholds cache from database and firmware."""
         for name in self._thresholds_tango.all_thresholds:
