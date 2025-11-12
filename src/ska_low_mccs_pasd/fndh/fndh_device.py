@@ -608,39 +608,35 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
     def _write_fndh_attribute(self: MccsFNDH, fndh_attribute: tango.Attribute) -> None:
         # Register the request with the component manager
-        if fndh_attribute.get_name().endswith("thresholds"):
-            attr_name = fndh_attribute.get_name()
+        attr_name = fndh_attribute.get_name().lower()
+        if attr_name.endswith("thresholds"):
             if self._admin_mode == AdminMode.ENGINEERING:
-                value = fndh_attribute.get_write_value(ExtractAs.List)
-                self.component_manager.write_attribute(attr_name, value)
-                self._db_connection.put_value(self.get_name(), attr_name, value)
-                self._thresholds_tango.update({attr_name: value})
-                self._thresholds_pasd.update({attr_name: value})
+                values = fndh_attribute.get_write_value(ExtractAs.List)
+                self.component_manager.write_attribute(attr_name, values)
+                self._db_connection.put_value(self.get_name(), attr_name, values)
+                self._thresholds_tango.update({attr_name: values})
             else:
                 self.logger.warning(
                     f"Cannot write attributes {attr_name} unless in engineering mode"
                 )
-                raise AttributeError(
-                    f"Cannot write attribute {attr_name} unless in engineering mode"
-                )
+                # raise AttributeError(
+                #     f"Cannot write attribute {attr_name} unless in engineering mode"
+                # )
         else:
-            tango_attr_name = fndh_attribute.get_name()
             value = fndh_attribute.get_write_value(ExtractAs.List)
-            self.component_manager.write_attribute(tango_attr_name, value)
-
-        diff = self._threshold_differences()
-        if diff:
-            self.logger.error(f"Mismatch between firmware and tango thresholds: {diff}")
-            self._component_state_changed(fault=True)
+            self.component_manager.write_attribute(attr_name, value)
 
     def update_threshold_cache(self: MccsFNDH) -> None:
         """Update fndh thresholds cache from database and firmware."""
         for name in self._thresholds_tango.all_thresholds:
             value = self._db_connection.get_value(self.get_name(), name)
-            self._thresholds_tango.update({name: value})
+            self._thresholds_tango.update(value)
 
         for name in self._thresholds_pasd.all_thresholds:
-            self._thresholds_pasd.update({name: self._fndh_attributes[name].value})
+            string_vals = []
+            for value in self._fndh_attributes[name].value:
+                string_vals.append(str(value))
+            self._thresholds_pasd.update({name: string_vals})
 
     def _threshold_differences(self: MccsFNDH) -> dict:
         """
@@ -664,10 +660,12 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             if thresholds_pasd is None:
                 self.logger.debug("Not yet retrieved value from firmware, skipping..")
                 continue
-            if thresholds_tango != thresholds_pasd:
-                differences[
-                    name
-                ] = f"tango:{thresholds_tango} != pasd:{thresholds_pasd}"
+            for i, value in enumerate(thresholds_tango):
+                if thresholds_tango[i] != thresholds_pasd[i]:
+                    differences[
+                        name
+                    ] = f"tango:{thresholds_tango} != pasd:{thresholds_pasd}"
+                    break
 
         return differences
 
@@ -1071,7 +1069,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         except AssertionError:
             self.logger.error(
                 f"""The attribute {attr_name} pushed from MccsPasdBus
-                device does not exist in MccsSmartBox"""
+                device does not exist in MccsFNDH"""
             )
 
     def _evaluate_faulty_ports(self: MccsFNDH) -> None:

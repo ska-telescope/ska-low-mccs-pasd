@@ -14,6 +14,7 @@ from __future__ import annotations
 import gc
 import random
 import re
+import time
 import warnings
 
 import pytest
@@ -405,17 +406,138 @@ class TestfndhPasdBusIntegration:
                     getattr(fndh_device, f"Port{port}PowerState") == PowerState.UNKNOWN
                 )
 
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_thresholds(
+        self: TestfndhPasdBusIntegration,
+        fndh_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        fndh_simulator: FndhSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+        last_smartbox_id: int,
+    ) -> None:
+        """
+        Test the setting of fndh thresholds.
+
+        :param fndh_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param pasd_bus_device: a proxy to the PaSD bus device under test.
+        :param fndh_simulator: the FNDH simulator under test
+        :param change_event_callbacks: dictionary of mock change event
+            callbacks with asynchrony support
+        :param last_smartbox_id: ID of the last smartbox polled
+        """
+        # adminMode offline and in DISABLE state
+        # ----------------------------------------------------------------
+        assert fndh_device.adminMode == AdminMode.OFFLINE
+        assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+
+        pasd_bus_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasd_bus_state"],
+        )
+        change_event_callbacks.assert_change_event(
+            "pasd_bus_state", tango.DevState.DISABLE
+        )
+
+        fndh_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndh_state"],
+        )
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.DISABLE)
+
+        pasd_bus_device.subscribe_event(
+            "healthState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasdBushealthState"],
+        )
+
+        change_event_callbacks.assert_change_event(
+            "pasdBushealthState", HealthState.UNKNOWN
+        )
+        assert pasd_bus_device.healthState == HealthState.UNKNOWN
+        # -----------------------------------------------------------------
+
+        # This is a bit of a cheat.
+        # It's an implementation-dependent detail that
+        # this is one of the last attributes to be read from the simulator.
+        # We subscribe events on this attribute because we know that
+        # once we have an updated value for this attribute,
+        # we have an updated value for all of them.
+        pasd_bus_device.subscribe_event(
+            f"smartbox{last_smartbox_id}AlarmFlags",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
+        )
+        change_event_callbacks.assert_change_event(
+            f"smartbox{last_smartbox_id}AlarmFlags", Anything
+        )
+
+        pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+
+        Helpers.print_change_event_queue(change_event_callbacks, "pasd_bus_state")
+        # change_event_callbacks.assert_change_event(
+        #     "pasd_bus_state", tango.DevState.UNKNOWN
+        # )
+        # change_event_callbacks.assert_change_event(
+        #     "pasd_bus_state", tango.DevState.ON
+        # )
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.ON, 2, True
+        )
+        change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
+        assert pasd_bus_device.healthState == HealthState.OK
+
+        fndh_device.subscribe_event(
+            "adminMode",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndh_adminMode"],
+        )
+
+        fndh_device.adminMode = AdminMode.ONLINE
+
+        change_event_callbacks.assert_change_event(
+            "fndh_adminMode", AdminMode.ONLINE, lookahead=2, consume_nonmatches=True
+        )
+
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.ON)
+        change_event_callbacks["fndh_state"].assert_not_called()
+
         # When we write an attribute, check the simulator gets updated
         fndh_device.subscribe_event(
             "OutsideTemperatureThresholds",
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["outsideTemperatureThresholds"],
         )
+        old_vals = fndh_simulator.outside_temperature_thresholds
         setattr(
             fndh_device,
             "OutsideTemperatureThresholds",
             [30.2, 25.5, 10.5, 5],
         )
+        # Can't change thresholds in adminmode online
+        assert fndh_simulator.outside_temperature_thresholds == old_vals
+
+        fndh_device.adminMode = AdminMode.ENGINEERING
+
+        change_event_callbacks.assert_change_event(
+            "fndh_adminMode",
+            AdminMode.ENGINEERING,
+            lookahead=2,
+            consume_nonmatches=True,
+        )
+
+        time.sleep(1)
+
+        setattr(
+            fndh_device,
+            "OutsideTemperatureThresholds",
+            [30.2, 25.5, 10.5, 5],
+        )
+
         change_event_callbacks["outsideTemperatureThresholds"].assert_change_event(
             [30.2, 25.5, 10.5, 5], lookahead=2
         )
@@ -876,6 +998,7 @@ def change_event_callbacks_fixture(
     """
     return MockTangoEventCallbackGroup(
         "fndh_state",
+        "fndh_adminMode",
         "pasd_bus_state",
         "pasdBushealthState",
         "fndhhealthState",

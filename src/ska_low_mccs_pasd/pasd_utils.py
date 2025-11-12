@@ -82,23 +82,28 @@ class PasdDatabase:
         self.database = Database()
 
     def put_value(
-        self: PasdDatabase, dev_name: str, attr_name: str, value: str
+        self: PasdDatabase, dev_name: str, attr_name: str, value: Any
     ) -> None:
         """
-        Put the vlaue to the tango database.
+        Put the value to the tango database.
 
         :param dev_name: name of the device.
         :param attr_name: name of the attribute.
         :param value: Value to be put in the database
         """
-        self.database.put_device_attribute_property(dev_name, {attr_name: value})
+        self.database.put_device_attribute_property(
+            dev_name, {"cache_threshold": {attr_name: value}}
+        )
 
     def get_value(self: PasdDatabase, dev_name: str, attr_name: str) -> Any:
-        """Get teh value from the database.
+        """Get the value from the database.
 
         :param dev_name: Name of the device.
         :param attr_name: Name of the attribute.
 
         :return: The value from the tango database.
         """
-        return self.database.get_device_attribute_property(dev_name, attr_name)
+        tmp = self.database.get_device_attribute_property(
+            dev_name, {"cache_threshold": attr_name}
+        )
+        return tmp["cache_threshold"]
