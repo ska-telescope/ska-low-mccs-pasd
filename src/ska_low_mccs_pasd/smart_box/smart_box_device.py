@@ -759,8 +759,6 @@ class MccsSmartBox(MccsBaseDevice):
                             f"Mismatch between firmware and tango thresholds: {diff}"
                         )
                         self._component_state_callback(fault=True)
-                    else:
-                        self._component_state_callback(fault=False)
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass
