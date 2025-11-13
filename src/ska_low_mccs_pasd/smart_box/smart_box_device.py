@@ -73,6 +73,7 @@ class SmartboxAttribute:
 
 
 # pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-public-methods
 class MccsSmartBox(MccsBaseDevice):
     """An implementation of the SmartBox device for MCCS."""
 
@@ -286,6 +287,20 @@ class MccsSmartBox(MccsBaseDevice):
     # Commands
     # ----------
     @command(dtype_out="DevVarLongStringArray")
+    def ClearThresholdCache(
+        self: MccsSmartBox,
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Clear the threshold caches.
+
+        :return: A tuple containing a return code and a string message
+            indicating status.
+        """
+        self._clear_threshold_cache()
+
+        return ([ResultCode.OK], ["ClearThresholdCache completed"])
+
+    @command(dtype_out="DevVarLongStringArray")
     def UpdateThresholdCache(
         self: MccsSmartBox,
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
@@ -299,7 +314,9 @@ class MccsSmartBox(MccsBaseDevice):
         diff = self._threshold_differences()
         if diff:
             message = f"Thresholds do not match: {diff}"
+            self._component_state_callback(fault=True)
             return ([ResultCode.FAILED], [message])
+        self._component_state_callback(fault=False)
 
         return ([ResultCode.OK], ["UpdateThresholdCache completed"])
 
@@ -499,8 +516,10 @@ class MccsSmartBox(MccsBaseDevice):
             if self._admin_mode == AdminMode.ENGINEERING:
                 values = smartbox_attribute.get_write_value(ExtractAs.List)
                 self.component_manager.write_attribute(attr_name, values)
-                self._db_connection.put_value(self.get_name(), attr_name, values)
                 self._thresholds_tango.update({attr_name: values})
+                self._db_connection.put_value(
+                    self.get_name(), self._thresholds_tango.all_thresholds
+                )
             else:
                 self.logger.error(
                     f"Cannot write attributes {attr_name} unless in engineering mode"
@@ -511,6 +530,10 @@ class MccsSmartBox(MccsBaseDevice):
         else:
             value = smartbox_attribute.get_write_value(ExtractAs.List)
             self.component_manager.write_attribute(attr_name, value)
+
+    def _clear_threshold_cache(self: MccsSmartBox) -> None:
+        """Clear fndh thresholds cache from database."""
+        self._db_connection.clear_thresholds(self.get_name())
 
     def update_threshold_cache(self: MccsSmartBox) -> None:
         """Update smartbox thresholds cache from database and firmware."""
@@ -735,7 +758,9 @@ class MccsSmartBox(MccsBaseDevice):
                         self.logger.error(
                             f"Mismatch between firmware and tango thresholds: {diff}"
                         )
-                        self._component_state_changed(fault=True)
+                        self._component_state_callback(fault=True)
+                    else:
+                        self._component_state_callback(fault=False)
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass

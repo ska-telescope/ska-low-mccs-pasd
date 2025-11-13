@@ -84,6 +84,8 @@ and FEM current trip thresholds. All temperatures are in degrees Celsius.
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | AlarmFlags                           | 10132       | List of sensors in ALARM state                                           |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
+| ThresholdDifferences                 |             | Dict of the differences in thresholds between firmware and tango DB      |
++--------------------------------------+-------------+--------------------------------------------------------------------------+
 
 The SMART Box ``PasdStatus`` attribute should be interpreted as follows:
 
@@ -116,6 +118,11 @@ The SMART Box devices support the following commands:
 +------------------------+-----------------------------+-----------------------------------------------------------------------+
 | SetPortPowers          | See: :ref:`set-port-powers` | Initialise the SMART Box and request the specified port power statuses|
 +------------------------+-----------------------------+-----------------------------------------------------------------------+
+| UpdateThresholdCache   | None                        | Resync the threshold caches from firmware and tango database          |
++------------------------+-----------------------------+-----------------------------------------------------------------------+
+| ClearThresholdCache    | None                        | Clear the tango DB threshold cache values                             |
++------------------------+-----------------------------+-----------------------------------------------------------------------+
+
 
 Alarm recovery procedure
 ------------------------
@@ -144,6 +151,17 @@ The smartbox health is determined by three factors:
 Each monitoring point has four thresholds: [min_alarm, min_warning, max_warning, max_alarm]. These set on the attributes and the attributes
 respond by moving through ``tango.AttrQuality.WARNING`` and ``tango.AttrQuality.ALARM`` respectively dependent on monitoring point value. The
 ``healthState`` then reflects this as ``HealthState.DEGRADED`` -> ``tango.AttrQuality.WARNING`` and ``HealthState.FAILED`` -> ``tango.AttrQuality.ALARM``
+
+*NOTE* When overriding the thresholds there can sometimes be a mismatch between what is stored in the
+tango database and what is stored in the firmware (for example if the device is powered off, it will
+reset to the default firmware values on power up). If a mismatch is detected the FNDH device will
+be put into a FAULT state.
+
+To check what values are different, use the threshold_differences attribute to see the conflict.
+You can then set the attribute to the value you'd like and run the command UpdateThresholdCache
+to sync the values in firmware and from the tango DB with the values in our cache.
+Once you've ran this command you should be able to check the threshold_differences
+and see
 
 We can change the thresholds at run time on the smartbox by using the Tango API:
 

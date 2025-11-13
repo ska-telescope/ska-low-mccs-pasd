@@ -158,6 +158,17 @@ Each monitoring point has four thresholds: [min_alarm, min_warning, max_warning,
 respond by moving through ``tango.AttrQuality.WARNING`` and ``tango.AttrQuality.ALARM`` respectively dependent on monitoring point value. The
 ``healthState`` then reflects this as ``HealthState.DEGRADED`` -> ``tango.AttrQuality.WARNING`` and ``HealthState.FAILED`` -> ``tango.AttrQuality.ALARM``
 
+*NOTE* When overriding the thresholds there can sometimes be a mismatch between what is stored in the
+tango database and what is stored in the firmware (for example if the device is powered off, it will
+reset to the default firmware values on power up). If a mismatch is detected the FNDH device will
+be put into a FAULT state.
+To check what values are different, use the threshold_differences attribute to see the conflict.
+You can then set the attribute to the value you'd like and run the command UpdateThresholdCache
+to sync the values in firmware and from the tango DB with the values in our cache.
+Once you've ran this command you should be able to check the threshold_differences
+and see the conflict has resolved, and you are no longer in FAULT state
+
+
 We can change the thresholds at run time on the FNDH by using the Tango API:
 
 For example:

@@ -16,20 +16,30 @@ import random
 import re
 import time
 import warnings
+from typing import Iterator
+from unittest.mock import patch
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
+from ska_control_model import (
+    AdminMode,
+    HealthState,
+    LoggingLevel,
+    PowerState,
+    ResultCode,
+    SimulationMode,
+)
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.fndh import FndhHealthModel
-from ska_low_mccs_pasd.pasd_bus import FndhSimulator
+from ska_low_mccs_pasd.pasd_bus import FnccSimulator, FndhSimulator, SmartboxSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     FndhAlarmFlags,
     FndhStatusMap,
     PasdConversionUtility,
 )
+from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 from ..conftest import Helpers
 
@@ -44,6 +54,7 @@ STUCK_OFF_PDOC_TEMPLATE = (
     "PDOC {} stuck OFF, could be a fault within the PDOC, "
     "damaged PDOC cable, or faulty SMART Box EP"
 )
+OUTSIDE_TEMP_VAL = ["20.0", "15.0", "10.0", "5.0"]
 
 
 def generate_pdoc_strings(template: str, replacements: list[str]) -> list[str]:
@@ -409,8 +420,8 @@ class TestfndhPasdBusIntegration:
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def test_thresholds(
         self: TestfndhPasdBusIntegration,
-        fndh_device: tango.DeviceProxy,
-        pasd_bus_device: tango.DeviceProxy,
+        fndh_device_configurable: tango.DeviceProxy,
+        pasd_bus_device_configurable: tango.DeviceProxy,
         fndh_simulator: FndhSimulator,
         change_event_callbacks: MockTangoEventCallbackGroup,
         last_smartbox_id: int,
@@ -418,10 +429,10 @@ class TestfndhPasdBusIntegration:
         """
         Test the setting of fndh thresholds.
 
-        :param fndh_device: fixture that provides a
+        :param fndh_device_configurable: fixture that provides a
             :py:class:`tango.DeviceProxy` to the device under test, in a
             :py:class:`tango.test_context.DeviceTestContext`.
-        :param pasd_bus_device: a proxy to the PaSD bus device under test.
+        :param pasd_bus_device_configurable: a proxy to the PaSD bus device under test.
         :param fndh_simulator: the FNDH simulator under test
         :param change_event_callbacks: dictionary of mock change event
             callbacks with asynchrony support
@@ -429,7 +440,9 @@ class TestfndhPasdBusIntegration:
         """
         # adminMode offline and in DISABLE state
         # ----------------------------------------------------------------
-        assert fndh_device.adminMode == AdminMode.OFFLINE
+        pasd_bus_device = pasd_bus_device_configurable
+        fndh_device = fndh_device_configurable
+        assert fndh_device_configurable.adminMode == AdminMode.OFFLINE
         assert pasd_bus_device.adminMode == AdminMode.OFFLINE
 
         pasd_bus_device.subscribe_event(
@@ -512,36 +525,61 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["outsideTemperatureThresholds"],
         )
-        old_vals = fndh_simulator.outside_temperature_thresholds
+        old_vals = fndh_device.outsideTemperatureThresholds
+
         setattr(
             fndh_device,
-            "OutsideTemperatureThresholds",
-            [30.2, 25.5, 10.5, 5],
+            "outsideTemperatureThresholds",
+            [20.0, 15.0, 10.0, 5.0],
         )
         # Can't change thresholds in adminmode online
-        assert fndh_simulator.outside_temperature_thresholds == old_vals
+        for i, val in enumerate(old_vals):
+            assert fndh_device.outsideTemperatureThresholds[i] == val
 
         fndh_device.adminMode = AdminMode.ENGINEERING
 
         change_event_callbacks.assert_change_event(
             "fndh_adminMode",
             AdminMode.ENGINEERING,
-            lookahead=2,
+            lookahead=5,
             consume_nonmatches=True,
         )
 
         time.sleep(1)
 
+        new_vals = [40.0, 35.0, 10.5, 5]
         setattr(
             fndh_device,
-            "OutsideTemperatureThresholds",
-            [30.2, 25.5, 10.5, 5],
+            "outsideTemperatureThresholds",
+            new_vals,
         )
-
         change_event_callbacks["outsideTemperatureThresholds"].assert_change_event(
-            [30.2, 25.5, 10.5, 5], lookahead=2
+            new_vals, lookahead=13
         )
-        assert fndh_simulator.outside_temperature_thresholds == [3020, 2550, 1050, 500]
+        for i, val in enumerate(new_vals):
+            assert fndh_device.outsideTemperatureThresholds[i] == val
+        (code, message) = fndh_device.UpdateThresholdCache()
+        assert code == ResultCode.FAILED
+        assert "Thresholds do not match:" in message[0]
+        assert "outsidetemperaturethresholds" in message[0]
+
+        time.sleep(5)
+
+        assert fndh_device.healthstate == HealthState.FAILED
+
+        # Nasty hack to allow the configure of the db return values,
+        # Open to cleaner ideas if you have them
+        global OUTSIDE_TEMP_VAL  # pylint: disable=global-statement
+        OUTSIDE_TEMP_VAL = ["40.0", "35.0", "10.5", "5.0"]
+
+        (code, message) = fndh_device.UpdateThresholdCache()
+
+        assert message == ["UpdateThresholdCache completed"]
+        assert code == ResultCode.OK
+
+        time.sleep(5)
+
+        assert fndh_device.healthstate == HealthState.OK
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def test_port_power(
@@ -983,6 +1021,121 @@ class TestfndhPasdBusIntegration:
 
         change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.OK)
         assert fndh_device.healthreport == "Health is OK."
+
+
+@pytest.fixture(name="pasd_bus_device_configurable")
+def pasd_bus_device_configurable_fixture(
+    test_context_db_configurable: PasdTangoTestHarnessContext,
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns the pasd_bus Tango device under test.
+
+    :param test_context_db_configurable: context in which the test will run.
+
+    :yield: the pasd_bus Tango device under test.
+    """
+    pasd_bus_device = test_context_db_configurable.get_pasd_bus_device()
+    pasd_bus_device.simulationMode = SimulationMode.TRUE
+    yield pasd_bus_device
+
+
+@pytest.fixture(name="fndh_device_configurable")
+def fndh_device_configurable_fixture(
+    test_context_db_configurable: PasdTangoTestHarnessContext,
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns the FNDH Tango device under test.
+
+    :param test_context_db_configurable: context in which the tests will run.
+
+    :yield: the FNDH Tango device under test.
+    """
+    yield test_context_db_configurable.get_fndh_device()
+
+
+@pytest.fixture(name="on_smartbox_device_configurable")
+def on_smartbox_device_configurable_fixture(
+    test_context_db_configurable: PasdTangoTestHarnessContext,
+    on_smartbox_id: int,
+) -> list[tango.DeviceProxy]:
+    """
+    Fixture that returns a smartbox Tango device.
+
+    :param test_context_db_configurable: context in which the tests will run.
+    :param on_smartbox_id: number of the smartbox under test
+
+    :return: the smartbox Tango device.
+    """
+    return test_context_db_configurable.get_smartbox_device(on_smartbox_id)
+
+
+@pytest.fixture(name="test_context_db_configurable")
+def test_context_db_configurable_fixture(
+    pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
+    smartbox_ids_to_test: list[int],
+    smartbox_attached_ports: list[int],
+    smartbox_attached_antennas: list[list[bool]],
+    smartbox_attached_antenna_names: list[list[str]],
+) -> Iterator[PasdTangoTestHarnessContext]:
+    """
+    Fixture that returns a proxy to the PaSD bus Tango device under test.
+
+    :param pasd_hw_simulators: the FNDH and smartbox simulators against which to test
+    :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
+    :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
+        is connected to.
+    :param smartbox_attached_antennas: smartbox port numbers each antenna is
+        connected to for each smartbox.
+    :param smartbox_attached_antenna_names: names of each antenna connected to
+        each smartbox.
+    :yield: a test context in which to run the integration tests.
+    """
+    with patch("ska_low_mccs_pasd.pasd_utils.Database") as db:
+
+        def my_func(device_name: str, property_name: dict) -> dict:
+            # pylint: disable=global-variable-not-assigned
+            global OUTSIDE_TEMP_VAL  # noqa: F824
+            if property_name == {"cache_threshold": "outsidetemperaturethresholds"}:
+                return {
+                    "cache_threshold": {
+                        "outsidetemperaturethresholds": OUTSIDE_TEMP_VAL
+                    }
+                }
+            return {}
+
+        db.return_value.get_device_attribute_property = my_func
+
+        my_harness = PasdTangoTestHarness()
+
+        my_harness.set_pasd_bus_simulator(pasd_hw_simulators)
+        my_harness.set_pasd_bus_device(
+            polling_rate=0.1,
+            device_polling_rate=0.1,
+            available_smartboxes=smartbox_ids_to_test,
+            logging_level=int(LoggingLevel.FATAL),
+        )
+        my_harness.set_fndh_device(int(LoggingLevel.ERROR), ports_with_smartbox=[1])
+        my_harness.set_fncc_device(int(LoggingLevel.ERROR))
+        for smartbox_id in smartbox_ids_to_test:
+            my_harness.add_smartbox_device(
+                smartbox_id,
+                int(LoggingLevel.ERROR),
+                fndh_port=smartbox_attached_ports[smartbox_id - 1],
+                ports_with_antennas=[
+                    idx + 1
+                    for idx, attached in enumerate(
+                        smartbox_attached_antennas[smartbox_id - 1]
+                    )
+                    if attached
+                ],
+                antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
+            )
+        my_harness.set_field_station_device(
+            smartbox_ids_to_test, int(LoggingLevel.ERROR)
+        )
+
+        with my_harness as context:
+            yield context
 
 
 @pytest.fixture(name="change_event_callbacks")
