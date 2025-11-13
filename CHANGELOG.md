@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* [THORN-262] Add timeout to pytest configuration. This should be set to slightly less than the pipeline timeout so that test reports are generated before the job is killed.
+
 ## 3.5.0
 
 * [SKB-455] Add new optional device property 'SmartboxIDs' to pasdBus. When set,
