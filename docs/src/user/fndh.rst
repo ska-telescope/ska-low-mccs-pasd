@@ -3,7 +3,7 @@ FNDH device
 ===========
 
 The FNDH Tango device reflects the state of the Field Node Peripheral Controller (FNPC),
-including the status of the Power and Data Over Coax (PDOC) ports which are used to power the SMART Boxes. 
+including the status of the Power and Data Over Coax (PDOC) ports which are used to power the SMART Boxes.
 The following attributes are exposed; note that all temperatures are in degrees Celsius and all
 attributes are read-only with the exception of the alarm and warning thresholds which
 are read/write.
@@ -39,7 +39,7 @@ are read/write.
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | PanelTemperature                     | 22          | *NOT IMPLEMENTED IN HARDWARE*                                            |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| FncbTemperature                      | 23          | Field Node Controller Board temperature                                  | 
+| FncbTemperature                      | 23          | Field Node Controller Board temperature                                  |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | FncbHumidity                         | 24          | Field Node Controller Board humidity (%)                                 |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
@@ -63,7 +63,7 @@ are read/write.
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | PortsPowerSensed                     | 36-64       | Power sensed status for each port (True or False)                        |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
-| PortsPowerControl                    | 36-64       | Power control line ON/OFF status (True if port can be turned on)         |                                                              
+| PortsPowerControl                    | 36-64       | Power control line ON/OFF status (True if port can be turned on)         |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | Psu48vVoltage1Thresholds             | 1001-1004   | High alarm, high warning, low warning and low alarm threshold values     |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
@@ -119,12 +119,12 @@ The FNDH device supports the following commands:
 +------------------------+-----------------------------+-------------------------------------------------------------------+
 | Command name           | Arguments                   | Description                                                       |
 +========================+=============================+===================================================================+
-| PowerOnPort            | Port number                 | Request to power on the specified port                            |                   
+| PowerOnPort            | Port number                 | Request to power on the specified port                            |
 +------------------------+-----------------------------+-------------------------------------------------------------------+
-| PowerOffPort           | Port number                 | Request to power off the specified port                           |                    
+| PowerOffPort           | Port number                 | Request to power off the specified port                           |
 +------------------------+-----------------------------+-------------------------------------------------------------------+
 | SetPortPowers          | See: :ref:`set-port-powers` | Initialise the FNDH and request the specified port power statuses |
-+------------------------+-----------------------------+-------------------------------------------------------------------+                    
++------------------------+-----------------------------+-------------------------------------------------------------------+
 
 
 Alarm recovery procedure
@@ -132,7 +132,7 @@ Alarm recovery procedure
 When the FNDH ``PasdStatus`` attribute indicates an ALARM, WARNING or RECOVERY state, the
 ``WarningFlags`` and ``AlarmFlags`` attributes can be interrogated to find out which
 sensors have gone outside their threshold values. These registers need to be manually
-cleared by issuing the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.ResetFndhAlarms` 
+cleared by issuing the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.ResetFndhAlarms`
 and :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.ResetFndhWarnings` commands after
 reading.
 
@@ -155,10 +155,16 @@ The health of the FNDH is determined by three factors:
 **Threshold Evaluation**
 
 The thresholds are read from the hardware during the initial polling and after any write events.
+*NOTE* When setting the thresholds there can sometimes be a mismatch between what is stored in the
+tango database, and what is stored in the firmware, if there is a mismatch you could end up in a
+fault state.
+To check and hopefully resolve this you can use the UpdateThresholdCache() command, this should
+sync the thresholds, or in the event that they are unsynced, tell you what thresholds are different
+so you can reassign them to sync them up
 
 **Configuration via healthModelParams**
 
-All health-related values are configurable through the ``healthModelParams`` attribute. 
+All health-related values are configurable through the ``healthModelParams`` attribute.
 Below is an example of how the desired thresholds can be set (**Note**: values set are arbitrary):
 
 .. code-block:: python
@@ -188,6 +194,6 @@ The following translation of the FNDH's SYS_STATUS register values to health sta
 - 'WARNING' indicates a health state of 'DEGRADED'.
 - 'UNINITIALISED' or 'OK' indicates a health state of 'OK'.
 - 'POWERUP' indicates a health state of 'UNKNOWN' (this state should not be used).
-  
+
 
 

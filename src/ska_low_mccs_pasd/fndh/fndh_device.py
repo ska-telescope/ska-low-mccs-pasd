@@ -7,6 +7,8 @@
 # See LICENSE for more info.
 """This module implements the MCCS FNDH device."""
 
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import importlib.resources
@@ -114,6 +116,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self._overVoltageThreshold: float
         self._humidityThreshold: float
         self.component_manager: FndhComponentManager
+        self.power_state: PowerState | None = None
 
         self._db_connection: PasdDatabase
 
@@ -233,6 +236,20 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     # Commands
     # ----------
     @command(dtype_out="DevVarLongStringArray")
+    def ClearThresholdCache(
+        self: MccsFNDH,
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Clear the threshold caches.
+
+        :return: A tuple containing a return code and a string message
+            indicating status.
+        """
+        self._clear_threshold_cache()
+
+        return ([ResultCode.OK], ["ClearThresholdCache completed"])
+
+    @command(dtype_out="DevVarLongStringArray")
     def UpdateThresholdCache(
         self: MccsFNDH,
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
@@ -245,8 +262,10 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self.update_threshold_cache()
         diff = self._threshold_differences()
         if diff:
+            self._component_state_changed_callback(fault=True)
             message = f"Thresholds do not match: {diff}"
             return ([ResultCode.FAILED], [message])
+        self._component_state_changed_callback(fault=False)
 
         return ([ResultCode.OK], ["UpdateThresholdCache completed"])
 
@@ -567,10 +586,12 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             if self._admin_mode == AdminMode.ENGINEERING:
                 values = fndh_attribute.get_write_value(ExtractAs.List)
                 self.component_manager.write_attribute(attr_name, values)
-                self._db_connection.put_value(self.get_name(), attr_name, values)
                 self._thresholds_tango.update({attr_name: values})
+                self._db_connection.put_value(
+                    self.get_name(), self._thresholds_tango.all_thresholds
+                )
             else:
-                self.logger.warning(
+                self.logger.error(
                     f"Cannot write attributes {attr_name} unless in engineering mode"
                 )
                 # raise AttributeError(
@@ -579,6 +600,10 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         else:
             value = fndh_attribute.get_write_value(ExtractAs.List)
             self.component_manager.write_attribute(attr_name, value)
+
+    def _clear_threshold_cache(self: MccsFNDH) -> None:
+        """Clear fndh thresholds cache from database."""
+        self._db_connection.clear_thresholds(self.get_name())
 
     def update_threshold_cache(self: MccsFNDH) -> None:
         """Update fndh thresholds cache from database and firmware."""
@@ -614,12 +639,11 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             if thresholds_pasd is None:
                 self.logger.debug("Not yet retrieved value from firmware, skipping..")
                 continue
-            for i, value in enumerate(thresholds_tango):
-                if thresholds_tango[i] != thresholds_pasd[i]:
-                    differences[
-                        name
-                    ] = f"tango:{thresholds_tango} != pasd:{thresholds_pasd}"
-                    break
+            if thresholds_tango and thresholds_tango != thresholds_pasd:
+                differences[
+                    name
+                ] = f"tango:{thresholds_tango} != pasd:{thresholds_pasd}"
+                break
 
         return differences
 
@@ -844,6 +868,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         if fault is not None:
             self._health_model.update_state(fault=fault)
         if power is not None:
+            self.power_state = power
             self._health_model.update_state(power=power)
 
     def _health_changed_callback(self: MccsFNDH, health: HealthState) -> None:
@@ -921,7 +946,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                         self.logger.error(
                             f"Mismatch between firmware and tango thresholds: {diff}"
                         )
-                        self._component_state_changed(fault=True)
+                        self._component_state_changed_callback(fault=True)
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass

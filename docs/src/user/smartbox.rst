@@ -158,6 +158,13 @@ For example:
 
     smartbox.healthModelParams = json.dumps(desired_thresholds)
 
+*NOTE* When setting the thresholds there can sometimes be a mismatch between what is stored in the
+tango database, and what is stored in the firmware, if there is a mismatch you could end up in a
+fault state.
+To check and hopefully resolve this you can use the UpdateThresholdCache() command, this should
+sync the thresholds, or in the event that they are unsynced, tell you what thresholds are different
+so you can reassign them to sync them up
+
 **Status Register Evaluation**
 
 The following translation of the Smartbox's SYS_STATUS register values to health states is applied:
@@ -170,4 +177,4 @@ The following translation of the Smartbox's SYS_STATUS register values to health
 **Port Breaker Status**
 
 If any of the port breakers are tripped, the health state of the Smartbox is set to 'FAILED'.
-  
+

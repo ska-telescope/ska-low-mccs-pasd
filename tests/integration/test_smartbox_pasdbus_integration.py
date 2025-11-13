@@ -14,24 +14,36 @@ import gc
 import json
 import random
 import time
+from typing import Iterator
+from unittest.mock import patch
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState, PowerState, ResultCode
+from ska_control_model import (
+    AdminMode,
+    HealthState,
+    LoggingLevel,
+    PowerState,
+    ResultCode,
+    SimulationMode,
+)
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-from ska_low_mccs_pasd.pasd_bus import SmartboxSimulator
+from ska_low_mccs_pasd.pasd_bus import FnccSimulator, FndhSimulator, SmartboxSimulator
 from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
     PasdConversionUtility,
     SmartboxAlarmFlags,
     SmartboxStatusMap,
 )
 from ska_low_mccs_pasd.pasd_data import PasdData
+from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 from .. import harness
 
 gc.disable()  # TODO: why is this needed?
+
+PCB_TEMP_VAL = ["85.0", "70.0", "0.0", "-5.0"]
 
 
 def turn_pasd_devices_online(
@@ -1218,100 +1230,6 @@ class TestSmartBoxPasdBusIntegration:
         assert smartbox_device.FemHeatsinkTemperature1 == 51.00
         assert smartbox_device.FemHeatsinkTemperature2 == 50.00
 
-    def test_thresholds(
-        self: TestSmartBoxPasdBusIntegration,
-        pasd_bus_device: tango.DeviceProxy,
-        fndh_device: tango.DeviceProxy,
-        on_smartbox_device: tango.DeviceProxy,
-        on_smartbox_id: int,
-        smartbox_simulator: SmartboxSimulator,
-        change_event_callbacks: MockTangoEventCallbackGroup,
-        last_smartbox_id: int,
-    ) -> None:
-        """
-        Test the setting of thresholds.
-
-        :param on_smartbox_device: fixture that provides a
-            :py:class:`tango.DeviceProxy` to the device under test, in a
-            :py:class:`tango.test_context.DeviceTestContext`.
-        :param pasd_bus_device: fixture that provides a
-            :py:class:`tango.DeviceProxy` to the device under test, in a
-            :py:class:`tango.test_context.DeviceTestContext`.
-        :param fndh_device: fixture that provides a
-            :py:class:`tango.DeviceProxy` to the device under test, in a
-            :py:class:`tango.test_context.DeviceTestContext`.
-        :param smartbox_simulator: the smartbox simulator under test.
-        :param on_smartbox_id: the smartbox of interest in this test.
-        :param change_event_callbacks: group of Tango change event
-            callback with asynchrony support
-        :param last_smartbox_id: ID of the last smartbox polled
-        """
-        smartbox_device = on_smartbox_device
-        smartbox_id = on_smartbox_id
-
-        # ==========
-        # PaSD SETUP
-        # ==========
-        setup_devices_with_subscriptions(
-            smartbox_device,
-            pasd_bus_device,
-            fndh_device,
-            change_event_callbacks,
-        )
-
-        turn_pasd_devices_online(
-            smartbox_device,
-            pasd_bus_device,
-            fndh_device,
-            change_event_callbacks,
-            last_smartbox_id,
-        )
-
-        # When we write an attribute, check the simulator gets updated
-        smartbox_device.subscribe_event(
-            "PcbTemperatureThresholds",
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[f"smartbox{smartbox_id}pcbtemperaturethresholds"],
-        )
-
-        smartbox_device.subscribe_event(
-            "adminMode",
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["smartbox_adminMode"],
-        )
-
-        old_vals = smartbox_device.PcbTemperatureThresholds
-
-        setattr(
-            smartbox_device,
-            "PcbTemperatureThresholds",
-            [30.2, 25.5, 10.5, 5],
-        )
-        # Can't change thresholds in adminmode online
-        for i, val in enumerate(old_vals):
-            assert smartbox_device.PcbTemperatureThresholds[i] == val
-
-        smartbox_device.adminMode = AdminMode.ENGINEERING
-
-        change_event_callbacks.assert_change_event(
-            "smartbox_adminMode",
-            AdminMode.ENGINEERING,
-            lookahead=4,
-            consume_nonmatches=True,
-        )
-
-        time.sleep(1)
-
-        setattr(
-            smartbox_device,
-            "PcbTemperatureThresholds",
-            [30.2, 25.5, 10.5, 5],
-        )
-        change_event_callbacks[
-            f"smartbox{smartbox_id}pcbtemperaturethresholds"
-        ].assert_change_event([30.2, 25.5, 10.5, 5], lookahead=13)
-        assert smartbox_simulator.pcb_temperature_thresholds == [3020, 2550, 1050, 500]
-
     def test_set_port_powers(
         self: TestSmartBoxPasdBusIntegration,
         on_smartbox_device: tango.DeviceProxy,
@@ -1533,6 +1451,234 @@ class TestSmartBoxPasdBusIntegration:
             "smartboxHealthState",
             HealthState.FAILED,
         )
+
+    def test_thresholds(
+        self: TestSmartBoxPasdBusIntegration,
+        pasd_bus_device_configurable: tango.DeviceProxy,
+        fndh_device_configurable: tango.DeviceProxy,
+        on_smartbox_device_configurable: tango.DeviceProxy,
+        on_smartbox_id: int,
+        smartbox_simulator: SmartboxSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+        last_smartbox_id: int,
+    ) -> None:
+        """
+        Test the setting of thresholds.
+
+        :param on_smartbox_device_configurable: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param pasd_bus_device_configurable: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param fndh_device_configurable: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param smartbox_simulator: the smartbox simulator under test.
+        :param on_smartbox_id: the smartbox of interest in this test.
+        :param change_event_callbacks: group of Tango change event
+            callback with asynchrony support
+        :param last_smartbox_id: ID of the last smartbox polled
+        """
+        smartbox_device = on_smartbox_device_configurable
+        smartbox_id = on_smartbox_id
+
+        # ==========
+        # PaSD SETUP
+        # ==========
+        setup_devices_with_subscriptions(
+            smartbox_device,
+            pasd_bus_device_configurable,
+            fndh_device_configurable,
+            change_event_callbacks,
+        )
+
+        turn_pasd_devices_online(
+            smartbox_device,
+            pasd_bus_device_configurable,
+            fndh_device_configurable,
+            change_event_callbacks,
+            last_smartbox_id,
+        )
+
+        # When we write an attribute, check the simulator gets updated
+        smartbox_device.subscribe_event(
+            "PcbTemperatureThresholds",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{smartbox_id}pcbtemperaturethresholds"],
+        )
+
+        smartbox_device.subscribe_event(
+            "adminMode",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartbox_adminMode"],
+        )
+
+        old_vals = smartbox_device.PcbTemperatureThresholds
+
+        setattr(
+            smartbox_device,
+            "PcbTemperatureThresholds",
+            [30.2, 25.5, 10.5, 5],
+        )
+        # Can't change thresholds in adminmode online
+        for i, val in enumerate(old_vals):
+            assert smartbox_device.PcbTemperatureThresholds[i] == val
+
+        smartbox_device.adminMode = AdminMode.ENGINEERING
+
+        change_event_callbacks.assert_change_event(
+            "smartbox_adminMode",
+            AdminMode.ENGINEERING,
+            lookahead=5,
+            consume_nonmatches=True,
+        )
+
+        time.sleep(1)
+
+        setattr(
+            smartbox_device,
+            "PcbTemperatureThresholds",
+            [30.2, 25.5, 10.5, 5],
+        )
+        change_event_callbacks[
+            f"smartbox{smartbox_id}pcbtemperaturethresholds"
+        ].assert_change_event([30.2, 25.5, 10.5, 5], lookahead=13)
+        assert smartbox_simulator.pcb_temperature_thresholds == [3020, 2550, 1050, 500]
+
+        code, message = smartbox_device.UpdateThresholdCache()
+        assert code == ResultCode.FAILED
+        assert "Thresholds do not match:" in message[0]
+        assert "pcbtemperaturethresholds" in message[0]
+
+        time.sleep(1)
+
+        assert smartbox_device.healthstate == HealthState.FAILED
+
+        # Nasty hack to allow the configure of the db return values,
+        # Open to cleaner ideas if you have them
+        global PCB_TEMP_VAL  # pylint: disable=global-statement
+        PCB_TEMP_VAL = ["30.2", "25.5", "10.5", "5.0"]
+
+        (code, message) = smartbox_device.UpdateThresholdCache()
+
+        assert message == ["UpdateThresholdCache completed"]
+        assert code == ResultCode.OK
+
+        time.sleep(1)
+
+        assert smartbox_device.healthstate == HealthState.OK
+
+
+@pytest.fixture(name="pasd_bus_device_configurable")
+def pasd_bus_device_configurable_fixture(
+    test_context_db_configurable: PasdTangoTestHarnessContext,
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns the pasd_bus Tango device under test.
+
+    :param test_context_db_configurable: context in which the test will run.
+
+    :yield: the pasd_bus Tango device under test.
+    """
+    pasd_bus_device = test_context_db_configurable.get_pasd_bus_device()
+    pasd_bus_device.simulationMode = SimulationMode.TRUE
+    yield pasd_bus_device
+
+
+@pytest.fixture(name="fndh_device_configurable")
+def fndh_device_configurable_fixture(
+    test_context_db_configurable: PasdTangoTestHarnessContext,
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns the FNDH Tango device under test.
+
+    :param test_context_db_configurable: context in which the tests will run.
+
+    :yield: the FNDH Tango device under test.
+    """
+    yield test_context_db_configurable.get_fndh_device()
+
+
+@pytest.fixture(name="on_smartbox_device_configurable")
+def on_smartbox_device_configurable_fixture(
+    test_context_db_configurable: PasdTangoTestHarnessContext,
+    on_smartbox_id: int,
+) -> list[tango.DeviceProxy]:
+    """
+    Fixture that returns a smartbox Tango device.
+
+    :param test_context_db_configurable: context in which the tests will run.
+    :param on_smartbox_id: number of the smartbox under test
+
+    :return: the smartbox Tango device.
+    """
+    return test_context_db_configurable.get_smartbox_device(on_smartbox_id)
+
+
+@pytest.fixture(name="test_context_db_configurable")
+def test_context_db_configurable_fixture(
+    pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
+    smartbox_ids_to_test: list[int],
+    smartbox_attached_ports: list[int],
+    smartbox_attached_antennas: list[list[bool]],
+    smartbox_attached_antenna_names: list[list[str]],
+) -> Iterator[PasdTangoTestHarnessContext]:
+    """
+    Fixture that returns a proxy to the PaSD bus Tango device under test.
+
+    :param pasd_hw_simulators: the FNDH and smartbox simulators against which to test
+    :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
+    :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
+        is connected to.
+    :param smartbox_attached_antennas: smartbox port numbers each antenna is
+        connected to for each smartbox.
+    :param smartbox_attached_antenna_names: names of each antenna connected to
+        each smartbox.
+    :yield: a test context in which to run the integration tests.
+    """
+    with patch("ska_low_mccs_pasd.pasd_utils.Database") as db:
+
+        def my_func(device_name: str, property_name: dict) -> dict:
+            # pylint: disable=global-variable-not-assigned
+            global PCB_TEMP_VAL  # noqa: F824
+            if property_name == {"cache_threshold": "pcbtemperaturethresholds"}:
+                return {"cache_threshold": {"pcbtemperaturethresholds": PCB_TEMP_VAL}}
+            return {}
+
+        db.return_value.get_device_attribute_property = my_func
+
+        my_harness = PasdTangoTestHarness()
+
+        my_harness.set_pasd_bus_simulator(pasd_hw_simulators)
+        my_harness.set_pasd_bus_device(
+            polling_rate=0.1,
+            device_polling_rate=0.1,
+            available_smartboxes=smartbox_ids_to_test,
+            logging_level=int(LoggingLevel.FATAL),
+        )
+        my_harness.set_fndh_device(int(LoggingLevel.ERROR))
+        my_harness.set_fncc_device(int(LoggingLevel.ERROR))
+        for smartbox_id in smartbox_ids_to_test:
+            my_harness.add_smartbox_device(
+                smartbox_id,
+                int(LoggingLevel.ERROR),
+                fndh_port=smartbox_attached_ports[smartbox_id - 1],
+                ports_with_antennas=[
+                    idx + 1
+                    for idx, attached in enumerate(
+                        smartbox_attached_antennas[smartbox_id - 1]
+                    )
+                    if attached
+                ],
+                antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
+            )
+        my_harness.set_field_station_device(
+            smartbox_ids_to_test, int(LoggingLevel.ERROR)
+        )
+
+        with my_harness as context:
+            yield context
 
 
 @pytest.fixture(name="change_event_callbacks")

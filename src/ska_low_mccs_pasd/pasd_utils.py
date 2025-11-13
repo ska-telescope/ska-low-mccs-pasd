@@ -81,18 +81,15 @@ class PasdDatabase:
     def __init__(self) -> None:
         self.database = Database()
 
-    def put_value(
-        self: PasdDatabase, dev_name: str, attr_name: str, value: Any
-    ) -> None:
+    def put_value(self: PasdDatabase, dev_name: str, all_thresholds: dict) -> None:
         """
         Put the value to the tango database.
 
         :param dev_name: name of the device.
-        :param attr_name: name of the attribute.
-        :param value: Value to be put in the database
+        :param all_thresholds: dict of all the thresholds
         """
         self.database.put_device_attribute_property(
-            dev_name, {"cache_threshold": {attr_name: value}}
+            dev_name, {"cache_threshold": all_thresholds}
         )
 
     def get_value(self: PasdDatabase, dev_name: str, attr_name: str) -> Any:
@@ -107,3 +104,10 @@ class PasdDatabase:
             dev_name, {"cache_threshold": attr_name}
         )
         return tmp["cache_threshold"]
+
+    def clear_thresholds(self: PasdDatabase, dev_name: str) -> None:
+        """Clear the database of threshold values.
+
+        :param dev_name: Name of the device.
+        """
+        self.database.delete_device_attribute_property(dev_name, "cache_threshold")
