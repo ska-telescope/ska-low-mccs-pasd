@@ -509,10 +509,20 @@ class TestfndhPasdBusIntegration:
             change_event_callbacks["fndh_adminMode"],
         )
 
+        fndh_device.subscribe_event(
+            "healthState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fndhhealthState"],
+        )
+
         fndh_device.adminMode = AdminMode.ONLINE
 
         change_event_callbacks.assert_change_event(
-            "fndh_adminMode", AdminMode.ONLINE, lookahead=2, consume_nonmatches=True
+            "fndh_adminMode", AdminMode.ONLINE, lookahead=10, consume_nonmatches=True
+        )
+
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.OK, lookahead=10
         )
 
         change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
@@ -545,7 +555,7 @@ class TestfndhPasdBusIntegration:
             consume_nonmatches=True,
         )
 
-        time.sleep(1)
+        time.sleep(0.1)
 
         new_vals = [40.0, 35.0, 10.5, 5]
         setattr(
@@ -563,9 +573,17 @@ class TestfndhPasdBusIntegration:
         assert "Thresholds do not match:" in message[0]
         assert "outsidetemperaturethresholds" in message[0]
 
-        time.sleep(5)
+        time.sleep(0.1)
+
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState",
+            HealthState.FAILED,
+            lookahead=50,
+            consume_nonmatches=True,
+        )
 
         assert fndh_device.healthstate == HealthState.FAILED
+        assert fndh_device.state() == tango.DevState.FAULT
 
         # Nasty hack to allow the configure of the db return values,
         # Open to cleaner ideas if you have them
@@ -577,9 +595,14 @@ class TestfndhPasdBusIntegration:
         assert message == ["UpdateThresholdCache completed"]
         assert code == ResultCode.OK
 
-        time.sleep(5)
+        time.sleep(0.1)
+
+        change_event_callbacks.assert_change_event(
+            "fndhhealthState", HealthState.OK, lookahead=10
+        )
 
         assert fndh_device.healthstate == HealthState.OK
+        assert fndh_device.state() == tango.DevState.ON
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def test_port_power(

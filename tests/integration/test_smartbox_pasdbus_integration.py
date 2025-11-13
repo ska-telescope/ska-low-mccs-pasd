@@ -1514,6 +1514,23 @@ class TestSmartBoxPasdBusIntegration:
             change_event_callbacks["smartbox_adminMode"],
         )
 
+        smartbox_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartbox_state"],
+        )
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.STANDBY
+        )
+        smartbox_device.subscribe_event(
+            "healthState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["smartboxHealthState"],
+        )
+        change_event_callbacks.assert_change_event(
+            "smartboxHealthState", HealthState.OK
+        )
+
         old_vals = smartbox_device.PcbTemperatureThresholds
 
         setattr(
@@ -1534,16 +1551,17 @@ class TestSmartBoxPasdBusIntegration:
             consume_nonmatches=True,
         )
 
-        time.sleep(1)
+        time.sleep(0.1)
+        assert smartbox_device.state() == tango.DevState.STANDBY
 
         setattr(
             smartbox_device,
             "PcbTemperatureThresholds",
-            [30.2, 25.5, 10.5, 5],
+            [30.2, 25.5, 10.5, 5.0],
         )
         change_event_callbacks[
             f"smartbox{smartbox_id}pcbtemperaturethresholds"
-        ].assert_change_event([30.2, 25.5, 10.5, 5], lookahead=13)
+        ].assert_change_event([30.2, 25.5, 10.5, 5.0], lookahead=13)
         assert smartbox_simulator.pcb_temperature_thresholds == [3020, 2550, 1050, 500]
 
         code, message = smartbox_device.UpdateThresholdCache()
@@ -1551,9 +1569,17 @@ class TestSmartBoxPasdBusIntegration:
         assert "Thresholds do not match:" in message[0]
         assert "pcbtemperaturethresholds" in message[0]
 
-        time.sleep(1)
+        time.sleep(0.1)
 
+        change_event_callbacks.assert_change_event(
+            "smartboxHealthState",
+            HealthState.FAILED,
+            lookahead=50,
+            consume_nonmatches=True,
+        )
         assert smartbox_device.healthstate == HealthState.FAILED
+
+        assert smartbox_device.state() == tango.DevState.FAULT
 
         # Nasty hack to allow the configure of the db return values,
         # Open to cleaner ideas if you have them
@@ -1565,9 +1591,14 @@ class TestSmartBoxPasdBusIntegration:
         assert message == ["UpdateThresholdCache completed"]
         assert code == ResultCode.OK
 
-        time.sleep(1)
+        change_event_callbacks.assert_change_event(
+            "smartboxHealthState", HealthState.OK, lookahead=10
+        )
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.STANDBY, lookahead=50, consume_nonmatches=True
+        )
 
-        assert smartbox_device.healthstate == HealthState.OK
+        assert smartbox_device.state() == tango.DevState.STANDBY
 
 
 @pytest.fixture(name="pasd_bus_device_configurable")
