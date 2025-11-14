@@ -417,7 +417,8 @@ class TestfndhPasdBusIntegration:
                     getattr(fndh_device, f"Port{port}PowerState") == PowerState.UNKNOWN
                 )
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments,
+    # pylint: disable=too-many-statements,
     def test_thresholds(
         self: TestfndhPasdBusIntegration,
         fndh_device_configurable: tango.DeviceProxy,
