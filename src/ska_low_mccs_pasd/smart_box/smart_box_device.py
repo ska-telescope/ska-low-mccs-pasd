@@ -828,6 +828,7 @@ class MccsSmartBox(MccsBaseDevice):
         :return: Return the differences between threshold values.
         """
         return json.dumps(self._threshold_differences())
+
     @staticmethod
     def _convert_status_to_quality(pasd_status: Optional[str]) -> tango.AttrQuality:
         match pasd_status:
