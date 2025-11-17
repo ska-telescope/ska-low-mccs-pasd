@@ -539,7 +539,8 @@ class MccsSmartBox(MccsBaseDevice):
         """Update smartbox thresholds cache from database and firmware."""
         for name in self._thresholds_tango.all_thresholds:
             value = self._db_connection.get_value(self.get_name(), name)
-            self._thresholds_tango.update(value)
+            if value:
+                self._thresholds_tango.update(value)
 
         for name in self._thresholds_pasd.all_thresholds:
             string_vals = []
@@ -679,6 +680,21 @@ class MccsSmartBox(MccsBaseDevice):
             value = attr.value if isinstance(attr, SmartboxAttribute) else attr
             if value is not None:
                 self.push_change_event(attribute_name, value)
+        if attribute_name.lower() not in [
+            "pasdstatus",
+            "numberofoortbreakerstripped",
+        ]:
+            threshold_name = attribute_name + "Thresholds"
+            attr = self._healthful_attributes[attribute_name]()
+            value = attr.value if isinstance(attr, SmartboxAttribute) else attr
+            if value is not None:
+                self._thresholds_pasd.update({threshold_name: value})
+                diff = self._threshold_differences()
+                if diff:
+                    self.logger.error(
+                        f"Mismatch between firmware and tango thresholds:{diff}"
+                    )
+                    self._component_state_changed_callback(fault=True)
 
     # pylint: disable=too-many-branches
     def _attribute_changed_callback(  # noqa: C901
@@ -801,16 +817,16 @@ class MccsSmartBox(MccsBaseDevice):
             name,
             thresholds_tango,
         ) in self._thresholds_tango.all_thresholds.items():
-            thresholds_pasd = self._thresholds_pasd.all_thresholds[name]
+            thresholds_pasd = self._thresholds_pasd.all_thresholds.get(name)
+            if thresholds_pasd is None:
+                self.logger.debug("Not yet retrieved value from firmware, skipping..")
+                continue
             if isinstance(thresholds_pasd, numpy.ndarray):
                 assert isinstance(thresholds_pasd, numpy.ndarray)
                 thresholds_pasd = thresholds_pasd.tolist()
             if isinstance(thresholds_tango, numpy.ndarray):
                 assert isinstance(thresholds_tango, numpy.ndarray)
                 thresholds_tango = thresholds_tango.tolist()
-            if thresholds_pasd is None:
-                self.logger.debug("Not yet retrieved value from firmware, skipping..")
-                continue
             for i, _ in enumerate(thresholds_tango):
                 if thresholds_tango[i] != thresholds_pasd[i]:
                     differences[

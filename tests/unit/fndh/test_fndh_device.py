@@ -182,15 +182,42 @@ def healthful_fndh_device_fixture(
                 **json.loads(argin), attr_quality=tango.AttrQuality.ATTR_VALID
             )
 
-    harness = PasdTangoTestHarness()
-    harness.set_fndh_device(
-        logging_level=int(LoggingLevel.DEBUG),
-        device_class=PatchedMccsFNDH,
-    )
-    harness.set_mock_pasd_bus_device(mock_pasdbus)
+    with patch("ska_low_mccs_pasd.pasd_utils.Database") as db:
+        # pylint: disable=too-many-return-statements
+        def my_func(device_name: str, property_name: str) -> list:
+            match property_name:
+                case "inputvoltagethresholds":
+                    return [50.0, 49.0, 45.0, 40.0]
+                case "powersupplyoutputvoltagethresholds":
+                    return [5.0, 4.9, 4.4, 4.0]
+                case "powersupplytemperaturethresholds":
+                    return [85.0, 70.0, 0.0, -5.0]
+                case "pcbtemperaturethresholds":
+                    return [85.0, 70.0, 0.0, -5.0]
+                case "femambienttemperaturethresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femcasetemperature1thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femcasetemperature2thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femheatsinktemperature1thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femheatsinktemperature2thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femcurrenttripthresholds":
+                    return [496, 496, 496, 496, 496, 496, 496, 496, 496, 496, 496, 496]
+            return []
 
-    with harness as context:
-        yield context.get_fndh_device()
+        db.return_value.get_device_attribute_property = my_func
+        harness = PasdTangoTestHarness()
+        harness.set_fndh_device(
+            logging_level=int(LoggingLevel.DEBUG),
+            device_class=PatchedMccsFNDH,
+        )
+        harness.set_mock_pasd_bus_device(mock_pasdbus)
+
+        with harness as context:
+            yield context.get_fndh_device()
 
 
 @pytest.mark.parametrize(

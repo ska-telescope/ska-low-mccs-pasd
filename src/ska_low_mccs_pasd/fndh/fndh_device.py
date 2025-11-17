@@ -5,6 +5,7 @@
 #
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
+# pylint: disable=too-many-lines
 """This module implements the MCCS FNDH device."""
 
 from __future__ import annotations
@@ -64,6 +65,7 @@ class FNDHAttribute:
 
 
 # pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-public-methods
 class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     """An implementation of the FNDH device for MCCS."""
 
@@ -654,7 +656,8 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         """Update fndh thresholds cache from database and firmware."""
         for name in self._thresholds_tango.all_thresholds:
             value = self._db_connection.get_value(self.get_name(), name)
-            self._thresholds_tango.update(value)
+            if value:
+                self._thresholds_tango.update(value)
 
         for name in self._thresholds_pasd.all_thresholds:
             string_vals = []
@@ -674,7 +677,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             name,
             thresholds_tango,
         ) in self._thresholds_tango.all_thresholds.items():
-            thresholds_pasd = self._thresholds_pasd.all_thresholds[name]
+            thresholds_pasd = self._thresholds_pasd.all_thresholds.get(name)
             if isinstance(thresholds_pasd, numpy.ndarray):
                 assert isinstance(thresholds_pasd, numpy.ndarray)
                 thresholds_pasd = thresholds_pasd.tolist()
@@ -684,11 +687,13 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             if thresholds_pasd is None:
                 self.logger.debug("Not yet retrieved value from firmware, skipping..")
                 continue
-            if thresholds_tango and thresholds_tango != thresholds_pasd:
-                differences[
-                    name
-                ] = f"tango:{thresholds_tango} != pasd:{thresholds_pasd}"
-                break
+            if thresholds_tango:
+                for i, _ in enumerate(thresholds_tango):
+                    if thresholds_pasd[i] != thresholds_tango[i]:
+                        differences[
+                            name
+                        ] = f"tango:{thresholds_tango} != pasd:{thresholds_pasd}"
+                        break
 
         return differences
 
@@ -1002,6 +1007,24 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             if value is not None:
                 self.push_change_event(attribute_name, value)
 
+        if attribute_name.lower() not in [
+            "pasdstatus",
+            "numberofstuckonsmartboxports",
+            "numberofstuckoffsmartboxports",
+        ]:
+            threshold_name = attribute_name + "Thresholds"
+            attr = self._healthful_attributes[attribute_name]()
+            value = attr.value if isinstance(attr, FNDHAttribute) else attr
+            if value is not None:
+                self._thresholds_pasd.update({threshold_name: value})
+                diff = self._threshold_differences()
+                if diff:
+                    self.logger.error(
+                        f"Mismatch between firmware and tango thresholds:{diff}"
+                    )
+                    self._component_state_changed_callback(fault=True)
+
+    # pylint: disable=too-many-branches
     def _attribute_changed_callback(  # noqa: C901
         self: MccsFNDH,
         attr_name: str,
@@ -1071,13 +1094,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                         self._health_model.update_monitoring_point_threshold(
                             threshold_attribute_name, attr_value
                         )
-                        self._thresholds_pasd.update({attr_name: attr_value})
-                        diff = self._threshold_differences()
-                        if diff:
-                            self.logger.error(
-                                f"Mismatch between firmware and tango thresholds: {diff}"
-                            )
-                            self._component_state_changed_callback(fault=True)
                     except DevFailed:
                         # No corresponding attribute to update, continue
                         pass
@@ -1088,6 +1104,15 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                     self._health_model.update_state(
                         monitoring_points=self._health_monitor_points
                     )
+            else:
+                if attr_name.endswith("thresholds"):
+                    self._thresholds_pasd.update({attr_name: attr_value})
+                    diff = self._threshold_differences()
+                    if diff:
+                        self.logger.error(
+                            f"Mismatch between firmware and tango thresholds:{diff}"
+                        )
+                        self._component_state_changed_callback(fault=True)
             if attr_name in ("portspowersensed", "portspowercontrol"):
                 self._evaluate_faulty_ports()
         except AssertionError:

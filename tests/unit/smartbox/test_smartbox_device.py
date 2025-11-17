@@ -42,6 +42,21 @@ def smartbox_device_fixture(
 
     :yield: a proxy to the smartbox Tango device under test.
     """
+
+    class _PatchedMccsSmartbox(MccsSmartBox):
+        """A daq class with a method to call the component state callback."""
+
+        @tango.server.command
+        def CallAttributeCallback(self, argin: str) -> None:
+            """
+            Patched method to call attribute callback directly.
+
+            :param argin: json-ified dict to call attribute callback with.
+            """
+            self._attribute_changed_callback(
+                **json.loads(argin), attr_quality=tango.AttrQuality.ATTR_VALID
+            )
+
     with patch("ska_low_mccs_pasd.pasd_utils.Database") as db:
         # pylint: disable=too-many-return-statements
         def my_func(device_name: str, property_name: str) -> list:
@@ -67,20 +82,6 @@ def smartbox_device_fixture(
                 case "femcurrenttripthresholds":
                     return [496, 496, 496, 496, 496, 496, 496, 496, 496, 496, 496, 496]
             return []
-
-    class _PatchedMccsSmartbox(MccsSmartBox):
-        """A daq class with a method to call the component state callback."""
-
-        @tango.server.command
-        def CallAttributeCallback(self, argin: str) -> None:
-            """
-            Patched method to call attribute callback directly.
-
-            :param argin: json-ified dict to call attribute callback with.
-            """
-            self._attribute_changed_callback(
-                **json.loads(argin), attr_quality=tango.AttrQuality.ATTR_VALID
-            )
 
         db.return_value.get_device_attribute_property = my_func
         harness = PasdTangoTestHarness()
