@@ -15,8 +15,8 @@ from typing import Any, Final
 import numpy as np
 from ska_control_model import HealthState
 from ska_low_mccs_common.health import HealthRules
+from ska_low_pasd_driver.pasd_bus_conversions import FndhStatusMap
 
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import FndhStatusMap
 from ska_low_mccs_pasd.pasd_utils import join_health_reports
 
 __all__ = ["FndhHealthRules", "join_health_reports"]

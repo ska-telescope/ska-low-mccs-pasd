@@ -14,11 +14,10 @@ import gc
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState
+from ska_low_pasd_driver import FnccSimulator
+from ska_low_pasd_driver.pasd_bus_conversions import PasdConversionUtility
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
-
-from ska_low_mccs_pasd.pasd_bus import FnccSimulator
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import PasdConversionUtility
 
 from ..conftest import Helpers
 

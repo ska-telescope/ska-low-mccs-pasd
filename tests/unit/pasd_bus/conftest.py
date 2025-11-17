@@ -16,14 +16,14 @@ import unittest.mock
 
 import pytest
 import yaml
-
-from ska_low_mccs_pasd import PasdData
-from ska_low_mccs_pasd.pasd_bus import (
+from ska_low_pasd_driver import (
     FnccSimulator,
     FndhSimulator,
     PasdBusSimulator,
     SmartboxSimulator,
 )
+
+from ska_low_mccs_pasd import PasdData
 
 
 @pytest.fixture(name="station_label")

@@ -16,9 +16,9 @@ import numpy as np
 import pytest
 from ska_control_model import HealthState, PowerState
 from ska_low_mccs_common.testing.mock import MockCallable
+from ska_low_pasd_driver.pasd_bus_conversions import FndhStatusMap, LedServiceMap
 
 from ska_low_mccs_pasd.fndh.fndh_health_model import FndhHealthModel
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import FndhStatusMap, LedServiceMap
 
 
 class TestFNDHHealthModel:

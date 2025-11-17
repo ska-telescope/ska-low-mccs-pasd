@@ -7,3 +7,4 @@ ska-control-model[health_rollup]==1.2.0
 ska-tango-testing==0.7.3
 jsonschema==4.19.1 
 pytango==10.0.0
+ska-low-pasd-driver @ git+https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git@79fc6e5904b5c017fdc1d0b0b56f90162bb868ea

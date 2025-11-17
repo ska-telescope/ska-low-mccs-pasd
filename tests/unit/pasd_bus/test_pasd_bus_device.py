@@ -17,14 +17,14 @@ import random
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState, SimulationMode
-from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
-
-from ska_low_mccs_pasd.pasd_bus import FnccSimulator, FndhSimulator, SmartboxSimulator
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
+from ska_low_pasd_driver import FnccSimulator, FndhSimulator, SmartboxSimulator
+from ska_low_pasd_driver.pasd_bus_conversions import (
     FndhAlarmFlags,
     PasdConversionUtility,
     SmartboxAlarmFlags,
 )
+from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
+
 from ska_low_mccs_pasd.pasd_data import PasdData
 from tests.harness import INPUT_VOLTAGE_THRESHOLDS, PasdTangoTestHarness
 
