@@ -19,11 +19,7 @@ from tests.conftest import (
 )
 
 if TYPE_CHECKING:
-    from ska_low_mccs_pasd.pasd_bus import (
-        FnccSimulator,
-        FndhSimulator,
-        SmartboxSimulator,
-    )
+    from ska_low_pasd_driver import FnccSimulator, FndhSimulator, SmartboxSimulator
 
 DEFAULT_STATION_LABEL = "ci-1"  # station 1 of cluster "ci"
 
@@ -224,12 +220,12 @@ class PasdTangoTestHarness:
 
         :param pasd_hw_simulators: FNDH and smartbox simulators to be used in testing.
         """
-        # Defer importing from ska_low_mccs_pasd
+        # Defer importing from ska_low_pasd_driver
         # until we know we need to launch a PaSD simulator to test against.
         # This ensures that we can use this harness to run tests against a real cluster,
-        # from within a pod that does not have ska_low_mccs_pasd installed.
+        # from within a pod that does not have ska_low_pasd_driver installed.
         # pylint: disable-next=import-outside-toplevel
-        from ska_low_mccs_pasd.pasd_bus import PasdBusSimulatorModbusServer
+        from ska_low_pasd_driver import PasdBusSimulatorModbusServer
 
         pasd_bus_simulator_server = PasdBusSimulatorModbusServer(pasd_hw_simulators)
 

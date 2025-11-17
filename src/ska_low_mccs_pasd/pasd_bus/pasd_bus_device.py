@@ -27,6 +27,7 @@ from ska_control_model import (
     SimulationMode,
 )
 from ska_low_mccs_common import MccsBaseDevice
+from ska_low_pasd_driver.pasd_bus_register_map import DesiredPowerEnum
 from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidator
 from tango import AttrQuality
 from tango.device_attribute import ExtractAs
@@ -37,7 +38,6 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 from ..pasd_controllers_configuration import ControllerDict
 from .pasd_bus_component_manager import PasdBusComponentManager
 from .pasd_bus_health_model import PasdBusHealthModel
-from .pasd_bus_register_map import DesiredPowerEnum
 
 __all__ = ["MccsPasdBus"]
 

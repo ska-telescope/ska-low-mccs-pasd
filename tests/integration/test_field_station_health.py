@@ -19,9 +19,9 @@ from unittest.mock import patch
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState, LoggingLevel, ResultCode
+from ska_low_pasd_driver import FnccSimulator, FndhSimulator, SmartboxSimulator
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-from ska_low_mccs_pasd.pasd_bus import FnccSimulator, FndhSimulator, SmartboxSimulator
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 gc.disable()  # Bug in garbage collection causes tests to hang.

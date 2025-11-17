@@ -15,22 +15,18 @@ from typing import Any, Iterator
 
 import pytest
 from ska_control_model import CommunicationStatus, PowerState
-from ska_tango_testing.mock import MockCallableGroup
-from ska_tango_testing.mock.placeholders import Anything
-
-from ska_low_mccs_pasd import PasdData
-from ska_low_mccs_pasd.pasd_bus import (
-    FnccSimulator,
-    FndhSimulator,
-    PasdBusComponentManager,
-    SmartboxSimulator,
-)
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_conversions import (
+from ska_low_pasd_driver import FnccSimulator, FndhSimulator, SmartboxSimulator
+from ska_low_pasd_driver.pasd_bus_conversions import (
     FndhAlarmFlags,
     PasdConversionUtility,
     SmartboxAlarmFlags,
 )
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
+from ska_low_pasd_driver.pasd_bus_register_map import DesiredPowerEnum
+from ska_tango_testing.mock import MockCallableGroup
+from ska_tango_testing.mock.placeholders import Anything
+
+from ska_low_mccs_pasd import PasdData
+from ska_low_mccs_pasd.pasd_bus import PasdBusComponentManager
 from tests.harness import PasdTangoTestHarness
 
 
