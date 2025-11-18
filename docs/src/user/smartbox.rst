@@ -150,12 +150,13 @@ of these values are changed they are cached in the Tango database. If a mismatch
 firmware values and the Tango database (for example if the device is powered off, it will reset to the
 default firmware values on power up), the Smartbox device will be put into a FAULT state.
 
-To check what values are different, use the ``ThresholdDifferences`` attribute to see the conflicts.
-You can then set the relevant attribute to the correct value and run the command ``UpdateThresholdCache``
-to sync the local cached threshold with the values read back from firmware. Once you've run this command
-you should be able to check the ``ThresholdDifferences`` again and see the conflict has resolved, and 
-the device is no longer in FAULT state. Alternatively, the ``ClearThresholdCache`` can be used with
-caution to delete the saved values from the Tango database.
+To check what values are different, read the ``ThresholdDifferences`` attribute to see the conflicts.
+You can then set the relevant attribute to the desired value, thus updating both the firmware and Tango
+database to the same value. When all conflicts have been resolved the FAULT state will be removed.
+
+Two engineering commands are provided: ``UpdateThresholdCache`` which re-reads the database values and
+calculates the differences again, and ``ClearThresholdCache`` which deletes all cached values from the
+Tango database.
 
 .. _smartbox-health-evaluation:
 

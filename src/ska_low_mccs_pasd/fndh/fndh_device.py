@@ -287,7 +287,10 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     # ----------
     # Commands
     # ----------
-    @command(dtype_out="DevVarLongStringArray")
+    @command(
+        dtype_out="DevVarLongStringArray",
+        fisallowed="is_engineering",
+    )
     def ClearThresholdCache(
         self: MccsFNDH,
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
@@ -297,16 +300,14 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         :return: A tuple containing a return code and a string message
             indicating status.
         """
-        if self._admin_mode == AdminMode.ENGINEERING:
-            self._clear_threshold_cache()
+        self._clear_threshold_cache()
 
-            return ([ResultCode.OK], ["ClearThresholdCache completed"])
-        return (
-            [ResultCode.REJECTED],
-            ["ClearThresholdCache can only be performed in engineering mode"],
-        )
+        return ([ResultCode.OK], ["ClearThresholdCache completed"])
 
-    @command(dtype_out="DevVarLongStringArray")
+    @command(
+        dtype_out="DevVarLongStringArray",
+        fisallowed="is_engineering",
+    )
     def UpdateThresholdCache(
         self: MccsFNDH,
     ) -> tuple[list[ResultCode], list[Optional[str]]]:
@@ -603,11 +604,15 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             description=description,
             format=format_string,
         ).to_attr()
+        if attribute_name.lower().endswith("thresholds"):
+            is_allowed_method = self.is_firmware_threshold_allowed
+        else:
+            is_allowed_method = None
         self.add_attribute(
             attr,
             self._read_fndh_attribute,
             self._write_fndh_attribute,
-            None,
+            is_allowed_method,
         )
         if min_value is not None or max_value is not None:
             if access_type != tango.AttrWriteType.READ_WRITE:
@@ -638,23 +643,46 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         # Register the request with the component manager
         attr_name = fndh_attribute.get_name().lower()
         if attr_name.endswith("thresholds"):
-            if self._admin_mode == AdminMode.ENGINEERING:
-                values = fndh_attribute.get_write_value(ExtractAs.List)
-                self.component_manager.write_attribute(attr_name, values)
-                self._thresholds_tango.update({attr_name: values})
-                self._db_connection.put_value(
-                    self.get_name(), self._thresholds_tango.all_thresholds
-                )
-            else:
-                self.logger.error(
-                    f"Cannot write attributes {attr_name} unless in engineering mode"
-                )
-                # raise AttributeError(
-                #     f"Cannot write attribute {attr_name} unless in engineering mode"
-                # )
+            values = fndh_attribute.get_write_value(ExtractAs.List)
+            self.component_manager.write_attribute(attr_name, values)
+            self._thresholds_tango.update({attr_name: values})
+            self._db_connection.put_value(
+                self.get_name(), self._thresholds_tango.all_thresholds
+            )
         else:
             value = fndh_attribute.get_write_value(ExtractAs.List)
             self.component_manager.write_attribute(attr_name, value)
+
+    def is_engineering(self: MccsFNDH) -> bool:
+        """
+        Return a flag representing whether we are in Engineering mode.
+
+        :return: True if FNDH is in Engineering Mode.
+        """
+        is_engineering = self._admin_mode == AdminMode.ENGINEERING
+        if not is_engineering:
+            reason = "CommandNotAllowed"
+            msg = (
+                "To execute this command we must be in adminMode Engineering. "
+                f"FNDH is currently in adminMode {AdminMode(self._admin_mode).name}"
+            )
+            tango.Except.throw_exception(reason, msg, self.get_name())
+
+        return is_engineering
+
+    def is_firmware_threshold_allowed(
+        self: MccsFNDH, req_type: tango.AttReqType
+    ) -> bool:
+        """
+        Return a flag representing whether we are allowed to access the attribute.
+
+        :param req_type: the request type
+
+        :return: True if access is allowed.
+        """
+        if req_type == tango.AttReqType.READ_REQ:
+            return True
+        return self.is_engineering()
 
     def _clear_threshold_cache(self: MccsFNDH) -> None:
         """Clear fndh thresholds cache from database."""

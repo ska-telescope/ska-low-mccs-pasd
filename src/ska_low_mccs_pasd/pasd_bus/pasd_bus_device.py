@@ -154,7 +154,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         device_name = f'{str(self.__class__).rsplit(".", maxsplit=1)[-1][0:-2]}'
         version = f"{device_name} Software Version: {self._version_id}"
         properties = (
-            f"Initialised {device_name} device with properties:\n"
+            f"Initialised DEV {device_name} device with properties:\n"
             f"\tHost: {self.Host}\n"
             f"\tPort: {self.Port}\n"
             f"\tPollingRate: {self.PollingRate}\n"
