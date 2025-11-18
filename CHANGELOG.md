@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 3.5.1
+
+* [LOW-1853] Provide attribute thresholds in ska-tango-devices as `classProperties` rather than `deviceDefaults`, so that they are applied in the Tango DB once rather than being applied individually to each device.
 * [THORN-262] Add timeout to pytest configuration. This should be set to slightly less than the pipeline timeout so that test reports are generated before the job is killed.
 
 ## 3.5.0
