@@ -526,16 +526,13 @@ class MccsSmartBox(MccsBaseDevice):
     ) -> None:
         # Register the request with the component manager
         attr_name = smartbox_attribute.get_name().lower()
+        value = smartbox_attribute.get_write_value(ExtractAs.List)
+        self.component_manager.write_attribute(attr_name, value)
         if attr_name.endswith("thresholds"):
-            values = smartbox_attribute.get_write_value(ExtractAs.List)
-            self.component_manager.write_attribute(attr_name, values)
-            self._thresholds_tango.update({attr_name: values})
+            self._thresholds_tango.update({attr_name: value})
             self._db_connection.put_value(
                 self.get_name(), self._thresholds_tango.all_thresholds
             )
-        else:
-            value = smartbox_attribute.get_write_value(ExtractAs.List)
-            self.component_manager.write_attribute(attr_name, value)
 
     def is_engineering(self: MccsSmartBox) -> bool:
         """

@@ -642,16 +642,13 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     def _write_fndh_attribute(self: MccsFNDH, fndh_attribute: tango.Attribute) -> None:
         # Register the request with the component manager
         attr_name = fndh_attribute.get_name().lower()
+        value = fndh_attribute.get_write_value(ExtractAs.List)
+        self.component_manager.write_attribute(attr_name, value)
         if attr_name.endswith("thresholds"):
-            values = fndh_attribute.get_write_value(ExtractAs.List)
-            self.component_manager.write_attribute(attr_name, values)
-            self._thresholds_tango.update({attr_name: values})
+            self._thresholds_tango.update({attr_name: value})
             self._db_connection.put_value(
                 self.get_name(), self._thresholds_tango.all_thresholds
             )
-        else:
-            value = fndh_attribute.get_write_value(ExtractAs.List)
-            self.component_manager.write_attribute(attr_name, value)
 
     def is_engineering(self: MccsFNDH) -> bool:
         """
