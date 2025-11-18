@@ -603,7 +603,7 @@ class TestfndhPasdBusIntegration:
         assert message == ["UpdateThresholdCache completed"]
         assert code == ResultCode.OK
 
-        time.sleep(0.1)
+        time.sleep(0.5)
 
         # change_event_callbacks.assert_change_event(
         #     "fndhhealthState", HealthState.OK, lookahead=10

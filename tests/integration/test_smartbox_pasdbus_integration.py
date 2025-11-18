@@ -1605,7 +1605,7 @@ class TestSmartBoxPasdBusIntegration:
             tango.DevState.STANDBY, lookahead=50, consume_nonmatches=True
         )
 
-        time.sleep(0.1)
+        time.sleep(0.5)
 
         assert smartbox_device.state() == tango.DevState.STANDBY
 
