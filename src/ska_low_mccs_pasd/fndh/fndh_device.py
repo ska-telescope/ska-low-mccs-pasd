@@ -319,12 +319,8 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self.update_threshold_cache()
         diff = self._threshold_differences()
         if diff:
-            self.threshold_fault = True
-            self._component_state_changed_callback()
             message = f"Thresholds do not match: {diff}"
             return ([ResultCode.FAILED], [message])
-        self.threshold_fault = False
-        self._component_state_changed_callback()
 
         return ([ResultCode.OK], ["UpdateThresholdCache completed"])
 
@@ -675,12 +671,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             value = self._db_connection.get_value(self.get_name(), name)
             if value:
                 self._thresholds_tango.update(value)
-
-        for name in self._thresholds_pasd.all_thresholds:
-            string_vals = []
-            for value in self._fndh_attributes[name].value:
-                string_vals.append(str(value))
-            self._thresholds_pasd.update({name: string_vals})
 
     def _threshold_differences(self: MccsFNDH) -> dict:
         """
@@ -1041,7 +1031,9 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                         f"Mismatch between firmware and tango thresholds:{diff}"
                     )
                     self.threshold_fault = True
-                    self._component_state_changed_callback()
+                else:
+                    self.threshold_fault = False
+                self._component_state_changed_callback()
 
     # pylint: disable=too-many-branches
     def _attribute_changed_callback(  # noqa: C901
@@ -1132,7 +1124,12 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                             f"Mismatch between firmware and tango thresholds:{diff}"
                         )
                         self.threshold_fault = True
-                        self._component_state_changed_callback()
+                    else:
+                        if self.op_state_model._op_state == tango.DevState.UNKNOWN:
+                            self.threshold_fault = None
+                        else:
+                            self.threshold_fault = False
+                    self._component_state_changed_callback()
             if attr_name in ("portspowersensed", "portspowercontrol"):
                 self._evaluate_faulty_ports()
         except AssertionError:

@@ -591,6 +591,13 @@ class TestfndhPasdBusIntegration:
         global OUTSIDE_TEMP_VAL  # pylint: disable=global-statement
         OUTSIDE_TEMP_VAL = ["40.0", "35.0", "10.5", "5.0"]
 
+        # Reset values to match
+        setattr(
+            fndh_device,
+            "outsideTemperatureThresholds",
+            new_vals,
+        )
+
         (code, message) = fndh_device.UpdateThresholdCache()
 
         assert message == ["UpdateThresholdCache completed"]

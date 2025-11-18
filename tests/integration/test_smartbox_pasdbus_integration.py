@@ -1586,6 +1586,13 @@ class TestSmartBoxPasdBusIntegration:
         global PCB_TEMP_VAL  # pylint: disable=global-statement
         PCB_TEMP_VAL = ["30.2", "25.5", "10.5", "5.0"]
 
+        # Reset values to match
+        setattr(
+            smartbox_device,
+            "PcbTemperatureThresholds",
+            [30.2, 25.5, 10.5, 5.0],
+        )
+
         (code, message) = smartbox_device.UpdateThresholdCache()
 
         assert message == ["UpdateThresholdCache completed"]
@@ -1597,6 +1604,8 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks["smartbox_state"].assert_change_event(
             tango.DevState.STANDBY, lookahead=50, consume_nonmatches=True
         )
+
+        time.sleep(0.1)
 
         assert smartbox_device.state() == tango.DevState.STANDBY
 

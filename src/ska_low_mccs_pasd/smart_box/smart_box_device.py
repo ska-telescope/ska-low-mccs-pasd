@@ -323,11 +323,7 @@ class MccsSmartBox(MccsBaseDevice):
         diff = self._threshold_differences()
         if diff:
             message = f"Thresholds do not match: {diff}"
-            self.threshold_fault = True
-            self._component_state_callback()
             return ([ResultCode.FAILED], [message])
-        self.threshold_fault = False
-        self._component_state_callback()
 
         return ([ResultCode.OK], ["UpdateThresholdCache completed"])
 
@@ -558,12 +554,6 @@ class MccsSmartBox(MccsBaseDevice):
             if value:
                 self._thresholds_tango.update(value)
 
-        for name in self._thresholds_pasd.all_thresholds:
-            string_vals = []
-            for value in self._smartbox_state[name].value:
-                string_vals.append(str(value))
-            self._thresholds_pasd.update({name: string_vals})
-
     # ----------
     # Callbacks
     # ----------
@@ -714,7 +704,7 @@ class MccsSmartBox(MccsBaseDevice):
                     self.threshold_fault = True
                     self._component_state_callback()
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches, disable=too-many-statements
     def _attribute_changed_callback(  # noqa: C901
         self: MccsSmartBox,
         attr_name: str,
@@ -793,7 +783,12 @@ class MccsSmartBox(MccsBaseDevice):
                             f"Mismatch between firmware and tango thresholds: {diff}"
                         )
                         self.threshold_fault = True
-                        self._component_state_callback()
+                    else:
+                        if self.op_state_model._op_state == tango.DevState.UNKNOWN:
+                            self.threshold_fault = None
+                        else:
+                            self.threshold_fault = False
+                    self._component_state_callback()
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass
