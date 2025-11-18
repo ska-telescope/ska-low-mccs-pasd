@@ -105,9 +105,17 @@ class PasdDatabase:
         )
         return tmp["cache_threshold"]
 
-    def clear_thresholds(self: PasdDatabase, dev_name: str) -> None:
+    def clear_thresholds(
+        self: PasdDatabase, dev_name: str, all_thresholds: dict
+    ) -> None:
         """Clear the database of threshold values.
 
         :param dev_name: Name of the device.
+        :param all_thresholds: dict of all the thresholds
         """
-        self.database.delete_device_attribute_property(dev_name, "cache_threshold")
+        empty_dict: dict = {}
+        for name in all_thresholds.keys():
+            empty_dict[name] = []
+        self.database.put_device_attribute_property(
+            dev_name, {"cache_threshold": empty_dict}
+        )

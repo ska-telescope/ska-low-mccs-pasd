@@ -1600,6 +1600,10 @@ class TestSmartBoxPasdBusIntegration:
 
         assert smartbox_device.state() == tango.DevState.STANDBY
 
+        smartbox_device.ClearThresholdCache()
+
+        assert smartbox_device.thresholdDifferences == "{}"
+
 
 @pytest.fixture(name="pasd_bus_device_configurable")
 def pasd_bus_device_configurable_fixture(

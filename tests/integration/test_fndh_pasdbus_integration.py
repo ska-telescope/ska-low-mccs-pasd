@@ -605,6 +605,10 @@ class TestfndhPasdBusIntegration:
         # assert fndh_device.healthstate == HealthState.OK
         assert fndh_device.state() == tango.DevState.ON
 
+        fndh_device.ClearThresholdCache()
+
+        assert fndh_device.thresholdDifferences == "{}"
+
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def test_port_power(
         self: TestfndhPasdBusIntegration,

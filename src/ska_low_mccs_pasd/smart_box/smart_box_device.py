@@ -7,6 +7,7 @@
 # See LICENSE for more info.
 """This module implements the MCCS SmartBox device."""
 
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import json
@@ -132,6 +133,9 @@ class MccsSmartBox(MccsBaseDevice):
         self._health_monitor_points: dict[str, list[float]] = {}
         self._nof_port_breakers_tripped: Optional[int]
         self._db_connection: PasdDatabase
+        self._thresholds_tango: PasdThresholds
+        self._thresholds_pasd: PasdThresholds
+        self.threshold_fault: Optional[bool] = None
 
     def init_device(self: MccsSmartBox) -> None:
         """
@@ -296,9 +300,14 @@ class MccsSmartBox(MccsBaseDevice):
         :return: A tuple containing a return code and a string message
             indicating status.
         """
-        self._clear_threshold_cache()
+        if self._admin_mode == AdminMode.ENGINEERING:
+            self._clear_threshold_cache()
 
-        return ([ResultCode.OK], ["ClearThresholdCache completed"])
+            return ([ResultCode.OK], ["ClearThresholdCache completed"])
+        return (
+            [ResultCode.REJECTED],
+            ["ClearThresholdCache can only be performed in engineering mode"],
+        )
 
     @command(dtype_out="DevVarLongStringArray")
     def UpdateThresholdCache(
@@ -314,9 +323,11 @@ class MccsSmartBox(MccsBaseDevice):
         diff = self._threshold_differences()
         if diff:
             message = f"Thresholds do not match: {diff}"
-            self._component_state_callback(fault=True)
+            self.threshold_fault = True
+            self._component_state_callback()
             return ([ResultCode.FAILED], [message])
-        self._component_state_callback(fault=False)
+        self.threshold_fault = False
+        self._component_state_callback()
 
         return ([ResultCode.OK], ["UpdateThresholdCache completed"])
 
@@ -533,7 +544,12 @@ class MccsSmartBox(MccsBaseDevice):
 
     def _clear_threshold_cache(self: MccsSmartBox) -> None:
         """Clear fndh thresholds cache from database."""
-        self._db_connection.clear_thresholds(self.get_name())
+        self._db_connection.clear_thresholds(
+            self.get_name(), self._thresholds_tango.all_thresholds
+        )
+
+        self._thresholds_tango = PasdThresholds(self.CONFIG)
+        self._thresholds_pasd = PasdThresholds(self.CONFIG)
 
     def update_threshold_cache(self: MccsSmartBox) -> None:
         """Update smartbox thresholds cache from database and firmware."""
@@ -611,10 +627,11 @@ class MccsSmartBox(MccsBaseDevice):
                 # assumed that communication is NOT_ESTABLISHED.
                 self._communication_state_changed(CommunicationStatus.NOT_ESTABLISHED)
             return
-        super()._component_state_changed(fault=fault, power=power)
+        fault_aggregate = fault or self.threshold_fault
+        super()._component_state_changed(fault=fault_aggregate, power=power)
         if self._health_model is not None:
-            if fault is not None:
-                self._health_model.update_state(fault=fault)
+            if fault_aggregate is not None:
+                self._health_model.update_state(fault=fault_aggregate)
             if power is not None:
                 self._health_model.update_state(power=power)
             if pasdbus_status is not None:
@@ -694,7 +711,8 @@ class MccsSmartBox(MccsBaseDevice):
                     self.logger.error(
                         f"Mismatch between firmware and tango thresholds:{diff}"
                     )
-                    self._component_state_changed_callback(fault=True)
+                    self.threshold_fault = True
+                    self._component_state_callback()
 
     # pylint: disable=too-many-branches
     def _attribute_changed_callback(  # noqa: C901
@@ -774,7 +792,8 @@ class MccsSmartBox(MccsBaseDevice):
                         self.logger.error(
                             f"Mismatch between firmware and tango thresholds: {diff}"
                         )
-                        self._component_state_callback(fault=True)
+                        self.threshold_fault = True
+                        self._component_state_callback()
                 except DevFailed:
                     # No corresponding attribute to update, continue
                     pass
@@ -828,16 +847,16 @@ class MccsSmartBox(MccsBaseDevice):
                 assert isinstance(thresholds_tango, numpy.ndarray)
                 thresholds_tango = thresholds_tango.tolist()
             for i, _ in enumerate(thresholds_tango):
-                if thresholds_tango[i] != thresholds_pasd[i]:
-                    differences[
-                        name
-                    ] = f"tango:{thresholds_tango} != pasd:{thresholds_pasd}"
+                if float(thresholds_pasd[i]) != float(thresholds_tango[i]):
+                    float_pasd = [float(x) for x in thresholds_pasd]
+                    float_tango = [float(x) for x in thresholds_tango]
+                    differences[name] = f"tango:{float_tango} != pasd:{float_pasd}"
                     break
 
         return differences
 
     @attribute(dtype="DevString", label="ThresholdDifferences")
-    def threshold_differences(self: MccsSmartBox) -> str:
+    def thresholdDifferences(self: MccsSmartBox) -> str:
         """
         Return the differences between threshold values.
 
