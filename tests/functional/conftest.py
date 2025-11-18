@@ -6,6 +6,7 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module contains pytest-specific test harness for PaSD functional tests."""
+import logging
 import os
 import time
 from functools import lru_cache
@@ -259,6 +260,7 @@ def functional_test_context_fixture(
                 pasd_bus_simulator = PasdBusSimulator(
                     pasd_config_path,
                     station_label,
+                    logging.getLogger(),
                     smartboxes_depend_on_attached_ports=True,
                 )
                 pasd_hw_simulators = pasd_bus_simulator.get_all_devices()

@@ -110,7 +110,7 @@ class PasdBusModbusApi:
             try:
                 unconverted_value = getattr(self._simulators[device_id], name)
             except KeyError:
-                self._logger.error(f"Simulator {device_id} not available")
+                self._logger.debug(f"Simulator {device_id} not available")
                 return ExceptionResponse(
                     ReadHoldingRegistersRequest.function_code,
                     ModbusExceptions.GatewayNoResponse,

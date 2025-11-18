@@ -66,7 +66,7 @@ def pasd_bus_simulator_fixture(
     return PasdBusSimulator(
         pasd_config_path,
         station_label,
-        logging.DEBUG,
+        logging.getLogger(),
         smartboxes_depend_on_attached_ports=True,
     )
 
