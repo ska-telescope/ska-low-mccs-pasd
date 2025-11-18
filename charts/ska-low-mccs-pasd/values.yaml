@@ -57,8 +57,7 @@ ska-tango-devices:
   subsystem: mccs
   labels:
     app: ska-low-mccs-pasd
-
-  deviceDefaults:
+  # deviceDefaults:
     # MccsFieldStation:
     #   LoggingLevelDefault: 5
     #   ConfigurationPort: 8081
@@ -72,6 +71,7 @@ ska-tango-devices:
     #   LoggingLevelDefault: 5
     # MccsSmartbox:
     #   LoggingLevelDefault: 5
+  classProperties:
     MccsFNDH:
       Psu48vVoltage1->max_alarm: 51
       Psu48vVoltage1->max_warning: 49
