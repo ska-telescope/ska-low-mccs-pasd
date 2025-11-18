@@ -578,7 +578,7 @@ class MccsSmartBox(MccsBaseDevice):
         self._thresholds_pasd = PasdThresholds(self.CONFIG)
 
     def update_threshold_cache(self: MccsSmartBox) -> None:
-        """Update smartbox thresholds cache from database and firmware."""
+        """Update smartbox thresholds cache from database."""
         for name in self._thresholds_tango.all_thresholds:
             value = self._db_connection.get_value(self.get_name(), name)
             if value:
