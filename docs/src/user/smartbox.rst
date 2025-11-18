@@ -137,6 +137,26 @@ sensor values return to within their alarm thresholds. To return a SMART Box to 
 state after such an event, the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.InitializeSmartbox` command must
 be executed.
 
+
+.. _smartbox-firmware-thresholds:
+
+Setting Smartbox firmware thresholds
+------------------------------------
+
+The attributes such as ``OutsideTemperatureThresholds`` are alarm threshold values stored in the firmware
+which are used internally for machine protection. To override the default values, these attributes are
+writeable when the device is put into ENGINEERING mode. To keep track of any overrides, when any
+of these values are changed they are cached in the Tango database. If a mismatch is detected between the
+firmware values and the Tango database (for example if the device is powered off, it will reset to the
+default firmware values on power up), the Smartbox device will be put into a FAULT state.
+
+To check what values are different, use the ``ThresholdDifferences`` attribute to see the conflicts.
+You can then set the relevant attribute to the correct value and run the command ``UpdateThresholdCache``
+to sync the local cached threshold with the values read back from firmware. Once you've run this command
+you should be able to check the ``ThresholdDifferences`` again and see the conflict has resolved, and 
+the device is no longer in FAULT state. Alternatively, the ``ClearThresholdCache`` can be used with
+caution to delete the saved values from the Tango database.
+
 .. _smartbox-health-evaluation:
 
 Smartbox health
@@ -151,17 +171,6 @@ The smartbox health is determined by three factors:
 Each monitoring point has four thresholds: [min_alarm, min_warning, max_warning, max_alarm]. These set on the attributes and the attributes
 respond by moving through ``tango.AttrQuality.WARNING`` and ``tango.AttrQuality.ALARM`` respectively dependent on monitoring point value. The
 ``healthState`` then reflects this as ``HealthState.DEGRADED`` -> ``tango.AttrQuality.WARNING`` and ``HealthState.FAILED`` -> ``tango.AttrQuality.ALARM``
-
-*NOTE* When overriding the thresholds there can sometimes be a mismatch between what is stored in the
-tango database and what is stored in the firmware (for example if the device is powered off, it will
-reset to the default firmware values on power up). If a mismatch is detected the FNDH device will
-be put into a FAULT state.
-
-To check what values are different, use the threshold_differences attribute to see the conflict.
-You can then set the attribute to the value you'd like and run the command UpdateThresholdCache
-to sync the values in firmware and from the tango DB with the values in our cache.
-Once you've ran this command you should be able to check the threshold_differences
-and see
 
 We can change the thresholds at run time on the smartbox by using the Tango API:
 
