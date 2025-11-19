@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-## 3.6.0
+## 4.0.0
 
-* [THORN-273] PaSD: Implement checks on firmware threshold writes.
+* [THORN-273] PaSD: Implement checks on firmware threshold writes. Now smartboxes and FNDH are required to be in ENGINEERING mode to write to threshold values
 
 ## 3.5.1
 
