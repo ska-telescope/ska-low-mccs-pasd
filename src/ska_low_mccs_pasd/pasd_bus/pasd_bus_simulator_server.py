@@ -116,12 +116,16 @@ def main() -> None:
     if config_path is None:
         raise ValueError("SIMULATOR_CONFIG_PATH environment variable must be set.")
 
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s"
+    )
+
     pasd_bus_simulator = PasdBusSimulator(
         config_path,
         station_label,
-        logging.DEBUG,
         smartboxes_depend_on_attached_ports=True,
         time_multiplier=time_multiplier,
+        logger=logging.getLogger(),
     )
     pasd_hw_simulators = pasd_bus_simulator.get_all_devices()
     simulator_server = PasdBusSimulatorModbusServer(pasd_hw_simulators)

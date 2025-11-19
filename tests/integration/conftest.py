@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 from typing import Iterator
+from unittest.mock import patch
 
 import pytest
 import tango
@@ -53,7 +54,7 @@ def pasd_bus_simulator_fixture(
     return PasdBusSimulator(
         pasd_config_path,
         station_label,
-        logging.DEBUG,
+        logging.getLogger(),
         smartboxes_depend_on_attached_ports=True,
     )
 
@@ -265,35 +266,63 @@ def test_context_fixture(
         each smartbox.
     :yield: a test context in which to run the integration tests.
     """
-    harness = PasdTangoTestHarness()
+    with patch("ska_low_mccs_pasd.pasd_utils.Database") as db:
+        # pylint: disable=too-many-return-statements
+        def my_func(device_name: str, property_name: str) -> list:
+            match property_name:
+                case "inputvoltagethresholds":
+                    return [50.0, 49.0, 45.0, 40.0]
+                case "powersupplyoutputvoltagethresholds":
+                    return [5.0, 4.9, 4.4, 4.0]
+                case "powersupplytemperaturethresholds":
+                    return [85.0, 70.0, 0.0, -5.0]
+                case "pcbtemperaturethresholds":
+                    return [85.0, 70.0, 0.0, -5.0]
+                case "femambienttemperaturethresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femcasetemperature1thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femcasetemperature2thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femheatsinktemperature1thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femheatsinktemperature2thresholds":
+                    return [60.0, 45.0, 0.0, -5.0]
+                case "femcurrenttripthresholds":
+                    return [496, 496, 496, 496, 496, 496, 496, 496, 496, 496, 496, 496]
+            return []
 
-    harness.set_pasd_bus_simulator(pasd_hw_simulators)
-    harness.set_pasd_bus_device(
-        polling_rate=0.1,
-        device_polling_rate=0.1,
-        available_smartboxes=smartbox_ids_to_test,
-        logging_level=int(LoggingLevel.FATAL),
-    )
-    harness.set_fndh_device(int(LoggingLevel.ERROR))
-    harness.set_fncc_device(int(LoggingLevel.ERROR))
-    for smartbox_id in smartbox_ids_to_test:
-        harness.add_smartbox_device(
-            smartbox_id,
-            int(LoggingLevel.ERROR),
-            fndh_port=smartbox_attached_ports[smartbox_id - 1],
-            ports_with_antennas=[
-                idx + 1
-                for idx, attached in enumerate(
-                    smartbox_attached_antennas[smartbox_id - 1]
-                )
-                if attached
-            ],
-            antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
+        db.return_value.get_device_attribute_property = my_func
+
+        harness = PasdTangoTestHarness()
+
+        harness.set_pasd_bus_simulator(pasd_hw_simulators)
+        harness.set_pasd_bus_device(
+            polling_rate=0.1,
+            device_polling_rate=0.1,
+            available_smartboxes=smartbox_ids_to_test,
+            logging_level=int(LoggingLevel.FATAL),
         )
-    harness.set_field_station_device(smartbox_ids_to_test, int(LoggingLevel.ERROR))
+        harness.set_fndh_device(int(LoggingLevel.ERROR))
+        harness.set_fncc_device(int(LoggingLevel.ERROR))
+        for smartbox_id in smartbox_ids_to_test:
+            harness.add_smartbox_device(
+                smartbox_id,
+                int(LoggingLevel.ERROR),
+                fndh_port=smartbox_attached_ports[smartbox_id - 1],
+                ports_with_antennas=[
+                    idx + 1
+                    for idx, attached in enumerate(
+                        smartbox_attached_antennas[smartbox_id - 1]
+                    )
+                    if attached
+                ],
+                antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
+            )
+        harness.set_field_station_device(smartbox_ids_to_test, int(LoggingLevel.ERROR))
 
-    with harness as context:
-        yield context
+        with harness as context:
+            yield context
 
 
 @pytest.fixture(name="pasd_bus_device")

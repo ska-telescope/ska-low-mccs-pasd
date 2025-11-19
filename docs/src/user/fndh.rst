@@ -124,7 +124,11 @@ The FNDH device supports the following commands:
 | PowerOffPort           | Port number                 | Request to power off the specified port                           |                    
 +------------------------+-----------------------------+-------------------------------------------------------------------+
 | SetPortPowers          | See: :ref:`set-port-powers` | Initialise the FNDH and request the specified port power statuses |
-+------------------------+-----------------------------+-------------------------------------------------------------------+                    
++------------------------+-----------------------------+-------------------------------------------------------------------+                  
+| UpdateThresholdCache   | None                        | Resync the threshold caches from firmware and Tango database      |
++------------------------+-----------------------------+-------------------------------------------------------------------+
+| ClearThresholdCache    | None                        | Clear the threshold cache in the Tango DB                         |
++------------------------+-----------------------------+-------------------------------------------------------------------+
 
 
 Alarm recovery procedure
@@ -140,6 +144,25 @@ The PaSD automatically transitions to the RECOVERY state when the relevant
 sensor values return to within their alarm thresholds. To return the FNDH to an operational
 state after such an event, the :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.InitializeFndh` command must be executed.
 
+.. _fndh-firmware-thresholds:
+
+Setting FNDH firmware thresholds
+--------------------------------
+
+The attributes such as ``OutsideTemperatureThresholds`` are alarm threshold values stored in the firmware
+which are used internally for machine protection. To override the default values, these attributes are
+writeable when the device is put into ENGINEERING mode. To keep track of any overrides, when any
+of these values are changed they are cached in the Tango database. If a mismatch is detected between the
+firmware values and the Tango database (for example if the device is powered off, it will reset to the
+default firmware values on power up), the FNDH device will be put into a FAULT state.
+
+To check what values are different, read the ``ThresholdDifferences`` attribute to see the conflicts.
+You can then set the relevant attribute to the desired value, thus updating both the firmware and Tango
+database to the same value. When all conflicts have been resolved the FAULT state will be removed.
+
+Two utility commands are provided: ``UpdateThresholdCache`` which re-reads the database values and
+calculates the differences again, and ``ClearThresholdCache`` which deletes all cached values from the
+Tango database.
 
 .. _fndh-health-evaluation:
 

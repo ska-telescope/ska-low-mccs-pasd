@@ -19,9 +19,16 @@ from datetime import datetime, timezone
 from functools import partial
 from typing import Any, Callable, Final, Optional, cast
 
+import numpy
 import tango
 from jsonschema import validate
-from ska_control_model import CommunicationStatus, HealthState, PowerState, ResultCode
+from ska_control_model import (
+    AdminMode,
+    CommunicationStatus,
+    HealthState,
+    PowerState,
+    ResultCode,
+)
 from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_tango_base.commands import (
     DeviceInitCommand,
@@ -38,6 +45,7 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_bus.pasd_bus_conversions import FndhStatusMap
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
+from ..pasd_utils import PasdDatabase, PasdThresholds
 from .fndh_component_manager import FndhComponentManager
 from .fndh_health_model import FndhHealthModel
 
@@ -57,6 +65,7 @@ class FNDHAttribute:
 
 
 # pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-public-methods
 class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     """An implementation of the FNDH device for MCCS."""
 
@@ -121,6 +130,14 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self.component_manager: FndhComponentManager
         self._nof_stuck_on_smartbox_ports: Optional[int] = None
         self._nof_stuck_off_smartbox_ports: Optional[int] = None
+        self.power_state: PowerState | None = None
+
+        self._db_connection: PasdDatabase
+
+        self._thresholds_tango: PasdThresholds
+        self._thresholds_pasd: PasdThresholds
+
+        self.threshold_fault: Optional[bool] = None
 
         # Health monitor points contains a cache of monitoring points as they
         # are updated in a poll. When communication is lost this cache is
@@ -153,6 +170,12 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 1,
                 PowerState.UNKNOWN,
             )
+        self._db_connection = PasdDatabase()
+
+        self._thresholds_tango = PasdThresholds(self.CONFIG)
+        self._thresholds_pasd = PasdThresholds(self.CONFIG)
+
+        self.update_threshold_cache()
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
@@ -264,6 +287,44 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     # ----------
     # Commands
     # ----------
+    @command(
+        dtype_out="DevVarLongStringArray",
+        fisallowed="is_engineering",
+    )
+    def ClearThresholdCache(
+        self: MccsFNDH,
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Clear the threshold caches.
+
+        :return: A tuple containing a return code and a string message
+            indicating status.
+        """
+        self._clear_threshold_cache()
+
+        return ([ResultCode.OK], ["ClearThresholdCache completed"])
+
+    @command(
+        dtype_out="DevVarLongStringArray",
+        fisallowed="is_engineering",
+    )
+    def UpdateThresholdCache(
+        self: MccsFNDH,
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Update the threshold caches.
+
+        :return: A tuple containing a return code and a string message
+            indicating status.
+        """
+        self.update_threshold_cache()
+        diff = self._threshold_differences()
+        if diff:
+            message = f"Thresholds do not match: {diff}"
+            return ([ResultCode.FAILED], [message])
+
+        return ([ResultCode.OK], ["UpdateThresholdCache completed"])
+
     class InitCommand(DeviceInitCommand):
         """Initialisation command class for this base device."""
 
@@ -543,11 +604,15 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             description=description,
             format=format_string,
         ).to_attr()
+        if attribute_name.lower().endswith("thresholds"):
+            is_allowed_method = self.is_firmware_threshold_allowed
+        else:
+            is_allowed_method = None
         self.add_attribute(
             attr,
             self._read_fndh_attribute,
             self._write_fndh_attribute,
-            None,
+            is_allowed_method,
         )
         if min_value is not None or max_value is not None:
             if access_type != tango.AttrWriteType.READ_WRITE:
@@ -576,9 +641,102 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
     def _write_fndh_attribute(self: MccsFNDH, fndh_attribute: tango.Attribute) -> None:
         # Register the request with the component manager
-        tango_attr_name = fndh_attribute.get_name()
+        attr_name = fndh_attribute.get_name().lower()
         value = fndh_attribute.get_write_value(ExtractAs.List)
-        self.component_manager.write_attribute(tango_attr_name, value)
+        self.component_manager.write_attribute(attr_name, value)
+        if attr_name.endswith("thresholds"):
+            self._thresholds_tango.update({attr_name: value})
+            self._db_connection.put_value(
+                self.get_name(), self._thresholds_tango.all_thresholds
+            )
+
+    def is_engineering(self: MccsFNDH) -> bool:
+        """
+        Return a flag representing whether we are in Engineering mode.
+
+        :return: True if FNDH is in Engineering Mode.
+        """
+        is_engineering = self._admin_mode == AdminMode.ENGINEERING
+        if not is_engineering:
+            reason = "CommandNotAllowed"
+            msg = (
+                "To execute this command we must be in adminMode Engineering. "
+                f"FNDH is currently in adminMode {AdminMode(self._admin_mode).name}"
+            )
+            tango.Except.throw_exception(reason, msg, self.get_name())
+
+        return is_engineering
+
+    def is_firmware_threshold_allowed(
+        self: MccsFNDH, req_type: tango.AttReqType
+    ) -> bool:
+        """
+        Return a flag representing whether we are allowed to access the attribute.
+
+        :param req_type: the request type
+
+        :return: True if access is allowed.
+        """
+        if req_type == tango.AttReqType.READ_REQ:
+            return True
+        return self.is_engineering()
+
+    def _clear_threshold_cache(self: MccsFNDH) -> None:
+        """Clear fndh thresholds cache from database."""
+        self._db_connection.clear_thresholds(
+            self.get_name(), self._thresholds_tango.all_thresholds
+        )
+
+        self._thresholds_tango = PasdThresholds(self.CONFIG)
+        self._thresholds_pasd = PasdThresholds(self.CONFIG)
+
+    def update_threshold_cache(self: MccsFNDH) -> None:
+        """Update fndh thresholds cache from database."""
+        for name in self._thresholds_tango.all_thresholds:
+            value = self._db_connection.get_value(self.get_name(), name)
+            if value:
+                self._thresholds_tango.update(value)
+
+    def _threshold_differences(self: MccsFNDH) -> dict:
+        """
+        Compare the tango and firmware thresholds.
+
+        :return: The differences between thresholds.
+        """
+        differences = {}
+
+        for (
+            name,
+            thresholds_tango,
+        ) in self._thresholds_tango.all_thresholds.items():
+            thresholds_pasd = self._thresholds_pasd.all_thresholds.get(name)
+            if isinstance(thresholds_pasd, numpy.ndarray):
+                assert isinstance(thresholds_pasd, numpy.ndarray)
+                thresholds_pasd = thresholds_pasd.tolist()
+            if isinstance(thresholds_tango, numpy.ndarray):
+                assert isinstance(thresholds_tango, numpy.ndarray)
+                thresholds_tango = thresholds_tango.tolist()
+            if thresholds_pasd is None:
+                self.logger.debug("Not yet retrieved value from firmware, skipping..")
+                continue
+            if thresholds_tango:
+                for i, _ in enumerate(thresholds_tango):
+                    if float(thresholds_pasd[i]) != float(thresholds_tango[i]):
+                        float_pasd = [float(x) for x in thresholds_pasd]
+                        float_tango = [float(x) for x in thresholds_tango]
+                        differences[name] = f"tango:{float_tango} != pasd:{float_pasd}"
+                        break
+
+        return differences
+
+    @attribute(dtype="DevString", label="ThresholdDifferences")
+    def thresholdDifferences(self: MccsFNDH) -> str:
+        """
+        Return the differences between threshold values.
+
+        :return: Return the differences between threshold values.
+        """
+        return json.dumps(self._threshold_differences())
 
     @attribute(dtype="DevDouble", label="Over current threshold", unit="Amp")
     def overCurrentThreshold(self: MccsFNDH) -> float:
@@ -815,10 +973,12 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                     self._health_model.update_state(ignore_pasd_power=False)
             self._health_model.update_state(pasd_power=power)
             return
-        super()._component_state_changed(fault=fault, power=power)
-        if fault is not None and self._health_model is not None:
-            self._health_model.update_state(fault=fault)
+        fault_aggregate = fault or self.threshold_fault
+        super()._component_state_changed(fault=fault_aggregate, power=power)
+        if fault_aggregate is not None and self._health_model is not None:
+            self._health_model.update_state(fault=fault_aggregate)
         if power is not None and self._health_model is not None:
+            self.power_state = power
             self._health_model.update_state(power=power)
 
     def _health_changed_callback(self: MccsFNDH, health: HealthState) -> None:
@@ -880,6 +1040,27 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             if value is not None:
                 self.push_change_event(attribute_name, value)
 
+        if attribute_name.lower() not in [
+            "pasdstatus",
+            "numberofstuckonsmartboxports",
+            "numberofstuckoffsmartboxports",
+        ]:
+            threshold_name = attribute_name + "Thresholds"
+            attr = self._healthful_attributes[attribute_name]()
+            value = attr.value if isinstance(attr, FNDHAttribute) else attr
+            if value is not None:
+                self._thresholds_pasd.update({threshold_name: value})
+                diff = self._threshold_differences()
+                if diff:
+                    self.logger.error(
+                        f"Mismatch between firmware and tango thresholds:{diff}"
+                    )
+                    self.threshold_fault = True
+                else:
+                    self.threshold_fault = False
+                self._component_state_changed_callback()
+
+    # pylint: disable=too-many-branches
     def _attribute_changed_callback(  # noqa: C901
         self: MccsFNDH,
         attr_name: str,
@@ -959,12 +1140,27 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                     self._health_model.update_state(
                         monitoring_points=self._health_monitor_points
                     )
+            else:
+                if attr_name.endswith("thresholds"):
+                    self._thresholds_pasd.update({attr_name: attr_value})
+                    diff = self._threshold_differences()
+                    if diff:
+                        self.logger.error(
+                            f"Mismatch between firmware and tango thresholds:{diff}"
+                        )
+                        self.threshold_fault = True
+                    else:
+                        if self.op_state_model._op_state == tango.DevState.UNKNOWN:
+                            self.threshold_fault = None
+                        else:
+                            self.threshold_fault = False
+                    self._component_state_changed_callback()
             if attr_name in ("portspowersensed", "portspowercontrol"):
                 self._evaluate_faulty_ports()
         except AssertionError:
             self.logger.error(
                 f"""The attribute {attr_name} pushed from MccsPasdBus
-                device does not exist in MccsSmartBox"""
+                device does not exist in MccsFNDH"""
             )
 
     def _evaluate_faulty_ports(self: MccsFNDH) -> None:
