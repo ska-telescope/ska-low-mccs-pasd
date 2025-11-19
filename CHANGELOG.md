@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 3.6.0
+
+* [THORN-273] PaSD: Implement checks on firmware threshold writes.
+
 ## 3.5.1
 
 * [LOW-1853] Provide attribute thresholds in ska-tango-devices as `classProperties` rather than `deviceDefaults`, so that they are applied in the Tango DB once rather than being applied individually to each device.
