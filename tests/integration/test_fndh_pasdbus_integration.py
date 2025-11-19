@@ -538,11 +538,12 @@ class TestfndhPasdBusIntegration:
         )
         old_vals = fndh_device.outsideTemperatureThresholds
 
-        setattr(
-            fndh_device,
-            "outsideTemperatureThresholds",
-            [20.0, 15.0, 10.0, 5.0],
-        )
+        with pytest.raises(tango.DevFailed):
+            setattr(
+                fndh_device,
+                "outsideTemperatureThresholds",
+                [20.0, 15.0, 10.0, 5.0],
+            )
         # Can't change thresholds in adminmode online
         for i, val in enumerate(old_vals):
             assert fndh_device.outsideTemperatureThresholds[i] == val

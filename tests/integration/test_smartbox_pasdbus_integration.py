@@ -1533,11 +1533,12 @@ class TestSmartBoxPasdBusIntegration:
 
         old_vals = smartbox_device.PcbTemperatureThresholds
 
-        setattr(
-            smartbox_device,
-            "PcbTemperatureThresholds",
-            [30.2, 25.5, 10.5, 5],
-        )
+        with pytest.raises(tango.DevFailed):
+            setattr(
+                smartbox_device,
+                "PcbTemperatureThresholds",
+                [30.2, 25.5, 10.5, 5],
+            )
         # Can't change thresholds in adminmode online
         for i, val in enumerate(old_vals):
             assert smartbox_device.PcbTemperatureThresholds[i] == val
