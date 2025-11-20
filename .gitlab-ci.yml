@@ -54,6 +54,10 @@ include:
   # Deploy stage
   - project: 'ska-telescope/templates-repository'
     file: 'gitlab-ci/includes/deploy.gitlab-ci.yml'
+    
+  # SonarQube quality analysis stage
+  - project: 'ska-telescope/templates-repository'
+    file: 'gitlab-ci/includes/sonar-scan.gitlab-ci.yml'
 
 deploy-staging:
   when: manual
