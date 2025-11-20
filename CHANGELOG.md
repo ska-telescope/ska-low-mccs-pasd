@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* [THORN-332] Add SonarQube configuration.
+
 ## 4.0.0
 
 * [THORN-273] PaSD: Implement checks on firmware threshold writes. Now smartboxes and FNDH are required to be in ENGINEERING mode to write to threshold values
