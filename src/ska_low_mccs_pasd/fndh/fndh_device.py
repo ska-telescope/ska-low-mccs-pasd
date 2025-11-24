@@ -30,6 +30,8 @@ from ska_control_model import (
     ResultCode,
 )
 from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
+from ska_low_pasd_driver.pasd_bus_conversions import FndhStatusMap
+from ska_low_pasd_driver.pasd_bus_register_map import DesiredPowerEnum
 from ska_tango_base.commands import (
     DeviceInitCommand,
     FastCommand,
@@ -40,10 +42,8 @@ from tango import DevFailed
 from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
 
-from ska_low_mccs_pasd.pasd_bus.pasd_bus_register_map import DesiredPowerEnum
 from ska_low_mccs_pasd.pasd_data import PasdData
 
-from ..pasd_bus.pasd_bus_conversions import FndhStatusMap
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from ..pasd_utils import PasdDatabase, PasdThresholds
 from .fndh_component_manager import FndhComponentManager

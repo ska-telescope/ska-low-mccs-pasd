@@ -17,13 +17,13 @@ from unittest.mock import patch
 import pytest
 import tango
 from ska_control_model import LoggingLevel, SimulationMode
-
-from ska_low_mccs_pasd.pasd_bus import (
+from ska_low_pasd_driver import (
     FnccSimulator,
     FndhSimulator,
     PasdBusSimulator,
     SmartboxSimulator,
 )
+
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 

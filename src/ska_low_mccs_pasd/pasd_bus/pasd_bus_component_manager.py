@@ -15,12 +15,12 @@ from dataclasses import dataclass
 from typing import Any, Callable, Final, Optional
 
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
+from ska_low_pasd_driver.pasd_bus_modbus_api import PasdBusModbusApiClient
 from ska_tango_base.base import check_communicating
 from ska_tango_base.poller import PollingComponentManager
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
-from .pasd_bus_modbus_api import PasdBusModbusApiClient
 from .pasd_bus_poll_management import PasdBusRequestProvider
 
 

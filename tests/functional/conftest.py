@@ -246,15 +246,13 @@ def functional_test_context_fixture(
 
             harness = PasdTangoTestHarness(station_label)
             if pasd_address is None:
-                # Defer importing from ska_low_mccs_pasd
+                # Defer importing from ska_low_pasd_driver
                 # until we know we need to launch a PaSD bus simulator to test against.
                 # This ensures that we can use this harness
                 # to run tests against a real cluster,
-                # from within a pod that does not have ska_low_mccs_pasd installed.
+                # from within a pod that does not have ska_low_pasd_ddriver installed.
                 # pylint: disable-next=import-outside-toplevel
-                from ska_low_mccs_pasd.pasd_bus.pasd_bus_simulator import (
-                    PasdBusSimulator,
-                )
+                from ska_low_pasd_driver.pasd_bus_simulator import PasdBusSimulator
 
                 # Initialise simulator
                 pasd_bus_simulator = PasdBusSimulator(
@@ -314,7 +312,7 @@ def functional_test_context_fixture(
 
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture(
-    device_subscriptions: dict[str, list]
+    device_subscriptions: dict[str, list],
 ) -> MockTangoEventCallbackGroup:
     """
     Return a dictionary of callables to be used as Tango change event callbacks.
