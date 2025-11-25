@@ -314,13 +314,13 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         :return: a component manager for this device.
         """
         return PasdBusComponentManager(
+            bool(self._simulation_mode),
             self.Host,
             self.Port,
             self.PollingRate,
             self.DevicePollingRate,
             self.Timeout,
             self.logger,
-            self._simulation_mode,
             self._communication_state_callback,
             self._component_state_callback,
             self._pasd_device_state_callback,
