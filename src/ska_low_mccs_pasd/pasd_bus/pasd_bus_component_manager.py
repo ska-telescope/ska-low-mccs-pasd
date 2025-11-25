@@ -116,6 +116,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self: PasdBusComponentManager,
+        simulation_mode: bool,
         host: str,
         port: int,
         polling_rate: float,
@@ -131,6 +132,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """
         Initialise a new instance.
 
+        :param simulation_mode: True if running in simulation (disables
+            pyModbus logging)
         :param host: IP address of PaSD bus
         :param port: port of the PaSD bus
         :param polling_rate: minimum amount of time between communications
@@ -162,7 +165,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """
         self._logger = logger
         self._pasd_bus_api_client = PasdBusModbusApiClient(
-            host, port, logger, timeout=timeout
+            host, port, logger, timeout, simulation_mode
         )
         self._pasd_bus_device_state_callback = pasd_device_state_callback
         self._polling_rate = polling_rate

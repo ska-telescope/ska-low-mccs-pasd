@@ -92,6 +92,7 @@ def pasd_bus_component_manager_fixture(
         (host, port) = context.get_pasd_bus_address()
 
         component_manager = PasdBusComponentManager(
+            True,
             host,
             port,
             0.05,  # polling_rate very fast for unit testing
