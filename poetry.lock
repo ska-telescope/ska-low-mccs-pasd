@@ -712,13 +712,13 @@ reference = "PyPI-public"
 
 [[package]]
 name = "exceptiongroup"
-version = "1.3.0"
+version = "1.3.1"
 description = "Backport of PEP 654 (exception groups)"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "exceptiongroup-1.3.0-py3-none-any.whl", hash = "sha256:4d111e6e0c13d0644cad6ddaa7ed0261a0b36971f6d23e7ec9b4b9097da78a10"},
-    {file = "exceptiongroup-1.3.0.tar.gz", hash = "sha256:b241f5885f560bc56a59ee63ca4c6a8bfa46ae4ad651af316d4e81817bb9fd88"},
+    {file = "exceptiongroup-1.3.1-py3-none-any.whl", hash = "sha256:a7a39a3bd276781e98394987d3a5701d0c4edffb633bb7a5144577f82c773598"},
+    {file = "exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219"},
 ]
 
 [package.dependencies]
@@ -2953,12 +2953,13 @@ reference = "PyPI-public"
 
 [[package]]
 name = "restructuredtext-lint"
-version = "1.4.0"
+version = "2.0.2"
 description = "reStructuredText linter"
 optional = false
 python-versions = "*"
 files = [
-    {file = "restructuredtext_lint-1.4.0.tar.gz", hash = "sha256:1b235c0c922341ab6c530390892eb9e92f90b9b75046063e047cacfb0f050c45"},
+    {file = "restructuredtext_lint-2.0.2-py3-none-any.whl", hash = "sha256:374c0d3e7e0867b2335146a145343ac619400623716b211b9a010c94426bbed7"},
+    {file = "restructuredtext_lint-2.0.2.tar.gz", hash = "sha256:dd25209b9e0b726929d8306339faf723734a3137db382bcf27294fa18a6bc52b"},
 ]
 
 [package.dependencies]
@@ -3225,7 +3226,7 @@ ska-ser-devices = ">=0.2.0,<0.3.0"
 type = "git"
 url = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git"
 reference = "skb-455-pymodbus-patch"
-resolved_reference = "682fe207a36a3df584bf56f87abe815afcc1dada"
+resolved_reference = "1fc66c4afaac5d1d31f577c3b2c2bc1648262461"
 
 [[package]]
 name = "ska-ser-devices"
@@ -4317,4 +4318,4 @@ reference = "PyPI-public"
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "adf3dd612cd9738f9542614af11ea4ca9e4f66e338d85072758d8ff66ea3cf14"
+content-hash = "88e4c5e5a995fe4af12454aaedac3e5e64d5aca6b8c4d25c936848c44641eddf"
