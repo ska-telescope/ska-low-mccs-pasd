@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [LOW-1841] Upgrade ska-tango-devices dependency from 0.10.0 to 0.10.1.
 * [THORN-332] Add SonarQube configuration.
 
 ## 4.0.0
