@@ -22,6 +22,7 @@ import tango.server
 from ska_control_model import (
     CommunicationStatus,
     HealthState,
+    LoggingLevel,
     PowerState,
     ResultCode,
     SimulationMode,
@@ -313,7 +314,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
         :return: a component manager for this device.
         """
-        return PasdBusComponentManager(
+        component_manager = PasdBusComponentManager(
             bool(self._simulation_mode),
             self.Host,
             self.Port,
@@ -327,6 +328,10 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self.AvailableSmartboxes,
             self.SmartboxIDs,
         )
+        # Reset pymodbus logging level as it's always started as DEBUG
+        if self._logging_level is not None:
+            self.set_logging_level(self._logging_level)
+        return component_manager
 
     def init_command_objects(self: MccsPasdBus) -> None:
         """Initialise the command handlers for commands supported by this device."""
@@ -1394,3 +1399,23 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         """
         handler = self.get_command_object("GetPasdDeviceSubscriptions")
         return handler(device_number)
+
+    def set_logging_level(self: MccsPasdBus, value: LoggingLevel) -> None:
+        """
+        Update logging level and explicitly set pymodbus logging level.
+
+        :param value: Logging level for logger
+        """
+        super().set_logging_level(value)
+
+        level_map = {
+            LoggingLevel.OFF: logging.CRITICAL + 1,
+            LoggingLevel.FATAL: logging.FATAL,
+            LoggingLevel.ERROR: logging.ERROR,
+            LoggingLevel.WARNING: logging.WARNING,
+            LoggingLevel.INFO: logging.INFO,
+            LoggingLevel.DEBUG: logging.DEBUG,
+        }
+
+        # apply setting to pymodbus logging as well
+        logging.getLogger("pymodbus.logging").setLevel(level_map[value])
