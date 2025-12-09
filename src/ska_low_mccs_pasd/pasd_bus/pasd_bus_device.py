@@ -107,6 +107,14 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         default_value=[],
     )
 
+    EnablePyModbusLogging: Final[bool] = tango.server.device_property(
+        dtype=bool, default_value=False
+    )
+
+    PyModbusLogDir: Final[str] = tango.server.device_property(
+        dtype=str, default_value=None
+    )
+
     # ---------
     # Constants
     # ---------
@@ -167,6 +175,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             f"\tSimulationConfig: {self.SimulationConfig}\n"
             f"\tAvailableSmartboxes: {self.AvailableSmartboxes}\n"
             f"\tSmartboxIDs: {self.SmartboxIDs}\n"
+            f"\tEnablePyModbusLogging: {self.EnablePyModbusLogging}\n"
+            f"\tPyModbusLogDir: {self.PyModbusLogDir}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -315,7 +325,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         :return: a component manager for this device.
         """
         component_manager = PasdBusComponentManager(
-            bool(self._simulation_mode),
             self.Host,
             self.Port,
             self.PollingRate,
@@ -327,10 +336,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self._pasd_device_state_callback,
             self.AvailableSmartboxes,
             self.SmartboxIDs,
+            self.EnablePyModbusLogging,
+            self.PyModbusLogDir,
         )
-        # Reset pymodbus logging level as it's always started as DEBUG
-        if self._logging_level is not None:
-            self.set_logging_level(self._logging_level)
         return component_manager
 
     def init_command_objects(self: MccsPasdBus) -> None:
@@ -1418,4 +1426,5 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         }
 
         # apply setting to pymodbus logging as well
-        logging.getLogger("pymodbus.logging").setLevel(level_map[value])
+        if self.EnablePyModbusLogging:
+            logging.getLogger("pymodbus.logging").setLevel(level_map[value])

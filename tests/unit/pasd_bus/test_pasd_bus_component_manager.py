@@ -92,7 +92,6 @@ def pasd_bus_component_manager_fixture(
         (host, port) = context.get_pasd_bus_address()
 
         component_manager = PasdBusComponentManager(
-            True,
             host,
             port,
             0.05,  # polling_rate very fast for unit testing
@@ -103,6 +102,8 @@ def pasd_bus_component_manager_fixture(
             mock_callbacks["component_state"],
             _pasd_device_state_splitter,
             list(range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)),
+            None,
+            False,
             None,
         )
         yield component_manager

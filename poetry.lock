@@ -3226,7 +3226,7 @@ ska-ser-devices = ">=0.2.0,<0.3.0"
 type = "git"
 url = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git"
 reference = "skb-455-pymodbus-patch"
-resolved_reference = "1fc66c4afaac5d1d31f577c3b2c2bc1648262461"
+resolved_reference = "c6a9fec2368b17da72a4905b3b01cdea2deadfd8"
 
 [[package]]
 name = "ska-ser-devices"

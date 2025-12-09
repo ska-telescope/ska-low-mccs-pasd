@@ -61,8 +61,10 @@ MccsPasdBus
 - **SBInputVoltageThresholds**: List of smartbox input voltage thresholds, in Volts
 - **SimulationConfig**: Set to 1 to enable simulation mode
 - **AvailableSmartboxes**: List of available smartbox IDs
-- **SmartboxIDs**: List of smartbox (Modbus) IDs associated with each FNDH port.
+- **SmartboxIDs**: List of smartbox (Modbus) IDs associated with each FNDH port
   Should be of length ``no_of_fndh_ports`` (see note below)
+- **EnablePyModbusLogging**: Set to True to enable pymodbus logging
+- **PyModbusLogDir**: Optional path to a directory to create pymodbus log file in
 
 To only poll smartboxes that are powered on, set the ``SmartboxIDs`` property to the list
 of smartbox IDs associated with each FNDH port, and use 0 for any port with no smartbox

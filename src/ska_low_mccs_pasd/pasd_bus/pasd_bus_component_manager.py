@@ -116,7 +116,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self: PasdBusComponentManager,
-        simulation_mode: bool,
         host: str,
         port: int,
         polling_rate: float,
@@ -128,12 +127,12 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         pasd_device_state_callback: Callable[..., None],
         available_smartboxes: list[int],
         smartbox_ids: list[int] | None,
+        enable_pymodbus_logging: bool,
+        pymodbus_log_dir: Optional[str],
     ) -> None:
         """
         Initialise a new instance.
 
-        :param simulation_mode: True if running in simulation (disables
-            pyModbus logging)
         :param host: IP address of PaSD bus
         :param port: port of the PaSD bus
         :param polling_rate: minimum amount of time between communications
@@ -162,10 +161,20 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param available_smartboxes: a list of available smartbox ids to poll.
         :param smartbox_ids: optional list of smartbox IDs associated with
             each FNDH port.
+        :param enable_pymodbus_logging: whether to enable pymodbus logging
+        :param pymodbus_log_dir: optional directory path for pymodbus logging
         """
         self._logger = logger
-        self._pasd_bus_api_client = PasdBusModbusApiClient(
-            host, port, logger, timeout, simulation_mode
+        self._pasd_bus_api_client = (
+            # pylint: disable=too-many-function-args
+            PasdBusModbusApiClient(
+                host,
+                port,
+                logger,
+                timeout,
+                enable_pymodbus_logging,
+                pymodbus_log_dir,
+            )
         )
         self._pasd_bus_device_state_callback = pasd_device_state_callback
         self._polling_rate = polling_rate
