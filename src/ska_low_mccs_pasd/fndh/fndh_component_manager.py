@@ -81,7 +81,13 @@ class _PasdBusProxy(DeviceComponentManager):
         assert self._proxy is not None
         subscriptions = self._proxy.GetPasdDeviceSubscriptions(self._pasd_device)
         for attribute in subscriptions:
-            if attribute not in self._proxy._change_event_subscription_ids.keys():
+            if (
+                attribute
+                not in self._proxy._change_event_subscription_ids[
+                    tango.EventType.CHANGE_EVENT
+                ]
+            ):
+                # type: ignore[attr-defined]
                 self.logger.debug(f"Subscribing to attribute {attribute}.....")
                 self._proxy.add_change_event_callback(
                     attribute, self._on_attribute_change
