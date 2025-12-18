@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [SKB-1151] Upgrade ska-low-mccs-common dependency from 4.1.2 to 4.1.3 and fix minor bug in event subscription.
 * [LOW-1841] Upgrade ska-tango-devices dependency from 0.10.0 to 0.10.1.
 * [THORN-332] Add SonarQube configuration.
 
