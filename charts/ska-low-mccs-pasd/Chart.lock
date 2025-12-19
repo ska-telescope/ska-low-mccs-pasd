@@ -1,6 +1,6 @@
 dependencies:
 - name: ska-tango-devices
   repository: https://artefact.skao.int/repository/helm-internal
-  version: 0.10.1
-digest: sha256:e46153652664f5d185a556d9bac7381e80e52cfa95516be5713df995fe434ab3
-generated: "2025-12-02T09:38:45.897353+08:00"
+  version: 0.13.0
+digest: sha256:1733e01769d6ac3ee52e629e5859ce4c4e77ef98725ecfe5578ac97b1f5a07ba
+generated: "2025-12-19T19:53:13.681816095+08:00"
