@@ -515,11 +515,12 @@ class MccsSmartBox(MccsBaseDevice):
 
     def _read_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
         attribute_name = smartbox_attribute.get_name().lower()
-        smartbox_attribute.set_value_date_quality(
-            self._smartbox_state[attribute_name].value,
-            self._smartbox_state[attribute_name].timestamp,
-            self._smartbox_state[attribute_name].quality,
-        )
+        if self._smartbox_state[attribute_name].value is not None:
+            smartbox_attribute.set_value_date_quality(
+                self._smartbox_state[attribute_name].value,
+                self._smartbox_state[attribute_name].timestamp,
+                self._smartbox_state[attribute_name].quality,
+            )
 
     def _write_smartbox_attribute(
         self: MccsSmartBox, smartbox_attribute: tango.Attribute

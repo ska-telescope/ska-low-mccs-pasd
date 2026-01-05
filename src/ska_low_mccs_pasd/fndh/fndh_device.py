@@ -633,11 +633,12 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
     def _read_fndh_attribute(self: MccsFNDH, fndh_attribute: tango.Attribute) -> None:
         attribute_name = fndh_attribute.get_name().lower()
-        fndh_attribute.set_value_date_quality(
-            self._fndh_attributes[attribute_name].value,
-            self._fndh_attributes[attribute_name].timestamp,
-            self._fndh_attributes[attribute_name].quality,
-        )
+        if self._fndh_attributes[attribute_name].value is not None:
+            fndh_attribute.set_value_date_quality(
+                self._fndh_attributes[attribute_name].value,
+                self._fndh_attributes[attribute_name].timestamp,
+                self._fndh_attributes[attribute_name].quality,
+            )
 
     def _write_fndh_attribute(self: MccsFNDH, fndh_attribute: tango.Attribute) -> None:
         # Register the request with the component manager
