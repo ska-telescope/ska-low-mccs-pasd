@@ -13,7 +13,6 @@ import importlib.resources
 import json
 import logging
 import sys
-import traceback
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Final, Optional, cast
@@ -196,17 +195,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     def _read_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
         attr_name = pasd_attribute.get_name()
         attr_value = self._pasd_state[attr_name].value
-        if attr_value is None:
-            msg = f"Attempted read of {attr_name} before it has been polled."
-            self.logger.warning(msg)
-            raise tango.Except.throw_exception(
-                f"Error: {attr_name} is None", msg, "".join(traceback.format_stack())
+        if attr_value is not None:
+            pasd_attribute.set_value_date_quality(
+                attr_value,
+                self._pasd_state[attr_name].timestamp,
+                self._pasd_state[attr_name].quality,
             )
-        pasd_attribute.set_value_date_quality(
-            attr_value,
-            self._pasd_state[attr_name].timestamp,
-            self._pasd_state[attr_name].quality,
-        )
 
     def _write_pasd_attribute(self, pasd_attribute: tango.Attribute) -> None:
         # Register the request with the component manager
