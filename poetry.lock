@@ -3209,13 +3209,13 @@ reference = "ska-nexus"
 
 [[package]]
 name = "ska-low-pasd-driver"
-version = "0.2.1"
+version = "0.3.0"
 description = "This package provides a driver for the SKA-Low PaSD."
 optional = false
-python-versions = ">=3.10,<4"
+python-versions = "<4,>=3.10"
 files = [
-    {file = "ska_low_pasd_driver-0.2.1-py3-none-any.whl", hash = "sha256:5a36e6163f9baa6cd476d28d674085dd6fe7da4a46af528c0189dee079b28a14"},
-    {file = "ska_low_pasd_driver-0.2.1.tar.gz", hash = "sha256:c3bf09984256c81abd266c4fa82f2a5af49a43921f4589de01e52c35d64230ba"},
+    {file = "ska_low_pasd_driver-0.3.0-py3-none-any.whl", hash = "sha256:89438cc2368fb04f0c1541aa743feec7510775e3fa8bc20360cffd7c09faecdf"},
+    {file = "ska_low_pasd_driver-0.3.0.tar.gz", hash = "sha256:17b3face27b6c8336b55c9147106fbac022f1c2f26296ae2bc8f3f5542b35765"},
 ]
 
 [package.dependencies]
@@ -4319,4 +4319,4 @@ reference = "PyPI-public"
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "9c1712127195972ff20c9f650d1b22f62cece089b903b6b0a4b3ee99d543230b"
+content-hash = "259a069bcef7bf91c29c2d0cbc5be1cf4ffb7d7a97b1163cc8b704d07585abf1"

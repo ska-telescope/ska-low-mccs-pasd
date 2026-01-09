@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ska-low-mccs-pasd"
-version = "4.0.0"
+version = "4.1.0"
 description = "The Monitoring, Control and Calibration Subsystem (MCCS) of the SKA Low telescope"
 license = "BSD-3-Clause"
 authors = ["MCCS team"]
@@ -40,7 +40,7 @@ cachetools = "5.3.3"
 click = "^8.1.7"
 bidict = "^0.23.1"
 google-auth = "2.33.0"
-ska-low-pasd-driver = "0.2.1"
+ska-low-pasd-driver = "^0.3.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.20.0"
