@@ -1,10 +1,13 @@
 # Version History
 
 ## Unreleased
+
+## 4.1.0
 * [THORN-329] Prevent exceptions when reading FNDH/SB attributes before they have been polled.
 * [SKB-1165] Remove superfluous log warning and exception when reading attributes that haven't yet been polled.
 * [LOW-1841][LOW-1956][LOW-1959] Update ska-tango-devices to 0.14.0, thus gaining support for headless services and read-only volume mounts.
 * [SKB-1151] Upgrade ska-low-mccs-common dependency from 4.1.2 to 4.1.3 and fix minor bug in event subscription.
+* [LOW-1794] Use ska-low-pasd-driver instead of factored out local driver layer
 * [THORN-332] Add SonarQube configuration.
 * [THORN-379] Update taranta and tangogql
 
