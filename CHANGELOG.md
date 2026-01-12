@@ -6,6 +6,7 @@
 * [LOW-1841][LOW-1956][LOW-1959] Update ska-tango-devices to 0.14.0, thus gaining support for headless services and read-only volume mounts.
 * [SKB-1151] Upgrade ska-low-mccs-common dependency from 4.1.2 to 4.1.3 and fix minor bug in event subscription.
 * [THORN-332] Add SonarQube configuration.
+* [THORN-379] Update taranta and tangogql
 
 ## 4.0.0
 

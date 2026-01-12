@@ -150,14 +150,14 @@ releases:
   - name: taranta
     namespace: {{.Namespace | default "ska-low-mccs"}}
     chart: skao/ska-tango-taranta
-    version: ~2.5.1
+    version: ~2.18.1
     values:
       - .deploy/helmfile.d/templates/taranta.yaml
 
   - name: tangogql
     namespace: {{.Namespace | default "ska-low-mccs"}}
-    chart: skao/ska-tango-tangogql
-    version: ~1.3.10
+    chart: skao/ska-tango-tangogql-ariadne
+    version: ~1.0.7
     values:
       - .deploy/helmfile.d/templates/globals.yaml.gotmpl
       - ska-tango-base:
