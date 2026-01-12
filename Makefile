@@ -15,17 +15,13 @@ include .make/base.mk
 #######################################
 # PYTHON
 #######################################
-include .make/python.mk
+include .make-uv/make/python-uv.mk
 
-PYTHON_LINE_LENGTH = 88
-PYTHON_VARS_AFTER_PYTEST = --forked
-PYTHON_VARS_AFTER_PYTEST += "-n 16"
-PYTHON_LINT_TARGET = src/ tests/
-PYTHON_VARS_BEFORE_PYTEST = timeout -k 120 -s INT 3000	# 50min t/o with 2min grace
-PYTHON_VARS_BEFORE_K8S_PYTEST = timeout -k 120 -s INT 3000
+# TODO: Not supported by ska-python-uv yet
+# PYTHON_VARS_BEFORE_PYTEST = timeout -k 120 -s INT 3000	# 50min t/o with 2min grace
+# PYTHON_VARS_BEFORE_K8S_PYTEST = timeout -k 120 -s INT 3000
 
-python-post-lint:
-	$(PYTHON_RUNNER) mypy --config-file mypy.ini src/ tests/
+python-lint: mypy
 
 
 #######################################
@@ -157,15 +153,9 @@ helm-pre-build:
 #######################################
 # DOCS
 #######################################
-include .make/docs.mk
+include .make-uv/make/docs-uv.mk
 
 DOCS_SPHINXOPTS= -W --keep-going
-
-ifdef CI_JOB_TOKEN
-docs-pre-build:
-	poetry config virtualenvs.create false
-	poetry install --no-root --with docs
-endif
 
 .PHONY: python-post-lint k8s-do-test docs-pre-build
 
