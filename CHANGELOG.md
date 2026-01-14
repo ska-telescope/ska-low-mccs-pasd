@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* [LOW-2008] Switch from Poetry to UV. Note this requires a .dockerignore file to ensure we don't pull in cached files resulting in the
+incorrect path to the Python interpreter (this caused the simulation pod not to start).
+
 ## 4.1.0
 * [THORN-329] Prevent exceptions when reading FNDH/SB attributes before they have been polled.
 * [SKB-1165] Remove superfluous log warning and exception when reading attributes that haven't yet been polled.
