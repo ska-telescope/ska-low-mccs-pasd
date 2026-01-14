@@ -1,12 +1,20 @@
-FROM artefact.skao.int/ska-tango-images-pytango-builder:9.5.0 AS buildenv
-FROM artefact.skao.int/ska-tango-images-pytango-runtime:9.5.0 AS runtime
+FROM artefact.skao.int/ska-tango-images-tango-dsconfig:1.8.3 AS tools
+FROM artefact.skao.int/ska-python:0.2.5 AS runtime
 
-USER root
+WORKDIR /app
 
-RUN poetry config virtualenvs.create false
+COPY --from=tools /usr/local/bin/retry /usr/local/bin/retry
+COPY --from=tools /usr/local/bin/wait-for-it.sh /usr/local/bin/wait-for-it.sh
 
-COPY pyproject.toml poetry.lock* ./
+ENV PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
 
-RUN poetry install --only main
+COPY pyproject.toml uv.lock ./
 
-USER tango
+RUN --mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv \
+    uv sync --locked --no-install-project --no-dev
+
+COPY . .
+
+RUN --mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv \
+    uv sync --locked --no-dev

@@ -58,5 +58,5 @@ def main(*args: str, **kwargs: str) -> int:  # pragma: no cover
     return tango.server.run(
         classes=(MccsFieldStation, MccsFNCC, MccsFNDH, MccsPasdBus, MccsSmartBox),
         args=args or None,
-        **kwargs
+        **kwargs,
     )

@@ -53,6 +53,8 @@
       ]
     }
   },
-  "postCreateCommand": "sudo poetry config virtualenvs.create false && sudo poetry install",
-  "remoteUser": "tango"
+  "containerEnv": {
+    "UV_CACHE_DIR": "/workspaces/ska-low-mccs-pasd/.uvcache"
+  },
+  "postCreateCommand": "uv sync --locked --group docs"
 }
