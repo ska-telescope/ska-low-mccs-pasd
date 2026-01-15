@@ -503,14 +503,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._request_provider.desire_read_startup_info(device_id)
 
     @check_communicating
-    def request_status_read(self: PasdBusComponentManager, device_id: int) -> None:
-        """Read the SYS_STATUS register to kick the comms back into working.
-
-        :param: device_id: 0 for the FNDH, 100 for the FNCC, else a smartbox id
-        """
-        self._request_provider.desire_status_read(device_id)
-
-    @check_communicating
     def initialize_fndh(self: PasdBusComponentManager) -> None:
         """Initialize the FNDH by writing to its status register."""
         self._request_provider.desire_initialize(PasdData.FNDH_DEVICE_ID)
