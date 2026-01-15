@@ -71,6 +71,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     DevicePollingRate: Final = tango.server.device_property(
         dtype=float, default_value=15.0
     )
+    PollDelayAfterFailure: Final = tango.server.device_property(
+        dtype=float, default_value=2.0
+    )
     Timeout: Final = tango.server.device_property(dtype=float)
     # Default low-pass filtering cut-off frequency for sensor readings.
     # It is automatically written to all sensor registers of the FNDH and smartboxes
@@ -157,6 +160,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             f"\tHost: {self.Host}\n"
             f"\tPort: {self.Port}\n"
             f"\tPollingRate: {self.PollingRate}\n"
+            f"\tPollDelayAfterFailure: {self.PollDelayAfterFailure}\n"
             f"\tDevicePollingRate: {self.DevicePollingRate}\n"
             f"\tTimeout: {self.Timeout}\n"
             f"\tLowPassFilterCutoff: {self.LowPassFilterCutoff}\n"
@@ -312,6 +316,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self.Port,
             self.PollingRate,
             self.DevicePollingRate,
+            self.PollDelayAfterFailure,
             self.Timeout,
             self.logger,
             self._communication_state_callback,
