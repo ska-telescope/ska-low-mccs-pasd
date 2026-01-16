@@ -500,7 +500,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         super().poll_failed(exception)
         self.reset_connection()
         # Set the event to delay the next poll
-        self._logger.debug("Setting poll delay event")
+        self._logger.debug("Delaying next poll...")
         self._poll_delay_event.set()
 
     @check_communicating
