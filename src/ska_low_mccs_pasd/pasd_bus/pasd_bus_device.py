@@ -72,7 +72,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         dtype=float, default_value=15.0
     )
     PollDelayAfterFailure: Final = tango.server.device_property(
-        dtype=float, default_value=2.0
+        dtype=float, default_value=5.0
     )
     Timeout: Final = tango.server.device_property(dtype=float)
     # Default low-pass filtering cut-off frequency for sensor readings.
@@ -564,9 +564,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     self._pasd_state[tango_attribute_name].quality
                     != AttrQuality.ATTR_INVALID
                 ):
-                    self._pasd_state[
-                        tango_attribute_name
-                    ].quality = AttrQuality.ATTR_INVALID
+                    self._pasd_state[tango_attribute_name].quality = (
+                        AttrQuality.ATTR_INVALID
+                    )
                     attributes_marked_invalid.append(tango_attribute_name)
                     self.push_change_event(
                         tango_attribute_name,

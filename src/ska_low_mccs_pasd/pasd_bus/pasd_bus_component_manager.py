@@ -466,14 +466,15 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """
         super().poll_succeeded(poll_response)
 
-        self._logger.debug(
-            "Poll response - type=%s, value=%r",
-            type(poll_response).__name__,
-            poll_response,
-        )
         if "error" in poll_response.data:
             # Set the event to delay the next poll
-            self._logger.debug("Setting poll delay event")
+            command_info = (
+                f" for command {poll_response.command}" if poll_response.command else ""
+            )
+            self._logger.error(
+                f"Error response from device {poll_response.device_id}{command_info}: "
+                f"{poll_response.data['error']}. Delaying next poll..."
+            )
             self._poll_delay_event.set()
         else:
             # Ensure the event is cleared to allow normal polling
@@ -496,7 +497,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param exception: the exception that was raised by a recent poll
             attempt.
         """
-        self._logger.exception("Caught exception during poll", exception, stacklevel=5)
         super().poll_failed(exception)
         self.reset_connection()
         # Set the event to delay the next poll
