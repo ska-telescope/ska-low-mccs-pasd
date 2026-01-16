@@ -466,6 +466,11 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """
         super().poll_succeeded(poll_response)
 
+        self._logger.debug(
+            "Poll response - type=%s, value=%r",
+            type(poll_response).__name__,
+            poll_response,
+        )
         if "error" in poll_response.data:
             # Set the event to delay the next poll
             self._logger.debug("Setting poll delay event")

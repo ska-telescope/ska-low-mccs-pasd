@@ -102,6 +102,7 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         self._alarm_reset_requested: bool = False
         self._warning_reset_requested: bool = False
         self._status_reset_requested: bool = False
+        self._status_read_requested: bool = False
         self._port_power_changes: list[tuple[bool, bool] | None] = [
             None
         ] * number_of_ports
@@ -135,6 +136,14 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
     def desire_status_reset(self) -> None:
         """Register a request to reset the status register."""
         self._status_reset_requested = True
+
+    def desire_status_read(self) -> None:
+        """Register a request to read the status register.
+
+        This is done whenever a comms failure has occurred to attempt to
+        re-establish communications.
+        """
+        self._status_read_requested = True
 
     def desire_port_powers(
         self,
@@ -200,9 +209,16 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         """
         Return a description of the next write / command to be performed on the device.
 
+        This includes a prioritised read of SYS_STATUS when communications have failed
+        which does some internal error resetting.
+
         :return: A tuple, comprising the name of the write / command,
             along with any additional information such as the value to be written.
         """
+        if self._status_read_requested:
+            self._status_read_requested = False
+            return "READ", "STATUS"
+
         if self._initialize_requested:
             self._initialize_requested = False
             return "INITIALIZE", None
@@ -444,11 +460,19 @@ class PasdBusRequestProvider:
 
     def desire_status_reset(self, device_id: int) -> None:
         """
-        Register a request to reset the FNCC status register.
+        Register a request to reset the status register.
 
         :param device_id: the device number.
         """
         self._device_request_providers[device_id].desire_status_reset()
+
+    def desire_status_read(self, device_id: int) -> None:
+        """
+        Register a request to read the status register.
+
+        :param device_id: the device number.
+        """
+        self._device_request_providers[device_id].desire_status_read()
 
     def desire_port_powers(
         self,
