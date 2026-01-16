@@ -11,6 +11,9 @@ ENV PYTHONUNBUFFERED=1 \
 
 COPY pyproject.toml uv.lock ./
 
+# Install Git executable - only needed when pulling dev branches
+RUN apt-get update && apt-get install -y --no-install-recommends git
+
 RUN --mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv \
     uv sync --locked --no-install-project --no-dev
 
