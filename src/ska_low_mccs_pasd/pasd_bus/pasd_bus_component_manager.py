@@ -289,7 +289,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 # Still in delay period, return None to skip this poll
                 return None
             # Delay period has elapsed, resume polling
-            self._logger.debug("Resuming polling after comms error")
             self._poll_delay_event.clear()
 
         # If the last request took a long time (e.g. due to a timeout),
