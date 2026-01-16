@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import math
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any, Callable, Final, Optional
@@ -60,7 +61,7 @@ class PasdBusResponse:
     data: dict[str, Any]
 
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods, too-many-instance-attributes
 class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusResponse]):
     """A component manager for a PaSD bus."""
 
@@ -120,6 +121,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         port: int,
         polling_rate: float,
         device_polling_rate: float,
+        poll_delay_after_failure: float,
         timeout: float,
         logger: logging.Logger,
         communication_state_callback: Callable[[CommunicationStatus], None],
@@ -137,6 +139,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             on the PaSD bus
         :param device_polling_rate: minimum amount of time between communications
             with the same device.
+        :param poll_delay_after_failure: time in seconds to wait before next poll
+            after a comms failure
         :param timeout: maximum time to wait for a response to a server
             request (in seconds).
         :param logger: a logger for this object to use
@@ -166,6 +170,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         )
         self._pasd_bus_device_state_callback = pasd_device_state_callback
         self._polling_rate = polling_rate
+        self._poll_delay_after_failure = poll_delay_after_failure
         self._request_provider = PasdBusRequestProvider(
             int(device_polling_rate / polling_rate),
             self._logger,
@@ -174,6 +179,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         )
         self._last_request_timestamp: float = 0
         self._connection_reset_count = 0
+        self._poll_delay_event = threading.Event()
 
         super().__init__(
             logger,
@@ -270,15 +276,25 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         stay_on_when_offline: bool  # for the type checker
         is_on: bool  # for the type checker
 
+        timestamp = time.time()
+        elapsed_time = (
+            timestamp - self._last_request_timestamp
+            if self._last_request_timestamp != 0
+            else 0
+        )
+
+        # If a comms error occurred, we need to delay the next poll
+        if self._poll_delay_event.is_set():
+            if elapsed_time < self._poll_delay_after_failure:
+                # Still in delay period, return None to skip this poll
+                return None
+            # Delay period has elapsed, resume polling
+            self._poll_delay_event.clear()
+
         # If the last request took a long time (e.g. due to a timeout),
         # we need to inform the request manager to increment the
         # ticks accordingly
-        timestamp = time.time()
-        if (
-            self._last_request_timestamp != 0
-            and (elapsed_time := timestamp - self._last_request_timestamp)
-            > self._polling_rate
-        ):
+        if self._last_request_timestamp != 0 and elapsed_time > self._polling_rate:
             request_spec = self._request_provider.get_request(
                 math.floor(elapsed_time / self._polling_rate)
             )
@@ -446,6 +462,20 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """
         super().poll_succeeded(poll_response)
 
+        if "error" in poll_response.data:
+            # Set the event to delay the next poll
+            command_info = (
+                f" for command {poll_response.command}" if poll_response.command else ""
+            )
+            self._logger.error(
+                f"Error response from device {poll_response.device_id}{command_info}: "
+                f"{poll_response.data['error']['detail']}. Delaying next poll..."
+            )
+            self._poll_delay_event.set()
+        else:
+            # Ensure the event is cleared to allow normal polling
+            self._poll_delay_event.clear()
+
         self._update_component_state(power=PowerState.ON, fault=False)
 
         if poll_response.command is None:
@@ -463,8 +493,12 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param exception: the exception that was raised by a recent poll
             attempt.
         """
+        self._logger.error("Poll failed:", exception, stacklevel=3)
         super().poll_failed(exception)
         self.reset_connection()
+        # Set the event to delay the next poll
+        self._logger.debug("Delaying next poll...")
+        self._poll_delay_event.set()
 
     @check_communicating
     def request_startup_info(self: PasdBusComponentManager, device_id: int) -> None:

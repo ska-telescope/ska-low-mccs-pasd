@@ -300,6 +300,7 @@ class PasdTangoTestHarness:
             "Port": port,
             "PollingRate": polling_rate,
             "DevicePollingRate": device_polling_rate,
+            "PollDelayAfterFailure": 0,  # Don't slow down the tests
             "Timeout": timeout,
             "LowPassFilterCutoff": low_pass_filter_cutoff,
             "FEMCurrentTripThreshold": fem_current_trip_threshold,
