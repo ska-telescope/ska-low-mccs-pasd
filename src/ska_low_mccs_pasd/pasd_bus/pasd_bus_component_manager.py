@@ -296,7 +296,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         # ticks accordingly
         if (
             self._last_request_timestamp != 0
-            and (elapsed_time - self._last_request_timestamp) > self._polling_rate
+            and elapsed_time > self._polling_rate
         ):
             request_spec = self._request_provider.get_request(
                 math.floor(elapsed_time / self._polling_rate)
