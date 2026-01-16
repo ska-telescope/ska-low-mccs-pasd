@@ -473,7 +473,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             )
             self._logger.error(
                 f"Error response from device {poll_response.device_id}{command_info}: "
-                f"{poll_response.data['error']}. Delaying next poll..."
+                f"{poll_response.data['error']['detail']}. Delaying next poll..."
             )
             self._poll_delay_event.set()
         else:
