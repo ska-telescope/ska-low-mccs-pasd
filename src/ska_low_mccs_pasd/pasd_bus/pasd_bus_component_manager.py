@@ -294,10 +294,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         # If the last request took a long time (e.g. due to a timeout),
         # we need to inform the request manager to increment the
         # ticks accordingly
-        if (
-            self._last_request_timestamp != 0
-            and elapsed_time > self._polling_rate
-        ):
+        if self._last_request_timestamp != 0 and elapsed_time > self._polling_rate:
             request_spec = self._request_provider.get_request(
                 math.floor(elapsed_time / self._polling_rate)
             )
