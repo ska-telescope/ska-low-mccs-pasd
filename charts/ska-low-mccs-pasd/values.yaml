@@ -21,7 +21,7 @@ global:
 image:
   registry: artefact.skao.int
   name: ska-low-mccs-pasd
-  tag: 4.1.0-dirty # defaults to chart's appVersion when empty
+  tag: 4.1.0 # defaults to chart's appVersion when empty
   pullPolicy: IfNotPresent
 
 # Resources for simulators etc.
@@ -214,7 +214,7 @@ ska-tango-devices:
       image:
         registry: artefact.skao.int
         name: ska-low-mccs-pasd
-        tag: 4.1.0-dirty
+        tag: 4.1.0
         pullPolicy: IfNotPresent
       command: pasd
       resources:
