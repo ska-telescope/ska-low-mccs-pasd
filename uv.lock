@@ -1766,7 +1766,7 @@ docs = [
 [[package]]
 name = "ska-low-pasd-driver"
 version = "0.3.1"
-source = { git = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git?rev=thorn-382-fix-command-response#7ac684e3234d3243f9b988a1ab918a0a25ea2c02" }
+source = { git = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git?rev=thorn-382-fix-command-response#90cb13b32e372049e81312da97072f9c0350fdef" }
 dependencies = [
     { name = "cerberus" },
     { name = "pymodbus" },
