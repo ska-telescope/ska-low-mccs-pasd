@@ -508,6 +508,9 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         # Set the event to delay the next poll
         self._logger.debug("Delaying next poll...")
         self._poll_delay_event.set()
+        # Request the FNPC SYS_STATUS register next which can help
+        # to re-establish comms
+        # self.request_status_read()
 
     @check_communicating
     def request_startup_info(self: PasdBusComponentManager, device_id: int) -> None:
@@ -516,6 +519,11 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param: device_id: 0 for the FNDH, 100 for the FNCC, else a smartbox id
         """
         self._request_provider.desire_read_startup_info(device_id)
+
+    # @check_communicating
+    # def request_status_read(self: PasdBusComponentManager) -> None:
+    #     """Read the FNPC status register to attempt to reset comms."""
+    #     self._request_provider.desire_status_read(PasdData.FNDH_DEVICE_ID)
 
     @check_communicating
     def initialize_fndh(self: PasdBusComponentManager) -> None:
