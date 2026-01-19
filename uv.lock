@@ -1158,11 +1158,7 @@ wheels = [
 [[package]]
 name = "pymodbus"
 version = "3.5.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ba/0a/5673a07f2c4cfb5119b35403c7563997863820bf249cb0f8a25623d85646/pymodbus-3.5.4.tar.gz", hash = "sha256:d020933cbc32fe8aff5b8157be46f429d08df3dfd06e9579417768128d31b974", size = 201724, upload-time = "2023-10-11T10:50:14.955Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c0/0e/44c8f986f200497ef59b7778df6efc55e475c5152ee217bb9dbdfcaa7caf/pymodbus-3.5.4-py3-none-any.whl", hash = "sha256:a965bb8d457e4cc828eefd19617683f2dc970082ccfb0d8c4a74ce006d9aedec", size = 202638, upload-time = "2023-10-11T10:50:12.696Z" },
-]
+source = { git = "https://github.com/elarandjelovic/pymodbus.git?rev=validation-patch#fdfb44597b5945fd4351fe47a9e0f129a5d48e34" }
 
 [[package]]
 name = "pytango"
@@ -1708,7 +1704,7 @@ requires-dist = [
     { name = "referencing", specifier = ">=0.31.0,<0.32.0" },
     { name = "ska-control-model", extras = ["health-rollup"], specifier = ">=1.2.0,<2.0.0" },
     { name = "ska-low-mccs-common", specifier = ">=4.1.3,<5.0.0" },
-    { name = "ska-low-pasd-driver", specifier = ">=0.3.2,<0.4.0" },
+    { name = "ska-low-pasd-driver", git = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git?rev=skb-455-pymodbus-patch" },
     { name = "ska-ser-devices", specifier = ">=0.2.0,<0.3.0" },
     { name = "ska-tango-base", specifier = ">=1.3.2,<1.4.0" },
     { name = "ska-telmodel", specifier = ">=1.14.0,<2.0.0" },
@@ -1766,16 +1762,12 @@ docs = [
 [[package]]
 name = "ska-low-pasd-driver"
 version = "0.3.2"
-source = { registry = "https://artefact.skao.int/repository/pypi-internal/simple" }
+source = { git = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git?rev=skb-455-pymodbus-patch#70c34395ccc6c5acdfcc3c897361a1ae6242bbf4" }
 dependencies = [
     { name = "cerberus" },
     { name = "pymodbus" },
     { name = "pyyaml" },
     { name = "ska-ser-devices" },
-]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-pasd-driver/0.3.2/ska_low_pasd_driver-0.3.2.tar.gz", hash = "sha256:c7e10c1ee20de298369a3037528e4e29249d81f3ba02c7b5396d24931dd65570" }
-wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-pasd-driver/0.3.2/ska_low_pasd_driver-0.3.2-py3-none-any.whl", hash = "sha256:e09aab2f12396365bf034a3ce5fdca972aaad16618f5091f6dbcc1e419fb65b6" },
 ]
 
 [[package]]
