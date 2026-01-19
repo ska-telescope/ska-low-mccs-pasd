@@ -148,6 +148,7 @@ def test_context_fixture(
     smartbox_attached_ports: list[int],
     smartbox_attached_antennas: list[list[bool]],
     smartbox_attached_antenna_names: list[list[str]],
+    station_label: str,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
@@ -191,10 +192,11 @@ def test_context_fixture(
             return []
 
         db.return_value.get_device_attribute_property = my_func
-        harness = PasdTangoTestHarness()
+        harness = PasdTangoTestHarness(station_label=station_label)
         # Set up pasdbus
         harness.set_pasd_bus_simulator(pasd_hw_simulators)
         harness.set_pasd_bus_device(
+            station_label=station_label,
             polling_rate=0.1,
             device_polling_rate=0.1,
             available_smartboxes=smartbox_ids_to_test,
@@ -223,7 +225,11 @@ def test_context_fixture(
                 antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
             )
         # Set up field station
-        harness.set_field_station_device(smartbox_ids_to_test, int(LoggingLevel.ERROR))
+        harness.set_field_station_device(
+            station_label=station_label,
+            smartbox_numbers=smartbox_ids_to_test,
+            logging_level=int(LoggingLevel.ERROR),
+        )
 
         with harness as context:
             yield context

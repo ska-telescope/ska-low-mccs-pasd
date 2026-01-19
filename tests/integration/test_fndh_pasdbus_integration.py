@@ -1112,6 +1112,7 @@ def test_context_db_configurable_fixture(
     smartbox_attached_ports: list[int],
     smartbox_attached_antennas: list[list[bool]],
     smartbox_attached_antenna_names: list[list[str]],
+    station_label: str,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
@@ -1124,6 +1125,7 @@ def test_context_db_configurable_fixture(
         connected to for each smartbox.
     :param smartbox_attached_antenna_names: names of each antenna connected to
         each smartbox.
+    :param station_label: The label of the station under test.
     :yield: a test context in which to run the integration tests.
     """
     with patch("ska_low_mccs_pasd.pasd_utils.Database") as db:
@@ -1141,10 +1143,11 @@ def test_context_db_configurable_fixture(
 
         db.return_value.get_device_attribute_property = my_func
 
-        my_harness = PasdTangoTestHarness()
+        my_harness = PasdTangoTestHarness(station_label=station_label)
 
         my_harness.set_pasd_bus_simulator(pasd_hw_simulators)
         my_harness.set_pasd_bus_device(
+            station_label=station_label,
             polling_rate=0.1,
             device_polling_rate=0.1,
             available_smartboxes=smartbox_ids_to_test,
@@ -1167,7 +1170,9 @@ def test_context_db_configurable_fixture(
                 antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
             )
         my_harness.set_field_station_device(
-            smartbox_ids_to_test, int(LoggingLevel.ERROR)
+            station_label=station_label,
+            smartbox_numbers=smartbox_ids_to_test,
+            logging_level=int(LoggingLevel.ERROR),
         )
 
         with my_harness as context:

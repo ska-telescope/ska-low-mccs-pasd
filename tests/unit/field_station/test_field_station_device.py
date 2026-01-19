@@ -97,6 +97,7 @@ def field_station_device_fixture(
     patched_field_station_device_class: type[MccsFieldStation],
     mock_fndh: unittest.mock.Mock,
     mock_smartbox: unittest.mock.Mock,
+    station_label: str,
 ) -> tango.DeviceProxy:
     """
     Fixture that returns a proxy to the FieldStation Tango device under test.
@@ -104,14 +105,16 @@ def field_station_device_fixture(
     :param patched_field_station_device_class: a patches class for use in testing.
     :param mock_fndh: a mock FNDH for use in testing.
     :param mock_smartbox: a mock Smartbox for use in testing.
+    :param station_label: The label of the station under test.
 
     :yield: a proxy to the FieldStation Tango device under test.
     """
-    harness = PasdTangoTestHarness()
+    harness = PasdTangoTestHarness(station_label=station_label)
     harness.set_mock_fndh_device(mock_fndh)
     for smarbox_no in range(1, 24 + 1):
         harness.set_mock_smartbox_device(mock_smartbox, smarbox_no)
     harness.set_field_station_device(
+        station_label=station_label,
         logging_level=int(LoggingLevel.DEBUG),
         device_class=patched_field_station_device_class,
     )

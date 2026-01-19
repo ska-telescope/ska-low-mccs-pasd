@@ -110,12 +110,13 @@ def patched_fndh_device_class_fixture(
 
 @pytest.fixture(name="fndh_device")
 def fndh_device_fixture(
-    patched_fndh_device_class: type[MccsFNDH],
+    patched_fndh_device_class: type[MccsFNDH], station_label: str
 ) -> tango.DeviceProxy:
     """
     Fixture that returns a proxy to the FNDH Tango device under test.
 
     :param patched_fndh_device_class: a patches class for use in testing
+    :param station_label: The label of the station under test.
 
     :yield: a proxy to the FNDH Tango device under test.
     """
@@ -146,7 +147,7 @@ def fndh_device_fixture(
             return []
 
         db.return_value.get_device_attribute_property = my_func
-        harness = PasdTangoTestHarness()
+        harness = PasdTangoTestHarness(station_label=station_label)
         harness.set_fndh_device(
             logging_level=int(LoggingLevel.DEBUG),
             device_class=patched_fndh_device_class,
@@ -158,12 +159,13 @@ def fndh_device_fixture(
 
 @pytest.fixture(name="healthful_fndh_device")
 def healthful_fndh_device_fixture(
-    mock_pasdbus: unittest.mock.Mock,
+    mock_pasdbus: unittest.mock.Mock, station_label: str
 ) -> tango.DeviceProxy:
     """
     Fixture that returns a proxy to the FNDH Tango device under test.
 
     :param mock_pasdbus: mocked pasdbus to add to the context.
+    :param station_label: The label of the station under test.
 
     :yield: a proxy to the FNDH Tango device under test.
     """
@@ -209,7 +211,7 @@ def healthful_fndh_device_fixture(
             return []
 
         db.return_value.get_device_attribute_property = my_func
-        harness = PasdTangoTestHarness()
+        harness = PasdTangoTestHarness(station_label)
         harness.set_fndh_device(
             logging_level=int(LoggingLevel.DEBUG),
             device_class=PatchedMccsFNDH,

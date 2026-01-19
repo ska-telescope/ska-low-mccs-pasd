@@ -27,17 +27,6 @@ from ska_low_pasd_driver import (
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 
-@pytest.fixture(name="station_label")
-def station_label_fixture() -> str:
-    """
-    Return the name of the station whose configuration will be used in testing.
-
-    :return: the name of the station whose configuration will be used in
-        testing.
-    """
-    return "ci-1"
-
-
 @pytest.fixture(name="pasd_bus_simulator")
 def pasd_bus_simulator_fixture(
     pasd_config_path: str, station_label: str
@@ -252,6 +241,7 @@ def test_context_fixture(
     smartbox_attached_ports: list[int],
     smartbox_attached_antennas: list[list[bool]],
     smartbox_attached_antenna_names: list[list[str]],
+    station_label: str,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
@@ -264,6 +254,7 @@ def test_context_fixture(
         connected to for each smartbox.
     :param smartbox_attached_antenna_names: names of each antenna connected to
         each smartbox.
+    :param station_label: The label of the station under test.
     :yield: a test context in which to run the integration tests.
     """
     with patch("ska_low_mccs_pasd.pasd_utils.Database") as db:
@@ -294,10 +285,11 @@ def test_context_fixture(
 
         db.return_value.get_device_attribute_property = my_func
 
-        harness = PasdTangoTestHarness()
+        harness = PasdTangoTestHarness(station_label=station_label)
 
         harness.set_pasd_bus_simulator(pasd_hw_simulators)
         harness.set_pasd_bus_device(
+            station_label=station_label,
             polling_rate=0.1,
             device_polling_rate=0.1,
             available_smartboxes=smartbox_ids_to_test,
@@ -319,7 +311,11 @@ def test_context_fixture(
                 ],
                 antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
             )
-        harness.set_field_station_device(smartbox_ids_to_test, int(LoggingLevel.ERROR))
+        harness.set_field_station_device(
+            station_label=station_label,
+            smartbox_numbers=smartbox_ids_to_test,
+            logging_level=int(LoggingLevel.ERROR),
+        )
 
         with harness as context:
             yield context

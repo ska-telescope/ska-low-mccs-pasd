@@ -26,17 +26,6 @@ from ska_low_pasd_driver import (
 from ska_low_mccs_pasd import PasdData
 
 
-@pytest.fixture(name="station_label")
-def station_label_fixture() -> str:
-    """
-    Return the name of the station whose configuration will be used in testing.
-
-    :return: the name of the station whose configuration will be used in
-        testing.
-    """
-    return "ci-1"
-
-
 @pytest.fixture(name="pasd_config")
 def pasd_config_fixture(pasd_config_path: str) -> dict:
     """
