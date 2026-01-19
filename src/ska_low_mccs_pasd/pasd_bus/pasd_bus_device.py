@@ -163,7 +163,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         device_name = f'{str(self.__class__).rsplit(".", maxsplit=1)[-1][0:-2]}'
         version = f"{device_name} Software Version: {self._version_id}"
         properties = (
-            f"Initialised DEV {device_name} device with properties:\n"
+            f"Initialised {device_name} device using patched pyModbus with properties:\n"
             f"\tHost: {self.Host}\n"
             f"\tPort: {self.Port}\n"
             f"\tPollingRate: {self.PollingRate}\n"
@@ -579,9 +579,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     self._pasd_state[tango_attribute_name].quality
                     != AttrQuality.ATTR_INVALID
                 ):
-                    self._pasd_state[
-                        tango_attribute_name
-                    ].quality = AttrQuality.ATTR_INVALID
+                    self._pasd_state[tango_attribute_name].quality = (
+                        AttrQuality.ATTR_INVALID
+                    )
                     attributes_marked_invalid.append(tango_attribute_name)
                     self.push_change_event(
                         tango_attribute_name,
