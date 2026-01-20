@@ -1762,7 +1762,7 @@ docs = [
 [[package]]
 name = "ska-low-pasd-driver"
 version = "0.3.2"
-source = { git = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git?rev=skb-455-pymodbus-patch#70c34395ccc6c5acdfcc3c897361a1ae6242bbf4" }
+source = { git = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git?rev=skb-455-pymodbus-patch#3c31fc1c697e97859562f3560a14b8c293016f0b" }
 dependencies = [
     { name = "cerberus" },
     { name = "pymodbus" },
