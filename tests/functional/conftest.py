@@ -158,12 +158,12 @@ def smartboxes_under_test_fixture(
                 functional_test_context.get_smartbox_device(smartbox_id)
             )
     else:
-        db = tango.Database()
-        devices_exported = db.get_device_exported("*")
-        for device_name in devices_exported:
-            if f"low-mccs/smartbox/{station_label}-sb" in device_name:
-                smartbox_proxy = tango.DeviceProxy(device_name)
-                smartboxes_under_test.append(smartbox_proxy)
+        smartboxes_exported = tango.Database().get_device_exported(
+            f"low-mccs/smartbox/{station_label}-sb*"
+        )
+        for smartbox_exported in smartboxes_exported:
+            smartbox_proxy = tango.DeviceProxy(smartbox_exported)
+            smartboxes_under_test.append(smartbox_proxy)
 
     return smartboxes_under_test
 
