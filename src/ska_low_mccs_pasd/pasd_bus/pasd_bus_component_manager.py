@@ -129,6 +129,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         pasd_device_state_callback: Callable[..., None],
         available_smartboxes: list[int],
         smartbox_ids: list[int] | None,
+        enable_pymodbus_logging: bool,
+        pymodbus_log_dir: Optional[str],
     ) -> None:
         """
         Initialise a new instance.
@@ -163,11 +165,19 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param available_smartboxes: a list of available smartbox ids to poll.
         :param smartbox_ids: optional list of smartbox IDs associated with
             each FNDH port.
+        :param enable_pymodbus_logging: whether to enable pymodbus logging
+        :param pymodbus_log_dir: optional directory path for pymodbus logging
         """
         self._logger = logger
         self._pasd_bus_api_client = PasdBusModbusApiClient(
-            host, port, logger, timeout=timeout
+            host,
+            port,
+            logger,
+            timeout,
+            enable_pymodbus_logging,
+            pymodbus_log_dir,
         )
+
         self._pasd_bus_device_state_callback = pasd_device_state_callback
         self._polling_rate = polling_rate
         self._poll_delay_after_failure = poll_delay_after_failure
