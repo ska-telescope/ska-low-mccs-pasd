@@ -2,6 +2,7 @@
 Feature: Monitoring and control of PaSD
     Test that MCCS subsystem can monitor and control a PaSD system.
 
+    @stations(ci-1)
     Scenario: Turn on MCCS-for-PaSD
         Given A MCCS-for-PaSD which is not ready
         And MCCS-for-PaSD is in DISABLE state
@@ -9,7 +10,7 @@ Feature: Monitoring and control of PaSD
         When MCCS-for-PaSD adminMode is set to ONLINE
         Then MCCS-for-PaSD reports ON state
 
-    @XTP-20301 @XTP-21594
+    @XTP-20301 @XTP-21594 @stations(ci-1)
     Scenario: Monitor PaSD
         Given A MCCS-for-PaSD which is ready
         And MCCS-for-PaSD is in ON state
@@ -47,8 +48,8 @@ Feature: Monitoring and control of PaSD
         And MCCS-for-PaSD reports its smartbox FEM heatsink temperature 2
         And MCCS-for-PaSD reports its FNCC status
         And MCCS-for-PaSD health becomes OK
-
-    @XTP-21514 @XTP-21594
+    
+    @XTP-21514 @XTP-21594 @stations(ci-1)
     Scenario: Turn on FNDH port
         Given A MCCS-for-PaSD which is ready
         And MCCS-for-PaSD is in ON state
@@ -58,7 +59,7 @@ Feature: Monitoring and control of PaSD
         When I tell MCCS-for-PaSD to turn the FNDH port on
         Then the FNDH port turns on
 
-    @XTP-21515 @XTP-21594
+    @XTP-21515 @XTP-21594 @stations(ci-1)
     Scenario: Turn off FNDH port
         Given A MCCS-for-PaSD which is ready
         And MCCS-for-PaSD is in ON state
@@ -68,7 +69,7 @@ Feature: Monitoring and control of PaSD
         When I tell MCCS-for-PaSD to turn the FNDH port off
         Then the FNDH port turns off
 
-    @XTP-21516 @XTP-21594
+    @XTP-21516 @XTP-21594 @stations(ci-1)
     Scenario: Turn on smartbox port
         Given A MCCS-for-PaSD which is ready
         And MCCS-for-PaSD is in ON state
@@ -81,7 +82,7 @@ Feature: Monitoring and control of PaSD
         When I tell MCCS-for-PaSD to turn the smartbox port on
         Then the smartbox port turns on
 
-    @XTP-21517 @XTP-21594
+    @XTP-21517 @XTP-21594 @stations(ci-1)
     Scenario: Turn off smartbox port
         Given A MCCS-for-PaSD which is ready
         And MCCS-for-PaSD is in ON state
