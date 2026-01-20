@@ -503,7 +503,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param exception: the exception that was raised by a recent poll
             attempt.
         """
-        self._logger.error("Poll failed:", exception, stacklevel=3)
         super().poll_failed(exception)
         self.reset_connection()
         # Set the event to delay the next poll
