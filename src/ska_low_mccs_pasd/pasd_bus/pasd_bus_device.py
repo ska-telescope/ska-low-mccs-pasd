@@ -1424,5 +1424,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         }
 
         # Apply setting to pymodbus logging as well
-        if self.EnablePyModbusLogging:
-            logging.getLogger("pymodbus.logging").setLevel(level_map[value])
+        logging.getLogger("pymodbus.logging").setLevel(
+            level_map[value]
+            if self.EnablePyModbusLogging
+            else level_map[LoggingLevel.OFF]
+        )
