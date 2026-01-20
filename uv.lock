@@ -1157,8 +1157,12 @@ wheels = [
 
 [[package]]
 name = "pymodbus"
-version = "3.5.4+ska1.0"
-source = { git = "https://github.com/elarandjelovic/pymodbus.git?rev=v3.5.4%2Bska1.0#4776dbbc114eaab2286b6f01fd20609b951a0f2b" }
+version = "3.5.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/0a/5673a07f2c4cfb5119b35403c7563997863820bf249cb0f8a25623d85646/pymodbus-3.5.4.tar.gz", hash = "sha256:d020933cbc32fe8aff5b8157be46f429d08df3dfd06e9579417768128d31b974", size = 201724, upload-time = "2023-10-11T10:50:14.955Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c0/0e/44c8f986f200497ef59b7778df6efc55e475c5152ee217bb9dbdfcaa7caf/pymodbus-3.5.4-py3-none-any.whl", hash = "sha256:a965bb8d457e4cc828eefd19617683f2dc970082ccfb0d8c4a74ce006d9aedec", size = 202638, upload-time = "2023-10-11T10:50:12.696Z" },
+]
 
 [[package]]
 name = "pytango"
@@ -1762,7 +1766,7 @@ docs = [
 [[package]]
 name = "ska-low-pasd-driver"
 version = "0.3.2"
-source = { git = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git?rev=skb-455-pymodbus-patch#9356fdbb30bcf820dc550b4def42a695c6b32679" }
+source = { git = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git?rev=skb-455-pymodbus-patch#f4287a5147a18ec176b7951caa67450f13e62376" }
 dependencies = [
     { name = "cerberus" },
     { name = "pymodbus" },
