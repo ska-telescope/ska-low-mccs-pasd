@@ -216,6 +216,7 @@ def check_mccs_is_disabled(
 def check_mccs_is_on(
     pasd_bus_device: tango.DeviceProxy,
     change_event_callbacks: MockTangoEventCallbackGroup,
+    station_label: str,
 ) -> None:
     """
     Check that MCCS-for-PaSD is in ON state.
@@ -223,10 +224,11 @@ def check_mccs_is_on(
     :param pasd_bus_device: a proxy to the PaSD bus device.
     :param change_event_callbacks: dictionary of Tango change event
         callbacks with asynchrony support.
+    :param station_label: The label of the station under test.
     """
     if pasd_bus_device.state() == tango.DevState.DISABLE:
         put_pasd_bus_device_online(pasd_bus_device)
-        check_state_becomes_on(change_event_callbacks)
+        check_state_becomes_on(change_event_callbacks, station_label=station_label)
     assert pasd_bus_device.state() == tango.DevState.ON
 
 

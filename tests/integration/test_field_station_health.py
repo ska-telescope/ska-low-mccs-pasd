@@ -13,16 +13,13 @@ import gc
 import json
 import time
 from time import sleep
-from typing import Callable, Iterator
-from unittest.mock import patch
+from typing import Callable
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState, LoggingLevel, ResultCode
+from ska_control_model import AdminMode, HealthState, ResultCode
 from ska_low_pasd_driver import FnccSimulator, FndhSimulator, SmartboxSimulator
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
-
-from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 gc.disable()  # Bug in garbage collection causes tests to hang.
 TIMEOUT = 30
@@ -139,100 +136,6 @@ def _set_attribute_thresholds(
         device.set_attribute_config(attribute_config)
     except tango.DevFailed:
         pytest.xfail("Ran into PyTango monitor lock issue, to be fixed in 10.1.0")
-
-
-@pytest.fixture(name="test_context")
-def test_context_fixture(
-    pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
-    smartbox_ids_to_test: list[int],
-    smartbox_attached_ports: list[int],
-    smartbox_attached_antennas: list[list[bool]],
-    smartbox_attached_antenna_names: list[list[str]],
-    station_label: str,
-) -> Iterator[PasdTangoTestHarnessContext]:
-    """
-    Fixture that returns a proxy to the PaSD bus Tango device under test.
-
-    Here we use 1 pasd bus, 1 fndh, 1 field station, 1 fncc and 24 smartboxes.
-
-    :param pasd_hw_simulators: the FNDH and smartbox simulators against which to test
-    :param smartbox_ids_to_test: a list of the smartbox ids used in this test.
-    :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
-        is connected to.
-    :param smartbox_attached_antennas: smartbox port numbers each antenna is
-        connected to for each smartbox.
-    :param smartbox_attached_antenna_names: names of each antenna connected to
-        each smartbox.
-    :yield: a test context in which to run the integration tests.
-    """
-    with patch("ska_low_mccs_pasd.pasd_utils.Database") as db:
-        # pylint: disable=too-many-return-statements
-        def my_func(device_name: str, property_name: str) -> list:
-            match property_name:
-                case "inputvoltagethresholds":
-                    return [50.0, 49.0, 45.0, 40.0]
-                case "powersupplyoutputvoltagethresholds":
-                    return [5.0, 4.9, 4.4, 4.0]
-                case "powersupplytemperaturethresholds":
-                    return [85.0, 70.0, 0.0, -5.0]
-                case "pcbtemperaturethresholds":
-                    return [85.0, 70.0, 0.0, -5.0]
-                case "femambienttemperaturethresholds":
-                    return [60.0, 45.0, 0.0, -5.0]
-                case "femcasetemperature1thresholds":
-                    return [60.0, 45.0, 0.0, -5.0]
-                case "femcasetemperature2thresholds":
-                    return [60.0, 45.0, 0.0, -5.0]
-                case "femheatsinktemperature1thresholds":
-                    return [60.0, 45.0, 0.0, -5.0]
-                case "femheatsinktemperature2thresholds":
-                    return [60.0, 45.0, 0.0, -5.0]
-                case "femcurrenttripthresholds":
-                    return [496, 496, 496, 496, 496, 496, 496, 496, 496, 496, 496, 496]
-            return []
-
-        db.return_value.get_device_attribute_property = my_func
-        harness = PasdTangoTestHarness(station_label=station_label)
-        # Set up pasdbus
-        harness.set_pasd_bus_simulator(pasd_hw_simulators)
-        harness.set_pasd_bus_device(
-            station_label=station_label,
-            polling_rate=0.1,
-            device_polling_rate=0.1,
-            available_smartboxes=smartbox_ids_to_test,
-            logging_level=int(LoggingLevel.FATAL),
-        )
-        # Set up FNDH
-        harness.set_fndh_device(
-            int(LoggingLevel.ERROR), ports_with_smartbox=smartbox_attached_ports
-        )
-        # Set up fncc
-        harness.set_fncc_device(int(LoggingLevel.ERROR))
-
-        # set up smartboxes
-        for smartbox_id in smartbox_ids_to_test:
-            harness.add_smartbox_device(
-                smartbox_id,
-                int(LoggingLevel.ERROR),
-                fndh_port=smartbox_attached_ports[smartbox_id - 1],
-                ports_with_antennas=[
-                    idx + 1
-                    for idx, attached in enumerate(
-                        smartbox_attached_antennas[smartbox_id - 1]
-                    )
-                    if attached
-                ],
-                antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
-            )
-        # Set up field station
-        harness.set_field_station_device(
-            station_label=station_label,
-            smartbox_numbers=smartbox_ids_to_test,
-            logging_level=int(LoggingLevel.ERROR),
-        )
-
-        with harness as context:
-            yield context
 
 
 # pylint: disable=too-few-public-methods

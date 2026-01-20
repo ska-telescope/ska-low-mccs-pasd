@@ -1105,6 +1105,7 @@ def on_smartbox_device_configurable_fixture(
     return test_context_db_configurable.get_smartbox_device(on_smartbox_id)
 
 
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 @pytest.fixture(name="test_context_db_configurable")
 def test_context_db_configurable_fixture(
     pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],

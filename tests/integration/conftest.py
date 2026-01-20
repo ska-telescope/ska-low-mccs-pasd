@@ -234,6 +234,7 @@ def off_smartbox_attached_port_fixture(
     return smartbox_attached_ports[off_smartbox_id - 1]
 
 
+# pylint: disable=too-many-positional-arguments, too-many-arguments
 @pytest.fixture(name="test_context")
 def test_context_fixture(
     pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
@@ -246,8 +247,10 @@ def test_context_fixture(
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
 
+    Here we use 1 pasd bus, 1 fndh, 1 field station, 1 fncc and 24 smartboxes.
+
     :param pasd_hw_simulators: the FNDH and smartbox simulators against which to test
-    :param smartbox_ids_to_test: a list of the smarbox id's used in this test.
+    :param smartbox_ids_to_test: a list of the smartbox ids used in this test.
     :param smartbox_attached_ports: a list of FNDH port numbers each smartbox
         is connected to.
     :param smartbox_attached_antennas: smartbox port numbers each antenna is
@@ -284,9 +287,8 @@ def test_context_fixture(
             return []
 
         db.return_value.get_device_attribute_property = my_func
-
         harness = PasdTangoTestHarness(station_label=station_label)
-
+        # Set up pasdbus
         harness.set_pasd_bus_simulator(pasd_hw_simulators)
         harness.set_pasd_bus_device(
             station_label=station_label,
@@ -295,8 +297,14 @@ def test_context_fixture(
             available_smartboxes=smartbox_ids_to_test,
             logging_level=int(LoggingLevel.FATAL),
         )
-        harness.set_fndh_device(int(LoggingLevel.ERROR))
+        # Set up FNDH
+        harness.set_fndh_device(
+            int(LoggingLevel.ERROR), ports_with_smartbox=smartbox_attached_ports
+        )
+        # Set up fncc
         harness.set_fncc_device(int(LoggingLevel.ERROR))
+
+        # set up smartboxes
         for smartbox_id in smartbox_ids_to_test:
             harness.add_smartbox_device(
                 smartbox_id,
@@ -311,6 +319,7 @@ def test_context_fixture(
                 ],
                 antenna_names=smartbox_attached_antenna_names[smartbox_id - 1],
             )
+        # Set up field station
         harness.set_field_station_device(
             station_label=station_label,
             smartbox_numbers=smartbox_ids_to_test,

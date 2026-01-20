@@ -228,6 +228,7 @@ class PasdTangoTestHarness:
         )
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
+    # pylint: disable=too-many-locals
     def set_pasd_bus_device(
         self: PasdTangoTestHarness,
         station_label: str,
