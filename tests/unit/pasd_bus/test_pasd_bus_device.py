@@ -74,6 +74,7 @@ def pasd_bus_device_fixture(
     mock_pasd_hw_simulators: dict[
         int, FndhSimulator | FnccSimulator | SmartboxSimulator
     ],
+    station_label: str,
 ) -> tango.DeviceProxy:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
@@ -81,11 +82,14 @@ def pasd_bus_device_fixture(
     :param mock_pasd_hw_simulators:
         the FNDH and smartbox simulator backends that the TCP server will front,
         each wrapped with a mock so that we can assert calls.
+    :param station_label: The label of the station under test.
     :yield: a proxy to the PaSD bus Tango device under test.
     """
-    harness = PasdTangoTestHarness()
+    harness = PasdTangoTestHarness(station_label=station_label)
     harness.set_pasd_bus_simulator(mock_pasd_hw_simulators)
-    harness.set_pasd_bus_device(polling_rate=0.1, device_polling_rate=0.1)
+    harness.set_pasd_bus_device(
+        station_label=station_label, polling_rate=0.1, device_polling_rate=0.1
+    )
     with harness as context:
         pasd_bus_device = context.get_pasd_bus_device()
         pasd_bus_device.simulationMode = SimulationMode.TRUE
@@ -149,6 +153,7 @@ def pasd_bus_device_using_smartbox_ids_fixture(
         int, FndhSimulator | FnccSimulator | SmartboxSimulator
     ],
     smartbox_ids: list[int],
+    station_label: str,
 ) -> tango.DeviceProxy:
     """
     Fixture that returns a proxy to the PaSD bus Tango device under test.
@@ -157,11 +162,13 @@ def pasd_bus_device_using_smartbox_ids_fixture(
         the FNDH and smartbox simulator backends that the TCP server will front,
         each wrapped with a mock so that we can assert calls.
     :param smartbox_ids: list of smartbox IDs to set on the PaSD bus device.
+    :param station_label: The label of the station under test.
     :yield: a proxy to the PaSD bus Tango device under test.
     """
-    harness = PasdTangoTestHarness()
+    harness = PasdTangoTestHarness(station_label=station_label)
     harness.set_pasd_bus_simulator(mock_pasd_hw_simulators)
     harness.set_pasd_bus_device(
+        station_label=station_label,
         polling_rate=0.1,
         device_polling_rate=0.1,
         smartbox_ids=smartbox_ids,

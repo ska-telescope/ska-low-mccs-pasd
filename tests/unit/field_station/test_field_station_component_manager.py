@@ -80,18 +80,18 @@ def mock_fndh_fixture(mocked_outside_temperature: float) -> unittest.mock.Mock:
 
 @pytest.fixture(name="test_context")
 def test_context_fixture(
-    mock_fndh: unittest.mock.Mock,
-    mock_smartbox: unittest.mock.Mock,
+    mock_fndh: unittest.mock.Mock, mock_smartbox: unittest.mock.Mock, station_label: str
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Create a test context containing a single mock PaSD bus device.
 
     :param mock_fndh: A mock FNDH device.
     :param mock_smartbox: A mock Smartbox devices.
+    :param station_label: The label of the station under test.
 
     :yield: the test context
     """
-    harness = PasdTangoTestHarness()
+    harness = PasdTangoTestHarness(station_label=station_label)
     harness.set_mock_fndh_device(mock_fndh)
     for smartbox_id in range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         harness.set_mock_smartbox_device(mock_smartbox, smartbox_id)
@@ -108,6 +108,7 @@ class TestFieldStationComponentManager:
         test_context: str,
         logger: logging.Logger,
         mock_callbacks: MockCallableGroup,
+        station_label: str,
     ) -> FieldStationComponentManager:
         """
         Return an FieldStation component manager.
@@ -115,15 +116,16 @@ class TestFieldStationComponentManager:
         :param test_context: a test context containing the Tango devices.
         :param logger: a logger for this command to use.
         :param mock_callbacks: mock callables.
+        :param station_label: The label of the station under test.
 
         :return: an FieldStation component manager.
         """
         return FieldStationComponentManager(
             logger,
             "ci-1",
-            get_fndh_name(),
+            get_fndh_name(station_label=station_label),
             [
-                get_smartbox_name(smartbox_id)
+                get_smartbox_name(smartbox_id, station_label=station_label)
                 for smartbox_id in range(
                     1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
                 )

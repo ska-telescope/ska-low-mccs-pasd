@@ -63,6 +63,7 @@ def pasd_bus_component_manager_fixture(
     ],
     logger: logging.Logger,
     mock_callbacks: MockCallableGroup,
+    station_label: str,
 ) -> Iterator[PasdBusComponentManager]:
     """
     Return a PaSD bus component manager, running against a PaSD bus simulator.
@@ -73,6 +74,7 @@ def pasd_bus_component_manager_fixture(
     :param logger: the logger to be used by this object.
     :param mock_callbacks: a group of mock callables for the component
         manager under test to use as callbacks
+    :param station_label: The label of the station under test.
 
     :yields: a PaSD bus component manager, running against a simulator.
     """
@@ -86,7 +88,7 @@ def pasd_bus_component_manager_fixture(
             device_name = f"smartbox{device_id}"
         mock_callbacks[f"pasd_device_state_for_{device_name}"](**kwargs)
 
-    harness = PasdTangoTestHarness()
+    harness = PasdTangoTestHarness(station_label=station_label)
     harness.set_pasd_bus_simulator(mock_pasd_hw_simulators)
     with harness as context:
         (host, port) = context.get_pasd_bus_address()

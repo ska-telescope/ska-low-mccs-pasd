@@ -42,15 +42,17 @@ def mock_pasdbus_fixture() -> unittest.mock.Mock:
 @pytest.fixture(name="test_context")
 def test_context_fixture(
     mock_pasdbus: unittest.mock.Mock,
+    station_label: str,
 ) -> Iterator[PasdTangoTestHarnessContext]:
     """
     Create a test context containing a single mock PaSD bus device.
 
     :param mock_pasdbus: A mock PaSD bus device.
+    :param station_label: The label of the station under test.
 
     :yield: the test context
     """
-    harness = PasdTangoTestHarness()
+    harness = PasdTangoTestHarness(station_label=station_label)
     harness.set_mock_pasd_bus_device(mock_pasdbus)
     with harness as context:
         yield context
@@ -65,6 +67,7 @@ class TestPasdBusProxy:
         test_context: str,
         logger: logging.Logger,
         mock_callbacks: MockCallableGroup,
+        station_label: str,
     ) -> _PasdBusProxy:
         """
         Return a proxy to the PasdBus for testing.
@@ -74,11 +77,12 @@ class TestPasdBusProxy:
         :param test_context: a test context containing the Tango devices.
         :param logger: a logger for the PaSD bus proxy to use
         :param mock_callbacks: A group of callables.
+        :param station_label: The label of the station under test.
 
         :return: a proxy to the PaSD bus device.
         """
         return _PasdBusProxy(
-            get_pasd_bus_name(),
+            get_pasd_bus_name(station_label=station_label),
             logger,
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
@@ -120,6 +124,7 @@ class TestFnccComponentManager:
         test_context: str,
         logger: logging.Logger,
         mock_callbacks: MockCallableGroup,
+        station_label: str,
     ) -> FnccComponentManager:
         """
         Return an FNCC component manager.
@@ -127,6 +132,7 @@ class TestFnccComponentManager:
         :param test_context: a test context containing the Tango devices.
         :param logger: a logger for this command to use.
         :param mock_callbacks: mock callables.
+        :param station_label: The label of the station under test.
 
         :return: an FNCC component manager.
         """
@@ -135,7 +141,7 @@ class TestFnccComponentManager:
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
             mock_callbacks["attribute_update"],
-            get_pasd_bus_name(),
+            get_pasd_bus_name(station_label=station_label),
         )
 
     def test_communication(

@@ -216,6 +216,7 @@ def check_mccs_is_disabled(
 def check_mccs_is_on(
     pasd_bus_device: tango.DeviceProxy,
     change_event_callbacks: MockTangoEventCallbackGroup,
+    station_label: str,
 ) -> None:
     """
     Check that MCCS-for-PaSD is in ON state.
@@ -223,10 +224,11 @@ def check_mccs_is_on(
     :param pasd_bus_device: a proxy to the PaSD bus device.
     :param change_event_callbacks: dictionary of Tango change event
         callbacks with asynchrony support.
+    :param station_label: The label of the station under test.
     """
     if pasd_bus_device.state() == tango.DevState.DISABLE:
         put_pasd_bus_device_online(pasd_bus_device)
-        check_state_becomes_on(change_event_callbacks)
+        check_state_becomes_on(change_event_callbacks, station_label=station_label)
     assert pasd_bus_device.state() == tango.DevState.ON
 
 
@@ -257,15 +259,18 @@ def put_pasd_bus_device_online(
 
 @then("MCCS-for-PaSD reports ON state")
 def check_state_becomes_on(
-    change_event_callbacks: MockTangoEventCallbackGroup,
+    change_event_callbacks: MockTangoEventCallbackGroup, station_label: str
 ) -> None:
     """
     Check that the state of the PaSD bus device progresses from UNKNOWN.
 
     :param change_event_callbacks: dictionary of Tango change event
         callbacks with asynchrony support.
+    :param station_label: The label of the station under test.
     """
-    change_event_callbacks[f"{get_pasd_bus_name()}/state"].assert_change_event(
+    change_event_callbacks[
+        f"{get_pasd_bus_name(station_label=station_label)}/state"
+    ].assert_change_event(
         tango.DevState.ON,
         lookahead=10,  # TODO: We only need 3 in lightweight testing. Why?
         consume_nonmatches=True,
@@ -279,6 +284,7 @@ def check_monitoring_point_is_reported(
     smartbox_id: int,
     monitoring_point: str,
     pasd_bus_device: tango.DeviceProxy,
+    station_label: str,
 ) -> None:
     """
     Check that an event is received corresponding to the monitoring point of interest.
@@ -288,6 +294,7 @@ def check_monitoring_point_is_reported(
     :param smartbox_id: number of the smartbox under test.
     :param monitoring_point: reference to a monitoring point.
     :param pasd_bus_device: a proxy to the PaSD bus device.
+    :param station_label: The label of the station under test.
     """
     attribute_name_map = {
         "FNDH uptime": "fndhUptime",
@@ -341,7 +348,7 @@ def check_monitoring_point_is_reported(
     except tango.DevFailed:
         print("Reading attribute raised a devfailed, likely not polled. Waiting .....")
         change_event_callbacks[
-            f"{get_pasd_bus_name()}/{attribute_name}"
+            f"{get_pasd_bus_name(station_label=station_label)}/{attribute_name}"
         ].assert_change_event(Anything)
 
 
@@ -349,6 +356,7 @@ def check_monitoring_point_is_reported(
 def check_health_becomes_okay(
     change_event_callbacks: MockTangoEventCallbackGroup,
     pasd_bus_device: tango.DeviceProxy,
+    station_label: str,
 ) -> None:
     """
     Check that the health of the PaSD bus device becomes OK.
@@ -356,10 +364,11 @@ def check_health_becomes_okay(
     :param change_event_callbacks: dictionary of Tango change event
         callbacks with asynchrony support.
     :param pasd_bus_device: a proxy to the PaSD bus device.
+    :param station_label: The label of the station under test.
     """
     if pasd_bus_device.healthstate != HealthState.OK:
         change_event_callbacks[
-            f"{get_pasd_bus_name()}/healthState"
+            f"{get_pasd_bus_name(station_label=station_label)}/healthState"
         ].assert_change_event(
             HealthState.OK,
             lookahead=6,  # TODO: This isn't needed at all in lightweight testing. Why?
@@ -373,6 +382,7 @@ def check_fndh_port_is_off(
     pasd_bus_device: tango.DeviceProxy,
     fndh_port_no: int,
     change_event_callbacks: MockTangoEventCallbackGroup,
+    station_label: str,
 ) -> None:
     """
     Check that the FNDH port is off.
@@ -381,12 +391,13 @@ def check_fndh_port_is_off(
     :param fndh_port_no: an FNDH port.
     :param change_event_callbacks: dictionary of Tango change event
         callbacks with asynchrony support.
+    :param station_label: The label of the station under test.
     """
     try:
         fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
     except tango.DevFailed:
         change_event_callbacks[
-            f"{get_pasd_bus_name()}/fndhPortsPowerSensed"
+            f"{get_pasd_bus_name(station_label=station_label)}/fndhPortsPowerSensed"
         ].assert_change_event(
             Anything,
         )
@@ -399,6 +410,7 @@ def check_fndh_port_is_off(
             fndh_port_no,
             change_event_callbacks,
             "off",
+            station_label=station_label,
         )
         fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
         is_on = fndh_ports_power_sensed[fndh_port_no - 1]
@@ -410,6 +422,7 @@ def check_fndh_port_is_on(
     pasd_bus_device: tango.DeviceProxy,
     fndh_port_no: int,
     change_event_callbacks: MockTangoEventCallbackGroup,
+    station_label: str,
 ) -> None:
     """
     Check that the FNDH port is on.
@@ -418,12 +431,13 @@ def check_fndh_port_is_on(
     :param fndh_port_no: an FNDH port.
     :param change_event_callbacks: dictionary of Tango change event
         callbacks with asynchrony support.
+    :param station_label: The label of the station under test.
     """
     try:
         fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
     except tango.DevFailed:
         change_event_callbacks[
-            f"{get_pasd_bus_name()}/fndhPortsPowerSensed"
+            f"{get_pasd_bus_name(station_label=station_label)}/fndhPortsPowerSensed"
         ].assert_change_event(
             Anything,
         )
@@ -436,6 +450,7 @@ def check_fndh_port_is_on(
             fndh_port_no,
             change_event_callbacks,
             "on",
+            station_label=station_label,
         )
         fndh_ports_power_sensed = pasd_bus_device.fndhPortsPowerSensed
         is_on = fndh_ports_power_sensed[fndh_port_no - 1]
@@ -486,6 +501,7 @@ def check_fndh_port_changes_power_state(
     fndh_port_no: int,
     change_event_callbacks: MockTangoEventCallbackGroup,
     state_name: Literal["off", "on"],
+    station_label: str,
 ) -> None:
     """
     Check that the FNDH port changes power state.
@@ -495,6 +511,7 @@ def check_fndh_port_changes_power_state(
     :param change_event_callbacks: dictionary of Tango change event
         callbacks with asynchrony support.
     :param state_name: name of the expected power state: "on" or "off".
+    :param station_label: The label of the station under test.
     """
     state_map = {"on": True, "off": False}
 
@@ -502,7 +519,7 @@ def check_fndh_port_changes_power_state(
     expected_powered[fndh_port_no - 1] = state_map[state_name]
 
     change_event_callbacks[
-        f"{get_pasd_bus_name()}/fndhPortsPowerSensed"
+        f"{get_pasd_bus_name(station_label=station_label)}/fndhPortsPowerSensed"
     ].assert_change_event(
         expected_powered,
         lookahead=5,  # TODO: This only needs 2 in lightweight testing. Why?
@@ -519,6 +536,7 @@ def check_smartbox_port_power_state(
     smartbox_port_no: int,
     smartbox_id: int,
     power_state: Literal["off", "on"],
+    station_label: str,
 ) -> None:
     """
     Check that the smartbox port is off/on.
@@ -529,6 +547,7 @@ def check_smartbox_port_power_state(
     :param smartbox_port_no: a smartbox port.
     :param smartbox_id: number of the smartbox under test.
     :param power_state: name of the expected power state: "on" or "off".
+    :param station_label: The label of the station under test.
     """
     for _ in range(6):
         try:
@@ -537,7 +556,8 @@ def check_smartbox_port_power_state(
             )
         except tango.DevFailed:
             change_event_callbacks[
-                f"{get_pasd_bus_name()}/smartbox{smartbox_id}PortsPowerSensed"
+                f"{get_pasd_bus_name(station_label=station_label)}"
+                f"/smartbox{smartbox_id}PortsPowerSensed"
             ].assert_change_event(Anything)
         finally:
             smartbox_ports_power_sensed = getattr(
@@ -545,7 +565,8 @@ def check_smartbox_port_power_state(
             )
         if smartbox_ports_power_sensed is None:
             change_event_callbacks[
-                f"{get_pasd_bus_name()}/smartbox{smartbox_id}PortsPowerSensed"
+                f"{get_pasd_bus_name(station_label=station_label)}"
+                f"/smartbox{smartbox_id}PortsPowerSensed"
             ].assert_change_event(Anything)
         else:
             break
@@ -560,6 +581,7 @@ def check_smartbox_port_power_state(
             smartbox_port_no,
             change_event_callbacks,
             power_state,
+            station_label,
         )
         smartbox_ports_power_sensed = getattr(
             pasd_bus_device, f"smartbox{smartbox_id}PortsPowerSensed"
@@ -601,6 +623,7 @@ def check_smartbox_port_changes_power_state(
     smartbox_port_no: int,
     change_event_callbacks: MockTangoEventCallbackGroup,
     state_name: Literal["off", "on"],
+    station_label: str,
 ) -> None:
     """
     Check that the specified smartbox port reports a new power state.
@@ -611,6 +634,7 @@ def check_smartbox_port_changes_power_state(
     :param change_event_callbacks: dictionary of Tango change event
         callbacks with asynchrony support.
     :param state_name: name of the expected power state: "on" or "off".
+    :param station_label: The label of the station under test.
     """
     state_map = {"on": True, "off": False}
 
@@ -620,7 +644,8 @@ def check_smartbox_port_changes_power_state(
     expected_powered[smartbox_port_no - 1] = state_map[state_name]
 
     change_event_callbacks[
-        f"{get_pasd_bus_name()}/smartbox{smartbox_id}PortsPowerSensed"
+        f"{get_pasd_bus_name(station_label=station_label)}"
+        f"/smartbox{smartbox_id}PortsPowerSensed"
     ].assert_change_event(
         expected_powered,
         lookahead=7,  # TODO: This only needs 2 in lightweight testing. Why?

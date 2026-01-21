@@ -21,68 +21,61 @@ from tests.conftest import (
 if TYPE_CHECKING:
     from ska_low_pasd_driver import FnccSimulator, FndhSimulator, SmartboxSimulator
 
-DEFAULT_STATION_LABEL = "ci-1"  # station 1 of cluster "ci"
 
-
-def get_pasd_bus_name(station_label: str | None = None) -> str:
+def get_pasd_bus_name(station_label: str) -> str:
     """
     Return the PaSD bus Tango device name.
 
     :param station_label: name of the station under test.
-        Defaults to None, in which case the module default is used.
 
     :return: the PaSD bus Tango device name
     """
-    return f"low-mccs/pasdbus/{station_label or DEFAULT_STATION_LABEL}"
+    return f"low-mccs/pasdbus/{station_label}"
 
 
-def get_field_station_name(station_label: str | None = None) -> str:
+def get_field_station_name(station_label: str) -> str:
     """
     Return the field_station Tango device name.
 
     :param station_label: name of the station under test.
-        Defaults to None, in which case the module default is used.
 
     :return: the field station Tango device name
     """
-    return f"low-mccs/fieldstation/{station_label or DEFAULT_STATION_LABEL}"
+    return f"low-mccs/fieldstation/{station_label}"
 
 
-def get_fndh_name(station_label: str | None = None) -> str:
+def get_fndh_name(station_label: str) -> str:
     """
     Return the FNDH Tango device name.
 
     :param station_label: name of the station under test.
-        Defaults to None, in which case the module default is used.
 
     :return: the FNDH Tango device name
     """
-    return f"low-mccs/fndh/{station_label or DEFAULT_STATION_LABEL}"
+    return f"low-mccs/fndh/{station_label}"
 
 
-def get_fncc_name(station_label: str | None = None) -> str:
+def get_fncc_name(station_label: str) -> str:
     """
     Return the FNCC Tango device name.
 
     :param station_label: name of the station under test.
-        Defaults to None, in which case the module default is used.
 
     :return: the FNCC Tango device name
     """
-    return f"low-mccs/fncc/{station_label or DEFAULT_STATION_LABEL}"
+    return f"low-mccs/fncc/{station_label}"
 
 
-def get_smartbox_name(smartbox_id: int, station_label: str | None = None) -> str:
+def get_smartbox_name(smartbox_id: int, station_label: str) -> str:
     """
     Return a smartbox's  Tango device name.
 
     :param smartbox_id: ID of the smartbox under test.
     :param station_label: name of the station under test.
-        Defaults to None, in which case the module default is used.
 
     :return: the smartbox's Tango device name
     """
-    slug = f"{station_label or DEFAULT_STATION_LABEL}-sb{smartbox_id:02d}"
+    slug = f"{station_label}-sb{smartbox_id:02d}"
     return f"low-mccs/smartbox/{slug}"
 
 
@@ -199,14 +192,14 @@ def server_context_manager_factory(
 class PasdTangoTestHarness:
     """A test harness for testing monitoring and control of PaSD hardware."""
 
-    def __init__(self: PasdTangoTestHarness, station_label: str | None = None) -> None:
+    def __init__(self: PasdTangoTestHarness, station_label: str) -> None:
         """
         Initialise a new test harness instance.
 
         :param station_label: name of the station under test.
             Defaults to None, in which case "ci-1" is used.
         """
-        self._station_label = station_label or DEFAULT_STATION_LABEL
+        self._station_label = station_label
         self._tango_test_harness = TangoTestHarness()
 
     def set_pasd_bus_simulator(
@@ -235,8 +228,10 @@ class PasdTangoTestHarness:
         )
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
+    # pylint: disable=too-many-locals
     def set_pasd_bus_device(
         self: PasdTangoTestHarness,
+        station_label: str,
         address: tuple[str, int] | None = None,
         polling_rate: float = 0.5,
         device_polling_rate: float = 15.0,
@@ -257,6 +252,7 @@ class PasdTangoTestHarness:
         :param address: address of the PaSD
             to be monitored and controlled by this Tango device.
             It is a tuple of hostname or IP address, and port.
+        :param station_label: The label of the station under test.
         :param polling_rate: minimum amount of time between communications
             on the PaSD bus
         :param device_polling_rate: minimum amount of time between communications
@@ -307,7 +303,7 @@ class PasdTangoTestHarness:
             "SBInputVoltageThresholds": input_voltage_thresholds,
             "SimulationConfig": int(SimulationMode.TRUE),
             "AvailableSmartboxes": available_smartboxes,
-            "ParentTRL": get_field_station_name(),
+            "ParentTRL": get_field_station_name(station_label=station_label),
             "LoggingLevelDefault": logging_level,
         }
         if smartbox_ids:
@@ -332,6 +328,7 @@ class PasdTangoTestHarness:
 
     def set_field_station_device(
         self: PasdTangoTestHarness,
+        station_label: str,
         smartbox_numbers: list[int] | None = None,
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsFieldStation",
@@ -341,6 +338,7 @@ class PasdTangoTestHarness:
 
         This test harness currently only permits one Field Station device.
 
+        :param station_label: The label of the station under test.
         :param smartbox_numbers: numbers of the smartboxes
         :param logging_level: the Tango device's default logging level.
         :param device_class: The device class to use.
@@ -350,13 +348,16 @@ class PasdTangoTestHarness:
         if smartbox_numbers is None:
             smartbox_numbers = list(range(1, MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1))
 
-        smartbox_names = [get_smartbox_name(number) for number in smartbox_numbers]
+        smartbox_names = [
+            get_smartbox_name(number, station_label=station_label)
+            for number in smartbox_numbers
+        ]
 
         self._tango_test_harness.add_device(
             get_field_station_name(self._station_label),
             device_class,
             StationName=self._station_label,
-            FndhFQDN=get_fndh_name(),
+            FndhFQDN=get_fndh_name(station_label=station_label),
             SmartBoxFQDNs=smartbox_names,
             LoggingLevelDefault=logging_level,
         )
@@ -384,8 +385,8 @@ class PasdTangoTestHarness:
         self._tango_test_harness.add_device(
             get_fndh_name(self._station_label),
             device_class,
-            PasdFQDN=get_pasd_bus_name(),
-            ParentTRL=get_field_station_name(),
+            PasdFQDN=get_pasd_bus_name(self._station_label),
+            ParentTRL=get_field_station_name(self._station_label),
             PortsWithSmartbox=ports_with_smartbox,
             LoggingLevelDefault=logging_level,
         )
@@ -408,8 +409,8 @@ class PasdTangoTestHarness:
         self._tango_test_harness.add_device(
             get_fncc_name(self._station_label),
             device_class,
-            PasdFQDN=get_pasd_bus_name(),
-            ParentTRL=get_field_station_name(),
+            PasdFQDN=get_pasd_bus_name(self._station_label),
+            ParentTRL=get_field_station_name(self._station_label),
             LoggingLevelDefault=logging_level,
         )
 
@@ -486,9 +487,9 @@ class PasdTangoTestHarness:
         self._tango_test_harness.add_device(
             get_smartbox_name(smartbox_id, station_label=self._station_label),
             device_class,
-            FieldStationName=get_field_station_name(),
-            PasdFQDN=get_pasd_bus_name(),
-            ParentTRL=get_field_station_name(),
+            FieldStationName=get_field_station_name(self._station_label),
+            PasdFQDN=get_pasd_bus_name(self._station_label),
+            ParentTRL=get_field_station_name(self._station_label),
             SmartBoxNumber=smartbox_id,
             LoggingLevelDefault=logging_level,
             PortsWithAntennas=ports_with_antennas,

@@ -102,16 +102,6 @@ def pasd_address_fixture() -> tuple[str, int] | None:
     return None
 
 
-@pytest.fixture(name="station_label")
-def station_label_fixture() -> str | None:
-    """
-    Return the name of the station under test.
-
-    :return: the name of the station under test.
-    """
-    return os.environ.get("STATION_LABEL", "ci-1")
-
-
 @pytest.fixture(name="pasd_timeout")
 def pasd_timeout_fixture() -> Optional[float]:
     """
@@ -168,12 +158,12 @@ def smartboxes_under_test_fixture(
                 functional_test_context.get_smartbox_device(smartbox_id)
             )
     else:
-        db = tango.Database()
-        devices_exported = db.get_device_exported("*")
-        for device_name in devices_exported:
-            if f"low-mccs/smartbox/{station_label}-sb" in device_name:
-                smartbox_proxy = tango.DeviceProxy(device_name)
-                smartboxes_under_test.append(smartbox_proxy)
+        smartboxes_exported = tango.Database().get_device_exported(
+            f"low-mccs/smartbox/{station_label}-sb*"
+        )
+        for smartbox_exported in smartboxes_exported:
+            smartbox_proxy = tango.DeviceProxy(smartbox_exported)
+            smartboxes_under_test.append(smartbox_proxy)
 
     return smartboxes_under_test
 
@@ -274,6 +264,7 @@ def functional_test_context_fixture(
                 # Set devices for test harness
                 harness.set_pasd_bus_simulator(pasd_hw_simulators)
                 harness.set_pasd_bus_device(
+                    station_label=station_label,
                     timeout=pasd_timeout,
                     polling_rate=0.05,
                     device_polling_rate=0.1,
@@ -300,7 +291,11 @@ def functional_test_context_fixture(
                     ports_with_smartbox=fndh_ports_with_smartboxes,
                 )
                 harness.set_fncc_device(int(LoggingLevel.ERROR))
-                harness.set_field_station_device(smartbox_ids, int(LoggingLevel.ERROR))
+                harness.set_field_station_device(
+                    station_label=station_label,
+                    smartbox_numbers=smartbox_ids,
+                    logging_level=int(LoggingLevel.ERROR),
+                )
 
             with harness as context:
                 yield context
@@ -437,15 +432,18 @@ def state_mapping_fixture() -> dict[str, tango.DevState]:
 
 
 @pytest.fixture(name="device_subscriptions")
-def device_subscriptions_fixture(smartbox_id: int) -> dict[str, list[str]]:
+def device_subscriptions_fixture(
+    smartbox_id: int, station_label: str
+) -> dict[str, list[str]]:
     """
     Return a dictionary mapping device name to list of subscriptions to make.
 
     :param smartbox_id: number of the smartbox under test.
+    :param station_label: label of the station under test.
     :return: A dictionary mapping device name to list of subscriptions to make.
     """
     device_subscriptions = {
-        get_pasd_bus_name(): [
+        get_pasd_bus_name(station_label=station_label): [
             "state",
             "healthState",
             "adminMode",
@@ -484,12 +482,12 @@ def device_subscriptions_fixture(smartbox_id: int) -> dict[str, list[str]]:
             f"smartbox{smartbox_id}FemHeatsinkTemperature2",
             f"smartbox{smartbox_id}PortsPowerSensed",
         ],
-        get_fndh_name(): [
+        get_fndh_name(station_label=station_label): [
             "state",
             "healthState",
             "adminMode",
         ],
-        get_field_station_name(): [
+        get_field_station_name(station_label=station_label): [
             "state",
             "healthState",
             "adminMode",
@@ -499,7 +497,7 @@ def device_subscriptions_fixture(smartbox_id: int) -> dict[str, list[str]]:
     for i in range(1, MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1):
         device_subscriptions.update(
             {
-                get_smartbox_name(i): [
+                get_smartbox_name(i, station_label=station_label): [
                     "state",
                     "healthState",
                     "adminMode",

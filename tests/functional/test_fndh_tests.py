@@ -134,6 +134,7 @@ def command_port_power_state(
 def check_pasd_port_power_changed(
     change_event_callbacks: MockTangoEventCallbackGroup,
     clipboard: dict,
+    station_label: str,
 ) -> None:
     """
     Check the power state of port given by port no has/will change.
@@ -141,9 +142,10 @@ def check_pasd_port_power_changed(
     :param change_event_callbacks: dictionary of Tango change event
         callbacks with asynchrony support.
     :param clipboard: a place to store information across BDD steps.
+    :param station_label: The label of the station under test.
     """
     change_event_callbacks[
-        f"{get_pasd_bus_name()}/fndhPortsPowerSensed"
+        f"{get_pasd_bus_name(station_label=station_label)}/fndhPortsPowerSensed"
     ].assert_change_event(
         clipboard["expected_power_sensed"],
         lookahead=3,  # TODO: This isn't needed at all in lightweight testing

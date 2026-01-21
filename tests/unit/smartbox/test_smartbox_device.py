@@ -31,14 +31,14 @@ gc.disable()
 
 @pytest.fixture(name="smartbox_device")
 def smartbox_device_fixture(
-    smartbox_number: int,
-    mock_pasdbus: unittest.mock.Mock,
+    smartbox_number: int, mock_pasdbus: unittest.mock.Mock, station_label: str
 ) -> tango.DeviceProxy:
     """
     Fixture that returns a proxy to the smartbox Tango device under test.
 
     :param smartbox_number: number of the smartbox under test
     :param mock_pasdbus: A mock PaSD bus device.
+    :param station_label: The label of the station under test.
 
     :yield: a proxy to the smartbox Tango device under test.
     """
@@ -84,7 +84,7 @@ def smartbox_device_fixture(
             return []
 
         db.return_value.get_device_attribute_property = my_func
-        harness = PasdTangoTestHarness()
+        harness = PasdTangoTestHarness(station_label=station_label)
         harness.set_mock_pasd_bus_device(mock_pasdbus)
         harness.add_smartbox_device(
             smartbox_number,

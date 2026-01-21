@@ -14,6 +14,7 @@ functional (BDD).
 from __future__ import annotations
 
 import logging
+import os
 from typing import Final
 
 import pytest
@@ -59,6 +60,16 @@ def logger_fixture() -> logging.Logger:
     debug_logger = logging.getLogger()
     debug_logger.setLevel(logging.DEBUG)
     return debug_logger
+
+
+@pytest.fixture(name="station_label")
+def station_label_fixture() -> str | None:
+    """
+    Return the name of the station under test.
+
+    :return: the name of the station under test.
+    """
+    return os.environ.get("STATION_LABEL") or "ci-1"
 
 
 # pylint: disable=too-few-public-methods
