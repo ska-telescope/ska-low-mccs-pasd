@@ -244,6 +244,8 @@ class FndhComponentManager(TaskExecutorComponentManager):
 
     def start_communicating(self: FndhComponentManager) -> None:  # noqa: C901
         """Establish communication with the pasdBus via a proxy."""
+        if self.communication_state == CommunicationStatus.ESTABLISHED:
+            return
         self._pasd_bus_proxy.start_communicating()
 
     def stop_communicating(self: FndhComponentManager) -> None:
