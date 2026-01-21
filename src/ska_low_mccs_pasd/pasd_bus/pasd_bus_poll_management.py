@@ -562,7 +562,7 @@ class PasdBusRequestProvider:
             # as soon as we encounter a tick less than the minimum.
             del self._ticks[PasdData.FNDH_DEVICE_ID]
             self._ticks[PasdData.FNDH_DEVICE_ID] = 0
-            return PasdData.FNDH_DEVICE_ID, *("READ", "STATUS")
+            return PasdData.FNDH_DEVICE_ID, *("READ", "status")
 
         for device_id, tick in self._ticks.items():
             if tick < self._min_ticks:
