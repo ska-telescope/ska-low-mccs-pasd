@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [SKB-1151] Only start communicating if communications status not already ESTABLISHED.
 * [THORN-382] Add a delay before the next poll after a device fails to respond.
 * [LOW-2008] Switch from Poetry to UV. Note this requires a .dockerignore file to ensure we don't pull in cached files resulting in the
 incorrect path to the Python interpreter (this caused the simulation pod not to start).
