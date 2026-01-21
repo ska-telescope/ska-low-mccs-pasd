@@ -349,6 +349,8 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """Establish communication."""
+        if self.communication_state == CommunicationStatus.ESTABLISHED:
+            return
         self._pasd_bus_proxy.start_communicating()
 
     def _pasd_bus_communication_state_changed(
