@@ -1,5 +1,6 @@
 Feature: field station antenna power control
 
+    @stations(ci-1)
     Scenario Outline: we can turn on any antenna given a station
         Given A MCCS-for-PaSD which is ready
         And PasdBus is initialised

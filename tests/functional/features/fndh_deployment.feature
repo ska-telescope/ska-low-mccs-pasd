@@ -1,4 +1,5 @@
 Feature: fndh tests
+    @stations(ci-1)
     Scenario: Fndh can change port power
         Given A MCCS-for-PaSD which is ready
         And A MccsFndh which is ready

@@ -10,12 +10,13 @@ import logging
 import os
 import time
 from functools import lru_cache
-from typing import Callable, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 from unittest.mock import patch
 
 import _pytest
 import pytest
 import tango
+from _pytest.fixtures import FixtureRequest
 from ska_control_model import AdminMode, LoggingLevel, ResultCode, SimulationMode
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
@@ -56,6 +57,28 @@ def pytest_addoption(
             "need to spin up a Tango test context"
         ),
     )
+
+
+def pytest_bdd_before_scenario(
+    request: FixtureRequest,
+    feature: Any,
+    scenario: Any,
+) -> None:
+    """
+    Skip scenarios not supported on this station.
+
+    :param request: A pytest object giving access to the requesting test
+        context.
+    :param feature: The feature being tested.
+    :param scenario: The scenario being tested.
+    """
+    station_label = request.getfixturevalue("station_label")
+    tag_stations = [tag for tag in scenario.tags if tag.startswith("stations")]
+    allowed = set()
+    for tag in tag_stations:
+        allowed.update(tag.replace("stations(", "").replace(")", "").split(","))
+    if allowed and station_label not in allowed:
+        pytest.skip(f"Scenario not supported on station {station_label}")
 
 
 @pytest.fixture(name="is_true_context")
