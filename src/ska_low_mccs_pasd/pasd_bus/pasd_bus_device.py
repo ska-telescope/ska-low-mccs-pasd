@@ -21,6 +21,7 @@ import tango.server
 from ska_control_model import (
     CommunicationStatus,
     HealthState,
+    LoggingLevel,
     PowerState,
     ResultCode,
     SimulationMode,
@@ -108,6 +109,14 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         default_value=[],
     )
 
+    EnablePyModbusLogging: Final[bool] = tango.server.device_property(
+        dtype=bool, default_value=False
+    )
+
+    PyModbusLogDir: Final[str] = tango.server.device_property(
+        dtype=str, default_value=None
+    )
+
     # ---------
     # Constants
     # ---------
@@ -169,6 +178,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             f"\tSimulationConfig: {self.SimulationConfig}\n"
             f"\tAvailableSmartboxes: {self.AvailableSmartboxes}\n"
             f"\tSmartboxIDs: {self.SmartboxIDs}\n"
+            f"\tEnablePyModbusLogging: {self.EnablePyModbusLogging}\n"
+            f"\tPyModbusLogDir: {self.PyModbusLogDir}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -324,6 +335,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self._pasd_device_state_callback,
             self.AvailableSmartboxes,
             self.SmartboxIDs,
+            self.EnablePyModbusLogging,
+            self.PyModbusLogDir,
         )
 
     def init_command_objects(self: MccsPasdBus) -> None:
@@ -1392,3 +1405,27 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         """
         handler = self.get_command_object("GetPasdDeviceSubscriptions")
         return handler(device_number)
+
+    def set_logging_level(self: MccsPasdBus, value: LoggingLevel) -> None:
+        """
+        Update logging level and explicitly set pymodbus logging level.
+
+        :param value: Logging level for logger
+        """
+        super().set_logging_level(value)
+
+        level_map = {
+            LoggingLevel.OFF: logging.CRITICAL + 1,
+            LoggingLevel.FATAL: logging.FATAL,
+            LoggingLevel.ERROR: logging.ERROR,
+            LoggingLevel.WARNING: logging.WARNING,
+            LoggingLevel.INFO: logging.INFO,
+            LoggingLevel.DEBUG: logging.DEBUG,
+        }
+
+        # Apply setting to pymodbus logging as well
+        logging.getLogger("pymodbus.logging").setLevel(
+            level_map[value]
+            if self.EnablePyModbusLogging
+            else level_map[LoggingLevel.OFF]
+        )
