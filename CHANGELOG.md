@@ -1,9 +1,10 @@
 # Version History
 
-## Unreleased
+## 4.2.0
 
 * [SKB-1151] Only start communicating if communications status not already ESTABLISHED.
 * [THORN-335] Add configurable pymodbus logging.
+* [SKB-1171] Devices which fail to connect to their parent device for adminmode inheritance will now retry forever, however the device will go to alarm if the connection has been failing for the timeout length, the device will go to ALARM. The timeout length defaults to 120s however is configurable through the ParentConnectionTimeout device property.
 * [THORN-382] Add a delay before the next poll after a device fails to respond.
 * [LOW-2008] Switch from Poetry to UV. Note this requires a .dockerignore file to ensure we don't pull in cached files resulting in the
 incorrect path to the Python interpreter (this caused the simulation pod not to start).
