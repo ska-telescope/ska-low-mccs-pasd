@@ -1584,7 +1584,7 @@ health-rollup = [
 
 [[package]]
 name = "ska-low-mccs-common"
-version = "4.2.0"
+version = "4.4.0"
 source = { registry = "https://artefact.skao.int/repository/pypi-internal/simple" }
 dependencies = [
     { name = "attrs" },
@@ -1603,14 +1603,14 @@ dependencies = [
     { name = "ska-tango-testing" },
     { name = "transitions" },
 ]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.2.0/ska_low_mccs_common-4.2.0.tar.gz", hash = "sha256:8bf59d0e32b17c939db1431aa689f80ec2dcbecdb76e63c73dc72c1e4f325042" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.4.0/ska_low_mccs_common-4.4.0.tar.gz", hash = "sha256:d8b1262ae4ec4de7a4421ea339aa05f5ab016f433f4ecf983122bb35074cc66d" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.2.0/ska_low_mccs_common-4.2.0-py3-none-any.whl", hash = "sha256:66dcafebf25dbb026dbd64822c6a3f9e18f471860d4b1e018cc3ff9496bcbffd" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.4.0/ska_low_mccs_common-4.4.0-py3-none-any.whl", hash = "sha256:ba092d4b9b01a687b82ed57805eab4e3256055a0aeb11513ee9d0c56128beeea" },
 ]
 
 [[package]]
 name = "ska-low-mccs-pasd"
-version = "4.1.0"
+version = "4.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "annotated-types" },
