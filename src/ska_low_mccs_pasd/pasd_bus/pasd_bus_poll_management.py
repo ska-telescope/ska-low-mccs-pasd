@@ -102,6 +102,7 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         self._alarm_reset_requested: bool = False
         self._warning_reset_requested: bool = False
         self._status_reset_requested: bool = False
+        self._status_read_requested: bool = False
         self._port_power_changes: list[tuple[bool, bool] | None] = [
             None
         ] * number_of_ports
@@ -135,6 +136,14 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
     def desire_status_reset(self) -> None:
         """Register a request to reset the status register."""
         self._status_reset_requested = True
+
+    def desire_status_read(self) -> None:
+        """Register a request to read the status register.
+
+        This is done whenever a comms failure has occurred to attempt to
+        re-establish communications.
+        """
+        self._status_read_requested = True
 
     def desire_port_powers(
         self,
@@ -444,11 +453,19 @@ class PasdBusRequestProvider:
 
     def desire_status_reset(self, device_id: int) -> None:
         """
-        Register a request to reset the FNCC status register.
+        Register a request to reset the status register.
 
         :param device_id: the device number.
         """
         self._device_request_providers[device_id].desire_status_reset()
+
+    def desire_status_read(self, device_id: int) -> None:
+        """
+        Register a request to read the status register.
+
+        :param device_id: the device number.
+        """
+        self._device_request_providers[device_id].desire_status_read()
 
     def desire_port_powers(
         self,
@@ -509,6 +526,7 @@ class PasdBusRequestProvider:
             cutoff, extra_sensors
         )
 
+    # pylint: disable=too-many-branches
     def get_request(  # noqa: C901
         self, tick_increment: int
     ) -> tuple[int, str, Any] | None:
@@ -524,16 +542,33 @@ class PasdBusRequestProvider:
         for device_id, tick in self._ticks.items():
             self._ticks[device_id] = tick + tick_increment
 
+        # Check if there is an FNDH SYS_STATUS request to re-establish comms.
+        # This should always take priority over everything else.
+        if self._device_request_providers[
+            PasdData.FNDH_DEVICE_ID
+        ]._status_read_requested:
+            if self._ticks[PasdData.FNDH_DEVICE_ID] < self._min_ticks:
+                # This shouldn't ever happen as we delay the poll in
+                # this scenario. Keep returning until enough time has
+                # passed.
+                return None
+            self._device_request_providers[
+                PasdData.FNDH_DEVICE_ID
+            ]._status_read_requested = False
+            # By deleting this before zeroing it,
+            # we ensure the new zeroed value is added to the end of the dict,
+            # and hence the dict is maintained in descending order of ticks,
+            # which is what lets us break out of the following loops
+            # as soon as we encounter a tick less than the minimum.
+            del self._ticks[PasdData.FNDH_DEVICE_ID]
+            self._ticks[PasdData.FNDH_DEVICE_ID] = 0
+            return PasdData.FNDH_DEVICE_ID, *("READ", "status")
+
         for device_id, tick in self._ticks.items():
             if tick < self._min_ticks:
                 break
             write_request = self._device_request_providers[device_id].get_write()
             if write_request != ("NONE", None):
-                # By deleting this before zeroing it,
-                # we ensure the new zeroed value is added to the end of the dict,
-                # and hence the dict is maintained in descending order of ticks,
-                # which is what lets us break out of this loop
-                # as soon as we encounter a tick less than the minimum.
                 del self._ticks[device_id]
                 self._ticks[device_id] = 0
                 return device_id, *write_request

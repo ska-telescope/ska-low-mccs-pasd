@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [THORN-336] Request FNPC SYS_STATUS after a Modbus error to try to re-establish communications.
+
 ## 4.2.0
 
 * [SKB-1151] Only start communicating if communications status not already ESTABLISHED.

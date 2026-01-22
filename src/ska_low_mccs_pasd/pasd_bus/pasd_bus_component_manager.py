@@ -15,6 +15,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Final, Optional
 
+from pymodbus.exceptions import ModbusException
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_pasd_driver.pasd_bus_modbus_api import PasdBusModbusApiClient
 from ska_tango_base.base import check_communicating
@@ -504,10 +505,14 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             attempt.
         """
         super().poll_failed(exception)
-        self.reset_connection()
-        # Set the event to delay the next poll
-        self._logger.debug("Delaying next poll...")
-        self._poll_delay_event.set()
+        if isinstance(exception, ModbusException):
+            self.reset_connection()
+            # Set the event to delay the next poll
+            self._logger.debug("Delaying next poll and requesting FNPC status...")
+            self._poll_delay_event.set()
+            # Request the FNPC SYS_STATUS register next which can help
+            # to re-establish comms
+            self.request_status_read()
 
     @check_communicating
     def request_startup_info(self: PasdBusComponentManager, device_id: int) -> None:
@@ -516,6 +521,12 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param: device_id: 0 for the FNDH, 100 for the FNCC, else a smartbox id
         """
         self._request_provider.desire_read_startup_info(device_id)
+
+    # This is requested when comms is not established so we don't use
+    # the check_communicating decorator here
+    def request_status_read(self: PasdBusComponentManager) -> None:
+        """Read the FNPC status register to attempt to reset comms."""
+        self._request_provider.desire_status_read(PasdData.FNDH_DEVICE_ID)
 
     @check_communicating
     def initialize_fndh(self: PasdBusComponentManager) -> None:
