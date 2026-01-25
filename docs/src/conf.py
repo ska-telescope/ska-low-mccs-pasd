@@ -47,7 +47,6 @@ sys.path.insert(0, os.path.abspath("../../src"))
 autodoc_mock_imports = [
     "numpy",
     "jsonschema",
-    "kubernetes",
     "ska_tango_base",
     "tango",
     "backoff",

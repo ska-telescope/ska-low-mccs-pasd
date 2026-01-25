@@ -663,27 +663,6 @@ wheels = [
 ]
 
 [[package]]
-name = "kubernetes"
-version = "28.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "certifi" },
-    { name = "google-auth" },
-    { name = "oauthlib" },
-    { name = "python-dateutil" },
-    { name = "pyyaml" },
-    { name = "requests" },
-    { name = "requests-oauthlib" },
-    { name = "six" },
-    { name = "urllib3" },
-    { name = "websocket-client" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/3c/5e/d27f39f447137a9a3d1f31142c77ce74bcedfda7dafe922d725c7ef2da33/kubernetes-28.1.0.tar.gz", hash = "sha256:1468069a573430fb1cb5ad22876868f57977930f80a6749405da31cd6086a7e9", size = 817854, upload-time = "2023-09-18T17:32:07.314Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/6a/1f69c2d8b1ff03f8d8e10d801f4ac3016ed4c1b00aa9795732c6ec900bba/kubernetes-28.1.0-py2.py3-none-any.whl", hash = "sha256:10f56f8160dcb73647f15fafda268e7f60cf7dbc9f8e46d52fcd46d3beb0c18d", size = 1566315, upload-time = "2023-09-18T17:32:05.283Z" },
-]
-
-[[package]]
 name = "librt"
 version = "0.7.7"
 source = { registry = "https://pypi.org/simple" }
@@ -822,15 +801,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/39/fe/39ada9b094f01f5a35486577c848fe274e374bbf8d8f472e1423a0bbd26d/numpy-1.26.4-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:a4abb4f9001ad2858e7ac189089c42178fcce737e4169dc61321660f1a96c7d2", size = 18078620, upload-time = "2024-02-05T23:50:22.515Z" },
     { url = "https://files.pythonhosted.org/packages/d5/ef/6ad11d51197aad206a9ad2286dc1aac6a378059e06e8cf22cd08ed4f20dc/numpy-1.26.4-cp310-cp310-win32.whl", hash = "sha256:bfe25acf8b437eb2a8b2d49d443800a5f18508cd811fea3181723922a8a82b07", size = 5972659, upload-time = "2024-02-05T23:50:35.834Z" },
     { url = "https://files.pythonhosted.org/packages/19/77/538f202862b9183f54108557bfda67e17603fc560c384559e769321c9d92/numpy-1.26.4-cp310-cp310-win_amd64.whl", hash = "sha256:b97fe8060236edf3662adfc2c633f56a08ae30560c56310562cb4f95500022d5", size = 15808905, upload-time = "2024-02-05T23:51:03.701Z" },
-]
-
-[[package]]
-name = "oauthlib"
-version = "3.3.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0b/5f/19930f824ffeb0ad4372da4812c50edbd1434f678c90c2733e1188edfc63/oauthlib-3.3.1.tar.gz", hash = "sha256:0f0f8aa759826a193cf66c12ea1af1637f87b9b4622d46e866952bb022e538c9", size = 185918, upload-time = "2025-06-19T22:48:08.269Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/be/9c/92789c596b8df838baa98fa71844d84283302f7604ed565dafe5a6b5041a/oauthlib-3.3.1-py3-none-any.whl", hash = "sha256:88119c938d2b8fb88561af5f6ee0eec8cc8d552b7bb1f712743136eb7523b7a1", size = 160065, upload-time = "2025-06-19T22:48:06.508Z" },
 ]
 
 [[package]]
@@ -1166,7 +1136,7 @@ wheels = [
 
 [[package]]
 name = "pytango"
-version = "10.1.1"
+version = "10.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docstring-parser" },
@@ -1175,15 +1145,15 @@ dependencies = [
     { name = "psutil" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c5/f7/deb3ded43eb5f614c389c06784f0818f89e4c1d0d6d230c0eeaeb9b4cafb/pytango-10.1.1.tar.gz", hash = "sha256:734954e39c6a63e062bd067e25ae999700c825629f48e5f04cb9f30d86524d8c", size = 2870018, upload-time = "2025-10-31T11:08:57.94Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7c/d1/6d95c064d1e203329dd7bb6800bb31166109c3d85c5ebeaad63b1362b0f6/pytango-10.1.2.tar.gz", hash = "sha256:b37caff14766afe96678b1a5d7a698e4bd5e2a88c118a78e1527321422be0999", size = 2870664, upload-time = "2026-01-10T19:19:57.566Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/2a/88d929d956bda0691553d3fbbdd176f3adffd8767a5ba97f4a42a1c4c4f5/pytango-10.1.1-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:a72da3e15fa2342a56f4c08f6562ea5f8515c6d0f035de71aad3f69e09ecce1b", size = 16562076, upload-time = "2025-10-31T11:07:45.617Z" },
-    { url = "https://files.pythonhosted.org/packages/44/53/fbc2966267caf6625dff9e3899aaa5be054c749e8be7bece29b8f5c57feb/pytango-10.1.1-cp310-cp310-macosx_12_0_x86_64.whl", hash = "sha256:ab5edc0f5344a81263ca4172b765d30399fe80c1849b0ce41331ffbbf45bd092", size = 17647865, upload-time = "2025-10-31T11:07:48.413Z" },
-    { url = "https://files.pythonhosted.org/packages/95/8a/c2f98ef9f2992e0174137935e6d9404855b8825064af859212f5e81c4ec0/pytango-10.1.1-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:3ec68a4402dbdaac64d6f1041ec20acb7cf5374c7aaf1b883778698af45f38ae", size = 17687826, upload-time = "2025-10-31T11:07:50.974Z" },
-    { url = "https://files.pythonhosted.org/packages/b2/65/a333c33b1537e62ece9183250eab253ed895030ff318e003bc78d9d44239/pytango-10.1.1-cp310-cp310-manylinux2014_i686.manylinux_2_17_i686.whl", hash = "sha256:371c2c43087e97883ff350814b5a2f960cf1e4b91a1593e6f2d9132a08634c2e", size = 19468917, upload-time = "2025-10-31T11:07:53.483Z" },
-    { url = "https://files.pythonhosted.org/packages/5a/1b/28b80ca394951e6a451bef437ea2731a797e680512f9ecd96671678d8960/pytango-10.1.1-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:ad5508a7a1b9ac70a1d695e67082ffcd76a4491cb0e42b8f7052f37ac1906430", size = 18557043, upload-time = "2025-10-31T11:07:56.137Z" },
-    { url = "https://files.pythonhosted.org/packages/df/b7/157706087cfcf3ddc046e3f404098a54e1ec9d489d3b30d48e4eecdc04d4/pytango-10.1.1-cp310-cp310-win32.whl", hash = "sha256:bed92f2016d7857206489ff2d5787c775099658f509a4876601803bf61e34ca4", size = 4615682, upload-time = "2025-10-31T11:07:58.17Z" },
-    { url = "https://files.pythonhosted.org/packages/d0/6a/04bcb1fc1f145954a27ca1fed9f02b6d97f39afcd3febc64876d14456a4b/pytango-10.1.1-cp310-cp310-win_amd64.whl", hash = "sha256:4ce455e1dab2bfdfe1e217c44939215a843eb0a4b49b45320602cb88c6969f2e", size = 5132799, upload-time = "2025-10-31T11:07:59.816Z" },
+    { url = "https://files.pythonhosted.org/packages/01/bc/7b4be1167e3cdee64b46f460e128ace18b215becdfcc401442252927fd74/pytango-10.1.2-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:77ab5df70ec9475bb017274209f0f9180b39adaffa92330cb3424b518b27e936", size = 16586217, upload-time = "2026-01-10T19:18:44.66Z" },
+    { url = "https://files.pythonhosted.org/packages/97/1a/10f541e83e48f8d211c5182513ecf218b8412d4469944407d7cd8b849958/pytango-10.1.2-cp310-cp310-macosx_12_0_x86_64.whl", hash = "sha256:2baeec370fc733bcabf9436311db55f2756828caa97d80f62a18dd93d5e773f6", size = 17661865, upload-time = "2026-01-10T19:18:47.508Z" },
+    { url = "https://files.pythonhosted.org/packages/15/a3/3df704db552001d27f1ed4fd7c81739135d161f55ac68c7fd2c120698b66/pytango-10.1.2-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:f890d041c72e3138b0facaa2daf727e518933643acab780653e452335c79d089", size = 17687908, upload-time = "2026-01-10T19:18:49.783Z" },
+    { url = "https://files.pythonhosted.org/packages/37/64/9600b15f58e47099bf7ed7c1f12cc15faf5fa97354802ca2dc56cd618030/pytango-10.1.2-cp310-cp310-manylinux2014_i686.manylinux_2_17_i686.whl", hash = "sha256:9f4c9f73c2cb1ea6a942e0bf564f80ab0737d9ed6c5abb97b1cbcad0beda55f4", size = 19468999, upload-time = "2026-01-10T19:18:51.968Z" },
+    { url = "https://files.pythonhosted.org/packages/21/e8/37d14f7a44dfdbff50c356a8da4671f8da4cad187167fdc24c6ac27ae540/pytango-10.1.2-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:6c53dbf3c23ec1f07ee72ca0fdc9fc80ce66fc1bb5fd224c7293147147893e88", size = 18557120, upload-time = "2026-01-10T19:18:54.76Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/8d/10ff16fbba33cc9c0ccfa5c6576fee50edac22b7d1643ce3c16b8d44d9df/pytango-10.1.2-cp310-cp310-win32.whl", hash = "sha256:83c7b799f63a6cc1d6273ad625d2d5b22f013de5e791d91e68ae57da394c4fd3", size = 4615756, upload-time = "2026-01-10T19:18:57.282Z" },
+    { url = "https://files.pythonhosted.org/packages/aa/c3/da93b183b3352cd3269b8d9a1a812d06bbd4523fb68805341546d4329d02/pytango-10.1.2-cp310-cp310-win_amd64.whl", hash = "sha256:4a0ecf8c78d3909d91283752ed1d822804473b91fe7bda06cde3acfedf4d4726", size = 5132872, upload-time = "2026-01-10T19:18:58.697Z" },
 ]
 
 [[package]]
@@ -1322,18 +1292,6 @@ wheels = [
 ]
 
 [[package]]
-name = "python-dateutil"
-version = "2.9.0.post0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "six" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/66/c0/0c8b6ad9f17a802ee498c46e004a0eb49bc148f2fd230864601a86dcf6db/python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3", size = 342432, upload-time = "2024-03-01T18:36:20.211Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427", size = 229892, upload-time = "2024-03-01T18:36:18.57Z" },
-]
-
-[[package]]
 name = "python-dotenv"
 version = "1.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1443,19 +1401,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c9/74/b3ff8e6c8446842c3f5c837e9c3dfcfe2018ea6ecef224c710c85ef728f4/requests-2.32.5.tar.gz", hash = "sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf", size = 134517, upload-time = "2025-08-18T20:46:02.573Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1e/db/4254e3eabe8020b458f1a747140d32277ec7a271daf1d235b70dc0b4e6e3/requests-2.32.5-py3-none-any.whl", hash = "sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6", size = 64738, upload-time = "2025-08-18T20:46:00.542Z" },
-]
-
-[[package]]
-name = "requests-oauthlib"
-version = "2.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "oauthlib" },
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/42/f2/05f29bc3913aea15eb670be136045bf5c5bbf4b99ecb839da9b422bb2c85/requests-oauthlib-2.0.0.tar.gz", hash = "sha256:b3dffaebd884d8cd778494369603a9e7b58d29111bf6b41bdc2dcd87203af4e9", size = 55650, upload-time = "2024-03-22T20:32:29.939Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/5d/63d4ae3b9daea098d5d6f5da83984853c1bbacd5dc826764b249fe119d24/requests_oauthlib-2.0.0-py2.py3-none-any.whl", hash = "sha256:7dd8a5c40426b779b0868c404bdef9768deccf22749cde15852df527e6269b36", size = 24179, upload-time = "2024-03-22T20:32:28.055Z" },
 ]
 
 [[package]]
@@ -1623,7 +1568,6 @@ dependencies = [
     { name = "google-auth" },
     { name = "httptools" },
     { name = "jsonschema-specifications" },
-    { name = "kubernetes" },
     { name = "numpy" },
     { name = "pydantic-core" },
     { name = "pymodbus" },
@@ -1699,11 +1643,10 @@ requires-dist = [
     { name = "google-auth", specifier = "==2.33.0" },
     { name = "httptools", specifier = "==0.6.1" },
     { name = "jsonschema-specifications", specifier = ">=2025.4.1,<2025.5.0" },
-    { name = "kubernetes", specifier = "==28.1.0" },
     { name = "numpy", specifier = ">=1.26.4,<2.0.0" },
     { name = "pydantic-core", specifier = ">=2.18.4,<3.0.0" },
     { name = "pymodbus", specifier = ">=3.5.4,<3.6.0" },
-    { name = "pytango", specifier = ">=10.0.0,<11.0.0" },
+    { name = "pytango", specifier = ">=10.1.2,<11.0.0" },
     { name = "pyyaml", specifier = ">=6.0,<7.0" },
     { name = "referencing", specifier = ">=0.31.0,<0.32.0" },
     { name = "ska-control-model", extras = ["health-rollup"], specifier = ">=1.2.0,<2.0.0" },
@@ -2233,15 +2176,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/24/30/6b0809f4510673dc723187aeaf24c7f5459922d01e2f794277a3dfb90345/wcwidth-0.2.14.tar.gz", hash = "sha256:4d478375d31bc5395a3c55c40ccdf3354688364cd61c4f6adacaa9215d0b3605", size = 102293, upload-time = "2025-09-22T16:29:53.023Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/af/b5/123f13c975e9f27ab9c0770f514345bd406d0e8d3b7a0723af9d43f710af/wcwidth-0.2.14-py2.py3-none-any.whl", hash = "sha256:a7bb560c8aee30f9957e5f9895805edd20602f2d7f720186dfd906e82b4982e1", size = 37286, upload-time = "2025-09-22T16:29:51.641Z" },
-]
-
-[[package]]
-name = "websocket-client"
-version = "1.9.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2c/41/aa4bf9664e4cda14c3b39865b12251e8e7d239f4cd0e3cc1b6c2ccde25c1/websocket_client-1.9.0.tar.gz", hash = "sha256:9e813624b6eb619999a97dc7958469217c3176312b3a16a4bd1bc7e08a46ec98", size = 70576, upload-time = "2025-10-07T21:16:36.495Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/34/db/b10e48aa8fff7407e67470363eac595018441cf32d5e1001567a7aeba5d2/websocket_client-1.9.0-py3-none-any.whl", hash = "sha256:af248a825037ef591efbf6ed20cc5faa03d3b47b9e5a2230a529eeee1c1fc3ef", size = 82616, upload-time = "2025-10-07T21:16:34.951Z" },
 ]
 
 [[package]]
