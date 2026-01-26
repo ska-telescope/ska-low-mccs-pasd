@@ -8,7 +8,7 @@ dependencies = [
     "ska-control-model[health_rollup]>=1.2.0,<2.0.0",
     "ska-low-mccs-common>=4.4.0,<5.0.0",
     "ska-ser-devices>=0.2.0,<0.3.0",
-    "pymodbus>=3.5.4,<3.6.0",
+    "pymodbus>=3.11.4,<3.12.0",
     "typing-extensions>=4.6.1,<5.0.0",
     "fastapi>=0.110.1,<0.111.0",
     "ska-telmodel>=1.14.0,<2.0.0",
@@ -25,7 +25,6 @@ dependencies = [
     "google-auth==2.33.0",
     #"ska-low-pasd-driver>=0.4.0,<0.5.0",
     "ska-low-pasd-driver @ git+https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git@thorn-388-update-pymodbus",
-    #"ska-low-pasd-driver @ file:/workspaces/ska-low-pasd-driver",
 ]
 name = "ska-low-mccs-pasd"
 version = "4.2.0"
