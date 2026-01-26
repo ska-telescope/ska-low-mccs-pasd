@@ -3,6 +3,7 @@
 ## Unreleased
 
 * [THORN-336] Request FNPC SYS_STATUS after a Modbus error to try to re-establish communications.
+* [LOW-2034] Only deploy a PaSD configuration ConfigMap if deploying the corresponding simulator that needs it.
 
 ## 4.2.0
 
