@@ -182,11 +182,12 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
 
     def _read_fncc_attribute(self: MccsFNCC, fncc_attribute: tango.Attribute) -> None:
         attribute_name = fncc_attribute.get_name().lower()
-        fncc_attribute.set_value_date_quality(
-            self._fncc_attributes[attribute_name].value,
-            self._fncc_attributes[attribute_name].timestamp,
-            self._fncc_attributes[attribute_name].quality,
-        )
+        if self._fncc_attributes[attribute_name].value is not None:
+            fncc_attribute.set_value_date_quality(
+                self._fncc_attributes[attribute_name].value,
+                self._fncc_attributes[attribute_name].timestamp,
+                self._fncc_attributes[attribute_name].quality,
+            )
 
     # ----------
     # Callbacks
