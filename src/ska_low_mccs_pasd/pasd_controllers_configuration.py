@@ -178,8 +178,6 @@ class ControllerDict(TypedDict, total=False):
         The controller prefix used for PaSD bus Tango attributes.
     modbus_address (int):
         The Modbus address of the controller. Optional key.
-    pasd_number (int):
-        The PaSD device ID, starting from 0. Optional key.
     number_of_ports (int):
         The number of ports on the controller. Optional key.
     registers (dict[str, RegisterDict]):
@@ -189,7 +187,6 @@ class ControllerDict(TypedDict, total=False):
     full_name: str
     prefix: str
     modbus_address: int
-    pasd_number: int
     number_of_ports: int
     registers: dict[str, RegisterDict]
 
@@ -204,7 +201,6 @@ CONTROLLER_SCHEMA: Final = {
             "allowed": ["fncc", "fndh", "smartbox"],
         },
         "modbus_address": {"type": "integer", "min": 0, "max": 255},
-        "pasd_number": {"type": "integer", "min": 0, "max": 255},
         "number_of_ports": {"type": "integer"},
         "registers": REGISTER_SCHEMA,
     },

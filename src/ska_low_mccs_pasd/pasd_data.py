@@ -35,10 +35,10 @@ class PasdData:  # pylint: disable=too-few-public-methods
     NUMBER_OF_FNDH_PORTS: Final = CONTROLLERS_CONFIG["FNPC"]["number_of_ports"]
     """The number of ports on a FNDH instance."""
 
-    FNDH_DEVICE_ID: Final = CONTROLLERS_CONFIG["FNPC"]["pasd_number"]
+    FNDH_DEVICE_ID: Final = CONTROLLERS_CONFIG["FNPC"]["modbus_address"]
     """The device identifier for an FNDH"""
 
-    FNCC_DEVICE_ID: Final = CONTROLLERS_CONFIG["FNCC"]["pasd_number"]
+    FNCC_DEVICE_ID: Final = CONTROLLERS_CONFIG["FNCC"]["modbus_address"]
     """The device identifier for an FNCC"""
 
     FNDH_PREFIX: Final = CONTROLLERS_CONFIG["FNPC"]["prefix"]
