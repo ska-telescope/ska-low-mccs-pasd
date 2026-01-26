@@ -21,6 +21,7 @@ from ska_low_pasd_driver import (
     FnccSimulator,
     FndhSimulator,
     PasdBusSimulator,
+    PasdHardwareSimulator,
     SmartboxSimulator,
 )
 
@@ -123,7 +124,7 @@ def pasd_hw_simulators_fixture(
     fndh_simulator: FndhSimulator,
     smartbox_attached_ports: list[int],
     off_smartbox_id: int,
-) -> dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator]:
+) -> dict[int, PasdHardwareSimulator]:
     """
     Return the smartbox simulators.
 
@@ -144,7 +145,7 @@ def pasd_hw_simulators_fixture(
 
 @pytest.fixture(name="smartbox_simulator")
 def smartbox_simulator_fixture(
-    pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
+    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     on_smartbox_id: int,
 ) -> SmartboxSimulator:
     """
@@ -237,7 +238,7 @@ def off_smartbox_attached_port_fixture(
 # pylint: disable=too-many-positional-arguments, too-many-arguments
 @pytest.fixture(name="test_context")
 def test_context_fixture(
-    pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
+    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     smartbox_ids_to_test: list[int],
     smartbox_attached_ports: list[int],
     smartbox_attached_antennas: list[list[bool]],

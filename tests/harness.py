@@ -19,7 +19,7 @@ from tests.conftest import (
 )
 
 if TYPE_CHECKING:
-    from ska_low_pasd_driver import FnccSimulator, FndhSimulator, SmartboxSimulator
+    from ska_low_pasd_driver import PasdHardwareSimulator
 
 
 def get_pasd_bus_name(station_label: str) -> str:
@@ -204,9 +204,7 @@ class PasdTangoTestHarness:
 
     def set_pasd_bus_simulator(
         self: PasdTangoTestHarness,
-        pasd_hw_simulators: dict[
-            int, FndhSimulator | FnccSimulator | SmartboxSimulator
-        ],
+        pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     ) -> None:
         """
         Set the PaSD bus simulator server for the test harness.

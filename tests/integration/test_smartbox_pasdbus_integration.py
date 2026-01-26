@@ -27,7 +27,7 @@ from ska_control_model import (
     ResultCode,
     SimulationMode,
 )
-from ska_low_pasd_driver import FnccSimulator, FndhSimulator, SmartboxSimulator
+from ska_low_pasd_driver import PasdHardwareSimulator, SmartboxSimulator
 from ska_low_pasd_driver.pasd_bus_conversions import (
     PasdConversionUtility,
     SmartboxAlarmFlags,
@@ -1663,7 +1663,7 @@ def on_smartbox_device_configurable_fixture(
 
 @pytest.fixture(name="test_context_db_configurable")
 def test_context_db_configurable_fixture(
-    pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
+    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     smartbox_ids_to_test: list[int],
     smartbox_attached_ports: list[int],
     smartbox_attached_antennas: list[list[bool]],
