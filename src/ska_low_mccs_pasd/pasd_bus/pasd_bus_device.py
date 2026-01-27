@@ -1363,26 +1363,26 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
             self: MccsPasdBus._GetPasdDeviceSubscriptions,
-            pasd_device_number: int,
+            device_id: int,
         ) -> list[str]:
             """
             Implement :py:meth:`.MccsTile.GetRegisterList` command functionality.
 
-            :param pasd_device_number: the pasd_device_number
+            :param device_id: the id of the device
                 we want to get subscriptions for.
 
             :return: a list of the subscriptions for this device.
             """
             for controller in PasdData.CONTROLLERS_CONFIG.values():
-                if controller.get("pasd_number") == pasd_device_number:
+                if controller.get("modbus_address") == device_id:
                     return [
                         controller["prefix"] + register["tango_attr_name"]
                         for register in controller["registers"].values()
                     ]
-            if pasd_device_number in self._device.AvailableSmartboxes:
+            if device_id in self._device.AvailableSmartboxes:
                 return [
                     PasdData.CONTROLLERS_CONFIG["FNSC"]["prefix"]
-                    + str(pasd_device_number)
+                    + str(device_id)
                     + register["tango_attr_name"]
                     for register in PasdData.CONTROLLERS_CONFIG["FNSC"][
                         "registers"
