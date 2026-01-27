@@ -20,9 +20,9 @@ from ska_low_pasd_driver import (
     FnccSimulator,
     FndhSimulator,
     PasdBusSimulator,
-    PasdHardwareSimulator,
     SmartboxSimulator,
 )
+from ska_low_pasd_driver.pasd_bus_simulator import PasdHardwareSimulator
 
 from ska_low_mccs_pasd import PasdData
 

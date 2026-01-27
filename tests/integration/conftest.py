@@ -21,9 +21,9 @@ from ska_low_pasd_driver import (
     FnccSimulator,
     FndhSimulator,
     PasdBusSimulator,
-    PasdHardwareSimulator,
     SmartboxSimulator,
 )
+from ska_low_pasd_driver.pasd_bus_simulator import PasdHardwareSimulator
 
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 

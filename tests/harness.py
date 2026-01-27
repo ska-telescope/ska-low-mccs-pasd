@@ -19,7 +19,7 @@ from tests.conftest import (
 )
 
 if TYPE_CHECKING:
-    from ska_low_pasd_driver import PasdHardwareSimulator
+    from ska_low_pasd_driver.pasd_bus_simulator import PasdHardwareSimulator
 
 
 def get_pasd_bus_name(station_label: str) -> str:
