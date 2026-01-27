@@ -17,12 +17,13 @@ import random
 import pytest
 import tango
 from ska_control_model import AdminMode, HealthState, SimulationMode
-from ska_low_pasd_driver import FnccSimulator, FndhSimulator, SmartboxSimulator
+from ska_low_pasd_driver import FndhSimulator, SmartboxSimulator
 from ska_low_pasd_driver.pasd_bus_conversions import (
     FndhAlarmFlags,
     PasdConversionUtility,
     SmartboxAlarmFlags,
 )
+from ska_low_pasd_driver.pasd_bus_simulator import PasdHardwareSimulator
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_data import PasdData
@@ -71,9 +72,7 @@ def change_event_callbacks_fixture(
 
 @pytest.fixture(name="pasd_bus_device")
 def pasd_bus_device_fixture(
-    mock_pasd_hw_simulators: dict[
-        int, FndhSimulator | FnccSimulator | SmartboxSimulator
-    ],
+    mock_pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     station_label: str,
 ) -> tango.DeviceProxy:
     """
@@ -149,9 +148,7 @@ def change_event_callbacks_multiple_smartboxes_fixture(
 
 @pytest.fixture(name="pasd_bus_device_using_smartbox_ids")
 def pasd_bus_device_using_smartbox_ids_fixture(
-    mock_pasd_hw_simulators: dict[
-        int, FndhSimulator | FnccSimulator | SmartboxSimulator
-    ],
+    mock_pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     smartbox_ids: list[int],
     station_label: str,
 ) -> tango.DeviceProxy:

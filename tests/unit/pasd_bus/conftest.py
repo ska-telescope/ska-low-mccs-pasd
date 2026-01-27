@@ -22,6 +22,7 @@ from ska_low_pasd_driver import (
     PasdBusSimulator,
     SmartboxSimulator,
 )
+from ska_low_pasd_driver.pasd_bus_simulator import PasdHardwareSimulator
 
 from ska_low_mccs_pasd import PasdData
 
@@ -108,7 +109,7 @@ def pasd_hw_simulators_fixture(
     pasd_bus_simulator: PasdBusSimulator,
     fndh_simulator: FndhSimulator,
     smartbox_attached_ports: list[int],
-) -> dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator]:
+) -> dict[int, PasdHardwareSimulator]:
     """
     Return the smartbox simulators.
 
@@ -127,7 +128,7 @@ def pasd_hw_simulators_fixture(
 
 @pytest.fixture(name="mock_pasd_hw_simulators")
 def mock_pasd_hw_simulators_fixture(
-    pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
+    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
 ) -> dict[int, unittest.mock.Mock]:
     """
     Return the mock smartbox simulators.
@@ -148,7 +149,7 @@ def mock_pasd_hw_simulators_fixture(
         mock_simulator = unittest.mock.Mock(wraps=simulator)
 
         def side_effect(
-            sim: FndhSimulator | FnccSimulator | SmartboxSimulator | PasdBusSimulator,
+            sim: PasdHardwareSimulator,
             prop: str,
             val: int | None = None,
         ) -> property | None:
@@ -296,7 +297,7 @@ def smartbox_id_fixture() -> int:
 
 @pytest.fixture(name="smartbox_simulator")
 def smartbox_simulator_fixture(
-    pasd_hw_simulators: dict[int, FndhSimulator | FnccSimulator | SmartboxSimulator],
+    pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     smartbox_id: int,
 ) -> SmartboxSimulator:
     """

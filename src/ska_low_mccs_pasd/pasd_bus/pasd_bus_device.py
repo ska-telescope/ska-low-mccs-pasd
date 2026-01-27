@@ -512,7 +512,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     # pylint: disable=too-many-branches
     def _pasd_device_state_callback(  # noqa: C901
         self: MccsPasdBus,
-        pasd_device_number: int,
+        device_id: int,
         **kwargs: Any,
     ) -> None:
         """
@@ -521,20 +521,17 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         This is a callback hook, called by the component manager when
         the state of a PaSD device changes.
 
-        :param pasd_device_number: the number of the PaSD device to
-            which this state update applies.
-            0 refers to the FNDH, otherwise the device number is the
-            smartbox number.
+        :param device_id: id of the device to which this state update applies.
         :param kwargs: keyword arguments defining PaSD device state.
         """
         timestamp = datetime.now(timezone.utc).timestamp()
         if (
-            pasd_device_number
+            device_id
             not in [PasdData.FNCC_DEVICE_ID, PasdData.FNDH_DEVICE_ID]
             + self.AvailableSmartboxes
         ):
             self.logger.error(
-                f"Received update for unknown PaSD device number {pasd_device_number}."
+                f"Received update for unknown PaSD device number {device_id}."
             )
             return
 
@@ -542,7 +539,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             pasd_device_number: int, pasd_attribute_name: str
         ) -> str:
             for controller in PasdData.CONTROLLERS_CONFIG.values():
-                if controller.get("pasd_number") == pasd_device_number:
+                if controller.get("modbus_address") == pasd_device_number:
                     for key, register in controller["registers"].items():
                         if key == pasd_attribute_name:
                             return controller["prefix"] + register["tango_attr_name"]
@@ -568,7 +565,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             attributes_marked_invalid = []
             for pasd_attribute_name in attr_list:
                 tango_attribute_name = _get_tango_attribute_name(
-                    pasd_device_number, pasd_attribute_name
+                    device_id, pasd_attribute_name
                 )
                 self._pasd_state[tango_attribute_name].timestamp = timestamp
                 # Only push out a change event and log message
@@ -596,17 +593,17 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         updated_attributes = {}
         for pasd_attribute_name, pasd_attribute_value in kwargs.items():
             tango_attribute_name = _get_tango_attribute_name(
-                pasd_device_number, pasd_attribute_name
+                device_id, pasd_attribute_name
             )
             if tango_attribute_name == "":
                 self.logger.error(
                     f"Received update for unknown PaSD attribute {pasd_attribute_name} "
-                    f"(for PaSD device {pasd_device_number})."
+                    f"(for PaSD device {device_id})."
                 )
                 # Continue on to allow other attributes to be updated
                 continue
             if (
-                pasd_device_number == PasdData.FNDH_DEVICE_ID
+                device_id == PasdData.FNDH_DEVICE_ID
                 and tango_attribute_name.endswith("PortsPowerSensed")
                 and self._pasd_state[tango_attribute_name].value != pasd_attribute_value
                 and self.SmartboxIDs
@@ -628,19 +625,19 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 AttrQuality.ATTR_VALID,
             )
             if tango_attribute_name.endswith("AlarmFlags") or (
-                pasd_device_number == PasdData.FNCC_DEVICE_ID
+                device_id == PasdData.FNCC_DEVICE_ID
                 and tango_attribute_name.endswith("FieldNodeNumber")
             ):
                 # This is the last register in the poll cycle, so at this point
                 # we check to see if any of the static 'read once' information has
                 # not yet been read successfully
-                match pasd_device_number:
+                match device_id:
                     case PasdData.FNCC_DEVICE_ID:
                         prefix = PasdData.FNCC_PREFIX
                     case PasdData.FNDH_DEVICE_ID:
                         prefix = PasdData.FNDH_PREFIX
                     case _:
-                        prefix = PasdData.SMARTBOX_PREFIX + str(pasd_device_number)
+                        prefix = PasdData.SMARTBOX_PREFIX + str(device_id)
                 filtered_list = [
                     attr for attr in self._one_time_read_list if attr.startswith(prefix)
                 ]
@@ -649,20 +646,20 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     for attribute in filtered_list
                 ):
                     self.logger.debug(f"Re-requesting startup info for {prefix})")
-                    self.component_manager.request_startup_info(pasd_device_number)
+                    self.component_manager.request_startup_info(device_id)
                     # Set the device's low-pass filter constants
                     if self._simulation_mode == SimulationMode.FALSE:
-                        self._set_all_low_pass_filters_of_device(pasd_device_number)
+                        self._set_all_low_pass_filters_of_device(device_id)
                     # Set the threshold overrides
-                    if pasd_device_number not in self.AvailableSmartboxes:
+                    if device_id not in self.AvailableSmartboxes:
                         continue
                     if self.FEMCurrentTripThreshold is not None:
                         self.component_manager.initialize_fem_current_trip_thresholds(
-                            pasd_device_number, self.FEMCurrentTripThreshold
+                            device_id, self.FEMCurrentTripThreshold
                         )
                     if self.SBInputVoltageThresholds is not None:
                         self.component_manager.initialize_sb_input_voltage_thresholds(
-                            pasd_device_number, self.SBInputVoltageThresholds
+                            device_id, self.SBInputVoltageThresholds
                         )
 
         if updated_attributes:
@@ -1366,26 +1363,26 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         # pylint: disable-next=arguments-differ
         def do(  # type: ignore[override]
             self: MccsPasdBus._GetPasdDeviceSubscriptions,
-            pasd_device_number: int,
+            device_id: int,
         ) -> list[str]:
             """
             Implement :py:meth:`.MccsTile.GetRegisterList` command functionality.
 
-            :param pasd_device_number: the pasd_device_number
+            :param device_id: the id of the device
                 we want to get subscriptions for.
 
             :return: a list of the subscriptions for this device.
             """
             for controller in PasdData.CONTROLLERS_CONFIG.values():
-                if controller.get("pasd_number") == pasd_device_number:
+                if controller.get("modbus_address") == device_id:
                     return [
                         controller["prefix"] + register["tango_attr_name"]
                         for register in controller["registers"].values()
                     ]
-            if pasd_device_number in self._device.AvailableSmartboxes:
+            if device_id in self._device.AvailableSmartboxes:
                 return [
                     PasdData.CONTROLLERS_CONFIG["FNSC"]["prefix"]
-                    + str(pasd_device_number)
+                    + str(device_id)
                     + register["tango_attr_name"]
                     for register in PasdData.CONTROLLERS_CONFIG["FNSC"][
                         "registers"

@@ -22,6 +22,7 @@ from ska_low_pasd_driver.pasd_bus_conversions import (
     SmartboxAlarmFlags,
 )
 from ska_low_pasd_driver.pasd_bus_register_map import DesiredPowerEnum
+from ska_low_pasd_driver.pasd_bus_simulator import PasdHardwareSimulator
 from ska_tango_testing.mock import MockCallableGroup
 from ska_tango_testing.mock.placeholders import Anything
 
@@ -58,9 +59,7 @@ def mock_callbacks_fixture() -> MockCallableGroup:
 
 @pytest.fixture(name="pasd_bus_component_manager")
 def pasd_bus_component_manager_fixture(
-    mock_pasd_hw_simulators: dict[
-        int, FndhSimulator | FnccSimulator | SmartboxSimulator
-    ],
+    mock_pasd_hw_simulators: dict[int, PasdHardwareSimulator],
     logger: logging.Logger,
     mock_callbacks: MockCallableGroup,
     station_label: str,
