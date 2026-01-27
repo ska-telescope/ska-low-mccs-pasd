@@ -1651,7 +1651,7 @@ requires-dist = [
     { name = "referencing", specifier = ">=0.31.0,<0.32.0" },
     { name = "ska-control-model", extras = ["health-rollup"], specifier = ">=1.2.0,<2.0.0" },
     { name = "ska-low-mccs-common", specifier = ">=4.4.0,<5.0.0" },
-    { name = "ska-low-pasd-driver", git = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git?rev=thorn-388-update-pymodbus" },
+    { name = "ska-low-pasd-driver", specifier = ">=1.0.0,<1.1.0" },
     { name = "ska-ser-devices", specifier = ">=0.2.0,<0.3.0" },
     { name = "ska-tango-base", specifier = ">=1.3.2,<1.4.0" },
     { name = "ska-telmodel", specifier = ">=1.14.0,<2.0.0" },
@@ -1709,12 +1709,16 @@ docs = [
 [[package]]
 name = "ska-low-pasd-driver"
 version = "1.0.0"
-source = { git = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git?rev=thorn-388-update-pymodbus#5ca53548140655908a959504a061d626d7a6c001" }
+source = { registry = "https://artefact.skao.int/repository/pypi-internal/simple" }
 dependencies = [
     { name = "cerberus" },
     { name = "pymodbus" },
     { name = "pyyaml" },
     { name = "ska-ser-devices" },
+]
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-pasd-driver/1.0.0/ska_low_pasd_driver-1.0.0.tar.gz", hash = "sha256:4cb29c0099fa4677374616711857cd2de8728d469c93b024a55c730856a1a5a8" }
+wheels = [
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-pasd-driver/1.0.0/ska_low_pasd_driver-1.0.0-py3-none-any.whl", hash = "sha256:ba64c10b3fda2a67ef628e7fb7f9fdfd0a3ab067b71319412f757fbc448383c3" },
 ]
 
 [[package]]
