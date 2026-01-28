@@ -35,9 +35,6 @@ include:
     - gitlab-ci/python.yml
     - gitlab-ci/docs-build.yml
 
-oci-image-build:
-  image: registry.gitlab.com/ska-telescope/ska-cicd-k8s-tools-build-deploy:0.16.0-dev.c3971c587
-
 deploy-staging:
   when: manual
 
