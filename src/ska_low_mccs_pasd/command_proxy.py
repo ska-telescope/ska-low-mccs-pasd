@@ -166,3 +166,11 @@ class MccsCommandProxy:  # pylint: disable=too-few-public-methods
                 TaskStatus.QUEUED,
                 "Task command has been invoked on the remote device.",
             )
+
+    def __del__(self: MccsCommandProxy) -> None:
+        """Docstring for __del__."""
+        for t in threading.enumerate():
+            print(
+                f"Threads open at end of DELETE DEVICE MccsCommandPROXY"
+                f"Threads: {t.name}, ID: {t.ident}, Daemon: {t.daemon}"
+            )

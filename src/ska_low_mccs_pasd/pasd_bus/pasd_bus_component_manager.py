@@ -762,3 +762,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param port_power_states: list of port power statuses (true=On, false=Off).
         """
         self._request_provider.update_port_power_states(port_power_states)
+
+    def cleanup(self: PasdBusComponentManager) -> None:
+        """Delete and clean up any remaining processes."""
+        self.polling_stopped()
+        self.stop_communicating()

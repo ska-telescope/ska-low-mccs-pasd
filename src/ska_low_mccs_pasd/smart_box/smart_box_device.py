@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import threading
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Callable, Final, Optional, cast
@@ -176,9 +177,13 @@ class MccsSmartBox(MccsBaseDevice):
         if self._health_recorder is not None:
             self._health_recorder.cleanup()
             self._health_recorder = None
-        self.component_manager._pasd_bus_proxy.cleanup()
-        self.component_manager._task_executor._executor.shutdown()
+        self.component_manager.cleanup()
         super().delete_device()
+        for t in threading.enumerate():
+            self.logger.info(
+                f"Threads open at end of DELETE DEVICE "
+                f"Threads: {t.name}, ID: {t.ident}, Daemon: {t.daemon}"
+            )
 
     def _init_state_model(self: MccsSmartBox) -> None:
         super()._init_state_model()

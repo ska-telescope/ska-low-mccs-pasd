@@ -1031,3 +1031,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         """
         self._port_mask = value
         self._evaluate_power()
+
+    def cleanup(self: SmartBoxComponentManager) -> None:
+        """Delete and clean up any remaining processes."""
+        if self._pasd_bus_proxy:
+            self._pasd_bus_proxy.cleanup()
+        self._task_executor._executor.shutdown()
