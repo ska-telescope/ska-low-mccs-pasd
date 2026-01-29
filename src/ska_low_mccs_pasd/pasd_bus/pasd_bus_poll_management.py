@@ -99,8 +99,10 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
     and it decides what, if any, communication with it should occur in the next poll.
     """
 
-    PORT_STATUS_READ_DELAY = 5
-    GENERAL_ATTRIBUTE_READ_DELAY = 3
+    # Time in seconds to wait after writing to a register before reading it again
+    # Give the port status register a little longer
+    PORT_STATUS_READ_DELAY = 2.5
+    GENERAL_ATTRIBUTE_READ_DELAY = 1.0
 
     def __init__(
         self,
