@@ -596,6 +596,16 @@ class PasdBusRequestProvider:
             self._ticks[PasdData.FNDH_DEVICE_ID] = 0
             return PasdData.FNDH_DEVICE_ID, *("READ", "status")
 
+        # Now see if any expedited reads are ready to be executed.
+        # This takes priority over writes so that we can update the polling
+        # list if the port power states have changed.
+        timestamp = time.time()
+        for expedited_read in self._expedited_reads:
+            elapsed_time = timestamp - expedited_read.timestamp
+            if elapsed_time > expedited_read.time_delay:
+                self._expedited_reads.remove(expedited_read)
+                return expedited_read.device_id, *expedited_read.request_description
+
         # Next we check for any write requests.
         for device_id, tick in self._ticks.items():
             if tick < self._min_ticks:
@@ -605,14 +615,6 @@ class PasdBusRequestProvider:
                 del self._ticks[device_id]
                 self._ticks[device_id] = 0
                 return device_id, *write_request
-
-        # Now see if any expedited reads are ready to be executed.
-        timestamp = time.time()
-        for expedited_read in self._expedited_reads:
-            elapsed_time = timestamp - expedited_read.timestamp
-            if elapsed_time > expedited_read.time_delay:
-                self._expedited_reads.remove(expedited_read)
-                return expedited_read.device_id, *expedited_read.request_description
 
         # No outstanding reads/writes remaining, so cycle through the polling list.
         fncc_skip = False
