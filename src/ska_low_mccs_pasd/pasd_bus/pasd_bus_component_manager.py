@@ -483,9 +483,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 f"{poll_response.data['error']['detail']}. Delaying next poll..."
             )
             self._poll_delay_event.set()
-        else:
-            # Ensure the event is cleared to allow normal polling
-            self._poll_delay_event.clear()
 
         self._update_component_state(power=PowerState.ON, fault=False)
 
