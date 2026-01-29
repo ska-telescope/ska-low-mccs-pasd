@@ -765,5 +765,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
     def cleanup(self: PasdBusComponentManager) -> None:
         """Delete and clean up any remaining processes."""
-        self.polling_stopped()
+        if self._poller:
+            self._poller.stop_polling()
+            # it's a Deamon, but delete device doesn't allways close the mainthread
+            self._poller._polling_thread.join()
         self.stop_communicating()
