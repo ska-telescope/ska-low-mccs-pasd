@@ -170,13 +170,8 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             unit=unit,
             description=description,
             format=format_string,
-        ).to_attr()
-        self.add_attribute(
-            attr,
-            self._read_fncc_attribute,
-            None,
-            None,
         )
+        self.add_attribute(attr)
         self.set_change_event(attribute_name, True, False)
         self.set_archive_event(attribute_name, True, False)
 

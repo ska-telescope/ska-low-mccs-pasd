@@ -279,10 +279,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             max_dim_x=max_dim_x,
             fget=self._read_pasd_attribute,
             fset=self._write_pasd_attribute,
-        ).to_attr()
-        self.add_attribute(
-            attr, self._read_pasd_attribute, self._write_pasd_attribute, None
         )
+        self.add_attribute(attr)
         self.set_change_event(attribute_name, True, False)
 
     def _init_state_model(self: MccsPasdBus) -> None:

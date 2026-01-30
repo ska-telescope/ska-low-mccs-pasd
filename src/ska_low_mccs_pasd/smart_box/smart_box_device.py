@@ -474,6 +474,10 @@ class MccsSmartBox(MccsBaseDevice):
         self._smartbox_state[attribute_name.lower()] = SmartboxAttribute(
             value=None, timestamp=0, quality=tango.AttrQuality.ATTR_INVALID
         )
+        if attribute_name.lower().endswith("thresholds"):
+            is_allowed_method = self.is_firmware_threshold_allowed
+        else:
+            is_allowed_method = None
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,
@@ -485,17 +489,9 @@ class MccsSmartBox(MccsBaseDevice):
             unit=unit,
             description=description,
             format=format_string,
-        ).to_attr()
-        if attribute_name.lower().endswith("thresholds"):
-            is_allowed_method = self.is_firmware_threshold_allowed
-        else:
-            is_allowed_method = None
-        self.add_attribute(
-            attr,
-            self._read_smartbox_attribute,
-            self._write_smartbox_attribute,
-            is_allowed_method,
+            fisallowed=is_allowed_method,
         )
+        self.add_attribute(attr)
         if min_value is not None or max_value is not None:
             if access_type != tango.AttrWriteType.READ_WRITE:
                 self.logger.warning(

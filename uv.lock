@@ -1530,7 +1530,7 @@ health-rollup = [
 [[package]]
 name = "ska-low-mccs-common"
 version = "4.4.0"
-source = { registry = "https://artefact.skao.int/repository/pypi-internal/simple" }
+source = { git = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git?rev=thorn-395#96c4175d6b029da4db5d0ff355cfbfd028b8f1ab" }
 dependencies = [
     { name = "attrs" },
     { name = "backoff" },
@@ -1547,10 +1547,6 @@ dependencies = [
     { name = "ska-tango-base" },
     { name = "ska-tango-testing" },
     { name = "transitions" },
-]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.4.0/ska_low_mccs_common-4.4.0.tar.gz", hash = "sha256:d8b1262ae4ec4de7a4421ea339aa05f5ab016f433f4ecf983122bb35074cc66d" }
-wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.4.0/ska_low_mccs_common-4.4.0-py3-none-any.whl", hash = "sha256:ba092d4b9b01a687b82ed57805eab4e3256055a0aeb11513ee9d0c56128beeea" },
 ]
 
 [[package]]
@@ -1650,10 +1646,10 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0,<7.0" },
     { name = "referencing", specifier = ">=0.31.0,<0.32.0" },
     { name = "ska-control-model", extras = ["health-rollup"], specifier = ">=1.2.0,<2.0.0" },
-    { name = "ska-low-mccs-common", specifier = ">=4.4.0,<5.0.0" },
+    { name = "ska-low-mccs-common", git = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git?rev=thorn-395" },
     { name = "ska-low-pasd-driver", specifier = ">=1.0.0,<1.1.0" },
     { name = "ska-ser-devices", specifier = ">=0.2.0,<0.3.0" },
-    { name = "ska-tango-base", specifier = ">=1.3.2,<1.4.0" },
+    { name = "ska-tango-base", specifier = ">=1.4.0,<2.0.0" },
     { name = "ska-telmodel", specifier = ">=1.14.0,<2.0.0" },
     { name = "typing-extensions", specifier = ">=4.6.1,<5.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29.0,<0.30.0" },
@@ -1754,7 +1750,7 @@ wheels = [
 
 [[package]]
 name = "ska-tango-base"
-version = "1.3.2"
+version = "1.4.1"
 source = { registry = "https://artefact.skao.int/repository/pypi-internal/simple" }
 dependencies = [
     { name = "debugpy" },
@@ -1765,9 +1761,9 @@ dependencies = [
     { name = "ska-ser-logging" },
     { name = "transitions" },
 ]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-base/1.3.2/ska_tango_base-1.3.2.tar.gz", hash = "sha256:2d23369c3ae737bff66839c1d7a8d6f4691e0064a5296ef4b48983b9082e11e8" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-base/1.4.1/ska_tango_base-1.4.1.tar.gz", hash = "sha256:67f4d1e0ce8271c2957b2a8694cc72391ef13d56949b9dd3ff12f29286473b62" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-base/1.3.2/ska_tango_base-1.3.2-py3-none-any.whl", hash = "sha256:7318d9460eaee24863b77e68c965b44428a32be51bf2595316c5e9230bf616ea" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-base/1.4.1/ska_tango_base-1.4.1-py3-none-any.whl", hash = "sha256:a4bd3b685acd642ef66588cf986606d0cf8b6680cb4ae9290f87d505d58bd64d" },
 ]
 
 [[package]]

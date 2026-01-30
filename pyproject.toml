@@ -4,9 +4,9 @@ dependencies = [
     "backoff>=2.2.1,<3.0.0",
     "pytango>=10.1.2,<11.0.0",
     "PyYAML>=6.0,<7.0",
-    "ska-tango-base>=1.3.2,<1.4.0",
+    "ska-tango-base>=1.4.0,<2.0.0",
     "ska-control-model[health_rollup]>=1.2.0,<2.0.0",
-    "ska-low-mccs-common>=4.4.0,<5.0.0",
+    "ska-low-mccs-common @ git+https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git@thorn-395",
     "ska-ser-devices>=0.2.0,<0.3.0",
     "pymodbus>=3.11.4,<3.12.0",
     "typing-extensions>=4.6.1,<5.0.0",
@@ -102,7 +102,7 @@ line-length = 88
 
 [tool.pytest.ini_options]
 testpaths = "tests/"
-addopts = "--forked -n 16 --json-report --json-report-file=build/reports/report.json --cov-report html:build/htmlcov --cov-report xml:build/reports/code-coverage.xml --cov-report term:skip-covered --cov=ska_low_mccs_pasd --junitxml=build/reports/unit-tests.xml --verbose"
+addopts = "--forked --json-report --json-report-file=build/reports/report.json --cov-report html:build/htmlcov --cov-report xml:build/reports/code-coverage.xml --cov-report term:skip-covered --cov=ska_low_mccs_pasd --junitxml=build/reports/unit-tests.xml --verbose"
 console_output_style = "progress"
 junit_family = "legacy"
 markers = [
