@@ -600,12 +600,12 @@ class MccsSmartBox(MccsBaseDevice):
         )
 
         if communication_state != CommunicationStatus.ESTABLISHED:
-            self._component_state_callback(power=PowerState.UNKNOWN)
+            self._component_state_changed(power=PowerState.UNKNOWN)
             self._health_monitor_points = {}
             if self._health_recorder is not None:
                 self._health_recorder.clear_attribute_state()
         if communication_state == CommunicationStatus.ESTABLISHED:
-            self._component_state_callback(power=self.component_manager._power_state)
+            self._component_state_changed(power=self.component_manager._power_state)
 
         super()._communication_state_changed(communication_state)
 
