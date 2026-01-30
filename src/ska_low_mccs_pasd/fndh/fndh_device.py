@@ -604,7 +604,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             label=attribute_name,
             max_dim_x=max_dim_x,
             fget=self._read_fndh_attribute,
-            fset=self._read_fndh_attribute,
+            fset=self._write_fndh_attribute,
             unit=unit,
             description=description,
             format=format_string,

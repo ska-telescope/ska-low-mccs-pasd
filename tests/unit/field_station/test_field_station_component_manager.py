@@ -166,7 +166,7 @@ class TestFieldStationComponentManager:
         )
         # Lookahead needs to take into account smartbox callbacks
         mock_callbacks["component_state"].assert_call(
-            outsidetemperature=mocked_outside_temperature, lookahead=50
+            outsidetemperature=mocked_outside_temperature, lookahead=51
         )
         assert (
             field_station_component_manager.outsideTemperature

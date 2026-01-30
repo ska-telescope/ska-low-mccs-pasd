@@ -218,7 +218,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
             pasd_fqdn,
             logger,
             self._pasdbus_communication_state_changed,
-            functools.partial(component_state_callback, fqdn=self._pasd_fqdn),
+            self._pasd_bus_component_state_changed,
             attribute_change_callback,
             update_port_power_states,
             event_serialiser=self._event_serialiser,
@@ -232,6 +232,20 @@ class FndhComponentManager(TaskExecutorComponentManager):
             fault=None,
             pasdbus_status=None,
         )
+
+    def _pasd_bus_component_state_changed(
+        self: FndhComponentManager,
+        power: PowerState | None = None,
+        **kwargs: Any,
+    ) -> None:
+        if power == PowerState.UNKNOWN:
+            self.logger.warning(
+                "PasdBus power state has become UNKNOWN."
+                "This is treated as communication `NOT_ESTABLISHED`"
+            )
+            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+        elif power == PowerState.ON:
+            self._update_communication_state(CommunicationStatus.ESTABLISHED)
 
     def _pasdbus_communication_state_changed(
         self: FndhComponentManager,

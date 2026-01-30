@@ -200,7 +200,7 @@ def test_communication(  # pylint: disable=too-many-statements
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
 
     pasd_bus_device.subscribe_event(
         "healthState",
@@ -208,7 +208,7 @@ def test_communication(  # pylint: disable=too-many-statements
         change_event_callbacks["healthState"],
     )
 
-    change_event_callbacks.assert_change_event("healthState", HealthState.UNKNOWN)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
     assert pasd_bus_device.healthState == HealthState.UNKNOWN
 
     # This is a bit of a cheat.
@@ -226,9 +226,9 @@ def test_communication(  # pylint: disable=too-many-statements
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
-    change_event_callbacks.assert_change_event("healthState", HealthState.OK)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.OK)
     assert pasd_bus_device.healthState == HealthState.OK
 
     change_event_callbacks.assert_against_call(
@@ -620,7 +620,7 @@ def test_set_fndh_port_powers(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
 
     pasd_bus_device.subscribe_event(
         "fndhPortsPowerSensed",
@@ -631,8 +631,8 @@ def test_set_fndh_port_powers(
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
 
     pasd_bus_device.InitializeFndh()
     change_event_callbacks.assert_change_event(
@@ -680,7 +680,7 @@ def test_fndh_led_pattern(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
 
     pasd_bus_device.subscribe_event(
         "fndhLedPattern",
@@ -691,8 +691,8 @@ def test_fndh_led_pattern(
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
 
     change_event_callbacks.assert_change_event(
         "fndhLedPattern", "service: OFF, status: GREENSLOW"
@@ -730,10 +730,10 @@ def test_fndh_low_pass_filters(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
     pasd_bus_device.adminMode = AdminMode.ONLINE
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
 
     # Check for validation errors
     json_argument = json.dumps({"cutoff": 0.09})
@@ -784,7 +784,7 @@ def test_fndh_port_faults(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
     pasd_bus_device.subscribe_event(
         "fndhPortsPowerSensed",
         tango.EventType.CHANGE_EVENT,
@@ -800,8 +800,8 @@ def test_fndh_port_faults(
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
 
     change_event_callbacks.assert_change_event(
         "fndhPortsPowerSensed", fndh_ports_power_sensed, lookahead=2
@@ -856,7 +856,7 @@ def test_set_smartbox_port_powers(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
 
     pasd_bus_device.subscribe_event(
         f"smartbox{smartbox_id}PortsPowerSensed",
@@ -869,8 +869,8 @@ def test_set_smartbox_port_powers(
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
 
     pasd_bus_device.InitializeSmartbox(smartbox_id)
     change_event_callbacks.assert_change_event(
@@ -937,7 +937,7 @@ def test_reset_smartbox_port_breaker(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
 
     pasd_bus_device.subscribe_event(
         f"smartbox{smartbox_id}PortBreakersTripped",
@@ -950,8 +950,8 @@ def test_reset_smartbox_port_breaker(
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
 
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}PortBreakersTripped",
@@ -994,7 +994,7 @@ def test_smartbox_led_pattern(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
 
     pasd_bus_device.subscribe_event(
         f"smartbox{smartbox_id}LedPattern",
@@ -1005,8 +1005,8 @@ def test_smartbox_led_pattern(
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}LedPattern", "service: OFF, status: YELLOWFAST"
     )
@@ -1045,10 +1045,10 @@ def test_smartbox_low_pass_filters(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
     pasd_bus_device.adminMode = AdminMode.ONLINE
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
 
     # Check for validation errors
     json_argument = json.dumps({"smartbox_number": smartbox_id, "cutoff": 0.09})
@@ -1087,7 +1087,7 @@ def test_set_fndh_thresholds(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
 
     pasd_bus_device.subscribe_event(
         "fndhOutsideTemperatureThresholds",
@@ -1098,8 +1098,8 @@ def test_set_fndh_thresholds(
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
 
     pasd_bus_device.fndhOutsideTemperatureThresholds = [80, 70, 40, 30]
 
@@ -1128,7 +1128,7 @@ def test_set_smartbox_thresholds(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
 
     pasd_bus_device.subscribe_event(
         f"smartbox{smartbox_id}PcbTemperatureThresholds",
@@ -1141,8 +1141,8 @@ def test_set_smartbox_thresholds(
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
 
     setattr(
         pasd_bus_device,
@@ -1177,7 +1177,7 @@ def test_set_thresholds_on_initialise(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["state"],
     )
-    change_event_callbacks.assert_change_event("state", tango.DevState.DISABLE)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
 
     pasd_bus_device.subscribe_event(
         "fndhPortsPowerSensed",
@@ -1206,8 +1206,8 @@ def test_set_thresholds_on_initialise(
 
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
-    change_event_callbacks.assert_change_event("state", tango.DevState.UNKNOWN)
-    change_event_callbacks.assert_change_event("state", tango.DevState.ON)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
 
     # Make sure the default simulated value is different from the
     # test harness device configuration

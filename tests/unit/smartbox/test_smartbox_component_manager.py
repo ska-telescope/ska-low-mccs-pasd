@@ -283,6 +283,7 @@ class TestSmartBoxComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
+        mock_callbacks["component_state"].assert_call(power=PowerState.UNKNOWN)
         mock_callbacks["component_state"].assert_call(power=PowerState.OFF)
 
         smartbox_component_manager._on_smartbox_ports_power_changed(

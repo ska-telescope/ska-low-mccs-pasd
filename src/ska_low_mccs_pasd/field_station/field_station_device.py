@@ -14,6 +14,7 @@ from typing import Any, Final, Optional, cast
 
 from ska_control_model import (
     AdminMode,
+    AdminModeModel,
     CommunicationStatus,
     HealthState,
     PowerState,
@@ -98,8 +99,9 @@ class MccsFieldStation(MccsBaseDevice):
 
         self._health_state = HealthState.UNKNOWN
         self._health_report = ""
-
         self._health_rollup = self._setup_health_rollup()
+        # TODO: Remove in ska-tango-base 1.4.2
+        self.admin_mode_model = AdminModeModel(self.logger, self._update_admin_mode)
 
     def create_component_manager(
         self: MccsFieldStation,

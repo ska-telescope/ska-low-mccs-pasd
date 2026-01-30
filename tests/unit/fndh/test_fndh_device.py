@@ -66,8 +66,10 @@ def mock_component_manager_fixture() -> unittest.mock.Mock:
         fndh bus device.
     """
     component_manager = unittest.mock.Mock()
-    component_manager.max_queued_tasks = 0
-    component_manager.max_executing_tasks = 1
+    task_executor = unittest.mock.Mock()
+    task_executor.max_queued_tasks = 10
+    task_executor.max_executing_tasks = 1
+    component_manager._task_executor = task_executor
     return component_manager
 
 
