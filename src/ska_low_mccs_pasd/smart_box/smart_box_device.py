@@ -649,7 +649,7 @@ class MccsSmartBox(MccsBaseDevice):
                 self._communication_state_changed(CommunicationStatus.NOT_ESTABLISHED)
             return
         fault_aggregate = fault or self.threshold_fault
-        super()._component_state_changed(fault=fault_aggregate, power=power)
+        self._component_state_changed(fault=fault_aggregate, power=power)
         if self._health_model is not None:
             if fault_aggregate is not None:
                 self._health_model.update_state(fault=fault_aggregate)
@@ -659,6 +659,30 @@ class MccsSmartBox(MccsBaseDevice):
                 self._health_model.update_state(pasdbus_status=pasdbus_status)
         if antenna_powers is not None:
             self.push_change_event("antennaPowers", antenna_powers)
+
+    # Override the base class so we can remove the 'is allowed' checks
+    # See SKB-1150
+    def _component_state_changed(
+        self,
+        fault: bool | None = None,
+        power: PowerState | None = None,
+    ) -> None:
+        if power is not None:
+            action_map = {
+                PowerState.UNKNOWN: None,
+                PowerState.OFF: "component_off",
+                PowerState.STANDBY: "component_standby",
+                PowerState.ON: "component_on",
+            }
+            action = action_map[power]
+            if action is not None:
+                self.op_state_model.perform_action(action)
+
+        if fault is not None:
+            if fault:
+                self.op_state_model.perform_action("component_fault")
+            else:
+                self.op_state_model.perform_action("component_no_fault")
 
     def _health_changed_callback(self: MccsSmartBox, health: HealthState) -> None:
         """
