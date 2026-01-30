@@ -8,7 +8,6 @@
 """This module implements the component management for fndh."""
 from __future__ import annotations
 
-import functools
 import json
 import logging
 import re

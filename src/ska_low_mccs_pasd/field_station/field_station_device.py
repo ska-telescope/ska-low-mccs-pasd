@@ -33,6 +33,7 @@ __all__ = ["MccsFieldStation"]
 DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
 
 
+# pylint: disable=too-many-instance-attributes
 class MccsFieldStation(MccsBaseDevice):
     """An implementation of the FieldStation device."""
 
