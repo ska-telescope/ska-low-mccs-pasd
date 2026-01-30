@@ -598,7 +598,7 @@ class MccsSmartBox(MccsBaseDevice):
             ),
             communication_state.name,
         )
-
+        self.logger.info(f"_communication_state_changed. State: {communication_state}")
         if communication_state != CommunicationStatus.ESTABLISHED:
             self._component_state_callback(power=PowerState.UNKNOWN)
             self._health_monitor_points = {}

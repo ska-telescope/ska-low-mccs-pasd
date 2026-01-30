@@ -142,8 +142,10 @@ class _PasdBusProxy(DeviceComponentManager):
         assert self._proxy is not None
         # Ask what attributes to subscribe to and subscribe to them.
         subscriptions = self._proxy.GetPasdDeviceSubscriptions(self._smartbox_nr)
+        self.logger.info(f"subscribe_to_attributes. Subscriptions: {subscriptions}")
         for attribute in subscriptions:
             if attribute not in self._proxy._change_event_subscription_ids.keys():
+                self.logger.info(f"Subscribing to: {attribute}")
                 self._proxy.add_change_event_callback(
                     attribute, self._on_attribute_change
                 )
@@ -152,6 +154,7 @@ class _PasdBusProxy(DeviceComponentManager):
             "fndhPortsPowerSensed"
             not in self._proxy._change_event_subscription_ids.keys()
         ):
+            self.logger.info("Subscribing to: fndhPortsPowerSensed")
             self._proxy.add_change_event_callback(
                 "fndhPortsPowerSensed", self._fndh_port_power_callback
             )
@@ -350,6 +353,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """Establish communication."""
         if self.communication_state == CommunicationStatus.ESTABLISHED:
+            self.logger.info("start_communicating: Already communicating")
             return
         self._pasd_bus_proxy.start_communicating()
 
@@ -357,8 +361,12 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self: SmartBoxComponentManager,
         communication_state: CommunicationStatus,
     ) -> None:
+        self.logger.info(
+            f"communication_state_changed: {self._pasd_communication_state}"
+        )
         self._pasd_communication_state = communication_state
         if communication_state == CommunicationStatus.ESTABLISHED:
+            self.logger.info("Subscribing to attributes")
             self._pasd_bus_proxy.subscribe_to_attributes()
         # Only update state on change.
         if communication_state != self._communication_state:
