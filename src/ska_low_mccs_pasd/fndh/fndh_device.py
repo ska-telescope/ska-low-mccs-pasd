@@ -14,7 +14,6 @@ import importlib.resources
 import json
 import logging
 import sys
-import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
@@ -200,11 +199,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             self._health_recorder.cleanup()
             self._health_recorder = None
         super().delete_device()
-        for t in threading.enumerate():
-            self.logger.info(
-                f"Threads open at end of DELETE DEVICE "
-                f"Threads: {t.name}, ID: {t.ident}, Daemon: {t.daemon}"
-            )
 
     def _init_state_model(self: MccsFNDH) -> None:
         super()._init_state_model()

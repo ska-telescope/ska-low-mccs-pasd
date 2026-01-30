@@ -765,8 +765,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
     def cleanup(self: PasdBusComponentManager) -> None:
         """Delete and clean up any remaining processes."""
-        if self._poller:
-            self._poller.stop_polling()
-            # it's a Deamon, but delete device doesn't allways close the mainthread
-            self._poller._polling_thread.join()
         self.stop_communicating()
+        # Stop communicating will not actually stop the polling thread, but it pauses
+        # it. The __del__ method is written to stop the thread. This will let the
+        # interpreter do proper garbage collection and the thread will be removed.
+        self._poller.__del__()  # pylint: disable=unnecessary-dunder-call

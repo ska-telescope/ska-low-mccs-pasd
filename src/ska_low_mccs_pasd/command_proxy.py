@@ -17,7 +17,7 @@ from ska_control_model import ResultCode, TaskStatus
 from ska_tango_testing.context import DeviceProxy
 
 
-class MccsCommandProxy:  # pylint: disable=too-few-public-methods
+class MccsCommandProxy:
     """
     A command proxy that understands the ska-low-mccs command variants.
 

@@ -13,7 +13,6 @@ import importlib.resources
 import json
 import logging
 import sys
-import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Final, Optional, cast
@@ -430,11 +429,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         """
         self.component_manager.cleanup()
         super().delete_device()
-        for t in threading.enumerate():
-            self.logger.info(
-                f"Threads open at end of DELETE DEVICE "
-                f"Threads: {t.name}, ID: {t.ident}, Daemon: {t.daemon}"
-            )
 
     # ----------
     # Callbacks

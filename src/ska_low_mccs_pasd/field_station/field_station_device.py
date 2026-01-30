@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 import json
-import threading
 from typing import Any, Final, Optional, cast
 
 from ska_control_model import (
@@ -90,11 +89,6 @@ class MccsFieldStation(MccsBaseDevice):
         """Delete the device."""
         self.component_manager.cleanup()
         super().delete_device()
-        for t in threading.enumerate():
-            self.logger.info(
-                f"Threads open at end of DELETE DEVICE "
-                f"Threads: {t.name}, ID: {t.ident}, Daemon: {t.daemon}"
-            )
 
     def _init_state_model(self: MccsFieldStation) -> None:
         super()._init_state_model()
