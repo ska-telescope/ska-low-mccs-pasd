@@ -15,7 +15,7 @@
 * [THORN-391] Delay next poll after changing FNDH port status. Introduces new properties AttributeReadDelay and PortStatusReadDelay. Also addresses a bugs in switching adminMode.
 
 ## 4.2.1
-
+* [THORN-383] Fix KeyError caused when not deploying full set of smartboxes
 * [THORN-388] Update to ska-low-pasd-driver 1.0.0 which moves us to pymodbus 3.11.4. 
 * [THORN-336] Request FNPC SYS_STATUS after a Modbus error to try to re-establish communications.
 * [LOW-2034] Only deploy a PaSD configuration ConfigMap if deploying the corresponding simulator that needs it.

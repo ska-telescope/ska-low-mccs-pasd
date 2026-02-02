@@ -156,10 +156,11 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
 
         if self.SmartboxIDs:
+            valid_smartboxes = []
             for fndh_port, smartbox_id in enumerate(self.SmartboxIDs, start=1):
                 if smartbox_id != 0:
-                    self._smartboxIDs[fndh_port] = smartbox_id
-            self._available_smartboxes = list(self._smartboxIDs.values())
+                    valid_smartboxes.append(smartbox_id)
+            self._available_smartboxes = valid_smartboxes
         else:
             self._available_smartboxes = self.AvailableSmartboxes
 
