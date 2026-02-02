@@ -155,6 +155,14 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         self._build_state: str = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
 
+        if self.SmartboxIDs:
+            for fndh_port, smartbox_id in enumerate(self.SmartboxIDs, start=1):
+                if smartbox_id != 0:
+                    self._smartboxIDs[fndh_port] = smartbox_id
+            self._available_smartboxes = list(self._smartboxIDs.values())
+        else:
+            self._available_smartboxes = self.AvailableSmartboxes
+
         self._pasd_state: dict[str, PasdAttribute] = {}
         for key, controller in PasdData.CONTROLLERS_CONFIG.items():
             if key == "FNSC":
@@ -480,15 +488,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             and communication_state == CommunicationStatus.ESTABLISHED
         ):
             self._init_pasd_devices = False
-            for device_number in self.AvailableSmartboxes + [PasdData.FNDH_DEVICE_ID]:
+            for device_number in self._available_smartboxes:
                 self._set_all_low_pass_filters_of_device(device_number)
             if self.FEMCurrentTripThreshold is not None:
-                for device_number in self.AvailableSmartboxes:
+                for device_number in self._available_smartboxes:
                     self.component_manager.initialize_fem_current_trip_thresholds(
                         device_number, self.FEMCurrentTripThreshold
                     )
             if self.SBInputVoltageThresholds is not None:
-                for device_number in self.AvailableSmartboxes:
+                for device_number in self._available_smartboxes:
                     self.component_manager.initialize_sb_input_voltage_thresholds(
                         device_number, self.SBInputVoltageThresholds
                     )
