@@ -1571,7 +1571,7 @@ class TestSmartBoxPasdBusIntegration:
         assert "Thresholds do not match:" in message[0]
         assert "pcbtemperaturethresholds" in message[0]
 
-        time.sleep(0.1)
+        time.sleep(2)
 
         # change_event_callbacks.assert_change_event(
         #     "smartboxHealthState",
