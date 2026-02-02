@@ -271,6 +271,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._pasd_bus_api_client.reset_connection()
 
     # TODO: None return is reasonable and should be supported by ska-tango-base
+    # pylint: disable=too-many-statements
     def get_request(  # type: ignore[override]
         self: PasdBusComponentManager,
     ) -> PasdBusRequest | None:
