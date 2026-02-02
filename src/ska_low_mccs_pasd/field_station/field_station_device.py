@@ -320,8 +320,9 @@ class MccsFieldStation(MccsBaseDevice):
 
         :param health: the new health value
         """
+        # This is defined as an attribute_from_signal in the base classes.
+        # By just setting this cache this will push events for us.
         self._health_state = health
-        self.push_change_event("healthState", health)
 
     def _health_summary_changed(
         self: MccsFieldStation, health_summary: HealthSummary

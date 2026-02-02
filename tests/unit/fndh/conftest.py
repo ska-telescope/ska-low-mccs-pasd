@@ -14,7 +14,7 @@ from ska_low_mccs_common.testing.mock import MockDeviceBuilder
 
 
 @pytest.fixture(name="default_monitoring_point_thresholds")
-def default_monitoring_point_thresholds_fixture() -> dict[str, list[float]]:
+def default_monitoring_point_thresholds_fixture() -> dict[str, list[float | int]]:
     """
     Return a dictionary with monitoring points thresholds.
 
@@ -28,7 +28,7 @@ def default_monitoring_point_thresholds_fixture() -> dict[str, list[float]]:
         "psu48vtemperature2": [100.0, 80.0, 2.0, 0.0],
         "paneltemperature": [100.0, 80.0, 2.0, 0.0],
         "fncbtemperature": [100.0, 80.0, 2.0, 0.0],
-        "fncbhumidity": [100.0, 80.0, 2.0, 0.0],
+        "fncbhumidity": [100, 80, 2, 0],
         "commsgatewaytemperature": [100.0, 80.0, 2.0, 0.0],
         "powermoduletemperature": [100.0, 80.0, 2.0, 0.0],
         "outsidetemperature": [100.0, 80.0, 2.0, 0.0],
@@ -50,7 +50,7 @@ def healthy_monitoring_points_fixture(
     """
     mon_value = {}
     for key, threshold in default_monitoring_point_thresholds.items():
-        mon_value[key] = (threshold[1] + threshold[2]) / 2
+        mon_value[key] = type(threshold[1])((threshold[1] + threshold[2]) / 2)
 
     return mon_value
 
@@ -83,8 +83,10 @@ def mock_pasdbus_fixture() -> unittest.mock.Mock:
         "fndhinternalambienttemperature": [80, 65, 5, -2],
     }
     for attr, thresholds in attrs.items():
-        value = float((thresholds[1] + thresholds[2]) / 2)
+        value = type(thresholds[1])((thresholds[1] + thresholds[2]) / 2)
         builder.add_attribute(attr, value)
 
-    builder.add_command("GetPasdDeviceSubscriptions", list(attrs.keys()))
+    builder.add_command(
+        "GetPasdDeviceSubscriptions", list(attrs.keys()) + ["fndhPortsPowerSensed"]
+    )
     return builder()

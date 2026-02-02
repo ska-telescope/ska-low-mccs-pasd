@@ -369,7 +369,10 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         power: PowerState | None = None,
         **kwargs: Any,
     ) -> None:
-        if power == PowerState.UNKNOWN:
+        if (
+            power == PowerState.UNKNOWN
+            and self.communication_state != CommunicationStatus.DISABLED
+        ):
             self.logger.warning(
                 "PasdBus power state has become UNKNOWN."
                 "This is treated as communication `NOT_ESTABLISHED`"

@@ -258,6 +258,7 @@ class TestSmartBoxComponentManager:
         # check that the communication state goes to DISABLED after stop communication.
         smartbox_component_manager.stop_communicating()
         mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
+        mock_callbacks["communication_state"].assert_not_called()
 
     def test_component_state(
         self: TestSmartBoxComponentManager,

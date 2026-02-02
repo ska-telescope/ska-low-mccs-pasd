@@ -644,7 +644,15 @@ class MccsSmartBox(MccsBaseDevice):
                 # assumed that communication is NOT_ESTABLISHED.
                 self._communication_state_changed(CommunicationStatus.NOT_ESTABLISHED)
             return
-        fault_aggregate = fault or self.threshold_fault
+        # This is a workaround. self.threshold_fault needs to be fixed to be None at the
+        # correct time.
+        fault_aggregate = None
+        if self.op_state_model.op_state in [
+            tango.DevState.ON,
+            tango.DevState.STANDBY,
+            tango.DevState.FAULT,
+        ] and (power is None or power in [PowerState.ON, PowerState.STANDBY]):
+            fault_aggregate = fault or self.threshold_fault
         super()._component_state_changed(fault=fault_aggregate, power=power)
         if self._health_model is not None:
             if fault_aggregate is not None:
