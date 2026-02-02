@@ -197,9 +197,9 @@ def poll_until_command_completed(
         return
 
     if no_of_iters == 1:
-        pytest.fail("Command Failed to complete in time")
+        pytest.fail(f"Command Failed to complete in time: {command_status}")
 
-    time.sleep(0.1)
+    time.sleep(1)
     return poll_until_command_completed(device, command_id, no_of_iters - 1)
 
 
