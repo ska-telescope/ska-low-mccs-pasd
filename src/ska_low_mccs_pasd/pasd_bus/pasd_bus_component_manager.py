@@ -768,4 +768,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self.stop_communicating()
         # Stop communicating will not actually stop the polling thread, but it pauses
         # it. If we set the state to killed this will exit the while loop and stops it.
-        self._poller._state = self._poller._State.KILLED
+        with self._poller._condition:
+            self._poller._state = self._poller._State.KILLED
+            self._poller._condition.notify()
