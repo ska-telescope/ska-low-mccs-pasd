@@ -767,6 +767,5 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """Delete and clean up any remaining processes."""
         self.stop_communicating()
         # Stop communicating will not actually stop the polling thread, but it pauses
-        # it. The __del__ method is written to stop the thread. This will let the
-        # interpreter do proper garbage collection and the thread will be removed.
-        self._poller.__del__()  # pylint: disable=unnecessary-dunder-call
+        # it. If we set the state to killed this will exit the while loop and stops it.
+        self._poller._state = self._poller._State.KILLED
