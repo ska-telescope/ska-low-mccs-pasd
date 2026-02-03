@@ -564,14 +564,15 @@ class TestPasdBusComponentManager:
                     expected_desired_power_when_offline[j] = DesiredPowerEnum.OFF
                     expected_ports_power_sensed[j] = False
 
-                mock_callbacks["pasd_device_state_for_fndh"].assert_call(
-                    port_forcings=port_forcings,
-                    ports_desired_power_when_online=expected_desired_power_when_online,
-                    ports_desired_power_when_offline=expected_desired_power_when_offline,
-                    ports_power_sensed=expected_ports_power_sensed,
-                    ports_power_control=[True] * FndhSimulator.NUMBER_OF_PORTS,
-                    lookahead=11,  # Full cycle plus one to cover off on race conditions
-                )
+            mock_callbacks["pasd_device_state_for_fndh"].assert_call(
+                port_forcings=port_forcings,
+                ports_desired_power_when_online=expected_desired_power_when_online,
+                ports_desired_power_when_offline=expected_desired_power_when_offline,
+                ports_power_sensed=expected_ports_power_sensed,
+                ports_power_control=[True] * FndhSimulator.NUMBER_OF_PORTS,
+                lookahead=11
+                + 28,  # Full cycle plus one to cover off on race conditions
+            )
 
     def test_set_smartbox_port_powers(  # pylint: disable=too-many-locals
         self: TestPasdBusComponentManager,
