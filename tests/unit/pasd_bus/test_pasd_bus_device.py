@@ -24,6 +24,7 @@ from ska_low_pasd_driver.pasd_bus_conversions import (
     SmartboxAlarmFlags,
 )
 from ska_low_pasd_driver.pasd_bus_simulator import PasdHardwareSimulator
+from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_data import PasdData
@@ -658,14 +659,9 @@ def test_set_fndh_port_powers(
         for j, desired in enumerate(desired_port_powers):
             if desired is not None:
                 expected_fndh_ports_power_sensed[j] = desired
-                try:
-                    change_event_callbacks.assert_change_event(
-                        "fndhPortsPowerSensed", expected_fndh_ports_power_sensed
-                    )
-                except:
-                    assert (
-                        False
-                    ), f"{expected_fndh_ports_power_sensed = }, {pasd_bus_device.fndhportspowersensed = }, {desired_port_powers = }"
+                change_event_callbacks.assert_change_event(
+                    "fndhPortsPowerSensed", expected_fndh_ports_power_sensed
+                )
 
 
 def test_fndh_led_pattern(
@@ -1361,6 +1357,7 @@ def test_only_poll_on_smartboxes(
     change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
 
     pasd_bus_device.InitializeFndh()
+    change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(Anything)
 
     # Turn on all the attached smartboxes except one (not the last one as we're using
     # that to detect when polling has finished)
@@ -1380,14 +1377,18 @@ def test_only_poll_on_smartboxes(
     change_event_callbacks[f"smartbox{isolated_sb_id}Uptime"].assert_change_event(None)
     desired_port_powers[isolated_sb_index] = False
 
+    port_powers = list(pasd_bus_device.fndhportspowersensed)
     json_arg = {
         "port_powers": desired_port_powers,
         "stay_on_when_offline": False,
     }
     pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
-    change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
-        desired_port_powers, lookahead=5
-    )
+    for j, desired in enumerate(desired_port_powers):
+        if desired is not None:
+            port_powers[j] = desired
+            change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
+                port_powers
+            )
 
     # Wait for the last smartbox's attributes to be updated
     change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"].assert_against_call(
@@ -1433,7 +1434,7 @@ def test_only_poll_on_smartboxes(
     }
     pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
     change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
-        desired_port_powers, lookahead=20
+        desired_port_powers, lookahead=30
     )
     change_event_callbacks[f"smartbox{isolated_sb_id}Uptime"].assert_against_call(
         lookahead=5
