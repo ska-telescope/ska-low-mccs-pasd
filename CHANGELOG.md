@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-* [THORN-391] Delay next poll after changing FNDH port status.
+## 4.3.0
+
+* [THORN-391] Delay next poll after changing FNDH port status. Introduces new properties AttributeReadDelay and PortStatusReadDelay. Also addresses a bugs in switching adminMode.
 
 ## 4.2.1
 
