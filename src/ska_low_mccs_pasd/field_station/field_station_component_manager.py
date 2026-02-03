@@ -623,3 +623,13 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                                 "FieldStation transitioning to `UNKNOWN` state ...."
                             ),
                         )
+
+    def cleanup(self: FieldStationComponentManager) -> None:
+        """Cleanup for threads and processes."""
+        self.stop_communicating()
+        self._communication_manager.shutdown()
+        if self._fndh_proxy:
+            self._fndh_proxy.cleanup()
+        for smartbox_proxy in self._smartbox_proxys.values():
+            smartbox_proxy.cleanup()
+        self._task_executor._executor.shutdown()

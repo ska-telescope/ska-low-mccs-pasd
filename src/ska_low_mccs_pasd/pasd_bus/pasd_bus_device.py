@@ -439,7 +439,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         (The socket should be closed when it is deleted,
         but it is good practice to close it explicitly anyhow.)
         """
-        self.component_manager.stop_communicating()
+        self.component_manager.cleanup()
+        super().delete_device()
 
     # ----------
     # Callbacks

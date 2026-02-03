@@ -176,8 +176,7 @@ class MccsSmartBox(MccsBaseDevice):
         if self._health_recorder is not None:
             self._health_recorder.cleanup()
             self._health_recorder = None
-        self.component_manager._pasd_bus_proxy.cleanup()
-        self.component_manager._task_executor._executor.shutdown()
+        self.component_manager.cleanup()
         super().delete_device()
 
     def _init_state_model(self: MccsSmartBox) -> None:

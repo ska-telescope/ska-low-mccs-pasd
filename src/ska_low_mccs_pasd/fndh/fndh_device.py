@@ -193,8 +193,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
     def delete_device(self: MccsFNDH) -> None:
         """Delete the device."""
-        self.component_manager._pasd_bus_proxy.cleanup()
-        self.component_manager._task_executor._executor.shutdown()
+        self.component_manager.cleanup()
         self._stopping = True
         if self._health_recorder is not None:
             self._health_recorder.cleanup()
