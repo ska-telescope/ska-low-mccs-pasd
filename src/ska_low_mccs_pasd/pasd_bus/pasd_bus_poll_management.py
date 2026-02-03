@@ -563,7 +563,9 @@ class PasdBusRequestProvider:
             and any arguments or extra information.
         """
         # Check if any expedited attribute reads need to be added to the list
-        # for future polls.
+        # for future polls. These are actioned after a delay, so we maintain
+        # a list rather than executing them immediately, so as not to hold
+        # up other requests.
         for device_id, _ in self._ticks.items():
             expedited_read_request = self._device_request_providers[
                 device_id
