@@ -533,7 +533,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         result = ResultCode.OK
 
         try:
-            timeout = 60  # seconds
+            timeout = 28 * 10  # seconds
             result, time_left = self._power_fndh_ports(power_state, timeout)
 
         except Exception as ex:  # pylint: disable=broad-except
