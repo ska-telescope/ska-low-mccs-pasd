@@ -598,3 +598,9 @@ class FndhComponentManager(TaskExecutorComponentManager):
         :param value: the value to write.
         """
         self._pasd_bus_proxy.write_attribute(attribute_name, value)
+
+    def cleanup(self: FndhComponentManager) -> None:
+        """Delete and clean up any remaining processes."""
+        if self._pasd_bus_proxy:
+            self._pasd_bus_proxy.cleanup()
+        self._task_executor._executor.shutdown()

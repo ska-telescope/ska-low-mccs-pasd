@@ -186,3 +186,9 @@ class FnccComponentManager(TaskExecutorComponentManager):
             return
         self._pasd_bus_proxy.stop_communicating()
         self._update_component_state(power=None, fault=None)
+
+    def cleanup(self: FnccComponentManager) -> None:
+        """Delete and clean up any remaining processes."""
+        if self._pasd_bus_proxy:
+            self._pasd_bus_proxy.cleanup()
+        self._task_executor._executor.shutdown()

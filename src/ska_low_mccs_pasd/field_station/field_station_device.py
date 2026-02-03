@@ -87,10 +87,7 @@ class MccsFieldStation(MccsBaseDevice):
 
     def delete_device(self: MccsFieldStation) -> None:
         """Delete the device."""
-        self.component_manager._fndh_proxy.cleanup()
-        for smartbox in self.component_manager._smartbox_proxys.values():
-            smartbox.cleanup()
-        self.component_manager._task_executor._executor.shutdown()
+        self.component_manager.cleanup()
         super().delete_device()
 
     def _init_state_model(self: MccsFieldStation) -> None:

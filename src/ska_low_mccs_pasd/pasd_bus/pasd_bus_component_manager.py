@@ -774,3 +774,12 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param port_power_states: list of port power statuses (true=On, false=Off).
         """
         self._request_provider.update_port_power_states(port_power_states)
+
+    def cleanup(self: PasdBusComponentManager) -> None:
+        """Delete and clean up any remaining processes."""
+        self.stop_communicating()
+        # Stop communicating will not actually stop the polling thread, but it pauses
+        # it. If we set the state to killed this will exit the while loop and stops it.
+        with self._poller._condition:
+            self._poller._state = self._poller._State.KILLED
+            self._poller._condition.notify()
