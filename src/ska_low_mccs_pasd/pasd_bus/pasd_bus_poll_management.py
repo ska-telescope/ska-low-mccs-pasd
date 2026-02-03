@@ -275,9 +275,7 @@ class DeviceRequestProvider:
                 return "BREAKER_RESET", port
 
         if any(change is not None for change in self._port_power_changes):
-            requested_powers = self._port_power_changes
-            self._port_power_changes = [None] * len(requested_powers)
-            self._ports_status_update_request = True
+            requested_powers = self._get_requested_port_powers()
             return "SET_PORT_POWERS", requested_powers
 
         if self._status_reset_requested:
@@ -295,6 +293,12 @@ class DeviceRequestProvider:
             return "RESET_WARNINGS", None
 
         return "NONE", None
+
+    def _get_requested_port_powers(self) -> list[tuple[bool, bool] | None]:
+        requested_powers = self._port_power_changes
+        self._port_power_changes = [None] * len(requested_powers)
+        self._ports_status_update_request = True
+        return requested_powers
 
     def get_read(self) -> str:
         """
@@ -327,6 +331,26 @@ class DeviceRequestProvider:
                 time.time() + self._attribute_read_delay,
             )
         return None
+
+
+class FndhRequestProvider(DeviceRequestProvider):
+    """
+    A class to handle staggered powering of Fndh ports.
+
+    A request for powering N ports becomes N requests for powering 1 port.
+    """
+
+    def _get_requested_port_powers(self) -> list[tuple[bool, bool] | None]:
+        requested_powers: list[tuple[bool, bool] | None] = [None] * len(
+            self._port_power_changes
+        )
+        for requested_port, port_power in enumerate(self._port_power_changes):
+            if port_power is not None:
+                requested_powers[requested_port] = port_power
+                self._port_power_changes[requested_port] = None
+                break
+        self._ports_status_update_request = True
+        return requested_powers
 
 
 class PasdBusRequestProvider:
@@ -412,7 +436,7 @@ class PasdBusRequestProvider:
                 }
             )
 
-        fndh_request_provider = DeviceRequestProvider(
+        fndh_request_provider = FndhRequestProvider(
             PasdData.NUMBER_OF_FNDH_PORTS,
             fndh_read_request_iterator,
             self._attribute_read_delay,

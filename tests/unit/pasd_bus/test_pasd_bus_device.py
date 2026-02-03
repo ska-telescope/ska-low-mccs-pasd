@@ -648,18 +648,24 @@ def test_set_fndh_port_powers(
         )
 
         expected_fndh_ports_power_sensed = list(fndh_ports_power_sensed)
-        for i, desired in enumerate(desired_port_powers):
-            if desired is not None:
-                expected_fndh_ports_power_sensed[i] = desired
 
         json_arg = {
             "port_powers": desired_port_powers,
             "stay_on_when_offline": False,
         }
         pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
-        change_event_callbacks.assert_change_event(
-            "fndhPortsPowerSensed", expected_fndh_ports_power_sensed
-        )
+
+        for j, desired in enumerate(desired_port_powers):
+            if desired is not None:
+                expected_fndh_ports_power_sensed[j] = desired
+                try:
+                    change_event_callbacks.assert_change_event(
+                        "fndhPortsPowerSensed", expected_fndh_ports_power_sensed
+                    )
+                except:
+                    assert (
+                        False
+                    ), f"{expected_fndh_ports_power_sensed = }, {pasd_bus_device.fndhportspowersensed = }, {desired_port_powers = }"
 
 
 def test_fndh_led_pattern(
