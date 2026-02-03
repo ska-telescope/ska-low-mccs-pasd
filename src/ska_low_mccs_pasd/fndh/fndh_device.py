@@ -974,7 +974,15 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                     self._health_model.update_state(ignore_pasd_power=False)
             self._health_model.update_state(pasd_power=power)
             return
-        fault_aggregate = fault or self.threshold_fault
+        # This is a workaround. self.threshold_fault needs to be fixed to be None at the
+        # correct time.
+        fault_aggregate = None
+        if self.op_state_model.op_state in [
+            tango.DevState.ON,
+            tango.DevState.STANDBY,
+            tango.DevState.FAULT,
+        ] and (power is None or power in [PowerState.ON, PowerState.STANDBY]):
+            fault_aggregate = fault or self.threshold_fault
         super()._component_state_changed(fault=fault_aggregate, power=power)
         if fault_aggregate is not None and self._health_model is not None:
             self._health_model.update_state(fault=fault_aggregate)

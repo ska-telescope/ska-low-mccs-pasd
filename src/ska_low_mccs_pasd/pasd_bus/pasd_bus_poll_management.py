@@ -9,6 +9,8 @@
 
 
 import logging
+import time
+from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Optional, Sequence
 
 from ska_low_mccs_pasd.pasd_data import PasdData
@@ -70,7 +72,26 @@ def smartbox_read_request_iterator() -> Iterator[str]:
         yield "ALARM_FLAGS"
 
 
-class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
+@dataclass
+class ExpeditedReadRequest:
+    """
+    Class to represent an expedited read request.
+
+    Encapsulates data about a read request including a
+    'not before' timestamp to allow time for the register
+    in question to be updated.
+    """
+
+    device_id: int
+    request_description: tuple[str, Any]
+    not_before: float
+
+    def __post_init__(self) -> None:
+        """Post init method to record the request timestamp."""
+        self.timestamp = time.time()
+
+
+class DeviceRequestProvider:
     """
     A class that determines the next communication with a specified device.
 
@@ -79,10 +100,14 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
     and it decides what, if any, communication with it should occur in the next poll.
     """
 
+    # pylint: disable=too-many-arguments,too-many-instance-attributes
+    # pylint: disable=too-many-positional-arguments
     def __init__(
         self,
         number_of_ports: int,
         read_request_iterator_factory: Callable[[], Iterator[str]],
+        attribute_read_delay: float,
+        port_status_read_delay: float,
         logger: logging.Logger,
     ) -> None:
         """
@@ -91,6 +116,10 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         :param number_of_ports: the number of ports this device has.
         :param read_request_iterator_factory: a callable that returns
             a read request iterator
+        :param attribute_read_delay: time in seconds to wait after writing an
+            attribute before reading it again
+        :param port_status_read_delay: time in seconds to wait after setting
+            port status before reading it again
         :param logger: a logger.
         """
         self._logger = logger
@@ -113,6 +142,9 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         # following a write command
         self._attribute_update_requests: list[str] = []
         self._ports_status_update_request: bool = False
+
+        self._attribute_read_delay = attribute_read_delay
+        self._port_status_read_delay = port_status_read_delay
 
         self._read_request_iterator_factory = read_request_iterator_factory
         self._read_request_iterator = read_request_iterator_factory()
@@ -272,23 +304,29 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         """
         return next(self._read_request_iterator)
 
-    def get_expedited_read(self) -> tuple[str, Any]:
+    def get_expedited_read(self, device_id: int) -> ExpeditedReadRequest | None:
         """
-        Return a description of an expedited read request.
+        Return an ExpeditedReadRequest for future action.
 
         This is required for attributes which have been written to by the user,
         so we don't have to wait until their turn in the regular poll.
 
-        :return: A tuple, consisting of the name of a predefined attribute set
-            (see PasdBusComponentManager), or the command READ along with the
-            name of the specific attribute to be read.
+        :param: device_id: The id of the device requiring the request.
+        :return: An ExpeditedReadRequest, encapsulating information about
+            the request to make and when it should be actioned.
         """
         if self._ports_status_update_request:
             self._ports_status_update_request = False
-            return "PORTS", None
+            return ExpeditedReadRequest(
+                device_id, ("PORTS", None), time.time() + self._port_status_read_delay
+            )
         if self._attribute_update_requests:
-            return "READ", self._attribute_update_requests.pop(0)
-        return "NONE", None
+            return ExpeditedReadRequest(
+                device_id,
+                ("READ", self._attribute_update_requests.pop(0)),
+                time.time() + self._attribute_read_delay,
+            )
+        return None
 
 
 class PasdBusRequestProvider:
@@ -306,10 +344,14 @@ class PasdBusRequestProvider:
       given the above constraints
     """
 
+    # pylint: disable=too-many-instance-attributes, too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def __init__(
         self,
         min_ticks: int,
         logger: logging.Logger,
+        attribute_read_delay: float,
+        port_status_read_delay: float,
         available_smartboxes: list[int],
         smartbox_ids: Optional[list[int]] = None,
     ) -> None:
@@ -319,12 +361,18 @@ class PasdBusRequestProvider:
         :param min_ticks: minimum number of ticks between communications
             with any given device
         :param logger: a logger.
+        :param attribute_read_delay: time in seconds to wait after writing an
+            attribute before reading it again
+        :param port_status_read_delay: time in seconds to wait after setting
+            port status before reading it again
         :param available_smartboxes: list of available smartbox ids to poll
         :param smartbox_ids: optional list of smartbox IDs associated with
             each FNDH port
         """
         self._min_ticks = min_ticks
         self._logger = logger
+        self._attribute_read_delay = attribute_read_delay
+        self._port_status_read_delay = port_status_read_delay
 
         # Create a dict mapping FNDH ports to smartbox Modbus IDs
         # if smartboxIDs is provided, otherwise just use available_smartboxes
@@ -337,6 +385,7 @@ class PasdBusRequestProvider:
         else:
             self._available_smartboxes = available_smartboxes
 
+        self._expedited_reads: list[ExpeditedReadRequest] = []
         self.initialise()
 
     def initialise(self) -> None:
@@ -364,15 +413,25 @@ class PasdBusRequestProvider:
             )
 
         fndh_request_provider = DeviceRequestProvider(
-            PasdData.NUMBER_OF_FNDH_PORTS, fndh_read_request_iterator, self._logger
+            PasdData.NUMBER_OF_FNDH_PORTS,
+            fndh_read_request_iterator,
+            self._attribute_read_delay,
+            self._port_status_read_delay,
+            logger=self._logger,
         )
         fncc_request_provider = DeviceRequestProvider(
-            0, fncc_read_request_iterator, self._logger
+            0,
+            fncc_read_request_iterator,
+            attribute_read_delay=self._attribute_read_delay,
+            port_status_read_delay=self._port_status_read_delay,
+            logger=self._logger,
         )
         self._device_request_providers: dict[int, DeviceRequestProvider] = {
             smartbox_id: DeviceRequestProvider(
                 PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 smartbox_read_request_iterator,
+                self._attribute_read_delay,
+                self._port_status_read_delay,
                 self._logger,
             )
             for smartbox_id in self._available_smartboxes
@@ -407,7 +466,6 @@ class PasdBusRequestProvider:
         Register a request to read the information usually just read at startup.
 
         :param device_id: the device number.
-            This is 0 for the FNDH and 100 for the FNCC, otherwise a smartbox number.
         """
         self._device_request_providers[device_id].desire_read_startup_info()
 
@@ -416,7 +474,6 @@ class PasdBusRequestProvider:
         Register a request to initialize a device.
 
         :param device_id: the device number.
-            This is 0 for the FNDH, otherwise a smartbox number.
         """
         self._device_request_providers[device_id].desire_initialize()
 
@@ -427,7 +484,6 @@ class PasdBusRequestProvider:
         Register a request to write an attribute.
 
         :param device_id: the device number.
-            This is 0 for the FNDH, otherwise a smartbox number.
         :param name: the name of the attribute to write.
         :param values: the new value(s) to write.
         """
@@ -438,7 +494,6 @@ class PasdBusRequestProvider:
         Register a request to reset an alarm.
 
         :param device_id: the device number.
-            This is 0 for the FNDH, otherwise a smartbox number.
         """
         self._device_request_providers[device_id].desire_alarm_reset()
 
@@ -447,7 +502,6 @@ class PasdBusRequestProvider:
         Register a request to reset a warning.
 
         :param device_id: the device number.
-            This is 0 for the FNDH, otherwise a smartbox number.
         """
         self._device_request_providers[device_id].desire_warning_reset()
 
@@ -477,7 +531,6 @@ class PasdBusRequestProvider:
         Register a request to turn some of device's ports on.
 
         :param device_id: the device number.
-            This is 0 for the FNDH, otherwise a smartbox number.
         :param port_powers: a desired port power state for each port.
             True means the port is desired on,
             False means it is desired off,
@@ -494,7 +547,6 @@ class PasdBusRequestProvider:
         Register a request to reset a port breaker.
 
         :param device_id: the device number.
-            This is 0 for the FNDH, otherwise a smartbox number.
         :param port_number: the number of the port whose breaker is to
             be reset.
         """
@@ -505,7 +557,6 @@ class PasdBusRequestProvider:
         Register a request to set a device's LED pattern.
 
         :param device_id: the device number.
-            This is 0 for the FNDH, otherwise a smartbox number.
         :param pattern: name of the service LED pattern.
         """
         self._device_request_providers[device_id].desire_led_pattern(pattern)
@@ -517,7 +568,6 @@ class PasdBusRequestProvider:
         Register a request to set a device's low pass filter constants.
 
         :param device_id: the device number.
-            This is 0 for the FNDH, otherwise a smartbox number.
         :param cutoff: frequency of LPF to set.
         :param extra_sensors: write the constant to the extra sensors' registers after
             the LED status register.
@@ -564,6 +614,26 @@ class PasdBusRequestProvider:
             self._ticks[PasdData.FNDH_DEVICE_ID] = 0
             return PasdData.FNDH_DEVICE_ID, *("READ", "status")
 
+        # Check if any expedited attribute reads need to be added to the list
+        # for future polls. These are actioned after a delay, so we maintain
+        # a list rather than executing them immediately, so as not to hold
+        # up other requests.
+        for device_id, _ in self._ticks.items():
+            expedited_read_request = self._device_request_providers[
+                device_id
+            ].get_expedited_read(device_id)
+            if expedited_read_request is not None:
+                self._expedited_reads.append(expedited_read_request)
+
+        # Now see if any expedited reads are ready to be executed.
+        # This takes priority over writes so that we can update the polling
+        # list if the port power states have changed.
+        for expedited_read in self._expedited_reads:
+            if expedited_read.not_before < time.time():
+                self._expedited_reads.remove(expedited_read)
+                return expedited_read.device_id, *expedited_read.request_description
+
+        # Next we check for any write requests.
         for device_id, tick in self._ticks.items():
             if tick < self._min_ticks:
                 break
@@ -572,18 +642,6 @@ class PasdBusRequestProvider:
                 del self._ticks[device_id]
                 self._ticks[device_id] = 0
                 return device_id, *write_request
-
-        # Next check if any expedited attribute reads need to be done.
-        for device_id, tick in self._ticks.items():
-            if tick < self._min_ticks:
-                break
-            expedited_read_request = self._device_request_providers[
-                device_id
-            ].get_expedited_read()
-            if expedited_read_request != ("NONE", None):
-                del self._ticks[device_id]  # see comment above
-                self._ticks[device_id] = 0
-                return device_id, *expedited_read_request
 
         # No outstanding reads/writes remaining, so cycle through the polling list.
         fncc_skip = False
