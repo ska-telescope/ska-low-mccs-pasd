@@ -589,17 +589,6 @@ class PasdBusRequestProvider:
         :return: a tuple consisting of the name of the communication
             and any arguments or extra information.
         """
-        # Check if any expedited attribute reads need to be added to the list
-        # for future polls. These are actioned after a delay, so we maintain
-        # a list rather than executing them immediately, so as not to hold
-        # up other requests.
-        for device_id, _ in self._ticks.items():
-            expedited_read_request = self._device_request_providers[
-                device_id
-            ].get_expedited_read(device_id)
-            if expedited_read_request is not None:
-                self._expedited_reads.append(expedited_read_request)
-
         for device_id, tick in self._ticks.items():
             self._ticks[device_id] = tick + tick_increment
 
@@ -624,6 +613,17 @@ class PasdBusRequestProvider:
             del self._ticks[PasdData.FNDH_DEVICE_ID]
             self._ticks[PasdData.FNDH_DEVICE_ID] = 0
             return PasdData.FNDH_DEVICE_ID, *("READ", "status")
+
+        # Check if any expedited attribute reads need to be added to the list
+        # for future polls. These are actioned after a delay, so we maintain
+        # a list rather than executing them immediately, so as not to hold
+        # up other requests.
+        for device_id, _ in self._ticks.items():
+            expedited_read_request = self._device_request_providers[
+                device_id
+            ].get_expedited_read(device_id)
+            if expedited_read_request is not None:
+                self._expedited_reads.append(expedited_read_request)
 
         # Now see if any expedited reads are ready to be executed.
         # This takes priority over writes so that we can update the polling
