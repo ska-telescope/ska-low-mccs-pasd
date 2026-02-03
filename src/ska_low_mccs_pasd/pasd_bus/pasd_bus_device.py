@@ -117,6 +117,16 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         dtype=str, default_value=None
     )
 
+    # Time in seconds to wait after writing to a register before reading it again
+    AttributeReadDelay: Final[float] = tango.server.device_property(
+        dtype=float, default_value=1.0
+    )
+
+    # Time in seconds to wait after setting port status before reading it again
+    PortStatusReadDelay: Final[float] = tango.server.device_property(
+        dtype=float, default_value=2.5
+    )
+
     # ---------
     # Constants
     # ---------
@@ -328,6 +338,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self.PollingRate,
             self.DevicePollingRate,
             self.PollDelayAfterFailure,
+            self.AttributeReadDelay,
+            self.PortStatusReadDelay,
             self.Timeout,
             self.logger,
             self._communication_state_callback,

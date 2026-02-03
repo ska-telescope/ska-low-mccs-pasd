@@ -4,6 +4,10 @@
 
 * [THORN-384] Small fixes for thread cleanup
 
+## 4.3.0
+
+* [THORN-391] Delay next poll after changing FNDH port status. Introduces new properties AttributeReadDelay and PortStatusReadDelay. Also addresses a bugs in switching adminMode.
+
 ## 4.2.1
 
 * [THORN-388] Update to ska-low-pasd-driver 1.0.0 which moves us to pymodbus 3.11.4. 

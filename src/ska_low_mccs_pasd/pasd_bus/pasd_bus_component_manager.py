@@ -117,12 +117,15 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             SMARTBOX_STATUS_ATTRIBUTES.append(key)
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
+        # pylint: disable=too-many-locals
         self: PasdBusComponentManager,
         host: str,
         port: int,
         polling_rate: float,
         device_polling_rate: float,
         poll_delay_after_failure: float,
+        attribute_read_delay: float,
+        port_status_read_delay: float,
         timeout: float,
         logger: logging.Logger,
         communication_state_callback: Callable[[CommunicationStatus], None],
@@ -144,6 +147,10 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             with the same device.
         :param poll_delay_after_failure: time in seconds to wait before next poll
             after a comms failure
+        :param attribute_read_delay: time in seconds to wait after writing an
+            attribute before reading it again
+        :param port_status_read_delay: time in seconds to wait after setting
+            port status before reading it again
         :param timeout: maximum time to wait for a response to a server
             request (in seconds).
         :param logger: a logger for this object to use
@@ -182,9 +189,13 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._pasd_bus_device_state_callback = pasd_device_state_callback
         self._polling_rate = polling_rate
         self._poll_delay_after_failure = poll_delay_after_failure
+        self._attribute_read_delay = attribute_read_delay
+        self._port_status_read_delay = port_status_read_delay
         self._request_provider = PasdBusRequestProvider(
             int(device_polling_rate / polling_rate),
             self._logger,
+            self._attribute_read_delay,
+            self._port_status_read_delay,
             available_smartboxes,
             smartbox_ids,
         )
@@ -332,6 +343,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 request = PasdBusRequest(device_id, "reset_port_breaker", None, [port])
             case (device_id, "SET_PORT_POWERS", arguments):
                 request = PasdBusRequest(device_id, "set_port_powers", None, arguments)
+                if device_id == PasdData.FNDH_DEVICE_ID:
+                    self._poll_delay_event.set()  # Delay next poll after setting ports
             case (device_id, "PORT_POWER", (port, is_on, stay_on_when_offline)):
                 if is_on:
                     request = PasdBusRequest(
@@ -342,6 +355,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                     )
                 else:
                     request = PasdBusRequest(device_id, "turn_port_off", None, [port])
+                if device_id == PasdData.FNDH_DEVICE_ID:
+                    self._poll_delay_event.set()  # Delay next poll after setting ports
             case (device_id, "INFO", None):
                 request = PasdBusRequest(
                     device_id, None, None, self.STATIC_INFO_ATTRIBUTES
@@ -483,9 +498,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 f"{poll_response.data['error']['detail']}. Delaying next poll..."
             )
             self._poll_delay_event.set()
-        else:
-            # Ensure the event is cleared to allow normal polling
-            self._poll_delay_event.clear()
 
         self._update_component_state(power=PowerState.ON, fault=False)
 
