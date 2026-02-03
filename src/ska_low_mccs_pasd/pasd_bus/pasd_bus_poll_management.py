@@ -91,7 +91,7 @@ class ExpeditedReadRequest:
         self.timestamp = time.time()
 
 
-class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
+class DeviceRequestProvider:
     """
     A class that determines the next communication with a specified device.
 
@@ -100,15 +100,14 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
     and it decides what, if any, communication with it should occur in the next poll.
     """
 
-    # Time in seconds to wait after writing to a register before reading it again
-    # Give the port status register a little longer
-    PORT_STATUS_READ_DELAY = 2.5
-    GENERAL_ATTRIBUTE_READ_DELAY = 1.0
-
+    # pylint: disable=too-many-arguments,too-many-instance-attributes
+    # pylint: disable=too-many-positional-arguments
     def __init__(
         self,
         number_of_ports: int,
         read_request_iterator_factory: Callable[[], Iterator[str]],
+        attribute_read_delay: float,
+        port_status_read_delay: float,
         logger: logging.Logger,
     ) -> None:
         """
@@ -117,6 +116,10 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         :param number_of_ports: the number of ports this device has.
         :param read_request_iterator_factory: a callable that returns
             a read request iterator
+        :param attribute_read_delay: time in seconds to wait after writing an
+            attribute before reading it again
+        :param port_status_read_delay: time in seconds to wait after setting
+            port status before reading it again
         :param logger: a logger.
         """
         self._logger = logger
@@ -139,6 +142,9 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         # following a write command
         self._attribute_update_requests: list[str] = []
         self._ports_status_update_request: bool = False
+
+        self._attribute_read_delay = attribute_read_delay
+        self._port_status_read_delay = port_status_read_delay
 
         self._read_request_iterator_factory = read_request_iterator_factory
         self._read_request_iterator = read_request_iterator_factory()
@@ -312,13 +318,13 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         if self._ports_status_update_request:
             self._ports_status_update_request = False
             return ExpeditedReadRequest(
-                device_id, ("PORTS", None), time.time() + self.PORT_STATUS_READ_DELAY
+                device_id, ("PORTS", None), time.time() + self._port_status_read_delay
             )
         if self._attribute_update_requests:
             return ExpeditedReadRequest(
                 device_id,
                 ("READ", self._attribute_update_requests.pop(0)),
-                time.time() + self.GENERAL_ATTRIBUTE_READ_DELAY,
+                time.time() + self._attribute_read_delay,
             )
         return None
 
@@ -338,10 +344,14 @@ class PasdBusRequestProvider:
       given the above constraints
     """
 
+    # pylint: disable=too-many-instance-attributes, too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def __init__(
         self,
         min_ticks: int,
         logger: logging.Logger,
+        attribute_read_delay: float,
+        port_status_read_delay: float,
         available_smartboxes: list[int],
         smartbox_ids: Optional[list[int]] = None,
     ) -> None:
@@ -351,12 +361,18 @@ class PasdBusRequestProvider:
         :param min_ticks: minimum number of ticks between communications
             with any given device
         :param logger: a logger.
+        :param attribute_read_delay: time in seconds to wait after writing an
+            attribute before reading it again
+        :param port_status_read_delay: time in seconds to wait after setting
+            port status before reading it again
         :param available_smartboxes: list of available smartbox ids to poll
         :param smartbox_ids: optional list of smartbox IDs associated with
             each FNDH port
         """
         self._min_ticks = min_ticks
         self._logger = logger
+        self._attribute_read_delay = attribute_read_delay
+        self._port_status_read_delay = port_status_read_delay
 
         # Create a dict mapping FNDH ports to smartbox Modbus IDs
         # if smartboxIDs is provided, otherwise just use available_smartboxes
@@ -397,15 +413,25 @@ class PasdBusRequestProvider:
             )
 
         fndh_request_provider = DeviceRequestProvider(
-            PasdData.NUMBER_OF_FNDH_PORTS, fndh_read_request_iterator, self._logger
+            PasdData.NUMBER_OF_FNDH_PORTS,
+            fndh_read_request_iterator,
+            self._attribute_read_delay,
+            self._port_status_read_delay,
+            logger=self._logger,
         )
         fncc_request_provider = DeviceRequestProvider(
-            0, fncc_read_request_iterator, self._logger
+            0,
+            fncc_read_request_iterator,
+            attribute_read_delay=self._attribute_read_delay,
+            port_status_read_delay=self._port_status_read_delay,
+            logger=self._logger,
         )
         self._device_request_providers: dict[int, DeviceRequestProvider] = {
             smartbox_id: DeviceRequestProvider(
                 PasdData.NUMBER_OF_SMARTBOX_PORTS,
                 smartbox_read_request_iterator,
+                self._attribute_read_delay,
+                self._port_status_read_delay,
                 self._logger,
             )
             for smartbox_id in self._available_smartboxes

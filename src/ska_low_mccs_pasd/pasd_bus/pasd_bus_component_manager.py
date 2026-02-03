@@ -117,12 +117,15 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             SMARTBOX_STATUS_ATTRIBUTES.append(key)
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
+        # pylint: disable=too-many-locals
         self: PasdBusComponentManager,
         host: str,
         port: int,
         polling_rate: float,
         device_polling_rate: float,
         poll_delay_after_failure: float,
+        attribute_read_delay: float,
+        port_status_read_delay: float,
         timeout: float,
         logger: logging.Logger,
         communication_state_callback: Callable[[CommunicationStatus], None],
@@ -144,6 +147,10 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             with the same device.
         :param poll_delay_after_failure: time in seconds to wait before next poll
             after a comms failure
+        :param attribute_read_delay: time in seconds to wait after writing an
+            attribute before reading it again
+        :param port_status_read_delay: time in seconds to wait after setting
+            port status before reading it again
         :param timeout: maximum time to wait for a response to a server
             request (in seconds).
         :param logger: a logger for this object to use
@@ -182,9 +189,13 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._pasd_bus_device_state_callback = pasd_device_state_callback
         self._polling_rate = polling_rate
         self._poll_delay_after_failure = poll_delay_after_failure
+        self._attribute_read_delay = attribute_read_delay
+        self._port_status_read_delay = port_status_read_delay
         self._request_provider = PasdBusRequestProvider(
             int(device_polling_rate / polling_rate),
             self._logger,
+            self._attribute_read_delay,
+            self._port_status_read_delay,
             available_smartboxes,
             smartbox_ids,
         )

@@ -98,6 +98,8 @@ def pasd_bus_component_manager_fixture(
             0.05,  # polling_rate very fast for unit testing
             0.1,  # device_polling_rate very fast for unit testing
             2.0,
+            1.0,
+            2.5,
             3.0,
             logger,
             mock_callbacks["communication_state"],
