@@ -56,6 +56,8 @@ MccsPasdBus
 - **PollingRate**: Polling period, in seconds
 - **DevicePollingRate**: Minimum time between polls of a device, in seconds
 - **PollDelayAfterFailure**: Time to wait after a failed poll, in seconds
+- **AttributeReadDelay**: Time to wait after writing an attribute before reading it again, in seconds
+- **PortStatusReadDelay**: Time to wait after setting port status before reading it again, in seconds
 - **Timeout**: Communication timeout, in seconds
 - **LowPassFilterCutoff**: Low-pass filter cutoff frequency, in Hz
 - **FEMCurrentTripThreshold**: Current trip threshold for all FEMs, in Amps
