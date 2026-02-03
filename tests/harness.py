@@ -303,6 +303,7 @@ class PasdTangoTestHarness:
             "AvailableSmartboxes": available_smartboxes,
             "ParentTRL": get_field_station_name(station_label=station_label),
             "LoggingLevelDefault": logging_level,
+            "PortStatusReadDelay": 0,
         }
         if smartbox_ids:
             properties["SmartboxIDs"] = smartbox_ids
