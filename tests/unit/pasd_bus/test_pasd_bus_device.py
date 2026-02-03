@@ -1292,7 +1292,7 @@ def test_set_thresholds_on_initialise(
     )
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals, too-many-statements
 def test_only_poll_on_smartboxes(
     pasd_bus_device_using_smartbox_ids: tango.DeviceProxy,
     smartbox_ids: list[int],
