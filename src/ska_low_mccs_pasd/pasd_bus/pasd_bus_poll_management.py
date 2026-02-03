@@ -78,12 +78,13 @@ class ExpeditedReadRequest:
     Class to represent an expedited read request.
 
     Encapsulates data about a read request including a
-    delay to allow time for the register in question to be updated.
+    'not before' timestamp to allow time for the register
+    in question to be updated.
     """
 
     device_id: int
     request_description: tuple[str, Any]
-    time_delay: float
+    not_before: float
 
     def __post_init__(self) -> None:
         """Post init method to record the request timestamp."""
@@ -311,13 +312,13 @@ class DeviceRequestProvider:  # pylint: disable=too-many-instance-attributes
         if self._ports_status_update_request:
             self._ports_status_update_request = False
             return ExpeditedReadRequest(
-                device_id, ("PORTS", None), self.PORT_STATUS_READ_DELAY
+                device_id, ("PORTS", None), time.time() + self.PORT_STATUS_READ_DELAY
             )
         if self._attribute_update_requests:
             return ExpeditedReadRequest(
                 device_id,
                 ("READ", self._attribute_update_requests.pop(0)),
-                self.GENERAL_ATTRIBUTE_READ_DELAY,
+                time.time() + self.GENERAL_ATTRIBUTE_READ_DELAY,
             )
         return None
 
@@ -601,10 +602,8 @@ class PasdBusRequestProvider:
         # Now see if any expedited reads are ready to be executed.
         # This takes priority over writes so that we can update the polling
         # list if the port power states have changed.
-        timestamp = time.time()
         for expedited_read in self._expedited_reads:
-            elapsed_time = timestamp - expedited_read.timestamp
-            if elapsed_time > expedited_read.time_delay:
+            if expedited_read.not_before < time.time():
                 self._expedited_reads.remove(expedited_read)
                 return expedited_read.device_id, *expedited_read.request_description
 
