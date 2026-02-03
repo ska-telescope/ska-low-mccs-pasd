@@ -157,12 +157,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
         if self.SmartboxIDs:
             valid_smartboxes = []
-            for fndh_port, smartbox_id in enumerate(self.SmartboxIDs, start=1):
+            for _, smartbox_id in enumerate(self.SmartboxIDs, start=1):
                 if smartbox_id != 0:
                     valid_smartboxes.append(smartbox_id)
-            self._available_smartboxes = valid_smartboxes
+            self.connected_smartboxes = valid_smartboxes
         else:
-            self._available_smartboxes = self.AvailableSmartboxes
+            self.connected_smartboxes = self.AvailableSmartboxes
 
         self._pasd_state: dict[str, PasdAttribute] = {}
         for key, controller in PasdData.CONTROLLERS_CONFIG.items():
@@ -489,15 +489,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             and communication_state == CommunicationStatus.ESTABLISHED
         ):
             self._init_pasd_devices = False
-            for device_number in self._available_smartboxes:
+            for device_number in self.connected_smartboxes + [PasdData.FNDH_DEVICE_ID]:
                 self._set_all_low_pass_filters_of_device(device_number)
             if self.FEMCurrentTripThreshold is not None:
-                for device_number in self._available_smartboxes:
+                for device_number in self.AvailableSmartboxes:
                     self.component_manager.initialize_fem_current_trip_thresholds(
                         device_number, self.FEMCurrentTripThreshold
                     )
             if self.SBInputVoltageThresholds is not None:
-                for device_number in self._available_smartboxes:
+                for device_number in self.AvailableSmartboxes:
                     self.component_manager.initialize_sb_input_voltage_thresholds(
                         device_number, self.SBInputVoltageThresholds
                     )
@@ -596,9 +596,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     self._pasd_state[tango_attribute_name].quality
                     != AttrQuality.ATTR_INVALID
                 ):
-                    self._pasd_state[
-                        tango_attribute_name
-                    ].quality = AttrQuality.ATTR_INVALID
+                    self._pasd_state[tango_attribute_name].quality = (
+                        AttrQuality.ATTR_INVALID
+                    )
                     attributes_marked_invalid.append(tango_attribute_name)
                     self.push_change_event(
                         tango_attribute_name,
