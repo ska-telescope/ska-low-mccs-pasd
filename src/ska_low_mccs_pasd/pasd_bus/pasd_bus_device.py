@@ -320,7 +320,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             0 refers to the FNDH, otherwise the device number is the
             smartbox number.
         """
-        if pasd_device_number == 0:
+        if pasd_device_number == PasdData.FNDH_DEVICE_ID:
             self.component_manager.set_fndh_low_pass_filters(self.LowPassFilterCutoff)
             self.component_manager.set_fndh_low_pass_filters(
                 self.LowPassFilterCutoff, True
