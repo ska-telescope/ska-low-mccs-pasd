@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [THORN-399] Include device and attribute name when logging error events
 * [THORN-384] Small fixes for thread cleanup
 
 ## 4.3.0
