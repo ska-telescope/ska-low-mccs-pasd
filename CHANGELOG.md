@@ -1,7 +1,8 @@
 # Version History
 
-## Unreleased
+## 4.3.1
 
+* [THORN-399] Include device and attribute name when logging error events
 * [THORN-384] Small fixes for thread cleanup
 
 ## 4.3.0
