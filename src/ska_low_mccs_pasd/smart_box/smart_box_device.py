@@ -728,7 +728,7 @@ class MccsSmartBox(MccsBaseDevice):
                 self.push_change_event(attribute_name, value)
         if attribute_name.lower() not in [
             "pasdstatus",
-            "numberofoortbreakerstripped",
+            "numberofportbreakerstripped",
         ]:
             threshold_name = attribute_name + "Thresholds"
             attr = self._healthful_attributes[attribute_name]()
