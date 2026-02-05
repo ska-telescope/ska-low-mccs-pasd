@@ -155,6 +155,14 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         self._build_state: str = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
 
+        if self.SmartboxIDs:
+            self.connected_smartboxes = []
+            for smartbox_id in self.SmartboxIDs:
+                if smartbox_id != 0:
+                    self.connected_smartboxes.append(smartbox_id)
+        else:
+            self.connected_smartboxes = self.AvailableSmartboxes
+
         self._pasd_state: dict[str, PasdAttribute] = {}
         for key, controller in PasdData.CONTROLLERS_CONFIG.items():
             if key == "FNSC":
@@ -308,10 +316,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         Set all the low-pass filter constants of a given PaSD device.
 
         :param pasd_device_number: the number of the PaSD device to set.
-            0 refers to the FNDH, otherwise the device number is the
-            smartbox number.
         """
-        if pasd_device_number == 0:
+        if pasd_device_number == PasdData.FNDH_DEVICE_ID:
             self.component_manager.set_fndh_low_pass_filters(self.LowPassFilterCutoff)
             self.component_manager.set_fndh_low_pass_filters(
                 self.LowPassFilterCutoff, True
@@ -480,7 +486,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             and communication_state == CommunicationStatus.ESTABLISHED
         ):
             self._init_pasd_devices = False
-            for device_number in self.AvailableSmartboxes + [PasdData.FNDH_DEVICE_ID]:
+            for device_number in self.connected_smartboxes + [PasdData.FNDH_DEVICE_ID]:
                 self._set_all_low_pass_filters_of_device(device_number)
             if self.FEMCurrentTripThreshold is not None:
                 for device_number in self.AvailableSmartboxes:
