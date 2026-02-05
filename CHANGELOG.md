@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [SKB-1207] Add a FaultOnThresholdDifference Tango property to MccsSmartBox and MccsFndh, to control whether the device will enter DevState.FAULT when there is a mismatch between firmware and Tango thresholds. Until SKB-1207 is resolved, the default is False.
 * [LOW-2058] Fix typo in attribute name
 
 ## 4.3.1

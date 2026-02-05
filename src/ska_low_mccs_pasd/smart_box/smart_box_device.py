@@ -92,6 +92,11 @@ class MccsSmartBox(MccsBaseDevice):
         dtype=bool,
         default_value=True,
     )
+    FaultOnThresholdDifference: Final = device_property(
+        doc="Put the device in DevState FAULT if firmware and Tango thresholds differ.",
+        dtype=bool,
+        default_value=False,
+    )
 
     CONFIG: Final[ControllerDict] = PasdControllersConfig.get_smartbox()
     TYPES: Final[dict[str, type]] = {
@@ -738,9 +743,9 @@ class MccsSmartBox(MccsBaseDevice):
                 diff = self._threshold_differences()
                 if diff:
                     self.logger.error(
-                        f"Mismatch between firmware and tango thresholds:{diff}"
+                        f"Mismatch between firmware and tango thresholds: {diff}"
                     )
-                    self.threshold_fault = True
+                    self.threshold_fault = bool(self.FaultOnThresholdDifference)
                     self._component_state_callback()
 
     # pylint: disable=too-many-branches, disable=too-many-statements
@@ -821,7 +826,7 @@ class MccsSmartBox(MccsBaseDevice):
                         self.logger.error(
                             f"Mismatch between firmware and tango thresholds: {diff}"
                         )
-                        self.threshold_fault = True
+                        self.threshold_fault = bool(self.FaultOnThresholdDifference)
                     else:
                         if self.op_state_model._op_state == tango.DevState.UNKNOWN:
                             self.threshold_fault = None

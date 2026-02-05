@@ -79,6 +79,11 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         dtype=bool,
         default_value=True,
     )
+    FaultOnThresholdDifference: Final = device_property(
+        doc="Put the device in DevState FAULT if firmware and Tango thresholds differ.",
+        dtype=bool,
+        default_value=False,
+    )
 
     # ---------
     # Constants
@@ -1061,9 +1066,9 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 diff = self._threshold_differences()
                 if diff:
                     self.logger.error(
-                        f"Mismatch between firmware and tango thresholds:{diff}"
+                        f"Mismatch between firmware and tango thresholds: {diff}"
                     )
-                    self.threshold_fault = True
+                    self.threshold_fault = bool(self.FaultOnThresholdDifference)
                 else:
                     self.threshold_fault = False
                 self._component_state_changed_callback()
@@ -1154,9 +1159,9 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                     diff = self._threshold_differences()
                     if diff:
                         self.logger.error(
-                            f"Mismatch between firmware and tango thresholds:{diff}"
+                            f"Mismatch between firmware and tango thresholds: {diff}"
                         )
-                        self.threshold_fault = True
+                        self.threshold_fault = bool(self.FaultOnThresholdDifference)
                     else:
                         if self.op_state_model._op_state == tango.DevState.UNKNOWN:
                             self.threshold_fault = None
