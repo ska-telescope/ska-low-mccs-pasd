@@ -95,7 +95,7 @@ class MccsSmartBox(MccsBaseDevice):
     FaultOnThresholdDifference: Final = device_property(
         doc="Put the device in DevState FAULT if firmware and Tango thresholds differ.",
         dtype=bool,
-        default_value=False,
+        default_value=True,
     )
 
     CONFIG: Final[ControllerDict] = PasdControllersConfig.get_smartbox()
