@@ -191,6 +191,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             f"\tPasdFQDN: {self.PasdFQDN}\n"
             f"\tPortsWithSmartbox: {self.PortsWithSmartbox}\n"
             f"\tUseAttributesForHealth: {self.UseAttributesForHealth}\n"
+            f"\tFaultOnThresholdDifference: {self.FaultOnThresholdDifference}"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties

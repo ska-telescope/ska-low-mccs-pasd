@@ -164,6 +164,8 @@ class MccsSmartBox(MccsBaseDevice):
             f"\tPortsWithAntennas: {self.PortsWithAntennas}\n"
             f"\tAntennaNames: {self.AntennaNames}\n"
             f"\tFndhPort: {self.FndhPort}\n"
+            f"\tUseAttributesForHealth: {self.UseAttributesForHealth}\n"
+            f"\tFaultOnThresholdDifference: {self.FaultOnThresholdDifference}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties

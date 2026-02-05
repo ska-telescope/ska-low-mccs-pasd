@@ -85,6 +85,7 @@ MccsFNDH
 - **PasdFQDN**: Tango FQDN of the associated PaSD bus device
 - **PortsWithSmartbox**: List of FNDH ports that have an associated smartbox
 - **UseAttributesForHealth**: Set to ``True`` to use attribute quality factor in health evaluation
+- **FaultOnThresholdDifference**: Set to ``True`` to to turn on setting the device to Fault when there is a mismatch between firmware and Tango thresholds
 
 MccsSmartbox
 ~~~~~~~~~~~~
@@ -96,6 +97,7 @@ MccsSmartbox
 - **AntennaNames**: List of antenna names attached to ports
 - **FndhPort**: FNDH port number this smartbox is connected to
 - **UseAttributesForHealth**: Set to ``True`` to use attribute quality factor in health evaluation
+- **FaultOnThresholdDifference**: Set to ``True`` to to turn on setting the device to Fault when there is a mismatch between firmware and Tango thresholds
 
 MccsFncc
 ~~~~~~~~
