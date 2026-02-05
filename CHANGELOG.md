@@ -1,5 +1,9 @@
 # Version History
 
+## 4.3.2
+
+* [LOW-2058] Fix typo in attribute name when comparing firmware and software thresholds
+
 ## 4.3.1
 
 * [THORN-399] Include device and attribute name when logging error events
