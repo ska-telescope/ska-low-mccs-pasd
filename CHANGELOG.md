@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [LOW-2058] Fix typo in attribute name
+
 ## 4.3.1
 
 * [THORN-399] Include device and attribute name when logging error events
