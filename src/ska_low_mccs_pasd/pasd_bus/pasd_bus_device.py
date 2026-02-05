@@ -316,8 +316,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         Set all the low-pass filter constants of a given PaSD device.
 
         :param pasd_device_number: the number of the PaSD device to set.
-            0 refers to the FNDH, otherwise the device number is the
-            smartbox number.
         """
         if pasd_device_number == PasdData.FNDH_DEVICE_ID:
             self.component_manager.set_fndh_low_pass_filters(self.LowPassFilterCutoff)
