@@ -332,7 +332,20 @@ class DeviceRequestProvider:
             )
         return None
 
+    def get_expedited_writes(self, device_id: int) -> list[ExpeditedReadRequest] | None:
+        """
+        Get any expedited writes for the device.
 
+        By default there are no expedited writes.
+
+        :param device_id: The id of the device requiring the request.
+
+        :returns: a list of expedited requests.
+        """
+        return None
+
+
+# pylint: disable=too-many-positional-arguments, too-many-arguments
 class FndhRequestProvider(DeviceRequestProvider):
     """
     A class to handle staggered powering of Fndh ports.
@@ -340,17 +353,89 @@ class FndhRequestProvider(DeviceRequestProvider):
     A request for powering N ports becomes N requests for powering 1 port.
     """
 
-    def _get_requested_port_powers(self) -> list[tuple[bool, bool] | None]:
-        requested_powers: list[tuple[bool, bool] | None] = [None] * len(
-            self._port_power_changes
+    def __init__(
+        self,
+        number_of_ports: int,
+        read_request_iterator_factory: Callable[[], Iterator[str]],
+        attribute_read_delay: float,
+        port_status_read_delay: float,
+        port_power_delay: float,
+        logger: logging.Logger,
+    ) -> None:
+        """
+        Initialise a new instance.
+
+        :param number_of_ports: the number of ports this device has.
+        :param read_request_iterator_factory: a callable that returns
+            a read request iterator
+        :param attribute_read_delay: time in seconds to wait after writing an
+            attribute before reading it again
+        :param port_status_read_delay: time in seconds to wait after setting
+            port status before reading it again
+        :param port_power_delay: 5ime in seconds to wait between setting
+            each FNDH port power.
+        :param logger: a logger.
+        """
+        self._port_power_delay = port_power_delay
+        super().__init__(
+            number_of_ports,
+            read_request_iterator_factory,
+            attribute_read_delay,
+            port_status_read_delay,
+            logger,
         )
+
+    def _get_requested_port_powers(self) -> list[tuple[bool, bool] | None]:
+        """
+        Get requested FNDH port powers.
+
+        The initial request is simply recorded to be fulfilled through expedited
+        requests later.
+
+        :returns: no ports to change immediately.
+        """
+        return [None] * len(self._port_power_changes)
+
+    def get_expedited_writes(self, device_id: int) -> list[ExpeditedReadRequest] | None:
+        """
+        Get any expedited writes for the FNDH.
+
+        A command to set port powers will be converted into N requests to write,
+        interleaved with N requests to read.
+
+        :param device_id: The id of the device requiring the request.
+
+        :returns: a list of expedited requests.
+        """
+        expedited_requests = []
+        offset = 0
         for requested_port, port_power in enumerate(self._port_power_changes):
             if port_power is not None:
+                requested_powers: list[tuple[bool, bool] | None] = [None] * len(
+                    self._port_power_changes
+                )
                 requested_powers[requested_port] = port_power
                 self._port_power_changes[requested_port] = None
-                break
-        self._ports_status_update_request = True
-        return requested_powers
+                port_power_time = time.time() + offset * self._port_power_delay
+                port_read_time = port_power_time + self._port_status_read_delay
+                expedited_requests.append(
+                    ExpeditedReadRequest(
+                        device_id,
+                        ("SET_PORT_POWERS", requested_powers),
+                        port_power_time,
+                    )
+                )
+                expedited_requests.append(
+                    ExpeditedReadRequest(
+                        device_id,
+                        ("PORTS", None),
+                        port_read_time,
+                    )
+                )
+                offset += 1
+        if expedited_requests:
+            return expedited_requests
+        return super().get_expedited_writes(device_id)
 
 
 class PasdBusRequestProvider:
@@ -376,6 +461,7 @@ class PasdBusRequestProvider:
         logger: logging.Logger,
         attribute_read_delay: float,
         port_status_read_delay: float,
+        port_power_delay: float,
         available_smartboxes: list[int],
         smartbox_ids: Optional[list[int]] = None,
     ) -> None:
@@ -389,14 +475,24 @@ class PasdBusRequestProvider:
             attribute before reading it again
         :param port_status_read_delay: time in seconds to wait after setting
             port status before reading it again
+        :param port_power_delay: 5ime in seconds to wait between setting
+            each FNDH port power.
         :param available_smartboxes: list of available smartbox ids to poll
         :param smartbox_ids: optional list of smartbox IDs associated with
             each FNDH port
         """
+        if port_status_read_delay >= port_power_delay:
+            logger.warning(
+                f"Port status read delay ({port_status_read_delay}) >= Port Power Delay"
+                f" ({port_power_delay}), setting port status read delay to "
+                f"{port_power_delay - 1}"
+            )
+            port_status_read_delay = port_power_delay - 1
         self._min_ticks = min_ticks
         self._logger = logger
         self._attribute_read_delay = attribute_read_delay
         self._port_status_read_delay = port_status_read_delay
+        self._port_power_delay = port_power_delay
 
         # Create a dict mapping FNDH ports to smartbox Modbus IDs
         # if smartboxIDs is provided, otherwise just use available_smartboxes
@@ -441,6 +537,7 @@ class PasdBusRequestProvider:
             fndh_read_request_iterator,
             self._attribute_read_delay,
             self._port_status_read_delay,
+            self._port_power_delay,
             logger=self._logger,
         )
         fncc_request_provider = DeviceRequestProvider(
@@ -648,6 +745,11 @@ class PasdBusRequestProvider:
             ].get_expedited_read(device_id)
             if expedited_read_request is not None:
                 self._expedited_reads.append(expedited_read_request)
+            expedited_write_requests = self._device_request_providers[
+                device_id
+            ].get_expedited_writes(device_id)
+            if expedited_write_requests is not None:
+                self._expedited_reads.extend(expedited_write_requests)
 
         # Now see if any expedited reads are ready to be executed.
         # This takes priority over writes so that we can update the polling

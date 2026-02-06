@@ -125,6 +125,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         poll_delay_after_failure: float,
         attribute_read_delay: float,
         port_status_read_delay: float,
+        port_power_delay: float,
         timeout: float,
         logger: logging.Logger,
         communication_state_callback: Callable[[CommunicationStatus], None],
@@ -150,6 +151,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             attribute before reading it again
         :param port_status_read_delay: time in seconds to wait after setting
             port status before reading it again
+        :param port_power_delay: 5ime in seconds to wait between setting
+            each FNDH port power.
         :param timeout: maximum time to wait for a response to a server
             request (in seconds).
         :param logger: a logger for this object to use
@@ -189,11 +192,13 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._poll_delay_after_failure = poll_delay_after_failure
         self._attribute_read_delay = attribute_read_delay
         self._port_status_read_delay = port_status_read_delay
+        self._port_power_delay = port_power_delay
         self._request_provider = PasdBusRequestProvider(
             int(device_polling_rate / polling_rate),
             self._logger,
             self._attribute_read_delay,
             self._port_status_read_delay,
+            self._port_power_delay,
             available_smartboxes,
             smartbox_ids,
         )
@@ -341,8 +346,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 request = PasdBusRequest(device_id, "reset_port_breaker", None, [port])
             case (device_id, "SET_PORT_POWERS", arguments):
                 request = PasdBusRequest(device_id, "set_port_powers", None, arguments)
-                if device_id == PasdData.FNDH_DEVICE_ID:
-                    self._poll_delay_event.set()  # Delay next poll after setting ports
             case (device_id, "PORT_POWER", (port, is_on, stay_on_when_offline)):
                 if is_on:
                     request = PasdBusRequest(
@@ -353,8 +356,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                     )
                 else:
                     request = PasdBusRequest(device_id, "turn_port_off", None, [port])
-                if device_id == PasdData.FNDH_DEVICE_ID:
-                    self._poll_delay_event.set()  # Delay next poll after setting ports
             case (device_id, "INFO", None):
                 request = PasdBusRequest(
                     device_id, None, None, self.STATIC_INFO_ATTRIBUTES
