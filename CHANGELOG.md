@@ -3,6 +3,7 @@
 ## Unreleased
 
 * [THORN-403] Attempt to reconnect after a catastrophic error such as a 'Broken pipe'.
+* [THORN-402] Configure pipeline to ignore sonar scan results.
 
 ## 4.3.2
 
