@@ -208,7 +208,10 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
 
         super()._communication_state_changed(communication_state)
 
-        self._health_model.update_state(communicating=True)
+        if self._health_model is not None:
+            self._health_model.update_state(
+                communicating=(communication_state == CommunicationStatus.ESTABLISHED),
+            )
 
     def _component_state_changed_callback(
         self: MccsFNCC,
@@ -295,8 +298,6 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
                 )
                 > 0
             )
-            # TODO: These attributes may factor into the FNCC health.
-            # we should notify the health model of any relevant changes.
             if attr_value is None:
                 # This happens when the upstream attribute's quality factor has
                 # been set to INVALID. Pushing a change event with None
@@ -308,6 +309,10 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             self._fncc_attributes[attr_name].timestamp = timestamp
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
+
+            # Update the health model with the value of the status register
+            if self._health_model is not None and attr_name.endswith("status"):
+                self._health_model.update_state(status=attr_value)
 
         except AssertionError:
             self.logger.debug(

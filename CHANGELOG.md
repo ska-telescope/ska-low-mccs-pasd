@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* [THORN-342] Implement FNCC health model to reflect the status register.
+
 ## 4.3.2
 
 * [SKB-1207] Add a FaultOnThresholdDifference Tango property (default True) to MccsSmartBox and MccsFndh, to control whether the device will enter DevState.FAULT when there is a mismatch between firmware and Tango thresholds.
