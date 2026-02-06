@@ -15,7 +15,6 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Final, Optional
 
-from pymodbus.exceptions import ModbusException
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_pasd_driver.pasd_bus_modbus_api import PasdBusModbusApiClient
 from ska_tango_base.base import check_communicating
@@ -167,8 +166,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             when one of the PaSD devices (i.e. the FNDH or one of the
             smartboxes) provides updated information about its state.
             This callable takes a single positional argument, which is
-            the device number (0 for FNDH, otherwise the smartbox
-            number), and keyword arguments representing the state
+            the device number, and keyword arguments representing the state
             changes.
         :param available_smartboxes: a list of available smartbox ids to poll.
         :param smartbox_ids: optional list of smartbox IDs associated with
@@ -517,7 +515,9 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             attempt.
         """
         super().poll_failed(exception)
-        if isinstance(exception, ModbusException):
+        if not isinstance(exception, ValueError):
+            # Some kind of Modbus error or network interruption must have occurred
+            # so attempt to reset the connection
             self.reset_connection()
             # Set the event to delay the next poll
             self._logger.debug("Delaying next poll and requesting FNPC status...")
@@ -530,7 +530,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     def request_startup_info(self: PasdBusComponentManager, device_id: int) -> None:
         """Read the registers normally just polled at startup.
 
-        :param: device_id: 0 for the FNDH, 100 for the FNCC, else a smartbox id
+        :param: device_id: The id of the device being addressed
         """
         self._request_provider.desire_read_startup_info(device_id)
 
