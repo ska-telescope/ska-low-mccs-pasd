@@ -91,6 +91,9 @@ a JSON object with the following keys:
 - *port_powers* - An array of desired power states (True for 'On', False for 'Off', None for no change)
 - *stay_on_when_offline* - Whether to stay on when the FNPC is offline
 
+Each port is powered one at a time in sequence, such that the overall power curve is ramped. 
+The time between each port being powered is dictated by the PortPowerDelay device property on MccsPasdBus.
+
 The MccsPasdBus :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.SetSmartboxPortPowers` command accepts a JSON object with the following keys:
 
 - *smartbox_number* - The device ID of the SMART Box being addressed
