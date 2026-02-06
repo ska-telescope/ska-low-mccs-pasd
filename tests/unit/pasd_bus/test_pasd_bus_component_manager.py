@@ -100,6 +100,7 @@ def pasd_bus_component_manager_fixture(
             2.0,
             1.0,
             0.0,
+            0.0,
             3.0,
             logger,
             mock_callbacks["communication_state"],
