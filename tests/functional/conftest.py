@@ -57,6 +57,15 @@ def pytest_addoption(
             "need to spin up a Tango test context"
         ),
     )
+    parser.addoption(
+        "--hw-deployment",
+        action="store_true",
+        default=False,
+        help=(
+            "Tell pytest that you have a true Tango context against HW and can "
+            "run HW only tests"
+        ),
+    )
 
 
 def pytest_bdd_before_scenario(
@@ -784,3 +793,16 @@ def is_running_in_kubernetes() -> bool:
     # Check for Kubernetes service account files
     service_account_path = "/var/run/secrets/kubernetes.io/serviceaccount"
     return kubernetes_service_host is not None and os.path.exists(service_account_path)
+
+
+@pytest.fixture(name="hw_context", scope="session")
+def hw_context_fixture(request: pytest.FixtureRequest) -> bool:
+    """
+    Return whether to test against an real HW only.
+
+    :param request: A pytest object giving access to the requesting test
+        context.
+
+    :return: whether to to test against an real HW only.
+    """
+    return request.config.getoption("--hw-deployment")

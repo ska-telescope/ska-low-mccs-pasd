@@ -18,10 +18,11 @@ stages:
   - publish
   - pages
   - scan
+  - test-low-itf
 
 include:
   - project: 'ska-telescope/templates-repository'
-    file: 
+    file:
     - 'gitlab-ci/includes/oci-image.gitlab-ci.yml'
     - 'gitlab-ci/includes/finaliser.gitlab-ci.yml'
     - 'gitlab-ci/includes/release.gitlab-ci.yml'
@@ -102,3 +103,92 @@ temp-stop-k8s:
     - kubectl -n $KUBE_NAMESPACE delete pods,svc,daemonsets,deployments,replicasets,statefulsets,cronjobs,jobs,ingresses,configmaps --all
     - make k8s-delete-namespace
   allow_failure: true
+
+
+
+low-itf-k8s-test:
+  stage: test-low-itf
+  extends: k8s-test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      allow_failure: true
+      when: always
+  resource_group: hardware
+  needs:
+    - oci-image-build
+  tags:
+    - k8srunner-stfc-low-itf
+  environment:
+    name: test-low-itf/$CI_COMMIT_REF_SLUG
+    on_stop: low-itf-stop-k8s
+    auto_stop_in: 1 minute
+  variables:
+    TANGO_HOST: "tango-databaseds:10000"
+    KUBE_NAMESPACE: 'ci-$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA'
+    K8S_HELMFILE_ENV: low-itf
+    STATION_LABEL: itf1
+    JUNITXML_REPORT_PATH: build/reports/low-itf-functional-tests.xml
+    CUCUMBER_JSON_PATH: build/reports/low-itf-cucumber.json
+    JSON_REPORT_PATH: build/reports/report.json
+    HW_DEPLOYMENT: true
+  before_script:
+    - export KUBECONFIG=~/.kube/config  # Not sure why this is not default
+    - make k8s-install-chart
+    - make k8s-wait
+  artifacts:
+    name: "$CI_PROJECT_NAME-$CI_JOB_ID"
+    paths:
+      - "build/"
+    reports:
+      junit: build/report.xml
+    when: always
+
+low-itf-xray-publish:
+  stage: test-low-itf
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      allow_failure: true
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: true
+  resource_group: hardware
+  needs:
+    - low-itf-k8s-test
+  tags:
+    - k8srunner-stfc-low-itf
+  image: $SKA_K8S_TOOLS_BUILD_DEPLOY
+  variables:
+    TEST_ENV: HARDWARE-TEST
+    REALHW_OR_SIMULATED: real
+    XRAY_TEST_RESULT_FILE: build/reports/low-itf-cucumber.json
+  script:
+    - pip install -U ska-ser-xray --extra-index-url "https://artefact.skao.int/repository/pypi-internal/simple"
+    - make xray-publish
+  allow_failure: true
+
+low-itf-stop-k8s:
+  stage: test-low-itf
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      allow_failure: true
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: true
+  resource_group: hardware
+  needs:
+    - low-itf-k8s-test
+  tags:
+    - k8srunner-stfc-low-itf
+  environment:
+    name: test-low-itf/$CI_COMMIT_REF_SLUG
+    action: stop
+  image: $SKA_K8S_TOOLS_BUILD_DEPLOY
+  variables:
+    KUBE_NAMESPACE: 'ci-$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA'
+  script:
+    - export KUBECONFIG=~/.kube/config  # Not sure why this is not default
+    - make k8s-uninstall-chart
+    - kubectl -n $KUBE_NAMESPACE delete pods,svc,daemonsets,deployments,replicasets,statefulsets,cronjobs,jobs,ingresses,configmaps --all
+    - make k8s-delete-namespace
