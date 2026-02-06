@@ -15,7 +15,6 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Final, Optional
 
-from pymodbus.exceptions import ModbusException
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_pasd_driver.pasd_bus_modbus_api import PasdBusModbusApiClient
 from ska_tango_base.base import check_communicating
@@ -517,7 +516,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             attempt.
         """
         super().poll_failed(exception)
-        if isinstance(exception, ModbusException):
+        if not isinstance(exception, ValueError):
             self.reset_connection()
             # Set the event to delay the next poll
             self._logger.debug("Delaying next poll and requesting FNPC status...")
