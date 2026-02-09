@@ -584,6 +584,24 @@ class PasdBusRequestProvider:
                 self._logger.info(f"Stopping polling smartbox {smartbox_id}")
                 self._ticks.pop(smartbox_id, None)
 
+    def stop_polling_smartboxes(
+        self, port_power_requests: list[tuple[bool, bool] | None]
+    ) -> None:
+        """
+        Stop polling a smartbox if it has been requested to switch off.
+
+        :param port_power_requests: list of port power requests
+        """
+        for fndh_port, request in enumerate(port_power_requests, start=1):
+            if request is not None and request[0] is False:
+                smartbox_id = self._smartboxIDs.get(fndh_port)
+                if smartbox_id is not None and smartbox_id in self._ticks:
+                    self._logger.info(
+                        f"Stopping polling smartbox {smartbox_id} as port "
+                        f"{fndh_port} is being powered off"
+                    )
+                    self._ticks.pop(smartbox_id, None)
+
     def desire_read_startup_info(self, device_id: int) -> None:
         """
         Register a request to read the information usually just read at startup.
@@ -752,6 +770,9 @@ class PasdBusRequestProvider:
             ].get_write_read_sequence(device_id)
             if write_read_sequence is not None:
                 self._delayed_requests.extend(write_read_sequence)
+                for request in write_read_sequence:
+                    if request.request_description[0] == "SET_PORT_POWERS":
+                        self.stop_polling_smartboxes(request.request_description[1])
 
         # Now see if any delayed requests are ready to be executed.
         # These takes priority over writes so that we can update the polling
