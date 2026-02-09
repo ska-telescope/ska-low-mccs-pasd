@@ -73,13 +73,13 @@ def smartbox_read_request_iterator() -> Iterator[str]:
 
 
 @dataclass
-class ExpeditedReadRequest:
+class DelayedRequest:
     """
-    Class to represent an expedited read request.
+    Class to represent a delayed request.
 
-    Encapsulates data about a read request including a
-    'not before' timestamp to allow time for the register
-    in question to be updated.
+    Encapsulates data about a delayed request including a
+    'not before' timestamp before which the request should
+    not be actioned.
     """
 
     device_id: int
@@ -308,31 +308,33 @@ class DeviceRequestProvider:
         """
         return next(self._read_request_iterator)
 
-    def get_expedited_read(self, device_id: int) -> ExpeditedReadRequest | None:
+    def get_expedited_read(self, device_id: int) -> DelayedRequest | None:
         """
-        Return an ExpeditedReadRequest for future action.
+        Return a DelayedRequest for future action to expedite a read.
 
         This is required for attributes which have been written to by the user,
-        so we don't have to wait until their turn in the regular poll.
+        so we don't have to wait until their turn in the regular poll. The
+        request is delayed to ensure the register has been updated before
+        we read it again.
 
         :param: device_id: The id of the device requiring the request.
-        :return: An ExpeditedReadRequest, encapsulating information about
+        :return: A DelayedRequest, encapsulating information about
             the request to make and when it should be actioned.
         """
         if self._ports_status_update_request:
             self._ports_status_update_request = False
-            return ExpeditedReadRequest(
+            return DelayedRequest(
                 device_id, ("PORTS", None), time.time() + self._port_status_read_delay
             )
         if self._attribute_update_requests:
-            return ExpeditedReadRequest(
+            return DelayedRequest(
                 device_id,
                 ("READ", self._attribute_update_requests.pop(0)),
                 time.time() + self._attribute_read_delay,
             )
         return None
 
-    def get_expedited_writes(self, device_id: int) -> list[ExpeditedReadRequest] | None:
+    def get_expedited_writes(self, device_id: int) -> list[DelayedRequest] | None:
         """
         Get any expedited writes for the device.
 
@@ -396,7 +398,7 @@ class FndhRequestProvider(DeviceRequestProvider):
         """
         return [None] * len(self._port_power_changes)
 
-    def get_expedited_writes(self, device_id: int) -> list[ExpeditedReadRequest] | None:
+    def get_expedited_writes(self, device_id: int) -> list[DelayedRequest] | None:
         """
         Get any expedited writes for the FNDH.
 
@@ -419,14 +421,14 @@ class FndhRequestProvider(DeviceRequestProvider):
                 port_power_time = time.time() + offset * self._port_power_delay
                 port_read_time = port_power_time + self._port_status_read_delay
                 expedited_requests.append(
-                    ExpeditedReadRequest(
+                    DelayedRequest(
                         device_id,
                         ("SET_PORT_POWERS", requested_powers),
                         port_power_time,
                     )
                 )
                 expedited_requests.append(
-                    ExpeditedReadRequest(
+                    DelayedRequest(
                         device_id,
                         ("PORTS", None),
                         port_read_time,
@@ -505,7 +507,7 @@ class PasdBusRequestProvider:
         else:
             self._available_smartboxes = available_smartboxes
 
-        self._expedited_reads: list[ExpeditedReadRequest] = []
+        self._expedited_reads: list[DelayedRequest] = []
         self.initialise()
 
     def initialise(self) -> None:
