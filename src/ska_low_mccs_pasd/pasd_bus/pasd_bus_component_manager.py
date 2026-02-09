@@ -346,6 +346,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 request = PasdBusRequest(device_id, "reset_port_breaker", None, [port])
             case (device_id, "SET_PORT_POWERS", arguments):
                 request = PasdBusRequest(device_id, "set_port_powers", None, arguments)
+                if device_id == PasdData.FNDH_DEVICE_ID:
+                    self._request_provider.stop_polling_smartboxes(arguments)
             case (device_id, "PORT_POWER", (port, is_on, stay_on_when_offline)):
                 if is_on:
                     request = PasdBusRequest(

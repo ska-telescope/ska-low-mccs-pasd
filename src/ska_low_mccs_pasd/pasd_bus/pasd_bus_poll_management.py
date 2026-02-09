@@ -770,9 +770,6 @@ class PasdBusRequestProvider:
             ].get_write_read_sequence(device_id)
             if write_read_sequence is not None:
                 self._delayed_requests.extend(write_read_sequence)
-                for request in write_read_sequence:
-                    if request.request_description[0] == "SET_PORT_POWERS":
-                        self.stop_polling_smartboxes(request.request_description[1])
 
         # Now see if any delayed requests are ready to be executed.
         # These takes priority over writes so that we can update the polling
