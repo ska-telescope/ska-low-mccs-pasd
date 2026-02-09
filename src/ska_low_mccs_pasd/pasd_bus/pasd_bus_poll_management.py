@@ -334,15 +334,15 @@ class DeviceRequestProvider:
             )
         return None
 
-    def get_expedited_writes(self, device_id: int) -> list[DelayedRequest] | None:
+    def get_write_read_sequence(self, device_id: int) -> list[DelayedRequest] | None:
         """
-        Get any expedited writes for the device.
+        Return a list of DelayedRequests to perform a write-read sequence.
 
-        By default there are no expedited writes.
+        By default there are none.
 
         :param device_id: The id of the device requiring the request.
 
-        :returns: a list of expedited requests.
+        :returns: a list of DelayedRequests to be serviced.
         """
         return None
 
@@ -398,18 +398,18 @@ class FndhRequestProvider(DeviceRequestProvider):
         """
         return [None] * len(self._port_power_changes)
 
-    def get_expedited_writes(self, device_id: int) -> list[DelayedRequest] | None:
+    def get_write_read_sequence(self, device_id: int) -> list[DelayedRequest] | None:
         """
-        Get any expedited writes for the FNDH.
+        Get a sequence of write-read requests.
 
         A command to set port powers will be converted into N requests to write,
         interleaved with N requests to read.
 
         :param device_id: The id of the device requiring the request.
 
-        :returns: a list of expedited requests.
+        :returns: a list of DelayedRequests.
         """
-        expedited_requests = []
+        write_read_sequence = []
         offset = 0
         for requested_port, port_power in enumerate(self._port_power_changes):
             if port_power is not None:
@@ -420,14 +420,14 @@ class FndhRequestProvider(DeviceRequestProvider):
                 self._port_power_changes[requested_port] = None
                 port_power_time = time.time() + offset * self._port_power_delay
                 port_read_time = port_power_time + self._port_status_read_delay
-                expedited_requests.append(
+                write_read_sequence.append(
                     DelayedRequest(
                         device_id,
                         ("SET_PORT_POWERS", requested_powers),
                         port_power_time,
                     )
                 )
-                expedited_requests.append(
+                write_read_sequence.append(
                     DelayedRequest(
                         device_id,
                         ("PORTS", None),
@@ -435,9 +435,9 @@ class FndhRequestProvider(DeviceRequestProvider):
                     )
                 )
                 offset += 1
-        if expedited_requests:
-            return expedited_requests
-        return super().get_expedited_writes(device_id)
+        if write_read_sequence:
+            return write_read_sequence
+        return super().get_write_read_sequence(device_id)
 
 
 class PasdBusRequestProvider:
@@ -507,7 +507,7 @@ class PasdBusRequestProvider:
         else:
             self._available_smartboxes = available_smartboxes
 
-        self._expedited_reads: list[DelayedRequest] = []
+        self._delayed_requests: list[DelayedRequest] = []
         self.initialise()
 
     def initialise(self) -> None:
@@ -737,29 +737,29 @@ class PasdBusRequestProvider:
             self._ticks[PasdData.FNDH_DEVICE_ID] = 0
             return PasdData.FNDH_DEVICE_ID, *("READ", "status")
 
-        # Check if any expedited attribute reads need to be added to the list
-        # for future polls. These are actioned after a delay, so we maintain
-        # a list rather than executing them immediately, so as not to hold
-        # up other requests.
+        # Check if any expedited attribute reads or write-read sequences
+        # need to be added to the list for future polls. These are actioned
+        # after a delay, so we maintain a list rather than executing them
+        # immediately, so as not to hold up other requests.
         for device_id, _ in self._ticks.items():
             expedited_read_request = self._device_request_providers[
                 device_id
             ].get_expedited_read(device_id)
             if expedited_read_request is not None:
-                self._expedited_reads.append(expedited_read_request)
-            expedited_write_requests = self._device_request_providers[
+                self._delayed_requests.append(expedited_read_request)
+            write_read_sequence = self._device_request_providers[
                 device_id
-            ].get_expedited_writes(device_id)
-            if expedited_write_requests is not None:
-                self._expedited_reads.extend(expedited_write_requests)
+            ].get_write_read_sequence(device_id)
+            if write_read_sequence is not None:
+                self._delayed_requests.extend(write_read_sequence)
 
-        # Now see if any expedited reads are ready to be executed.
-        # This takes priority over writes so that we can update the polling
+        # Now see if any delayed requests are ready to be executed.
+        # These takes priority over writes so that we can update the polling
         # list if the port power states have changed.
-        for expedited_read in self._expedited_reads:
-            if expedited_read.not_before < time.time():
-                self._expedited_reads.remove(expedited_read)
-                return expedited_read.device_id, *expedited_read.request_description
+        for delayed_request in self._delayed_requests:
+            if delayed_request.not_before < time.time():
+                self._delayed_requests.remove(delayed_request)
+                return delayed_request.device_id, *delayed_request.request_description
 
         # Next we check for any write requests.
         for device_id, tick in self._ticks.items():
