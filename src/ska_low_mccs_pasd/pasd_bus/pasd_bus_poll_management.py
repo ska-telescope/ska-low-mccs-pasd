@@ -374,7 +374,7 @@ class FndhRequestProvider(DeviceRequestProvider):
             attribute before reading it again
         :param port_status_read_delay: time in seconds to wait after setting
             port status before reading it again
-        :param port_power_delay: 5ime in seconds to wait between setting
+        :param port_power_delay: time in seconds to wait between setting
             each FNDH port power.
         :param logger: a logger.
         """
@@ -477,7 +477,7 @@ class PasdBusRequestProvider:
             attribute before reading it again
         :param port_status_read_delay: time in seconds to wait after setting
             port status before reading it again
-        :param port_power_delay: 5ime in seconds to wait between setting
+        :param port_power_delay: time in seconds to wait between setting
             each FNDH port power.
         :param available_smartboxes: list of available smartbox ids to poll
         :param smartbox_ids: optional list of smartbox IDs associated with

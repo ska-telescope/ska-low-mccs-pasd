@@ -151,7 +151,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             attribute before reading it again
         :param port_status_read_delay: time in seconds to wait after setting
             port status before reading it again
-        :param port_power_delay: 5ime in seconds to wait between setting
+        :param port_power_delay: time in seconds to wait between setting
             each FNDH port power.
         :param timeout: maximum time to wait for a response to a server
             request (in seconds).
