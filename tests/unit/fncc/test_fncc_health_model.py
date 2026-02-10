@@ -39,7 +39,6 @@ class TestFnccHealthModel:
 
         return health_model
 
-    # pylint: disable=too-many-positional-arguments
     @pytest.mark.parametrize(
         ("data", "expected_final_health", "expected_final_report"),
         [

@@ -102,7 +102,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
     def _init_state_model(self: MccsFNCC) -> None:
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN
-        self._health_model = FnccHealthModel(self._health_changed_callback)
+        self._health_model = FnccHealthModel(self._health_changed_callback, self.logger)
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
 
