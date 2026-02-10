@@ -40,6 +40,7 @@ class FnccHealthModel(BaseHealthModel):
         :param health_changed_callback: callback to be called whenever
             there is a change to this health model's evaluated
             health state.
+        :param logger: logging object to use
         """
         super().__init__(health_changed_callback, pasdbus_status=None)
         self._logger = logger
