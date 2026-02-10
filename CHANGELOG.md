@@ -4,6 +4,7 @@
 
 * [THORN-403] Attempt to reconnect after a catastrophic error such as a 'Broken pipe'.
 * [THORN-402] Configure pipeline to ignore sonar scan results.
+* [THORN-342] Implement FNCC health model to reflect the status register.
 
 ## 4.3.2
 
