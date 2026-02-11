@@ -15,7 +15,10 @@ import pytest
 import tango
 from ska_control_model import AdminMode, HealthState
 from ska_low_pasd_driver import FnccSimulator
-from ska_low_pasd_driver.pasd_bus_conversions import PasdConversionUtility
+from ska_low_pasd_driver.pasd_bus_conversions import (
+    FnccStatusMap,
+    PasdConversionUtility,
+)
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
@@ -201,6 +204,104 @@ class TestfnccPasdBusIntegration:
         assert fncc_device.PasdStatus == "OK"
         assert fncc_device.FieldNodeNumber == fncc_simulator.FIELD_NODE_NUMBER
 
+    def test_health(
+        self: TestfnccPasdBusIntegration,
+        fncc_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        fncc_simulator: FnccSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+        last_smartbox_id: int,
+    ) -> None:
+        """
+        Test the Tango device's health reporting.
+
+        :param fncc_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param pasd_bus_device: a proxy to the PaSD bus device under test.
+        :param fncc_simulator: the FNCC simulator under test
+        :param change_event_callbacks: dictionary of mock change event
+            callbacks with asynchrony support
+        :param last_smartbox_id: ID of the last smartbox polled
+        """
+        # adminMode offline and in DISABLE state
+        # ----------------------------------------------------------------
+        assert fncc_device.adminMode == AdminMode.OFFLINE
+        assert pasd_bus_device.adminMode == AdminMode.OFFLINE
+
+        pasd_bus_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasd_bus_state"],
+        )
+        change_event_callbacks.assert_change_event(
+            "pasd_bus_state", tango.DevState.DISABLE
+        )
+
+        fncc_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fncc_state"],
+        )
+        change_event_callbacks["fncc_state"].assert_change_event(tango.DevState.DISABLE)
+
+        # -----------------------------------------------------------------
+        # This is a bit of a cheat.
+        # It's an implementation-dependent detail that
+        # this is one of the last attributes to be read from the simulator.
+        # We subscribe events on this attribute because we know that
+        # once we have an updated value for this attribute,
+        # we have an updated value for all of them.
+        pasd_bus_device.subscribe_event(
+            f"smartbox{last_smartbox_id}AlarmFlags",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
+        )
+        change_event_callbacks.assert_change_event(
+            f"smartbox{last_smartbox_id}AlarmFlags", Anything
+        )
+
+        fncc_device.subscribe_event(
+            "pasdStatus",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fnccStatus"],
+        )
+        fncc_device.subscribe_event(
+            "healthState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fnccHealthState"],
+        )
+
+        change_event_callbacks["fnccHealthState"].assert_change_event(
+            HealthState.UNKNOWN
+        )
+
+        pasd_bus_device.adminMode = AdminMode.ONLINE
+        fncc_device.adminMode = AdminMode.ONLINE
+
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.ON, 2, True
+        )
+
+        change_event_callbacks["fnccHealthState"].assert_change_event(HealthState.OK)
+        change_event_callbacks["fnccStatus"].assert_change_event(
+            FnccStatusMap.OK.name, lookahead=10
+        )
+
+        fncc_simulator.status = FnccStatusMap.FRAME_ERROR_MODBUS_STUCK
+        change_event_callbacks["fnccStatus"].assert_change_event(
+            FnccStatusMap.FRAME_ERROR_MODBUS_STUCK.name, lookahead=10
+        )
+        change_event_callbacks["fnccHealthState"].assert_change_event(
+            HealthState.FAILED
+        )
+
+        fncc_simulator.status = FnccStatusMap.OK
+        change_event_callbacks["fnccStatus"].assert_change_event(
+            FnccStatusMap.OK.name, lookahead=10
+        )
+        change_event_callbacks["fnccHealthState"].assert_change_event(HealthState.OK)
+
 
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture(
@@ -217,6 +318,8 @@ def change_event_callbacks_fixture(
         "fncc_state",
         "pasd_bus_state",
         "pasdBushealthState",
+        "fnccHealthState",
+        "fnccStatus",
         f"smartbox{last_smartbox_id}AlarmFlags",
         timeout=26.0,
         assert_no_error=False,
