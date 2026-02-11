@@ -110,14 +110,14 @@ low-itf-k8s-test:
   stage: test-low-itf
   extends: k8s-test
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
       allow_failure: true
-      when: always
   resource_group: hardware
   needs:
     - oci-image-build
   tags:
-    - k8srunner-stfc-low-itf
+    - ska-low-itf-sut
   environment:
     name: test-low-itf/$CI_COMMIT_REF_SLUG
     on_stop: low-itf-stop-k8s
@@ -146,9 +146,6 @@ low-itf-k8s-test:
 low-itf-xray-publish:
   stage: test-low-itf
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-      allow_failure: true
-      when: always
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       when: manual
       allow_failure: true
@@ -156,7 +153,7 @@ low-itf-xray-publish:
   needs:
     - low-itf-k8s-test
   tags:
-    - k8srunner-stfc-low-itf
+    - ska-low-itf-sut
   image: $SKA_K8S_TOOLS_BUILD_DEPLOY
   variables:
     TEST_ENV: HARDWARE-TEST
@@ -170,9 +167,6 @@ low-itf-xray-publish:
 low-itf-stop-k8s:
   stage: test-low-itf
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-      allow_failure: true
-      when: always
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       when: manual
       allow_failure: true
@@ -180,7 +174,7 @@ low-itf-stop-k8s:
   needs:
     - low-itf-k8s-test
   tags:
-    - k8srunner-stfc-low-itf
+    - ska-low-itf-sut
   environment:
     name: test-low-itf/$CI_COMMIT_REF_SLUG
     action: stop
