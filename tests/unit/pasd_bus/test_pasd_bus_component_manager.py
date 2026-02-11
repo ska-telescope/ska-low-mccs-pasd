@@ -99,7 +99,8 @@ def pasd_bus_component_manager_fixture(
             0.1,  # device_polling_rate very fast for unit testing
             2.0,
             1.0,
-            2.5,
+            0.0,
+            0.0,
             3.0,
             logger,
             mock_callbacks["communication_state"],
@@ -530,10 +531,10 @@ class TestPasdBusComponentManager:
 
         for i in range(1, 5):
             print(f"Test iteration {i}")
-            expected_desired_power_when_online = (
+            expected_desired_power_online = (
                 fndh_simulator.ports_desired_power_when_online
             )
-            expected_desired_power_when_offline = (
+            expected_desired_power_offline = (
                 fndh_simulator.ports_desired_power_when_offline
             )
             expected_ports_power_sensed = fndh_simulator.ports_power_sensed
@@ -543,35 +544,34 @@ class TestPasdBusComponentManager:
             )
             desired_stay_on_when_offline = random.choice([True, False])
 
-            for i, desired in enumerate(desired_port_powers):
-                if desired is None:
-                    continue
-                if desired:
-                    expected_desired_power_when_online[i] = DesiredPowerEnum.ON
-                    expected_desired_power_when_offline[i] = (
-                        DesiredPowerEnum.ON
-                        if desired_stay_on_when_offline
-                        else DesiredPowerEnum.OFF
-                    )
-                    expected_ports_power_sensed[i] = True
-                else:
-                    expected_desired_power_when_online[i] = DesiredPowerEnum.OFF
-                    # Turning the port OFF, so the offline value is also set to OFF.
-                    expected_desired_power_when_offline[i] = DesiredPowerEnum.OFF
-                    expected_ports_power_sensed[i] = False
-
             pasd_bus_component_manager.set_fndh_port_powers(
                 desired_port_powers, desired_stay_on_when_offline
             )
 
-            mock_callbacks["pasd_device_state_for_fndh"].assert_call(
-                port_forcings=port_forcings,
-                ports_desired_power_when_online=expected_desired_power_when_online,
-                ports_desired_power_when_offline=expected_desired_power_when_offline,
-                ports_power_sensed=expected_ports_power_sensed,
-                ports_power_control=[True] * FndhSimulator.NUMBER_OF_PORTS,
-                lookahead=11,  # Full cycle plus one to cover off on race conditions
-            )
+            for j, desired in enumerate(desired_port_powers):
+                if desired is None:
+                    continue
+                if desired:
+                    expected_desired_power_online[j] = DesiredPowerEnum.ON
+                    expected_desired_power_offline[j] = (
+                        DesiredPowerEnum.ON
+                        if desired_stay_on_when_offline
+                        else DesiredPowerEnum.OFF
+                    )
+                    expected_ports_power_sensed[j] = True
+                else:
+                    expected_desired_power_online[j] = DesiredPowerEnum.OFF
+                    # Turning the port OFF, so the offline value is also set to OFF.
+                    expected_desired_power_offline[j] = DesiredPowerEnum.OFF
+                    expected_ports_power_sensed[j] = False
+                mock_callbacks["pasd_device_state_for_fndh"].assert_call(
+                    port_forcings=port_forcings,
+                    ports_desired_power_when_online=expected_desired_power_online,
+                    ports_desired_power_when_offline=expected_desired_power_offline,
+                    ports_power_sensed=expected_ports_power_sensed,
+                    ports_power_control=[True] * FndhSimulator.NUMBER_OF_PORTS,
+                    lookahead=10,  # Full cycle plus one to cover off on race conditions
+                )
 
     def test_set_smartbox_port_powers(  # pylint: disable=too-many-locals
         self: TestPasdBusComponentManager,

@@ -124,7 +124,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
     # Time in seconds to wait after setting port status before reading it again
     PortStatusReadDelay: Final[float] = tango.server.device_property(
-        dtype=float, default_value=2.5
+        dtype=float, default_value=4
+    )
+
+    # Time in seconds to wait between setting each FNDH port power.
+    PortPowerDelay: Final[float] = tango.server.device_property(
+        dtype=float, default_value=5.0
     )
 
     # ---------
@@ -198,6 +203,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             f"\tSmartboxIDs: {self.SmartboxIDs}\n"
             f"\tEnablePyModbusLogging: {self.EnablePyModbusLogging}\n"
             f"\tPyModbusLogDir: {self.PyModbusLogDir}\n"
+            f"\tAttributeReadDelay: {self.AttributeReadDelay}\n"
+            f"\tPortStatusReadDelay: {self.PortStatusReadDelay}\n"
+            f"\tPortPowerDelay: {self.PortPowerDelay}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -346,6 +354,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self.PollDelayAfterFailure,
             self.AttributeReadDelay,
             self.PortStatusReadDelay,
+            self.PortPowerDelay,
             self.Timeout,
             self.logger,
             self._communication_state_callback,

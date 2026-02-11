@@ -137,8 +137,11 @@ class TestFieldStationIntegration:
         change_event_callbacks["field_station_state"].assert_change_event(
             tango.DevState.OFF, lookahead=2
         )
+        # These events will now be staggered as each FNDH port is powered individually.
+        # We could do a complicated loop of assertions, however that is done in unit
+        # testing, lets just assert we end up in the right state.
         change_event_callbacks["fndh_ports_power_sensed"].assert_change_event(
-            expected_port_status, lookahead=2
+            expected_port_status, lookahead=6 + 28
         )
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments

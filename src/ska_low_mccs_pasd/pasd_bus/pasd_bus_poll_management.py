@@ -73,13 +73,13 @@ def smartbox_read_request_iterator() -> Iterator[str]:
 
 
 @dataclass
-class ExpeditedReadRequest:
+class DelayedRequest:
     """
-    Class to represent an expedited read request.
+    Class to represent a delayed request.
 
-    Encapsulates data about a read request including a
-    'not before' timestamp to allow time for the register
-    in question to be updated.
+    Encapsulates data about a delayed request including a
+    'not before' timestamp before which the request should
+    not be actioned.
     """
 
     device_id: int
@@ -275,9 +275,7 @@ class DeviceRequestProvider:
                 return "BREAKER_RESET", port
 
         if any(change is not None for change in self._port_power_changes):
-            requested_powers = self._port_power_changes
-            self._port_power_changes = [None] * len(requested_powers)
-            self._ports_status_update_request = True
+            requested_powers = self._get_requested_port_powers()
             return "SET_PORT_POWERS", requested_powers
 
         if self._status_reset_requested:
@@ -296,6 +294,12 @@ class DeviceRequestProvider:
 
         return "NONE", None
 
+    def _get_requested_port_powers(self) -> list[tuple[bool, bool] | None]:
+        requested_powers = self._port_power_changes
+        self._port_power_changes = [None] * len(requested_powers)
+        self._ports_status_update_request = True
+        return requested_powers
+
     def get_read(self) -> str:
         """
         Return a description of the next read to be performed on the device.
@@ -304,29 +308,136 @@ class DeviceRequestProvider:
         """
         return next(self._read_request_iterator)
 
-    def get_expedited_read(self, device_id: int) -> ExpeditedReadRequest | None:
+    def get_expedited_read(self, device_id: int) -> DelayedRequest | None:
         """
-        Return an ExpeditedReadRequest for future action.
+        Return a DelayedRequest for future action to expedite a read.
 
         This is required for attributes which have been written to by the user,
-        so we don't have to wait until their turn in the regular poll.
+        so we don't have to wait until their turn in the regular poll. The
+        request is delayed to ensure the register has been updated before
+        we read it again.
 
         :param: device_id: The id of the device requiring the request.
-        :return: An ExpeditedReadRequest, encapsulating information about
+        :return: A DelayedRequest, encapsulating information about
             the request to make and when it should be actioned.
         """
         if self._ports_status_update_request:
             self._ports_status_update_request = False
-            return ExpeditedReadRequest(
+            return DelayedRequest(
                 device_id, ("PORTS", None), time.time() + self._port_status_read_delay
             )
         if self._attribute_update_requests:
-            return ExpeditedReadRequest(
+            return DelayedRequest(
                 device_id,
                 ("READ", self._attribute_update_requests.pop(0)),
                 time.time() + self._attribute_read_delay,
             )
         return None
+
+    def get_write_read_sequence(self, device_id: int) -> list[DelayedRequest] | None:
+        """
+        Return a list of DelayedRequests to perform a write-read sequence.
+
+        By default there are none.
+
+        :param device_id: The id of the device requiring the request.
+
+        :returns: a list of DelayedRequests to be serviced.
+        """
+        return None
+
+
+# pylint: disable=too-many-positional-arguments, too-many-arguments
+class FndhRequestProvider(DeviceRequestProvider):
+    """
+    A class to handle staggered powering of Fndh ports.
+
+    A request for powering N ports becomes N requests for powering 1 port.
+    """
+
+    def __init__(
+        self,
+        number_of_ports: int,
+        read_request_iterator_factory: Callable[[], Iterator[str]],
+        attribute_read_delay: float,
+        port_status_read_delay: float,
+        port_power_delay: float,
+        logger: logging.Logger,
+    ) -> None:
+        """
+        Initialise a new instance.
+
+        :param number_of_ports: the number of ports this device has.
+        :param read_request_iterator_factory: a callable that returns
+            a read request iterator
+        :param attribute_read_delay: time in seconds to wait after writing an
+            attribute before reading it again
+        :param port_status_read_delay: time in seconds to wait after setting
+            port status before reading it again
+        :param port_power_delay: time in seconds to wait between setting
+            each FNDH port power.
+        :param logger: a logger.
+        """
+        self._port_power_delay = port_power_delay
+        super().__init__(
+            number_of_ports,
+            read_request_iterator_factory,
+            attribute_read_delay,
+            port_status_read_delay,
+            logger,
+        )
+
+    def _get_requested_port_powers(self) -> list[tuple[bool, bool] | None]:
+        """
+        Get requested FNDH port powers.
+
+        The initial request is simply recorded to be fulfilled through expedited
+        requests later.
+
+        :returns: no ports to change immediately.
+        """
+        return [None] * len(self._port_power_changes)
+
+    def get_write_read_sequence(self, device_id: int) -> list[DelayedRequest] | None:
+        """
+        Get a sequence of write-read requests.
+
+        A command to set port powers will be converted into N requests to write,
+        interleaved with N requests to read.
+
+        :param device_id: The id of the device requiring the request.
+
+        :returns: a list of DelayedRequests.
+        """
+        write_read_sequence = []
+        offset = 0
+        for requested_port, port_power in enumerate(self._port_power_changes):
+            if port_power is not None:
+                requested_powers: list[tuple[bool, bool] | None] = [None] * len(
+                    self._port_power_changes
+                )
+                requested_powers[requested_port] = port_power
+                self._port_power_changes[requested_port] = None
+                port_power_time = time.time() + offset * self._port_power_delay
+                port_read_time = port_power_time + self._port_status_read_delay
+                write_read_sequence.append(
+                    DelayedRequest(
+                        device_id,
+                        ("SET_PORT_POWERS", requested_powers),
+                        port_power_time,
+                    )
+                )
+                write_read_sequence.append(
+                    DelayedRequest(
+                        device_id,
+                        ("PORTS", None),
+                        port_read_time,
+                    )
+                )
+                offset += 1
+        if write_read_sequence:
+            return write_read_sequence
+        return super().get_write_read_sequence(device_id)
 
 
 class PasdBusRequestProvider:
@@ -352,6 +463,7 @@ class PasdBusRequestProvider:
         logger: logging.Logger,
         attribute_read_delay: float,
         port_status_read_delay: float,
+        port_power_delay: float,
         available_smartboxes: list[int],
         smartbox_ids: Optional[list[int]] = None,
     ) -> None:
@@ -365,14 +477,24 @@ class PasdBusRequestProvider:
             attribute before reading it again
         :param port_status_read_delay: time in seconds to wait after setting
             port status before reading it again
+        :param port_power_delay: time in seconds to wait between setting
+            each FNDH port power.
         :param available_smartboxes: list of available smartbox ids to poll
         :param smartbox_ids: optional list of smartbox IDs associated with
             each FNDH port
         """
+        if port_status_read_delay >= port_power_delay:
+            logger.warning(
+                f"Port status read delay ({port_status_read_delay}) >= Port Power Delay"
+                f" ({port_power_delay}), setting port status read delay to "
+                f"{port_power_delay - 1}"
+            )
+            port_status_read_delay = port_power_delay - 1
         self._min_ticks = min_ticks
         self._logger = logger
         self._attribute_read_delay = attribute_read_delay
         self._port_status_read_delay = port_status_read_delay
+        self._port_power_delay = port_power_delay
 
         # Create a dict mapping FNDH ports to smartbox Modbus IDs
         # if smartboxIDs is provided, otherwise just use available_smartboxes
@@ -385,7 +507,7 @@ class PasdBusRequestProvider:
         else:
             self._available_smartboxes = available_smartboxes
 
-        self._expedited_reads: list[ExpeditedReadRequest] = []
+        self._delayed_requests: list[DelayedRequest] = []
         self.initialise()
 
     def initialise(self) -> None:
@@ -412,11 +534,12 @@ class PasdBusRequestProvider:
                 }
             )
 
-        fndh_request_provider = DeviceRequestProvider(
+        fndh_request_provider = FndhRequestProvider(
             PasdData.NUMBER_OF_FNDH_PORTS,
             fndh_read_request_iterator,
             self._attribute_read_delay,
             self._port_status_read_delay,
+            self._port_power_delay,
             logger=self._logger,
         )
         fncc_request_provider = DeviceRequestProvider(
@@ -460,6 +583,24 @@ class PasdBusRequestProvider:
             elif not power_state and smartbox_id in self._ticks:
                 self._logger.info(f"Stopping polling smartbox {smartbox_id}")
                 self._ticks.pop(smartbox_id, None)
+
+    def stop_polling_smartboxes(
+        self, port_power_requests: list[tuple[bool, bool] | None]
+    ) -> None:
+        """
+        Stop polling a smartbox if it has been requested to switch off.
+
+        :param port_power_requests: list of port power requests
+        """
+        for fndh_port, request in enumerate(port_power_requests, start=1):
+            if request is not None and request[0] is False:
+                smartbox_id = self._smartboxIDs.get(fndh_port)
+                if smartbox_id is not None and smartbox_id in self._ticks:
+                    self._logger.info(
+                        f"Stopping polling smartbox {smartbox_id} as port "
+                        f"{fndh_port} is being powered off"
+                    )
+                    self._ticks.pop(smartbox_id, None)
 
     def desire_read_startup_info(self, device_id: int) -> None:
         """
@@ -614,24 +755,29 @@ class PasdBusRequestProvider:
             self._ticks[PasdData.FNDH_DEVICE_ID] = 0
             return PasdData.FNDH_DEVICE_ID, *("READ", "status")
 
-        # Check if any expedited attribute reads need to be added to the list
-        # for future polls. These are actioned after a delay, so we maintain
-        # a list rather than executing them immediately, so as not to hold
-        # up other requests.
+        # Check if any expedited attribute reads or write-read sequences
+        # need to be added to the list for future polls. These are actioned
+        # after a delay, so we maintain a list rather than executing them
+        # immediately, so as not to hold up other requests.
         for device_id, _ in self._ticks.items():
             expedited_read_request = self._device_request_providers[
                 device_id
             ].get_expedited_read(device_id)
             if expedited_read_request is not None:
-                self._expedited_reads.append(expedited_read_request)
+                self._delayed_requests.append(expedited_read_request)
+            write_read_sequence = self._device_request_providers[
+                device_id
+            ].get_write_read_sequence(device_id)
+            if write_read_sequence is not None:
+                self._delayed_requests.extend(write_read_sequence)
 
-        # Now see if any expedited reads are ready to be executed.
-        # This takes priority over writes so that we can update the polling
+        # Now see if any delayed requests are ready to be executed.
+        # These takes priority over writes so that we can update the polling
         # list if the port power states have changed.
-        for expedited_read in self._expedited_reads:
-            if expedited_read.not_before < time.time():
-                self._expedited_reads.remove(expedited_read)
-                return expedited_read.device_id, *expedited_read.request_description
+        for delayed_request in self._delayed_requests:
+            if delayed_request.not_before < time.time():
+                self._delayed_requests.remove(delayed_request)
+                return delayed_request.device_id, *delayed_request.request_description
 
         # Next we check for any write requests.
         for device_id, tick in self._ticks.items():
