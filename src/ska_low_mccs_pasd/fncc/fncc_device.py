@@ -16,7 +16,7 @@ from typing import Any, Final, Optional, cast
 import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState
 from ska_low_mccs_common import MccsBaseDevice
-from tango.server import device_property
+from tango.server import attribute, device_property
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .fncc_component_manager import FnccComponentManager
@@ -187,6 +187,17 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
                 self._fncc_attributes[attribute_name].timestamp,
                 self._fncc_attributes[attribute_name].quality,
             )
+
+    @attribute(dtype="DevString")
+    def healthReport(self: MccsFNCC) -> str:  # noqa: N802
+        """
+        Get the health report.
+
+        :return: the health report.
+        """
+        if self._health_model is not None:
+            return self._health_model.health_report
+        return "No health report has been created yet."
 
     # ----------
     # Callbacks
