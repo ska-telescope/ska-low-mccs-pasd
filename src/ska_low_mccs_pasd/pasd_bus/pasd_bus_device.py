@@ -124,7 +124,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
     # Time in seconds to wait after setting port status before reading it again
     PortStatusReadDelay: Final[float] = tango.server.device_property(
-        dtype=float, default_value=2.5
+        dtype=float, default_value=4
     )
 
     # Time in seconds to wait between setting each FNDH port power.
