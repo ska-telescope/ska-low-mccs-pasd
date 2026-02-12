@@ -79,6 +79,11 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         dtype=bool,
         default_value=True,
     )
+    FaultOnThresholdDifference: Final = device_property(
+        doc="Put the device in DevState FAULT if firmware and Tango thresholds differ.",
+        dtype=bool,
+        default_value=True,
+    )
 
     # ---------
     # Constants
@@ -186,6 +191,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             f"\tPasdFQDN: {self.PasdFQDN}\n"
             f"\tPortsWithSmartbox: {self.PortsWithSmartbox}\n"
             f"\tUseAttributesForHealth: {self.UseAttributesForHealth}\n"
+            f"\tFaultOnThresholdDifference: {self.FaultOnThresholdDifference}"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -193,8 +199,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
     def delete_device(self: MccsFNDH) -> None:
         """Delete the device."""
-        self.component_manager._pasd_bus_proxy.cleanup()
-        self.component_manager._task_executor._executor.shutdown()
+        self.component_manager.cleanup()
         self._stopping = True
         if self._health_recorder is not None:
             self._health_recorder.cleanup()
@@ -1059,9 +1064,9 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 diff = self._threshold_differences()
                 if diff:
                     self.logger.error(
-                        f"Mismatch between firmware and tango thresholds:{diff}"
+                        f"Mismatch between firmware and tango thresholds: {diff}"
                     )
-                    self.threshold_fault = True
+                    self.threshold_fault = bool(self.FaultOnThresholdDifference)
                 else:
                     self.threshold_fault = False
                 self._component_state_changed_callback()
@@ -1152,9 +1157,9 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                     diff = self._threshold_differences()
                     if diff:
                         self.logger.error(
-                            f"Mismatch between firmware and tango thresholds:{diff}"
+                            f"Mismatch between firmware and tango thresholds: {diff}"
                         )
-                        self.threshold_fault = True
+                        self.threshold_fault = bool(self.FaultOnThresholdDifference)
                     else:
                         if self.op_state_model._op_state == tango.DevState.UNKNOWN:
                             self.threshold_fault = None

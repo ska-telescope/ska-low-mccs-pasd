@@ -92,6 +92,11 @@ class MccsSmartBox(MccsBaseDevice):
         dtype=bool,
         default_value=True,
     )
+    FaultOnThresholdDifference: Final = device_property(
+        doc="Put the device in DevState FAULT if firmware and Tango thresholds differ.",
+        dtype=bool,
+        default_value=True,
+    )
 
     CONFIG: Final[ControllerDict] = PasdControllersConfig.get_smartbox()
     TYPES: Final[dict[str, type]] = {
@@ -159,6 +164,8 @@ class MccsSmartBox(MccsBaseDevice):
             f"\tPortsWithAntennas: {self.PortsWithAntennas}\n"
             f"\tAntennaNames: {self.AntennaNames}\n"
             f"\tFndhPort: {self.FndhPort}\n"
+            f"\tUseAttributesForHealth: {self.UseAttributesForHealth}\n"
+            f"\tFaultOnThresholdDifference: {self.FaultOnThresholdDifference}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -176,8 +183,7 @@ class MccsSmartBox(MccsBaseDevice):
         if self._health_recorder is not None:
             self._health_recorder.cleanup()
             self._health_recorder = None
-        self.component_manager._pasd_bus_proxy.cleanup()
-        self.component_manager._task_executor._executor.shutdown()
+        self.component_manager.cleanup()
         super().delete_device()
 
     def _init_state_model(self: MccsSmartBox) -> None:
@@ -602,7 +608,6 @@ class MccsSmartBox(MccsBaseDevice):
                 self._health_recorder.clear_attribute_state()
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._component_state_changed(power=self.component_manager._power_state)
-
         super()._communication_state_changed(communication_state)
 
         if self._health_model:
@@ -724,7 +729,7 @@ class MccsSmartBox(MccsBaseDevice):
                 self.push_change_event(attribute_name, value)
         if attribute_name.lower() not in [
             "pasdstatus",
-            "numberofoortbreakerstripped",
+            "numberofportbreakerstripped",
         ]:
             threshold_name = attribute_name + "Thresholds"
             attr = self._healthful_attributes[attribute_name]()
@@ -734,9 +739,9 @@ class MccsSmartBox(MccsBaseDevice):
                 diff = self._threshold_differences()
                 if diff:
                     self.logger.error(
-                        f"Mismatch between firmware and tango thresholds:{diff}"
+                        f"Mismatch between firmware and tango thresholds: {diff}"
                     )
-                    self.threshold_fault = True
+                    self.threshold_fault = bool(self.FaultOnThresholdDifference)
                     self._component_state_callback()
 
     # pylint: disable=too-many-branches, disable=too-many-statements
@@ -817,7 +822,7 @@ class MccsSmartBox(MccsBaseDevice):
                         self.logger.error(
                             f"Mismatch between firmware and tango thresholds: {diff}"
                         )
-                        self.threshold_fault = True
+                        self.threshold_fault = bool(self.FaultOnThresholdDifference)
                     else:
                         if self.op_state_model._op_state == tango.DevState.UNKNOWN:
                             self.threshold_fault = None

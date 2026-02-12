@@ -15,7 +15,6 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Final, Optional
 
-from pymodbus.exceptions import ModbusException
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_pasd_driver.pasd_bus_modbus_api import PasdBusModbusApiClient
 from ska_tango_base.base import check_communicating
@@ -117,12 +116,16 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             SMARTBOX_STATUS_ATTRIBUTES.append(key)
 
     def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
+        # pylint: disable=too-many-locals
         self: PasdBusComponentManager,
         host: str,
         port: int,
         polling_rate: float,
         device_polling_rate: float,
         poll_delay_after_failure: float,
+        attribute_read_delay: float,
+        port_status_read_delay: float,
+        port_power_delay: float,
         timeout: float,
         logger: logging.Logger,
         communication_state_callback: Callable[[CommunicationStatus], None],
@@ -144,6 +147,12 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             with the same device.
         :param poll_delay_after_failure: time in seconds to wait before next poll
             after a comms failure
+        :param attribute_read_delay: time in seconds to wait after writing an
+            attribute before reading it again
+        :param port_status_read_delay: time in seconds to wait after setting
+            port status before reading it again
+        :param port_power_delay: time in seconds to wait between setting
+            each FNDH port power.
         :param timeout: maximum time to wait for a response to a server
             request (in seconds).
         :param logger: a logger for this object to use
@@ -160,8 +169,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             when one of the PaSD devices (i.e. the FNDH or one of the
             smartboxes) provides updated information about its state.
             This callable takes a single positional argument, which is
-            the device number (0 for FNDH, otherwise the smartbox
-            number), and keyword arguments representing the state
+            the device number, and keyword arguments representing the state
             changes.
         :param available_smartboxes: a list of available smartbox ids to poll.
         :param smartbox_ids: optional list of smartbox IDs associated with
@@ -182,9 +190,15 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._pasd_bus_device_state_callback = pasd_device_state_callback
         self._polling_rate = polling_rate
         self._poll_delay_after_failure = poll_delay_after_failure
+        self._attribute_read_delay = attribute_read_delay
+        self._port_status_read_delay = port_status_read_delay
+        self._port_power_delay = port_power_delay
         self._request_provider = PasdBusRequestProvider(
             int(device_polling_rate / polling_rate),
             self._logger,
+            self._attribute_read_delay,
+            self._port_status_read_delay,
+            self._port_power_delay,
             available_smartboxes,
             smartbox_ids,
         )
@@ -332,6 +346,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 request = PasdBusRequest(device_id, "reset_port_breaker", None, [port])
             case (device_id, "SET_PORT_POWERS", arguments):
                 request = PasdBusRequest(device_id, "set_port_powers", None, arguments)
+                if device_id == PasdData.FNDH_DEVICE_ID:
+                    self._request_provider.stop_polling_smartboxes(arguments)
             case (device_id, "PORT_POWER", (port, is_on, stay_on_when_offline)):
                 if is_on:
                     request = PasdBusRequest(
@@ -483,9 +499,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 f"{poll_response.data['error']['detail']}. Delaying next poll..."
             )
             self._poll_delay_event.set()
-        else:
-            # Ensure the event is cleared to allow normal polling
-            self._poll_delay_event.clear()
 
         self._update_component_state(power=PowerState.ON, fault=False)
 
@@ -505,7 +518,9 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             attempt.
         """
         super().poll_failed(exception)
-        if isinstance(exception, ModbusException):
+        if not isinstance(exception, ValueError):
+            # Some kind of Modbus error or network interruption must have occurred
+            # so attempt to reset the connection
             self.reset_connection()
             # Set the event to delay the next poll
             self._logger.debug("Delaying next poll and requesting FNPC status...")
@@ -518,7 +533,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     def request_startup_info(self: PasdBusComponentManager, device_id: int) -> None:
         """Read the registers normally just polled at startup.
 
-        :param: device_id: 0 for the FNDH, 100 for the FNCC, else a smartbox id
+        :param: device_id: The id of the device being addressed
         """
         self._request_provider.desire_read_startup_info(device_id)
 
@@ -762,3 +777,12 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param port_power_states: list of port power statuses (true=On, false=Off).
         """
         self._request_provider.update_port_power_states(port_power_states)
+
+    def cleanup(self: PasdBusComponentManager) -> None:
+        """Delete and clean up any remaining processes."""
+        self.stop_communicating()
+        # Stop communicating will not actually stop the polling thread, but it pauses
+        # it. If we set the state to killed this will exit the while loop and stops it.
+        with self._poller._condition:
+            self._poller._state = self._poller._State.KILLED
+            self._poller._condition.notify()

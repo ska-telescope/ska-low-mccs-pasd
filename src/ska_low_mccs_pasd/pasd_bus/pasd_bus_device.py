@@ -117,6 +117,21 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         dtype=str, default_value=None
     )
 
+    # Time in seconds to wait after writing to a register before reading it again
+    AttributeReadDelay: Final[float] = tango.server.device_property(
+        dtype=float, default_value=1.0
+    )
+
+    # Time in seconds to wait after setting port status before reading it again
+    PortStatusReadDelay: Final[float] = tango.server.device_property(
+        dtype=float, default_value=4
+    )
+
+    # Time in seconds to wait between setting each FNDH port power.
+    PortPowerDelay: Final[float] = tango.server.device_property(
+        dtype=float, default_value=5.0
+    )
+
     # ---------
     # Constants
     # ---------
@@ -144,6 +159,14 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
         self._build_state: str = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
+
+        if self.SmartboxIDs:
+            self.connected_smartboxes = []
+            for smartbox_id in self.SmartboxIDs:
+                if smartbox_id != 0:
+                    self.connected_smartboxes.append(smartbox_id)
+        else:
+            self.connected_smartboxes = self.AvailableSmartboxes
 
         self._pasd_state: dict[str, PasdAttribute] = {}
         for key, controller in PasdData.CONTROLLERS_CONFIG.items():
@@ -180,6 +203,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             f"\tSmartboxIDs: {self.SmartboxIDs}\n"
             f"\tEnablePyModbusLogging: {self.EnablePyModbusLogging}\n"
             f"\tPyModbusLogDir: {self.PyModbusLogDir}\n"
+            f"\tAttributeReadDelay: {self.AttributeReadDelay}\n"
+            f"\tPortStatusReadDelay: {self.PortStatusReadDelay}\n"
+            f"\tPortPowerDelay: {self.PortPowerDelay}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -296,10 +322,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         Set all the low-pass filter constants of a given PaSD device.
 
         :param pasd_device_number: the number of the PaSD device to set.
-            0 refers to the FNDH, otherwise the device number is the
-            smartbox number.
         """
-        if pasd_device_number == 0:
+        if pasd_device_number == PasdData.FNDH_DEVICE_ID:
             self.component_manager.set_fndh_low_pass_filters(self.LowPassFilterCutoff)
             self.component_manager.set_fndh_low_pass_filters(
                 self.LowPassFilterCutoff, True
@@ -326,6 +350,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self.PollingRate,
             self.DevicePollingRate,
             self.PollDelayAfterFailure,
+            self.AttributeReadDelay,
+            self.PortStatusReadDelay,
+            self.PortPowerDelay,
             self.Timeout,
             self.logger,
             self._communication_state_callback,
@@ -425,7 +452,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         (The socket should be closed when it is deleted,
         but it is good practice to close it explicitly anyhow.)
         """
-        self.component_manager.stop_communicating()
+        self.component_manager.cleanup()
+        super().delete_device()
 
     # ----------
     # Callbacks
@@ -465,7 +493,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             and communication_state == CommunicationStatus.ESTABLISHED
         ):
             self._init_pasd_devices = False
-            for device_number in self.AvailableSmartboxes + [PasdData.FNDH_DEVICE_ID]:
+            for device_number in self.connected_smartboxes + [PasdData.FNDH_DEVICE_ID]:
                 self._set_all_low_pass_filters_of_device(device_number)
             if self.FEMCurrentTripThreshold is not None:
                 for device_number in self.AvailableSmartboxes:

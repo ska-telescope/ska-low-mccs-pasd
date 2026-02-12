@@ -56,6 +56,9 @@ MccsPasdBus
 - **PollingRate**: Polling period, in seconds
 - **DevicePollingRate**: Minimum time between polls of a device, in seconds
 - **PollDelayAfterFailure**: Time to wait after a failed poll, in seconds
+- **AttributeReadDelay**: Time to wait after writing an attribute before reading it again, in seconds
+- **PortStatusReadDelay**: Time to wait after setting port status before reading it again, in seconds
+- **PortPowerDelay**: Time to wait between setting each FNDH port, in seconds. Must be greater than PortStatusReadDelay
 - **Timeout**: Communication timeout, in seconds
 - **LowPassFilterCutoff**: Low-pass filter cutoff frequency, in Hz
 - **FEMCurrentTripThreshold**: Current trip threshold for all FEMs, in Amps
@@ -83,6 +86,7 @@ MccsFNDH
 - **PasdFQDN**: Tango FQDN of the associated PaSD bus device
 - **PortsWithSmartbox**: List of FNDH ports that have an associated smartbox
 - **UseAttributesForHealth**: Set to ``True`` to use attribute quality factor in health evaluation
+- **FaultOnThresholdDifference**: Set to ``True`` to to turn on setting the device to Fault when there is a mismatch between firmware and Tango thresholds
 
 MccsSmartbox
 ~~~~~~~~~~~~
@@ -94,6 +98,7 @@ MccsSmartbox
 - **AntennaNames**: List of antenna names attached to ports
 - **FndhPort**: FNDH port number this smartbox is connected to
 - **UseAttributesForHealth**: Set to ``True`` to use attribute quality factor in health evaluation
+- **FaultOnThresholdDifference**: Set to ``True`` to to turn on setting the device to Fault when there is a mismatch between firmware and Tango thresholds
 
 MccsFncc
 ~~~~~~~~
