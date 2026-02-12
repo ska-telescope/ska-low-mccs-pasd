@@ -105,6 +105,30 @@ temp-stop-k8s:
   allow_failure: true
 
 
+low-itf-check-pods:
+  stage: test-low-itf
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: true
+  resource_group: hardware
+  needs:
+    - oci-image-build
+  tags:
+    - ska-low-itf-sut
+  environment:
+    name: test-low-itf/$CI_COMMIT_REF_SLUG
+  variables:
+    TANGO_HOST: "tango-databaseds:10000"
+    KUBE_NAMESPACE: 'ci-$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA'
+    K8S_HELMFILE_ENV: low-itf
+    STATION_LABEL: itf1
+    JUNITXML_REPORT_PATH: build/reports/low-itf-functional-tests.xml
+    CUCUMBER_JSON_PATH: build/reports/low-itf-cucumber.json
+    JSON_REPORT_PATH: build/reports/report.json
+    HW_DEPLOYMENT: true
+  script:
+    kubectl get pods -A
 
 low-itf-k8s-test:
   stage: test-low-itf

@@ -36,6 +36,10 @@ include .make/oci.mk
 K8S_USE_HELMFILE = true
 K8S_HELMFILE = helmfile.d/helmfile.yaml.gotmpl
 
+ifeq ($(filter $(K8S_HELMFILE_ENV),low-itf),$(K8S_HELMFILE_ENV))
+KUBE_NAMESPACE := $(K8S_HELMFILE_ENV)
+endif
+
 ifdef CI_COMMIT_SHORT_SHA
 K8S_HELMFILE_ENV ?= stfc-ci
 else
