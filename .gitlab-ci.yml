@@ -128,7 +128,7 @@ low-itf-check-pods:
     JSON_REPORT_PATH: build/reports/report.json
     HW_DEPLOYMENT: true
   script:
-    kubectl get pods -A
+    kubectl get pods
 
 low-itf-k8s-test:
   stage: test-low-itf
