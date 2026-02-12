@@ -212,7 +212,6 @@ class _PasdBusProxy(DeviceComponentManager):
             unique id to identify the command in the queue.
         """
         assert self._proxy
-        self._proxy.InitializeSmartbox(self._smartbox_nr)
         argument = json.loads(json_argument)
         argument.update({"smartbox_number": self._smartbox_nr})
         return self._proxy.SetSmartboxPortPowers(json.dumps(argument))

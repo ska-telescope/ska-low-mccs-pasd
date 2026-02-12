@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [SKB-1212] No longer re-initialise smartbox and read threshold registers before every port status write.
 * [THORN-338] SetFndhPortPowers is now executed in a staggered manner. Each port is powered one at a time, with the time between dictated by the PortPowerDelay property on MccsPasdBus. This delay must be greater than the PortStatusReadDelay value, such that we can always fit a read in between powering each port. If configured with PortStatusReadDelay >= PortPowerDelay, the value used will be calculated as PortStatusReadDelay = PortPowerDelay - 1.
 * [THORN-403] Attempt to reconnect after a catastrophic error such as a 'Broken pipe'.
 * [THORN-402] Configure pipeline to ignore sonar scan results.
