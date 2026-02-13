@@ -121,7 +121,7 @@ low-itf-check-pods:
   variables:
     TANGO_HOST: "tango-databaseds:10000"
     KUBE_NAMESPACE: 'ci-$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA'
-    K8S_HELMFILE_ENV: low-itf
+    K8S_HELMFILE_ENV: low-itf-hw-tests
     STATION_LABEL: itf1
     JUNITXML_REPORT_PATH: build/reports/low-itf-functional-tests.xml
     CUCUMBER_JSON_PATH: build/reports/low-itf-cucumber.json
@@ -149,8 +149,8 @@ low-itf-k8s-test:
   variables:
     TANGO_HOST: "tango-databaseds:10000"
     KUBE_NAMESPACE: 'ci-$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA'
-    K8S_HELMFILE_ENV: low-itf
-    STATION_LABEL: itf1
+    K8S_HELMFILE_ENV: low-itf-hw-tests
+    STATION_LABEL: low-itf-hw-tests
     JUNITXML_REPORT_PATH: build/reports/low-itf-functional-tests.xml
     CUCUMBER_JSON_PATH: build/reports/low-itf-cucumber.json
     JSON_REPORT_PATH: build/reports/report.json
@@ -159,6 +159,7 @@ low-itf-k8s-test:
     - export KUBECONFIG=~/.kube/config  # Not sure why this is not default
     - make k8s-install-chart
     - make k8s-wait
+    - kubectl get pods
   artifacts:
     name: "$CI_PROJECT_NAME-$CI_JOB_ID"
     paths:

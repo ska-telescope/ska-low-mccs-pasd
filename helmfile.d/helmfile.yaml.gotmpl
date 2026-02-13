@@ -62,6 +62,17 @@ environments:
       config_files:
       - values/values-low-itf.yaml
       datacentre: infra:au-itf-k8s-master01-k8s
+  low-itf-hw-tests:
+    values:
+    - telmodel:
+      - source: ../../../../hw-test-values/
+        datasets:
+        - low-itf-hw-tests.yaml
+        - stations/low-itf-hw-1.yaml
+      config_files:
+      - values/values-low-itf.yaml
+      datacentre: infra:au-itf-k8s-master01-k8s
+
 
 ---
 
