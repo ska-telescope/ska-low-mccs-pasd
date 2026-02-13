@@ -447,6 +447,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
 
         :return: responses to queries in this poll
         """
+        self._current_poll_device = poll_request.device_id
         if poll_request.command is not None:
             response_data = self._pasd_bus_api_client.execute_command(
                 poll_request.device_id,
@@ -523,7 +524,9 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             # so attempt to reset the connection
             self.reset_connection()
             # Set the event to delay the next poll
-            self._logger.debug("Delaying next poll and requesting FNPC status...")
+            self._logger.error(
+                f"Problem communicating with device {self._current_poll_device}."
+            )
             self._poll_delay_event.set()
             # Request the FNPC SYS_STATUS register next which can help
             # to re-establish comms
