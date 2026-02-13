@@ -231,6 +231,8 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             communication_state.name,
         )
         if communication_state != CommunicationStatus.ESTABLISHED:
+            if self._health_recorder is not None:
+                self._health_recorder.clear_attribute_state()
             self._component_state_changed_callback(power=PowerState.UNKNOWN)
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._component_state_changed_callback(power=PowerState.ON)
@@ -354,6 +356,8 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
                     tango.AttrQuality.ATTR_WARNING,
                 ]:
                     self.set_state(tango.DevState.ALARM)
+                # Only translate quality factor if we're being called back
+                # with a valid value
                 if attr_quality != tango.AttrQuality.ATTR_INVALID:
                     attr_quality = pasd_status_quality
 
