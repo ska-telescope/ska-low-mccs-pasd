@@ -205,6 +205,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._last_request_timestamp: float = 0
         self._connection_reset_count = 0
         self._poll_delay_event = threading.Event()
+        self._current_poll_device: int = 0
 
         super().__init__(
             logger,
