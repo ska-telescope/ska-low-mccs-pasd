@@ -11,16 +11,17 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from typing import Any, Final, Optional, cast
+from functools import partial
+from typing import Any, Callable, Final, Optional, cast
 
 import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState
-from ska_low_mccs_common import MccsBaseDevice
+from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
+from ska_low_pasd_driver.pasd_bus_conversions import FnccStatusMap
 from tango.server import attribute, device_property
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .fncc_component_manager import FnccComponentManager
-from .fncc_health_model import FnccHealthModel
 
 __all__ = ["MccsFNCC"]
 
@@ -34,6 +35,7 @@ class FNCCAttribute:
     timestamp: float
 
 
+# pylint: disable=too-many-instance-attributes
 class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
     """An implementation of the FNCC device for MCCS."""
 
@@ -64,11 +66,15 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         # attributes, thereby stopping the linters from complaining about
         # "attribute-defined-outside-init" etc. We still need to make sure that
         # `init_device` re-initialises any values defined in here.
-        super().__init__(*args, **kwargs)
         self.component_manager: FnccComponentManager
         # Initialise with unknown.
         self._health_state: HealthState = HealthState.UNKNOWN
-        self._health_model: FnccHealthModel
+        self._health_recorder: Optional[HealthRecorder]
+        self._health_report: str = ""
+        self._stopping: bool = False
+        self._fncc_attributes: dict[str, FNCCAttribute] = {}
+        self._healthful_attributes: dict[str, Callable]
+        super().__init__(*args, **kwargs)
 
     def init_device(self: MccsFNCC) -> None:
         """
@@ -79,7 +85,6 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         super().init_device()
 
         # Setup attributes shared with the MccsPasdBus.
-        self._fncc_attributes: dict[str, FNCCAttribute] = {}
         self._setup_fncc_attributes()
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
@@ -97,12 +102,25 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
     def delete_device(self: MccsFNCC) -> None:
         """Delete the device."""
         self.component_manager.cleanup()
+        self._stopping = True
+        if self._health_recorder is not None:
+            self._health_recorder.cleanup()
+            self._health_recorder = None
         super().delete_device()
 
     def _init_state_model(self: MccsFNCC) -> None:
         super()._init_state_model()
         self._health_state = HealthState.UNKNOWN
-        self._health_model = FnccHealthModel(self._health_changed_callback, self.logger)
+        self._healthful_attributes = {
+            "pasdStatus": partial(self._fncc_attributes.get, "pasdstatus"),
+        }
+        self._health_recorder = HealthRecorder(
+            self.get_name(),
+            self.logger,
+            attributes=list(self._healthful_attributes.keys()),
+            health_callback=self._health_changed_callback,
+            attr_conf_callback=lambda _: None,
+        )
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, False)
 
@@ -195,8 +213,8 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
 
         :return: the health report.
         """
-        if self._health_model is not None:
-            return self._health_model.health_report
+        if self._health_report is not None:
+            return self._health_report
         return "No health report has been created yet."
 
     # ----------
@@ -218,11 +236,6 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             self._component_state_changed_callback(power=PowerState.ON)
 
         super()._communication_state_changed(communication_state)
-
-        if self._health_model is not None:
-            self._health_model.update_state(
-                communicating=(communication_state == CommunicationStatus.ESTABLISHED),
-            )
 
     def _component_state_changed_callback(
         self: MccsFNCC,
@@ -254,14 +267,10 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
                 return
 
         super()._component_state_changed(fault=fault, power=power)
-        if fault is not None:
-            self._health_model.update_state(fault=fault)
-        if power is not None:
-            self._health_model.update_state(power=power)
-        if pasdbus_status is not None:
-            self._health_model.update_state(pasdbus_status=pasdbus_status)
 
-    def _health_changed_callback(self: MccsFNCC, health: HealthState) -> None:
+    def _health_changed_callback(
+        self: MccsFNCC, health: HealthState, health_report: str
+    ) -> None:
         """
         Handle change in this device's health state.
 
@@ -271,11 +280,31 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         date, and events are pushed.
 
         :param health: the new health value
+        :param health_report: the new health report
         """
+        if self._stopping:
+            return
+        self._health_report = health_report
         if self._health_state != health:
             self._health_state = health
             self.push_change_event("healthState", health)
             self.push_archive_event("healthState", health)
+
+    @staticmethod
+    def _convert_status_to_quality(pasd_status: Optional[str]) -> tango.AttrQuality:
+        match pasd_status:
+            case FnccStatusMap.OK.name:
+                return tango.AttrQuality.ATTR_VALID
+            case FnccStatusMap.RESET.name:
+                return tango.AttrQuality.ATTR_WARNING
+            case (
+                FnccStatusMap.FRAME_ERROR.name
+                | FnccStatusMap.MODBUS_STUCK.name
+                | FnccStatusMap.FRAME_ERROR_MODBUS_STUCK.name
+            ):
+                return tango.AttrQuality.ATTR_ALARM
+            case _:
+                return tango.AttrQuality.ATTR_INVALID
 
     def _attribute_changed_callback(
         self: MccsFNCC,
@@ -316,14 +345,22 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
                 attr_value = self._fncc_attributes[attr_name].value
             else:
                 self._fncc_attributes[attr_name].value = attr_value
+
+            # Set the quality factor to reflect the value of the status register
+            if attr_name.endswith("status"):
+                pasd_status_quality = self._convert_status_to_quality(attr_value)
+                if pasd_status_quality in [
+                    tango.AttrQuality.ATTR_ALARM,
+                    tango.AttrQuality.ATTR_WARNING,
+                ]:
+                    self.set_state(tango.DevState.ALARM)
+                if attr_quality != tango.AttrQuality.ATTR_INVALID:
+                    attr_quality = pasd_status_quality
+
             self._fncc_attributes[attr_name].quality = attr_quality
             self._fncc_attributes[attr_name].timestamp = timestamp
             self.push_change_event(attr_name, attr_value, timestamp, attr_quality)
             self.push_archive_event(attr_name, attr_value, timestamp, attr_quality)
-
-            # Update the health model with the value of the status register
-            if self._health_model is not None and attr_name.endswith("status"):
-                self._health_model.update_state(status=attr_value)
 
         except AssertionError:
             self.logger.debug(

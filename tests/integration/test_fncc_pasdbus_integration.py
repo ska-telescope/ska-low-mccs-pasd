@@ -287,20 +287,25 @@ class TestfnccPasdBusIntegration:
         change_event_callbacks["fnccStatus"].assert_change_event(
             FnccStatusMap.OK.name, lookahead=10
         )
+        assert fncc_device.healthReport == "Health is OK."
 
         fncc_simulator.status = FnccStatusMap.FRAME_ERROR_MODBUS_STUCK
         change_event_callbacks["fnccStatus"].assert_change_event(
-            FnccStatusMap.FRAME_ERROR_MODBUS_STUCK.name, lookahead=10
+            FnccStatusMap.FRAME_ERROR_MODBUS_STUCK.name, lookahead=20
         )
         change_event_callbacks["fnccHealthState"].assert_change_event(
             HealthState.FAILED
         )
-
+        assert (
+            fncc_device.healthReport
+            == "pasdstatus is in ATTR_ALARM with value FRAME_ERROR_MODBUS_STUCK"
+        )
         fncc_simulator.status = FnccStatusMap.OK
         change_event_callbacks["fnccStatus"].assert_change_event(
             FnccStatusMap.OK.name, lookahead=10
         )
         change_event_callbacks["fnccHealthState"].assert_change_event(HealthState.OK)
+        assert fncc_device.healthReport == "Health is OK."
 
 
 @pytest.fixture(name="change_event_callbacks")
