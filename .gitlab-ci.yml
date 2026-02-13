@@ -157,6 +157,9 @@ low-itf-k8s-test:
     HW_DEPLOYMENT: true
   before_script:
     - export KUBECONFIG=~/.kube/config  # Not sure why this is not default
+    - kubectl get pods
+    - echo $CI_PROJECT_NAME
+    - echo $CI_COMMIT_SHORT_SHA
     - make k8s-install-chart
     - make k8s-wait
     - kubectl get pods
