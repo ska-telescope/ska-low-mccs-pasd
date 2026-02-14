@@ -246,6 +246,19 @@ class _PasdBusProxy(DeviceComponentManager):
             value,
         )
 
+    def initialize_smartbox(
+        self: _PasdBusProxy, smartbox_nr: int
+    ) -> tuple[ResultCode, str]:
+        """
+        Proxy for the InitializeSmartbox command.
+
+        :param smartbox_nr: the modbus ID of the smartbox to initialize.
+        :return: A tuple containing a result code and a
+            unique id to identify the command in the queue.
+        """
+        assert self._proxy
+        return self._proxy.InitializeSmartbox(smartbox_nr)
+
 
 # pylint: disable-next=abstract-method, too-many-instance-attributes
 class SmartBoxComponentManager(TaskExecutorComponentManager):
@@ -641,6 +654,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 )
 
             if result == ResultCode.OK:
+                self._pasd_bus_proxy.initialize_smartbox(self._smartbox_nr)
                 result, _ = self._power_smartbox_ports(PowerState.ON, timeout)
 
         except Exception as ex:  # pylint: disable=broad-except
