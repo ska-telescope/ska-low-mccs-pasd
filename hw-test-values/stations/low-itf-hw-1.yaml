@@ -1,0 +1,38 @@
+platform:
+  stations:
+    low-itf-hw-tests:
+      id: 1
+      cluster: itf
+      reference:
+        datum: WGS84
+        epoch: 2025.1
+        latitude: -26.826162
+        longitude: 116.765696
+        ellipsoidal_height: 370.0
+      rotation: 0.0
+      # The mapping of smartboxes to PaSD to stations in the ITF is a bit of a fib,
+      # necessary because the telmodel schema isn't designed to express a PaSD whose
+      # antennas are connected to more than one station.
+      #
+      # In the ITF, stations itf1 and itf2 share a single FNDH,
+      # and stations itf3 and itf4 share another. In Tango this translates to unique
+      # FNDH devices for each station pointing to shared PaSD bus devices.
+      #
+      # See https://confluence.skatelescope.org/display/TDT/Current+LOW-ITF+Configuration
+      #
+      # This fib is corrected in our Helm value overrides in ska-low-software.
+      sps:
+        csp_ingest_ip: 10.135.180.109
+        sdn_first_interface: 10.135.180.10/16
+      pasd:
+        fndh:
+          gateway:
+            host: 10.135.155.49
+            port: 5000
+            timeout: 10.0
+          controller:
+            modbus_id: 101
+        smartboxes:
+          sb01:
+            fndh_port: 1
+            modbus_id: 1

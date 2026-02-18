@@ -43,10 +43,6 @@ else
 K8S_HELMFILE_ENV ?= minikube-ci
 endif
 
-ifeq ($(filter $(K8S_HELMFILE_ENV),low-itf-hw-tests),$(K8S_HELMFILE_ENV))
-KUBE_NAMESPACE := $(K8S_HELMFILE_ENV)
-endif
-
 include .make/k8s.mk
 include .make/xray.mk
 

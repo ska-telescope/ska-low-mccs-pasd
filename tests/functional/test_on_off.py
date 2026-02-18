@@ -176,8 +176,8 @@ def pasd_set_online(
     :param pasd_bus_device: proxy to pasd bus.
     :param field_station_device: proxy to field station.
     """
-    pasd_bus_device.adminmode == AdminMode.ONLINE
-    field_station_device.adminmode == AdminMode.ONLINE
+    pasd_bus_device.adminmode = AdminMode.ONLINE
+    field_station_device.adminmode = AdminMode.ONLINE
 
 
 @when("field station is turned on")
@@ -191,8 +191,8 @@ def fieldstation_turned_on(
     :param pasd_bus_device: proxy to pasd bus.
     :param field_station_device: proxy to field station.
     """
-    pasd_bus_device.adminmode == AdminMode.ONLINE
-    field_station_device.adminmode == AdminMode.ONLINE
+    pasd_bus_device.adminmode = AdminMode.ONLINE
+    field_station_device.adminmode = AdminMode.ONLINE
     field_station_device.on()
 
 
@@ -209,8 +209,8 @@ def fieldstation_turned_off(
     :param pasd_bus_device: proxy to pasd bus.
     :param field_station_device: proxy to field station.
     """
-    pasd_bus_device.adminmode == AdminMode.ONLINE
-    field_station_device.adminmode == AdminMode.ONLINE
+    pasd_bus_device.adminmode = AdminMode.ONLINE
+    field_station_device.adminmode = AdminMode.ONLINE
     field_station_device.off()
 
 
@@ -270,3 +270,18 @@ def pasd_reports_offline(
         consume_nonmatches=True,
     )
     print("field station device is in ON state.")
+
+
+@then("pasd reports OK health")
+def pasd_reports_ok_health(
+    pasd_bus_device: tango.DeviceProxy,
+    field_station_device: tango.DeviceProxy,
+) -> None:
+    """
+    Assert pasd devices are in health state ok.
+
+    :param pasd_bus_device: proxy to pasd bus.
+    :param field_station_device: proxy to field station.
+    """
+    assert pasd_bus_device.healthState == HealthState.OK
+    assert field_station_device.healthState == HealthState.OK

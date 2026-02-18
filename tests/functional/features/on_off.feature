@@ -7,6 +7,7 @@ Feature: Pasd On Off tests against hardware
         And pasd has UNKNOWN health
         When pasd adminMode is set to ONLINE
         Then pasd reports ON state
+        And pasd reports OK health
 
     Scenario: Turn off PaSD devices
         Given A pasd setup that is connected to hardware
@@ -14,6 +15,8 @@ Feature: Pasd On Off tests against hardware
         And pasd has OK health
         When field station is turned off
         Then pasd reports OFF state
+        And pasd reports OK health
+
 
     Scenario: Turn on PaSD devices
         Given A pasd setup that is connected to hardware
@@ -21,6 +24,7 @@ Feature: Pasd On Off tests against hardware
         And pasd has OK health
         When field station is turned on
         Then pasd reports ON state
+        And pasd reports OK health
 
 
 

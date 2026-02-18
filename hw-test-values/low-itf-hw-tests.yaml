@@ -1,0 +1,23 @@
+platform:
+  metadata:
+    version: 0.9.0
+    description: >
+      A platform configuration specification for the Low ITF pasd hw tests.
+
+      For file structure details, see
+      https://confluence.skatelescope.org/display/SE/MCCS-1628%3A+platform+configuration+specification+file+for+MCCS+deployment.
+
+  cluster:
+    domain: lowitf.internal.skao.int
+    networks:
+      sps_sdn: kube-system/low-itf-sdn-sps
+    services:
+      jupyterhub: true
+      taranta-platform: true
+      tango-base:
+        tango-host: tango-databaseds:10000
+      skuid:
+        url: http://ska-ser-skuid-ska-low-itf-sut-svc:9870/
+
+  array:
+    name: low-itf-hw-tests
