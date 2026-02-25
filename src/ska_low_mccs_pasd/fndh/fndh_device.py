@@ -123,7 +123,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
         # Initialise with unknown.
         self._port_power_states = [PowerState.UNKNOWN] * self.CONFIG["number_of_ports"]
-        self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: Optional[FndhHealthModel]
         self._health_recorder: Optional[HealthRecorder]
         self._health_report: str = ""
@@ -208,7 +207,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
     def _init_state_model(self: MccsFNDH) -> None:
         super()._init_state_model()
-        self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._healthful_attributes = {
             "pasdStatus": partial(self._fndh_attributes.get, "pasdstatus"),
             "numberOfStuckOnSmartboxPorts": lambda: self._nof_stuck_on_smartbox_ports,

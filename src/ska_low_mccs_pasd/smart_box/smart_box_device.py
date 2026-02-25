@@ -128,7 +128,6 @@ class MccsSmartBox(MccsBaseDevice):
         super().__init__(*args, **kwargs)
 
         # Initialise with unknown.
-        self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: Optional[SmartBoxHealthModel]
         self._health_recorder: Optional[HealthRecorder]
         self._health_report: str = ""
@@ -188,7 +187,6 @@ class MccsSmartBox(MccsBaseDevice):
 
     def _init_state_model(self: MccsSmartBox) -> None:
         super()._init_state_model()
-        self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._healthful_attributes = {
             "pasdStatus": partial(self._smartbox_state.get, "pasdstatus"),
             "numberOfPortBreakersTripped": lambda: self._nof_port_breakers_tripped,

@@ -62,7 +62,6 @@ class MccsFieldStation(MccsBaseDevice):
         super().__init__(*args, **kwargs)
 
         self.component_manager: FieldStationComponentManager
-        self._health_state: HealthState = HealthState.UNKNOWN
         self._health_report: str
         self._health_rollup: HealthRollup
         self._antenna_powers: dict
@@ -93,8 +92,6 @@ class MccsFieldStation(MccsBaseDevice):
 
     def _init_state_model(self: MccsFieldStation) -> None:
         super()._init_state_model()
-
-        self._health_state = HealthState.UNKNOWN
         self._health_report = ""
         self._health_rollup = self._setup_health_rollup()
 
