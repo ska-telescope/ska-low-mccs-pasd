@@ -24,6 +24,8 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 
 from .pasd_bus_poll_management import PasdBusRequestProvider
 
+_POLL_THREAD_STARTUP_DELAY: Final[float] = 0.2
+
 
 @dataclass
 class PasdBusRequest:
@@ -213,6 +215,9 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             polling_rate,
             # fndh_status=None,
         )
+        # See WOM-1114. Temporary delay to avoid missed Condition.notify()
+        # race in upstream poller implementation (ska-tango-base 1.4.2).
+        time.sleep(_POLL_THREAD_STARTUP_DELAY)
 
     def off(
         self: PasdBusComponentManager, task_callback: Optional[Callable] = None

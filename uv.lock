@@ -1628,7 +1628,7 @@ requires-dist = [
     { name = "ska-low-mccs-common", git = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common.git?rev=thorn-395" },
     { name = "ska-low-pasd-driver", git = "https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git?rev=thorn-409" },
     { name = "ska-ser-devices", specifier = ">=0.2.0,<0.3.0" },
-    { name = "ska-tango-base", git = "https://gitlab.com/ska-telescope/ska-tango-base.git?rev=wom-1069-retry-acquire-lock" },
+    { name = "ska-tango-base", specifier = ">=1.4.2" },
     { name = "ska-telmodel", specifier = ">=1.14.0,<2.0.0" },
     { name = "typing-extensions", specifier = ">=4.6.1,<5.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29.0,<0.30.0" },
@@ -1725,8 +1725,8 @@ wheels = [
 
 [[package]]
 name = "ska-tango-base"
-version = "1.4.1"
-source = { git = "https://gitlab.com/ska-telescope/ska-tango-base.git?rev=wom-1069-retry-acquire-lock#6b46b5993adcb282424b064dbdaec8149e31253a" }
+version = "1.4.2"
+source = { registry = "https://artefact.skao.int/repository/pypi-internal/simple" }
 dependencies = [
     { name = "debugpy" },
     { name = "jsonschema" },
@@ -1735,6 +1735,10 @@ dependencies = [
     { name = "ska-control-model" },
     { name = "ska-ser-logging" },
     { name = "transitions" },
+]
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-base/1.4.2/ska_tango_base-1.4.2.tar.gz", hash = "sha256:5bf3fd2d10761eaa09306920e918ec248815f9e86fd49b128df7bb7552163561" }
+wheels = [
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-base/1.4.2/ska_tango_base-1.4.2-py3-none-any.whl", hash = "sha256:8695944ffddc3cfc8655c9a90c3c03599e8836e87a83f9d24443002297f60d9d" },
 ]
 
 [[package]]
