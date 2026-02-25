@@ -23,7 +23,8 @@ dependencies = [
     "click>=8.1.7,<9.0.0",
     "bidict>=0.23.1,<0.24.0",
     "google-auth==2.33.0",
-    "ska-low-pasd-driver>=1.0.0,<1.1.0",
+    #"ska-low-pasd-driver>=1.0.0,<1.1.0",
+    "ska-low-pasd-driver @ git+https://gitlab.com/ska-telescope/mccs/ska-low-pasd-driver.git@thorn-409",
 ]
 name = "ska-low-mccs-pasd"
 version = "4.3.2"
@@ -102,7 +103,7 @@ line-length = 88
 
 [tool.pytest.ini_options]
 testpaths = "tests/"
-addopts = "--forked -n 16 --json-report --json-report-file=build/reports/report.json --cov-report html:build/htmlcov --cov-report xml:build/reports/code-coverage.xml --cov-report term:skip-covered --cov=ska_low_mccs_pasd --junitxml=build/reports/unit-tests.xml --verbose"
+#addopts = "--forked -n 16 --json-report --json-report-file=build/reports/report.json --cov-report html:build/htmlcov --cov-report xml:build/reports/code-coverage.xml --cov-report term:skip-covered --cov=ska_low_mccs_pasd --junitxml=build/reports/unit-tests.xml --verbose"
 console_output_style = "progress"
 junit_family = "legacy"
 markers = [
