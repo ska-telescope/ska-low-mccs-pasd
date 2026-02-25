@@ -777,7 +777,7 @@ def test_fndh_port_faults(
     fndh_ports_power_sensed = fndh_simulator.ports_power_sensed
     assert fndh_ports_power_sensed[connected_fndh_port - 1] is False
     fndh_ports_power_control = fndh_simulator.ports_power_control
-    assert fndh_ports_power_control[connected_fndh_port - 1]
+    assert fndh_ports_power_control[connected_fndh_port - 1] is False
 
     assert pasd_bus_device.adminMode == AdminMode.OFFLINE
 
