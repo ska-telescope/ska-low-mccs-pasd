@@ -36,7 +36,7 @@ The FNCC ``PasdStatus`` attribute should be interpreted as follows:
 +=================================+=================================================+
 | OK                              | System operating normally, all comms links open |
 +---------------------------------+-------------------------------------------------+
-| RESET                           | WIZNet converter being reset                    |
+| RESET                           | Serial to ethernet converter being reset        |
 +---------------------------------+-------------------------------------------------+
 | FRAME_ERROR                     | UART3 framing error                             |
 +---------------------------------+-------------------------------------------------+
@@ -47,3 +47,6 @@ The FNCC ``PasdStatus`` attribute should be interpreted as follows:
 
 After an error has occurred, the status register can be reset by issuing the 
 :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.ResetFnccStatus` command on the MccsPasdBus.
+
+The FNCC's heath model reflects the current value of the status register. A value of 'RESET' translates to DEGRADED health,
+'OK' to OK health, and everything else to FAILED health.
