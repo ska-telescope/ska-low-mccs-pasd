@@ -635,7 +635,8 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self._desire_standby = False
 
         try:
-            timeout = 60  # seconds
+            timeout = 120  # seconds. Need time to initialize the smartboxes
+            # which triggers static register reads and threshold setting
             if self._fndh_port_powers[self._fndh_port - 1] != PowerState.ON:
                 result, timeout = self._power_fndh_port(
                     PowerState.ON, self._fndh_port, timeout
