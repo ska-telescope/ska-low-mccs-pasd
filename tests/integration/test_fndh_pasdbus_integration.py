@@ -949,9 +949,7 @@ class TestfndhPasdBusIntegration:
         ports_with_smartbox.remove(random_stuck_off_port)
         random_stuck_on_port = random.choice(ports_with_smartbox)
         fndh_simulator.simulate_port_stuck_on(random_stuck_on_port)
-        fndh_simulator._ports[random_stuck_on_port - 1].enabled = False
         fndh_simulator.simulate_port_stuck_off(random_stuck_off_port)
-        fndh_simulator._ports[random_stuck_off_port - 1].enabled = True
         # ++++++++++++++++++++++++++++++++++++++++
 
         change_event_callbacks["fndhhealthState"].assert_change_event(
@@ -992,7 +990,6 @@ class TestfndhPasdBusIntegration:
         # Simulate a stuck on condition.
         for i in fndh_device.portswithsmartbox:
             fndh_simulator.simulate_port_stuck_on(i)
-            fndh_simulator._ports[i - 1].enabled = False
         # ++++++++++++++++++++++++++++++++++++++++
 
         change_event_callbacks["fndhhealthState"].assert_change_event(
@@ -1020,7 +1017,7 @@ class TestfndhPasdBusIntegration:
         change_event_callbacks: MockTangoEventCallbackGroup,
     ) -> None:
         """
-        Test health when we have all smartbox ports faulty stuck ON.
+        Test health when we have all smartbox ports faulty stuck OFF.
 
         Simulates the following actions:
         - All smartbox-configured-port being stuck OFF.
@@ -1039,7 +1036,6 @@ class TestfndhPasdBusIntegration:
         # Simulate a stuck OFF condition.
         for i in fndh_device.portswithsmartbox:
             fndh_simulator.simulate_port_stuck_off(i)
-            fndh_simulator._ports[i - 1].enabled = True
         # ++++++++++++++++++++++++++++++++++++++++
 
         change_event_callbacks["fndhhealthState"].assert_change_event(

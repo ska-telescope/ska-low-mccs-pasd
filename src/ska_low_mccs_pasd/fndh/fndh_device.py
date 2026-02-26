@@ -123,7 +123,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
         # Initialise with unknown.
         self._port_power_states = [PowerState.UNKNOWN] * self.CONFIG["number_of_ports"]
-        self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: Optional[FndhHealthModel]
         self._health_recorder: Optional[HealthRecorder]
         self._health_report: str = ""
@@ -208,7 +207,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
     def _init_state_model(self: MccsFNDH) -> None:
         super()._init_state_model()
-        self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._healthful_attributes = {
             "pasdStatus": partial(self._fndh_attributes.get, "pasdstatus"),
             "numberOfStuckOnSmartboxPorts": lambda: self._nof_stuck_on_smartbox_ports,
@@ -597,6 +595,11 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self._fndh_attributes[attribute_name.lower()] = FNDHAttribute(
             value=default_value, timestamp=0, quality=tango.AttrQuality.ATTR_INVALID
         )
+
+        if attribute_name.lower().endswith("thresholds"):
+            is_allowed_method = self.is_firmware_threshold_allowed
+        else:
+            is_allowed_method = None
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,
@@ -604,21 +607,13 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             label=attribute_name,
             max_dim_x=max_dim_x,
             fget=self._read_fndh_attribute,
-            fset=self._read_fndh_attribute,
+            fset=self._write_fndh_attribute,
             unit=unit,
             description=description,
             format=format_string,
-        ).to_attr()
-        if attribute_name.lower().endswith("thresholds"):
-            is_allowed_method = self.is_firmware_threshold_allowed
-        else:
-            is_allowed_method = None
-        self.add_attribute(
-            attr,
-            self._read_fndh_attribute,
-            self._write_fndh_attribute,
-            is_allowed_method,
+            fisallowed=is_allowed_method,
         )
+        self.add_attribute(attr)
         if min_value is not None or max_value is not None:
             if access_type != tango.AttrWriteType.READ_WRITE:
                 self.logger.warning(

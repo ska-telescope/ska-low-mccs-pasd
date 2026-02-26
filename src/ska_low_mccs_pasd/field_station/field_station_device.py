@@ -32,6 +32,7 @@ __all__ = ["MccsFieldStation"]
 DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
 
 
+# pylint: disable=too-many-instance-attributes
 class MccsFieldStation(MccsBaseDevice):
     """An implementation of the FieldStation device."""
 
@@ -61,7 +62,6 @@ class MccsFieldStation(MccsBaseDevice):
         super().__init__(*args, **kwargs)
 
         self.component_manager: FieldStationComponentManager
-        self._health_state: HealthState = HealthState.UNKNOWN
         self._health_report: str
         self._health_rollup: HealthRollup
         self._antenna_powers: dict
@@ -92,10 +92,7 @@ class MccsFieldStation(MccsBaseDevice):
 
     def _init_state_model(self: MccsFieldStation) -> None:
         super()._init_state_model()
-
-        self._health_state = HealthState.UNKNOWN
         self._health_report = ""
-
         self._health_rollup = self._setup_health_rollup()
 
     def create_component_manager(
@@ -314,8 +311,9 @@ class MccsFieldStation(MccsBaseDevice):
 
         :param health: the new health value
         """
+        # This is defined as an attribute_from_signal in the base classes.
+        # By just setting this cache this will push events for us.
         self._health_state = health
-        self.push_change_event("healthState", health)
 
     def _health_summary_changed(
         self: MccsFieldStation, health_summary: HealthSummary

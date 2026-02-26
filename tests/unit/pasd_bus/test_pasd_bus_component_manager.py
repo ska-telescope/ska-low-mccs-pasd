@@ -371,13 +371,16 @@ class TestPasdBusComponentManager:
             for port in expected_fndh_ports_power_sensed
         ]
 
+        # Ports Power Control should match Power Sensed when there is no fault
+        expected_ports_power_control = list(expected_fndh_ports_power_sensed)
+
         mock_callbacks.assert_call(
             "pasd_device_state_for_fndh",
             port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
             ports_desired_power_when_online=expected_fndh_ports_desired_power,
             ports_desired_power_when_offline=expected_fndh_ports_desired_power,
             ports_power_sensed=expected_fndh_ports_power_sensed,
-            ports_power_control=[True] * FndhSimulator.NUMBER_OF_PORTS,
+            ports_power_control=expected_ports_power_control,
         )
 
         for smartbox_number in range(
@@ -538,6 +541,7 @@ class TestPasdBusComponentManager:
                 fndh_simulator.ports_desired_power_when_offline
             )
             expected_ports_power_sensed = fndh_simulator.ports_power_sensed
+            expected_ports_power_control = fndh_simulator.ports_power_control
 
             desired_port_powers: list[bool | None] = random.choices(
                 [True, False, None], k=FndhSimulator.NUMBER_OF_PORTS
@@ -559,17 +563,19 @@ class TestPasdBusComponentManager:
                         else DesiredPowerEnum.OFF
                     )
                     expected_ports_power_sensed[j] = True
+                    expected_ports_power_control[j] = True
                 else:
                     expected_desired_power_online[j] = DesiredPowerEnum.OFF
                     # Turning the port OFF, so the offline value is also set to OFF.
                     expected_desired_power_offline[j] = DesiredPowerEnum.OFF
                     expected_ports_power_sensed[j] = False
+                    expected_ports_power_control[j] = False
                 mock_callbacks["pasd_device_state_for_fndh"].assert_call(
                     port_forcings=port_forcings,
                     ports_desired_power_when_online=expected_desired_power_online,
                     ports_desired_power_when_offline=expected_desired_power_offline,
                     ports_power_sensed=expected_ports_power_sensed,
-                    ports_power_control=[True] * FndhSimulator.NUMBER_OF_PORTS,
+                    ports_power_control=expected_ports_power_control,
                     lookahead=10,  # Full cycle plus one to cover off on race conditions
                 )
 

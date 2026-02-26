@@ -68,7 +68,6 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         # `init_device` re-initialises any values defined in here.
         self.component_manager: FnccComponentManager
         # Initialise with unknown.
-        self._health_state: HealthState = HealthState.UNKNOWN
         self._health_recorder: Optional[HealthRecorder]
         self._health_report: str = ""
         self._stopping: bool = False
@@ -110,7 +109,6 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
 
     def _init_state_model(self: MccsFNCC) -> None:
         super()._init_state_model()
-        self._health_state = HealthState.UNKNOWN
         self._healthful_attributes = {
             "pasdStatus": partial(self._fncc_attributes.get, "pasdstatus"),
         }
@@ -187,13 +185,8 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             unit=unit,
             description=description,
             format=format_string,
-        ).to_attr()
-        self.add_attribute(
-            attr,
-            self._read_fncc_attribute,
-            None,
-            None,
         )
+        self.add_attribute(attr)
         self.set_change_event(attribute_name, True, False)
         self.set_archive_event(attribute_name, True, False)
 

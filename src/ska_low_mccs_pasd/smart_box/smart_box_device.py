@@ -128,7 +128,6 @@ class MccsSmartBox(MccsBaseDevice):
         super().__init__(*args, **kwargs)
 
         # Initialise with unknown.
-        self._health_state: HealthState = HealthState.UNKNOWN
         self._health_model: Optional[SmartBoxHealthModel]
         self._health_recorder: Optional[HealthRecorder]
         self._health_report: str = ""
@@ -188,7 +187,6 @@ class MccsSmartBox(MccsBaseDevice):
 
     def _init_state_model(self: MccsSmartBox) -> None:
         super()._init_state_model()
-        self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._healthful_attributes = {
             "pasdStatus": partial(self._smartbox_state.get, "pasdstatus"),
             "numberOfPortBreakersTripped": lambda: self._nof_port_breakers_tripped,
@@ -480,6 +478,10 @@ class MccsSmartBox(MccsBaseDevice):
         self._smartbox_state[attribute_name.lower()] = SmartboxAttribute(
             value=None, timestamp=0, quality=tango.AttrQuality.ATTR_INVALID
         )
+        if attribute_name.lower().endswith("thresholds"):
+            is_allowed_method = self.is_firmware_threshold_allowed
+        else:
+            is_allowed_method = None
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,
@@ -491,17 +493,9 @@ class MccsSmartBox(MccsBaseDevice):
             unit=unit,
             description=description,
             format=format_string,
-        ).to_attr()
-        if attribute_name.lower().endswith("thresholds"):
-            is_allowed_method = self.is_firmware_threshold_allowed
-        else:
-            is_allowed_method = None
-        self.add_attribute(
-            attr,
-            self._read_smartbox_attribute,
-            self._write_smartbox_attribute,
-            is_allowed_method,
+            fisallowed=is_allowed_method,
         )
+        self.add_attribute(attr)
         if min_value is not None or max_value is not None:
             if access_type != tango.AttrWriteType.READ_WRITE:
                 self.logger.warning(
@@ -612,7 +606,6 @@ class MccsSmartBox(MccsBaseDevice):
                 self._health_recorder.clear_attribute_state()
         if communication_state == CommunicationStatus.ESTABLISHED:
             self._component_state_changed(power=self.component_manager._power_state)
-
         super()._communication_state_changed(communication_state)
 
         if self._health_model:
@@ -654,7 +647,6 @@ class MccsSmartBox(MccsBaseDevice):
                 # assumed that communication is NOT_ESTABLISHED.
                 self._communication_state_changed(CommunicationStatus.NOT_ESTABLISHED)
             return
-
         # This is a workaround. self.threshold_fault needs to be fixed to be None at the
         # correct time.
         fault_aggregate = None
