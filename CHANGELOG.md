@@ -1,5 +1,8 @@
 # Version History
 
+## 5.0.1
+* [SKB-1212] Only initialize smartboxes if required.
+
 ## 5.0.0
 
 * [THORN-395] Update ska-tango-base to 1.4.2, PyTango to 10.1.3
