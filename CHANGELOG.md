@@ -1,5 +1,8 @@
 # Version History
 
+## Unreleased
+* [THORN-378] Remove duplicated yaml config and pull in from ska-low-pasd-driver.
+
 ## 5.0.1
 * [SKB-1212] Only initialize smartboxes if required.
 
