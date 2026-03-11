@@ -6,7 +6,7 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """Module provides utilities to read and validate PaSD controllers configuration."""
-from pathlib import Path
+from importlib.resources import files
 from pprint import pprint
 from typing import Final, TypedDict
 
@@ -265,11 +265,10 @@ class PasdControllersConfig:
 
         :returns: unvalidated configuration dictionary.
         """
-        file_path = "ska_low_mccs_pasd/pasd_controllers_configuration.yaml"
-        src_dir = Path(__file__).resolve()
-        while not (src_dir / "ska_low_mccs_pasd").exists():
-            src_dir = src_dir.parent
-        with open(src_dir / file_path, "r", encoding="UTF-8") as file:
+        file_path = files("ska_low_pasd_driver").joinpath(
+            "pasd_controllers_configuration.yaml"
+        )
+        with file_path.open("r", encoding="UTF-8") as file:
             config: LoadedYaml = yaml.safe_load(file)
 
         def _snake_to_pascal_case(snake_string: str) -> str:
