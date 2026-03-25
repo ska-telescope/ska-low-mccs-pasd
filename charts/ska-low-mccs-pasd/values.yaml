@@ -77,10 +77,6 @@ ska-tango-devices:
       Psu48vVoltage1->max_warning: 49
       Psu48vVoltage1->min_warning: 46
       Psu48vVoltage1->min_alarm: 41
-      Psu48vVoltage2->max_alarm: 51
-      Psu48vVoltage2->max_warning: 49
-      Psu48vVoltage2->min_warning: 46
-      Psu48vVoltage2->min_alarm: 41
       Psu48vCurrent->max_alarm: 17
       Psu48vCurrent->max_warning: 16
       Psu48vCurrent->min_warning: 0
@@ -101,10 +97,10 @@ ska-tango-devices:
       FncbTemperature->max_warning: 65
       FncbTemperature->min_warning: 5
       FncbTemperature->min_alarm: -2
-      FncbHumidity->max_alarm: 80
-      FncbHumidity->max_warning: 65
-      FncbHumidity->min_warning: 15
-      FncbHumidity->min_alarm: 5
+      FncbHumidity->max_alarm: 85
+      FncbHumidity->max_warning: 75
+      FncbHumidity->min_warning: 10
+      FncbHumidity->min_alarm: 0
       CommsGatewayTemperature->max_alarm: 80
       CommsGatewayTemperature->max_warning: 65
       CommsGatewayTemperature->min_warning: 5
@@ -122,10 +118,10 @@ ska-tango-devices:
       InternalAmbientTemperature->min_warning: 5
       InternalAmbientTemperature->min_alarm: -2
     MccsSmartbox:
-      InputVoltage->max_alarm: 49.5
-      InputVoltage->max_warning: 48.5
-      InputVoltage->min_warning: 45.5
-      InputVoltage->min_alarm: 41
+      InputVoltage->max_alarm: 50
+      InputVoltage->max_warning: 49
+      InputVoltage->min_warning: 43.2
+      InputVoltage->min_alarm: 40
       PowerSupplyOutputVoltage->max_alarm: 4.95
       PowerSupplyOutputVoltage->max_warning: 4.81
       PowerSupplyOutputVoltage->min_warning: 4.5
@@ -138,26 +134,32 @@ ska-tango-devices:
       PcbTemperature->max_warning: 65
       PcbTemperature->min_warning: 5
       PcbTemperature->min_alarm: -2
-      FemAmbientTemperature->max_alarm: 55
-      FemAmbientTemperature->max_warning: 41
+      FemAmbientTemperature->max_alarm: 85
+      FemAmbientTemperature->max_warning: 70
       FemAmbientTemperature->min_warning: 5
       FemAmbientTemperature->min_alarm: -2
-      FemCaseTemperature1->max_alarm: 55
-      FemCaseTemperature1->max_warning: 45
-      FemCaseTemperature1->min_warning: 5
-      FemCaseTemperature1->min_alarm: -2
-      FemCaseTemperature2->max_alarm: 55
-      FemCaseTemperature2->max_warning: 45
-      FemCaseTemperature2->min_warning: 5
-      FemCaseTemperature2->min_alarm: -2
-      FemHeatsinkTemperature1->max_alarm: 55
-      FemHeatsinkTemperature1->max_warning: 43
-      FemHeatsinkTemperature1->min_warning: 5
-      FemHeatsinkTemperature1->min_alarm: -2
-      FemHeatsinkTemperature2->max_alarm: 55
-      FemHeatsinkTemperature2->max_warning: 43
+      FemHeatsinkTemperature2->max_alarm: 70
+      FemHeatsinkTemperature2->max_warning: 65
       FemHeatsinkTemperature2->min_warning: 5
       FemHeatsinkTemperature2->min_alarm: -2
+
+      # These sensors are redundant or removed in current hardware
+      Psu48vVoltage2->max_alarm: Not specified
+      Psu48vVoltage2->min_alarm: Not specified
+      Psu48vVoltage2->max_warning: Not specified
+      Psu48vVoltage2->min_warning: Not specified
+      FemCaseTemperature1->max_alarm: Not specified
+      FemCaseTemperature1->max_warning: Not specified
+      FemCaseTemperature1->min_warning: Not specified
+      FemCaseTemperature1->min_alarm: Not specified
+      FemCaseTemperature2->max_alarm: Not specified
+      FemCaseTemperature2->max_warning: Not specified
+      FemCaseTemperature2->min_warning: Not specified
+      FemCaseTemperature2->min_alarm: Not specified
+      FemHeatsinkTemperature1->max_alarm: Not specified
+      FemHeatsinkTemperature1->max_warning: Not specified
+      FemHeatsinkTemperature1->min_warning: Not specified
+      FemHeatsinkTemperature1->min_alarm: Not specified
 
   # devices:
   #   MccsFieldStation:
