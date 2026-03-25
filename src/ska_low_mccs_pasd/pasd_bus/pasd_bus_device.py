@@ -631,7 +631,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             if (
                 device_id == PasdData.FNDH_DEVICE_ID
                 and tango_attribute_name.endswith("PortsPowerSensed")
-                and self._pasd_state[tango_attribute_name].value != pasd_attribute_value
                 and self.SmartboxIDs
             ):
                 # Inform the component manager of the new power states so that
