@@ -1,6 +1,7 @@
 # Version History
 
-## Unreleased
+## 5.0.2
+
 * [THORN-378] Remove duplicated yaml config and pull in from ska-low-pasd-driver.
 * [THORN-495] Fix bug which occasionally prevented smartboxes from being polled.
 * [THORN-468] Update to ska-tango-devices 0.16.0.
