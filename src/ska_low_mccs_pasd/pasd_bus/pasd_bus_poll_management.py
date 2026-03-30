@@ -508,6 +508,7 @@ class PasdBusRequestProvider:
             self._available_smartboxes = available_smartboxes
 
         self._delayed_requests: list[DelayedRequest] = []
+        self._pending_power_off_ports: set[int] = set()
         self.initialise()
 
     def initialise(self) -> None:
@@ -561,6 +562,7 @@ class PasdBusRequestProvider:
         }
         self._device_request_providers[PasdData.FNDH_DEVICE_ID] = fndh_request_provider
         self._device_request_providers[PasdData.FNCC_DEVICE_ID] = fncc_request_provider
+        self._pending_power_off_ports.clear()
 
     def update_port_power_states(self, port_power_states: list[bool]) -> None:
         """
@@ -578,11 +580,16 @@ class PasdBusRequestProvider:
                 # No associated smartbox on this port
                 continue
             if power_state and smartbox_id not in self._ticks:
+                if fndh_port in self._pending_power_off_ports:
+                    # A power-off write is in flight; ignore this stale True reading
+                    continue
                 self._logger.info(f"Starting to poll smartbox {smartbox_id}")
                 self._ticks.update({smartbox_id: self._min_ticks})
-            elif not power_state and smartbox_id in self._ticks:
-                self._logger.info(f"Stopping polling smartbox {smartbox_id}")
-                self._ticks.pop(smartbox_id, None)
+            elif not power_state:
+                self._pending_power_off_ports.discard(fndh_port)
+                if smartbox_id in self._ticks:
+                    self._logger.info(f"Stopping polling smartbox {smartbox_id}")
+                    self._ticks.pop(smartbox_id, None)
 
     def stop_polling_smartboxes(
         self, port_power_requests: list[tuple[bool, bool] | None]
@@ -595,12 +602,14 @@ class PasdBusRequestProvider:
         for fndh_port, request in enumerate(port_power_requests, start=1):
             if request is not None and request[0] is False:
                 smartbox_id = self._smartboxIDs.get(fndh_port)
-                if smartbox_id is not None and smartbox_id in self._ticks:
-                    self._logger.info(
-                        f"Stopping polling smartbox {smartbox_id} as port "
-                        f"{fndh_port} is being powered off"
-                    )
-                    self._ticks.pop(smartbox_id, None)
+                if smartbox_id is not None:
+                    self._pending_power_off_ports.add(fndh_port)
+                    if smartbox_id in self._ticks:
+                        self._logger.info(
+                            f"Stopping polling smartbox {smartbox_id} as port "
+                            f"{fndh_port} is being powered off"
+                        )
+                        self._ticks.pop(smartbox_id, None)
 
     def desire_read_startup_info(self, device_id: int) -> None:
         """
