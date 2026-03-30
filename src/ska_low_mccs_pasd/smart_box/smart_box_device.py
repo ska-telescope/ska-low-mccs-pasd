@@ -147,6 +147,7 @@ class MccsSmartBox(MccsBaseDevice):
 
         This is overridden here to change the Tango serialisation model.
         """
+        self._stopping = False
         self._readable_name = re.findall("sb[0-9]+", self.get_name())[0]
         super().init_device()
         self._setup_smartbox_attributes()
