@@ -1,5 +1,9 @@
 # Version History
 
+## 5.0.3
+
+* [THORN-448] Update -common ref to fix the missed events issue.
+
 ## 5.0.2
 
 * [THORN-378] Remove duplicated yaml config and pull in from ska-low-pasd-driver.
