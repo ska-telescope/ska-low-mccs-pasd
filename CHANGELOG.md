@@ -1,5 +1,9 @@
 # Version History
 
+## 5.0.4
+
+* [THORN-506] Prevent sbs which are being switched off from starting being polled again.
+
 ## 5.0.3
 
 * [THORN-448] Update -common ref to fix the missed events issue.
