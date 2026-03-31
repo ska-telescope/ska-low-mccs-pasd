@@ -10,6 +10,7 @@
 
 import logging
 import time
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Optional, Sequence
 
@@ -136,7 +137,7 @@ class DeviceRequestProvider:
             None
         ] * number_of_ports
         self._port_breaker_resets: list[bool] = [False] * number_of_ports
-        self._attribute_writes: dict[str, list[Any]] = {}
+        self._attribute_writes: OrderedDict[str, list[Any]] = OrderedDict()
 
         # Store a list of attribute names for expedited reading
         # following a write command
@@ -249,7 +250,8 @@ class DeviceRequestProvider:
             return "INITIALIZE", None
 
         if self._attribute_writes:
-            attribute_name, values = self._attribute_writes.popitem()
+            # Return attribute write requests in FIFO order
+            attribute_name, values = self._attribute_writes.popitem(last=False)
             self._attribute_update_requests.append(attribute_name)
             return "WRITE", (attribute_name, values)
 
