@@ -1,5 +1,9 @@
 # Version History
 
+## 5.0.5
+
+* [THORN-511] Ensure attribute writes are done in the order they are requested.
+
 ## 5.0.4
 
 * [THORN-506] Prevent sbs which are being switched off from starting being polled again.
