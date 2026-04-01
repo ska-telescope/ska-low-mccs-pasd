@@ -22,7 +22,8 @@ from bidict import bidict
 from ska_control_model import CommunicationStatus, PowerState, TaskStatus
 from ska_low_mccs_common import EventSerialiser, MccsDeviceProxy
 from ska_low_mccs_common.component import DeviceComponentManager
-from ska_low_pasd_driver.pasd_bus_conversions import SmartboxStatusMap
+
+# from ska_low_pasd_driver.pasd_bus_conversions import SmartboxStatusMap
 from ska_tango_base.base import check_communicating
 from ska_tango_base.commands import ResultCode
 from ska_tango_base.executor import TaskExecutorComponentManager
@@ -220,14 +221,14 @@ class _PasdBusProxy(DeviceComponentManager):
             unique id to identify the command in the queue.
         """
         assert self._proxy
-        try:
-            status = getattr(self._proxy, f"Smartbox{self._smartbox_nr}Status")
-        except tango.DevFailed:
-            # Assume uninitialized to be on the safe side
-            status = SmartboxStatusMap.UNINITIALISED.name
+        # try:
+        #     status = getattr(self._proxy, f"Smartbox{self._smartbox_nr}Status")
+        # except tango.DevFailed:
+        #     # Assume uninitialized to be on the safe side
+        #     status = SmartboxStatusMap.UNINITIALISED.name
 
-        if status == SmartboxStatusMap.UNINITIALISED.name:
-            self._proxy.InitializeSmartbox(self._smartbox_nr)
+        # if status == SmartboxStatusMap.UNINITIALISED.name:
+        self._proxy.InitializeSmartbox(self._smartbox_nr)
         time.sleep(10)
         argument = json.loads(json_argument)
         argument.update({"smartbox_number": self._smartbox_nr})
