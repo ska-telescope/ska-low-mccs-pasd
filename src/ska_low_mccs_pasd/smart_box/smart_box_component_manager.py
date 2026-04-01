@@ -144,14 +144,21 @@ class _PasdBusProxy(DeviceComponentManager):
         # Ask what attributes to subscribe to and subscribe to them.
         subscriptions = self._proxy.GetPasdDeviceSubscriptions(self._smartbox_nr)
         for attribute in subscriptions:
-            if attribute not in self._proxy._change_event_subscription_ids.keys():
+            if (
+                attribute
+                not in self._proxy._change_event_subscription_ids[
+                    tango.EventType.CHANGE_EVENT
+                ]
+            ):
                 self._proxy.add_change_event_callback(
                     attribute, self._on_attribute_change
                 )
         # Also subscribe to fndhPortsPowerSensed
         if (
             "fndhPortsPowerSensed"
-            not in self._proxy._change_event_subscription_ids.keys()
+            not in self._proxy._change_event_subscription_ids[
+                tango.EventType.CHANGE_EVENT
+            ]
         ):
             self._proxy.add_change_event_callback(
                 "fndhPortsPowerSensed", self._fndh_port_power_callback
