@@ -228,6 +228,7 @@ class _PasdBusProxy(DeviceComponentManager):
 
         if status == SmartboxStatusMap.UNINITIALISED.name:
             self._proxy.InitializeSmartbox(self._smartbox_nr)
+        time.sleep(10)
         argument = json.loads(json_argument)
         argument.update({"smartbox_number": self._smartbox_nr})
         return self._proxy.SetSmartboxPortPowers(json.dumps(argument))
