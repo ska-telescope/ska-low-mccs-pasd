@@ -285,20 +285,47 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             result = ResultCode.OK
 
         if result == ResultCode.OK:
-            smartbox_on_commands = MccsCompositeCommandProxy(self.logger)
-            for smartbox_trl in self._smartbox_proxys:
-                smartbox_on_commands += MccsCommandProxy(
-                    device_name=smartbox_trl, command_name="On", logger=self.logger
+            smartbox_trls = list(self._smartbox_proxys)
+
+            # Split into 4 roughly equal blocks
+            smartbox_blocks = [smartbox_trls[i::4] for i in range(4)]
+
+            for block_index, smartbox_block in enumerate(smartbox_blocks, start=1):
+                if not smartbox_block:
+                    continue
+
+                if task_abort_event is not None and task_abort_event.is_set():
+                    task_callback(
+                        status=TaskStatus.ABORTED,
+                        result=(ResultCode.ABORTED, "Field station ON aborted."),
+                    )
+                    return
+
+                smartbox_on_commands = MccsCompositeCommandProxy(self.logger)
+                for smartbox_trl in smartbox_block:
+                    smartbox_on_commands += MccsCommandProxy(
+                        device_name=smartbox_trl,
+                        command_name="On",
+                        logger=self.logger,
+                    )
+
+                self.logger.info(
+                    "Turning on smartbox block %d/4: %s",
+                    block_index,
+                    smartbox_block,
                 )
-            result, message = smartbox_on_commands(
-                command_evaluator=CompositeCommandResultEvaluator(),
-                timeout=timeout,
-            )
-            if result != ResultCode.OK:
-                failure_log += (
-                    f"MccsCompositeCommandProxy was not happy {result=}"
-                    f" {pretty_format(message)}"
+
+                result, message = smartbox_on_commands(
+                    command_evaluator=CompositeCommandResultEvaluator(),
+                    timeout=timeout,
                 )
+
+                if result != ResultCode.OK:
+                    failure_log += (
+                        f"Smartbox block {block_index} failed: "
+                        f"{result=} {pretty_format(message)}. "
+                    )
+                    break
 
         if failure_log:
             self.logger.error(f"Failure in the `ON` command -> {failure_log}")
