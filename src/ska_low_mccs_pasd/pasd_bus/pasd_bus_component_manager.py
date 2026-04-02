@@ -128,6 +128,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         attribute_read_delay: float,
         port_status_read_delay: float,
         port_power_delay: float,
+        smartbox_startup_delay: float,
         timeout: float,
         logger: logging.Logger,
         communication_state_callback: Callable[[CommunicationStatus], None],
@@ -155,6 +156,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             port status before reading it again
         :param port_power_delay: time in seconds to wait between setting
             each FNDH port power.
+        :param smartbox_startup_delay: time in seconds to wait after a smartbox
+            is powered on before starting to poll it.
         :param timeout: maximum time to wait for a response to a server
             request (in seconds).
         :param logger: a logger for this object to use
@@ -195,6 +198,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._attribute_read_delay = attribute_read_delay
         self._port_status_read_delay = port_status_read_delay
         self._port_power_delay = port_power_delay
+        self._smartbox_startup_delay = smartbox_startup_delay
         self._request_provider = PasdBusRequestProvider(
             int(device_polling_rate / polling_rate),
             self._logger,
@@ -203,6 +207,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             self._port_power_delay,
             available_smartboxes,
             smartbox_ids,
+            smartbox_startup_delay,
         )
         self._last_request_timestamp: float = 0
         self._connection_reset_count = 0
