@@ -50,6 +50,9 @@ url = "https://artefact.skao.int/repository/pypi-internal/simple"
 name = "PyPI-public"
 url = "https://pypi.org/simple"
 
+[tool.uv.sources]
+ska-low-mccs-common = { git = "https://gitlab.com/ska-telescope/mccs/ska-low-mccs-common", branch = "thorn-424" }
+
 [dependency-groups]
 dev = [
     "pre-commit>=2.20.0,<3.0.0",
