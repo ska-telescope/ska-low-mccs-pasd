@@ -535,7 +535,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         super()._component_state_changed(fault=fault, power=power)
         self._health_model.update_state(fault=fault, power=power)
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches, too-many-statements
     def _pasd_device_state_callback(  # noqa: C901
         self: MccsPasdBus,
         device_id: int,
@@ -635,6 +635,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             ):
                 # Inform the component manager of the new power states so that
                 # we can update the smartbox polling list
+                self.logger.info(f"Got fndh port status read: {pasd_attribute_value}")
                 self.component_manager.update_port_power_states(pasd_attribute_value)
 
             # Update the timestamp

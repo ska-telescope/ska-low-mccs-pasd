@@ -380,6 +380,7 @@ class FndhRequestProvider(DeviceRequestProvider):
             each FNDH port power.
         :param logger: a logger.
         """
+        self._poll_ports = True
         self._port_power_delay = port_power_delay
         super().__init__(
             number_of_ports,
@@ -422,6 +423,10 @@ class FndhRequestProvider(DeviceRequestProvider):
                 self._port_power_changes[requested_port] = None
                 port_power_time = time.time() + offset * self._port_power_delay
                 port_read_time = port_power_time + self._port_status_read_delay
+                logging.info(
+                    f"Adding set/read pair at times: {port_power_time=},"
+                    f"{port_read_time=}"
+                )
                 write_read_sequence.append(
                     DelayedRequest(
                         device_id,
@@ -438,8 +443,28 @@ class FndhRequestProvider(DeviceRequestProvider):
                 )
                 offset += 1
         if write_read_sequence:
+            self.stop_polling_port_powers()
             return write_read_sequence
         return super().get_write_read_sequence(device_id)
+
+    def start_polling_port_powers(self) -> None:
+        """Start polling port powers."""
+        self._poll_ports = True
+
+    def stop_polling_port_powers(self) -> None:
+        """Start polling port powers."""
+        self._poll_ports = False
+
+    def get_read(self) -> str:
+        """
+        Don't do a port read if we're not polling ports now.
+
+        :returns: the next poll request, skipping ports if necessary.
+        """
+        read = super().get_read()
+        if read == "PORTS" and not self._poll_ports:
+            return super().get_read()
+        return read
 
 
 class PasdBusRequestProvider:
@@ -485,6 +510,7 @@ class PasdBusRequestProvider:
         :param smartbox_ids: optional list of smartbox IDs associated with
             each FNDH port
         """
+        logger.info(f"Setting {port_power_delay=}, {port_status_read_delay=}")
         if port_status_read_delay >= port_power_delay:
             logger.warning(
                 f"Port status read delay ({port_status_read_delay}) >= Port Power Delay"
@@ -788,7 +814,15 @@ class PasdBusRequestProvider:
         for delayed_request in self._delayed_requests:
             if delayed_request.not_before < time.time():
                 self._delayed_requests.remove(delayed_request)
+                self._logger.info(
+                    f"Executing delayed request: {delayed_request.device_id=}"
+                    f"{delayed_request.request_description=}"
+                )
                 return delayed_request.device_id, *delayed_request.request_description
+        if not self._delayed_requests:
+            self._device_request_providers[
+                PasdData.FNDH_DEVICE_ID
+            ].start_polling_port_powers()  # type: ignore[attr-defined]
 
         # Next we check for any write requests.
         for device_id, tick in self._ticks.items():
