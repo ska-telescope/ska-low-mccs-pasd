@@ -228,6 +228,7 @@ class TestSmartBoxComponentManager:
                 f"sb{smartbox_number:02d}-02",
                 f"sb{smartbox_number:02d}-03",
             ],
+            [],
             fndh_port,
         )
         return component_manager

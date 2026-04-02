@@ -278,7 +278,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     or the real hardware.
     """
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     def __init__(
         self: SmartBoxComponentManager,
         logger: logging.Logger,
@@ -291,6 +291,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         pasd_fqdn: str,
         ports_with_antennas: list[int],
         antenna_names: list[str],
+        masked_antennas: list[str],
         fndh_port: int,
         event_serialiser: Optional[EventSerialiser] = None,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
@@ -312,6 +313,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param pasd_fqdn: the fqdn of the pasdbus to connect to.
         :param ports_with_antennas: list of ports which have antennas attached.
         :param antenna_names: list of antenna names attached to ports.
+        :param masked_antennas: list of antenna names which are masked.
         :param fndh_port: the fndh port to which this smartbox is attached.
         :param event_serialiser: the event serialiser to be used by this object.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
@@ -338,6 +340,15 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self._port_mask = [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS
         for idx in self._ports_with_antennas:
             self._port_mask[idx - 1] = False
+        for antenna in masked_antennas:
+            port = self._port_to_antenna_map.inverse.get(antenna, None)
+            if port is not None:
+                self._port_mask[port - 1] = True
+            else:
+                self.logger.warning(
+                    f"Masked antenna {antenna} does not seem"
+                    " to be attached to this smartbox."
+                )
         self._attribute_change_callback = attribute_change_callback
         self.fndh_ports_change = threading.Event()
         self.smartbox_ports_change = threading.Event()
