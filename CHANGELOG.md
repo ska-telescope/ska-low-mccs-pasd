@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [THORN-516] Add SmartboxStartupDelay property - time (s) to wait after a smartbox is powered on before polling it.
 * [LOW-2216] Align several smartbox and FNDH thresholds with latest DA recommendations.
 
 ## 5.0.5
@@ -15,9 +16,6 @@
 ## 5.0.3
 
 * [THORN-448] Update -common ref to fix the missed events issue.
-
-## 5.0.2
->>>>>>> CHANGELOG.md
 
 ## 5.0.2
 * [THORN-378] Remove duplicated yaml config and pull in from ska-low-pasd-driver.
