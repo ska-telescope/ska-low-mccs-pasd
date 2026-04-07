@@ -15,5 +15,3 @@ API
 .. toctree::
   :caption: Other
   :maxdepth: 1
-
-  Command proxy<command_proxy>

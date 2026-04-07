@@ -3,6 +3,7 @@
 ## Unreleased
 
 * [SKB-1212] Explicitly track whether smartbox re-initialization is required.
+* [THORN-425] Remove old CommandProxy class.
 * [LOW-2216] Align several smartbox and FNDH thresholds with latest DA recommendations.
 
 ## 5.0.5
