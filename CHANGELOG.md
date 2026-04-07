@@ -1,6 +1,6 @@
 # Version History
 
-## Unreleased
+## 5.1.0
 
 * [THORN-516] Add SmartboxStartupDelay property - time (s) to wait after a smartbox is powered on before polling it.
 * [SKB-1212] Explicitly track whether smartbox re-initialization is required.
