@@ -3,6 +3,7 @@
 ## Unreleased
 
 * [THORN-516] Add SmartboxStartupDelay property - time (s) to wait after a smartbox is powered on before polling it.
+* [SKB-1212] Explicitly track whether smartbox re-initialization is required.
 * [LOW-2216] Align several smartbox and FNDH thresholds with latest DA recommendations.
 
 ## 5.0.5

@@ -129,6 +129,7 @@ class _PasdBusProxy(DeviceComponentManager):
         self._fndh_port_power_callback = fndh_port_power_callback
         self._smartbox_nr = smartbox_nr
         self._power_state = PowerState.UNKNOWN
+        self._initialized = False
 
         super().__init__(
             fqdn,
@@ -226,11 +227,16 @@ class _PasdBusProxy(DeviceComponentManager):
             # Assume uninitialized to be on the safe side
             status = SmartboxStatusMap.UNINITIALISED.name
 
-        if status == SmartboxStatusMap.UNINITIALISED.name:
+        if status == SmartboxStatusMap.UNINITIALISED.name or not self._initialized:
             self._proxy.InitializeSmartbox(self._smartbox_nr)
+            self._initialized = True
         argument = json.loads(json_argument)
         argument.update({"smartbox_number": self._smartbox_nr})
         return self._proxy.SetSmartboxPortPowers(json.dumps(argument))
+
+    def reset_initialized(self: _PasdBusProxy) -> None:
+        """Mark the smartbox as requiring re-initialization."""
+        self._initialized = False
 
     def set_fndh_port_powers(
         self: _PasdBusProxy, json_argument: str
@@ -462,6 +468,8 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
                 if self._power_state != PowerState.OFF:
                     self.logger.info("Setting Smartbox to OFF as its FNDH port is OFF.")
                     self._power_state = PowerState.OFF
+                    if isinstance(self._pasd_bus_proxy, _PasdBusProxy):
+                        self._pasd_bus_proxy.reset_initialized()
                     self._attribute_change_callback(
                         "portspowersensed",
                         [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
