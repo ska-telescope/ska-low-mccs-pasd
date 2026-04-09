@@ -2,7 +2,8 @@
 
 ## 5.1.0
 
-* [THORN-516] Add SmartboxStartupDelay property - time (s) to wait after a smartbox is powered on before polling it.
+* [THORN-516] Add FieldStation.NofSmartboxBlocks property - number of blocks of smartboxes to turn on at once E.g 2 blocks means 2 blocks of 12. Added as it appears we can hit Tango monitor lock issues sporadically with 1 block of 24.
+* [THORN-516] Add PasdBus.SmartboxStartupDelay property - time (s) to wait after a smartbox is powered on before polling it.
 * [SKB-1212] Explicitly track whether smartbox re-initialization is required.
 * [LOW-2216] Align several smartbox and FNDH thresholds with latest DA recommendations.
 

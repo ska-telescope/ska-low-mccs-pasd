@@ -130,6 +130,7 @@ class TestFieldStationComponentManager:
                     1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
                 )
             ],
+            1,
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
         )

@@ -41,6 +41,7 @@ class MccsFieldStation(MccsBaseDevice):
     StationName = device_property(dtype=(str), mandatory=True)
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), default_value=[])
+    NofSmartBoxBlocks = device_property(dtype=int, default_value=4)
     # --------------
     # Initialisation
     # --------------
@@ -81,6 +82,7 @@ class MccsFieldStation(MccsBaseDevice):
             f"\tFndhFQDN: {self.FndhFQDN}\n"
             f"\tSmartBoxFQDNs: {self.SmartBoxFQDNs}\n"
             f"\tStationName: {self.StationName}\n"
+            f"\tNofSmartBoxBlocks: {self.NofSmartBoxBlocks}"
         )
         self.logger.info(message)
 
@@ -107,6 +109,7 @@ class MccsFieldStation(MccsBaseDevice):
             self.StationName,
             self.FndhFQDN,
             self.SmartBoxFQDNs,
+            self.NofSmartBoxBlocks,
             self._communication_state_changed,
             self._component_state_callback,
             event_serialiser=self._event_serialiser,
