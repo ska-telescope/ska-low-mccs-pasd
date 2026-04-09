@@ -47,6 +47,28 @@ gc.disable()  # TODO: why is this needed?
 PCB_TEMP_VAL = ["85.0", "70.0", "0.0", "-5.0"]
 
 
+def _set_attribute_thresholds(
+    device: tango.DeviceProxy,
+    attribute_name: str,
+    thresholds: list[float],
+) -> None:
+    """
+    Set the attribute thresholds for a given device.
+
+    :param device: The Tango device proxy.
+    :param attribute_name: The name of the attribute to set thresholds for.
+    :param thresholds: A dictionary containing threshold values.
+    """
+    attribute_config = device.get_attribute_config(attribute_name)
+    alarms = attribute_config.alarms
+    alarms.max_alarm = str(thresholds[0])
+    alarms.max_warning = str(thresholds[1])
+    alarms.min_warning = str(thresholds[2])
+    alarms.min_alarm = str(thresholds[3])
+    time.sleep(0.1)
+    device.set_attribute_config(attribute_config)
+
+
 def turn_pasd_devices_online(
     smartbox_device: tango.DeviceProxy,
     pasd_bus_device: tango.DeviceProxy,
@@ -1444,11 +1466,12 @@ class TestSmartBoxPasdBusIntegration:
             "smartboxHealthState",
             HealthState.DEGRADED,
         )
-
-        # Test breaker trip causes FAILED health state
-        smartbox_simulator.simulate_breaker_trip(
-            random.randint(1, PasdData.NUMBER_OF_SMARTBOX_PORTS)
+        _set_attribute_thresholds(
+            smartbox_device, "numberofportbreakerstripped", [2, 1, -1, -2]
         )
+        # Test breaker trip causes FAILED health state
+        for port in random.sample(range(1, PasdData.NUMBER_OF_SMARTBOX_PORTS), 3):
+            smartbox_simulator.simulate_breaker_trip(port)
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.FAILED,

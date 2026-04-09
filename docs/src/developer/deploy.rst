@@ -112,6 +112,7 @@ MccsFieldStation
 - **StationName**: Station identifier
 - **FndhFQDN**: Tango FQDN of the associated FNDH device
 - **SmartboxFQDNs**: List of Tango FQDNs of associated smartbox devices
+- **NofSmartboxBlocks**: How many blocks to split smartboxes into before turning on FEMs sequentially for each block during on().
 
 ------------
 How it works

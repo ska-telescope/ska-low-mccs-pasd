@@ -142,6 +142,8 @@ ska-tango-devices:
       FemHeatsinkTemperature2->max_warning: 65
       FemHeatsinkTemperature2->min_warning: 5
       FemHeatsinkTemperature2->min_alarm: -2
+      numberOfPortBreakersTripped->max_alarm: 3
+      numberOfPortBreakersTripped->max_warning: 1
 
       # These sensors are redundant or removed in current hardware
       Psu48vVoltage2->max_alarm: Not specified
