@@ -132,6 +132,11 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         dtype=float, default_value=5.0
     )
 
+    # Time in seconds to wait after a smartbox is powered on before polling it.
+    SmartboxStartupDelay: Final[float] = tango.server.device_property(
+        dtype=float, default_value=5.0
+    )
+
     # ---------
     # Constants
     # ---------
@@ -206,6 +211,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             f"\tAttributeReadDelay: {self.AttributeReadDelay}\n"
             f"\tPortStatusReadDelay: {self.PortStatusReadDelay}\n"
             f"\tPortPowerDelay: {self.PortPowerDelay}\n"
+            f"\tSmartboxStartupDelay: {self.SmartboxStartupDelay}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -353,6 +359,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self.AttributeReadDelay,
             self.PortStatusReadDelay,
             self.PortPowerDelay,
+            self.SmartboxStartupDelay,
             self.Timeout,
             self.logger,
             self._communication_state_callback,

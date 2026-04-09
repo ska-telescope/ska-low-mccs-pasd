@@ -1015,7 +1015,7 @@ class MccsSmartBox(MccsBaseDevice):
             return self._health_model.health_report
         return self._health_report
 
-    @attribute(dtype="DevShort", max_alarm=1)
+    @attribute(dtype="DevShort")
     def numberOfPortBreakersTripped(self: MccsSmartBox) -> Optional[int]:
         """
         Return the total number of breakers which have tripped.

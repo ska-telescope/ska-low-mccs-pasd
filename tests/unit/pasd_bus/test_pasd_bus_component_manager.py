@@ -101,6 +101,7 @@ def pasd_bus_component_manager_fixture(
             1.0,
             0.0,
             0.0,
+            0.0,  # smartbox_startup_delay
             3.0,
             logger,
             mock_callbacks["communication_state"],

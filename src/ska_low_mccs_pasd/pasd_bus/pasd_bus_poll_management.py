@@ -468,6 +468,7 @@ class PasdBusRequestProvider:
         port_power_delay: float,
         available_smartboxes: list[int],
         smartbox_ids: Optional[list[int]] = None,
+        smartbox_startup_delay: float = 0.0,
     ) -> None:
         """
         Initialise a new instance.
@@ -484,6 +485,8 @@ class PasdBusRequestProvider:
         :param available_smartboxes: list of available smartbox ids to poll
         :param smartbox_ids: optional list of smartbox IDs associated with
             each FNDH port
+        :param smartbox_startup_delay: time in seconds to wait after a smartbox
+            is powered on before starting to poll it.
         """
         if port_status_read_delay >= port_power_delay:
             logger.warning(
@@ -509,8 +512,10 @@ class PasdBusRequestProvider:
         else:
             self._available_smartboxes = available_smartboxes
 
+        self._smartbox_startup_delay = smartbox_startup_delay
         self._delayed_requests: list[DelayedRequest] = []
         self._pending_power_off_ports: set[int] = set()
+        self._pending_smartbox_startups: dict[int, float] = {}
         self.initialise()
 
     def initialise(self) -> None:
@@ -565,6 +570,7 @@ class PasdBusRequestProvider:
         self._device_request_providers[PasdData.FNDH_DEVICE_ID] = fndh_request_provider
         self._device_request_providers[PasdData.FNCC_DEVICE_ID] = fncc_request_provider
         self._pending_power_off_ports.clear()
+        self._pending_smartbox_startups.clear()
 
     def update_port_power_states(self, port_power_states: list[bool]) -> None:
         """
@@ -585,10 +591,17 @@ class PasdBusRequestProvider:
                 if fndh_port in self._pending_power_off_ports:
                     # A power-off write is in flight; ignore this stale True reading
                     continue
-                self._logger.info(f"Starting to poll smartbox {smartbox_id}")
-                self._ticks.update({smartbox_id: self._min_ticks})
+                if smartbox_id not in self._pending_smartbox_startups:
+                    self._logger.info(
+                        f"Smartbox {smartbox_id} powered on, starting polling "
+                        f"in {self._smartbox_startup_delay}s"
+                    )
+                    self._pending_smartbox_startups[smartbox_id] = (
+                        time.time() + self._smartbox_startup_delay
+                    )
             elif not power_state:
                 self._pending_power_off_ports.discard(fndh_port)
+                self._pending_smartbox_startups.pop(smartbox_id, None)
                 if smartbox_id in self._ticks:
                     self._logger.info(f"Stopping polling smartbox {smartbox_id}")
                     self._ticks.pop(smartbox_id, None)
@@ -606,6 +619,7 @@ class PasdBusRequestProvider:
                 smartbox_id = self._smartboxIDs.get(fndh_port)
                 if smartbox_id is not None:
                     self._pending_power_off_ports.add(fndh_port)
+                    self._pending_smartbox_startups.pop(smartbox_id, None)
                     if smartbox_id in self._ticks:
                         self._logger.info(
                             f"Stopping polling smartbox {smartbox_id} as port "
@@ -781,6 +795,17 @@ class PasdBusRequestProvider:
             ].get_write_read_sequence(device_id)
             if write_read_sequence is not None:
                 self._delayed_requests.extend(write_read_sequence)
+
+        # Promote any pending smartbox startups whose delay has elapsed.
+        ready_smartboxes = [
+            smartbox_id
+            for smartbox_id, start_after in self._pending_smartbox_startups.items()
+            if time.time() >= start_after
+        ]
+        for smartbox_id in ready_smartboxes:
+            del self._pending_smartbox_startups[smartbox_id]
+            self._logger.info(f"Starting to poll smartbox {smartbox_id}")
+            self._ticks[smartbox_id] = self._min_ticks
 
         # Now see if any delayed requests are ready to be executed.
         # These takes priority over writes so that we can update the polling
