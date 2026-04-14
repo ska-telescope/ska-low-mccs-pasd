@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 from typing import Any, Final, Optional, cast
 
+import numpy as np
 from ska_control_model import (
     AdminMode,
     CommunicationStatus,
@@ -72,7 +73,18 @@ class MccsFieldStation(MccsBaseDevice):
         self._component_state_on: Optional[bool] = None
         self._health_thresholds: dict[str, Any] = {
             "fndh": (1, 1, 1),  # Default thresholds for FNDH
-            "smartboxes": (0, 1, 1),  # Default thresholds for SmartBoxes
+            # https://confluence.skatelescope.org/display/TDT/Memo+on+the+Aggregation+of+HealthStates
+            "smartboxes": (
+                min(
+                    np.ceil(len(self.SmartBoxFQDNs) * 0.1), 2
+                ),  # 10% or 2, whichever is lower Failed -> Failed
+                min(
+                    np.ceil(len(self.SmartBoxFQDNs) * 0.1), 2
+                ),  # 10% or 2, whichever is lower Failed -> Degraded
+                min(
+                    np.ceil(len(self.SmartBoxFQDNs) * 0.1), 3
+                ),  # 10% or 3, whichever is lower Degraded -> Degraded
+            ),
         }
 
         super().init_device()
