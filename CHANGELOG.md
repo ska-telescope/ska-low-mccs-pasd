@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [THORN-424] Add MccsSmartbox.MaskedAntennas property populated by helmfile templates at deploy time.
+
 ## 5.1.0
 
 * [THORN-516] Add FieldStation.NofSmartboxBlocks property - number of blocks of smartboxes to turn on at once E.g 2 blocks means 2 blocks of 12. Added as it appears we can hit Tango monitor lock issues sporadically with 1 block of 24.

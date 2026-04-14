@@ -278,7 +278,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     or the real hardware.
     """
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     def __init__(
         self: SmartBoxComponentManager,
         logger: logging.Logger,
@@ -292,6 +292,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         ports_with_antennas: list[int],
         antenna_names: list[str],
         fndh_port: int,
+        masked_antennas: Optional[list[str]] = None,
         event_serialiser: Optional[EventSerialiser] = None,
         _pasd_bus_proxy: Optional[MccsDeviceProxy] = None,
     ) -> None:
@@ -313,6 +314,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param ports_with_antennas: list of ports which have antennas attached.
         :param antenna_names: list of antenna names attached to ports.
         :param fndh_port: the fndh port to which this smartbox is attached.
+        :param masked_antennas: list of antenna names whose ports should be masked.
         :param event_serialiser: the event serialiser to be used by this object.
         :param _pasd_bus_proxy: a optional injected device proxy for testing
         """
@@ -338,6 +340,10 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self._port_mask = [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS
         for idx in self._ports_with_antennas:
             self._port_mask[idx - 1] = False
+        for name in masked_antennas or []:
+            if name in self._port_to_antenna_map.inverse:
+                # pylint: disable-next=unsubscriptable-object
+                self._port_mask[self._port_to_antenna_map.inverse[name] - 1] = True
         self._attribute_change_callback = attribute_change_callback
         self.fndh_ports_change = threading.Event()
         self.smartbox_ports_change = threading.Event()
