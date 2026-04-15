@@ -71,23 +71,22 @@ class MccsFieldStation(MccsBaseDevice):
         """Initialise the device."""
         self._antenna_powers = {}
         self._component_state_on: Optional[bool] = None
+        super().init_device()
         self._health_thresholds: dict[str, Any] = {
             "fndh": (1, 1, 1),  # Default thresholds for FNDH
             # https://confluence.skatelescope.org/display/TDT/Memo+on+the+Aggregation+of+HealthStates
             "smartboxes": (
-                min(
-                    np.ceil(len(self.SmartBoxFQDNs) * 0.1), 2
-                ),  # 10% or 2, whichever is lower Failed -> Failed
-                min(
-                    np.ceil(len(self.SmartBoxFQDNs) * 0.1), 2
-                ),  # 10% or 2, whichever is lower Failed -> Degraded
-                min(
-                    np.ceil(len(self.SmartBoxFQDNs) * 0.1), 3
-                ),  # 10% or 3, whichever is lower Degraded -> Degraded
+                max(
+                    np.ceil(len(self.SmartBoxFQDNs) * 0.1), 1
+                ),  # 10% or 1, whichever is higher, Failed -> Failed
+                max(
+                    np.ceil(len(self.SmartBoxFQDNs) * 0.05), 1
+                ),  # 10% or 1, whichever is higher, Failed -> Degraded
+                max(
+                    np.ceil(len(self.SmartBoxFQDNs) * 0.05), 1
+                ),  # 10% or 1, whichever is higher, Degraded -> Degraded
             ),
         }
-
-        super().init_device()
 
         message = (
             "Initialised MccsFieldStation device with properties:\n"
