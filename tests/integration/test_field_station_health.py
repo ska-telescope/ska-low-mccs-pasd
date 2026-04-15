@@ -179,9 +179,6 @@ class TestFieldStationHealth:
             HealthState.FAILED
         )
         change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.DEGRADED
-        )
-        change_event_callbacks["field_station_healthstate"].assert_change_event(
             HealthState.OK
         )
         change_event_callbacks["field_station_healthstate"].assert_not_called()
@@ -284,7 +281,7 @@ class TestFieldStationHealth:
         self._check_devices_on_and_healthy(devices)
 
         assert json.loads(field_station_device.healthThresholds)["smartboxes"] == [
-            0,  # All failed = failed
+            1,  # Any failed = failed
             1,  # Any failed = degraded
             1,  # Any degraded = degraded
         ]
@@ -328,45 +325,32 @@ class TestFieldStationHealth:
             HealthState.OK
         )
 
-        # Cause smartboxes to fail one by one.
-        # Should be degraded when one fails, and failed when all fail.
-        for smartbox_id, smartbox in enumerate(smartbox_proxys, start=1):
-            assert smartbox.healthState == HealthState.OK
-            _set_attribute_thresholds(
-                smartbox,
-                "inputVoltage",
-                failed_thresholds,
-            )
-            change_event_callbacks[
-                f"smartbox_{smartbox_id}_healthstate"
-            ].assert_change_event(HealthState.FAILED)
-
-            # FieldStation health should degrade when the first smartbox fails.
-            if smartbox == smartbox_proxys[0]:
-                change_event_callbacks["field_station_healthstate"].assert_change_event(
-                    HealthState.DEGRADED
-                )
-            # Should be degraded until the last smartbox fails.
-            if smartbox != smartbox_proxys[-1]:
-                assert field_station_device.healthState == HealthState.DEGRADED
-
+        # Cause a smartbox to fail.
+        # The new default thresholds are set to set field station as FAILED if
+        # 10% of smartboxes are failed (rounded up)
+        smartbox = smartbox_proxys[0]
+        assert smartbox.healthState == HealthState.OK
+        _set_attribute_thresholds(
+            smartbox,
+            "inputVoltage",
+            failed_thresholds,
+        )
+        change_event_callbacks[f"smartbox_{1}_healthstate"].assert_change_event(
+            HealthState.FAILED
+        )
         change_event_callbacks["field_station_healthstate"].assert_change_event(
             HealthState.FAILED
         )
         assert field_station_device.healthState == HealthState.FAILED
 
         # Get back to healthy.
-        for smartbox_id, smartbox in enumerate(smartbox_proxys, start=1):
-            _set_attribute_thresholds(
-                smartbox,
-                "inputVoltage",
-                healthy_thresholds,
-            )
-            change_event_callbacks[
-                f"smartbox_{smartbox_id}_healthstate"
-            ].assert_change_event(HealthState.OK)
-        change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.DEGRADED
+        _set_attribute_thresholds(
+            smartbox,
+            "inputVoltage",
+            healthy_thresholds,
+        )
+        change_event_callbacks[f"smartbox_{1}_healthstate"].assert_change_event(
+            HealthState.OK
         )
         change_event_callbacks["field_station_healthstate"].assert_change_event(
             HealthState.OK

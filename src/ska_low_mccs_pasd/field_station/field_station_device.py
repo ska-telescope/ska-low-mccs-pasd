@@ -77,16 +77,18 @@ class MccsFieldStation(MccsBaseDevice):
             # https://confluence.skatelescope.org/display/TDT/Memo+on+the+Aggregation+of+HealthStates
             "smartboxes": (
                 max(
-                    np.ceil(len(self.SmartBoxFQDNs) * 0.1), 1
+                    int(np.ceil(len(self.SmartBoxFQDNs) * 0.1)), 1
                 ),  # 10% or 1, whichever is higher, Failed -> Failed
                 max(
-                    np.ceil(len(self.SmartBoxFQDNs) * 0.05), 1
+                    int(np.ceil(len(self.SmartBoxFQDNs) * 0.05)), 1
                 ),  # 10% or 1, whichever is higher, Failed -> Degraded
                 max(
-                    np.ceil(len(self.SmartBoxFQDNs) * 0.05), 1
+                    int(np.ceil(len(self.SmartBoxFQDNs) * 0.05)), 1
                 ),  # 10% or 1, whichever is higher, Degraded -> Degraded
             ),
         }
+        self._health_report = ""
+        self._health_rollup = self._setup_health_rollup()
 
         message = (
             "Initialised MccsFieldStation device with properties:\n"
@@ -104,8 +106,6 @@ class MccsFieldStation(MccsBaseDevice):
 
     def _init_state_model(self: MccsFieldStation) -> None:
         super()._init_state_model()
-        self._health_report = ""
-        self._health_rollup = self._setup_health_rollup()
 
     def create_component_manager(
         self: MccsFieldStation,
