@@ -207,7 +207,6 @@ class TestFieldStationHealth:
             )
 
     # flake8: noqa
-    # pylint: disable=too-many-branches
     def test_health_aggregation(
         self: TestFieldStationHealth,
         field_station_device: tango.DeviceProxy,

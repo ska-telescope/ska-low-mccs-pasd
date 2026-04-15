@@ -104,9 +104,6 @@ class MccsFieldStation(MccsBaseDevice):
         self.component_manager.cleanup()
         super().delete_device()
 
-    def _init_state_model(self: MccsFieldStation) -> None:
-        super()._init_state_model()
-
     def create_component_manager(
         self: MccsFieldStation,
     ) -> FieldStationComponentManager:
