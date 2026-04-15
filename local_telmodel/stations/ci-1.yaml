@@ -35,6 +35,7 @@ platform:
           smartbox_port: 5
           tpm: tpm01
           tpm_input: 5
+          masked: True
         sb01-07:
           location_offset:
             east: -0.746
@@ -125,3 +126,4 @@ platform:
           smartbox_port: 1
           tpm: tpm01
           tpm_input: 1
+          masked: True

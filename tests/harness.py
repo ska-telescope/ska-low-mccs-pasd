@@ -463,6 +463,7 @@ class PasdTangoTestHarness:
         ports_with_antennas: Optional[list[int]] = None,
         antenna_names: Optional[list[str]] = None,
         fndh_port: int = 1,
+        masked_antennas: Optional[list[str]] = None,
     ) -> None:
         """
         Add a smartbox Tango device to the test harness.
@@ -475,6 +476,7 @@ class PasdTangoTestHarness:
         :param ports_with_antennas: ports which have antennas attached.
         :param antenna_names: names of the antennas attached to the smartbox.
         :param fndh_port: the FNDH port this smartbox is attached to.
+        :param masked_antennas: antenna names whose ports should be masked.
         """
         if ports_with_antennas is None:
             ports_with_antennas = [1, 2, 3]
@@ -483,6 +485,10 @@ class PasdTangoTestHarness:
             antenna_names = [
                 f"sb{fndh_port:02d}-{port:02d}" for port in ports_with_antennas
             ]
+
+        optional_properties = {}
+        if masked_antennas is not None:
+            optional_properties["MaskedAntennas"] = masked_antennas
 
         self._tango_test_harness.add_device(
             get_smartbox_name(smartbox_id, station_label=self._station_label),
@@ -495,6 +501,7 @@ class PasdTangoTestHarness:
             PortsWithAntennas=ports_with_antennas,
             AntennaNames=antenna_names,
             FndhPort=fndh_port,
+            **optional_properties,
         )
 
     def __enter__(

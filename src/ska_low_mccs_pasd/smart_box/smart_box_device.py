@@ -86,6 +86,7 @@ class MccsSmartBox(MccsBaseDevice):
     SmartBoxNumber: Final = device_property(dtype=int, mandatory=True)
     PortsWithAntennas: Final = device_property(dtype=(int,), default_value=[])
     AntennaNames: Final = device_property(dtype=(str,), default_value=[])
+    MaskedAntennas: Final = device_property(dtype=(str,), default_value=[])
     FndhPort: Final = device_property(dtype=int, mandatory=True)
     UseAttributesForHealth: Final = device_property(
         doc="Use the attribute quality factor in health. ADR-115.",
@@ -163,6 +164,7 @@ class MccsSmartBox(MccsBaseDevice):
             f"\tSmartBoxNumber: {self.SmartBoxNumber}\n"
             f"\tPortsWithAntennas: {self.PortsWithAntennas}\n"
             f"\tAntennaNames: {self.AntennaNames}\n"
+            f"\tMaskedAntennas: {self.MaskedAntennas}\n"
             f"\tFndhPort: {self.FndhPort}\n"
             f"\tUseAttributesForHealth: {self.UseAttributesForHealth}\n"
             f"\tFaultOnThresholdDifference: {self.FaultOnThresholdDifference}\n"
@@ -268,6 +270,7 @@ class MccsSmartBox(MccsBaseDevice):
             self.PortsWithAntennas,
             self.AntennaNames,
             self.FndhPort,
+            masked_antennas=self.MaskedAntennas,
             event_serialiser=self._event_serialiser,
         )
 

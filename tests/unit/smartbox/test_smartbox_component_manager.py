@@ -534,6 +534,69 @@ class TestSmartBoxComponentManager:
         assert smartbox_component_manager._power_state == PowerState.STANDBY
 
     @pytest.mark.parametrize(
+        ("masked_antennas", "expected_masked_port_indices"),
+        [
+            ([], []),
+            (["sb01-02"], [1]),
+            (["sb01-01", "sb01-03"], [0, 2]),
+            (["sb01-01", "sb01-02", "sb01-03"], [0, 1, 2]),
+        ],
+    )
+    def test_masked_antennas_sets_port_mask(
+        self: TestSmartBoxComponentManager,
+        logger: logging.Logger,
+        mock_callbacks: MockCallableGroup,
+        masked_antennas: list[str],
+        expected_masked_port_indices: list[int],
+    ) -> None:
+        """
+        Test that masked_antennas marks the correct ports as masked.
+
+        Ports with antennas start unmasked; providing a name in masked_antennas
+        should flip that port back to masked (True) in _port_mask.
+
+        :param logger: a logger for this command to use.
+        :param mock_callbacks: mock callables.
+        :param masked_antennas: antenna names to mask.
+        :param expected_masked_port_indices: zero-based port indices expected to be
+            True.
+        """
+        ports_with_antennas = [1, 2, 3]
+        antenna_names = ["sb01-01", "sb01-02", "sb01-03"]
+
+        cm = SmartBoxComponentManager(
+            logger,
+            mock_callbacks["communication_state"],
+            mock_callbacks["component_state"],
+            mock_callbacks["attribute_update"],
+            1,
+            "sb01",
+            SMARTBOX_PORTS,
+            "low-mccs/pasdbus/001",
+            ports_with_antennas,
+            antenna_names,
+            1,
+            masked_antennas=masked_antennas,
+            _pasd_bus_proxy=unittest.mock.Mock(),
+        )
+
+        # Ports with antennas that are not masked should be False (unmasked).
+        for port_idx in [p - 1 for p in ports_with_antennas]:
+            if port_idx in expected_masked_port_indices:
+                assert cm._port_mask[port_idx], f"Port {port_idx + 1} should be masked"
+            else:
+                assert not cm._port_mask[
+                    port_idx
+                ], f"Port {port_idx + 1} should not be masked"
+
+        # Ports without antennas should always be masked.
+        for port_idx in range(SMARTBOX_PORTS):
+            if port_idx not in [p - 1 for p in ports_with_antennas]:
+                assert cm._port_mask[
+                    port_idx
+                ], f"Port {port_idx + 1} (no antenna) should always be masked"
+
+    @pytest.mark.parametrize(
         (
             "component_manager_command",
             "masked_ports",

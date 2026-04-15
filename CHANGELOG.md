@@ -3,6 +3,7 @@
 ## Unreleased
 
 * [THORN-490] Updating field station default health thresholds
+* [THORN-424] Add MccsSmartbox.MaskedAntennas property populated by helmfile templates at deploy time.
 
 ## 5.1.0
 
