@@ -460,6 +460,88 @@ def test_pasd_status_health(
     assert smartbox_device.state() == dev_state
 
 
+@pytest.fixture(name="smartbox_device_with_masked_antennas")
+def smartbox_device_with_masked_antennas_fixture(
+    smartbox_number: int,
+    mock_pasdbus: unittest.mock.Mock,
+    station_label: str,
+) -> tango.DeviceProxy:
+    """
+    Fixture that returns a smartbox device proxy with MaskedAntennas configured.
+
+    Ports 1, 2 and 3 have antennas; port 2's antenna is masked.
+
+    :param smartbox_number: number of the smartbox under test
+    :param mock_pasdbus: A mock PaSD bus device.
+    :param station_label: The label of the station under test.
+
+    :yield: a proxy to the smartbox Tango device under test.
+    """
+    with patch("ska_low_mccs_pasd.pasd_utils.Database") as db:
+        _thresholds: dict[str, list] = {
+            "inputvoltagethresholds": [50.0, 49.0, 45.0, 40.0],
+            "powersupplyoutputvoltagethresholds": [5.0, 4.9, 4.4, 4.0],
+            "powersupplytemperaturethresholds": [85.0, 70.0, 0.0, -5.0],
+            "pcbtemperaturethresholds": [85.0, 70.0, 0.0, -5.0],
+            "femambienttemperaturethresholds": [60.0, 45.0, 0.0, -5.0],
+            "femcasetemperature1thresholds": [60.0, 45.0, 0.0, -5.0],
+            "femcasetemperature2thresholds": [60.0, 45.0, 0.0, -5.0],
+            "femheatsinktemperature1thresholds": [60.0, 45.0, 0.0, -5.0],
+            "femheatsinktemperature2thresholds": [60.0, 45.0, 0.0, -5.0],
+            "femcurrenttripthresholds": [
+                496,
+                496,
+                496,
+                496,
+                496,
+                496,
+                496,
+                496,
+                496,
+                496,
+                496,
+                496,
+            ],
+        }
+
+        def my_func(device_name: str, property_name: str) -> list:
+            return _thresholds.get(property_name, [])
+
+        db.return_value.get_device_attribute_property = my_func
+        harness = PasdTangoTestHarness(station_label=station_label)
+        harness.set_mock_pasd_bus_device(mock_pasdbus)
+        harness.add_smartbox_device(
+            smartbox_number,
+            logging_level=int(LoggingLevel.DEBUG),
+            ports_with_antennas=[1, 2, 3],
+            antenna_names=["sb01-01", "sb01-02", "sb01-03"],
+            masked_antennas=["sb01-02"],
+        )
+
+        with harness as context:
+            yield context.get_smartbox_device(smartbox_number)
+
+
+def test_masked_antennas_device_property(
+    smartbox_device_with_masked_antennas: tango.DeviceProxy,
+) -> None:
+    """
+    Test that the MaskedAntennas device property sets the portMask correctly.
+
+    Ports 1 and 3 have unmasked antennas so their mask entries should be False.
+    Port 2 has a masked antenna so its entry should be True.
+    All remaining ports (4-12) have no antenna and should be True.
+
+    :param smartbox_device_with_masked_antennas: a smartbox device with port 2 masked.
+    """
+    port_mask = list(smartbox_device_with_masked_antennas.portMask)
+    assert not port_mask[0], "Port 1 has an unmasked antenna - should be False"
+    assert port_mask[1], "Port 2 antenna is masked - should be True"
+    assert not port_mask[2], "Port 3 has an unmasked antenna - should be False"
+    for idx in range(3, 12):
+        assert port_mask[idx], f"Port {idx + 1} has no antenna - should be True"
+
+
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     """
