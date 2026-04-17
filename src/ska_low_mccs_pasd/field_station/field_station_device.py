@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 from typing import Any, Final, Optional, cast
 
+import numpy as np
 from ska_control_model import (
     AdminMode,
     CommunicationStatus,
@@ -70,12 +71,24 @@ class MccsFieldStation(MccsBaseDevice):
         """Initialise the device."""
         self._antenna_powers = {}
         self._component_state_on: Optional[bool] = None
+        super().init_device()
         self._health_thresholds: dict[str, Any] = {
             "fndh": (1, 1, 1),  # Default thresholds for FNDH
-            "smartboxes": (0, 1, 1),  # Default thresholds for SmartBoxes
+            # https://confluence.skatelescope.org/display/TDT/Memo+on+the+Aggregation+of+HealthStates
+            "smartboxes": (
+                max(
+                    int(np.ceil(len(self.SmartBoxFQDNs) * 0.1)), 1
+                ),  # 10% or 1, whichever is higher, Failed -> Failed
+                max(
+                    int(np.ceil(len(self.SmartBoxFQDNs) * 0.05)), 1
+                ),  # 10% or 1, whichever is higher, Failed -> Degraded
+                max(
+                    int(np.ceil(len(self.SmartBoxFQDNs) * 0.05)), 1
+                ),  # 10% or 1, whichever is higher, Degraded -> Degraded
+            ),
         }
-
-        super().init_device()
+        self._health_report = ""
+        self._health_rollup = self._setup_health_rollup()
 
         message = (
             "Initialised MccsFieldStation device with properties:\n"
@@ -90,11 +103,6 @@ class MccsFieldStation(MccsBaseDevice):
         """Delete the device."""
         self.component_manager.cleanup()
         super().delete_device()
-
-    def _init_state_model(self: MccsFieldStation) -> None:
-        super()._init_state_model()
-        self._health_report = ""
-        self._health_rollup = self._setup_health_rollup()
 
     def create_component_manager(
         self: MccsFieldStation,
