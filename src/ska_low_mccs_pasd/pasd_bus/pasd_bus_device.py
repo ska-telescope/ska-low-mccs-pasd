@@ -720,8 +720,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         """
         # healthState is defined as an attribute_from_signal in the base classes.
         # Setting this signal will push change and archive events automatically.
-        if self._health_state != health:
-            self._health_state = health
+        try:
+            if self._health_state == health:
+                return
+        except AttributeError:  # Must ensure that health_state is initilised
+            pass
+        self._health_state = health
 
     # ----------
     # Attributes
