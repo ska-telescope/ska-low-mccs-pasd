@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [THORN-415] PaSD - allow a tolerance when comparing threshold values
 * [THORN-527] Investigate using attribute_from_signal in PaSD
 
 ## 5.2.0

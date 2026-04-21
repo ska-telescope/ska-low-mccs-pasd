@@ -84,6 +84,14 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         dtype=bool,
         default_value=True,
     )
+    ThresholdTolerance: Final = device_property(
+        doc=(
+            "Absolute tolerance when comparing firmware and Tango threshold values. "
+            "Differences within this tolerance are not considered a mismatch."
+        ),
+        dtype=float,
+        default_value=0.05,
+    )
 
     # ---------
     # Constants
@@ -722,7 +730,10 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 continue
             if thresholds_tango:
                 for i, _ in enumerate(thresholds_tango):
-                    if float(thresholds_pasd[i]) != float(thresholds_tango[i]):
+                    if (
+                        abs(float(thresholds_pasd[i]) - float(thresholds_tango[i]))
+                        > self.ThresholdTolerance
+                    ):
                         float_pasd = [float(x) for x in thresholds_pasd]
                         float_tango = [float(x) for x in thresholds_tango]
                         differences[name] = f"tango:{float_tango} != pasd:{float_pasd}"

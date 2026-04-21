@@ -88,6 +88,7 @@ MccsFNDH
 - **PortsWithSmartbox**: List of FNDH ports that have an associated smartbox
 - **UseAttributesForHealth**: Set to ``True`` to use attribute quality factor in health evaluation
 - **FaultOnThresholdDifference**: Set to ``True`` to to turn on setting the device to Fault when there is a mismatch between firmware and Tango thresholds
+- **ThresholdTolerance**: Absolute tolerance for threshold comparisons. Differences within this value are not considered a mismatch
 
 MccsSmartbox
 ~~~~~~~~~~~~
@@ -100,6 +101,7 @@ MccsSmartbox
 - **FndhPort**: FNDH port number this smartbox is connected to
 - **UseAttributesForHealth**: Set to ``True`` to use attribute quality factor in health evaluation
 - **FaultOnThresholdDifference**: Set to ``True`` to to turn on setting the device to Fault when there is a mismatch between firmware and Tango thresholds
+- **ThresholdTolerance**: Absolute tolerance for threshold comparisons. Differences within this value are not considered a mismatch
 
 MccsFncc
 ~~~~~~~~
