@@ -276,7 +276,8 @@ class FndhComponentManager(TaskExecutorComponentManager):
         self: FndhComponentManager,
         port_number: int,
         task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[ResultCode, str]:
         """
         Turn a port off.
 
@@ -285,21 +286,10 @@ class FndhComponentManager(TaskExecutorComponentManager):
         :param port_number: port we want to power off.
         :param task_callback: callback to be called when the status of
             the command changes
+        :param task_abort_event: event indicating an abort
 
         :return: the task status and a human-readable status message
         """
-        return self.submit_task(
-            self._power_off_port,  # type: ignore[arg-type]
-            args=[port_number],
-            task_callback=task_callback,
-        )
-
-    def _power_off_port(
-        self: FndhComponentManager,
-        port_number: int,
-        task_callback: Optional[Callable] = None,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
@@ -343,7 +333,8 @@ class FndhComponentManager(TaskExecutorComponentManager):
         self: FndhComponentManager,
         port_number: int,
         task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[ResultCode, str]:
         """
         Turn a port on.
 
@@ -352,23 +343,10 @@ class FndhComponentManager(TaskExecutorComponentManager):
         :param port_number: port we want to power on.
         :param task_callback: callback to be called when the status of
             the command changes
+        :param task_abort_event: event indicating an abort
 
         :return: the task status and a human-readable status message
         """
-        return self.submit_task(
-            self._power_on_port,  # type: ignore[arg-type]
-            args=[
-                port_number,
-            ],
-            task_callback=task_callback,
-        )
-
-    def _power_on_port(
-        self: FndhComponentManager,
-        port_number: int,
-        task_callback: Optional[Callable] = None,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
@@ -385,7 +363,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
             assert self._pasd_bus_proxy._proxy
             (
                 [result_code],
-                [unique_id],
+                [return_message],
             ) = self._pasd_bus_proxy._proxy.SetFndhPortPowers(json_argument)
 
         except Exception as ex:  # pylint: disable=broad-except
@@ -403,38 +381,26 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 status=TaskStatus.COMPLETED,
                 result=(ResultCode.OK, f"Power on port '{port_number} success'"),
             )
-        return result_code, unique_id
+        return result_code, return_message
 
     @check_communicating
     def set_port_powers(
         self: FndhComponentManager,
         json_argument: str,
         task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[ResultCode, str]:
         """
         Set port powers.
-
-        These ports will not have a smartbox attached.
 
         :param json_argument: desired port powers of unmasked ports with
             smartboxes attached in json form.
         :param task_callback: callback to be called when the status of
             the command changes
+        :param task_abort_event: event indicating an abort
 
         :return: the task status and a human-readable status message
         """
-        return self.submit_task(
-            self._set_port_powers,  # type: ignore[arg-type]
-            args=[json_argument],
-            task_callback=task_callback,
-        )
-
-    def _set_port_powers(
-        self: FndhComponentManager,
-        json_argument: str,
-        task_callback: Optional[Callable] = None,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
@@ -442,7 +408,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
             assert self._pasd_bus_proxy._proxy
             (
                 result_code,
-                unique_id,
+                return_message,
             ) = self._pasd_bus_proxy.set_fndh_port_powers(json_argument)
 
         except Exception as ex:  # pylint: disable=broad-except
@@ -460,7 +426,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
                 status=TaskStatus.COMPLETED,
                 result=(ResultCode.OK, "Set port powers success"),
             )
-        return result_code, unique_id
+        return result_code, return_message
 
     def _power_fndh_ports(
         self: FndhComponentManager, power_state: PowerState, timeout: int
@@ -502,38 +468,32 @@ class FndhComponentManager(TaskExecutorComponentManager):
         return ResultCode.OK, timeout
 
     @check_communicating
-    def on(
+    def on(  # type: ignore[override]
         self: FndhComponentManager,
         task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
+    ) -> None:
         """
         Turn the Fndh on.
 
         :param task_callback: Update task state, defaults to None
-
-        :return: a result code and a unique_id or message.
         """
-        return self.submit_task(
-            self._power_ports,
-            args=[PowerState.ON],
+        self._power_ports(
+            power_state=PowerState.ON,
             task_callback=task_callback,
         )
 
     @check_communicating
-    def standby(
+    def standby(  # type: ignore[override]
         self: FndhComponentManager,
         task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
+    ) -> None:
         """
         Turn the Fndh to standby.
 
         :param task_callback: Update task state, defaults to None
-
-        :return: a result code and a unique_id or message.
         """
-        return self.submit_task(
-            self._power_ports,  # type: ignore[arg-type]
-            args=[PowerState.OFF],
+        self._power_ports(
+            power_state=PowerState.OFF,
             task_callback=task_callback,
         )
 

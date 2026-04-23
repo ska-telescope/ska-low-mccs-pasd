@@ -12,14 +12,15 @@ from __future__ import annotations
 
 import importlib.resources
 import json
-import logging
 import sys
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
 from typing import Any, Callable, Final, Optional, cast
 
 import numpy
+import ska_tango_base as stb
 import tango
 from jsonschema import validate
 from ska_control_model import (
@@ -32,12 +33,6 @@ from ska_control_model import (
 from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_low_pasd_driver.pasd_bus_conversions import FndhStatusMap
 from ska_low_pasd_driver.pasd_bus_register_map import DesiredPowerEnum
-from ska_tango_base.commands import (
-    DeviceInitCommand,
-    FastCommand,
-    JsonValidator,
-    SubmittedSlowCommand,
-)
 from tango import DevFailed
 from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
@@ -68,6 +63,8 @@ class FNDHAttribute:
 # pylint: disable=too-many-public-methods
 class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     """An implementation of the FNDH device for MCCS."""
+
+    InitCommand = None  # type: ignore[assignment]
 
     # -----------------
     # Device Properties
@@ -158,6 +155,10 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
         This is overridden here to change the Tango serialisation model.
         """
+        self._isAlive = True
+        self._overCurrentThreshold = 0.0
+        self._overVoltageThreshold = 0.0
+        self._humidityThreshold = 0.0
         super().init_device()
 
         # Setup attributes shared with the MccsPasdBus.
@@ -198,6 +199,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
         )
+        self.init_completed()
 
     def delete_device(self: MccsFNDH) -> None:
         """Delete the device."""
@@ -261,38 +263,27 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             event_serialiser=self._event_serialiser,
         )
 
-    def init_command_objects(self: MccsFNDH) -> None:
-        """Initialise the command handlers for commands supported by this device."""
-        super().init_command_objects()
-
-        for command_name, method_name in [
-            ("PowerOnPort", "power_on_port"),
-            ("PowerOffPort", "power_off_port"),
-            ("SetPortPowers", "set_port_powers"),
-        ]:
-            self.register_command_object(
-                command_name,
-                SubmittedSlowCommand(
-                    command_name,
-                    self._command_tracker,
-                    self.component_manager,
-                    method_name,
-                    callback=None,
-                    logger=self.logger,
-                ),
-            )
-        self.register_command_object(
-            "PortPowerState",
-            self.PortPowerStateCommand(self, self.logger),
-        )
-        self.register_command_object(
-            "Configure",
-            self.ConfigureCommand(self, self.logger),
-        )
-
     # ----------
     # Commands
     # ----------
+    @stb.long_running_commands.submit_lrc_task
+    def execute_On(self) -> stb.type_hints.TaskFunctionType:
+        """Put the FNDH ON.
+
+        :return: A tuple containing a return code and a string message
+            indicating status.
+        """
+        return self.component_manager.on
+
+    @stb.long_running_commands.submit_lrc_task
+    def execute_Standby(self) -> stb.type_hints.TaskFunctionType:
+        """Put the FNDH into STANDBY.
+
+        :return: A tuple containing a return code and a string message
+            indicating status.
+        """
+        return self.component_manager.standby
+
     @command(
         dtype_out="DevVarLongStringArray",
         fisallowed="is_engineering",
@@ -331,215 +322,126 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
         return ([ResultCode.OK], ["UpdateThresholdCache completed"])
 
-    class InitCommand(DeviceInitCommand):
-        """Initialisation command class for this base device."""
+    Configure_SCHEMA: Final = {
+        "type": "object",
+        "properties": {
+            "overCurrentThreshold": {"type": "number"},
+            "overVoltageThreshold": {"type": "number"},
+            "humidityThreshold": {"type": "number"},
+        },
+    }
 
-        def do(
-            self: MccsFNDH.InitCommand, *args: Any, **kwargs: Any
-        ) -> tuple[ResultCode, str]:
-            """
-            Initialise the attributes of this MccsFNDH.
-
-            :param args: additional positional arguments; unused here
-            :param kwargs: additional keyword arguments; unused here
-
-            :return: a resultcode, message tuple
-            """
-            self._device._isAlive = True
-            self._device._overCurrentThreshold = 0.0
-            self._device._overVoltageThreshold = 0.0
-            self._device._humidityThreshold = 0.0
-            return (ResultCode.OK, "Init command completed OK")
-
-    class ConfigureCommand(FastCommand):
-        """
-        Class for handling the Configure() command.
-
-        This command takes as input a JSON string that conforms to the
-        following schema:
-
-        .. code-block:: json
-
-           {
-               "type": "object",
-               "properties": {
-                   "overCurrentThreshold": {"type": "number"},
-                   "overVoltageThreshold": {"type": "number"},
-                   "humidityThreshold": {"type": "number"},
-               },
-           }
-
-        """
-
-        SCHEMA: Final = {
-            "type": "object",
-            "properties": {
-                "overCurrentThreshold": {"type": "number"},
-                "overVoltageThreshold": {"type": "number"},
-                "humidityThreshold": {"type": "number"},
-            },
-        }
-
-        def __init__(
-            self: MccsFNDH.ConfigureCommand,
-            device: MccsFNDH,
-            logger: Optional[logging.Logger] = None,
-        ) -> None:
-            """
-            Initialise a new ConfigureCommand instance.
-
-            :param device: the device that this command acts upon
-            :param logger: a logger for this command to use.
-            """
-            self._device = device
-            validator = JsonValidator("Configure", self.SCHEMA, logger)
-            super().__init__(logger, validator)
-
-        def do(
-            self: MccsFNDH.ConfigureCommand,
-            *args: Any,
-            **kwargs: Any,
-        ) -> tuple[ResultCode, str]:
-            """
-            Implement :py:meth:`.MccsFNDH.Configure` command functionality.
-
-            :param args: Positional arguments. This should be empty and
-                is provided for type hinting purposes only.
-            :param kwargs: keyword arguments unpacked from the JSON
-                argument to the command.
-
-            :return: A tuple containing a return code and a string
-                message indicating status. The message is for
-                information purpose only.
-            """
-            over_current_threshold = kwargs.get("overCurrentThreshold")
-            if over_current_threshold is not None:
-                self._device._overCurrentThreshold = over_current_threshold
-                self.logger.debug(
-                    f"Over-current threshold set to {over_current_threshold}."
-                )
-
-            over_voltage_threshold = kwargs.get("overVoltageThreshold")
-            if over_voltage_threshold is not None:
-                self._device._overVoltageThreshold = over_voltage_threshold
-                self.logger.debug(
-                    f"Over-voltage threshold set to {over_voltage_threshold}."
-                )
-
-            humidity_threshold = kwargs.get("humidityThreshold")
-            if humidity_threshold is not None:
-                self._device._humidityThreshold = humidity_threshold
-                self.logger.debug(f"Humidity threshold set to {humidity_threshold}.")
-
-            return (ResultCode.OK, "Configure completed OK")
-
+    @stb.validators.validate_json_args
     @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
-    def Configure(self: MccsFNDH, argin: str) -> DevVarLongStringArrayType:
+    def Configure(
+        self: MccsFNDH,
+        kwargs: dict[str, float],
+    ) -> DevVarLongStringArrayType:
         """
         Configure the Fndh device attributes.
 
-        :param argin: the configuration for the device in stringified json format
+        :param kwargs: the configuration for the device in stringified json format
 
         :return: A tuple containing a return code and a string
             message indicating status. The message is for
             information purpose only.
         """
-        handler = self.get_command_object("Configure")
-        (return_code, message) = handler(argin)
-        return ([return_code], [message])
+        over_current_threshold = kwargs.get("overCurrentThreshold")
+        if over_current_threshold is not None:
+            self._overCurrentThreshold = over_current_threshold
+            self.logger.debug(
+                f"Over-current threshold set to {over_current_threshold}."
+            )
 
-    class PortPowerStateCommand(FastCommand):
-        """A class for the MccsFndh PortPowerStateCommand() command."""
+        over_voltage_threshold = kwargs.get("overVoltageThreshold")
+        if over_voltage_threshold is not None:
+            self._overVoltageThreshold = over_voltage_threshold
+            self.logger.debug(
+                f"Over-voltage threshold set to {over_voltage_threshold}."
+            )
 
-        def __init__(
-            self: MccsFNDH.PortPowerStateCommand,
-            device: MccsFNDH,
-            logger: Optional[logging.Logger] = None,
-        ) -> None:
-            """
-            Initialise a new instance.
+        humidity_threshold = kwargs.get("humidityThreshold")
+        if humidity_threshold is not None:
+            self._humidityThreshold = humidity_threshold
+            self.logger.debug(f"Humidity threshold set to {humidity_threshold}.")
 
-            :param device: the device to which this command belongs.
-            :param logger: a logger for this command to use.
-            """
-            self._device = device
-            super().__init__(logger)
-
-        def do(
-            self: MccsFNDH.PortPowerStateCommand,
-            *args: int,
-            **kwargs: Any,
-        ) -> bool:
-            """
-            Stateless hook for device PortPowerStateCommand() command.
-
-            :param args: the port number (1-28)
-            :param kwargs: keyword args to the component manager method
-
-            :return: True if the port is on.
-            """
-            port_id = args[0]
-            attr_name = f"Port{port_id}PowerState"
-            return self._device._fndh_attributes[attr_name.lower()].value
+        return ([ResultCode.OK], ["Configure completed OK"])
 
     @command(dtype_in="DevULong", dtype_out="DevULong")
     def PortPowerState(  # type: ignore[override]
-        self: MccsFNDH, argin: int
+        self: MccsFNDH, port_id: int
     ) -> PowerState:
         """
         Check power state of a port.
 
-        :param argin: the port number (1-28)
+        :param port_id: the port number (1-28)
 
         :return: The power state of the port.
         """
-        handler = self.get_command_object("PortPowerState")
-        return handler(argin)
+        attr_name = f"Port{port_id}PowerState"
+        return self._fndh_attributes[attr_name.lower()].value
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
+    @stb.long_running_commands.long_running_command
     def PowerOnPort(
-        self: MccsFNDH, argin: int
-    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        self: MccsFNDH, port_number: int
+    ) -> stb.type_hints.TaskFunctionType:
         """
         Power up a port.
 
         This may or may not have a Antenna attached.
 
-        :param argin: the port to power up.
+        :param port_number: the port to power up.
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
             only.
         """
-        handler = self.get_command_object("PowerOnPort")
 
-        result_code, message = handler(argin)
-        return ([result_code], [message])
+        def task(
+            task_callback: stb.type_hints.TaskCallbackType,
+            task_abort_event: threading.Event,
+        ) -> None:
+            self.component_manager.power_on_port(
+                port_number=port_number,
+                task_callback=task_callback,
+                task_abort_event=task_abort_event,
+            )
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
+        return task
+
+    @stb.long_running_commands.long_running_command
     def PowerOffPort(
-        self: MccsFNDH, argin: int
-    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        self: MccsFNDH, port_number: int
+    ) -> stb.type_hints.TaskFunctionType:
         """
         Power down a port.
 
         This may or may not have a Antenna attached.
 
-        :param argin: the port to power down.
+        :param port_number: the port to power down.
 
         :return: A tuple containing a return code and a string message
             indicating status. The message is for information purposes
             only.
         """
-        handler = self.get_command_object("PowerOffPort")
-        result_code, message = handler(argin)
-        return ([result_code], [message])
 
-    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+        def task(
+            task_callback: stb.type_hints.TaskCallbackType,
+            task_abort_event: threading.Event,
+        ) -> None:
+            self.component_manager.power_off_port(
+                port_number=port_number,
+                task_callback=task_callback,
+                task_abort_event=task_abort_event,
+            )
+
+        return task
+
+    @stb.long_running_commands.long_running_command
     def SetPortPowers(
         self: MccsFNDH,
         json_argument: str,
-    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+    ) -> stb.type_hints.TaskFunctionType:
         """
         Set port powers.
 
@@ -552,9 +454,18 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             indicating status. The message is for information purposes
             only.
         """
-        handler = self.get_command_object("SetPortPowers")
-        result_code, message = handler(json_argument)
-        return ([result_code], [message])
+
+        def task(
+            task_callback: stb.type_hints.TaskCallbackType,
+            task_abort_event: threading.Event,
+        ) -> None:
+            self.component_manager.set_port_powers(
+                json_argument=json_argument,
+                task_callback=task_callback,
+                task_abort_event=task_abort_event,
+            )
+
+        return task
 
     # -----------
     # Attributes
