@@ -545,7 +545,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         super()._component_state_changed(fault=fault, power=power)
         self._health_model.update_state(fault=fault, power=power)
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches, disable=too-many-statements
     def _pasd_device_state_callback(  # noqa: C901
         self: MccsPasdBus,
         device_id: int,
@@ -614,16 +614,17 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                         tango_attribute_name
                     ].quality = AttrQuality.ATTR_INVALID
                     attributes_marked_invalid.append(tango_attribute_name)
-                    self._pasd_signals[  # pylint: disable=unnecessary-dunder-call
-                        tango_attribute_name
-                    ].__set__(
-                        self,
+                    self.shared_bus.emit(
+                        tango_attribute_name,
                         (
                             self._pasd_state[tango_attribute_name].value,
                             timestamp,
                             AttrQuality.ATTR_INVALID,
                         ),
                     )
+                    self._pasd_signals[tango_attribute_name] = self._pasd_state[
+                        tango_attribute_name
+                    ].value
             if attributes_marked_invalid:
                 self.logger.debug(
                     f"Marking attributes invalid: {attributes_marked_invalid}"
@@ -657,12 +658,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self._pasd_state[tango_attribute_name].value = pasd_attribute_value
             self._pasd_state[tango_attribute_name].quality = AttrQuality.ATTR_VALID
             updated_attributes[tango_attribute_name] = pasd_attribute_value
-            self._pasd_signals[  # pylint: disable=unnecessary-dunder-call
-                tango_attribute_name
-            ].__set__(
-                self,
-                (pasd_attribute_value, timestamp, AttrQuality.ATTR_VALID),
+            self.shared_bus.emit(
+                tango_attribute_name,
+                (
+                    pasd_attribute_value,
+                    timestamp,
+                    AttrQuality.ATTR_VALID,
+                ),
             )
+            self._pasd_signals[tango_attribute_name] = pasd_attribute_value
             if tango_attribute_name.endswith("AlarmFlags") or (
                 device_id == PasdData.FNCC_DEVICE_ID
                 and tango_attribute_name.endswith("FieldNodeNumber")
