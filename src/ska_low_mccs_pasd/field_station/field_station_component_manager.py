@@ -565,6 +565,83 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                     result=(result, message),
                 )
 
+    @check_communicating
+    def set_antenna_masking(
+        self: FieldStationComponentManager,
+        antenna_mask: str,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Set the masking status for antennas across smartboxes.
+
+        :param antenna_mask: JSON string mapping antenna names to masked status,
+            e.g. ``'{"sb01-01": true, "sb03-01": false}'``.
+        :param task_callback: callback to be called when the status of
+            the command changes
+
+        :return: the task status and a human-readable status message
+        """
+        return self.submit_task(
+            self._set_antenna_masking,
+            args=[antenna_mask],
+            task_callback=task_callback,
+        )
+
+    def _set_antenna_masking(
+        self: FieldStationComponentManager,
+        antenna_mask: str,
+        task_callback: Callable,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
+        task_callback(status=TaskStatus.IN_PROGRESS)
+        mask_dict: dict[str, bool] = json.loads(antenna_mask)
+        unrouted = set(mask_dict.keys())
+        failed_result: Optional[tuple[ResultCode, str]] = None
+
+        for smartbox_trl, smartbox_proxy in self._smartbox_proxys.items():
+            if smartbox_proxy._proxy is None:
+                continue
+            smartbox_antennas = set(smartbox_proxy._proxy.antennaNames)
+            subset = {
+                name: masked
+                for name, masked in mask_dict.items()
+                if name in smartbox_antennas
+            }
+            if not subset:
+                continue
+            unrouted -= subset.keys()
+            mask_command = MccsCommandProxy(
+                device_name=smartbox_trl,
+                command_name="SetAntennaMasking",
+                logger=self.logger,
+            )
+            result, message = mask_command(arg=json.dumps(subset), is_lrc=False)
+            if result != ResultCode.OK:
+                failed_result = (result, message)
+                break
+
+        if failed_result is not None:
+            task_callback(status=TaskStatus.FAILED, result=failed_result)
+            return
+
+        if unrouted == set(mask_dict.keys()):
+            msg = f"No antennas found on any smartbox: {sorted(unrouted)}"
+            self.logger.error(msg)
+            task_callback(
+                status=TaskStatus.FAILED,
+                result=(ResultCode.FAILED, msg),
+            )
+            return
+
+        msg = "Antenna masking updated."
+        if unrouted:
+            msg += f" Antennas not found on any smartbox: {sorted(unrouted)}"
+            self.logger.warning(msg)
+        task_callback(
+            status=TaskStatus.COMPLETED,
+            result=(ResultCode.OK, msg),
+        )
+
     def configure(
         self: FieldStationComponentManager,
         task_callback: Optional[Callable] = None,

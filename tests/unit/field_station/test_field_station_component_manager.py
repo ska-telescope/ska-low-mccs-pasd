@@ -433,3 +433,104 @@ class TestFieldStationComponentManager:
                 is_lrc=True,
                 wait_for_result=True,
             )
+
+    @patch(
+        "ska_low_mccs_pasd.field_station."
+        "field_station_component_manager.MccsCommandProxy"
+    )
+    def test_set_antenna_masking(
+        self: TestFieldStationComponentManager,
+        mock_command_cls: unittest.mock.Mock,
+        field_station_component_manager: FieldStationComponentManager,
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test that set_antenna_masking routes to the owning smartbox.
+
+        The mock_smartbox fixture advertises antennaNames=["sb18-01"], so the
+        command should be routed to whichever smartbox proxy first reports that
+        antenna, and MccsCommandProxy should be called with SetAntennaMasking
+        and is_lrc=False.
+
+        :param mock_command_cls: a patched MccsCommandProxy class.
+        :param field_station_component_manager: a FieldStation component manager.
+        :param mock_callbacks: mock callables.
+        """
+        mock_command = unittest.mock.Mock()
+        mock_command_cls.return_value = mock_command
+        mock_command.return_value = (ResultCode.OK, "Antenna masking updated.")
+
+        field_station_component_manager.start_communicating()
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.ESTABLISHED
+        )
+
+        argin = json.dumps({"sb18-01": True})
+        result = field_station_component_manager.set_antenna_masking(
+            argin, mock_callbacks["task"]
+        )
+        assert result == (TaskStatus.QUEUED, "Task queued")
+        time.sleep(0.2)
+
+        mock_command_cls.assert_called_with(
+            device_name=ANY,
+            command_name="SetAntennaMasking",
+            logger=ANY,
+        )
+        actual_arg = json.loads(mock_command.call_args[1]["arg"])
+        assert actual_arg == {"sb18-01": True}
+        assert mock_command.call_args[1]["is_lrc"] is False
+
+        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
+        mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
+        mock_callbacks["task"].assert_call(
+            status=TaskStatus.COMPLETED,
+            result=(ResultCode.OK, "Antenna masking updated."),
+        )
+
+    @patch(
+        "ska_low_mccs_pasd.field_station."
+        "field_station_component_manager.MccsCommandProxy"
+    )
+    def test_set_antenna_masking_unknown_antennas_logs_warning(
+        self: TestFieldStationComponentManager,
+        mock_command_cls: unittest.mock.Mock,
+        field_station_component_manager: FieldStationComponentManager,
+        mock_callbacks: MockCallableGroup,
+        logger: logging.Logger,
+    ) -> None:
+        """
+        Test antennas not found on any smartbox complete successfully with a warning.
+
+        :param mock_command_cls: a patched MccsCommandProxy class.
+        :param field_station_component_manager: a FieldStation component manager.
+        :param mock_callbacks: mock callables.
+        :param logger: a logger for this command to use.
+        """
+        mock_command_cls.return_value = unittest.mock.Mock()
+
+        field_station_component_manager.start_communicating()
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.NOT_ESTABLISHED
+        )
+        mock_callbacks["communication_state"].assert_call(
+            CommunicationStatus.ESTABLISHED
+        )
+
+        argin = json.dumps({"sb99-01": True})
+        result = field_station_component_manager.set_antenna_masking(
+            argin, mock_callbacks["task"]
+        )
+        assert result == (TaskStatus.QUEUED, "Task queued")
+        time.sleep(0.2)
+
+        mock_command_cls.assert_not_called()
+        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
+        mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
+        mock_callbacks["task"].assert_call(
+            status=TaskStatus.FAILED,
+            result=(ResultCode.FAILED, ANY),
+        )
