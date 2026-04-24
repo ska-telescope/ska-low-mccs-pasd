@@ -383,6 +383,57 @@ class MccsSmartBox(MccsBaseDevice):
         result_code, message = handler(port_number)
         return ([result_code], [message])
 
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def SetAntennaMasking(
+        self: MccsSmartBox, argin: str
+    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+        """
+        Set the masking status for antennas on this smartbox.
+
+        Antennas absent from the dict are left unchanged. The local port mask
+        cache is updated immediately so no Init() is required.
+
+        :param argin: JSON string mapping antenna names to masked status,
+            e.g. ``{"sb01-01": true, "sb01-03": false}``.
+            ``true`` means masked (port will not be powered on);
+            ``false`` means unmasked.
+
+        :return: A tuple containing a return code and a string message
+            indicating status. The message is for information purposes
+            only.
+        """
+        antenna_mask: dict[str, bool] = json.loads(argin)
+        unknown = [name for name in antenna_mask if name not in self.AntennaNames]
+        if unknown:
+            self.logger.warning(f"Unknown antennas for this smartbox: {unknown}")
+        valid = {
+            name: masked
+            for name, masked in antenna_mask.items()
+            if name in self.AntennaNames
+        }
+        if valid:
+            self.component_manager.set_antenna_masking(valid)
+            # Recompute the full masked-antennas list and persist to the Tango DB
+            # so that a subsequent Init() restores the same masking state.
+            cm = self.component_manager
+            new_masked = [
+                antenna_name
+                for port, antenna_name in cm._port_to_antenna_map.items()
+                if cm._port_mask[port - 1]
+            ]
+            try:
+                tango.Database().put_device_property(
+                    self.get_name(), {"MaskedAntennas": new_masked}
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                self.logger.warning(
+                    "Failed to persist MaskedAntennas to Tango database"
+                )
+        msg = "Antenna masking updated."
+        if unknown:
+            msg += f" Unknown antennas ignored: {unknown}"
+        return ([ResultCode.OK], [msg])
+
     @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
     def PowerOnPort(
         self: MccsSmartBox, port_number: int
