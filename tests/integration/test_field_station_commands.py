@@ -498,7 +498,7 @@ class TestFieldStationIntegration:
         assert result_codes[0] == ResultCode.QUEUED
 
         change_event_callbacks["field_station_command_status"].assert_change_event(
-            (command_id, "FAILED"), lookahead=4
+            (command_id, "REJECTED"), lookahead=4
         )
 
     def test_configure(

@@ -393,42 +393,52 @@ class MccsSmartBox(MccsBaseDevice):
         Antennas absent from the dict are left unchanged. The local port mask
         cache is updated immediately so no Init() is required.
 
+        Returns ``REJECTED`` if none of the supplied antenna names are known
+        to this smartbox (e.g. all names are unrecognised or the dict is empty).
+
         :param argin: JSON string mapping antenna names to masked status,
             e.g. ``{"sb01-01": true, "sb01-03": false}``.
             ``true`` means masked (port will not be powered on);
             ``false`` means unmasked.
 
         :return: A tuple containing a return code and a string message
-            indicating status. The message is for information purposes
-            only.
+            indicating status. The message is for information purposes only.
+            Returns ``REJECTED`` if no antennas would be masked.
         """
         antenna_mask: dict[str, bool] = json.loads(argin)
         unknown = [name for name in antenna_mask if name not in self.AntennaNames]
         if unknown:
-            self.logger.warning(f"Unknown antennas for this smartbox: {unknown}")
+            self.logger.warning(
+                "Attempting to mask unknown antennas"
+                f" for smartbox {self.SmartBoxNumber}: {unknown}"
+            )
         valid = {
             name: masked
             for name, masked in antenna_mask.items()
             if name in self.AntennaNames
         }
-        if valid:
-            self.component_manager.set_antenna_masking(valid)
-            # Recompute the full masked-antennas list and persist to the Tango DB
-            # so that a subsequent Init() restores the same masking state.
-            cm = self.component_manager
-            new_masked = [
-                antenna_name
-                for port, antenna_name in cm._port_to_antenna_map.items()
-                if cm._port_mask[port - 1]
-            ]
-            try:
-                tango.Database().put_device_property(
-                    self.get_name(), {"MaskedAntennas": new_masked}
-                )
-            except Exception:  # pylint: disable=broad-exception-caught
-                self.logger.warning(
-                    "Failed to persist MaskedAntennas to Tango database"
-                )
+        if not valid:
+            msg = "No antennas would be masked."
+            if unknown:
+                msg += f" Unknown antennas ignored: {unknown}"
+            return ([ResultCode.REJECTED], [msg])
+        self.component_manager.set_antenna_masking(valid)
+        # Recompute the full masked-antennas list and persist to the Tango DB
+        # so that a subsequent Init() restores the same masking state.
+        cm = self.component_manager
+        new_masked = [
+            antenna_name
+            for port, antenna_name in cm._port_to_antenna_map.items()
+            if cm._port_mask[port - 1]
+        ]
+        try:
+            tango.Database().put_device_property(
+                self.get_name(), {"MaskedAntennas": new_masked}
+            )
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            self.logger.warning(
+                f"Failed to persist MaskedAntennas to Tango database: {err}"
+            )
         msg = "Antenna masking updated."
         if unknown:
             msg += f" Unknown antennas ignored: {unknown}"

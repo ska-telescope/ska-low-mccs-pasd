@@ -406,14 +406,17 @@ class MccsFieldStation(MccsBaseDevice):
         Routes each antenna to its owning smartbox and updates the port mask
         cache there immediately, so no Init() is required to pick up the change.
 
+        Returns ``REJECTED`` if none of the supplied antenna names are found
+        on any smartbox (e.g. all names are unrecognised or the dict is empty).
+
         :param argin: JSON string mapping antenna names to masked status,
             e.g. ``'{"sb01-01": true, "sb03-01": false}'``.
             ``true`` means masked (port will not be powered on);
             ``false`` means unmasked.
 
-        :return: A tuple containing a return code and a string
-            message indicating status. The message is for
-            information purpose only.
+        :return: A tuple containing a return code and a string message
+            indicating status. The message is for information purposes only.
+            Returns ``REJECTED`` if no antennas would be masked.
         """
         handler = self.get_command_object("SetAntennaMasking")
         (return_code, message) = handler(argin)

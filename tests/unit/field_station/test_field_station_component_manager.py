@@ -495,7 +495,7 @@ class TestFieldStationComponentManager:
         "ska_low_mccs_pasd.field_station."
         "field_station_component_manager.MccsCommandProxy"
     )
-    def test_set_antenna_masking_unknown_antennas_logs_warning(
+    def test_set_antenna_masking_unknown_antennas_returns_rejected(
         self: TestFieldStationComponentManager,
         mock_command_cls: unittest.mock.Mock,
         field_station_component_manager: FieldStationComponentManager,
@@ -503,7 +503,7 @@ class TestFieldStationComponentManager:
         logger: logging.Logger,
     ) -> None:
         """
-        Test antennas not found on any smartbox complete successfully with a warning.
+        Test antennas not found on any smartbox complete with REJECTED, not FAILED.
 
         :param mock_command_cls: a patched MccsCommandProxy class.
         :param field_station_component_manager: a FieldStation component manager.
@@ -531,6 +531,6 @@ class TestFieldStationComponentManager:
         mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(
-            status=TaskStatus.FAILED,
-            result=(ResultCode.FAILED, ANY),
+            status=TaskStatus.REJECTED,
+            result=(ResultCode.REJECTED, ANY),
         )

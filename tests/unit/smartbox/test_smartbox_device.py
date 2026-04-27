@@ -592,11 +592,11 @@ def test_set_antenna_masking_command_persists_to_db(
     assert call_args_pos[1] == {"MaskedAntennas": ["sb01-01"]}
 
 
-def test_set_antenna_masking_command_unknown_antennas_returns_ok(
+def test_set_antenna_masking_command_unknown_antennas_returns_rejected(
     smartbox_device_with_masked_antennas: tango.DeviceProxy,
 ) -> None:
     """
-    Test that SetAntennaMasking returns OK even when unknown antennas are supplied.
+    Test that SetAntennaMasking returns REJECTED when all supplied antennas are unknown.
 
     :param smartbox_device_with_masked_antennas: a smartbox device with port 2 masked.
     """
@@ -605,8 +605,22 @@ def test_set_antenna_masking_command_unknown_antennas_returns_ok(
             json.dumps({"sb99-99": True})
         )
 
-    assert result[0][0] == ResultCode.OK
+    assert result[0][0] == ResultCode.REJECTED
     assert "sb99-99" in result[1][0]
+
+
+def test_set_antenna_masking_command_empty_input_returns_rejected(
+    smartbox_device_with_masked_antennas: tango.DeviceProxy,
+) -> None:
+    """
+    Test that SetAntennaMasking returns REJECTED when given an empty dict.
+
+    :param smartbox_device_with_masked_antennas: a smartbox device with port 2 masked.
+    """
+    with patch("tango.Database"):
+        result = smartbox_device_with_masked_antennas.SetAntennaMasking(json.dumps({}))
+
+    assert result[0][0] == ResultCode.REJECTED
 
 
 @pytest.fixture(name="change_event_callbacks")

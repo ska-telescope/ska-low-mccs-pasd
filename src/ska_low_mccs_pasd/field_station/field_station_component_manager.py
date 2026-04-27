@@ -574,6 +574,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         """
         Set the masking status for antennas across smartboxes.
 
+        Completes with ``REJECTED`` if none of the supplied antenna names are
+        found on any smartbox.
+
         :param antenna_mask: JSON string mapping antenna names to masked status,
             e.g. ``'{"sb01-01": true, "sb03-01": false}'``.
         :param task_callback: callback to be called when the status of
@@ -625,11 +628,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             return
 
         if unrouted == set(mask_dict.keys()):
-            msg = f"No antennas found on any smartbox: {sorted(unrouted)}"
-            self.logger.error(msg)
+            msg = f"No antennas would be masked: {sorted(unrouted)}"
+            self.logger.warning(msg)
             task_callback(
-                status=TaskStatus.FAILED,
-                result=(ResultCode.FAILED, msg),
+                status=TaskStatus.REJECTED,
+                result=(ResultCode.REJECTED, msg),
             )
             return
 
