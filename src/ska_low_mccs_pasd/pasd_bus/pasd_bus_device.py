@@ -727,9 +727,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         try:
             if self._health_state == health:
                 return
-        except AttributeError:  # Must ensure that health_state is initilised
-            pass
-        self._health_state = health
+            self._health_state = health
+        except AttributeError as err:  # Must ensure that health_state is initilised
+            self.logger.error(f"Health changed failed due to {err}")
 
     # ----------
     # Attributes
