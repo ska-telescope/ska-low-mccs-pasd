@@ -116,12 +116,30 @@ The SMART Box devices support the following commands:
 +------------------------+-----------------------------+-----------------------------------------------------------------------+
 | PowerOffPort           | Port number                 | Request to power off the specified FEM port                           |
 +------------------------+-----------------------------+-----------------------------------------------------------------------+
+| SetAntennaMasking      | JSON antenna-mask dict      | Set the masked status for one or more antennas (see below)            |
++------------------------+-----------------------------+-----------------------------------------------------------------------+
 | SetPortPowers          | See: :ref:`set-port-powers` | Initialise the SMART Box and request the specified port power statuses|
 +------------------------+-----------------------------+-----------------------------------------------------------------------+
 | UpdateThresholdCache   | None                        | Resync the threshold caches from firmware and tango database          |
 +------------------------+-----------------------------+-----------------------------------------------------------------------+
 | ClearThresholdCache    | None                        | Clear the tango DB threshold cache values                             |
 +------------------------+-----------------------------+-----------------------------------------------------------------------+
+
+Antenna masking
+^^^^^^^^^^^^^^^
+
+``SetAntennaMasking`` accepts a JSON string that maps antenna names to a boolean masked status, for
+example::
+
+    '{"sb01-01": true, "sb01-03": false}'
+
+``true`` means the antenna is masked — its port will not be powered on. ``false`` unmasks the
+antenna. Antennas absent from the dict are left unchanged, so partial updates are safe.
+
+The command returns ``REJECTED`` if none of the supplied antenna names are known to this smartbox
+(e.g. all names are unrecognised, or the dict is empty). On success the port mask cache is updated
+immediately and the new ``MaskedAntennas`` list is persisted to the Tango database so that the
+masking state survives the device restarting.
 
 
 Alarm recovery procedure
