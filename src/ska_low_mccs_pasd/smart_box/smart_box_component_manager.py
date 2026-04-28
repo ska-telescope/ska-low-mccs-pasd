@@ -1065,6 +1065,25 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self._port_mask = value
         self._evaluate_power()
 
+    def set_antenna_masking(
+        self: SmartBoxComponentManager,
+        antenna_mask: dict[str, bool],
+    ) -> None:
+        """
+        Update the masking status for specific antennas.
+
+        Antennas absent from the dict are left unchanged.
+
+        :param antenna_mask: mapping of antenna name to masked status
+            (True = masked, False = unmasked).
+        """
+        for antenna_name, masked in antenna_mask.items():
+            if antenna_name in self._port_to_antenna_map.inverse:
+                # pylint: disable-next=unsubscriptable-object
+                port_idx = self._port_to_antenna_map.inverse[antenna_name] - 1
+                self._port_mask[port_idx] = masked
+        self._evaluate_power()
+
     def cleanup(self: SmartBoxComponentManager) -> None:
         """Delete and clean up any remaining processes."""
         if self._pasd_bus_proxy:

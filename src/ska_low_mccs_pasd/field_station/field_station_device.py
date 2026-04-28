@@ -218,6 +218,7 @@ class MccsFieldStation(MccsBaseDevice):
             ("PowerOnAntenna", "power_on_antenna", None),
             ("PowerOffAntenna", "power_off_antenna", None),
             ("Configure", "configure", configure_schema),
+            ("SetAntennaMasking", "set_antenna_masking", None),
         ]:
             validator = (
                 None
@@ -393,6 +394,32 @@ class MccsFieldStation(MccsBaseDevice):
         """
         handler = self.get_command_object("PowerOffAntenna")
         (return_code, message) = handler(antenna_name)
+        return ([return_code], [message])
+
+    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    def SetAntennaMasking(
+        self: MccsFieldStation, argin: str
+    ) -> DevVarLongStringArrayType:
+        """
+        Set the masking status for antennas across this field station.
+
+        Routes each antenna to its owning smartbox and updates the port mask
+        cache there immediately, so no Init() is required to pick up the change.
+
+        Returns ``REJECTED`` if none of the supplied antenna names are found
+        on any smartbox (e.g. all names are unrecognised or the dict is empty).
+
+        :param argin: JSON string mapping antenna names to masked status,
+            e.g. ``'{"sb01-01": true, "sb03-01": false}'``.
+            ``true`` means masked (port will not be powered on);
+            ``false`` means unmasked.
+
+        :return: A tuple containing a return code and a string message
+            indicating status. The message is for information purposes only.
+            Returns ``REJECTED`` if no antennas would be masked.
+        """
+        handler = self.get_command_object("SetAntennaMasking")
+        (return_code, message) = handler(argin)
         return ([return_code], [message])
 
     # ----------

@@ -37,6 +37,8 @@ The following commands are also provided:
 +------------------------+------------------------------+-------------------------------------------------------------------+
 | PowerOffAntenna        | Antenna name, e.g. "sb01-02" | Request to power off the specified antenna                        |
 +------------------------+------------------------------+-------------------------------------------------------------------+
+| SetAntennaMasking      | JSON antenna-mask dict       | Set the masked status for one or more antennas (see below)        |
++------------------------+------------------------------+-------------------------------------------------------------------+
 | Standby                | None                         | Turn on all smartboxes, but leave their ports switched off        |
 +------------------------+------------------------------+-------------------------------------------------------------------+
 | Off                    | None                         | Turn off power to all antennas in the fieldstation                |
@@ -46,6 +48,23 @@ The following commands are also provided:
 
 The names of the antennas take the form of the string "sbxx-yy" where xx represents the smartbox number, and yy represents the
 FEM port number on that smartbox.
+
+Antenna masking
+---------------
+
+``SetAntennaMasking`` accepts a JSON string that maps antenna names to a boolean masked status, for
+example::
+
+    '{"sb01-01": true, "sb03-01": false}'
+
+``true`` means the antenna is masked — its port will not be powered on. ``false`` unmasks the
+antenna. Antennas absent from the dict are left unchanged, so partial updates are safe. The command
+routes each antenna to its owning smartbox automatically; antennas belonging to different smartboxes
+can be included in a single call.
+
+The command returns ``REJECTED`` if none of the supplied antenna names are found on any smartbox
+(e.g. all names are unrecognised, or the dict is empty). Antennas that cannot be routed to any
+smartbox are logged as a warning but do not prevent the rest of the call from succeeding.
 
 
 

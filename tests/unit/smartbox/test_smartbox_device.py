@@ -542,6 +542,87 @@ def test_masked_antennas_device_property(
         assert port_mask[idx], f"Port {idx + 1} has no antenna - should be True"
 
 
+def test_set_antenna_masking_command_updates_port_mask(
+    smartbox_device_with_masked_antennas: tango.DeviceProxy,
+) -> None:
+    """
+    Test that SetAntennaMasking updates portMask immediately.
+
+    Starting state: ports 1 and 3 unmasked, port 2 masked.
+    After calling SetAntennaMasking({"sb01-01": true, "sb01-02": false}):
+    port 1 should become masked, port 2 should become unmasked.
+
+    :param smartbox_device_with_masked_antennas: a smartbox device with port 2 masked.
+    """
+    with patch("tango.Database"):
+        result = smartbox_device_with_masked_antennas.SetAntennaMasking(
+            json.dumps({"sb01-01": True, "sb01-02": False})
+        )
+
+    assert result[0][0] == ResultCode.OK
+
+    port_mask = list(smartbox_device_with_masked_antennas.portMask)
+    assert port_mask[0], "sb01-01 was masked — port 1 should now be True"
+    assert not port_mask[1], "sb01-02 was unmasked — port 2 should now be False"
+    assert not port_mask[2], "sb01-03 was not touched — port 3 should remain False"
+    for idx in range(3, 12):
+        assert port_mask[idx], f"Port {idx + 1} has no antenna — should stay masked"
+
+
+def test_set_antenna_masking_command_persists_to_db(
+    smartbox_device_with_masked_antennas: tango.DeviceProxy,
+) -> None:
+    """
+    Test that SetAntennaMasking writes the updated MaskedAntennas list to the Tango DB.
+
+    Starting state: sb01-02 masked.
+    After masking sb01-01 and unmasking sb01-02, the DB should be updated
+    with MaskedAntennas=["sb01-01"].
+
+    :param smartbox_device_with_masked_antennas: a smartbox device with port 2 masked.
+    """
+    with patch("tango.Database") as mock_db:
+        mock_db_instance = mock_db.return_value
+        smartbox_device_with_masked_antennas.SetAntennaMasking(
+            json.dumps({"sb01-01": True, "sb01-02": False})
+        )
+
+    mock_db_instance.put_device_property.assert_called_once()
+    call_args_pos = mock_db_instance.put_device_property.call_args[0]
+    assert call_args_pos[1] == {"MaskedAntennas": ["sb01-01"]}
+
+
+def test_set_antenna_masking_command_unknown_antennas_returns_rejected(
+    smartbox_device_with_masked_antennas: tango.DeviceProxy,
+) -> None:
+    """
+    Test that SetAntennaMasking returns REJECTED when all supplied antennas are unknown.
+
+    :param smartbox_device_with_masked_antennas: a smartbox device with port 2 masked.
+    """
+    with patch("tango.Database"):
+        result = smartbox_device_with_masked_antennas.SetAntennaMasking(
+            json.dumps({"sb99-99": True})
+        )
+
+    assert result[0][0] == ResultCode.REJECTED
+    assert "sb99-99" in result[1][0]
+
+
+def test_set_antenna_masking_command_empty_input_returns_rejected(
+    smartbox_device_with_masked_antennas: tango.DeviceProxy,
+) -> None:
+    """
+    Test that SetAntennaMasking returns REJECTED when given an empty dict.
+
+    :param smartbox_device_with_masked_antennas: a smartbox device with port 2 masked.
+    """
+    with patch("tango.Database"):
+        result = smartbox_device_with_masked_antennas.SetAntennaMasking(json.dumps({}))
+
+    assert result[0][0] == ResultCode.REJECTED
+
+
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     """

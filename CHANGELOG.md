@@ -1,7 +1,8 @@
 # Version History
 
-## Unreleased
+## 5.2.0
 
+* [THORN-427] Add MccsSmartbox.SetAntennaMasking, FieldStation.SetAntennaMasking. Both accept a json dict `{"sb01-01: True, "sb01-12": False}`, the FieldStation command will accept changing antenna masking on multiple smartboxes. It updates the local cache and the tangoDB, so the mask will persist and be updated without calling Init().
 * [THORN-490] Updating field station default health thresholds
 * [THORN-424] Add MccsSmartbox.MaskedAntennas property populated by helmfile templates at deploy time.
 

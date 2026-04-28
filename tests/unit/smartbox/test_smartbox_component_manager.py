@@ -597,6 +597,111 @@ class TestSmartBoxComponentManager:
                 ], f"Port {port_idx + 1} (no antenna) should always be masked"
 
     @pytest.mark.parametrize(
+        ("initial_masked", "update", "expected_mask_for_ports_1_to_3"),
+        [
+            pytest.param(
+                [],
+                {"sb01-01": True},
+                [True, False, False],
+                id="mask-unmasked-antenna",
+            ),
+            pytest.param(
+                ["sb01-02"],
+                {"sb01-02": False},
+                [False, False, False],
+                id="unmask-masked-antenna",
+            ),
+            pytest.param(
+                ["sb01-03"],
+                {"sb01-01": True, "sb01-03": False},
+                [True, False, False],
+                id="mixed-mask-and-unmask",
+            ),
+            pytest.param(
+                ["sb01-02"],
+                {"sb01-01": True},
+                [True, True, False],
+                id="unspecified-antenna-unchanged",
+            ),
+        ],
+    )
+    def test_set_antenna_masking_updates_port_mask(
+        self: TestSmartBoxComponentManager,
+        logger: logging.Logger,
+        mock_callbacks: MockCallableGroup,
+        initial_masked: list[str],
+        update: dict[str, bool],
+        expected_mask_for_ports_1_to_3: list[bool],
+    ) -> None:
+        """
+        Test that set_antenna_masking correctly updates _port_mask.
+
+        :param logger: a logger for this command to use.
+        :param mock_callbacks: mock callables.
+        :param initial_masked: antenna names initially masked.
+        :param update: the masking update to apply.
+        :param expected_mask_for_ports_1_to_3: expected mask values for ports 1-3.
+        """
+        cm = SmartBoxComponentManager(
+            logger,
+            mock_callbacks["communication_state"],
+            mock_callbacks["component_state"],
+            mock_callbacks["attribute_update"],
+            1,
+            "sb01",
+            SMARTBOX_PORTS,
+            "low-mccs/pasdbus/001",
+            [1, 2, 3],
+            ["sb01-01", "sb01-02", "sb01-03"],
+            1,
+            masked_antennas=initial_masked,
+            _pasd_bus_proxy=unittest.mock.Mock(),
+        )
+
+        cm.set_antenna_masking(update)
+
+        for port_idx, expected in enumerate(expected_mask_for_ports_1_to_3):
+            assert cm._port_mask[port_idx] == expected, (
+                f"Port {port_idx + 1}: expected masked={expected}, "
+                f"got {cm._port_mask[port_idx]}"
+            )
+        for port_idx in range(3, SMARTBOX_PORTS):
+            assert cm._port_mask[
+                port_idx
+            ], f"Port {port_idx + 1} (no antenna) should remain masked"
+
+    def test_set_antenna_masking_ignores_unknown_antennas(
+        self: TestSmartBoxComponentManager,
+        logger: logging.Logger,
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test that set_antenna_masking silently ignores antennas not on this smartbox.
+
+        :param logger: a logger for this command to use.
+        :param mock_callbacks: mock callables.
+        """
+        cm = SmartBoxComponentManager(
+            logger,
+            mock_callbacks["communication_state"],
+            mock_callbacks["component_state"],
+            mock_callbacks["attribute_update"],
+            1,
+            "sb01",
+            SMARTBOX_PORTS,
+            "low-mccs/pasdbus/001",
+            [1, 2, 3],
+            ["sb01-01", "sb01-02", "sb01-03"],
+            1,
+            _pasd_bus_proxy=unittest.mock.Mock(),
+        )
+        original_mask = list(cm._port_mask)
+
+        cm.set_antenna_masking({"sb99-01": True, "sb99-02": False})
+
+        assert cm._port_mask == original_mask
+
+    @pytest.mark.parametrize(
         (
             "component_manager_command",
             "masked_ports",

@@ -312,6 +312,195 @@ class TestFieldStationIntegration:
             scaled_outside_temperature, lookahead=2
         )
 
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_set_antenna_masking(
+        self: TestFieldStationIntegration,
+        field_station_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+        smartbox_proxys: list[tango.DeviceProxy],
+        antenna_to_turn_on: str,
+    ) -> None:
+        """
+        Test that SetAntennaMasking updates the SmartBox portMask immediately.
+
+        :param field_station_device: proxy to the field station device
+        :param pasd_bus_device: proxy to the PaSD bus device
+        :param change_event_callbacks: group of Tango change event callbacks
+        :param smartbox_proxys: proxies to the smartbox devices
+        :param antenna_to_turn_on: an antenna name known to exist in the test config
+        """
+        chosen_smartbox_id = int(antenna_to_turn_on.split("-")[0][2:])
+        chosen_port = int(antenna_to_turn_on.split("-")[1])
+        chosen_smartbox = smartbox_proxys[chosen_smartbox_id - 1]
+
+        # Bring PaSD bus online
+        pasd_bus_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasd_bus_state"],
+        )
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
+        pasd_bus_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
+        pasd_bus_device.initializefndh()
+        for i in range(1, len(smartbox_proxys) + 1):
+            pasd_bus_device.initializesmartbox(i)
+
+        # Bring SmartBoxes online
+        for smartbox_id, smartbox in enumerate(smartbox_proxys):
+            smartbox.subscribe_event(
+                "state",
+                tango.EventType.CHANGE_EVENT,
+                change_event_callbacks[f"smartbox{smartbox_id + 1}_state"],
+            )
+            change_event_callbacks[
+                f"smartbox{smartbox_id + 1}_state"
+            ].assert_change_event(Anything)
+            smartbox.adminMode = AdminMode.ONLINE
+            change_event_callbacks[
+                f"smartbox{smartbox_id + 1}_state"
+            ].assert_change_event(tango.DevState.UNKNOWN)
+            change_event_callbacks[
+                f"smartbox{smartbox_id + 1}_state"
+            ].assert_change_event(Anything)
+
+        # Bring FieldStation online
+        field_station_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["field_station_state"],
+        )
+        change_event_callbacks["field_station_state"].assert_change_event(Anything)
+        field_station_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.STANDBY, lookahead=2
+        )
+
+        # Subscribe to LRC status
+        field_station_device.subscribe_event(
+            "longRunningCommandStatus",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["field_station_command_status"],
+        )
+        change_event_callbacks["field_station_command_status"].assert_change_event(
+            Anything
+        )
+
+        # Confirm the port is initially unmasked
+        assert not list(chosen_smartbox.portMask)[
+            chosen_port - 1
+        ], f"Port {chosen_port} of smartbox {chosen_smartbox_id} should start unmasked"
+
+        # Mask the antenna via FieldStation
+        [result_codes, [command_id]] = field_station_device.SetAntennaMasking(
+            json.dumps({antenna_to_turn_on: True})
+        )
+        assert result_codes[0] == ResultCode.QUEUED
+
+        change_event_callbacks["field_station_command_status"].assert_change_event(
+            (command_id, "COMPLETED"), lookahead=4
+        )
+
+        # Verify the SmartBox portMask reflects the change
+        assert list(chosen_smartbox.portMask)[
+            chosen_port - 1
+        ], f"Port {chosen_port} of smartbox {chosen_smartbox_id} should now be masked"
+
+    def test_set_antenna_masking_unknown_antenna_fails(
+        self: TestFieldStationIntegration,
+        field_station_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+        smartbox_proxys: list[tango.DeviceProxy],
+    ) -> None:
+        """
+        Test that SetAntennaMasking fails when no antenna names are recognised.
+
+        :param field_station_device: proxy to the field station device
+        :param pasd_bus_device: proxy to the PaSD bus device
+        :param change_event_callbacks: group of Tango change event callbacks
+        :param smartbox_proxys: proxies to the smartbox devices
+        """
+        # Bring PaSD bus online
+        pasd_bus_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["pasd_bus_state"],
+        )
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.DISABLE
+        )
+        pasd_bus_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks["pasd_bus_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
+        pasd_bus_device.initializefndh()
+        for i in range(1, len(smartbox_proxys) + 1):
+            pasd_bus_device.initializesmartbox(i)
+
+        # Bring SmartBoxes online
+        for smartbox_id, smartbox in enumerate(smartbox_proxys):
+            smartbox.subscribe_event(
+                "state",
+                tango.EventType.CHANGE_EVENT,
+                change_event_callbacks[f"smartbox{smartbox_id + 1}_state"],
+            )
+            change_event_callbacks[
+                f"smartbox{smartbox_id + 1}_state"
+            ].assert_change_event(Anything)
+            smartbox.adminMode = AdminMode.ONLINE
+            change_event_callbacks[
+                f"smartbox{smartbox_id + 1}_state"
+            ].assert_change_event(tango.DevState.UNKNOWN)
+            change_event_callbacks[
+                f"smartbox{smartbox_id + 1}_state"
+            ].assert_change_event(Anything)
+
+        # Bring FieldStation online
+        field_station_device.subscribe_event(
+            "state",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["field_station_state"],
+        )
+        change_event_callbacks["field_station_state"].assert_change_event(Anything)
+        field_station_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["field_station_state"].assert_change_event(
+            tango.DevState.STANDBY, lookahead=2
+        )
+
+        # Subscribe to LRC status
+        field_station_device.subscribe_event(
+            "longRunningCommandStatus",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["field_station_command_status"],
+        )
+        change_event_callbacks["field_station_command_status"].assert_change_event(
+            Anything
+        )
+
+        # Call with an antenna that does not exist on any smartbox
+        [result_codes, [command_id]] = field_station_device.SetAntennaMasking(
+            json.dumps({"sb99-99": True})
+        )
+        assert result_codes[0] == ResultCode.QUEUED
+
+        change_event_callbacks["field_station_command_status"].assert_change_event(
+            (command_id, "REJECTED"), lookahead=4
+        )
+
     def test_configure(
         self: TestFieldStationIntegration,
         field_station_device: tango.DeviceProxy,
