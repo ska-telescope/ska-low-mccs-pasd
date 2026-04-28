@@ -93,10 +93,13 @@ class MccsSmartBox(MccsBaseDevice):
         dtype=bool,
         default_value=True,
     )
-    FaultOnThresholdDifference: Final = device_property(
-        doc="Put the device in DevState FAULT if firmware and Tango thresholds differ.",
-        dtype=bool,
-        default_value=True,
+    ThresholdTolerance: Final = device_property(
+        doc=(
+            "Absolute tolerance when comparing firmware and Tango threshold values. "
+            "Differences within this tolerance are not considered a mismatch."
+        ),
+        dtype=float,
+        default_value=0.05,
     )
 
     CONFIG: Final[ControllerDict] = PasdControllersConfig.get_smartbox()
@@ -167,7 +170,7 @@ class MccsSmartBox(MccsBaseDevice):
             f"\tMaskedAntennas: {self.MaskedAntennas}\n"
             f"\tFndhPort: {self.FndhPort}\n"
             f"\tUseAttributesForHealth: {self.UseAttributesForHealth}\n"
-            f"\tFaultOnThresholdDifference: {self.FaultOnThresholdDifference}\n"
+            f"\tThresholdTolerance: {self.ThresholdTolerance}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -804,7 +807,7 @@ class MccsSmartBox(MccsBaseDevice):
                     self.logger.error(
                         f"Mismatch between firmware and tango thresholds: {diff}"
                     )
-                    self.threshold_fault = bool(self.FaultOnThresholdDifference)
+                    self.threshold_fault = True
                     self._component_state_callback()
 
     # pylint: disable=too-many-branches, disable=too-many-statements
@@ -885,7 +888,7 @@ class MccsSmartBox(MccsBaseDevice):
                         self.logger.error(
                             f"Mismatch between firmware and tango thresholds: {diff}"
                         )
-                        self.threshold_fault = bool(self.FaultOnThresholdDifference)
+                        self.threshold_fault = True
                     else:
                         if self.op_state_model._op_state == tango.DevState.UNKNOWN:
                             self.threshold_fault = None
@@ -945,7 +948,10 @@ class MccsSmartBox(MccsBaseDevice):
                 assert isinstance(thresholds_tango, numpy.ndarray)
                 thresholds_tango = thresholds_tango.tolist()
             for i, _ in enumerate(thresholds_tango):
-                if float(thresholds_pasd[i]) != float(thresholds_tango[i]):
+                if (
+                    abs(float(thresholds_pasd[i]) - float(thresholds_tango[i]))
+                    > self.ThresholdTolerance
+                ):
                     float_pasd = [float(x) for x in thresholds_pasd]
                     float_tango = [float(x) for x in thresholds_tango]
                     differences[name] = f"tango:{float_tango} != pasd:{float_pasd}"

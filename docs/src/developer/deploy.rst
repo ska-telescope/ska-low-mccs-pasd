@@ -87,7 +87,7 @@ MccsFNDH
 - **PasdFQDN**: Tango FQDN of the associated PaSD bus device
 - **PortsWithSmartbox**: List of FNDH ports that have an associated smartbox
 - **UseAttributesForHealth**: Set to ``True`` to use attribute quality factor in health evaluation
-- **FaultOnThresholdDifference**: Set to ``True`` to to turn on setting the device to Fault when there is a mismatch between firmware and Tango thresholds
+- **ThresholdTolerance**: Absolute tolerance for threshold comparisons. Differences within this value are not considered a mismatch
 
 MccsSmartbox
 ~~~~~~~~~~~~
@@ -99,13 +99,13 @@ MccsSmartbox
 - **AntennaNames**: List of antenna names attached to ports
 - **FndhPort**: FNDH port number this smartbox is connected to
 - **UseAttributesForHealth**: Set to ``True`` to use attribute quality factor in health evaluation
-- **FaultOnThresholdDifference**: Set to ``True`` to to turn on setting the device to Fault when there is a mismatch between firmware and Tango thresholds
+- **ThresholdTolerance**: Absolute tolerance for threshold comparisons. Differences within this value are not considered a mismatch
 
 MccsFncc
 ~~~~~~~~
 
 - **PasdFQDN**: Tango FQDN of the associated PaSD bus device
-  
+
 MccsFieldStation
 ~~~~~~~~~~~~~~~~
 
@@ -304,7 +304,7 @@ There are two keys:
 Direct deployment of helm charts
 --------------------------------
 The `ska-low-mccs-pasd` helm chart uses `ska-tango-devices`
-to configure and deploy its Tango devices. 
+to configure and deploy its Tango devices.
 For details on `ska-tango-devices`,
 see its `README <hhttps://gitlab.com/ska-telescope/ska-tango-devices/-/blob/main/README.md>`_
 
