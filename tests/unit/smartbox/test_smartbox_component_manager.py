@@ -712,7 +712,7 @@ class TestSmartBoxComponentManager:
             (
                 "set_port_powers",
                 [1, 4, 5],
-                (TaskStatus.QUEUED, "Task queued"),
+                ([ResultCode.OK], ["Mock information-only message"]),
                 (
                     TaskStatus.COMPLETED,
                     (ResultCode.OK, "Set port powers success"),
@@ -777,7 +777,6 @@ class TestSmartBoxComponentManager:
         assert pasd_bus_proxy
         pasd_bus_proxy.SetSmartboxPortPowers.assert_next_call(json_argument)
 
-        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(
             status=command_tracked_response[0],
@@ -795,13 +794,13 @@ class TestSmartBoxComponentManager:
             (
                 "turn_on_port",
                 3,
-                (TaskStatus.QUEUED, "Task queued"),
+                ([ResultCode.OK], ["Mock information-only message"]),
                 (ResultCode.OK, f"Power on port '{3} success'"),
             ),
             (
                 "turn_off_port",
                 3,
-                (TaskStatus.QUEUED, "Task queued"),
+                ([ResultCode.OK], ["Mock information-only message"]),
                 (ResultCode.OK, f"Power off port '{3} success'"),
             ),
         ],
@@ -865,7 +864,6 @@ class TestSmartBoxComponentManager:
             )
             == expected_manager_result
         )
-        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(
             status=TaskStatus.COMPLETED, result=command_tracked_response
@@ -884,14 +882,14 @@ class TestSmartBoxComponentManager:
                 "turn_on_port",
                 3,
                 "SetSmartboxPortPowers",
-                (TaskStatus.QUEUED, "Task queued"),
+                (ResultCode.FAILED, "0"),
                 (ResultCode.FAILED, f"Power on port '{3} failed'"),
             ),
             (
                 "turn_off_port",
                 3,
                 "SetSmartboxPortPowers",
-                (TaskStatus.QUEUED, "Task queued"),
+                (ResultCode.FAILED, "0"),
                 (ResultCode.FAILED, f"Power off port '{3} failed'"),
             ),
         ],
@@ -966,7 +964,6 @@ class TestSmartBoxComponentManager:
             == expected_manager_result
         )
 
-        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(
             status=TaskStatus.FAILED, result=command_tracked_response
