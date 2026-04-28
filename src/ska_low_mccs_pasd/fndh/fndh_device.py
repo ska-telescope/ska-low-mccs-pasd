@@ -268,21 +268,21 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     # ----------
     @stb.long_running_commands.submit_lrc_task
     def execute_On(self) -> stb.type_hints.TaskFunctionType:
-        """Put the FNDH ON.
-
-        :return: A tuple containing a return code and a string message
-            indicating status.
         """
-        return self.component_manager.on
+        Execute the On command.
+
+        :return: the callable function.
+        """
+        return self.component_manager.do_on
 
     @stb.long_running_commands.submit_lrc_task
     def execute_Standby(self) -> stb.type_hints.TaskFunctionType:
-        """Put the FNDH into STANDBY.
-
-        :return: A tuple containing a return code and a string message
-            indicating status.
         """
-        return self.component_manager.standby
+        Execute the Standby command.
+
+        :return: the callable function.
+        """
+        return self.component_manager.do_standby
 
     @command(
         dtype_out="DevVarLongStringArray",

@@ -468,7 +468,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         return ResultCode.OK, timeout
 
     @check_communicating
-    def on(  # type: ignore[override]
+    def do_on(
         self: FndhComponentManager,
         task_callback: Optional[Callable] = None,
     ) -> None:
@@ -483,7 +483,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
         )
 
     @check_communicating
-    def standby(  # type: ignore[override]
+    def do_standby(
         self: FndhComponentManager,
         task_callback: Optional[Callable] = None,
     ) -> None:
