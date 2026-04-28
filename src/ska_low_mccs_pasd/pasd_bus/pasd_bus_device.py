@@ -29,6 +29,7 @@ from ska_control_model import (
 from ska_low_mccs_common import MccsBaseDevice
 from ska_low_pasd_driver.pasd_bus_register_map import DesiredPowerEnum
 from ska_tango_base.commands import DeviceInitCommand, FastCommand, JsonValidator
+from ska_tango_base.software_bus import AttrSignal, attribute_from_signal
 from tango import AttrQuality
 from tango.device_attribute import ExtractAs
 from tango.server import command
@@ -174,6 +175,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self.connected_smartboxes = self.AvailableSmartboxes
 
         self._pasd_state: dict[str, PasdAttribute] = {}
+        self._pasd_signals: dict[str, AttrSignal] = {}
         for key, controller in PasdData.CONTROLLERS_CONFIG.items():
             if key == "FNSC":
                 for smartbox_number in self.AvailableSmartboxes:
@@ -303,7 +305,10 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             read_once=read_once,
             tango_attribute_name=attribute_name,
         )
-        attr = tango.server.attribute(
+        signal: AttrSignal = AttrSignal(name=attribute_name)
+        self._pasd_signals[attribute_name] = signal
+        attr = attribute_from_signal(
+            signal,
             name=attribute_name,
             dtype=data_type,
             access=access,
@@ -317,9 +322,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()
-        self._health_state = HealthState.UNKNOWN  # InitCommand.do() does this too late.
         self._health_model = PasdBusHealthModel(self._health_changed)
-        self.set_change_event("healthState", True, False)
 
     def _set_all_low_pass_filters_of_device(
         self: MccsPasdBus, pasd_device_number: int
@@ -542,7 +545,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         super()._component_state_changed(fault=fault, power=power)
         self._health_model.update_state(fault=fault, power=power)
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches, disable=too-many-statements
     def _pasd_device_state_callback(  # noqa: C901
         self: MccsPasdBus,
         device_id: int,
@@ -611,12 +614,17 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                         tango_attribute_name
                     ].quality = AttrQuality.ATTR_INVALID
                     attributes_marked_invalid.append(tango_attribute_name)
-                    self.push_change_event(
+                    self.shared_bus.emit(
                         tango_attribute_name,
-                        self._pasd_state[tango_attribute_name].value,
-                        timestamp,
-                        AttrQuality.ATTR_INVALID,
+                        (
+                            self._pasd_state[tango_attribute_name].value,
+                            timestamp,
+                            AttrQuality.ATTR_INVALID,
+                        ),
                     )
+                    self._pasd_signals[tango_attribute_name] = self._pasd_state[
+                        tango_attribute_name
+                    ].value
             if attributes_marked_invalid:
                 self.logger.debug(
                     f"Marking attributes invalid: {attributes_marked_invalid}"
@@ -650,12 +658,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self._pasd_state[tango_attribute_name].value = pasd_attribute_value
             self._pasd_state[tango_attribute_name].quality = AttrQuality.ATTR_VALID
             updated_attributes[tango_attribute_name] = pasd_attribute_value
-            self.push_change_event(
+            self.shared_bus.emit(
                 tango_attribute_name,
-                pasd_attribute_value,
-                timestamp,
-                AttrQuality.ATTR_VALID,
+                (
+                    pasd_attribute_value,
+                    timestamp,
+                    AttrQuality.ATTR_VALID,
+                ),
             )
+            self._pasd_signals[tango_attribute_name] = pasd_attribute_value
             if tango_attribute_name.endswith("AlarmFlags") or (
                 device_id == PasdData.FNCC_DEVICE_ID
                 and tango_attribute_name.endswith("FieldNodeNumber")
@@ -711,10 +722,14 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
         :param health: the new health value
         """
-        if self._health_state != health:
+        # healthState is defined as an attribute_from_signal in the base classes.
+        # Setting this signal will push change and archive events automatically.
+        try:
+            if self._health_state == health:
+                return
             self._health_state = health
-            self.push_change_event("healthState", health)
-            self.push_archive_event("healthState", health)
+        except AttributeError as err:  # Must ensure that health_state is initilised
+            self.logger.error(f"Health changed failed due to {err}")
 
     # ----------
     # Attributes
