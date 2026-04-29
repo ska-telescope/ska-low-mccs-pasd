@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 import unittest.mock
 from datetime import datetime, timezone
@@ -322,16 +323,16 @@ class TestSmartBoxComponentManager:
         ),
         [
             (
-                "on",
-                (TaskStatus.QUEUED, "Task queued"),
+                "do_on",
+                None,
                 (
                     TaskStatus.COMPLETED,
                     (ResultCode.OK, "Power on smartbox '{fndh_port} OK'"),
                 ),
             ),
             (
-                "off",
-                (TaskStatus.QUEUED, "Task queued"),
+                "do_off",
+                None,
                 (
                     TaskStatus.COMPLETED,
                     (ResultCode.OK, "Power off smartbox '{fndh_port} OK'"),
@@ -363,7 +364,7 @@ class TestSmartBoxComponentManager:
         :param mock_pasdbus: the mock PaSD bus that is set in the test harness
         """
         # make all other ports the opposite.
-        mock_setup = [component_manager_command == "on"] * 28
+        mock_setup = [component_manager_command == "do_on"] * 28
         mock_setup[fndh_port - 1] = not mock_setup[fndh_port - 1]
         mock_pasdbus.configure_mock(fndhPortsPowerSensed=mock_setup)
         smartbox_component_manager.start_communicating()
@@ -375,37 +376,42 @@ class TestSmartBoxComponentManager:
         )
         smartbox_component_manager._on_smartbox_ports_power_changed(
             "portspowersensed",
-            [component_manager_command != "on"] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+            [component_manager_command != "do_on"] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
             tango.AttrQuality.ATTR_VALID,
         )
         mock_callbacks["component_state"].assert_call(
             power=(
-                PowerState.OFF if component_manager_command == "on" else PowerState.ON
+                PowerState.OFF
+                if component_manager_command == "do_on"
+                else PowerState.ON
             ),
             lookahead=3,
             consume_nonmatches=True,
         )
 
-        assert (
-            getattr(smartbox_component_manager, component_manager_command)(
-                mock_callbacks["task"]
-            )
-            == expected_manager_result
+        # do_on/do_off block waiting for hardware events, so run in a background
+        # thread and drive the event simulation from the main thread.
+        cmd_thread = threading.Thread(
+            target=getattr(smartbox_component_manager, component_manager_command),
+            kwargs={"task_callback": mock_callbacks["task"]},
+            daemon=True,
         )
-        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
+        cmd_thread.start()
+
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
 
         # Once the command has started, smartbox waits for fndh ports to change state.
         # Let's pretend that happened.
         smartbox_component_manager._on_fndh_ports_power_changed(
             "fndhportspowersensed",
-            [component_manager_command == "on"] * PasdData.NUMBER_OF_FNDH_PORTS,
+            [component_manager_command == "do_on"] * PasdData.NUMBER_OF_FNDH_PORTS,
             tango.AttrQuality.ATTR_VALID,
         )
-        desired_smartbox_powers = [
-            component_manager_command != "on"
-        ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
-        if component_manager_command == "on":
+
+        if component_manager_command == "do_on":
+            # do_on also waits for smartbox ports to reach the desired state.
+            time.sleep(0.1)  # let the thread advance to the smartbox ports wait
+            desired_smartbox_powers = [False] * PasdData.NUMBER_OF_SMARTBOX_PORTS
             for port in smartbox_component_manager._ports_with_antennas:
                 desired_smartbox_powers[port - 1] = True
             smartbox_component_manager._on_smartbox_ports_power_changed(
@@ -421,6 +427,8 @@ class TestSmartBoxComponentManager:
                 command_tracked_response[1][1].format(fndh_port=fndh_port),
             ),
         )
+        cmd_thread.join(timeout=10)
+        assert not cmd_thread.is_alive()
 
     @pytest.mark.parametrize(
         ("initial_state"),
@@ -470,9 +478,15 @@ class TestSmartBoxComponentManager:
             consume_nonmatches=True,
         )
 
-        smartbox_component_manager.standby(task_callback=mock_callbacks["task"])
+        # do_standby blocks waiting for hardware events, so run in a background
+        # thread and drive the event simulation from the main thread.
+        cmd_thread = threading.Thread(
+            target=smartbox_component_manager.do_standby,
+            kwargs={"task_callback": mock_callbacks["task"]},
+            daemon=True,
+        )
+        cmd_thread.start()
 
-        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
 
         # Once the task has started, the smartbox will expect to receive change events
@@ -508,6 +522,8 @@ class TestSmartBoxComponentManager:
             }
         )
 
+        # Let the thread advance to the smartbox ports wait before checking and firing.
+        time.sleep(0.1)
         # We have checked the PasdBus is sent the correct command, lets now assume
         # it did the correct thing and we get the correct change event.
         mock_pasdbus.SetSmartboxPortPowers.assert_next_call(expected_smartbox_powers)
@@ -529,6 +545,8 @@ class TestSmartBoxComponentManager:
                 f"Power smartbox '{fndh_port} to standby OK'",
             ),
         )
+        cmd_thread.join(timeout=10)
+        assert not cmd_thread.is_alive()
 
         # And after all is said and done, the component manager should be in STANDBY.
         assert smartbox_component_manager._power_state == PowerState.STANDBY
