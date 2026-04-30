@@ -207,6 +207,7 @@ class TestFieldStationHealth:
             )
 
     # flake8: noqa
+    @pytest.mark.timeout(180)
     def test_health_aggregation(
         self: TestFieldStationHealth,
         field_station_device: tango.DeviceProxy,
