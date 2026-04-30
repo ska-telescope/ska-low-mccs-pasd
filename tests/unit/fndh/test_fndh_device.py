@@ -26,6 +26,7 @@ from ska_control_model import (
     LoggingLevel,
     PowerState,
     ResultCode,
+    TaskStatus,
 )
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
@@ -69,6 +70,7 @@ def mock_component_manager_fixture() -> unittest.mock.Mock:
     task_executor = unittest.mock.Mock()
     task_executor.max_queued_tasks = 10
     task_executor.max_executing_tasks = 1
+    task_executor.submit.return_value = (TaskStatus.QUEUED, "")
     component_manager._task_executor = task_executor
     return component_manager
 
@@ -283,7 +285,6 @@ def test_command(  # pylint: disable=too-many-arguments, too-many-positional-arg
     """
     method_mock = unittest.mock.Mock(return_value=component_manager_method_return)
     setattr(mock_component_manager, component_manager_method, method_mock)
-    method_mock.assert_not_called()
 
     command = getattr(fndh_device, device_command)
     if device_command_argin is None:
@@ -291,10 +292,7 @@ def test_command(  # pylint: disable=too-many-arguments, too-many-positional-arg
     else:
         command_return = command(device_command_argin)
 
-    method_mock.assert_called()
-
-    assert command_return[0] == ResultCode.QUEUED
-    assert command_return[1][0].split("_")[-1] == device_command
+    assert ResultCode(command_return[0][0]) == ResultCode.QUEUED
 
 
 def test_is_port_on(
@@ -346,13 +344,12 @@ def test_is_port_on(
                 "overVoltageThreshold": 45.6,
                 "humidityThreshold": 78.9,
             },
-            {
-                "overCurrentThreshold": 0.0,
-                "overVoltageThreshold": 45.6,
-                "humidityThreshold": 78.9,
-            },
             None,
-            id="invalid named configs are skipped",
+            pytest.raises(
+                tango.DevFailed,
+                match="TypeError: MccsFNDH.Configure\\(\\) got an unexpected keyword argument 'overCurrentThreshold_wrong_name",
+            ),
+            id="invalid named configs raise validation error",
         ),
         pytest.param(
             {

@@ -15,6 +15,7 @@ from typing import Any, Final, Optional, cast
 
 import numpy as np
 import ska_tango_base as stb
+from jsonschema import validate
 from ska_control_model import (
     AdminMode,
     CommunicationStatus,
@@ -347,7 +348,6 @@ class MccsFieldStation(MccsBaseDevice):
         },
     }
 
-    @stb.validators.validate_json_args
     @stb.long_running_commands.long_running_command
     def Configure(
         self: MccsFieldStation,
@@ -365,6 +365,7 @@ class MccsFieldStation(MccsBaseDevice):
             message indicating status. The message is for
             information purpose only.
         """
+        validate(json.loads(configure_args), self.Configure_schema)
 
         def task(
             task_callback: stb.type_hints.TaskCallbackType,

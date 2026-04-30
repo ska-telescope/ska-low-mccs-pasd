@@ -21,6 +21,7 @@ from typing import Any, Callable, Final, Optional, cast
 import numpy
 import ska_tango_base as stb
 import tango
+from jsonschema import validate
 from ska_control_model import (
     AdminMode,
     CommunicationStatus,
@@ -542,7 +543,6 @@ class MccsSmartBox(MccsBaseDevice):
         "required": ["port_powers"],
     }
 
-    @stb.validators.validate_json_args
     @stb.long_running_commands.long_running_command
     def SetPortPowers(
         self: MccsSmartBox,
@@ -559,6 +559,7 @@ class MccsSmartBox(MccsBaseDevice):
             indicating status. The message is for information purposes
             only.
         """
+        validate(json.loads(json_argument), self.SetPortPowers_SCHEMA)
 
         def task(
             task_callback: stb.type_hints.TaskCallbackType,

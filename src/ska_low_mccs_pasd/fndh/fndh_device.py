@@ -335,7 +335,9 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
     def Configure(
         self: MccsFNDH,
-        kwargs: dict[str, float],
+        overCurrentThreshold: Optional[float] = None,
+        overVoltageThreshold: Optional[float] = None,
+        humidityThreshold: Optional[float] = None,
     ) -> DevVarLongStringArrayType:
         """
         Configure the Fndh device attributes.
@@ -346,24 +348,17 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             message indicating status. The message is for
             information purpose only.
         """
-        over_current_threshold = kwargs.get("overCurrentThreshold")
-        if over_current_threshold is not None:
-            self._overCurrentThreshold = over_current_threshold
-            self.logger.debug(
-                f"Over-current threshold set to {over_current_threshold}."
-            )
+        if overCurrentThreshold is not None:
+            self._overCurrentThreshold = overCurrentThreshold
+            self.logger.debug(f"Over-current threshold set to {overCurrentThreshold}.")
 
-        over_voltage_threshold = kwargs.get("overVoltageThreshold")
-        if over_voltage_threshold is not None:
-            self._overVoltageThreshold = over_voltage_threshold
-            self.logger.debug(
-                f"Over-voltage threshold set to {over_voltage_threshold}."
-            )
+        if overVoltageThreshold is not None:
+            self._overVoltageThreshold = overVoltageThreshold
+            self.logger.debug(f"Over-voltage threshold set to {overVoltageThreshold}.")
 
-        humidity_threshold = kwargs.get("humidityThreshold")
-        if humidity_threshold is not None:
-            self._humidityThreshold = humidity_threshold
-            self.logger.debug(f"Humidity threshold set to {humidity_threshold}.")
+        if humidityThreshold is not None:
+            self._humidityThreshold = humidityThreshold
+            self.logger.debug(f"Humidity threshold set to {humidityThreshold}.")
 
         return ([ResultCode.OK], ["Configure completed OK"])
 
