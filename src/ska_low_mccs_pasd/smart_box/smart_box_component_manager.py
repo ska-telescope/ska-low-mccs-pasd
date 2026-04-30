@@ -637,11 +637,13 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     def do_on(
         self: SmartBoxComponentManager,
         task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
     ) -> None:
         """
         Turn the Smartbox on.
 
         :param task_callback: Update task state, defaults to None
+        :param task_abort_event: event set for an abort request
         :raises ValueError: if no Pasdbus proxy
         """
         if task_callback:
@@ -686,11 +688,13 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     def do_standby(
         self: SmartBoxComponentManager,
         task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
     ) -> None:
         """
         Turn the Smartbox to standby.
 
         :param task_callback: Update task state, defaults to None
+        :param task_abort_event: event set for an abort request
         :raises ValueError: if no Pasdbus proxy
         """
         if task_callback:
@@ -740,11 +744,13 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     def do_off(
         self: SmartBoxComponentManager,
         task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
     ) -> None:
         """
         Turn the Smartbox off.
 
         :param task_callback: Update task state, defaults to None
+        :param task_abort_event: event set for an abort request
         :raises ValueError: if no Pasdbus proxy
         """
         if task_callback:
