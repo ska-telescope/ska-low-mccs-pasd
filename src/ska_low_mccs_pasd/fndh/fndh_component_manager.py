@@ -471,30 +471,36 @@ class FndhComponentManager(TaskExecutorComponentManager):
     def do_on(
         self: FndhComponentManager,
         task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
     ) -> None:
         """
         Turn the Fndh on.
 
         :param task_callback: Update task state, defaults to None
+        :param task_abort_event: Event signalling an abort
         """
         self._power_ports(
             power_state=PowerState.ON,
             task_callback=task_callback,
+            task_abort_event=task_abort_event,
         )
 
     @check_communicating
     def do_standby(
         self: FndhComponentManager,
         task_callback: Optional[Callable] = None,
+        task_abort_event: Optional[threading.Event] = None,
     ) -> None:
         """
         Turn the Fndh to standby.
 
         :param task_callback: Update task state, defaults to None
+        :param task_abort_event: Event signalling an abort
         """
         self._power_ports(
             power_state=PowerState.OFF,
             task_callback=task_callback,
+            task_abort_event=task_abort_event,
         )
 
     def _power_ports(
