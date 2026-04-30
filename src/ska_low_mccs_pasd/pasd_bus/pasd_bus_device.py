@@ -1077,7 +1077,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     controller["prefix"] + register["tango_attr_name"]
                     for register in controller["registers"].values()
                 ]
-        if device_id in self._device.AvailableSmartboxes:
+        if device_id in self.AvailableSmartboxes:
             return [
                 PasdData.CONTROLLERS_CONFIG["FNSC"]["prefix"]
                 + str(device_id)
