@@ -347,7 +347,8 @@ def test_is_port_on(
             None,
             pytest.raises(
                 tango.DevFailed,
-                match="TypeError: MccsFNDH.Configure\\(\\) got an unexpected keyword argument 'overCurrentThreshold_wrong_name",
+                match="TypeError: MccsFNDH.Configure\\(\\) got an unexpected "
+                "keyword argument 'overCurrentThreshold_wrong_name",
             ),
             id="invalid named configs raise validation error",
         ),

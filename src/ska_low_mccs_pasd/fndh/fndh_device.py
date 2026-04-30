@@ -335,14 +335,16 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
     def Configure(
         self: MccsFNDH,
-        overCurrentThreshold: Optional[float] = None,
-        overVoltageThreshold: Optional[float] = None,
-        humidityThreshold: Optional[float] = None,
+        overCurrentThreshold: Optional[float] = None,  # noqa: N803
+        overVoltageThreshold: Optional[float] = None,  # noqa: N803
+        humidityThreshold: Optional[float] = None,  # noqa: N803
     ) -> DevVarLongStringArrayType:
         """
         Configure the Fndh device attributes.
 
-        :param kwargs: the configuration for the device in stringified json format
+        :param overCurrentThreshold: the over-current threshold in Amps.
+        :param overVoltageThreshold: the over-voltage threshold in Volts.
+        :param humidityThreshold: the humidity threshold in percent.
 
         :return: A tuple containing a return code and a string
             message indicating status. The message is for

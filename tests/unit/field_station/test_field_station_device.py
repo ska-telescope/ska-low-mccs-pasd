@@ -15,7 +15,7 @@ from typing import Any
 
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel, ResultCode
+from ska_control_model import AdminMode, LoggingLevel, ResultCode, TaskStatus
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd import MccsFieldStation
@@ -52,8 +52,6 @@ def mock_component_manager_fixture() -> unittest.mock.Mock:
     :return: a mock to be used as a component manager for the
         field station bus device.
     """
-    from ska_control_model import TaskStatus
-
     component_manager = unittest.mock.Mock()
     task_executor = unittest.mock.Mock()
     task_executor.max_queued_tasks = 10
