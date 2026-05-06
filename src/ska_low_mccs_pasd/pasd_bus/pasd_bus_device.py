@@ -29,7 +29,6 @@ from ska_control_model import (
 )
 from ska_low_mccs_common import MccsBaseDevice
 from ska_low_pasd_driver.pasd_bus_register_map import DesiredPowerEnum
-from ska_tango_base.commands import FastCommand, JsonValidator
 from ska_tango_base.software_bus import AttrSignal, attribute_from_signal
 from tango import AttrQuality
 from tango.device_attribute import ExtractAs
@@ -833,45 +832,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     smartbox_id, self.LowPassFilterCutoff, True
                 )
         return ([ResultCode.OK], ["InitializeSmartbox command requested."])
-
-    class _SetSmartboxPortPowersCommand(FastCommand):
-        SCHEMA: Final = json.loads(
-            importlib.resources.read_text(
-                "ska_low_mccs_pasd.schemas.pasd_bus",
-                "MccsPasdBus_SetSmartboxPortPowers.json",
-            )
-        )
-
-        def __init__(
-            self: MccsPasdBus._SetSmartboxPortPowersCommand,
-            component_manager: PasdBusComponentManager,
-            logger: logging.Logger,
-        ):
-            self._component_manager = component_manager
-
-            validator = JsonValidator("SetSmartboxPortPowers", self.SCHEMA, logger)
-            super().__init__(logger, validator)
-
-        # pylint: disable-next=arguments-differ
-        def do(  # type: ignore[override]
-            self: MccsPasdBus._SetSmartboxPortPowersCommand,
-            smartbox_number: int,
-            port_powers: list[bool | None],
-            stay_on_when_offline: bool,
-        ) -> None:
-            """
-            Set a Smartbox's port powers.
-
-            :param smartbox_number: number of the smartbox to be addressed.
-            :param port_powers: the desired power for each port.
-                True means powered on, False means off,
-                None means no desired change
-            :param stay_on_when_offline: whether any ports being turned on
-                should remain on if communication with the MCCS is lost.
-            """
-            self._component_manager.set_smartbox_port_powers(
-                smartbox_number, port_powers, stay_on_when_offline
-            )
 
     SetSmartboxPortPowers_SCHEMA: Final = json.loads(
         importlib.resources.read_text(
