@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 5.3.0
+
 * [THORN-450] Removed deprecated command objects. Note that FNDH.Configure() command now fails validation if an invalid property is supplied.
 * [THORN-415] PaSD - allow a tolerance when comparing threshold values
 * [THORN-527] Investigate using attribute_from_signal in PaSD
