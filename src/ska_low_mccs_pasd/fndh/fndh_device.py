@@ -65,6 +65,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     """An implementation of the FNDH device for MCCS."""
 
     InitCommand = None  # type: ignore[assignment]
+    Off = None  # type: ignore[assignment]
 
     # -----------------
     # Device Properties
