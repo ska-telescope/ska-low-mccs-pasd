@@ -100,6 +100,7 @@ nitpick_ignore = [
     ),
     ("py:class", "TaskStatus"),
     ("py:class", "ResultCode"),
+    ("py:class", "ska_tango_base.type_hints.TaskFunctionType"),
 ]
 
 # If your documentation needs a minimal Sphinx version, state it here.

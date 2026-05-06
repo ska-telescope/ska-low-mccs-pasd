@@ -199,8 +199,7 @@ def test_command_queued(
     else:
         command_return = command(device_command_argin)
 
-    assert command_return[0] == ResultCode.QUEUED
-    assert command_return[1][0].split("_")[-1] == device_command
+    assert ResultCode(command_return[0][0]) == ResultCode.QUEUED
 
 
 @pytest.mark.parametrize(

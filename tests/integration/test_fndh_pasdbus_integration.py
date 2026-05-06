@@ -91,6 +91,29 @@ def _check_pdoc_stuck_message(expected_reports: list[str], fault_report: str) ->
     assert sorted(matches) == sorted(expected_matches)
 
 
+def _wait_for_state(
+    device: tango.DeviceProxy,
+    expected_state: tango.DevState,
+    timeout: float = 10.0,
+) -> None:
+    """
+    Wait until a Tango device reaches expected state.
+
+    :param device: the Tango device proxy to poll.
+    :param expected_state: the state to wait for.
+    :param timeout: maximum time in seconds to wait.
+    """
+    end = time.time() + timeout
+    while time.time() < end:
+        if device.state() == expected_state:
+            return
+        time.sleep(0.1)
+    pytest.fail(
+        f"Timed out waiting for state {expected_state}; "
+        f" current state is {device.state()}"
+    )
+
+
 class TestfndhPasdBusIntegration:
     """Test pasdbus and fndh integration."""
 
@@ -229,10 +252,7 @@ class TestfndhPasdBusIntegration:
         # change_event_callbacks.assert_change_event(
         #     "pasd_bus_state", tango.DevState.ON
         # )
-        change_event_callbacks["pasd_bus_state"].assert_change_event(
-            tango.DevState.ON, 2, True
-        )
-        change_event_callbacks["pasdBushealthState"].assert_change_event(HealthState.OK)
+        _wait_for_state(pasd_bus_device, tango.DevState.ON)
         assert pasd_bus_device.healthState == HealthState.OK
 
         fndh_device.adminMode = AdminMode.ONLINE
@@ -499,10 +519,13 @@ class TestfndhPasdBusIntegration:
         # change_event_callbacks.assert_change_event(
         #     "pasd_bus_state", tango.DevState.ON
         # )
-        change_event_callbacks["pasd_bus_state"].assert_change_event(
-            tango.DevState.ON, 2, True
+        change_event_callbacks.assert_change_event(
+            "pasdBushealthState",
+            HealthState.OK,
+            lookahead=20,
+            consume_nonmatches=True,
         )
-        change_event_callbacks.assert_change_event("pasdBushealthState", HealthState.OK)
+        _wait_for_state(pasd_bus_device, tango.DevState.ON)
         assert pasd_bus_device.healthState == HealthState.OK
 
         fndh_device.subscribe_event(
@@ -705,10 +728,10 @@ class TestfndhPasdBusIntegration:
         # change_event_callbacks.assert_change_event(
         #     "pasd_bus_state", tango.DevState.ON
         # )
-        change_event_callbacks["pasd_bus_state"].assert_change_event(
-            tango.DevState.ON, 2, True
+        change_event_callbacks["pasdBushealthState"].assert_change_event(
+            HealthState.OK, lookahead=20, consume_nonmatches=True
         )
-        change_event_callbacks["pasdBushealthState"].assert_change_event(HealthState.OK)
+        _wait_for_state(pasd_bus_device, tango.DevState.ON)
         assert pasd_bus_device.healthState == HealthState.OK
         assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
 

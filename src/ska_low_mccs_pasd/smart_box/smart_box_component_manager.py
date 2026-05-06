@@ -634,28 +634,18 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         return ResultCode.OK, timeout
 
     @check_communicating
-    def on(
-        self: SmartBoxComponentManager,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Turn the Smartbox on.
-
-        :param task_callback: Update task state, defaults to None
-
-        :return: a result code and a unique_id or message.
-        """
-        return self.submit_task(
-            self._on,  # type: ignore[arg-type]
-            args=[],
-            task_callback=task_callback,
-        )
-
-    def _on(
+    def do_on(
         self: SmartBoxComponentManager,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> None:
+        """
+        Turn the Smartbox on.
+
+        :param task_callback: Update task state, defaults to None
+        :param task_abort_event: event set for an abort request
+        :raises ValueError: if no Pasdbus proxy
+        """
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
@@ -695,28 +685,18 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             )
 
     @check_communicating
-    def standby(
-        self: SmartBoxComponentManager,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Turn the Smartbox to standby.
-
-        :param task_callback: Update task state, defaults to None
-
-        :return: a result code and a unique_id or message.
-        """
-        return self.submit_task(
-            self._standby,  # type: ignore[arg-type]
-            args=[],
-            task_callback=task_callback,
-        )
-
-    def _standby(
+    def do_standby(
         self: SmartBoxComponentManager,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> None:
+        """
+        Turn the Smartbox to standby.
+
+        :param task_callback: Update task state, defaults to None
+        :param task_abort_event: event set for an abort request
+        :raises ValueError: if no Pasdbus proxy
+        """
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
@@ -761,28 +741,18 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             )
 
     @check_communicating
-    def off(
-        self: SmartBoxComponentManager,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
-        """
-        Turn the Smartbox off.
-
-        :param task_callback: Update task state, defaults to None
-
-        :return: a result code and a unique_id or message.
-        """
-        return self.submit_task(
-            self._off,  # type: ignore[arg-type]
-            args=[],
-            task_callback=task_callback,
-        )
-
-    def _off(
+    def do_off(
         self: SmartBoxComponentManager,
         task_callback: Optional[Callable] = None,
         task_abort_event: Optional[threading.Event] = None,
     ) -> None:
+        """
+        Turn the Smartbox off.
+
+        :param task_callback: Update task state, defaults to None
+        :param task_abort_event: event set for an abort request
+        :raises ValueError: if no Pasdbus proxy
+        """
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
@@ -824,8 +794,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     def turn_off_port(
         self: SmartBoxComponentManager,
         port_number: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
+        task_callback: Optional[Callable],
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[ResultCode, str]:
         """
         Turn a Port off.
 
@@ -834,21 +805,12 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param port_number: (one-based) number of the port to turn off.
         :param task_callback: callback to be called when the status of
             the command changes
+        :param task_abort_event: event set for an abort request
 
-        :return: the task status and a human-readable status message
+        :raises NotImplementedError: if no PaSD proxy is configured
+
+        :return: the result code and a human-readable status message
         """
-        return self.submit_task(
-            self._turn_off_port,  # type: ignore[arg-type]
-            args=[port_number],
-            task_callback=task_callback,
-        )
-
-    def _turn_off_port(
-        self: SmartBoxComponentManager,
-        port_number: int,
-        task_callback: Optional[Callable],
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
@@ -893,8 +855,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     def turn_on_port(
         self: SmartBoxComponentManager,
         port_number: int,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
+        task_callback: Optional[Callable],
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[ResultCode, str]:
         """
         Turn a port on.
 
@@ -903,23 +866,12 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         :param port_number: (one-based) number of the port to turn on.
         :param task_callback: callback to be called when the status of
             the command changes
+        :param task_abort_event: event set for an abort request
 
-        :return: the task status and a human-readable status message
+        :raises NotImplementedError: if no PaSD proxy is configured
+
+        :return: the result code and a human-readable status message
         """
-        return self.submit_task(
-            self._turn_on_port,  # type: ignore[arg-type]
-            args=[
-                port_number,
-            ],
-            task_callback=task_callback,
-        )
-
-    def _turn_on_port(
-        self: SmartBoxComponentManager,
-        port_number: int,
-        task_callback: Optional[Callable],
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
         try:
@@ -980,7 +932,8 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self: SmartBoxComponentManager,
         json_argument: str,
         task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> tuple[ResultCode, str]:
         """
         Set port powers.
 
@@ -990,21 +943,10 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             smartboxes attached in json form.
         :param task_callback: callback to be called when the status of
             the command changes
+        :param task_abort_event: event set for an abort request
 
-        :return: the task status and a human-readable status message
+        :return: the result code and a human-readable status message
         """
-        return self.submit_task(
-            self._set_port_powers,  # type: ignore[arg-type]
-            args=[json_argument],
-            task_callback=task_callback,
-        )
-
-    def _set_port_powers(
-        self: SmartBoxComponentManager,
-        json_argument: str,
-        task_callback: Optional[Callable] = None,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, str]:
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 

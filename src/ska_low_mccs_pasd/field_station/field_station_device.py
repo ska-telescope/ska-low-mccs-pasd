@@ -10,9 +10,12 @@
 from __future__ import annotations
 
 import json
+import threading
 from typing import Any, Final, Optional, cast
 
 import numpy as np
+import ska_tango_base as stb
+from jsonschema import validate
 from ska_control_model import (
     AdminMode,
     CommunicationStatus,
@@ -22,8 +25,7 @@ from ska_control_model import (
 )
 from ska_control_model.health_rollup import HealthRollup, HealthSummary
 from ska_low_mccs_common import MccsBaseDevice
-from ska_tango_base.commands import JsonValidator, SubmittedSlowCommand
-from tango.server import attribute, command, device_property
+from tango.server import attribute, device_property
 
 from .field_station_component_manager import FieldStationComponentManager
 
@@ -35,6 +37,8 @@ DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
 
 class MccsFieldStation(MccsBaseDevice):
     """An implementation of the FieldStation device."""
+
+    InitCommand = None  # type: ignore[assignment]
 
     # -----------------
     # Device Properties
@@ -89,6 +93,9 @@ class MccsFieldStation(MccsBaseDevice):
         }
         self._health_report = ""
         self._health_rollup = self._setup_health_rollup()
+        self.set_change_event("antennaPowerStates", True, False)
+        self.set_change_event("outsideTemperature", True, False)
+        self.init_completed()
 
         message = (
             "Initialised MccsFieldStation device with properties:\n"
@@ -201,46 +208,6 @@ class MccsFieldStation(MccsBaseDevice):
         for subdevice, health in old_subdevice_healths.items():
             self._health_rollup.health_changed(subdevice, cast(HealthState, health))
 
-    def init_command_objects(self: MccsFieldStation) -> None:
-        """Initialise the command handlers for commands supported by this device."""
-        super().init_command_objects()
-
-        configure_schema: Final = {
-            "type": "object",
-            "properties": {
-                "overCurrentThreshold": {"type": "number"},
-                "overVoltageThreshold": {"type": "number"},
-                "humidityThreshold": {"type": "number"},
-            },
-        }
-
-        for command_name, method_name, schema in [
-            ("PowerOnAntenna", "power_on_antenna", None),
-            ("PowerOffAntenna", "power_off_antenna", None),
-            ("Configure", "configure", configure_schema),
-            ("SetAntennaMasking", "set_antenna_masking", None),
-        ]:
-            validator = (
-                None
-                if schema is None
-                else JsonValidator(command_name, schema, self.logger)
-            )
-
-            self.register_command_object(
-                command_name,
-                SubmittedSlowCommand(
-                    command_name,
-                    self._command_tracker,
-                    self.component_manager,
-                    method_name,
-                    callback=None,
-                    logger=self.logger,
-                    validator=validator,
-                ),
-            )
-        self.set_change_event("antennaPowerStates", True, False)
-        self.set_change_event("outsideTemperature", True, False)
-
     # ----------
     # Callbacks
     # ----------
@@ -345,27 +312,77 @@ class MccsFieldStation(MccsBaseDevice):
     # Commands
     # --------
 
-    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
-    def Configure(self: MccsFieldStation, argin: str) -> DevVarLongStringArrayType:
+    @stb.long_running_commands.submit_lrc_task
+    def execute_On(self) -> stb.type_hints.TaskFunctionType:
+        """
+        Execute the On command.
+
+        :return: the callable function.
+        """
+        return self.component_manager.do_on
+
+    @stb.long_running_commands.submit_lrc_task
+    def execute_Standby(self) -> stb.type_hints.TaskFunctionType:
+        """
+        Execute the Standby command.
+
+        :return: the callable function.
+        """
+        return self.component_manager.do_standby
+
+    @stb.long_running_commands.submit_lrc_task
+    def execute_Off(self) -> stb.type_hints.TaskFunctionType:
+        """
+        Execute the Off command.
+
+        :return: the callable function.
+        """
+        return self.component_manager.do_off
+
+    Configure_schema: Final = {
+        "type": "object",
+        "properties": {
+            "overCurrentThreshold": {"type": "number"},
+            "overVoltageThreshold": {"type": "number"},
+            "humidityThreshold": {"type": "number"},
+        },
+    }
+
+    @stb.long_running_commands.long_running_command
+    def Configure(
+        self: MccsFieldStation,
+        configure_args: str,
+    ) -> stb.type_hints.TaskFunctionType:
         """
         Configure the field station.
 
         Currently this only configures FNDH device attributes.
 
-        :param argin: the configuration for the device in stringified json format
+        :param configure_args: the configuration for the device
+            in stringified json format
 
         :return: A tuple containing a return code and a string
             message indicating status. The message is for
             information purpose only.
         """
-        handler = self.get_command_object("Configure")
-        (return_code, message) = handler(argin)
-        return ([return_code], [message])
+        validate(json.loads(configure_args), self.Configure_schema)
 
-    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+        def task(
+            task_callback: stb.type_hints.TaskCallbackType,
+            task_abort_event: threading.Event,
+        ) -> None:
+            self.component_manager.configure(
+                configure_args,
+                task_callback=task_callback,
+                task_abort_event=task_abort_event,
+            )
+
+        return task
+
+    @stb.long_running_commands.long_running_command
     def PowerOnAntenna(
         self: MccsFieldStation, antenna_name: str
-    ) -> DevVarLongStringArrayType:
+    ) -> stb.type_hints.TaskFunctionType:
         """
         Turn on an antenna.
 
@@ -375,14 +392,23 @@ class MccsFieldStation(MccsBaseDevice):
             message indicating status. The message is for
             information purpose only.
         """
-        handler = self.get_command_object("PowerOnAntenna")
-        (return_code, message) = handler(antenna_name)
-        return ([return_code], [message])
 
-    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+        def task(
+            task_callback: stb.type_hints.TaskCallbackType,
+            task_abort_event: threading.Event,
+        ) -> None:
+            self.component_manager.power_on_antenna(
+                antenna_name,
+                task_callback=task_callback,
+                task_abort_event=task_abort_event,
+            )
+
+        return task
+
+    @stb.long_running_commands.long_running_command
     def PowerOffAntenna(
         self: MccsFieldStation, antenna_name: str
-    ) -> DevVarLongStringArrayType:
+    ) -> stb.type_hints.TaskFunctionType:
         """
         Turn off an antenna.
 
@@ -392,14 +418,23 @@ class MccsFieldStation(MccsBaseDevice):
             message indicating status. The message is for
             information purpose only.
         """
-        handler = self.get_command_object("PowerOffAntenna")
-        (return_code, message) = handler(antenna_name)
-        return ([return_code], [message])
 
-    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+        def task(
+            task_callback: stb.type_hints.TaskCallbackType,
+            task_abort_event: threading.Event,
+        ) -> None:
+            self.component_manager.power_off_antenna(
+                antenna_name,
+                task_callback=task_callback,
+                task_abort_event=task_abort_event,
+            )
+
+        return task
+
+    @stb.long_running_commands.long_running_command
     def SetAntennaMasking(
         self: MccsFieldStation, argin: str
-    ) -> DevVarLongStringArrayType:
+    ) -> stb.type_hints.TaskFunctionType:
         """
         Set the masking status for antennas across this field station.
 
@@ -418,9 +453,18 @@ class MccsFieldStation(MccsBaseDevice):
             indicating status. The message is for information purposes only.
             Returns ``REJECTED`` if no antennas would be masked.
         """
-        handler = self.get_command_object("SetAntennaMasking")
-        (return_code, message) = handler(argin)
-        return ([return_code], [message])
+
+        def task(
+            task_callback: stb.type_hints.TaskCallbackType,
+            task_abort_event: threading.Event,
+        ) -> None:
+            self.component_manager.set_antenna_masking(
+                argin,
+                task_callback=task_callback,
+                task_abort_event=task_abort_event,
+            )
+
+        return task
 
     # ----------
     # Attributes

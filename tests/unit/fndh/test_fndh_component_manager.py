@@ -191,19 +191,19 @@ class TestFndhComponentManager:
             (
                 "power_on_port",
                 3,
-                (TaskStatus.QUEUED, "Task queued"),
+                (ResultCode.OK, "Mock information-only message"),
                 (ResultCode.OK, f"Power on port '{3} success'"),
             ),
             (
                 "power_off_port",
                 3,
-                (TaskStatus.QUEUED, "Task queued"),
+                (ResultCode.OK, "Mock information-only message"),
                 (ResultCode.OK, f"Power off port '{3} success'"),
             ),
             (
                 "set_port_powers",
                 [0] * PasdData.NUMBER_OF_FNDH_PORTS,
-                (TaskStatus.QUEUED, "Task queued"),
+                ([ResultCode.OK], ["Mock information-only message"]),
                 (ResultCode.OK, "Set port powers success"),
             ),
         ],
@@ -252,7 +252,6 @@ class TestFndhComponentManager:
                 )
                 == expected_manager_result
             )
-        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(
             status=TaskStatus.COMPLETED, result=command_tracked_response
@@ -270,15 +269,15 @@ class TestFndhComponentManager:
             (
                 "power_on_port",
                 0,
-                "TurnSmartboxOn",
-                (TaskStatus.QUEUED, "Task queued"),
+                "SetFndhPortPowers",
+                (ResultCode.FAILED, "0"),
                 (ResultCode.FAILED, f"Power on port '{0} failed'"),
             ),
             (
                 "power_off_port",
                 0,
-                "TurnSmartboxOff",
-                (TaskStatus.QUEUED, "Task queued"),
+                "SetFndhPortPowers",
+                (ResultCode.FAILED, "0"),
                 (ResultCode.FAILED, f"Power off port '{0} failed'"),
             ),
         ],
@@ -312,6 +311,7 @@ class TestFndhComponentManager:
         :param mock_callbacks: mock callables.
         :param mock_pasdbus: the mock PaSD bus in the test harness.
         """
+        fndh_component_manager._pasd_bus_proxy._proxy = mock_pasdbus
         fndh_component_manager._update_communication_state(
             CommunicationStatus.ESTABLISHED
         )
@@ -329,7 +329,6 @@ class TestFndhComponentManager:
         )
 
         # check that the task execution is as expected
-        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(
             status=TaskStatus.FAILED, result=command_tracked_response

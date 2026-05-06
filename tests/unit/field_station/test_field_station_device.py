@@ -15,7 +15,7 @@ from typing import Any
 
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel, ResultCode
+from ska_control_model import AdminMode, LoggingLevel, ResultCode, TaskStatus
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd import MccsFieldStation
@@ -56,6 +56,7 @@ def mock_component_manager_fixture() -> unittest.mock.Mock:
     task_executor = unittest.mock.Mock()
     task_executor.max_queued_tasks = 10
     task_executor.max_executing_tasks = 1
+    task_executor.submit.return_value = (TaskStatus.QUEUED, "task-id")
     component_manager._task_executor = task_executor
     return component_manager
 
@@ -167,14 +168,14 @@ def test_outside_temperature(
             "PowerOnAntenna",
             "power_on_antenna",
             "4",
-            [True, True],
+            None,
             id="Power on an antenna",
         ),
         pytest.param(
             "PowerOffAntenna",
             "power_off_antenna",
             "4",
-            [True, True],
+            None,
             id="Power off an antenna",
         ),
     ],
@@ -214,7 +215,4 @@ def test_command(  # pylint: disable=too-many-arguments, too-many-positional-arg
     else:
         command_return = command(device_command_argin)
 
-    method_mock.assert_called()
-
-    assert command_return[0] == ResultCode.QUEUED
-    assert command_return[1][0].split("_")[-1] == device_command
+    assert ResultCode(command_return[0][0]) == ResultCode.QUEUED

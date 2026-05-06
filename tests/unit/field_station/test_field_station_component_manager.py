@@ -217,14 +217,12 @@ class TestFieldStationComponentManager:
         (
             "antenna_id",
             "component_manager_command",
-            "expected_manager_result",
             "command_tracked_result",
         ),
         [
             (
                 "sb18-01",
                 "power_on_antenna",
-                (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
                     (ResultCode.OK, "power on antenna sb18-01 success."),
@@ -233,7 +231,6 @@ class TestFieldStationComponentManager:
             (
                 "sb18-01",
                 "power_off_antenna",
-                (TaskStatus.QUEUED, "Task queued"),
                 (
                     TaskStatus.COMPLETED,
                     (ResultCode.OK, "power off antenna sb18-01 success."),
@@ -248,7 +245,6 @@ class TestFieldStationComponentManager:
         field_station_component_manager: FieldStationComponentManager,
         antenna_id: str,
         component_manager_command: str,
-        expected_manager_result: tuple[TaskStatus, str],
         command_tracked_result: tuple[TaskStatus, str],
         mock_callbacks: MockCallableGroup,
     ) -> None:
@@ -261,7 +257,6 @@ class TestFieldStationComponentManager:
             with communication established.
         :param antenna_id: antenna number under test.
         :param component_manager_command: command to call on the component manager.
-        :param expected_manager_result: expected response from the call
         :param command_tracked_result: The result of the command.
         :param mock_callbacks: mock callables.
         """
@@ -282,12 +277,10 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        assert (
-            getattr(field_station_component_manager, component_manager_command)(
-                antenna_id, mock_callbacks["task"]
-            )
-            == expected_manager_result
+        getattr(field_station_component_manager, component_manager_command)(
+            antenna_id, mock_callbacks["task"]
         )
+
         time.sleep(0.2)
 
         def _snake_to_pascal_case(snake_string: str) -> str:
@@ -303,7 +296,6 @@ class TestFieldStationComponentManager:
                 call()(arg=antenna_id, is_lrc=True, wait_for_result=True),
             ]
         )
-        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         if command_tracked_result[0] == TaskStatus.COMPLETED:
             mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
 
@@ -388,7 +380,9 @@ class TestFieldStationComponentManager:
             CommunicationStatus.ESTABLISHED
         )
 
-        getattr(field_station_component_manager, str("_" + component_manager_command))(
+        getattr(
+            field_station_component_manager, str("do_" + component_manager_command)
+        )(
             mock_callbacks["task"],
         )
 
@@ -472,7 +466,7 @@ class TestFieldStationComponentManager:
         result = field_station_component_manager.set_antenna_masking(
             argin, mock_callbacks["task"]
         )
-        assert result == (TaskStatus.QUEUED, "Task queued")
+        assert result is None
         time.sleep(0.2)
 
         mock_command_cls.assert_called_with(
@@ -484,7 +478,6 @@ class TestFieldStationComponentManager:
         assert actual_arg == {"sb18-01": True}
         assert mock_command.call_args[1]["is_lrc"] is False
 
-        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(
             status=TaskStatus.COMPLETED,
@@ -524,11 +517,10 @@ class TestFieldStationComponentManager:
         result = field_station_component_manager.set_antenna_masking(
             argin, mock_callbacks["task"]
         )
-        assert result == (TaskStatus.QUEUED, "Task queued")
+        assert result is None
         time.sleep(0.2)
 
         mock_command_cls.assert_not_called()
-        mock_callbacks["task"].assert_call(status=TaskStatus.QUEUED)
         mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
         mock_callbacks["task"].assert_call(
             status=TaskStatus.REJECTED,

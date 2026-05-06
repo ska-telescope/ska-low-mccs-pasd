@@ -250,9 +250,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             fqdn, communication_state
         )
 
-    def on(
-        self: FieldStationComponentManager, task_callback: Optional[Callable] = None
-    ) -> tuple[TaskStatus, str]:
+    def do_on(
+        self: FieldStationComponentManager,
+        task_callback: Callable,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
         """
         Turn on the FieldStation.
 
@@ -260,20 +262,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         to all antennas that make up that FieldStation.
 
         :param task_callback: Update task state, defaults to None
-
-        :return: a result code and a unique_id or message.
+        :param task_abort_event: Event signalling an abort
         """
-        return self.submit_task(
-            self._on,
-            args=[],
-            task_callback=task_callback,
-        )
-
-    def _on(  # noqa: C901
-        self: FieldStationComponentManager,
-        task_callback: Callable,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> None:
         task_callback(status=TaskStatus.IN_PROGRESS)
         failure_log = ""
 
@@ -348,9 +338,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             result=(ResultCode.OK, "All unmasked antennas turned on."),
         )
 
-    def standby(
-        self: FieldStationComponentManager, task_callback: Optional[Callable] = None
-    ) -> tuple[TaskStatus, str]:
+    def do_standby(
+        self: FieldStationComponentManager,
+        task_callback: Callable,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
         """
         Turn the FieldStation to Standby.
 
@@ -358,20 +350,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         but leave their ports turned off.
 
         :param task_callback: Update task state, defaults to None
-
-        :return: a result code and a unique_id or message.
+        :param task_abort_event: Event signalling an abort
         """
-        return self.submit_task(
-            self._standby,
-            args=[],
-            task_callback=task_callback,
-        )
-
-    def _standby(  # noqa: C901
-        self: FieldStationComponentManager,
-        task_callback: Callable,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> None:
         task_callback(status=TaskStatus.IN_PROGRESS)
 
         failure_log = ""
@@ -417,9 +397,11 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             ),
         )
 
-    def off(
-        self: FieldStationComponentManager, task_callback: Optional[Callable] = None
-    ) -> tuple[TaskStatus, str]:
+    def do_off(
+        self: FieldStationComponentManager,
+        task_callback: Callable,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
         """
         Turn off the FieldStation.
 
@@ -427,20 +409,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         to all antennas that make up that FieldStation.
 
         :param task_callback: Update task state, defaults to None
-
-        :return: a result code and a unique_id or message.
+        :param task_abort_event: Event signalling an abort
         """
-        return self.submit_task(
-            self._off,
-            args=[],
-            task_callback=task_callback,
-        )
-
-    def _off(
-        self: FieldStationComponentManager,
-        task_callback: Callable,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> None:
         task_callback(status=TaskStatus.IN_PROGRESS)
 
         failure_log = ""
@@ -474,29 +444,17 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     def power_on_antenna(
         self: FieldStationComponentManager,
         antenna_name: str,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
+        task_callback: Callable,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
         """
         Turn on an antenna on this station.
 
         :param antenna_name: (one-based) number of the Antenna to turn on.
         :param task_callback: callback to be called when the status of
             the command changes
-
-        :return: the task status and a human-readable status message
+        :param task_abort_event: Event signalling an abort
         """
-        return self.submit_task(
-            self._power_on_antenna,  # type: ignore[arg-type]
-            args=[antenna_name],
-            task_callback=task_callback,
-        )
-
-    def _power_on_antenna(
-        self: FieldStationComponentManager,
-        antenna_name: str,
-        task_callback: Callable,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> None:
         task_callback(status=TaskStatus.IN_PROGRESS)
         for smartbox_trl, smartbox_proxy in self._smartbox_proxys.items():
             if (
@@ -520,8 +478,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     def power_off_antenna(
         self: FieldStationComponentManager,
         antenna_name: str,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
+        task_callback: Callable,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
         """
         Turn off an antenna.
 
@@ -531,21 +490,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :param antenna_name: (one-based) number of the TPM to turn on.
         :param task_callback: callback to be called when the status of
             the command changes
-
-        :return: the task status and a human-readable status message
+        :param task_abort_event: Event signalling an abort
         """
-        return self.submit_task(
-            self._power_off_antenna,  # type: ignore[arg-type]
-            args=[antenna_name],
-            task_callback=task_callback,
-        )
-
-    def _power_off_antenna(
-        self: FieldStationComponentManager,
-        antenna_name: str,
-        task_callback: Callable,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> None:
         task_callback(status=TaskStatus.IN_PROGRESS)
         for smartbox_trl, smartbox_proxy in self._smartbox_proxys.items():
             if (
@@ -569,8 +515,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     def set_antenna_masking(
         self: FieldStationComponentManager,
         antenna_mask: str,
-        task_callback: Optional[Callable] = None,
-    ) -> tuple[TaskStatus, str]:
+        task_callback: Callable,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
         """
         Set the masking status for antennas across smartboxes.
 
@@ -581,21 +528,8 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             e.g. ``'{"sb01-01": true, "sb03-01": false}'``.
         :param task_callback: callback to be called when the status of
             the command changes
-
-        :return: the task status and a human-readable status message
+        :param task_abort_event: Event signalling an abort
         """
-        return self.submit_task(
-            self._set_antenna_masking,
-            args=[antenna_mask],
-            task_callback=task_callback,
-        )
-
-    def _set_antenna_masking(
-        self: FieldStationComponentManager,
-        antenna_mask: str,
-        task_callback: Callable,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> None:
         task_callback(status=TaskStatus.IN_PROGRESS)
         mask_dict: dict[str, bool] = json.loads(antenna_mask)
         unrouted = set(mask_dict.keys())
@@ -647,9 +581,10 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
     def configure(
         self: FieldStationComponentManager,
-        task_callback: Optional[Callable] = None,
-        **kwargs: Any,
-    ) -> tuple[TaskStatus | ResultCode, str]:
+        configure_args: str,
+        task_callback: Callable,
+        task_abort_event: Optional[threading.Event] = None,
+    ) -> None:
         """
         Configure the field station.
 
@@ -657,22 +592,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         :param task_callback: callback to be called when the status of
             the command changes
-        :param kwargs: keyword arguments extracted from the JSON string.
-
-        :return: the task status and a human-readable status message
+        :param task_abort_event: Event signalling an abort
+        :param configure_args: keyword arguments extracted from the JSON string.
         """
-        return self.submit_task(
-            self._configure,  # type: ignore[arg-type]
-            args=[json.dumps(kwargs)],
-            task_callback=task_callback,
-        )
-
-    def _configure(
-        self: FieldStationComponentManager,
-        configure_args: str,
-        task_callback: Callable,
-        task_abort_event: Optional[threading.Event] = None,
-    ) -> None:
         command_proxy = MccsCommandProxy(
             device_name=self._fndh_name,
             command_name="Configure",

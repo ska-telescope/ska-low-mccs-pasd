@@ -13,23 +13,26 @@ from __future__ import annotations
 import json
 import re
 import sys
+import threading
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Callable, Final, Optional, cast
 
 import numpy
+import ska_tango_base as stb
 import tango
+from jsonschema import validate
 from ska_control_model import (
     AdminMode,
     CommunicationStatus,
     HealthState,
     PowerState,
     ResultCode,
+    TaskStatus,
 )
 from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_low_pasd_driver.pasd_bus_conversions import SmartboxStatusMap
 from ska_low_pasd_driver.pasd_bus_register_map import DesiredPowerEnum
-from ska_tango_base.commands import DeviceInitCommand, SubmittedSlowCommand
 from tango import DevFailed
 from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
@@ -77,6 +80,8 @@ class SmartboxAttribute:
 # pylint: disable=too-many-public-methods
 class MccsSmartBox(MccsBaseDevice):
     """An implementation of the SmartBox device for MCCS."""
+
+    InitCommand = None  # type: ignore[assignment]
 
     # -----------------
     # Device Properties
@@ -181,6 +186,7 @@ class MccsSmartBox(MccsBaseDevice):
         self._thresholds_pasd = PasdThresholds(self.CONFIG)
 
         self.update_threshold_cache()
+        self.init_completed()
 
     def delete_device(self: MccsSmartBox) -> None:
         """Delete the device."""
@@ -233,23 +239,6 @@ class MccsSmartBox(MccsBaseDevice):
     # Properties
     # ----------
 
-    class InitCommand(DeviceInitCommand):
-        """Initialisation command class for this base device."""
-
-        def do(
-            self: MccsSmartBox.InitCommand, *args: Any, **kwargs: Any
-        ) -> tuple[ResultCode, str]:
-            """
-            Initialise the attributes of this MccsSmartBox.
-
-            :param args: additional positional arguments; unused here
-            :param kwargs: additional keyword arguments; unused here
-
-            :return: a resultcode, message tuple
-            """
-            self._completed()
-            return (ResultCode.OK, "Init command completed OK")
-
     # --------------
     # Initialization
     # --------------
@@ -277,30 +266,37 @@ class MccsSmartBox(MccsBaseDevice):
             event_serialiser=self._event_serialiser,
         )
 
-    def init_command_objects(self: MccsSmartBox) -> None:
-        """Initialise the command handlers for this device."""
-        super().init_command_objects()
-
-        for command_name, method_name in [
-            ("PowerOnPort", "turn_on_port"),
-            ("PowerOffPort", "turn_off_port"),
-            ("SetPortPowers", "set_port_powers"),
-        ]:
-            self.register_command_object(
-                command_name,
-                SubmittedSlowCommand(
-                    command_name,
-                    self._command_tracker,
-                    self.component_manager,
-                    method_name,
-                    callback=None,
-                    logger=self.logger,
-                ),
-            )
-
     # ----------
     # Commands
     # ----------
+
+    @stb.long_running_commands.submit_lrc_task
+    def execute_On(self) -> stb.type_hints.TaskFunctionType:
+        """
+        Execute the On command.
+
+        :return: the callable function.
+        """
+        return self.component_manager.do_on
+
+    @stb.long_running_commands.submit_lrc_task
+    def execute_Standby(self) -> stb.type_hints.TaskFunctionType:
+        """
+        Execute the Standby command.
+
+        :return: the callable function.
+        """
+        return self.component_manager.do_standby
+
+    @stb.long_running_commands.submit_lrc_task
+    def execute_Off(self) -> stb.type_hints.TaskFunctionType:
+        """
+        Execute the Off command.
+
+        :return: the callable function.
+        """
+        return self.component_manager.do_off
+
     @command(
         dtype_out="DevVarLongStringArray",
         fisallowed="is_engineering",
@@ -338,10 +334,10 @@ class MccsSmartBox(MccsBaseDevice):
 
         return ([ResultCode.OK], ["UpdateThresholdCache completed"])
 
-    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+    @stb.long_running_commands.long_running_command
     def PowerOnAntenna(
         self: MccsSmartBox, antenna_name: str
-    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+    ) -> stb.type_hints.TaskFunctionType:
         """
         Power up an antenna.
 
@@ -351,21 +347,36 @@ class MccsSmartBox(MccsBaseDevice):
             indicating status. The message is for information purposes
             only.
         """
-        if antenna_name not in self.AntennaNames:
-            msg = f"{antenna_name} not on this smartbox: {self.AntennaNames}"
-            self.logger.error(msg)
-            return ([ResultCode.REJECTED], [msg])
-        port_number = self.component_manager._port_to_antenna_map.inverse.get(
-            antenna_name
-        )
-        handler = self.get_command_object("PowerOnPort")
-        result_code, message = handler(port_number)
-        return ([result_code], [message])
 
-    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+        def task(
+            task_callback: stb.type_hints.TaskCallbackType,
+            task_abort_event: threading.Event,
+        ) -> None:
+            if antenna_name not in self.AntennaNames:
+                msg = f"{antenna_name} not on this smartbox: {self.AntennaNames}"
+                self.logger.error(msg)
+                task_callback(TaskStatus.REJECTED, result=msg)
+                return
+            port_number = self.component_manager._port_to_antenna_map.inverse.get(
+                antenna_name
+            )
+            if port_number is None:
+                msg = f"No port mapping found for antenna {antenna_name}."
+                self.logger.error(msg)
+                task_callback(TaskStatus.REJECTED, result=msg)
+                return
+            self.component_manager.turn_on_port(
+                port_number,
+                task_callback=task_callback,
+                task_abort_event=task_abort_event,
+            )
+
+        return task
+
+    @stb.long_running_commands.long_running_command
     def PowerOffAntenna(
         self: MccsSmartBox, antenna_name: str
-    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+    ) -> stb.type_hints.TaskFunctionType:
         """
         Power off an antenna.
 
@@ -375,16 +386,30 @@ class MccsSmartBox(MccsBaseDevice):
             indicating status. The message is for information purposes
             only.
         """
-        if antenna_name not in self.AntennaNames:
-            msg = f"{antenna_name} not on this smartbox: {self.AntennaNames}"
-            self.logger.error(msg)
-            return ([ResultCode.REJECTED], [msg])
-        port_number = self.component_manager._port_to_antenna_map.inverse.get(
-            antenna_name
-        )
-        handler = self.get_command_object("PowerOffPort")
-        result_code, message = handler(port_number)
-        return ([result_code], [message])
+
+        def task(
+            task_callback: stb.type_hints.TaskCallbackType,
+            task_abort_event: threading.Event,
+        ) -> None:
+            if antenna_name not in self.AntennaNames:
+                msg = f"{antenna_name} not on this smartbox: {self.AntennaNames}"
+                self.logger.error(msg)
+                task_callback(TaskStatus.REJECTED, result=msg)
+            port_number = self.component_manager._port_to_antenna_map.inverse.get(
+                antenna_name
+            )
+            if port_number is None:
+                msg = f"No port mapping found for antenna {antenna_name}."
+                self.logger.error(msg)
+                task_callback(TaskStatus.REJECTED, result=msg)
+                return
+            self.component_manager.turn_off_port(
+                port_number,
+                task_callback=task_callback,
+                task_abort_event=task_abort_event,
+            )
+
+        return task
 
     @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
     def SetAntennaMasking(
@@ -447,10 +472,10 @@ class MccsSmartBox(MccsBaseDevice):
             msg += f" Unknown antennas ignored: {unknown}"
         return ([ResultCode.OK], [msg])
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
+    @stb.long_running_commands.long_running_command
     def PowerOnPort(
         self: MccsSmartBox, port_number: int
-    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+    ) -> stb.type_hints.TaskFunctionType:
         """
         Power up a port.
 
@@ -462,14 +487,23 @@ class MccsSmartBox(MccsBaseDevice):
             indicating status. The message is for information purposes
             only.
         """
-        handler = self.get_command_object("PowerOnPort")
-        result_code, message = handler(port_number)
-        return ([result_code], [message])
 
-    @command(dtype_in="DevULong", dtype_out="DevVarLongStringArray")
+        def task(
+            task_callback: stb.type_hints.TaskCallbackType,
+            task_abort_event: threading.Event,
+        ) -> None:
+            self.component_manager.turn_on_port(
+                port_number,
+                task_callback=task_callback,
+                task_abort_event=task_abort_event,
+            )
+
+        return task
+
+    @stb.long_running_commands.long_running_command
     def PowerOffPort(
         self: MccsSmartBox, port_number: int
-    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+    ) -> stb.type_hints.TaskFunctionType:
         """
         Power down a port.
 
@@ -481,15 +515,39 @@ class MccsSmartBox(MccsBaseDevice):
             indicating status. The message is for information purposes
             only.
         """
-        handler = self.get_command_object("PowerOffPort")
-        result_code, message = handler(port_number)
-        return ([result_code], [message])
 
-    @command(dtype_in="DevString", dtype_out="DevVarLongStringArray")
+        def task(
+            task_callback: stb.type_hints.TaskCallbackType,
+            task_abort_event: threading.Event,
+        ) -> None:
+            self.component_manager.turn_off_port(
+                port_number,
+                task_callback=task_callback,
+                task_abort_event=task_abort_event,
+            )
+
+        return task
+
+    SetPortPowers_SCHEMA: Final = {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+            "port_powers": {
+                "description": "The desired power of each port",
+                "type": "array",
+                "minItems": 12,
+                "maxItems": 12,
+                "items": {"type": ["boolean", "null"]},
+            }
+        },
+        "required": ["port_powers"],
+    }
+
+    @stb.long_running_commands.long_running_command
     def SetPortPowers(
         self: MccsSmartBox,
         json_argument: str,
-    ) -> tuple[list[ResultCode], list[Optional[str]]]:
+    ) -> stb.type_hints.TaskFunctionType:
         """
         Set port powers.
 
@@ -501,9 +559,19 @@ class MccsSmartBox(MccsBaseDevice):
             indicating status. The message is for information purposes
             only.
         """
-        handler = self.get_command_object("SetPortPowers")
-        result_code, message = handler(json_argument)
-        return ([result_code], [message])
+        validate(json.loads(json_argument), self.SetPortPowers_SCHEMA)
+
+        def task(
+            task_callback: stb.type_hints.TaskCallbackType,
+            task_abort_event: threading.Event,
+        ) -> None:
+            self.component_manager.set_port_powers(
+                json_argument,
+                task_callback=task_callback,
+                task_abort_event=task_abort_event,
+            )
+
+        return task
 
     # ----------
     # Attributes
