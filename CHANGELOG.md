@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* [THORN-562] Update Sonar project key
+
 ## 5.3.0
 
 * [THORN-450] Removed deprecated command objects. Note that FNDH.Configure() command now fails validation if an invalid property is supplied.
