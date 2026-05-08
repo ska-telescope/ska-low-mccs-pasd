@@ -360,7 +360,8 @@ def test_is_port_on(
             },
             None,
             pytest.raises(
-                tango.DevFailed, match="ValidationError: True is not of type 'number'"
+                tango.DevFailed,
+                match="ValidateJSONArgsError: True is not of type 'number'",
             ),
             id="invalid types raise validation error",
         ),
@@ -513,7 +514,7 @@ def test_health(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["healthState"],
     )
-    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
 
     healthful_fndh_device.subscribe_event(
         "internalAmbientTemperature",
@@ -525,7 +526,9 @@ def test_health(
     healthful_fndh_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
     change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
-    change_event_callbacks["healthState"].assert_change_event(HealthState.OK)
+    change_event_callbacks["healthState"].assert_change_event(
+        HealthState.OK, lookahead=2, consume_nonmatches=True
+    )
 
     # This is a bit reliant on implementation details. This is the last attribute we
     # poll for health, so we wait on a change event for this attribute as a proxy for
@@ -616,7 +619,7 @@ def test_pasd_status_health(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["healthState"],
     )
-    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
 
     healthful_fndh_device.subscribe_event(
         "internalAmbientTemperature",
@@ -628,7 +631,9 @@ def test_pasd_status_health(
     healthful_fndh_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
     change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
-    change_event_callbacks["healthState"].assert_change_event(HealthState.OK)
+    change_event_callbacks["healthState"].assert_change_event(
+        HealthState.OK, lookahead=2, consume_nonmatches=True
+    )
 
     # This is a bit reliant on implementation details. This is the last attribute we
     # poll for health, so we wait on a change event for this attribute as a proxy for

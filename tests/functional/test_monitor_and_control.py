@@ -232,16 +232,16 @@ def check_mccs_is_on(
     assert pasd_bus_device.state() == tango.DevState.ON
 
 
-@given("MCCS-for-PaSD has UNKNOWN health")
-def check_mccs_has_unknown_health(
+@given("MCCS-for-PaSD has FAILED health")
+def check_mccs_has_failed_health(
     pasd_bus_device: tango.DeviceProxy,
 ) -> None:
     """
-    Check that MCCS-for-PaSD has UNKNOWN health state.
+    Check that MCCS-for-PaSD has FAILED health state.
 
     :param pasd_bus_device: a proxy to the PaSD bus device.
     """
-    assert pasd_bus_device.healthState == HealthState.UNKNOWN
+    assert pasd_bus_device.healthState == HealthState.FAILED
 
 
 @when("MCCS-for-PaSD adminMode is set to ONLINE")
@@ -262,7 +262,7 @@ def check_state_becomes_on(
     change_event_callbacks: MockTangoEventCallbackGroup, station_label: str
 ) -> None:
     """
-    Check that the state of the PaSD bus device progresses from UNKNOWN.
+    Check that the state of the PaSD bus device progresses to ON.
 
     :param change_event_callbacks: dictionary of Tango change event
         callbacks with asynchrony support.

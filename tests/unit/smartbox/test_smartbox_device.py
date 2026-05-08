@@ -319,7 +319,7 @@ def test_health(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["healthState"],
     )
-    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
 
     smartbox_device.subscribe_event(
         "powersupplyOutputVoltage",
@@ -331,7 +331,9 @@ def test_health(
     smartbox_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
     change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
-    change_event_callbacks["healthState"].assert_change_event(HealthState.OK)
+    change_event_callbacks["healthState"].assert_change_event(
+        HealthState.OK, lookahead=2, consume_nonmatches=True
+    )
 
     # This is a bit reliant on implementation details. This is the last attribute we
     # poll for health, so we wait on a change event for this attribute as a proxy for
@@ -422,7 +424,7 @@ def test_pasd_status_health(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["healthState"],
     )
-    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
 
     smartbox_device.subscribe_event(
         "femHeatsinkTemperature2",
@@ -434,7 +436,9 @@ def test_pasd_status_health(
     smartbox_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
     change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
-    change_event_callbacks["healthState"].assert_change_event(HealthState.OK)
+    change_event_callbacks["healthState"].assert_change_event(
+        HealthState.OK, lookahead=2, consume_nonmatches=True
+    )
 
     # This is a bit reliant on implementation details. This is the last attribute we
     # poll for health, so we wait on a change event for this attribute as a proxy for

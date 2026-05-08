@@ -209,8 +209,8 @@ def test_communication(  # pylint: disable=too-many-statements
         change_event_callbacks["healthState"],
     )
 
-    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
-    assert pasd_bus_device.healthState == HealthState.UNKNOWN
+    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
+    assert pasd_bus_device.healthState == HealthState.FAILED
 
     # This is a bit of a cheat.
     # It's an implementation-dependent detail that
@@ -704,7 +704,7 @@ def test_fndh_led_pattern(
     json_argument = json.dumps({"pattern": "SERVICE"})
     with pytest.raises(tango.DevFailed) as exception:
         pasd_bus_device.SetFndhLedPattern(json_argument)
-    assert "jsonschema.exceptions.ValidationError" in str(exception.value)
+    assert "ValidateJSONArgsError" in str(exception.value)
 
     # Set correct values
     json_argument = json.dumps({"pattern": "FAST"})
@@ -741,11 +741,11 @@ def test_fndh_low_pass_filters(
     json_argument = json.dumps({"cutoff": 0.09})
     with pytest.raises(tango.DevFailed) as exception:
         pasd_bus_device.SetFndhLowPassFilters(json_argument)
-    assert "jsonschema.exceptions.ValidationError" in str(exception.value)
+    assert "ValidateJSONArgsError" in str(exception.value)
     json_argument = json.dumps({"cutoff": 1000.1})
     with pytest.raises(tango.DevFailed) as exception:
         pasd_bus_device.SetFndhLowPassFilters(json_argument)
-    assert "jsonschema.exceptions.ValidationError" in str(exception.value)
+    assert "ValidateJSONArgsError" in str(exception.value)
 
     # Set correct values
     json_argument = json.dumps({"cutoff": 10.0})
@@ -1017,7 +1017,7 @@ def test_smartbox_led_pattern(
     json_argument = json.dumps({"smartbox_number": smartbox_id, "pattern": "SERVICE"})
     with pytest.raises(tango.DevFailed) as exception:
         pasd_bus_device.SetSmartboxLedPattern(json_argument)
-    assert "jsonschema.exceptions.ValidationError" in str(exception.value)
+    assert "ValidateJSONArgsError" in str(exception.value)
 
     # Set correct values
     json_argument = json.dumps({"smartbox_number": smartbox_id, "pattern": "FAST"})
@@ -1056,11 +1056,11 @@ def test_smartbox_low_pass_filters(
     json_argument = json.dumps({"smartbox_number": smartbox_id, "cutoff": 0.09})
     with pytest.raises(tango.DevFailed) as exception:
         pasd_bus_device.SetSmartboxLowPassFilters(json_argument)
-    assert "jsonschema.exceptions.ValidationError" in str(exception.value)
+    assert "ValidateJSONArgsError" in str(exception.value)
     json_argument = json.dumps({"smartbox_number": smartbox_id, "cutoff": 1000.1})
     with pytest.raises(tango.DevFailed) as exception:
         pasd_bus_device.SetSmartboxLowPassFilters(json_argument)
-    assert "jsonschema.exceptions.ValidationError" in str(exception.value)
+    assert "ValidateJSONArgsError" in str(exception.value)
 
     # Set correct values
     json_argument = json.dumps({"smartbox_number": smartbox_id, "cutoff": 10.0})
