@@ -2,7 +2,10 @@
 
 ## Unreleased
 
+## 5.3.1
+
 * [THORN-562] Update Sonar project key
+* [SKB-1318] Update ska-tango-base to bring in fix to PollingComponentManager.
 
 ## 5.3.0
 
