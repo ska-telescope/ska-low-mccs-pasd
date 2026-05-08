@@ -232,16 +232,20 @@ def check_mccs_is_on(
     assert pasd_bus_device.state() == tango.DevState.ON
 
 
-@given("MCCS-for-PaSD has FAILED health")
-def check_mccs_has_failed_health(
+@given("MCCS-for-PaSD has not established health")
+def check_mccs_has_not_established_health(
     pasd_bus_device: tango.DeviceProxy,
 ) -> None:
     """
-    Check that MCCS-for-PaSD has FAILED health state.
+    Check that MCCS-for-PaSD has not yet established a health state.
+
+    The device reports FAILED initially, so python-test gets FAILED.
+    However k8s-test gets UNKNOWN, as the initial FAILED has been placed
+    with UNKNOWN as it has existed for other tests.
 
     :param pasd_bus_device: a proxy to the PaSD bus device.
     """
-    assert pasd_bus_device.healthState == HealthState.FAILED
+    assert pasd_bus_device.healthState in (HealthState.UNKNOWN, HealthState.FAILED)
 
 
 @when("MCCS-for-PaSD adminMode is set to ONLINE")
