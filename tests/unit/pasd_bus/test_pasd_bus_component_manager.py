@@ -11,10 +11,11 @@ from __future__ import annotations
 
 import logging
 import random
+import time
 from typing import Any, Iterator
 
 import pytest
-from ska_control_model import CommunicationStatus, PowerState
+from ska_control_model import CommunicationStatus, PowerState, ResultCode, TaskStatus
 from ska_low_pasd_driver import FnccSimulator, FndhSimulator, SmartboxSimulator
 from ska_low_pasd_driver.pasd_bus_conversions import (
     FndhAlarmFlags,
@@ -28,6 +29,7 @@ from ska_tango_testing.mock.placeholders import Anything
 
 from ska_low_mccs_pasd import PasdData
 from ska_low_mccs_pasd.pasd_bus import PasdBusComponentManager
+from ska_low_mccs_pasd.pasd_bus.pasd_bus_poll_management import DelayedRequest
 from tests.harness import PasdTangoTestHarness
 
 
@@ -1226,3 +1228,68 @@ class TestPasdBusComponentManager:
             )[0],
             lookahead=30,
         )
+
+    def test_abort(
+        self: TestPasdBusComponentManager,
+        pasd_bus_component_manager: PasdBusComponentManager,
+        mock_callbacks: MockCallableGroup,
+    ) -> None:
+        """
+        Test that abort clears all delayed requests and pending port power changes.
+
+        Covers both FNDH and smartbox port powers, mirroring what FieldStation's
+        On command does via set_fndh_port_powers and set_smartbox_port_powers.
+
+        :param pasd_bus_component_manager: the PaSD bus component manager under test.
+        :param mock_callbacks: a group of mock callables for the component
+            manager under test to use as callbacks
+        """
+        request_provider = pasd_bus_component_manager._request_provider
+
+        # Queue FNDH port power changes as set_fndh_port_powers (called by
+        # FieldStation On) does internally via desire_port_powers.
+        fndh_port_powers: list[bool | None] = [True] * PasdData.NUMBER_OF_FNDH_PORTS
+        request_provider.desire_port_powers(
+            PasdData.FNDH_DEVICE_ID, fndh_port_powers, stay_on_when_offline=False
+        )
+
+        # Queue smartbox port power changes as set_smartbox_port_powers (called
+        # per smartbox during FieldStation On) does internally.
+        smartbox_id = 1
+        smartbox_port_powers: list[bool | None] = [
+            True
+        ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
+        request_provider.desire_port_powers(
+            smartbox_id, smartbox_port_powers, stay_on_when_offline=False
+        )
+
+        # Inject delayed requests to simulate FNDH port power changes that have
+        # already been drained from _port_power_changes into the staggered queue.
+        for _ in range(3):
+            request_provider._delayed_requests.append(
+                DelayedRequest(
+                    PasdData.FNDH_DEVICE_ID,
+                    ("SET_PORT_POWERS", [None] * PasdData.NUMBER_OF_FNDH_PORTS),
+                    time.time() + 100.0,
+                )
+            )
+
+        task_callbacks = MockCallableGroup("task_callback", timeout=2.0)
+        result = pasd_bus_component_manager.abort(
+            task_callback=task_callbacks["task_callback"]
+        )
+
+        assert result == (TaskStatus.IN_PROGRESS, "Aborting")
+        task_callbacks.assert_call("task_callback", status=TaskStatus.IN_PROGRESS)
+        task_callbacks.assert_call(
+            "task_callback",
+            status=TaskStatus.COMPLETED,
+            result=(ResultCode.OK, "Abort completed OK"),
+        )
+        assert request_provider._delayed_requests == []
+        fndh_provider = request_provider._device_request_providers[
+            PasdData.FNDH_DEVICE_ID
+        ]
+        assert all(p is None for p in fndh_provider._port_power_changes)
+        smartbox_provider = request_provider._device_request_providers[smartbox_id]
+        assert all(p is None for p in smartbox_provider._port_power_changes)

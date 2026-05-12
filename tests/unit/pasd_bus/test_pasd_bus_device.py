@@ -16,7 +16,7 @@ import random
 
 import pytest
 import tango
-from ska_control_model import AdminMode, HealthState, SimulationMode
+from ska_control_model import AdminMode, HealthState, ResultCode, SimulationMode
 from ska_low_pasd_driver import FndhSimulator, SmartboxSimulator
 from ska_low_pasd_driver.pasd_bus_conversions import (
     FndhAlarmFlags,
@@ -53,6 +53,7 @@ def change_event_callbacks_fixture(
         "healthState",
         "longRunningCommandResult",
         "longRunningCommandStatus",
+        "lrcFinished",
         "state",
         "fndhStatus",
         "fndhLedPattern",
@@ -599,6 +600,82 @@ def test_communication(  # pylint: disable=too-many-statements
         getattr(pasd_bus_device, f"smartbox{smartbox_id}AlarmFlags")
         == SmartboxAlarmFlags.NONE.name
     )
+
+
+def test_abort(
+    pasd_bus_device: tango.DeviceProxy,
+    fndh_simulator: FndhSimulator,
+    smartbox_id: int,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> None:
+    """
+    Test that Abort clears pending FNDH and smartbox port power changes.
+
+    :param pasd_bus_device: a proxy to the PaSD bus device under test.
+    :param fndh_simulator: the FNDH simulator under test.
+    :param smartbox_id: id of the smartbox being addressed.
+    :param change_event_callbacks: dictionary of mock change event
+        callbacks with asynchrony support
+    """
+    pasd_bus_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
+
+    pasd_bus_device.subscribe_event(
+        "fndhPortsPowerSensed",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["fndhPortsPowerSensed"],
+    )
+    change_event_callbacks.assert_change_event("fndhPortsPowerSensed", None)
+
+    pasd_bus_device.subscribe_event(
+        "lrcFinished",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["lrcFinished"],
+    )
+
+    pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
+    change_event_callbacks.assert_change_event(
+        "fndhPortsPowerSensed", fndh_simulator.ports_power_sensed, lookahead=2
+    )
+    # Drain the initial lrcFinished subscription event (empty before any LRC completes)
+    change_event_callbacks.assert_change_event("lrcFinished", Anything)
+
+    # Queue FNDH port power changes, as FieldStation On does via set_fndh_port_powers
+    fndh_port_powers: list[bool | None] = [True] * PasdData.NUMBER_OF_FNDH_PORTS
+    pasd_bus_device.SetFndhPortPowers(
+        json.dumps({"port_powers": fndh_port_powers, "stay_on_when_offline": False})
+    )
+
+    # Queue smartbox port power changes, as FieldStation On does via
+    # set_smartbox_port_powers
+    smartbox_port_powers: list[bool | None] = [True] * PasdData.NUMBER_OF_SMARTBOX_PORTS
+    pasd_bus_device.SetSmartboxPortPowers(
+        json.dumps(
+            {
+                "smartbox_number": smartbox_id,
+                "port_powers": smartbox_port_powers,
+                "stay_on_when_offline": False,
+            }
+        )
+    )
+
+    [[result_code], [task_id]] = pasd_bus_device.Abort()
+    assert ResultCode(result_code) == ResultCode.STARTED
+
+    call = change_event_callbacks.assert_change_event(
+        "lrcFinished", Anything, lookahead=3
+    )
+    lrc_info = json.loads(call["attribute_value"][-1])
+    assert lrc_info["uid"] == task_id
+    assert lrc_info["status"] == "COMPLETED"
+    assert lrc_info["result"] == [int(ResultCode.OK), "Abort completed OK"]
 
 
 def test_set_fndh_port_powers(

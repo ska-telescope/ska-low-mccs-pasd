@@ -727,6 +727,12 @@ class PasdBusRequestProvider:
         """
         self._device_request_providers[device_id].desire_led_pattern(pattern)
 
+    def abort(self) -> None:
+        """Clear all delayed requests and any pending port power changes."""
+        self._delayed_requests.clear()
+        for provider in self._device_request_providers.values():
+            provider._port_power_changes = [None] * len(provider._port_power_changes)
+
     def desire_set_low_pass_filter(
         self, device_id: int, cutoff: float, extra_sensors: bool
     ) -> None:

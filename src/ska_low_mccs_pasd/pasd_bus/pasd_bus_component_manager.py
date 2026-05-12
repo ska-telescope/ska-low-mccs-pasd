@@ -15,7 +15,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Final, Optional
 
-from ska_control_model import CommunicationStatus, PowerState, TaskStatus
+from ska_control_model import CommunicationStatus, PowerState, ResultCode, TaskStatus
 from ska_low_pasd_driver.pasd_bus_modbus_api import PasdBusModbusApiClient
 from ska_tango_base.base import check_communicating
 from ska_tango_base.poller import PollingComponentManager
@@ -636,6 +636,26 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._request_provider.desire_port_powers(
             PasdData.FNDH_DEVICE_ID, port_powers, stay_on_when_offline
         )
+
+    def abort(
+        self: PasdBusComponentManager,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Abort all delayed requests in the PaSD bus request provider.
+
+        :param task_callback: notified of task progress.
+        :return: tuple of TaskStatus and message.
+        """
+        if task_callback is not None:
+            task_callback(status=TaskStatus.IN_PROGRESS)
+        self._request_provider.abort()
+        if task_callback is not None:
+            task_callback(
+                status=TaskStatus.COMPLETED,
+                result=(ResultCode.OK, "Abort completed OK"),
+            )
+        return TaskStatus.IN_PROGRESS, "Aborting"
 
     @check_communicating
     def set_fndh_led_pattern(
