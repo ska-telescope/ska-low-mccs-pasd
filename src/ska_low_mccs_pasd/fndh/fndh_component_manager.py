@@ -258,6 +258,24 @@ class FndhComponentManager(TaskExecutorComponentManager):
 
         self._update_communication_state(communication_state)
 
+    def abort(
+        self: FndhComponentManager,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Abort in-flight tasks and propagate to the PaSD bus.
+
+        Calls the base class abort to signal the task abort event, then
+        calls Abort on the PaSD bus device to clear any pending port power changes.
+
+        :param task_callback: notified of task progress.
+        :return: tuple of TaskStatus and message.
+        """
+        result = super().abort(task_callback)
+        if self._pasd_bus_proxy._proxy is not None:
+            self._pasd_bus_proxy._proxy.Abort()
+        return result
+
     def start_communicating(self: FndhComponentManager) -> None:  # noqa: C901
         """Establish communication with the pasdBus via a proxy."""
         if self.communication_state == CommunicationStatus.ESTABLISHED:
