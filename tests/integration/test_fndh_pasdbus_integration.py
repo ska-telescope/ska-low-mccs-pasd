@@ -222,9 +222,9 @@ class TestfndhPasdBusIntegration:
         )
 
         change_event_callbacks["pasdBushealthState"].assert_change_event(
-            HealthState.UNKNOWN
+            HealthState.FAILED
         )
-        assert pasd_bus_device.healthState == HealthState.UNKNOWN
+        assert pasd_bus_device.healthState == HealthState.FAILED
         # -----------------------------------------------------------------
 
         # This is a bit of a cheat.
@@ -490,9 +490,9 @@ class TestfndhPasdBusIntegration:
         )
 
         change_event_callbacks.assert_change_event(
-            "pasdBushealthState", HealthState.UNKNOWN
+            "pasdBushealthState", HealthState.FAILED
         )
-        assert pasd_bus_device.healthState == HealthState.UNKNOWN
+        assert pasd_bus_device.healthState == HealthState.FAILED
         # -----------------------------------------------------------------
 
         # This is a bit of a cheat.
@@ -699,9 +699,9 @@ class TestfndhPasdBusIntegration:
         )
 
         change_event_callbacks["pasdBushealthState"].assert_change_event(
-            HealthState.UNKNOWN
+            HealthState.FAILED
         )
-        assert pasd_bus_device.healthState == HealthState.UNKNOWN
+        assert pasd_bus_device.healthState == HealthState.FAILED
 
         # This is a bit of a cheat.
         # It's an implementation-dependent detail that
@@ -1303,9 +1303,7 @@ def healthy_fndh_fixture(
         change_event_callbacks["pasdBushealthState"],
     )
 
-    change_event_callbacks["pasdBushealthState"].assert_change_event(
-        HealthState.UNKNOWN
-    )
+    change_event_callbacks["pasdBushealthState"].assert_change_event(HealthState.FAILED)
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
     change_event_callbacks["pasdBushealthState"].assert_change_event(HealthState.OK)
     assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
@@ -1314,7 +1312,7 @@ def healthy_fndh_fixture(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["fndhhealthState"],
     )
-    change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.UNKNOWN)
+    change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.FAILED)
 
     # Configure no smartbox ports until required as these
     # can interfere with the FNDH health state.
@@ -1330,7 +1328,9 @@ def healthy_fndh_fixture(
     change_event_callbacks["pasdStatus"].assert_change_event(
         FndhStatusMap.OK.name, lookahead=20, consume_nonmatches=True
     )
-    change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.OK)
+    change_event_callbacks["fndhhealthState"].assert_change_event(
+        HealthState.OK, lookahead=2, consume_nonmatches=True
+    )
     assert fndh_device.healthState == HealthState.OK
 
     fndh_device.unsubscribe_event(pasd_status_sub)

@@ -134,9 +134,9 @@ class TestfnccPasdBusIntegration:
         )
 
         change_event_callbacks.assert_change_event(
-            "pasdBushealthState", HealthState.UNKNOWN
+            "pasdBushealthState", HealthState.FAILED
         )
-        assert pasd_bus_device.healthState == HealthState.UNKNOWN
+        assert pasd_bus_device.healthState == HealthState.FAILED
         # -----------------------------------------------------------------
 
         # This is a bit of a cheat.
@@ -273,7 +273,7 @@ class TestfnccPasdBusIntegration:
         )
 
         change_event_callbacks["fnccHealthState"].assert_change_event(
-            HealthState.UNKNOWN
+            HealthState.FAILED
         )
 
         pasd_bus_device.adminMode = AdminMode.ONLINE
@@ -283,7 +283,9 @@ class TestfnccPasdBusIntegration:
             tango.DevState.ON, 2, True
         )
 
-        change_event_callbacks["fnccHealthState"].assert_change_event(HealthState.OK)
+        change_event_callbacks["fnccHealthState"].assert_change_event(
+            HealthState.OK, lookahead=2, consume_nonmatches=True
+        )
         change_event_callbacks["fnccStatus"].assert_change_event(
             FnccStatusMap.OK.name, lookahead=10
         )

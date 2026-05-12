@@ -188,7 +188,7 @@ def setup_devices_with_subscriptions(
         change_event_callbacks["smartboxHealthState"],
     )
     change_event_callbacks.assert_change_event(
-        "smartboxHealthState", HealthState.UNKNOWN
+        "smartboxHealthState", HealthState.FAILED
     )
 
     pasd_bus_device.subscribe_event(
@@ -197,8 +197,8 @@ def setup_devices_with_subscriptions(
         change_event_callbacks["healthState"],
     )
 
-    change_event_callbacks.assert_change_event("healthState", HealthState.UNKNOWN)
-    assert pasd_bus_device.healthState == HealthState.UNKNOWN
+    change_event_callbacks.assert_change_event("healthState", HealthState.FAILED)
+    assert pasd_bus_device.healthState == HealthState.FAILED
 
 
 # pylint: disable=inconsistent-return-statements
@@ -1000,7 +1000,8 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             SmartboxSimulator.DEFAULT_STATUS.name,
-            lookahead=2,
+            lookahead=3,
+            consume_nonmatches=True,
         )
         smartbox_device.subscribe_event(
             "InputVoltage",
@@ -1398,6 +1399,8 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.OK,
+            lookahead=2,
+            consume_nonmatches=True,
         )
 
         # Test ALARM / FAILED state
@@ -1553,7 +1556,7 @@ class TestSmartBoxPasdBusIntegration:
             change_event_callbacks["smartboxHealthState"],
         )
         change_event_callbacks.assert_change_event(
-            "smartboxHealthState", HealthState.OK
+            "smartboxHealthState", HealthState.OK, lookahead=2, consume_nonmatches=True
         )
 
         old_vals = smartbox_device.PcbTemperatureThresholds

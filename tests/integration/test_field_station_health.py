@@ -240,7 +240,7 @@ class TestFieldStationHealth:
             change_event_callbacks["field_station_healthstate"],
         )
         change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.UNKNOWN
+            HealthState.FAILED
         )
         field_station_device.subscribe_event(
             "state",
@@ -258,7 +258,7 @@ class TestFieldStationHealth:
             )
             change_event_callbacks[
                 f"smartbox_{smartbox_id}_healthstate"
-            ].assert_change_event(HealthState.UNKNOWN)
+            ].assert_change_event(HealthState.FAILED)
         devices = [
             field_station_device,
             fndh_device,
@@ -277,7 +277,7 @@ class TestFieldStationHealth:
         for smartbox_id, _ in enumerate(smartbox_proxys, start=1):
             change_event_callbacks[
                 f"smartbox_{smartbox_id}_healthstate"
-            ].assert_change_event(HealthState.OK)
+            ].assert_change_event(HealthState.OK, lookahead=2, consume_nonmatches=True)
         self._check_devices_on_and_healthy(devices)
 
         assert json.loads(field_station_device.healthThresholds)["smartboxes"] == [

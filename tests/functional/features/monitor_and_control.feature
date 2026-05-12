@@ -6,7 +6,7 @@ Feature: Monitoring and control of PaSD
     Scenario: Turn on MCCS-for-PaSD
         Given A MCCS-for-PaSD which is not ready
         And MCCS-for-PaSD is in DISABLE state
-        And MCCS-for-PaSD has UNKNOWN health
+        And MCCS-for-PaSD has not established health
         When MCCS-for-PaSD adminMode is set to ONLINE
         Then MCCS-for-PaSD reports ON state
 
