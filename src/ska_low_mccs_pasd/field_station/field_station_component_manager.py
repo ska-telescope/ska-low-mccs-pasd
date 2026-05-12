@@ -250,6 +250,25 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             fqdn, communication_state
         )
 
+    def abort(
+        self: FieldStationComponentManager,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Abort in-flight tasks and propagate to the PaSD bus via the FNDH.
+
+        Calls the base class abort to signal the task abort event, then
+        calls Abort on the FNDH device, which in turn aborts pending port power
+        changes on the PaSD bus.
+
+        :param task_callback: notified of task progress.
+        :return: tuple of TaskStatus and message.
+        """
+        result = super().abort(task_callback)
+        if self._fndh_proxy._proxy is not None:
+            self._fndh_proxy._proxy.Abort()
+        return result
+
     def do_on(
         self: FieldStationComponentManager,
         task_callback: Callable,
@@ -268,6 +287,13 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         failure_log = ""
 
         timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
+        if task_abort_event is not None and task_abort_event.is_set():
+            task_callback(
+                status=TaskStatus.ABORTED,
+                result=(ResultCode.ABORTED, "Field station ON aborted."),
+            )
+            return
+
         if self._fndh_proxy.power_state != PowerState.ON:
             fndh_on_command = MccsCommandProxy(
                 device_name=self._fndh_name, command_name="On", logger=self.logger
@@ -357,6 +383,13 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         failure_log = ""
 
         timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
+        if task_abort_event is not None and task_abort_event.is_set():
+            task_callback(
+                status=TaskStatus.ABORTED,
+                result=(ResultCode.ABORTED, "Field station STANDBY aborted."),
+            )
+            return
+
         fndh_on_command = MccsCommandProxy(
             device_name=self._fndh_name, command_name="On", logger=self.logger
         )
@@ -365,6 +398,13 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         )
 
         if result == ResultCode.OK:
+            if task_abort_event is not None and task_abort_event.is_set():
+                task_callback(
+                    status=TaskStatus.ABORTED,
+                    result=(ResultCode.ABORTED, "Field station STANDBY aborted."),
+                )
+                return
+
             smartbox_standby_commands = MccsCompositeCommandProxy(self.logger)
             for smartbox_trl in self._smartbox_proxys:
                 smartbox_standby_commands += MccsCommandProxy(
@@ -416,6 +456,13 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         failure_log = ""
 
         timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
+        if task_abort_event is not None and task_abort_event.is_set():
+            task_callback(
+                status=TaskStatus.ABORTED,
+                result=(ResultCode.ABORTED, "Field station OFF aborted."),
+            )
+            return
+
         fndh_on_command = MccsCommandProxy(
             device_name=self._fndh_name, command_name="Standby", logger=self.logger
         )
