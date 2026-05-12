@@ -1000,7 +1000,7 @@ class TestSmartBoxPasdBusIntegration:
         change_event_callbacks.assert_change_event(
             f"smartbox{smartbox_id}status",
             SmartboxSimulator.DEFAULT_STATUS.name,
-            lookahead=20,
+            lookahead=3,
             consume_nonmatches=True,
         )
         smartbox_device.subscribe_event(
