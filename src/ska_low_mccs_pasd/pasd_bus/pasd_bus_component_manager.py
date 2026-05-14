@@ -647,6 +647,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param task_callback: notified of task progress.
         :return: tuple of TaskStatus and message.
         """
+        self.logger.info("Aborting.")
         if task_callback is not None:
             task_callback(status=TaskStatus.IN_PROGRESS)
         self._request_provider.abort()

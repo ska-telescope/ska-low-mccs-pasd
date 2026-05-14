@@ -397,6 +397,7 @@ class TestFieldStationComponentManager:
                 timeout=FieldStationComponentManager.FIELDSTATION_ON_COMMAND_TIMEOUT,
                 is_lrc=True,
                 wait_for_result=True,
+                task_abort_event=None,
             )
 
             expected_calls = [
@@ -427,6 +428,7 @@ class TestFieldStationComponentManager:
                 timeout=FieldStationComponentManager.FIELDSTATION_ON_COMMAND_TIMEOUT,
                 is_lrc=True,
                 wait_for_result=True,
+                task_abort_event=None,
             )
 
     @patch(
@@ -582,12 +584,12 @@ class TestFieldStationComponentManager:
 
         task_abort_event = threading.Event()
         fndh_on_started = threading.Event()
-        fndh_on_release = threading.Event()
 
         def blocking_fndh_on(**_: Any) -> tuple[ResultCode, str]:
+            # Simulate MccsCommandProxy: block until abort fires, then return ABORTED
             fndh_on_started.set()
-            fndh_on_release.wait(timeout=5.0)
-            return (ResultCode.OK, "FNDH On OK")
+            task_abort_event.wait(timeout=5.0)
+            return (ResultCode.ABORTED, "LRC aborted")
 
         mock_command = MagicMock()
         mock_command.side_effect = blocking_fndh_on
@@ -607,7 +609,6 @@ class TestFieldStationComponentManager:
 
         assert fndh_on_started.wait(timeout=5.0), "FNDH On did not start"
         task_abort_event.set()
-        fndh_on_release.set()
 
         do_on_thread.join(timeout=5.0)
         assert not do_on_thread.is_alive(), "do_on did not finish"
@@ -616,6 +617,13 @@ class TestFieldStationComponentManager:
         mock_callbacks["task"].assert_call(
             status=TaskStatus.ABORTED,
             result=(ResultCode.ABORTED, "Field station ON aborted."),
+        )
+        # Verify abort event was passed into the proxy call so it could unblock
+        mock_command.assert_called_once_with(
+            timeout=FieldStationComponentManager.FIELDSTATION_ON_COMMAND_TIMEOUT,
+            is_lrc=True,
+            wait_for_result=True,
+            task_abort_event=task_abort_event,
         )
         mock_composite.assert_not_called()
 

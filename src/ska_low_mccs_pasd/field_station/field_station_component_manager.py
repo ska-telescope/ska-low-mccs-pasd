@@ -264,10 +264,60 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :param task_callback: notified of task progress.
         :return: tuple of TaskStatus and message.
         """
-        result = super().abort(task_callback)
+        self.logger.info("Aborting subdevices.")
         if self._fndh_proxy._proxy is not None:
             self._fndh_proxy._proxy.Abort()
+        result = super().abort(task_callback)
         return result
+
+    def _turn_on_smartbox_blocks(
+        self: FieldStationComponentManager,
+        smartbox_trls: list,
+        timeout: int,
+        task_abort_event: Optional[threading.Event],
+    ) -> tuple[ResultCode, str]:
+        """
+        Turn on smartboxes in blocks, returning on failure or abort.
+
+        :param smartbox_trls: list of smartbox TRLs to turn on.
+        :param timeout: timeout in seconds for each block's commands.
+        :param task_abort_event: event signalling an abort.
+        :return: (OK, "") on success, (ABORTED, "") if aborted, or
+            (result, failure_message) if a block fails.
+        """
+        smartbox_blocks = [
+            smartbox_trls[i :: self._nof_blocks] for i in range(self._nof_blocks)
+        ]
+        for block_index, smartbox_block in enumerate(smartbox_blocks, start=1):
+            if not smartbox_block:
+                continue
+            if task_abort_event is not None and task_abort_event.is_set():
+                return ResultCode.ABORTED, ""
+            smartbox_on_commands = MccsCompositeCommandProxy(
+                self.logger, task_abort_event=task_abort_event
+            )
+            for smartbox_trl in smartbox_block:
+                smartbox_on_commands += MccsCommandProxy(
+                    device_name=smartbox_trl,
+                    command_name="On",
+                    logger=self.logger,
+                )
+            self.logger.info(
+                "Turning on smartbox block %d/%d: %s",
+                block_index,
+                self._nof_blocks,
+                smartbox_block,
+            )
+            result, message = smartbox_on_commands(
+                command_evaluator=CompositeCommandResultEvaluator(),
+                timeout=timeout,
+            )
+            if result != ResultCode.OK:
+                return result, (
+                    f"Smartbox block {block_index} failed: "
+                    f"{result=} {pretty_format(message)}. "
+                )
+        return ResultCode.OK, ""
 
     def do_on(
         self: FieldStationComponentManager,
@@ -284,10 +334,9 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         :param task_abort_event: Event signalling an abort
         """
         task_callback(status=TaskStatus.IN_PROGRESS)
-        failure_log = ""
-
         timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
         if task_abort_event is not None and task_abort_event.is_set():
+            self.logger.info("ON command aborted.")
             task_callback(
                 status=TaskStatus.ABORTED,
                 result=(ResultCode.ABORTED, "Field station ON aborted."),
@@ -299,62 +348,38 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
                 device_name=self._fndh_name, command_name="On", logger=self.logger
             )
             result, message = fndh_on_command(
-                timeout=timeout, is_lrc=True, wait_for_result=True
+                timeout=timeout,
+                is_lrc=True,
+                wait_for_result=True,
+                task_abort_event=task_abort_event,
             )
+            if task_abort_event is not None and task_abort_event.is_set():
+                self.logger.info("ON command aborted.")
+                task_callback(
+                    status=TaskStatus.ABORTED,
+                    result=(ResultCode.ABORTED, "Field station ON aborted."),
+                )
+                return
         else:
             result = ResultCode.OK
 
         if result == ResultCode.OK:
-            smartbox_trls = list(self._smartbox_proxys)
-
-            # Split into n roughly equal blocks
-            smartbox_blocks = [
-                smartbox_trls[i :: self._nof_blocks] for i in range(self._nof_blocks)
-            ]
-
-            for block_index, smartbox_block in enumerate(smartbox_blocks, start=1):
-                if not smartbox_block:
-                    continue
-
-                if task_abort_event is not None and task_abort_event.is_set():
-                    task_callback(
-                        status=TaskStatus.ABORTED,
-                        result=(ResultCode.ABORTED, "Field station ON aborted."),
-                    )
-                    return
-
-                smartbox_on_commands = MccsCompositeCommandProxy(self.logger)
-                for smartbox_trl in smartbox_block:
-                    smartbox_on_commands += MccsCommandProxy(
-                        device_name=smartbox_trl,
-                        command_name="On",
-                        logger=self.logger,
-                    )
-
-                self.logger.info(
-                    "Turning on smartbox block %d/%d: %s",
-                    block_index,
-                    self._nof_blocks,
-                    smartbox_block,
+            result, message = self._turn_on_smartbox_blocks(
+                list(self._smartbox_proxys), timeout, task_abort_event
+            )
+            if message:
+                self.logger.error(f"Failure in the `ON` command -> {message}")
+                task_callback(
+                    status=TaskStatus.COMPLETED,
+                    result=(result, message),
                 )
+                return
 
-                result, message = smartbox_on_commands(
-                    command_evaluator=CompositeCommandResultEvaluator(),
-                    timeout=timeout,
-                )
-
-                if result != ResultCode.OK:
-                    failure_log += (
-                        f"Smartbox block {block_index} failed: "
-                        f"{result=} {pretty_format(message)}. "
-                    )
-                    break
-
-        if failure_log:
-            self.logger.error(f"Failure in the `ON` command -> {failure_log}")
+        if task_abort_event is not None and task_abort_event.is_set():
+            self.logger.info("ON command aborted.")
             task_callback(
-                status=TaskStatus.COMPLETED,
-                result=(result, message),
+                status=TaskStatus.ABORTED,
+                result=(ResultCode.ABORTED, "Field station ON aborted."),
             )
             return
 
@@ -384,6 +409,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
         if task_abort_event is not None and task_abort_event.is_set():
+            self.logger.info("STANDBY command aborted.")
             task_callback(
                 status=TaskStatus.ABORTED,
                 result=(ResultCode.ABORTED, "Field station STANDBY aborted."),
@@ -394,18 +420,23 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             device_name=self._fndh_name, command_name="On", logger=self.logger
         )
         result, message = fndh_on_command(
-            timeout=timeout, is_lrc=True, wait_for_result=True
+            timeout=timeout,
+            is_lrc=True,
+            wait_for_result=True,
+            task_abort_event=task_abort_event,
         )
+        if task_abort_event is not None and task_abort_event.is_set():
+            self.logger.info("STANDBY command aborted.")
+            task_callback(
+                status=TaskStatus.ABORTED,
+                result=(ResultCode.ABORTED, "Field station STANDBY aborted."),
+            )
+            return
 
         if result == ResultCode.OK:
-            if task_abort_event is not None and task_abort_event.is_set():
-                task_callback(
-                    status=TaskStatus.ABORTED,
-                    result=(ResultCode.ABORTED, "Field station STANDBY aborted."),
-                )
-                return
-
-            smartbox_standby_commands = MccsCompositeCommandProxy(self.logger)
+            smartbox_standby_commands = MccsCompositeCommandProxy(
+                self.logger, task_abort_event=task_abort_event
+            )
             for smartbox_trl in self._smartbox_proxys:
                 smartbox_standby_commands += MccsCommandProxy(
                     device_name=smartbox_trl, command_name="Standby", logger=self.logger
@@ -457,6 +488,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
 
         timeout = self.FIELDSTATION_ON_COMMAND_TIMEOUT
         if task_abort_event is not None and task_abort_event.is_set():
+            self.logger.info("OFF command aborted.")
             task_callback(
                 status=TaskStatus.ABORTED,
                 result=(ResultCode.ABORTED, "Field station OFF aborted."),
@@ -467,8 +499,18 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             device_name=self._fndh_name, command_name="Standby", logger=self.logger
         )
         result, message = fndh_on_command(
-            timeout=timeout, is_lrc=True, wait_for_result=True
+            timeout=timeout,
+            is_lrc=True,
+            wait_for_result=True,
+            task_abort_event=task_abort_event,
         )
+        if task_abort_event is not None and task_abort_event.is_set():
+            self.logger.info("OFF command aborted.")
+            task_callback(
+                status=TaskStatus.ABORTED,
+                result=(ResultCode.ABORTED, "Field station OFF aborted."),
+            )
+            return
 
         if failure_log:
             self.logger.error(f"Failure in the `OFF` command -> {failure_log}")
