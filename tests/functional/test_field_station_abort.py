@@ -169,6 +169,10 @@ def all_pasd_devices_ready(
     """
     Bring all PaSD devices into a ready, communicating state.
 
+    FNDH is left in STANDBY (ports unpowered) and smartboxes in OFF so that
+    the subsequent FieldStation ON command has to power everything up from
+    scratch, without going through an unnecessary ON→OFF cycle.
+
     :param set_device_state: fixture to set a device's state and admin mode.
     :param pasd_bus_device: proxy to MccsPasdBus.
     :param smartboxes_under_test: proxies to the 12 MccsSmartBox devices.
@@ -184,7 +188,7 @@ def all_pasd_devices_ready(
         pasd_bus_device.initializesmartbox(i)
     set_device_state(
         "MccsFndh",
-        state=tango.DevState.ON,
+        state=tango.DevState.STANDBY,
         mode=AdminMode.ONLINE,
         simulation_mode=SimulationMode.TRUE,
     )
@@ -192,7 +196,7 @@ def all_pasd_devices_ready(
         set_device_state(
             device_proxy=smartbox,
             device_ref="",
-            state=tango.DevState.ON,
+            state=tango.DevState.OFF,
             mode=AdminMode.ONLINE,
             simulation_mode=SimulationMode.TRUE,
         )
@@ -201,10 +205,7 @@ def all_pasd_devices_ready(
 @given("the FieldStation is in the OFF state")
 def field_station_is_off(set_device_state: Callable) -> None:
     """
-    Put the FieldStation into the OFF state.
-
-    This also powers down the FNDH ports, so the subsequent ON command
-    must bring them back up before turning on smartboxes.
+    Put the FieldStation into the OFF state with ONLINE admin mode.
 
     :param set_device_state: fixture to set a device's state and admin mode.
     """
