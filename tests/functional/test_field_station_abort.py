@@ -281,25 +281,14 @@ def field_station_does_not_reach_on(
     """
     Assert the FieldStation never transitions to ON after the abort.
 
-    Polls the device state for up to 30 seconds. Fails immediately if
-    ON is reached; returns early once the state has been stable and
-    non-ON for 3 consecutive seconds.
-
     :param field_station_device: proxy to MccsFieldStation.
     """
     deadline = time.time() + 30
-    last_state = None
-    same_state_since = time.time()
     while time.time() < deadline:
         state = field_station_device.state()
         assert (
             state != tango.DevState.ON
         ), "FieldStation reached ON state despite Abort() being called"
-        if state != last_state:
-            last_state = state
-            same_state_since = time.time()
-        elif time.time() - same_state_since > 3:
-            return
         time.sleep(0.5)
     assert field_station_device.state() != tango.DevState.ON
 
