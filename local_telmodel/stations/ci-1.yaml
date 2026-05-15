@@ -24,106 +24,1054 @@ platform:
           sb02:
             fndh_port: 2
             modbus_id: 2
+          sb03:
+            fndh_port: 3
+            modbus_id: 3
+          sb04:
+            fndh_port: 4
+            modbus_id: 4
+          sb05:
+            fndh_port: 5
+            modbus_id: 5
+          sb06:
+            fndh_port: 6
+            modbus_id: 6
+          sb07:
+            fndh_port: 7
+            modbus_id: 7
+          sb08:
+            fndh_port: 8
+            modbus_id: 8
+          sb09:
+            fndh_port: 9
+            modbus_id: 9
+          sb10:
+            fndh_port: 10
+            modbus_id: 10
+          sb11:
+            fndh_port: 11
+            modbus_id: 11
+          sb12:
+            fndh_port: 12
+            modbus_id: 12
       antennas:
-        sb01-05:
-          location_offset:
-            east: -3.25
-            north: 11.478
-            up: 0.023
-          eep: 100
+        # sb01 — tpm01 inputs 1-12
+        sb01-01:
+          location_offset: {east: -8.25, north: -16.5, up: 0.0}
+          eep: 1
           smartbox: sb01
-          smartbox_port: 5
+          smartbox_port: 1
           tpm: tpm01
-          tpm_input: 5
-          masked: True
-        sb01-07:
-          location_offset:
-            east: -0.746
-            north: 12.648
-            up: 0.019
-          eep: 113
-          smartbox: sb01
-          smartbox_port: 7
-          tpm: tpm01
-          tpm_input: 7
-        sb01-04:
-          location_offset:
-            east: -5.231
-            north: 12.066
-            up: 0.018
-          eep: 121
-          smartbox: sb01
-          smartbox_port: 4
-          tpm: tpm01
-          tpm_input: 4
-        sb01-06:
-          location_offset:
-            east: -2.658
-            north: 13.574
-            up: 0.028
-          eep: 134
-          smartbox: sb01
-          smartbox_port: 6
-          tpm: tpm01
-          tpm_input: 6
-        sb01-03:
-          location_offset:
-            east: -4.752
-            north: 14.09
-            up: 0.004
-          eep: 155
-          smartbox: sb01
-          smartbox_port: 3
-          tpm: tpm01
-          tpm_input: 3
-        sb01-08:
-          location_offset:
-            east: -1.715
-            north: 15.36
-            up: 0.019
-          eep: 168
-          smartbox: sb01
-          smartbox_port: 8
-          tpm: tpm01
-          tpm_input: 8
+          tpm_input: 1
         sb01-02:
-          location_offset:
-            east: -3.975
-            north: 15.948
-            up: 0.016
-          eep: 189
+          location_offset: {east: -6.75, north: -16.5, up: 0.0}
+          eep: 2
           smartbox: sb01
           smartbox_port: 2
           tpm: tpm01
           tpm_input: 2
+        sb01-03:
+          location_offset: {east: -5.25, north: -16.5, up: 0.0}
+          eep: 3
+          smartbox: sb01
+          smartbox_port: 3
+          tpm: tpm01
+          tpm_input: 3
+        sb01-04:
+          location_offset: {east: -3.75, north: -16.5, up: 0.0}
+          eep: 4
+          smartbox: sb01
+          smartbox_port: 4
+          tpm: tpm01
+          tpm_input: 4
+        sb01-05:
+          location_offset: {east: -2.25, north: -16.5, up: 0.0}
+          eep: 5
+          smartbox: sb01
+          smartbox_port: 5
+          tpm: tpm01
+          tpm_input: 5
+        sb01-06:
+          location_offset: {east: -0.75, north: -16.5, up: 0.0}
+          eep: 6
+          smartbox: sb01
+          smartbox_port: 6
+          tpm: tpm01
+          tpm_input: 6
+        sb01-07:
+          location_offset: {east: 0.75, north: -16.5, up: 0.0}
+          eep: 7
+          smartbox: sb01
+          smartbox_port: 7
+          tpm: tpm01
+          tpm_input: 7
+        sb01-08:
+          location_offset: {east: 2.25, north: -16.5, up: 0.0}
+          eep: 8
+          smartbox: sb01
+          smartbox_port: 8
+          tpm: tpm01
+          tpm_input: 8
         sb01-09:
-          location_offset:
-            east: -0.511
-            north: 16.966
-            up: 0.037
-          eep: 202
+          location_offset: {east: 3.75, north: -16.5, up: 0.0}
+          eep: 9
           smartbox: sb01
           smartbox_port: 9
           tpm: tpm01
           tpm_input: 9
         sb01-10:
-          location_offset:
-            east: -2.864
-            north: 17.596
-            up: 0.011
-          eep: 223
+          location_offset: {east: 5.25, north: -16.5, up: 0.0}
+          eep: 10
           smartbox: sb01
           smartbox_port: 10
           tpm: tpm01
           tpm_input: 10
-        sb01-01:
-          location_offset:
-            east: -5.422
-            north: 17.79
-            up: 0.008
-          eep: 244
+        sb01-11:
+          location_offset: {east: 6.75, north: -16.5, up: 0.0}
+          eep: 11
           smartbox: sb01
+          smartbox_port: 11
+          tpm: tpm01
+          tpm_input: 11
+        sb01-12:
+          location_offset: {east: 8.25, north: -16.5, up: 0.0}
+          eep: 12
+          smartbox: sb01
+          smartbox_port: 12
+          tpm: tpm01
+          tpm_input: 12
+        # sb02 — tpm01 inputs 13-24
+        sb02-01:
+          location_offset: {east: -8.25, north: -13.5, up: 0.0}
+          eep: 13
+          smartbox: sb02
           smartbox_port: 1
           tpm: tpm01
+          tpm_input: 13
+        sb02-02:
+          location_offset: {east: -6.75, north: -13.5, up: 0.0}
+          eep: 14
+          smartbox: sb02
+          smartbox_port: 2
+          tpm: tpm01
+          tpm_input: 14
+        sb02-03:
+          location_offset: {east: -5.25, north: -13.5, up: 0.0}
+          eep: 15
+          smartbox: sb02
+          smartbox_port: 3
+          tpm: tpm01
+          tpm_input: 15
+        sb02-04:
+          location_offset: {east: -3.75, north: -13.5, up: 0.0}
+          eep: 16
+          smartbox: sb02
+          smartbox_port: 4
+          tpm: tpm01
+          tpm_input: 16
+        sb02-05:
+          location_offset: {east: -2.25, north: -13.5, up: 0.0}
+          eep: 17
+          smartbox: sb02
+          smartbox_port: 5
+          tpm: tpm01
+          tpm_input: 17
+        sb02-06:
+          location_offset: {east: -0.75, north: -13.5, up: 0.0}
+          eep: 18
+          smartbox: sb02
+          smartbox_port: 6
+          tpm: tpm01
+          tpm_input: 18
+        sb02-07:
+          location_offset: {east: 0.75, north: -13.5, up: 0.0}
+          eep: 19
+          smartbox: sb02
+          smartbox_port: 7
+          tpm: tpm01
+          tpm_input: 19
+        sb02-08:
+          location_offset: {east: 2.25, north: -13.5, up: 0.0}
+          eep: 20
+          smartbox: sb02
+          smartbox_port: 8
+          tpm: tpm01
+          tpm_input: 20
+        sb02-09:
+          location_offset: {east: 3.75, north: -13.5, up: 0.0}
+          eep: 21
+          smartbox: sb02
+          smartbox_port: 9
+          tpm: tpm01
+          tpm_input: 21
+        sb02-10:
+          location_offset: {east: 5.25, north: -13.5, up: 0.0}
+          eep: 22
+          smartbox: sb02
+          smartbox_port: 10
+          tpm: tpm01
+          tpm_input: 22
+        sb02-11:
+          location_offset: {east: 6.75, north: -13.5, up: 0.0}
+          eep: 23
+          smartbox: sb02
+          smartbox_port: 11
+          tpm: tpm01
+          tpm_input: 23
+        sb02-12:
+          location_offset: {east: 8.25, north: -13.5, up: 0.0}
+          eep: 24
+          smartbox: sb02
+          smartbox_port: 12
+          tpm: tpm01
+          tpm_input: 24
+        # sb03 — tpm02 inputs 1-12
+        sb03-01:
+          location_offset: {east: -8.25, north: -10.5, up: 0.0}
+          eep: 25
+          smartbox: sb03
+          smartbox_port: 1
+          tpm: tpm02
           tpm_input: 1
-          masked: True
+        sb03-02:
+          location_offset: {east: -6.75, north: -10.5, up: 0.0}
+          eep: 26
+          smartbox: sb03
+          smartbox_port: 2
+          tpm: tpm02
+          tpm_input: 2
+        sb03-03:
+          location_offset: {east: -5.25, north: -10.5, up: 0.0}
+          eep: 27
+          smartbox: sb03
+          smartbox_port: 3
+          tpm: tpm02
+          tpm_input: 3
+        sb03-04:
+          location_offset: {east: -3.75, north: -10.5, up: 0.0}
+          eep: 28
+          smartbox: sb03
+          smartbox_port: 4
+          tpm: tpm02
+          tpm_input: 4
+        sb03-05:
+          location_offset: {east: -2.25, north: -10.5, up: 0.0}
+          eep: 29
+          smartbox: sb03
+          smartbox_port: 5
+          tpm: tpm02
+          tpm_input: 5
+        sb03-06:
+          location_offset: {east: -0.75, north: -10.5, up: 0.0}
+          eep: 30
+          smartbox: sb03
+          smartbox_port: 6
+          tpm: tpm02
+          tpm_input: 6
+        sb03-07:
+          location_offset: {east: 0.75, north: -10.5, up: 0.0}
+          eep: 31
+          smartbox: sb03
+          smartbox_port: 7
+          tpm: tpm02
+          tpm_input: 7
+        sb03-08:
+          location_offset: {east: 2.25, north: -10.5, up: 0.0}
+          eep: 32
+          smartbox: sb03
+          smartbox_port: 8
+          tpm: tpm02
+          tpm_input: 8
+        sb03-09:
+          location_offset: {east: 3.75, north: -10.5, up: 0.0}
+          eep: 33
+          smartbox: sb03
+          smartbox_port: 9
+          tpm: tpm02
+          tpm_input: 9
+        sb03-10:
+          location_offset: {east: 5.25, north: -10.5, up: 0.0}
+          eep: 34
+          smartbox: sb03
+          smartbox_port: 10
+          tpm: tpm02
+          tpm_input: 10
+        sb03-11:
+          location_offset: {east: 6.75, north: -10.5, up: 0.0}
+          eep: 35
+          smartbox: sb03
+          smartbox_port: 11
+          tpm: tpm02
+          tpm_input: 11
+        sb03-12:
+          location_offset: {east: 8.25, north: -10.5, up: 0.0}
+          eep: 36
+          smartbox: sb03
+          smartbox_port: 12
+          tpm: tpm02
+          tpm_input: 12
+        # sb04 — tpm02 inputs 13-24
+        sb04-01:
+          location_offset: {east: -8.25, north: -7.5, up: 0.0}
+          eep: 37
+          smartbox: sb04
+          smartbox_port: 1
+          tpm: tpm02
+          tpm_input: 13
+        sb04-02:
+          location_offset: {east: -6.75, north: -7.5, up: 0.0}
+          eep: 38
+          smartbox: sb04
+          smartbox_port: 2
+          tpm: tpm02
+          tpm_input: 14
+        sb04-03:
+          location_offset: {east: -5.25, north: -7.5, up: 0.0}
+          eep: 39
+          smartbox: sb04
+          smartbox_port: 3
+          tpm: tpm02
+          tpm_input: 15
+        sb04-04:
+          location_offset: {east: -3.75, north: -7.5, up: 0.0}
+          eep: 40
+          smartbox: sb04
+          smartbox_port: 4
+          tpm: tpm02
+          tpm_input: 16
+        sb04-05:
+          location_offset: {east: -2.25, north: -7.5, up: 0.0}
+          eep: 41
+          smartbox: sb04
+          smartbox_port: 5
+          tpm: tpm02
+          tpm_input: 17
+        sb04-06:
+          location_offset: {east: -0.75, north: -7.5, up: 0.0}
+          eep: 42
+          smartbox: sb04
+          smartbox_port: 6
+          tpm: tpm02
+          tpm_input: 18
+        sb04-07:
+          location_offset: {east: 0.75, north: -7.5, up: 0.0}
+          eep: 43
+          smartbox: sb04
+          smartbox_port: 7
+          tpm: tpm02
+          tpm_input: 19
+        sb04-08:
+          location_offset: {east: 2.25, north: -7.5, up: 0.0}
+          eep: 44
+          smartbox: sb04
+          smartbox_port: 8
+          tpm: tpm02
+          tpm_input: 20
+        sb04-09:
+          location_offset: {east: 3.75, north: -7.5, up: 0.0}
+          eep: 45
+          smartbox: sb04
+          smartbox_port: 9
+          tpm: tpm02
+          tpm_input: 21
+        sb04-10:
+          location_offset: {east: 5.25, north: -7.5, up: 0.0}
+          eep: 46
+          smartbox: sb04
+          smartbox_port: 10
+          tpm: tpm02
+          tpm_input: 22
+        sb04-11:
+          location_offset: {east: 6.75, north: -7.5, up: 0.0}
+          eep: 47
+          smartbox: sb04
+          smartbox_port: 11
+          tpm: tpm02
+          tpm_input: 23
+        sb04-12:
+          location_offset: {east: 8.25, north: -7.5, up: 0.0}
+          eep: 48
+          smartbox: sb04
+          smartbox_port: 12
+          tpm: tpm02
+          tpm_input: 24
+        # sb05 — tpm03 inputs 1-12
+        sb05-01:
+          location_offset: {east: -8.25, north: -4.5, up: 0.0}
+          eep: 49
+          smartbox: sb05
+          smartbox_port: 1
+          tpm: tpm03
+          tpm_input: 1
+        sb05-02:
+          location_offset: {east: -6.75, north: -4.5, up: 0.0}
+          eep: 50
+          smartbox: sb05
+          smartbox_port: 2
+          tpm: tpm03
+          tpm_input: 2
+        sb05-03:
+          location_offset: {east: -5.25, north: -4.5, up: 0.0}
+          eep: 51
+          smartbox: sb05
+          smartbox_port: 3
+          tpm: tpm03
+          tpm_input: 3
+        sb05-04:
+          location_offset: {east: -3.75, north: -4.5, up: 0.0}
+          eep: 52
+          smartbox: sb05
+          smartbox_port: 4
+          tpm: tpm03
+          tpm_input: 4
+        sb05-05:
+          location_offset: {east: -2.25, north: -4.5, up: 0.0}
+          eep: 53
+          smartbox: sb05
+          smartbox_port: 5
+          tpm: tpm03
+          tpm_input: 5
+        sb05-06:
+          location_offset: {east: -0.75, north: -4.5, up: 0.0}
+          eep: 54
+          smartbox: sb05
+          smartbox_port: 6
+          tpm: tpm03
+          tpm_input: 6
+        sb05-07:
+          location_offset: {east: 0.75, north: -4.5, up: 0.0}
+          eep: 55
+          smartbox: sb05
+          smartbox_port: 7
+          tpm: tpm03
+          tpm_input: 7
+        sb05-08:
+          location_offset: {east: 2.25, north: -4.5, up: 0.0}
+          eep: 56
+          smartbox: sb05
+          smartbox_port: 8
+          tpm: tpm03
+          tpm_input: 8
+        sb05-09:
+          location_offset: {east: 3.75, north: -4.5, up: 0.0}
+          eep: 57
+          smartbox: sb05
+          smartbox_port: 9
+          tpm: tpm03
+          tpm_input: 9
+        sb05-10:
+          location_offset: {east: 5.25, north: -4.5, up: 0.0}
+          eep: 58
+          smartbox: sb05
+          smartbox_port: 10
+          tpm: tpm03
+          tpm_input: 10
+        sb05-11:
+          location_offset: {east: 6.75, north: -4.5, up: 0.0}
+          eep: 59
+          smartbox: sb05
+          smartbox_port: 11
+          tpm: tpm03
+          tpm_input: 11
+        sb05-12:
+          location_offset: {east: 8.25, north: -4.5, up: 0.0}
+          eep: 60
+          smartbox: sb05
+          smartbox_port: 12
+          tpm: tpm03
+          tpm_input: 12
+        # sb06 — tpm03 inputs 13-24
+        sb06-01:
+          location_offset: {east: -8.25, north: -1.5, up: 0.0}
+          eep: 61
+          smartbox: sb06
+          smartbox_port: 1
+          tpm: tpm03
+          tpm_input: 13
+        sb06-02:
+          location_offset: {east: -6.75, north: -1.5, up: 0.0}
+          eep: 62
+          smartbox: sb06
+          smartbox_port: 2
+          tpm: tpm03
+          tpm_input: 14
+        sb06-03:
+          location_offset: {east: -5.25, north: -1.5, up: 0.0}
+          eep: 63
+          smartbox: sb06
+          smartbox_port: 3
+          tpm: tpm03
+          tpm_input: 15
+        sb06-04:
+          location_offset: {east: -3.75, north: -1.5, up: 0.0}
+          eep: 64
+          smartbox: sb06
+          smartbox_port: 4
+          tpm: tpm03
+          tpm_input: 16
+        sb06-05:
+          location_offset: {east: -2.25, north: -1.5, up: 0.0}
+          eep: 65
+          smartbox: sb06
+          smartbox_port: 5
+          tpm: tpm03
+          tpm_input: 17
+        sb06-06:
+          location_offset: {east: -0.75, north: -1.5, up: 0.0}
+          eep: 66
+          smartbox: sb06
+          smartbox_port: 6
+          tpm: tpm03
+          tpm_input: 18
+        sb06-07:
+          location_offset: {east: 0.75, north: -1.5, up: 0.0}
+          eep: 67
+          smartbox: sb06
+          smartbox_port: 7
+          tpm: tpm03
+          tpm_input: 19
+        sb06-08:
+          location_offset: {east: 2.25, north: -1.5, up: 0.0}
+          eep: 68
+          smartbox: sb06
+          smartbox_port: 8
+          tpm: tpm03
+          tpm_input: 20
+        sb06-09:
+          location_offset: {east: 3.75, north: -1.5, up: 0.0}
+          eep: 69
+          smartbox: sb06
+          smartbox_port: 9
+          tpm: tpm03
+          tpm_input: 21
+        sb06-10:
+          location_offset: {east: 5.25, north: -1.5, up: 0.0}
+          eep: 70
+          smartbox: sb06
+          smartbox_port: 10
+          tpm: tpm03
+          tpm_input: 22
+        sb06-11:
+          location_offset: {east: 6.75, north: -1.5, up: 0.0}
+          eep: 71
+          smartbox: sb06
+          smartbox_port: 11
+          tpm: tpm03
+          tpm_input: 23
+        sb06-12:
+          location_offset: {east: 8.25, north: -1.5, up: 0.0}
+          eep: 72
+          smartbox: sb06
+          smartbox_port: 12
+          tpm: tpm03
+          tpm_input: 24
+        # sb07 — tpm04 inputs 1-12
+        sb07-01:
+          location_offset: {east: -8.25, north: 1.5, up: 0.0}
+          eep: 73
+          smartbox: sb07
+          smartbox_port: 1
+          tpm: tpm04
+          tpm_input: 1
+        sb07-02:
+          location_offset: {east: -6.75, north: 1.5, up: 0.0}
+          eep: 74
+          smartbox: sb07
+          smartbox_port: 2
+          tpm: tpm04
+          tpm_input: 2
+        sb07-03:
+          location_offset: {east: -5.25, north: 1.5, up: 0.0}
+          eep: 75
+          smartbox: sb07
+          smartbox_port: 3
+          tpm: tpm04
+          tpm_input: 3
+        sb07-04:
+          location_offset: {east: -3.75, north: 1.5, up: 0.0}
+          eep: 76
+          smartbox: sb07
+          smartbox_port: 4
+          tpm: tpm04
+          tpm_input: 4
+        sb07-05:
+          location_offset: {east: -2.25, north: 1.5, up: 0.0}
+          eep: 77
+          smartbox: sb07
+          smartbox_port: 5
+          tpm: tpm04
+          tpm_input: 5
+        sb07-06:
+          location_offset: {east: -0.75, north: 1.5, up: 0.0}
+          eep: 78
+          smartbox: sb07
+          smartbox_port: 6
+          tpm: tpm04
+          tpm_input: 6
+        sb07-07:
+          location_offset: {east: 0.75, north: 1.5, up: 0.0}
+          eep: 79
+          smartbox: sb07
+          smartbox_port: 7
+          tpm: tpm04
+          tpm_input: 7
+        sb07-08:
+          location_offset: {east: 2.25, north: 1.5, up: 0.0}
+          eep: 80
+          smartbox: sb07
+          smartbox_port: 8
+          tpm: tpm04
+          tpm_input: 8
+        sb07-09:
+          location_offset: {east: 3.75, north: 1.5, up: 0.0}
+          eep: 81
+          smartbox: sb07
+          smartbox_port: 9
+          tpm: tpm04
+          tpm_input: 9
+        sb07-10:
+          location_offset: {east: 5.25, north: 1.5, up: 0.0}
+          eep: 82
+          smartbox: sb07
+          smartbox_port: 10
+          tpm: tpm04
+          tpm_input: 10
+        sb07-11:
+          location_offset: {east: 6.75, north: 1.5, up: 0.0}
+          eep: 83
+          smartbox: sb07
+          smartbox_port: 11
+          tpm: tpm04
+          tpm_input: 11
+        sb07-12:
+          location_offset: {east: 8.25, north: 1.5, up: 0.0}
+          eep: 84
+          smartbox: sb07
+          smartbox_port: 12
+          tpm: tpm04
+          tpm_input: 12
+        # sb08 — tpm04 inputs 13-24
+        sb08-01:
+          location_offset: {east: -8.25, north: 4.5, up: 0.0}
+          eep: 85
+          smartbox: sb08
+          smartbox_port: 1
+          tpm: tpm04
+          tpm_input: 13
+        sb08-02:
+          location_offset: {east: -6.75, north: 4.5, up: 0.0}
+          eep: 86
+          smartbox: sb08
+          smartbox_port: 2
+          tpm: tpm04
+          tpm_input: 14
+        sb08-03:
+          location_offset: {east: -5.25, north: 4.5, up: 0.0}
+          eep: 87
+          smartbox: sb08
+          smartbox_port: 3
+          tpm: tpm04
+          tpm_input: 15
+        sb08-04:
+          location_offset: {east: -3.75, north: 4.5, up: 0.0}
+          eep: 88
+          smartbox: sb08
+          smartbox_port: 4
+          tpm: tpm04
+          tpm_input: 16
+        sb08-05:
+          location_offset: {east: -2.25, north: 4.5, up: 0.0}
+          eep: 89
+          smartbox: sb08
+          smartbox_port: 5
+          tpm: tpm04
+          tpm_input: 17
+        sb08-06:
+          location_offset: {east: -0.75, north: 4.5, up: 0.0}
+          eep: 90
+          smartbox: sb08
+          smartbox_port: 6
+          tpm: tpm04
+          tpm_input: 18
+        sb08-07:
+          location_offset: {east: 0.75, north: 4.5, up: 0.0}
+          eep: 91
+          smartbox: sb08
+          smartbox_port: 7
+          tpm: tpm04
+          tpm_input: 19
+        sb08-08:
+          location_offset: {east: 2.25, north: 4.5, up: 0.0}
+          eep: 92
+          smartbox: sb08
+          smartbox_port: 8
+          tpm: tpm04
+          tpm_input: 20
+        sb08-09:
+          location_offset: {east: 3.75, north: 4.5, up: 0.0}
+          eep: 93
+          smartbox: sb08
+          smartbox_port: 9
+          tpm: tpm04
+          tpm_input: 21
+        sb08-10:
+          location_offset: {east: 5.25, north: 4.5, up: 0.0}
+          eep: 94
+          smartbox: sb08
+          smartbox_port: 10
+          tpm: tpm04
+          tpm_input: 22
+        sb08-11:
+          location_offset: {east: 6.75, north: 4.5, up: 0.0}
+          eep: 95
+          smartbox: sb08
+          smartbox_port: 11
+          tpm: tpm04
+          tpm_input: 23
+        sb08-12:
+          location_offset: {east: 8.25, north: 4.5, up: 0.0}
+          eep: 96
+          smartbox: sb08
+          smartbox_port: 12
+          tpm: tpm04
+          tpm_input: 24
+        # sb09 — tpm05 inputs 1-12
+        sb09-01:
+          location_offset: {east: -8.25, north: 7.5, up: 0.0}
+          eep: 97
+          smartbox: sb09
+          smartbox_port: 1
+          tpm: tpm05
+          tpm_input: 1
+        sb09-02:
+          location_offset: {east: -6.75, north: 7.5, up: 0.0}
+          eep: 98
+          smartbox: sb09
+          smartbox_port: 2
+          tpm: tpm05
+          tpm_input: 2
+        sb09-03:
+          location_offset: {east: -5.25, north: 7.5, up: 0.0}
+          eep: 99
+          smartbox: sb09
+          smartbox_port: 3
+          tpm: tpm05
+          tpm_input: 3
+        sb09-04:
+          location_offset: {east: -3.75, north: 7.5, up: 0.0}
+          eep: 100
+          smartbox: sb09
+          smartbox_port: 4
+          tpm: tpm05
+          tpm_input: 4
+        sb09-05:
+          location_offset: {east: -2.25, north: 7.5, up: 0.0}
+          eep: 101
+          smartbox: sb09
+          smartbox_port: 5
+          tpm: tpm05
+          tpm_input: 5
+        sb09-06:
+          location_offset: {east: -0.75, north: 7.5, up: 0.0}
+          eep: 102
+          smartbox: sb09
+          smartbox_port: 6
+          tpm: tpm05
+          tpm_input: 6
+        sb09-07:
+          location_offset: {east: 0.75, north: 7.5, up: 0.0}
+          eep: 103
+          smartbox: sb09
+          smartbox_port: 7
+          tpm: tpm05
+          tpm_input: 7
+        sb09-08:
+          location_offset: {east: 2.25, north: 7.5, up: 0.0}
+          eep: 104
+          smartbox: sb09
+          smartbox_port: 8
+          tpm: tpm05
+          tpm_input: 8
+        sb09-09:
+          location_offset: {east: 3.75, north: 7.5, up: 0.0}
+          eep: 105
+          smartbox: sb09
+          smartbox_port: 9
+          tpm: tpm05
+          tpm_input: 9
+        sb09-10:
+          location_offset: {east: 5.25, north: 7.5, up: 0.0}
+          eep: 106
+          smartbox: sb09
+          smartbox_port: 10
+          tpm: tpm05
+          tpm_input: 10
+        sb09-11:
+          location_offset: {east: 6.75, north: 7.5, up: 0.0}
+          eep: 107
+          smartbox: sb09
+          smartbox_port: 11
+          tpm: tpm05
+          tpm_input: 11
+        sb09-12:
+          location_offset: {east: 8.25, north: 7.5, up: 0.0}
+          eep: 108
+          smartbox: sb09
+          smartbox_port: 12
+          tpm: tpm05
+          tpm_input: 12
+        # sb10 — tpm05 inputs 13-24
+        sb10-01:
+          location_offset: {east: -8.25, north: 10.5, up: 0.0}
+          eep: 109
+          smartbox: sb10
+          smartbox_port: 1
+          tpm: tpm05
+          tpm_input: 13
+        sb10-02:
+          location_offset: {east: -6.75, north: 10.5, up: 0.0}
+          eep: 110
+          smartbox: sb10
+          smartbox_port: 2
+          tpm: tpm05
+          tpm_input: 14
+        sb10-03:
+          location_offset: {east: -5.25, north: 10.5, up: 0.0}
+          eep: 111
+          smartbox: sb10
+          smartbox_port: 3
+          tpm: tpm05
+          tpm_input: 15
+        sb10-04:
+          location_offset: {east: -3.75, north: 10.5, up: 0.0}
+          eep: 112
+          smartbox: sb10
+          smartbox_port: 4
+          tpm: tpm05
+          tpm_input: 16
+        sb10-05:
+          location_offset: {east: -2.25, north: 10.5, up: 0.0}
+          eep: 113
+          smartbox: sb10
+          smartbox_port: 5
+          tpm: tpm05
+          tpm_input: 17
+        sb10-06:
+          location_offset: {east: -0.75, north: 10.5, up: 0.0}
+          eep: 114
+          smartbox: sb10
+          smartbox_port: 6
+          tpm: tpm05
+          tpm_input: 18
+        sb10-07:
+          location_offset: {east: 0.75, north: 10.5, up: 0.0}
+          eep: 115
+          smartbox: sb10
+          smartbox_port: 7
+          tpm: tpm05
+          tpm_input: 19
+        sb10-08:
+          location_offset: {east: 2.25, north: 10.5, up: 0.0}
+          eep: 116
+          smartbox: sb10
+          smartbox_port: 8
+          tpm: tpm05
+          tpm_input: 20
+        sb10-09:
+          location_offset: {east: 3.75, north: 10.5, up: 0.0}
+          eep: 117
+          smartbox: sb10
+          smartbox_port: 9
+          tpm: tpm05
+          tpm_input: 21
+        sb10-10:
+          location_offset: {east: 5.25, north: 10.5, up: 0.0}
+          eep: 118
+          smartbox: sb10
+          smartbox_port: 10
+          tpm: tpm05
+          tpm_input: 22
+        sb10-11:
+          location_offset: {east: 6.75, north: 10.5, up: 0.0}
+          eep: 119
+          smartbox: sb10
+          smartbox_port: 11
+          tpm: tpm05
+          tpm_input: 23
+        sb10-12:
+          location_offset: {east: 8.25, north: 10.5, up: 0.0}
+          eep: 120
+          smartbox: sb10
+          smartbox_port: 12
+          tpm: tpm05
+          tpm_input: 24
+        # sb11 — tpm06 inputs 1-12
+        sb11-01:
+          location_offset: {east: -8.25, north: 13.5, up: 0.0}
+          eep: 121
+          smartbox: sb11
+          smartbox_port: 1
+          tpm: tpm06
+          tpm_input: 1
+        sb11-02:
+          location_offset: {east: -6.75, north: 13.5, up: 0.0}
+          eep: 122
+          smartbox: sb11
+          smartbox_port: 2
+          tpm: tpm06
+          tpm_input: 2
+        sb11-03:
+          location_offset: {east: -5.25, north: 13.5, up: 0.0}
+          eep: 123
+          smartbox: sb11
+          smartbox_port: 3
+          tpm: tpm06
+          tpm_input: 3
+        sb11-04:
+          location_offset: {east: -3.75, north: 13.5, up: 0.0}
+          eep: 124
+          smartbox: sb11
+          smartbox_port: 4
+          tpm: tpm06
+          tpm_input: 4
+        sb11-05:
+          location_offset: {east: -2.25, north: 13.5, up: 0.0}
+          eep: 125
+          smartbox: sb11
+          smartbox_port: 5
+          tpm: tpm06
+          tpm_input: 5
+        sb11-06:
+          location_offset: {east: -0.75, north: 13.5, up: 0.0}
+          eep: 126
+          smartbox: sb11
+          smartbox_port: 6
+          tpm: tpm06
+          tpm_input: 6
+        sb11-07:
+          location_offset: {east: 0.75, north: 13.5, up: 0.0}
+          eep: 127
+          smartbox: sb11
+          smartbox_port: 7
+          tpm: tpm06
+          tpm_input: 7
+        sb11-08:
+          location_offset: {east: 2.25, north: 13.5, up: 0.0}
+          eep: 128
+          smartbox: sb11
+          smartbox_port: 8
+          tpm: tpm06
+          tpm_input: 8
+        sb11-09:
+          location_offset: {east: 3.75, north: 13.5, up: 0.0}
+          eep: 129
+          smartbox: sb11
+          smartbox_port: 9
+          tpm: tpm06
+          tpm_input: 9
+        sb11-10:
+          location_offset: {east: 5.25, north: 13.5, up: 0.0}
+          eep: 130
+          smartbox: sb11
+          smartbox_port: 10
+          tpm: tpm06
+          tpm_input: 10
+        sb11-11:
+          location_offset: {east: 6.75, north: 13.5, up: 0.0}
+          eep: 131
+          smartbox: sb11
+          smartbox_port: 11
+          tpm: tpm06
+          tpm_input: 11
+        sb11-12:
+          location_offset: {east: 8.25, north: 13.5, up: 0.0}
+          eep: 132
+          smartbox: sb11
+          smartbox_port: 12
+          tpm: tpm06
+          tpm_input: 12
+        # sb12 — tpm06 inputs 13-24
+        sb12-01:
+          location_offset: {east: -8.25, north: 16.5, up: 0.0}
+          eep: 133
+          smartbox: sb12
+          smartbox_port: 1
+          tpm: tpm06
+          tpm_input: 13
+        sb12-02:
+          location_offset: {east: -6.75, north: 16.5, up: 0.0}
+          eep: 134
+          smartbox: sb12
+          smartbox_port: 2
+          tpm: tpm06
+          tpm_input: 14
+        sb12-03:
+          location_offset: {east: -5.25, north: 16.5, up: 0.0}
+          eep: 135
+          smartbox: sb12
+          smartbox_port: 3
+          tpm: tpm06
+          tpm_input: 15
+        sb12-04:
+          location_offset: {east: -3.75, north: 16.5, up: 0.0}
+          eep: 136
+          smartbox: sb12
+          smartbox_port: 4
+          tpm: tpm06
+          tpm_input: 16
+        sb12-05:
+          location_offset: {east: -2.25, north: 16.5, up: 0.0}
+          eep: 137
+          smartbox: sb12
+          smartbox_port: 5
+          tpm: tpm06
+          tpm_input: 17
+        sb12-06:
+          location_offset: {east: -0.75, north: 16.5, up: 0.0}
+          eep: 138
+          smartbox: sb12
+          smartbox_port: 6
+          tpm: tpm06
+          tpm_input: 18
+        sb12-07:
+          location_offset: {east: 0.75, north: 16.5, up: 0.0}
+          eep: 139
+          smartbox: sb12
+          smartbox_port: 7
+          tpm: tpm06
+          tpm_input: 19
+        sb12-08:
+          location_offset: {east: 2.25, north: 16.5, up: 0.0}
+          eep: 140
+          smartbox: sb12
+          smartbox_port: 8
+          tpm: tpm06
+          tpm_input: 20
+        sb12-09:
+          location_offset: {east: 3.75, north: 16.5, up: 0.0}
+          eep: 141
+          smartbox: sb12
+          smartbox_port: 9
+          tpm: tpm06
+          tpm_input: 21
+        sb12-10:
+          location_offset: {east: 5.25, north: 16.5, up: 0.0}
+          eep: 142
+          smartbox: sb12
+          smartbox_port: 10
+          tpm: tpm06
+          tpm_input: 22
+        sb12-11:
+          location_offset: {east: 6.75, north: 16.5, up: 0.0}
+          eep: 143
+          smartbox: sb12
+          smartbox_port: 11
+          tpm: tpm06
+          tpm_input: 23
+        sb12-12:
+          location_offset: {east: 8.25, north: 16.5, up: 0.0}
+          eep: 144
+          smartbox: sb12
+          smartbox_port: 12
+          tpm: tpm06
+          tpm_input: 24

@@ -664,15 +664,17 @@ def set_tango_device_state(
     result_code = ResultCode.UNKNOWN
     command_id = ""
     # Issue the command
-    if desired_state != initial_state:
-        if desired_state == tango.DevState.ON:
-            [result_code], [command_id] = dev.On()
-        elif desired_state == tango.DevState.OFF:
-            [result_code], [command_id] = dev.Off()
-        elif desired_state == tango.DevState.STANDBY:
-            [result_code], [command_id] = dev.Standby()
-        else:
-            raise ValueError(f"State {desired_state} is not a valid state.")
+    if desired_state == initial_state:
+        print(f"{dev.dev_name()} already in state {desired_state}, no command issued.")
+        return
+    if desired_state == tango.DevState.ON:
+        [result_code], [command_id] = dev.On()
+    elif desired_state == tango.DevState.OFF:
+        [result_code], [command_id] = dev.Off()
+    elif desired_state == tango.DevState.STANDBY:
+        [result_code], [command_id] = dev.Standby()
+    else:
+        raise ValueError(f"State {desired_state} is not a valid state.")
 
     assert result_code == ResultCode.QUEUED
     print(f"Command queued on {dev.dev_name()}: {command_id}")

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 import unittest.mock
 from typing import Any, Iterator
@@ -396,6 +397,7 @@ class TestFieldStationComponentManager:
                 timeout=FieldStationComponentManager.FIELDSTATION_ON_COMMAND_TIMEOUT,
                 is_lrc=True,
                 wait_for_result=True,
+                task_abort_event=None,
             )
 
             expected_calls = [
@@ -426,6 +428,7 @@ class TestFieldStationComponentManager:
                 timeout=FieldStationComponentManager.FIELDSTATION_ON_COMMAND_TIMEOUT,
                 is_lrc=True,
                 wait_for_result=True,
+                task_abort_event=None,
             )
 
     @patch(
@@ -483,6 +486,146 @@ class TestFieldStationComponentManager:
             status=TaskStatus.COMPLETED,
             result=(ResultCode.OK, "Antenna masking updated."),
         )
+
+    def test_abort(
+        self: TestFieldStationComponentManager,
+        logger: logging.Logger,
+        mock_callbacks: MockCallableGroup,
+        station_label: str,
+    ) -> None:
+        """
+        Test that abort completes the LRC and propagates to the FNDH.
+
+        :param logger: a logger for this command to use.
+        :param mock_callbacks: mock callables.
+        :param station_label: The label of the station under test.
+        """
+        mock_fndh_proxy = MagicMock()
+        mock_fndh_proxy._proxy = MagicMock()
+
+        cm = FieldStationComponentManager(
+            logger,
+            "ci-1",
+            get_fndh_name(station_label=station_label),
+            [
+                get_smartbox_name(smartbox_id, station_label=station_label)
+                for smartbox_id in range(
+                    1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+                )
+            ],
+            1,
+            mock_callbacks["communication_state"],
+            mock_callbacks["component_state"],
+            _fndh_proxy=mock_fndh_proxy,
+        )
+
+        task_callbacks = MockCallableGroup("task", timeout=5.0)
+        result = cm.abort(task_callback=task_callbacks["task"])
+
+        assert result == (TaskStatus.IN_PROGRESS, "Aborting tasks")
+        task_callbacks.assert_call("task", status=TaskStatus.IN_PROGRESS)
+        task_callbacks.assert_call(
+            "task",
+            status=TaskStatus.COMPLETED,
+            result=(ResultCode.OK, "Abort completed OK"),
+        )
+        mock_fndh_proxy._proxy.Abort.assert_called_once()
+
+    @patch(
+        "ska_low_mccs_pasd.field_station."
+        "field_station_component_manager.MccsCompositeCommandProxy"
+    )
+    @patch(
+        "ska_low_mccs_pasd.field_station."
+        "field_station_component_manager.MccsCommandProxy"
+    )
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def test_abort_during_on(
+        self: TestFieldStationComponentManager,
+        mock_command_cls: unittest.mock.Mock,
+        mock_composite_cls: unittest.mock.Mock,
+        logger: logging.Logger,
+        mock_callbacks: MockCallableGroup,
+        station_label: str,
+    ) -> None:
+        """
+        Test that aborting during On() prevents the smartbox On() calls.
+
+        do_on() calls the FNDH On command first, then iterates over smartbox
+        blocks, checking the abort event before each one. This test verifies that
+        if abort is signalled while the FNDH On call is in-flight, the smartbox
+        On() commands are never issued.
+
+        :param mock_command_cls: patched MccsCommandProxy class.
+        :param mock_composite_cls: patched MccsCompositeCommandProxy class.
+        :param logger: a logger for this command to use.
+        :param mock_callbacks: mock callables.
+        :param station_label: The label of the station under test.
+        """
+        mock_fndh_proxy = MagicMock()
+        mock_fndh_proxy._proxy = MagicMock()
+        mock_fndh_proxy.power_state = PowerState.OFF  # trigger FNDH On
+
+        cm = FieldStationComponentManager(
+            logger,
+            "ci-1",
+            get_fndh_name(station_label=station_label),
+            [
+                get_smartbox_name(smartbox_id, station_label=station_label)
+                for smartbox_id in range(
+                    1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
+                )
+            ],
+            1,
+            mock_callbacks["communication_state"],
+            mock_callbacks["component_state"],
+            _fndh_proxy=mock_fndh_proxy,
+        )
+
+        task_abort_event = threading.Event()
+        fndh_on_started = threading.Event()
+
+        def blocking_fndh_on(**_: Any) -> tuple[ResultCode, str]:
+            # Simulate MccsCommandProxy: block until abort fires, then return ABORTED
+            fndh_on_started.set()
+            task_abort_event.wait(timeout=5.0)
+            return (ResultCode.ABORTED, "LRC aborted")
+
+        mock_command = MagicMock()
+        mock_command.side_effect = blocking_fndh_on
+        mock_command_cls.return_value = mock_command
+
+        mock_composite = MagicMock()
+        mock_composite_cls.return_value = mock_composite
+        mock_composite.__iadd__.return_value = mock_composite
+
+        do_on_thread = threading.Thread(
+            target=cm.do_on,
+            args=(mock_callbacks["task"],),
+            kwargs={"task_abort_event": task_abort_event},
+            daemon=True,
+        )
+        do_on_thread.start()
+
+        assert fndh_on_started.wait(timeout=5.0), "FNDH On did not start"
+        task_abort_event.set()
+
+        do_on_thread.join(timeout=5.0)
+        assert not do_on_thread.is_alive(), "do_on did not finish"
+
+        mock_callbacks["task"].assert_call(status=TaskStatus.IN_PROGRESS)
+        mock_callbacks["task"].assert_call(
+            status=TaskStatus.ABORTED,
+            result=(ResultCode.ABORTED, "Field station ON aborted."),
+        )
+        # Verify abort event was passed into the proxy call so it could unblock
+        mock_command.assert_called_once_with(
+            timeout=FieldStationComponentManager.FIELDSTATION_ON_COMMAND_TIMEOUT,
+            is_lrc=True,
+            wait_for_result=True,
+            task_abort_event=task_abort_event,
+        )
+        mock_composite.assert_not_called()
 
     @patch(
         "ska_low_mccs_pasd.field_station."

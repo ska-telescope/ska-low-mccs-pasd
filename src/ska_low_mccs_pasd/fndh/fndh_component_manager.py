@@ -31,6 +31,7 @@ __all__ = ["FndhComponentManager", "_PasdBusProxy"]
 RESULT_TO_TASK = {
     ResultCode.OK: TaskStatus.COMPLETED,
     ResultCode.FAILED: TaskStatus.FAILED,
+    ResultCode.ABORTED: TaskStatus.ABORTED,
 }
 
 
@@ -258,6 +259,25 @@ class FndhComponentManager(TaskExecutorComponentManager):
 
         self._update_communication_state(communication_state)
 
+    def abort(
+        self: FndhComponentManager,
+        task_callback: Optional[Callable] = None,
+    ) -> tuple[TaskStatus, str]:
+        """
+        Abort in-flight tasks and propagate to the PaSD bus.
+
+        Calls the base class abort to signal the task abort event, then
+        calls Abort on the PaSD bus device to clear any pending port power changes.
+
+        :param task_callback: notified of task progress.
+        :return: tuple of TaskStatus and message.
+        """
+        self.logger.info("Aborting PasdBus.")
+        result = super().abort(task_callback)
+        if self._pasd_bus_proxy._proxy is not None:
+            self._pasd_bus_proxy._proxy.Abort()
+        return result
+
     def start_communicating(self: FndhComponentManager) -> None:  # noqa: C901
         """Establish communication with the pasdBus via a proxy."""
         if self.communication_state == CommunicationStatus.ESTABLISHED:
@@ -429,7 +449,10 @@ class FndhComponentManager(TaskExecutorComponentManager):
         return result_code, return_message
 
     def _power_fndh_ports(
-        self: FndhComponentManager, power_state: PowerState, timeout: int
+        self: FndhComponentManager,
+        power_state: PowerState,
+        timeout: int,
+        task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, int]:
         desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
         for port in self._ports_with_smartbox:
@@ -441,24 +464,35 @@ class FndhComponentManager(TaskExecutorComponentManager):
             }
         )
         self._pasd_bus_proxy.set_fndh_port_powers(json_argument)
-        return self._wait_for_fndh_ports_state(desired_port_powers, timeout)
+        return self._wait_for_fndh_ports_state(
+            desired_port_powers, timeout, task_abort_event
+        )
 
     def _wait_for_fndh_ports_state(
-        self: FndhComponentManager, desired_port_powers: list[bool | None], timeout: int
+        self: FndhComponentManager,
+        desired_port_powers: list[bool | None],
+        timeout: int,
+        task_abort_event: Optional[threading.Event] = None,
     ) -> tuple[ResultCode, int]:
         desired_port_power_states = [
             Any if power is None else PowerState.ON if power else PowerState.OFF
             for power in desired_port_powers
         ]
+        poll = 0.1 if task_abort_event else timeout
         while not all(
             demanded_state in (Any, port_state)
             for port_state, demanded_state in zip(
                 self._fndh_port_powers, desired_port_power_states
             )
         ):
+            if task_abort_event and task_abort_event.is_set():
+                self.logger.info(
+                    "Aborted waiting for FNDH port powers to change state."
+                )
+                return ResultCode.ABORTED, timeout
             self.logger.debug("Waiting for unmasked smartbox ports to change state")
             t1 = time.time()
-            self.fndh_ports_change.wait(timeout)
+            self.fndh_ports_change.wait(min(timeout, poll))
             t2 = time.time()
             timeout -= int(t2 - t1)
             self.fndh_ports_change.clear()
@@ -516,7 +550,9 @@ class FndhComponentManager(TaskExecutorComponentManager):
 
         try:
             timeout = 28 * 10  # seconds
-            result, time_left = self._power_fndh_ports(power_state, timeout)
+            result, time_left = self._power_fndh_ports(
+                power_state, timeout, task_abort_event
+            )
 
         except Exception as ex:  # pylint: disable=broad-except
             self.logger.error(f"error {ex}")
