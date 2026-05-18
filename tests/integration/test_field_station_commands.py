@@ -23,6 +23,7 @@ from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_data import PasdData
+from tests.test_tools import assert_against_lrc_finished
 
 gc.disable()
 
@@ -385,16 +386,6 @@ class TestFieldStationIntegration:
             tango.DevState.STANDBY, lookahead=2
         )
 
-        # Subscribe to LRC status
-        field_station_device.subscribe_event(
-            "longRunningCommandStatus",
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["field_station_command_status"],
-        )
-        change_event_callbacks["field_station_command_status"].assert_change_event(
-            Anything
-        )
-
         # Confirm the port is initially unmasked
         assert not list(chosen_smartbox.portMask)[
             chosen_port - 1
@@ -405,9 +396,8 @@ class TestFieldStationIntegration:
             json.dumps({antenna_to_turn_on: True})
         )
         assert result_codes[0] == ResultCode.QUEUED
-
-        change_event_callbacks["field_station_command_status"].assert_change_event(
-            (command_id, "COMPLETED"), lookahead=4
+        assert_against_lrc_finished(
+            field_station_device, command_id, "COMPLETED", timeout=10
         )
 
         # Verify the SmartBox portMask reflects the change
@@ -481,24 +471,14 @@ class TestFieldStationIntegration:
             tango.DevState.STANDBY, lookahead=2
         )
 
-        # Subscribe to LRC status
-        field_station_device.subscribe_event(
-            "longRunningCommandStatus",
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["field_station_command_status"],
-        )
-        change_event_callbacks["field_station_command_status"].assert_change_event(
-            Anything
-        )
-
         # Call with an antenna that does not exist on any smartbox
         [result_codes, [command_id]] = field_station_device.SetAntennaMasking(
             json.dumps({"sb99-99": True})
         )
         assert result_codes[0] == ResultCode.QUEUED
 
-        change_event_callbacks["field_station_command_status"].assert_change_event(
-            (command_id, "REJECTED"), lookahead=4
+        assert_against_lrc_finished(
+            field_station_device, command_id, "REJECTED", timeout=10
         )
 
     def test_configure(
@@ -567,47 +547,15 @@ class TestFieldStationIntegration:
             "overVoltageThreshold": over_voltage_threshold,
             "humidityThreshold": humidity_threshold,
         }
-        field_station_device.subscribe_event(
-            "longRunningCommandStatus",
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["field_station_command_status"],
-        )
-        change_event_callbacks["field_station_command_status"].assert_change_event(
-            Anything
-        )
         response = field_station_device.Configure(json.dumps(config))
         [result_code_array, [command_id]] = response
         assert result_code_array[0] == ResultCode.QUEUED
 
         # lookahead of 4. It seems most of the time a lookahead of 3 is sufficient.
         # However, it seems that STAGING is sometimes called (but not always).
-        change_event_callbacks["field_station_command_status"].assert_change_event(
-            (command_id, "COMPLETED"), lookahead=4
+        assert_against_lrc_finished(
+            field_station_device, command_id, "COMPLETED", timeout=10
         )
         assert fndh_device.overCurrentThreshold == over_current_threshold
         assert fndh_device.overVoltageThreshold == over_voltage_threshold
         assert fndh_device.humidityThreshold == humidity_threshold
-
-
-# pylint: disable=inconsistent-return-statements
-def poll_until_command_completed(
-    device: tango.DeviceProxy, command_id: str, no_of_iters: int = 5
-) -> None:
-    """
-    Poll until command has completed.
-
-    This function recursively calls itself up to `no_of_iters` times.
-
-    :param device: the TANGO device
-    :param command_id: the command_id to check
-    :param no_of_iters: number of times to iterate
-    """
-    command_status = device.CheckLongRunningCommandStatus(command_id)
-    if command_status == "COMPLETED":
-        return
-
-    if no_of_iters == 1:
-        pytest.fail("Command Failed to complete in time")
-
-    time.sleep(0.1)
-    return poll_until_command_completed(device, command_id, no_of_iters - 1)

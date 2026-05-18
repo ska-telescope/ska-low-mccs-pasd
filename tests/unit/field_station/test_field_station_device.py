@@ -36,8 +36,6 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     return MockTangoEventCallbackGroup(
         "adminMode",
         "healthState",
-        "longRunningCommandResult",
-        "longRunningCommandStatus",
         "state",
         timeout=2.0,
         assert_no_error=False,

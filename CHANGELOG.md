@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [THORN-436] Removed deprecated lrc attributes from tests. Added test_tools python file.
 * [THORN-418] Add Abort() commands to all devices. Abort() on PasdBus removes any delayed requests (for example delayed FNDH port power commands), MccsFndh.Abort() calls PasdBus.Abort(), then cancels any ongoing loops waiting for power events. Same for MccsSmartbox(). FieldStation.Abort() then calls subdevice aborts, and cancels any ongoing LRC invocations.
 
 ## 5.3.1

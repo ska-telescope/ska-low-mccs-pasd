@@ -39,6 +39,7 @@ from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
+from tests.test_tools import assert_against_lrc_finished
 
 from .. import harness
 
@@ -199,30 +200,6 @@ def setup_devices_with_subscriptions(
 
     change_event_callbacks.assert_change_event("healthState", HealthState.FAILED)
     assert pasd_bus_device.healthState == HealthState.FAILED
-
-
-# pylint: disable=inconsistent-return-statements
-def poll_until_command_completed(
-    device: tango.DeviceProxy, command_id: str, no_of_iters: int = 10
-) -> None:
-    """
-    Poll until command has completed.
-
-    This function recursively calls itself up to `no_of_iters` times.
-
-    :param device: the TANGO device
-    :param command_id: the command_id to check
-    :param no_of_iters: number of times to iterate
-    """
-    command_status = device.CheckLongRunningCommandStatus(command_id)
-    if command_status == "COMPLETED":
-        return
-
-    if no_of_iters == 1:
-        pytest.fail(f"Command Failed to complete in time: {command_status}")
-
-    time.sleep(1)
-    return poll_until_command_completed(device, command_id, no_of_iters - 1)
 
 
 class TestSmartBoxPasdBusIntegration:
@@ -637,7 +614,7 @@ class TestSmartBoxPasdBusIntegration:
             smartbox_port_desired_on
         )
         assert return_code == ResultCode.QUEUED
-        poll_until_command_completed(smartbox_device, command_id)
+        assert_against_lrc_finished(smartbox_device, command_id, "COMPLETED", 5)
 
         # ======
         # ASSERT
@@ -755,7 +732,7 @@ class TestSmartBoxPasdBusIntegration:
         for port in smartbox_ports_desired_on:
             [return_code], [command_id] = smartbox_device.PowerOnPort(port)
             assert return_code == ResultCode.QUEUED
-            poll_until_command_completed(smartbox_device, command_id)
+            assert_against_lrc_finished(smartbox_device, command_id, "COMPLETED", 5)
             expected_smartbox_port_states[port - 1] = True
             change_event_callbacks[
                 f"smartbox{smartbox_id}portpowersensed"

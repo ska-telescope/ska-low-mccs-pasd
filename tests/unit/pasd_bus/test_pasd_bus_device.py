@@ -51,8 +51,6 @@ def change_event_callbacks_fixture(
     return MockTangoEventCallbackGroup(
         "adminMode",
         "healthState",
-        "longRunningCommandResult",
-        "longRunningCommandStatus",
         "lrcFinished",
         "state",
         "fndhStatus",
@@ -129,8 +127,6 @@ def change_event_callbacks_multiple_smartboxes_fixture(
     attributes = [
         "adminMode",
         "healthState",
-        "longRunningCommandResult",
-        "longRunningCommandStatus",
         "state",
         "fndhPortsPowerSensed",
     ]
