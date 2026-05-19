@@ -594,7 +594,7 @@ class TestfndhPasdBusIntegration:
         )
         for i, val in enumerate(new_vals):
             assert fndh_device.outsideTemperatureThresholds[i] == val
-        (code, message) = fndh_device.UpdateThresholdCache()
+        code, message = fndh_device.UpdateThresholdCache()
         assert code == ResultCode.FAILED
         assert "Thresholds do not match:" in message[0]
         assert "outsidetemperaturethresholds" in message[0]
@@ -623,7 +623,7 @@ class TestfndhPasdBusIntegration:
             new_vals,
         )
 
-        (code, message) = fndh_device.UpdateThresholdCache()
+        code, message = fndh_device.UpdateThresholdCache()
 
         assert message == ["UpdateThresholdCache completed"]
         assert code == ResultCode.OK
@@ -1171,7 +1171,7 @@ def test_context_db_configurable_fixture(
             station_label=station_label,
             polling_rate=0.1,
             device_polling_rate=0.1,
-            available_smartboxes=smartbox_ids_to_test,
+            smartbox_ids=smartbox_ids_to_test,
             logging_level=int(LoggingLevel.FATAL),
         )
         my_harness.set_fndh_device(int(LoggingLevel.ERROR), ports_with_smartbox=[1])

@@ -1599,7 +1599,7 @@ class TestSmartBoxPasdBusIntegration:
             [30.2, 25.5, 10.5, 5.0],
         )
 
-        (code, message) = smartbox_device.UpdateThresholdCache()
+        code, message = smartbox_device.UpdateThresholdCache()
 
         assert message == ["UpdateThresholdCache completed"]
         assert code == ResultCode.OK
@@ -1707,7 +1707,7 @@ def test_context_db_configurable_fixture(
             station_label=station_label,
             polling_rate=0.1,
             device_polling_rate=0.1,
-            available_smartboxes=smartbox_ids_to_test,
+            smartbox_ids=smartbox_ids_to_test,
             logging_level=int(LoggingLevel.FATAL),
         )
         my_harness.set_fndh_device(int(LoggingLevel.ERROR))

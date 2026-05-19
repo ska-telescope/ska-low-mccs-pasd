@@ -6,6 +6,7 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module contains pytest-specific test harness for PaSD functional tests."""
+
 import logging
 import os
 import time
@@ -292,7 +293,7 @@ def functional_test_context_fixture(
                     polling_rate=0.05,
                     device_polling_rate=0.1,
                     logging_level=int(LoggingLevel.FATAL),
-                    available_smartboxes=smartbox_ids,
+                    smartbox_ids=smartbox_ids,
                 )
 
                 for smartbox_id in smartbox_ids:

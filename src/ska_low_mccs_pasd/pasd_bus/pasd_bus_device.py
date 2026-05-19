@@ -100,16 +100,10 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         dtype=int, default_value=SimulationMode.FALSE
     )
 
-    # TODO: Remove this property when SmartboxIDs is setup in all the charts
-    AvailableSmartboxes: Final[list[int]] = tango.server.device_property(
-        dtype="DevVarShortArray",
-        default_value=list(range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)),
-    )
-
     # Smartbox IDs associated with each FNDH port (0 if no smartbox connected)
     SmartboxIDs: Final[list[int]] = tango.server.device_property(
         dtype="DevVarShortArray",
-        default_value=[],
+        default_value=list(range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)),
     )
 
     EnablePyModbusLogging: Final[bool] = tango.server.device_property(
@@ -168,19 +162,16 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         self._build_state: str = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
 
-        if self.SmartboxIDs:
-            self.connected_smartboxes = []
-            for smartbox_id in self.SmartboxIDs:
-                if smartbox_id != 0:
-                    self.connected_smartboxes.append(smartbox_id)
-        else:
-            self.connected_smartboxes = self.AvailableSmartboxes
+        self.connected_smartboxes = []
+        for smartbox_id in self.SmartboxIDs:
+            if smartbox_id != 0:
+                self.connected_smartboxes.append(smartbox_id)
 
         self._pasd_state: dict[str, PasdAttribute] = {}
         self._pasd_signals: dict[str, AttrSignal] = {}
         for key, controller in PasdData.CONTROLLERS_CONFIG.items():
             if key == "FNSC":
-                for smartbox_number in self.AvailableSmartboxes:
+                for smartbox_number in self.connected_smartboxes:
                     self._setup_controller_attributes(controller, str(smartbox_number))
             else:
                 self._setup_controller_attributes(controller)
@@ -208,7 +199,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             f"\tFEMCurrentTripThreshold: {self.FEMCurrentTripThreshold}\n"
             f"\tSBInputVoltageThresholds: {self.SBInputVoltageThresholds}\n"
             f"\tSimulationConfig: {self.SimulationConfig}\n"
-            f"\tAvailableSmartboxes: {self.AvailableSmartboxes}\n"
             f"\tSmartboxIDs: {self.SmartboxIDs}\n"
             f"\tEnablePyModbusLogging: {self.EnablePyModbusLogging}\n"
             f"\tPyModbusLogDir: {self.PyModbusLogDir}\n"
@@ -371,7 +361,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self._communication_state_callback,
             self._component_state_callback,
             self._pasd_device_state_callback,
-            self.AvailableSmartboxes,
             self.SmartboxIDs,
             self.EnablePyModbusLogging,
             self.PyModbusLogDir,
@@ -429,12 +418,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             for device_number in self.connected_smartboxes + [PasdData.FNDH_DEVICE_ID]:
                 self._set_all_low_pass_filters_of_device(device_number)
             if self.FEMCurrentTripThreshold is not None:
-                for device_number in self.AvailableSmartboxes:
+                for device_number in self.connected_smartboxes:
                     self.component_manager.initialize_fem_current_trip_thresholds(
                         device_number, self.FEMCurrentTripThreshold
                     )
             if self.SBInputVoltageThresholds is not None:
-                for device_number in self.AvailableSmartboxes:
+                for device_number in self.connected_smartboxes:
                     self.component_manager.initialize_sb_input_voltage_thresholds(
                         device_number, self.SBInputVoltageThresholds
                     )
@@ -487,7 +476,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         if (
             device_id
             not in [PasdData.FNCC_DEVICE_ID, PasdData.FNDH_DEVICE_ID]
-            + self.AvailableSmartboxes
+            + self.connected_smartboxes
         ):
             self.logger.error(
                 f"Received update for unknown PaSD device number {device_id}."
@@ -566,10 +555,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 )
                 # Continue on to allow other attributes to be updated
                 continue
-            if (
-                device_id == PasdData.FNDH_DEVICE_ID
-                and tango_attribute_name.endswith("PortsPowerSensed")
-                and self.SmartboxIDs
+            if device_id == PasdData.FNDH_DEVICE_ID and tango_attribute_name.endswith(
+                "PortsPowerSensed"
             ):
                 # Inform the component manager of the new power states so that
                 # we can update the smartbox polling list
@@ -617,7 +604,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     if self._simulation_mode == SimulationMode.FALSE:
                         self._set_all_low_pass_filters_of_device(device_id)
                     # Set the threshold overrides
-                    if device_id not in self.AvailableSmartboxes:
+                    if device_id not in self.connected_smartboxes:
                         continue
                     if self.FEMCurrentTripThreshold is not None:
                         self.component_manager.initialize_fem_current_trip_thresholds(
@@ -1037,7 +1024,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                     controller["prefix"] + register["tango_attr_name"]
                     for register in controller["registers"].values()
                 ]
-        if device_id in self.AvailableSmartboxes:
+        if device_id in self.connected_smartboxes:
             return [
                 PasdData.CONTROLLERS_CONFIG["FNSC"]["prefix"]
                 + str(device_id)

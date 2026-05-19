@@ -7,7 +7,6 @@
 # See LICENSE for more info.
 """This module defines a pytest harness for testing the MCCS PaSD bus module."""
 
-
 from __future__ import annotations
 
 import logging
@@ -295,7 +294,7 @@ def test_context_fixture(
             station_label=station_label,
             polling_rate=0.1,
             device_polling_rate=0.1,
-            available_smartboxes=smartbox_ids_to_test,
+            smartbox_ids=smartbox_ids_to_test,
             logging_level=int(LoggingLevel.FATAL),
         )
         # Set up FNDH

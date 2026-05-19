@@ -6,6 +6,7 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module contains the tests of the PaSD bus component manager."""
+
 # pylint: disable=too-many-lines
 from __future__ import annotations
 
@@ -92,7 +93,7 @@ def pasd_bus_component_manager_fixture(
     harness = PasdTangoTestHarness(station_label=station_label)
     harness.set_pasd_bus_simulator(mock_pasd_hw_simulators)
     with harness as context:
-        (host, port) = context.get_pasd_bus_address()
+        host, port = context.get_pasd_bus_address()
 
         component_manager = PasdBusComponentManager(
             host,
@@ -110,7 +111,6 @@ def pasd_bus_component_manager_fixture(
             mock_callbacks["component_state"],
             _pasd_device_state_splitter,
             list(range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)),
-            None,
             False,
             None,
         )
@@ -161,6 +161,30 @@ class TestPasdBusComponentManager:
             "communication_state", CommunicationStatus.ESTABLISHED
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
+
+        # Then FNDH port status info
+        expected_fndh_ports_power_sensed = [False] * FndhSimulator.NUMBER_OF_PORTS
+        for smartbox_config in pasd_config["pasd"]["smartboxes"].values():
+            expected_fndh_ports_power_sensed[smartbox_config["fndh_port"] - 1] = True
+
+        expected_fndh_ports_desired_power = [
+            DesiredPowerEnum.ON if port else DesiredPowerEnum.DEFAULT
+            for port in expected_fndh_ports_power_sensed
+        ]
+
+        # Ports Power Control should match Power Sensed when there is no fault
+        expected_ports_power_control = list(expected_fndh_ports_power_sensed)
+
+        mock_callbacks.assert_call(
+            "pasd_device_state_for_fndh",
+            port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
+            ports_desired_power_when_online=expected_fndh_ports_desired_power,
+            ports_desired_power_when_offline=expected_fndh_ports_desired_power,
+            ports_power_sensed=expected_fndh_ports_power_sensed,
+            ports_power_control=expected_ports_power_control,
+        )
+
+        time.sleep(100)
 
         # First we'll receive static info about the FNDH
         mock_callbacks.assert_call(

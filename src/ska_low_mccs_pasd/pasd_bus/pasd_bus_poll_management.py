@@ -7,12 +7,11 @@
 # See LICENSE for more info.
 """This module implements polling management for a PaSD bus."""
 
-
 import logging
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, Callable, Iterator, Optional, Sequence
+from typing import Any, Callable, Iterator, Sequence
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 
@@ -466,8 +465,7 @@ class PasdBusRequestProvider:
         attribute_read_delay: float,
         port_status_read_delay: float,
         port_power_delay: float,
-        available_smartboxes: list[int],
-        smartbox_ids: Optional[list[int]] = None,
+        smartbox_ids: list[int],
         smartbox_startup_delay: float = 0.0,
     ) -> None:
         """
@@ -482,8 +480,7 @@ class PasdBusRequestProvider:
             port status before reading it again
         :param port_power_delay: time in seconds to wait between setting
             each FNDH port power.
-        :param available_smartboxes: list of available smartbox ids to poll
-        :param smartbox_ids: optional list of smartbox IDs associated with
+        :param smartbox_ids: list of smartbox IDs associated with
             each FNDH port
         :param smartbox_startup_delay: time in seconds to wait after a smartbox
             is powered on before starting to poll it.
@@ -502,15 +499,11 @@ class PasdBusRequestProvider:
         self._port_power_delay = port_power_delay
 
         # Create a dict mapping FNDH ports to smartbox Modbus IDs
-        # if smartboxIDs is provided, otherwise just use available_smartboxes
         self._smartboxIDs = {}
-        if smartbox_ids:
-            for fndh_port, smartbox_id in enumerate(smartbox_ids, start=1):
-                if smartbox_id != 0:
-                    self._smartboxIDs[fndh_port] = smartbox_id
-            self._available_smartboxes = list(self._smartboxIDs.values())
-        else:
-            self._available_smartboxes = available_smartboxes
+        for fndh_port, smartbox_id in enumerate(smartbox_ids, start=1):
+            if smartbox_id != 0:
+                self._smartboxIDs[fndh_port] = smartbox_id
+        self._available_smartboxes = list(self._smartboxIDs.values())
 
         self._smartbox_startup_delay = smartbox_startup_delay
         self._delayed_requests: list[DelayedRequest] = []
@@ -531,16 +524,6 @@ class PasdBusRequestProvider:
             PasdData.FNDH_DEVICE_ID: self._min_ticks,
             PasdData.FNCC_DEVICE_ID: self._min_ticks,
         }
-
-        if not self._smartboxIDs:
-            # We don't know the port mapping so we poll all available
-            # smartboxes immediately
-            self._ticks.update(
-                {
-                    device_number: self._min_ticks
-                    for device_number in self._available_smartboxes
-                }
-            )
 
         fndh_request_provider = FndhRequestProvider(
             PasdData.NUMBER_OF_FNDH_PORTS,
@@ -578,10 +561,6 @@ class PasdBusRequestProvider:
 
         :param port_power_states: list of FNDH port power states.
         """
-        if not self._smartboxIDs:
-            # We don't have the port mapping so we cannot update the polling list
-            return
-
         for fndh_port, power_state in enumerate(port_power_states, start=1):
             smartbox_id = self._smartboxIDs.get(fndh_port)
             if smartbox_id is None:
