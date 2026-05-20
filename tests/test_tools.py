@@ -29,6 +29,16 @@ def get_lrc_finished(
     :param uid: the UID of the LRC to look up.
     :return: the parsed LRC finished entry.
     """
+    Return the finished LRC entry matching the given UID.
+
+    Returns an empty dict if no entry with the given UID is found in
+    ``lrcfinished``.  The returned dict can be used to make further
+    field-level assertions.
+
+    :param device_proxy: device proxy for use in the test.
+    :param uid: the UID of the LRC to look up.
+    :return: the parsed LRC finished entry, or ``{}`` if not present.
+    """
     for completed_task in device_proxy.lrcfinished:
         completed_task = json.loads(completed_task)
         if completed_task["uid"] == uid:
