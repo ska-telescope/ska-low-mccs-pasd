@@ -31,9 +31,9 @@ def get_lrc_finished(
     :return: the parsed LRC finished entry, or ``{}`` if not present.
     """
     for completed_task in device_proxy.lrcfinished:
-        completed_task = json.loads(completed_task)
-        if completed_task["uid"] == uid:
-            return completed_task
+        task_dict = json.loads(completed_task)
+        if task_dict["uid"] == uid:
+            return task_dict
     return {}
 
 
