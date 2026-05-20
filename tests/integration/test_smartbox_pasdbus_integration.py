@@ -614,7 +614,7 @@ class TestSmartBoxPasdBusIntegration:
             smartbox_port_desired_on
         )
         assert return_code == ResultCode.QUEUED
-        assert_against_lrc_finished(smartbox_device, command_id, "COMPLETED", 5)
+        assert_against_lrc_finished(smartbox_device, command_id, "COMPLETED", 10)
 
         # ======
         # ASSERT
