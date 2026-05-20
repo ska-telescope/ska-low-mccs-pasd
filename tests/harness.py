@@ -240,6 +240,7 @@ class PasdTangoTestHarness:
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsPasdBus",
         smartbox_ids: list[int] | None = None,
         input_voltage_thresholds: list[float] | None = None,
+        smartbox_startup_delay: float = 0.0,
     ) -> None:
         """
         Set the PaSD bus Tango device in the test harness.
@@ -266,6 +267,9 @@ class PasdTangoTestHarness:
             for example with a patched subclass.
         :param smartbox_ids: Optional list of smartbox IDs associated with each
             FNDH port.
+        :param smartbox_startup_delay: delay (in seconds) between an FNDH port
+            being sensed as powered on and the attached smartbox being added to
+            the polling loop. Defaults to 0 in tests for speed.
         """
         port: Callable[[dict[str, Any]], int] | int  # for the type checker
 
@@ -300,6 +304,7 @@ class PasdTangoTestHarness:
             "LoggingLevelDefault": logging_level,
             "PortStatusReadDelay": 0,
             "PortPowerDelay": 0,
+            "SmartboxStartupDelay": smartbox_startup_delay,
         }
 
         self._tango_test_harness.add_device(
