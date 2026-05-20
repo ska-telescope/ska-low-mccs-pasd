@@ -63,6 +63,7 @@ def mock_callbacks_fixture() -> MockCallableGroup:
 @pytest.fixture(name="pasd_bus_component_manager")
 def pasd_bus_component_manager_fixture(
     mock_pasd_hw_simulators: dict[int, PasdHardwareSimulator],
+    smartbox_attached_ports: list[int],
     logger: logging.Logger,
     mock_callbacks: MockCallableGroup,
     station_label: str,
@@ -73,6 +74,8 @@ def pasd_bus_component_manager_fixture(
     :param mock_pasd_hw_simulators:
         the FNDH, FNCC and smartbox simulator backends that the TCP server will front,
         each wrapped with a mock so that we can assert calls.
+    :param smartbox_attached_ports: a list of FNDH port numbers each smartbox is
+        connected to (index = smartbox id - 1).
     :param logger: the logger to be used by this object.
     :param mock_callbacks: a group of mock callables for the component
         manager under test to use as callbacks
@@ -81,9 +84,16 @@ def pasd_bus_component_manager_fixture(
     :yields: a PaSD bus component manager, running against a simulator.
     """
 
+    # The splitter mimics the hook in pasd_bus_device.py that forwards FNDH
+    # PortsPowerSensed updates to the component manager so smartboxes get
+    # added to the polling list.
+    component_manager: PasdBusComponentManager | None = None
+
     def _pasd_device_state_splitter(device_id: int, **kwargs: Any) -> None:
         if device_id == PasdData.FNDH_DEVICE_ID:
             device_name = "fndh"
+            if "ports_power_sensed" in kwargs and component_manager is not None:
+                component_manager.update_port_power_states(kwargs["ports_power_sensed"])
         elif device_id == PasdData.FNCC_DEVICE_ID:
             device_name = "fncc"
         else:
@@ -94,6 +104,13 @@ def pasd_bus_component_manager_fixture(
     harness.set_pasd_bus_simulator(mock_pasd_hw_simulators)
     with harness as context:
         host, port = context.get_pasd_bus_address()
+
+        # Construct smartbox_ids list of length NUMBER_OF_FNDH_PORTS,
+        # where smartbox_ids[port - 1] = smartbox modbus id at that port,
+        # or 0 if no smartbox is attached.
+        smartbox_ids = [0] * PasdData.NUMBER_OF_FNDH_PORTS
+        for sb_id, attached_port in enumerate(smartbox_attached_ports, start=1):
+            smartbox_ids[attached_port - 1] = sb_id
 
         component_manager = PasdBusComponentManager(
             host,
@@ -110,7 +127,7 @@ def pasd_bus_component_manager_fixture(
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
             _pasd_device_state_splitter,
-            list(range(1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)),
+            smartbox_ids,
             False,
             None,
         )
@@ -162,33 +179,8 @@ class TestPasdBusComponentManager:
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
 
-        # Then FNDH port status info
-        expected_fndh_ports_power_sensed = [False] * FndhSimulator.NUMBER_OF_PORTS
-        for smartbox_config in pasd_config["pasd"]["smartboxes"].values():
-            expected_fndh_ports_power_sensed[smartbox_config["fndh_port"] - 1] = True
-
-        expected_fndh_ports_desired_power = [
-            DesiredPowerEnum.ON if port else DesiredPowerEnum.DEFAULT
-            for port in expected_fndh_ports_power_sensed
-        ]
-
-        # Ports Power Control should match Power Sensed when there is no fault
-        expected_ports_power_control = list(expected_fndh_ports_power_sensed)
-
-        mock_callbacks.assert_call(
-            "pasd_device_state_for_fndh",
-            port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
-            ports_desired_power_when_online=expected_fndh_ports_desired_power,
-            ports_desired_power_when_offline=expected_fndh_ports_desired_power,
-            ports_power_sensed=expected_fndh_ports_power_sensed,
-            ports_power_control=expected_ports_power_control,
-        )
-
-        time.sleep(100)
-
         # First we'll receive static info about the FNDH
-        mock_callbacks.assert_call(
-            "pasd_device_state_for_fndh",
+        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
             modbus_register_map_revision=FndhSimulator.MODBUS_REGISTER_MAP_REVISION,
             pcb_revision=FndhSimulator.PCB_REVISION,
             cpu_id=PasdConversionUtility.convert_cpu_id(FndhSimulator.CPU_ID)[0],
@@ -198,9 +190,8 @@ class TestPasdBusComponentManager:
             )[0],
         )
 
-        # Then the FNCC
-        mock_callbacks.assert_call(
-            "pasd_device_state_for_fncc",
+        # Then the FNCC static info
+        mock_callbacks["pasd_device_state_for_fncc"].assert_call(
             modbus_register_map_revision=FnccSimulator.MODBUS_REGISTER_MAP_REVISION,
             pcb_revision=FnccSimulator.PCB_REVISION,
             cpu_id=PasdConversionUtility.convert_cpu_id(FnccSimulator.CPU_ID)[0],
@@ -209,31 +200,8 @@ class TestPasdBusComponentManager:
                 [FnccSimulator.DEFAULT_FIRMWARE_VERSION]
             )[0],
         )
-
-        # Then the smartboxes
-        for smartbox_number in range(
-            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
-        ):
-            mock_callbacks.assert_call(
-                f"pasd_device_state_for_smartbox{smartbox_number}",
-                modbus_register_map_revision=(
-                    SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
-                ),
-                pcb_revision=SmartboxSimulator.PCB_REVISION,
-                cpu_id=PasdConversionUtility.convert_cpu_id(SmartboxSimulator.CPU_ID)[
-                    0
-                ],
-                chip_id=PasdConversionUtility.convert_chip_id(
-                    SmartboxSimulator.CHIP_ID
-                )[0],
-                firmware_version=PasdConversionUtility.convert_firmware_version(
-                    [SmartboxSimulator.DEFAULT_FIRMWARE_VERSION]
-                )[0],
-            )
-
-        # and then the FNDH sensor thresholds
-        mock_callbacks.assert_call(
-            "pasd_device_state_for_fndh",
+        # FNDH sensor thresholds
+        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
             psu48v_voltage_1_thresholds=PasdConversionUtility.scale_volts(
                 fndh_simulator.psu48v_voltage_1_thresholds
             ),
@@ -282,56 +250,6 @@ class TestPasdBusComponentManager:
             ),
         )
 
-        for smartbox_number in range(
-            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
-        ):
-            # smartbox sensor thresholds
-            mock_callbacks.assert_call(
-                f"pasd_device_state_for_smartbox{smartbox_number}",
-                input_voltage_thresholds=PasdConversionUtility.scale_volts(
-                    smartbox_simulator.input_voltage_thresholds
-                ),
-                power_supply_output_voltage_thresholds=(
-                    PasdConversionUtility.scale_volts(
-                        smartbox_simulator.power_supply_output_voltage_thresholds
-                    )
-                ),
-                power_supply_temperature_thresholds=(
-                    PasdConversionUtility.scale_signed_16bit(
-                        smartbox_simulator.power_supply_temperature_thresholds
-                    )
-                ),
-                pcb_temperature_thresholds=(
-                    PasdConversionUtility.scale_signed_16bit(
-                        smartbox_simulator.pcb_temperature_thresholds
-                    )
-                ),
-                fem_ambient_temperature_thresholds=(
-                    PasdConversionUtility.scale_signed_16bit(
-                        smartbox_simulator.fem_ambient_temperature_thresholds
-                    )
-                ),
-                fem_case_temperature_1_thresholds=(
-                    PasdConversionUtility.scale_signed_16bit(
-                        smartbox_simulator.fem_case_temperature_1_thresholds
-                    )
-                ),
-                fem_case_temperature_2_thresholds=(
-                    PasdConversionUtility.scale_signed_16bit(
-                        smartbox_simulator.fem_case_temperature_2_thresholds
-                    )
-                ),
-                fem_heatsink_temperature_1_thresholds=(
-                    PasdConversionUtility.scale_signed_16bit(
-                        smartbox_simulator.fem_heatsink_temperature_1_thresholds
-                    )
-                ),
-                fem_heatsink_temperature_2_thresholds=(
-                    PasdConversionUtility.scale_signed_16bit(
-                        smartbox_simulator.fem_heatsink_temperature_2_thresholds
-                    )
-                ),
-            )
         # Then FNDH status info. Note that FNDH was initialized in the
         # test setup in order to be able to switch the ports on.
         mock_callbacks["pasd_device_state_for_fndh"].assert_call(
@@ -377,18 +295,7 @@ class TestPasdBusComponentManager:
             ),
         )
 
-        for smartbox_number in range(
-            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
-        ):
-            # smartbox ports current trip thresholds
-            mock_callbacks.assert_call(
-                f"pasd_device_state_for_smartbox{smartbox_number}",
-                fem_current_trip_thresholds=(
-                    smartbox_simulator.fem_current_trip_thresholds
-                ),
-            )
-
-        # Then FNDH port status info
+        # Then FNDH port status info. Reading this triggers smartbox polling.
         expected_fndh_ports_power_sensed = [False] * FndhSimulator.NUMBER_OF_PORTS
         for smartbox_config in pasd_config["pasd"]["smartboxes"].values():
             expected_fndh_ports_power_sensed[smartbox_config["fndh_port"] - 1] = True
@@ -401,8 +308,7 @@ class TestPasdBusComponentManager:
         # Ports Power Control should match Power Sensed when there is no fault
         expected_ports_power_control = list(expected_fndh_ports_power_sensed)
 
-        mock_callbacks.assert_call(
-            "pasd_device_state_for_fndh",
+        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
             port_forcings=["NONE"] * FndhSimulator.NUMBER_OF_PORTS,
             ports_desired_power_when_online=expected_fndh_ports_desired_power,
             ports_desired_power_when_offline=expected_fndh_ports_desired_power,
@@ -410,13 +316,95 @@ class TestPasdBusComponentManager:
             ports_power_control=expected_ports_power_control,
         )
 
+        # FNDH warning and alarm flags
+        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
+            warning_flags=FndhAlarmFlags.NONE.name,
+        )
+        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
+            alarm_flags=FndhAlarmFlags.NONE.name,
+        )
+
+        # Now the smartbox polling starts. Smartboxes are added to the
+        # polling list once their FNDH port is sensed as on, so the order
+        # in which smartboxes are polled is determined by FNDH port order,
+        # not by smartbox ID. Use per-callback asserts to avoid coupling
+        # to that order.
         for smartbox_number in range(
             1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
         ):
-            # Then the smartbox status info
-            mock_callbacks[
+            sb_callback = mock_callbacks[
                 f"pasd_device_state_for_smartbox{smartbox_number}"
-            ].assert_call(
+            ]
+            # Smartbox INFO
+            sb_callback.assert_call(
+                modbus_register_map_revision=(
+                    SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
+                ),
+                pcb_revision=SmartboxSimulator.PCB_REVISION,
+                cpu_id=PasdConversionUtility.convert_cpu_id(SmartboxSimulator.CPU_ID)[
+                    0
+                ],
+                chip_id=PasdConversionUtility.convert_chip_id(
+                    SmartboxSimulator.CHIP_ID
+                )[0],
+                firmware_version=PasdConversionUtility.convert_firmware_version(
+                    [SmartboxSimulator.DEFAULT_FIRMWARE_VERSION]
+                )[0],
+            )
+            # Smartbox sensor thresholds
+            sb_callback.assert_call(
+                input_voltage_thresholds=PasdConversionUtility.scale_volts(
+                    smartbox_simulator.input_voltage_thresholds
+                ),
+                power_supply_output_voltage_thresholds=(
+                    PasdConversionUtility.scale_volts(
+                        smartbox_simulator.power_supply_output_voltage_thresholds
+                    )
+                ),
+                power_supply_temperature_thresholds=(
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.power_supply_temperature_thresholds
+                    )
+                ),
+                pcb_temperature_thresholds=(
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.pcb_temperature_thresholds
+                    )
+                ),
+                fem_ambient_temperature_thresholds=(
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.fem_ambient_temperature_thresholds
+                    )
+                ),
+                fem_case_temperature_1_thresholds=(
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.fem_case_temperature_1_thresholds
+                    )
+                ),
+                fem_case_temperature_2_thresholds=(
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.fem_case_temperature_2_thresholds
+                    )
+                ),
+                fem_heatsink_temperature_1_thresholds=(
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.fem_heatsink_temperature_1_thresholds
+                    )
+                ),
+                fem_heatsink_temperature_2_thresholds=(
+                    PasdConversionUtility.scale_signed_16bit(
+                        smartbox_simulator.fem_heatsink_temperature_2_thresholds
+                    )
+                ),
+            )
+            # Smartbox ports current trip thresholds
+            sb_callback.assert_call(
+                fem_current_trip_thresholds=(
+                    smartbox_simulator.fem_current_trip_thresholds
+                ),
+            )
+            # Smartbox status info
+            sb_callback.assert_call(
                 uptime=Anything,
                 sys_address=smartbox_number,
                 status="UNINITIALISED",
@@ -459,19 +447,8 @@ class TestPasdBusComponentManager:
                     )
                 )[0],
             )
-
-        # FNDH warning flags
-        mock_callbacks.assert_call(
-            "pasd_device_state_for_fndh",
-            warning_flags=FndhAlarmFlags.NONE.name,
-        )
-
-        # Smartbox port status
-        for smartbox_number in range(
-            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
-        ):
-            mock_callbacks.assert_call(
-                f"pasd_device_state_for_smartbox{smartbox_number}",
+            # Smartbox port status info
+            sb_callback.assert_call(
                 port_forcings=["NONE"] * SmartboxSimulator.NUMBER_OF_PORTS,
                 port_breakers_tripped=[False] * SmartboxSimulator.NUMBER_OF_PORTS,
                 ports_desired_power_when_online=[DesiredPowerEnum.DEFAULT]
@@ -481,29 +458,12 @@ class TestPasdBusComponentManager:
                 ports_power_sensed=[False] * SmartboxSimulator.NUMBER_OF_PORTS,
                 ports_current_draw=[0] * SmartboxSimulator.NUMBER_OF_PORTS,
             )
-
-        # FNDH alarm flags
-        mock_callbacks.assert_call(
-            "pasd_device_state_for_fndh",
-            alarm_flags=FndhAlarmFlags.NONE.name,
-        )
-
-        # Smartbox warning and alarm flags
-        for smartbox_number in range(
-            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
-        ):
-            mock_callbacks.assert_call(
-                f"pasd_device_state_for_smartbox{smartbox_number}",
+            # Smartbox warning and alarm flags
+            sb_callback.assert_call(
                 warning_flags=SmartboxAlarmFlags.NONE.name,
             )
-        for smartbox_number in range(
-            1, PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1
-        ):
-            mock_callbacks.assert_call(
-                f"pasd_device_state_for_smartbox{smartbox_number}",
+            sb_callback.assert_call(
                 alarm_flags=SmartboxAlarmFlags.NONE.name,
-                lookahead=2,  # FNDH status comes again in between
-                consume_nonmatches=True,
             )
 
         # Then finally the FNCC status
@@ -512,7 +472,6 @@ class TestPasdBusComponentManager:
             sys_address=fncc_simulator.SYS_ADDRESS,
             status="OK",
             field_node_number=fncc_simulator.FIELD_NODE_NUMBER,
-            lookahead=26,
         )
 
         # TODO: Once we have a poller, extend this test to cover spontaneous changes
@@ -774,7 +733,7 @@ class TestPasdBusComponentManager:
                     [FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE]
                 )[0]
             ),
-            lookahead=5,  # Full cycle plus one to cover off on race conditions
+            lookahead=20,  # Allow a full polling cycle through all devices
         )
 
         smartbox_number = 4
@@ -832,7 +791,7 @@ class TestPasdBusComponentManager:
                     SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
                 )
             )[0],
-            lookahead=5,  # Full cycle plus one to cover off on race conditions
+            lookahead=20,  # Allow a full polling cycle through all devices
         )
 
     def test_low_pass_filters(
@@ -857,93 +816,12 @@ class TestPasdBusComponentManager:
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
 
-        # FNDH reads comprise two initial reads, then a cycle of four.
-        # Let's wait for six calls before proceeding.
-        # These are fully unpacked in test_attribute_updates,
-        # so there's no need for us to unpack them again
-        for _ in range(6):
-            mock_callbacks["pasd_device_state_for_fndh"].assert_against_call()
-
         lpf_cutoff = 1.5
         lpf_constant = 0x30C7
-        pasd_bus_component_manager.set_fndh_low_pass_filters(lpf_cutoff)
 
-        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
-            uptime=Anything,
-            sys_address=FndhSimulator.SYS_ADDRESS,
-            status="ALARM",
-            led_pattern="service: OFF, status: REDSLOW",
-            psu48v_voltage_1=PasdConversionUtility.scale_volts(lpf_constant)[0],
-            psu48v_voltage_2=PasdConversionUtility.scale_volts(lpf_constant)[0],
-            psu48v_current=PasdConversionUtility.scale_48vcurrents([lpf_constant])[0],
-            psu48v_temperature_1=PasdConversionUtility.scale_signed_16bit(lpf_constant)[
-                0
-            ],
-            psu48v_temperature_2=PasdConversionUtility.scale_signed_16bit(lpf_constant)[
-                0
-            ],
-            panel_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
-                0
-            ],
-            fncb_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
-                0
-            ],
-            fncb_humidity=lpf_constant,
-            comms_gateway_temperature=PasdConversionUtility.scale_signed_16bit(
-                [FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE]
-            )[0],
-            power_module_temperature=PasdConversionUtility.scale_signed_16bit(
-                [FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE]
-            )[0],
-            outside_temperature=PasdConversionUtility.scale_signed_16bit(
-                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
-            )[0],
-            internal_ambient_temperature=(
-                PasdConversionUtility.scale_signed_16bit(
-                    [FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE]
-                )[0]
-            ),
-            lookahead=5,  # Full cycle plus one to cover off on race conditions
-        )
-
-        pasd_bus_component_manager.set_fndh_low_pass_filters(lpf_cutoff, True)
-
-        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
-            uptime=Anything,
-            sys_address=FndhSimulator.SYS_ADDRESS,
-            status="ALARM",
-            led_pattern="service: OFF, status: REDSLOW",
-            psu48v_voltage_1=PasdConversionUtility.scale_volts(lpf_constant)[0],
-            psu48v_voltage_2=PasdConversionUtility.scale_volts(lpf_constant)[0],
-            psu48v_current=PasdConversionUtility.scale_48vcurrents([lpf_constant])[0],
-            psu48v_temperature_1=PasdConversionUtility.scale_signed_16bit(lpf_constant)[
-                0
-            ],
-            psu48v_temperature_2=PasdConversionUtility.scale_signed_16bit(lpf_constant)[
-                0
-            ],
-            panel_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
-                0
-            ],
-            fncb_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
-                0
-            ],
-            fncb_humidity=lpf_constant,
-            comms_gateway_temperature=PasdConversionUtility.scale_signed_16bit(
-                [lpf_constant]
-            )[0],
-            power_module_temperature=PasdConversionUtility.scale_signed_16bit(
-                [lpf_constant]
-            )[0],
-            outside_temperature=PasdConversionUtility.scale_signed_16bit(
-                [lpf_constant]
-            )[0],
-            internal_ambient_temperature=(
-                PasdConversionUtility.scale_signed_16bit([lpf_constant])[0]
-            ),
-            lookahead=5,  # Full cycle plus one to cover off on race conditions
-        )
-
+        # Test the smartbox LPF first because setting the FNDH LPF below puts
+        # the FNDH into ALARM, which causes its ports to report as OFF, which
+        # in turn removes smartboxes from the polling list.
         smartbox_number = 4
 
         # Smartbox reads comprise three initial reads, then a cycle of four.
@@ -995,7 +873,92 @@ class TestPasdBusComponentManager:
                     SmartboxSimulator.DEFAULT_FEM_HEATSINK_TEMPERATURE_2
                 )
             )[0],
-            lookahead=5,  # Full cycle plus one to cover off on race conditions
+            lookahead=20,  # Allow a full polling cycle through all devices
+        )
+
+        # FNDH reads comprise two initial reads, then a cycle of four.
+        # Let's wait for six calls before proceeding.
+        # These are fully unpacked in test_attribute_updates,
+        # so there's no need for us to unpack them again
+        for _ in range(6):
+            mock_callbacks["pasd_device_state_for_fndh"].assert_against_call()
+
+        pasd_bus_component_manager.set_fndh_low_pass_filters(lpf_cutoff)
+
+        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
+            uptime=Anything,
+            sys_address=FndhSimulator.SYS_ADDRESS,
+            status="ALARM",
+            led_pattern="service: OFF, status: REDSLOW",
+            psu48v_voltage_1=PasdConversionUtility.scale_volts(lpf_constant)[0],
+            psu48v_voltage_2=PasdConversionUtility.scale_volts(lpf_constant)[0],
+            psu48v_current=PasdConversionUtility.scale_48vcurrents([lpf_constant])[0],
+            psu48v_temperature_1=PasdConversionUtility.scale_signed_16bit(lpf_constant)[
+                0
+            ],
+            psu48v_temperature_2=PasdConversionUtility.scale_signed_16bit(lpf_constant)[
+                0
+            ],
+            panel_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
+                0
+            ],
+            fncb_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
+                0
+            ],
+            fncb_humidity=lpf_constant,
+            comms_gateway_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_COMMS_GATEWAY_TEMPERATURE]
+            )[0],
+            power_module_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_POWER_MODULE_TEMPERATURE]
+            )[0],
+            outside_temperature=PasdConversionUtility.scale_signed_16bit(
+                [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
+            )[0],
+            internal_ambient_temperature=(
+                PasdConversionUtility.scale_signed_16bit(
+                    [FndhSimulator.DEFAULT_INTERNAL_AMBIENT_TEMPERATURE]
+                )[0]
+            ),
+            lookahead=20,  # Allow a full polling cycle through all devices
+        )
+
+        pasd_bus_component_manager.set_fndh_low_pass_filters(lpf_cutoff, True)
+
+        mock_callbacks["pasd_device_state_for_fndh"].assert_call(
+            uptime=Anything,
+            sys_address=FndhSimulator.SYS_ADDRESS,
+            status="ALARM",
+            led_pattern="service: OFF, status: REDSLOW",
+            psu48v_voltage_1=PasdConversionUtility.scale_volts(lpf_constant)[0],
+            psu48v_voltage_2=PasdConversionUtility.scale_volts(lpf_constant)[0],
+            psu48v_current=PasdConversionUtility.scale_48vcurrents([lpf_constant])[0],
+            psu48v_temperature_1=PasdConversionUtility.scale_signed_16bit(lpf_constant)[
+                0
+            ],
+            psu48v_temperature_2=PasdConversionUtility.scale_signed_16bit(lpf_constant)[
+                0
+            ],
+            panel_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
+                0
+            ],
+            fncb_temperature=PasdConversionUtility.scale_signed_16bit([lpf_constant])[
+                0
+            ],
+            fncb_humidity=lpf_constant,
+            comms_gateway_temperature=PasdConversionUtility.scale_signed_16bit(
+                [lpf_constant]
+            )[0],
+            power_module_temperature=PasdConversionUtility.scale_signed_16bit(
+                [lpf_constant]
+            )[0],
+            outside_temperature=PasdConversionUtility.scale_signed_16bit(
+                [lpf_constant]
+            )[0],
+            internal_ambient_temperature=(
+                PasdConversionUtility.scale_signed_16bit([lpf_constant])[0]
+            ),
+            lookahead=20,  # Allow a full polling cycle through all devices
         )
 
     def test_reset_fndh_alarms(
@@ -1221,8 +1184,7 @@ class TestPasdBusComponentManager:
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
 
-        mock_callbacks.assert_call(
-            f"pasd_device_state_for_smartbox{smartbox_id}",
+        mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_id}"].assert_call(
             modbus_register_map_revision=(
                 SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
             ),
@@ -1232,15 +1194,13 @@ class TestPasdBusComponentManager:
             firmware_version=PasdConversionUtility.convert_firmware_version(
                 [SmartboxSimulator.DEFAULT_FIRMWARE_VERSION]
             )[0],
-            lookahead=30,
         )
 
         pasd_bus_component_manager.initialize_smartbox(smartbox_id)
 
         # The static information should be re-requested
 
-        mock_callbacks.assert_call(
-            f"pasd_device_state_for_smartbox{smartbox_id}",
+        mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_id}"].assert_call(
             modbus_register_map_revision=(
                 SmartboxSimulator.MODBUS_REGISTER_MAP_REVISION
             ),
@@ -1250,7 +1210,7 @@ class TestPasdBusComponentManager:
             firmware_version=PasdConversionUtility.convert_firmware_version(
                 [SmartboxSimulator.DEFAULT_FIRMWARE_VERSION]
             )[0],
-            lookahead=30,
+            lookahead=10,
         )
 
     def test_abort(
