@@ -53,10 +53,10 @@ def assert_against_lrc_finished(
     completed_task = get_lrc_finished(device, command_id)
     start_time = time.time()
     while not completed_task:
-        time.sleep(0.1)
-        completed_task = get_lrc_finished(device, command_id)
         if time.time() - start_time > timeout:
             raise TimeoutError(
                 f"LRC '{command_id}' not found in completed after {timeout} seconds"
             )
+        time.sleep(0.1)
+        completed_task = get_lrc_finished(device, command_id)
     assert completed_task["status"] == status
