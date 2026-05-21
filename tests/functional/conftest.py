@@ -290,9 +290,7 @@ def functional_test_context_fixture(
                 # Build per-FNDH-port smartbox-id mapping using the simulator's
                 # actual smartbox-to-FNDH-port attachment
                 smartbox_ids_per_port = [0] * NUMBER_OF_FNDH_PORTS
-                for sb_id, port in enumerate(
-                    fndh_ports_with_smartboxes, start=1
-                ):
+                for sb_id, port in enumerate(fndh_ports_with_smartboxes, start=1):
                     if sb_id in smartbox_ids and port != 0:
                         smartbox_ids_per_port[port - 1] = sb_id
                 harness.set_pasd_bus_device(

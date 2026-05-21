@@ -226,7 +226,7 @@ class PasdTangoTestHarness:
             server_context_manager_factory(pasd_bus_simulator_server),
         )
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     def set_pasd_bus_device(
         self: PasdTangoTestHarness,
         station_label: str,

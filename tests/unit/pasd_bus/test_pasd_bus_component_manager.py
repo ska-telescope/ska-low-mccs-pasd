@@ -83,7 +83,6 @@ def pasd_bus_component_manager_fixture(
 
     :yields: a PaSD bus component manager, running against a simulator.
     """
-
     # The splitter mimics the hook in pasd_bus_device.py that forwards FNDH
     # PortsPowerSensed updates to the component manager so smartboxes get
     # added to the polling list.
