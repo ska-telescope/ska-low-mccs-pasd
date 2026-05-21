@@ -51,6 +51,15 @@ notebook-lint:
 notebook-test:
   when: manual
 
+k8s-test:
+  artifacts:
+    name: "$CI_PROJECT_NAME-$CI_JOB_ID"
+    paths:
+      - "build/"
+    reports:
+      junit: build/reports/functional-tests.xml
+    when: always
+
 # TODO: For now this manual step deploys to the STFC cloud just like the
 # automatic step does.
 # In future, we'll set it to deploy to an environment with PaSD hardware
