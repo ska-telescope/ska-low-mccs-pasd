@@ -813,8 +813,12 @@ class TestfndhPasdBusIntegration:
             # Health should still be FAILED until the FNDH is initialized
             change_event_callbacks["fndhhealthState"].assert_not_called()
             assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+
+            # Large lookahead needed because the FNDH is polled many times during
+            # the wait for the above assert_not_called, creating a pile up of
+            # events in the queue
             change_event_callbacks["pasdStatus"].assert_change_event(
-                FndhStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
+                FndhStatusMap.WARNING.name, lookahead=50, consume_nonmatches=True
             )
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.DEGRADED
@@ -903,8 +907,11 @@ class TestfndhPasdBusIntegration:
             # Health should still be FAILED until the FNDH is initialized
             change_event_callbacks["fndhhealthState"].assert_not_called()
             assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+            # Large lookahead needed because the FNDH is polled many times during
+            # the wait for the above assert_not_called, creating a pile up of
+            # events in the queue
             change_event_callbacks["pasdStatus"].assert_change_event(
-                FndhStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
+                FndhStatusMap.WARNING.name, lookahead=50, consume_nonmatches=True
             )
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.DEGRADED

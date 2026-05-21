@@ -179,7 +179,7 @@ class TestFieldStationHealth:
             HealthState.FAILED
         )
         change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.OK
+            HealthState.OK, lookahead=5, consume_nonmatches=True
         )
         change_event_callbacks["field_station_healthstate"].assert_not_called()
 

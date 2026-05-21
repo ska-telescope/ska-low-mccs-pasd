@@ -290,11 +290,17 @@ def test_context_fixture(
         harness = PasdTangoTestHarness(station_label=station_label)
         # Set up pasdbus
         harness.set_pasd_bus_simulator(pasd_hw_simulators)
+        # Build per-FNDH-port smartbox-id mapping using the simulator's
+        # actual smartbox-to-FNDH-port attachment
+        smartbox_ids_per_port = [0] * len(smartbox_attached_ports)
+        for sb_id, port in enumerate(smartbox_attached_ports, start=1):
+            if sb_id in smartbox_ids_to_test and port != 0:
+                smartbox_ids_per_port[port - 1] = sb_id
         harness.set_pasd_bus_device(
             station_label=station_label,
             polling_rate=0.1,
             device_polling_rate=0.1,
-            smartbox_ids=smartbox_ids_to_test,
+            smartbox_ids=smartbox_ids_per_port,
             logging_level=int(LoggingLevel.FATAL),
         )
         # Set up FNDH
