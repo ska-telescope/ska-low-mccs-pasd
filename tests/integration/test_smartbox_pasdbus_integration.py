@@ -1400,8 +1400,11 @@ class TestSmartBoxPasdBusIntegration:
 
         # Test transition to WARNING / DEGRADED
         assert pasd_bus_device.initializeSmartbox(on_smartbox_id)[0] == ResultCode.OK
+        # Use a larger lookahead and consume non-matching events: with only a
+        # single smartbox being polled, redundant pasdStatus change events from
+        # frequent polling can pile up in the queue ahead of the expected one.
         change_event_callbacks["pasdStatus"].assert_change_event(
-            SmartboxStatusMap.WARNING.name, lookahead=20
+            SmartboxStatusMap.WARNING.name, lookahead=50, consume_nonmatches=True
         )
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
@@ -1439,12 +1442,14 @@ class TestSmartBoxPasdBusIntegration:
 
         assert pasd_bus_device.initializeSmartbox(on_smartbox_id)[0] == ResultCode.OK
         change_event_callbacks["pasdStatus"].assert_change_event(
-            SmartboxStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
+            SmartboxStatusMap.WARNING.name, lookahead=50, consume_nonmatches=True
         )
 
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.DEGRADED,
+            lookahead=20,
+            consume_nonmatches=True,
         )
         _set_attribute_thresholds(
             smartbox_device, "numberofportbreakerstripped", [2, 1, -1, -2]

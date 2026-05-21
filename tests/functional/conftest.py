@@ -22,7 +22,7 @@ from ska_control_model import AdminMode, LoggingLevel, ResultCode, SimulationMod
 from ska_tango_testing.mock.placeholders import Anything
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
-from tests.conftest import MAX_NUMBER_OF_SMARTBOXES_PER_STATION
+from tests.conftest import MAX_NUMBER_OF_SMARTBOXES_PER_STATION, NUMBER_OF_FNDH_PORTS
 from tests.harness import (
     PasdTangoTestHarness,
     PasdTangoTestHarnessContext,
@@ -287,13 +287,21 @@ def functional_test_context_fixture(
                 )
                 # Set devices for test harness
                 harness.set_pasd_bus_simulator(pasd_hw_simulators)
+                # Build per-FNDH-port smartbox-id mapping using the simulator's
+                # actual smartbox-to-FNDH-port attachment
+                smartbox_ids_per_port = [0] * NUMBER_OF_FNDH_PORTS
+                for sb_id, port in enumerate(
+                    fndh_ports_with_smartboxes, start=1
+                ):
+                    if sb_id in smartbox_ids and port != 0:
+                        smartbox_ids_per_port[port - 1] = sb_id
                 harness.set_pasd_bus_device(
                     station_label=station_label,
                     timeout=pasd_timeout,
                     polling_rate=0.05,
                     device_polling_rate=0.1,
                     logging_level=int(LoggingLevel.FATAL),
-                    smartbox_ids=smartbox_ids,
+                    smartbox_ids=smartbox_ids_per_port,
                 )
 
                 for smartbox_id in smartbox_ids:
