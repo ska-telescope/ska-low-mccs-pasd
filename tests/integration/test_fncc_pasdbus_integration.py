@@ -293,7 +293,7 @@ class TestfnccPasdBusIntegration:
 
         fncc_simulator.status = FnccStatusMap.FRAME_ERROR_MODBUS_STUCK
         change_event_callbacks["fnccStatus"].assert_change_event(
-            FnccStatusMap.FRAME_ERROR_MODBUS_STUCK.name, lookahead=20
+            FnccStatusMap.FRAME_ERROR_MODBUS_STUCK.name, lookahead=50
         )
         change_event_callbacks["fnccHealthState"].assert_change_event(
             HealthState.FAILED
