@@ -39,6 +39,7 @@ from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
+from tests.integration.conftest import smartbox_ids_per_port
 from tests.test_tools import assert_against_lrc_finished
 
 from .. import harness
@@ -1712,7 +1713,9 @@ def test_context_db_configurable_fixture(
             station_label=station_label,
             polling_rate=0.1,
             device_polling_rate=0.1,
-            smartbox_ids=smartbox_ids_to_test,
+            smartbox_ids=smartbox_ids_per_port(
+                smartbox_ids_to_test, smartbox_attached_ports
+            ),
             logging_level=int(LoggingLevel.FATAL),
         )
         my_harness.set_fndh_device(int(LoggingLevel.ERROR))

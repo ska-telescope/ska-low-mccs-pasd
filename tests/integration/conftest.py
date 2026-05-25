@@ -28,6 +28,27 @@ from tests.conftest import NUMBER_OF_FNDH_PORTS
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
 
 
+def smartbox_ids_per_port(
+    smartbox_ids: list[int], smartbox_attached_ports: list[int]
+) -> list[int]:
+    """
+    Convert a list of smartbox IDs into a per-FNDH-port mapping.
+
+    :param smartbox_ids: list of smartbox IDs to include in the mapping.
+    :param smartbox_attached_ports: a list giving the FNDH port number that
+        each smartbox is attached to (indexed by smartbox ID - 1).
+
+    :return: a list of length :py:data:`NUMBER_OF_FNDH_PORTS` where each
+        entry is the smartbox ID attached to that FNDH port (1-based),
+        or 0 if no smartbox under test is attached to that port.
+    """
+    mapping = [0] * NUMBER_OF_FNDH_PORTS
+    for sb_id, port in enumerate(smartbox_attached_ports, start=1):
+        if sb_id in smartbox_ids and port != 0:
+            mapping[port - 1] = sb_id
+    return mapping
+
+
 @pytest.fixture(name="pasd_bus_simulator")
 def pasd_bus_simulator_fixture(
     pasd_config_path: str, station_label: str
@@ -291,17 +312,13 @@ def test_context_fixture(
         harness = PasdTangoTestHarness(station_label=station_label)
         # Set up pasdbus
         harness.set_pasd_bus_simulator(pasd_hw_simulators)
-        # Build per-FNDH-port smartbox-id mapping using the simulator's
-        # actual smartbox-to-FNDH-port attachment
-        smartbox_ids_per_port = [0] * NUMBER_OF_FNDH_PORTS
-        for sb_id, port in enumerate(smartbox_attached_ports, start=1):
-            if sb_id in smartbox_ids_to_test and port != 0:
-                smartbox_ids_per_port[port - 1] = sb_id
         harness.set_pasd_bus_device(
             station_label=station_label,
             polling_rate=0.1,
             device_polling_rate=0.1,
-            smartbox_ids=smartbox_ids_per_port,
+            smartbox_ids=smartbox_ids_per_port(
+                smartbox_ids_to_test, smartbox_attached_ports
+            ),
             logging_level=int(LoggingLevel.FATAL),
         )
         # Set up FNDH
