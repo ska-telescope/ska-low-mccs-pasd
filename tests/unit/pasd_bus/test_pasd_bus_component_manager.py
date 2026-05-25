@@ -109,7 +109,8 @@ def pasd_bus_component_manager_fixture(
         # or 0 if no smartbox is attached.
         smartbox_ids = [0] * PasdData.NUMBER_OF_FNDH_PORTS
         for sb_id, attached_port in enumerate(smartbox_attached_ports, start=1):
-            smartbox_ids[attached_port - 1] = sb_id
+            if attached_port != 0:
+                smartbox_ids[attached_port - 1] = sb_id
 
         component_manager = PasdBusComponentManager(
             host,
