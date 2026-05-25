@@ -38,7 +38,7 @@ def smartbox_ids_per_port(
     :param smartbox_attached_ports: a list giving the FNDH port number that
         each smartbox is attached to (indexed by smartbox ID - 1).
 
-    :return: a list of length :py:data:`NUMBER_OF_FNDH_PORTS` where each
+    :return: a list of length `NUMBER_OF_FNDH_PORTS` where each
         entry is the smartbox ID attached to that FNDH port (1-based),
         or 0 if no smartbox under test is attached to that port.
     """
