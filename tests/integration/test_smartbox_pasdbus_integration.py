@@ -39,6 +39,7 @@ from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_data import PasdData
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
+from tests.integration.conftest import smartbox_ids_per_port
 from tests.test_tools import assert_against_lrc_finished
 
 from .. import harness
@@ -1400,8 +1401,11 @@ class TestSmartBoxPasdBusIntegration:
 
         # Test transition to WARNING / DEGRADED
         assert pasd_bus_device.initializeSmartbox(on_smartbox_id)[0] == ResultCode.OK
+        # Use a larger lookahead and consume non-matching events: with only a
+        # single smartbox being polled, redundant pasdStatus change events from
+        # frequent polling can pile up in the queue ahead of the expected one.
         change_event_callbacks["pasdStatus"].assert_change_event(
-            SmartboxStatusMap.WARNING.name, lookahead=20
+            SmartboxStatusMap.WARNING.name, lookahead=50, consume_nonmatches=True
         )
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
@@ -1439,12 +1443,14 @@ class TestSmartBoxPasdBusIntegration:
 
         assert pasd_bus_device.initializeSmartbox(on_smartbox_id)[0] == ResultCode.OK
         change_event_callbacks["pasdStatus"].assert_change_event(
-            SmartboxStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
+            SmartboxStatusMap.WARNING.name, lookahead=50, consume_nonmatches=True
         )
 
         change_event_callbacks.assert_change_event(
             "smartboxHealthState",
             HealthState.DEGRADED,
+            lookahead=20,
+            consume_nonmatches=True,
         )
         _set_attribute_thresholds(
             smartbox_device, "numberofportbreakerstripped", [2, 1, -1, -2]
@@ -1599,7 +1605,7 @@ class TestSmartBoxPasdBusIntegration:
             [30.2, 25.5, 10.5, 5.0],
         )
 
-        (code, message) = smartbox_device.UpdateThresholdCache()
+        code, message = smartbox_device.UpdateThresholdCache()
 
         assert message == ["UpdateThresholdCache completed"]
         assert code == ResultCode.OK
@@ -1707,7 +1713,9 @@ def test_context_db_configurable_fixture(
             station_label=station_label,
             polling_rate=0.1,
             device_polling_rate=0.1,
-            available_smartboxes=smartbox_ids_to_test,
+            smartbox_ids=smartbox_ids_per_port(
+                smartbox_ids_to_test, smartbox_attached_ports
+            ),
             logging_level=int(LoggingLevel.FATAL),
         )
         my_harness.set_fndh_device(int(LoggingLevel.ERROR))

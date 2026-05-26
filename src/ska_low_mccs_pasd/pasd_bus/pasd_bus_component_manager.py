@@ -6,6 +6,7 @@
 # Distributed under the terms of the BSD 3-clause new license.
 # See LICENSE for more info.
 """This module implements a component manager for a PaSD bus."""
+
 from __future__ import annotations
 
 import logging
@@ -134,8 +135,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         communication_state_callback: Callable[[CommunicationStatus], None],
         component_state_callback: Callable[..., None],
         pasd_device_state_callback: Callable[..., None],
-        available_smartboxes: list[int],
-        smartbox_ids: list[int] | None,
+        smartbox_ids: list[int],
         enable_pymodbus_logging: bool,
         pymodbus_log_dir: Optional[str],
     ) -> None:
@@ -176,8 +176,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             This callable takes a single positional argument, which is
             the device number, and keyword arguments representing the state
             changes.
-        :param available_smartboxes: a list of available smartbox ids to poll.
-        :param smartbox_ids: optional list of smartbox IDs associated with
+        :param smartbox_ids: list of smartbox IDs associated with
             each FNDH port.
         :param enable_pymodbus_logging: whether to enable pymodbus logging
         :param pymodbus_log_dir: optional directory path for pymodbus logging
@@ -205,7 +204,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             self._attribute_read_delay,
             self._port_status_read_delay,
             self._port_power_delay,
-            available_smartboxes,
             smartbox_ids,
             smartbox_startup_delay,
         )

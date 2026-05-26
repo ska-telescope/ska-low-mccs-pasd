@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """This module provides a flexible test harness for testing PaSD Tango devices."""
+
 from __future__ import annotations
 
 import threading
@@ -225,8 +226,7 @@ class PasdTangoTestHarness:
             server_context_manager_factory(pasd_bus_simulator_server),
         )
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     def set_pasd_bus_device(
         self: PasdTangoTestHarness,
         station_label: str,
@@ -238,9 +238,9 @@ class PasdTangoTestHarness:
         timeout: float = 1.0,
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsPasdBus",
-        available_smartboxes: list[int] | None = None,
         smartbox_ids: list[int] | None = None,
         input_voltage_thresholds: list[float] | None = None,
+        smartbox_startup_delay: float = 0.0,
     ) -> None:
         """
         Set the PaSD bus Tango device in the test harness.
@@ -265,10 +265,11 @@ class PasdTangoTestHarness:
         :param device_class: The device class to use.
             This may be used to override the usual device class,
             for example with a patched subclass.
-        :param available_smartboxes: Optional list of smartbox IDs that the PaSD bus
-            device should poll.
         :param smartbox_ids: Optional list of smartbox IDs associated with each
             FNDH port.
+        :param smartbox_startup_delay: delay (in seconds) between an FNDH port
+            being sensed as powered on and the attached smartbox being added to
+            the polling loop. Defaults to 0 in tests for speed.
         """
         port: Callable[[dict[str, Any]], int] | int  # for the type checker
 
@@ -279,12 +280,10 @@ class PasdTangoTestHarness:
                 return context["pasd_bus"][1]
 
         else:
-            (host, port) = address
+            host, port = address
 
-        if available_smartboxes is None:
-            available_smartboxes = list(
-                range(1, MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1)
-            )
+        if smartbox_ids is None:
+            smartbox_ids = list(range(1, MAX_NUMBER_OF_SMARTBOXES_PER_STATION + 1))
 
         if input_voltage_thresholds is None:
             input_voltage_thresholds = INPUT_VOLTAGE_THRESHOLDS
@@ -300,14 +299,13 @@ class PasdTangoTestHarness:
             "FEMCurrentTripThreshold": fem_current_trip_threshold,
             "SBInputVoltageThresholds": input_voltage_thresholds,
             "SimulationConfig": int(SimulationMode.TRUE),
-            "AvailableSmartboxes": available_smartboxes,
+            "SmartboxIDs": smartbox_ids,
             "ParentTRL": get_field_station_name(station_label=station_label),
             "LoggingLevelDefault": logging_level,
             "PortStatusReadDelay": 0,
             "PortPowerDelay": 0,
+            "SmartboxStartupDelay": smartbox_startup_delay,
         }
-        if smartbox_ids:
-            properties["SmartboxIDs"] = smartbox_ids
 
         self._tango_test_harness.add_device(
             get_pasd_bus_name(self._station_label), device_class, **properties

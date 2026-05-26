@@ -1304,6 +1304,8 @@ def test_set_thresholds_on_initialise(
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}FemCurrentTripThresholds",
         [15] * PasdData.NUMBER_OF_SMARTBOX_PORTS,
+        lookahead=5,
+        consume_nonmatches=True,
     )
 
     setattr(
@@ -1315,6 +1317,8 @@ def test_set_thresholds_on_initialise(
     change_event_callbacks.assert_change_event(
         f"smartbox{smartbox_id}InputVoltageThresholds",
         [60, 50, 40, 30],
+        lookahead=5,
+        consume_nonmatches=True,
     )
 
     # Switch the smartbox off

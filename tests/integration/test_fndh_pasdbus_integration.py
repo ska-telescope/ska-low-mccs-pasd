@@ -41,6 +41,7 @@ from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.fndh import FndhHealthModel
 from tests.harness import PasdTangoTestHarness, PasdTangoTestHarnessContext
+from tests.integration.conftest import smartbox_ids_per_port
 
 from ..conftest import Helpers
 
@@ -594,7 +595,7 @@ class TestfndhPasdBusIntegration:
         )
         for i, val in enumerate(new_vals):
             assert fndh_device.outsideTemperatureThresholds[i] == val
-        (code, message) = fndh_device.UpdateThresholdCache()
+        code, message = fndh_device.UpdateThresholdCache()
         assert code == ResultCode.FAILED
         assert "Thresholds do not match:" in message[0]
         assert "outsidetemperaturethresholds" in message[0]
@@ -623,7 +624,7 @@ class TestfndhPasdBusIntegration:
             new_vals,
         )
 
-        (code, message) = fndh_device.UpdateThresholdCache()
+        code, message = fndh_device.UpdateThresholdCache()
 
         assert message == ["UpdateThresholdCache completed"]
         assert code == ResultCode.OK
@@ -813,8 +814,12 @@ class TestfndhPasdBusIntegration:
             # Health should still be FAILED until the FNDH is initialized
             change_event_callbacks["fndhhealthState"].assert_not_called()
             assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+
+            # Large lookahead needed because the FNDH is polled many times during
+            # the wait for the above assert_not_called, creating a pile up of
+            # events in the queue
             change_event_callbacks["pasdStatus"].assert_change_event(
-                FndhStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
+                FndhStatusMap.WARNING.name, lookahead=50, consume_nonmatches=True
             )
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.DEGRADED
@@ -903,8 +908,11 @@ class TestfndhPasdBusIntegration:
             # Health should still be FAILED until the FNDH is initialized
             change_event_callbacks["fndhhealthState"].assert_not_called()
             assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+            # Large lookahead needed because the FNDH is polled many times during
+            # the wait for the above assert_not_called, creating a pile up of
+            # events in the queue
             change_event_callbacks["pasdStatus"].assert_change_event(
-                FndhStatusMap.WARNING.name, lookahead=20, consume_nonmatches=True
+                FndhStatusMap.WARNING.name, lookahead=50, consume_nonmatches=True
             )
             change_event_callbacks["fndhhealthState"].assert_change_event(
                 HealthState.DEGRADED
@@ -1171,7 +1179,9 @@ def test_context_db_configurable_fixture(
             station_label=station_label,
             polling_rate=0.1,
             device_polling_rate=0.1,
-            available_smartboxes=smartbox_ids_to_test,
+            smartbox_ids=smartbox_ids_per_port(
+                smartbox_ids_to_test, smartbox_attached_ports
+            ),
             logging_level=int(LoggingLevel.FATAL),
         )
         my_harness.set_fndh_device(int(LoggingLevel.ERROR), ports_with_smartbox=[1])

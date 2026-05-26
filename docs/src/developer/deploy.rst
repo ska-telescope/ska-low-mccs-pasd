@@ -65,20 +65,16 @@ MccsPasdBus
 - **FEMCurrentTripThreshold**: Current trip threshold for all FEMs, in Amps
 - **SBInputVoltageThresholds**: List of smartbox input voltage thresholds, in Volts
 - **SimulationConfig**: Set to 1 to enable simulation mode
-- **AvailableSmartboxes**: List of available smartbox IDs
-- **SmartboxIDs**: List of smartbox (Modbus) IDs associated with each FNDH port.
+- **SmartboxIDs**: Optional list of smartbox (Modbus) IDs associated with each FNDH port (see below).
   Should be of length ``no_of_fndh_ports`` (see note below)
 - **EnablePyModbusLogging**: Set to True to enable pymodbus logging
 - **PyModbusLogDir**: Optional path to a directory to create pymodbus log file in
 
-To only poll smartboxes that are powered on, set the ``SmartboxIDs`` property to the list
-of smartbox IDs associated with each FNDH port, and use 0 for any port with no smartbox
-attached. For example, to indicate that smartboxes 5, 6 and 7 are attached to FNDH ports
-1, 2 and 4 respectively, and that port 3 has no smartbox attached, set the property to:
-``[5, 6, 0, 7]``. The ``AvailableSmartboxes`` property is ignored if this is set.
-
-To poll all smartboxes regardless of power state, leave the ``SmartboxIDs`` property unset
-and list all smartbox IDs in the ``AvailableSmartboxes`` property.
+Set the ``SmartboxIDs`` property to the list of smartbox IDs associated with each FNDH port, and use
+0 for any port with no smartbox attached. For example, to indicate that smartboxes 5, 6 and 7 are
+attached to FNDH ports 1, 2 and 4 respectively, and that port 3 has no smartbox attached, set the
+property to: ``[5, 6, 0, 7]``. Default value assumes smartboxes with IDs 1 to 24 are attached to ports
+1 to 24 respectively.
 
 
 MccsFNDH
