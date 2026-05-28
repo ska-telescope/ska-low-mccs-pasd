@@ -1,5 +1,9 @@
 # Version History
 
+## 6.0.1
+
+* [THORN-585] Fixed exception in FNDH device: 'MccsPasdBus' object has no attribute '_low_pass_filter_cutoff'
+
 ## 6.0.0
 
 * [THORN-406] Removed the AvailableSmartboxes property. The SmartboxIDs property must now be set instead for all deployments.
