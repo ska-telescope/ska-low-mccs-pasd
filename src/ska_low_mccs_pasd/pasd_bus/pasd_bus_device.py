@@ -660,12 +660,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         if self._simulation_mode == SimulationMode.FALSE:
             # Simulation does not support setting the filter constants
             # as there is no way to read them back
-            if self._low_pass_filter_cutoff is not None:
+            if self.LowPassFilterCutoff is not None:
                 self.component_manager.set_fndh_low_pass_filters(
-                    self._low_pass_filter_cutoff
+                    self.LowPassFilterCutoff
                 )
                 self.component_manager.set_fndh_low_pass_filters(
-                    self._low_pass_filter_cutoff, True
+                    self.LowPassFilterCutoff, True
                 )
         return ([ResultCode.OK], ["InitializeFndh command requested."])
 
