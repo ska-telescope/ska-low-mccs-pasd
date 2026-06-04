@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [SDR-1687] Update PyTango to 10.3.0.
+
 ## 6.0.1
 
 * [THORN-585] Fixed exception in FNDH device: 'MccsPasdBus' object has no attribute '_low_pass_filter_cutoff'
