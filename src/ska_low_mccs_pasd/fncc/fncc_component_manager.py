@@ -73,6 +73,11 @@ class _PasdBusProxy(DeviceComponentManager):
                     attribute, self._on_attribute_change
                 )
 
+    def reset_fncc_status(self: _PasdBusProxy) -> None:
+        """Request the PaSD bus to reset the FNCC status register."""
+        assert self._proxy is not None
+        self._proxy.ResetFnccStatus()
+
     def _on_attribute_change(
         self: _PasdBusProxy,
         attr_name: str,
@@ -192,3 +197,7 @@ class FnccComponentManager(TaskExecutorComponentManager):
         if self._pasd_bus_proxy:
             self._pasd_bus_proxy.cleanup()
         self._task_executor._executor.shutdown()
+
+    def reset_fncc_status(self: FnccComponentManager) -> None:
+        """Ask the PaSD bus to reset the FNCC status register."""
+        self._pasd_bus_proxy.reset_fncc_status()
