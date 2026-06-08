@@ -6,6 +6,13 @@
 
 PROJECT = ska-low-mccs-pasd
 
+SKART_DEPS_FILE ?= skart.toml
+SKART_WAIT ?= 300
+SKART_REQUERY ?= 5
+SKART_UPDATE_MODE ?= devel
+SKART_UPDATE_DEPS ?= all
+SKART_ALLOW_ALL ?= false
+
 include .make/raw.mk
 include .make/base.mk
 
@@ -177,4 +184,49 @@ helmfile-lint:
 	done
 	exit $$EXIT_CODE
 
-.PHONY: helmfile-lint
+deps-update-uv:
+	@update_mode="$(SKART_UPDATE_MODE)"; \
+	update_deps="$(strip $(SKART_UPDATE_DEPS))"; \
+	update_deps_origin="$(origin SKART_UPDATE_DEPS)"; \
+	deps_file="$(SKART_DEPS_FILE)"; \
+	if [ "$$update_mode" != "devel" ] && [ "$$update_mode" != "release" ]; then \
+		echo "deps-update-uv: SKART_UPDATE_MODE must be 'devel' or 'release' (got '$$update_mode')"; \
+		exit 2; \
+	fi; \
+	if [ -z "$$update_deps" ]; then \
+		echo "deps-update-uv: SKART_UPDATE_DEPS must not be empty"; \
+		exit 2; \
+	fi; \
+	if [ "$$update_deps" = "all" ] && [ "$$update_deps_origin" = "command line" ] && [ "$(SKART_ALLOW_ALL)" != "true" ]; then \
+		echo "deps-update-uv: refusing full update; set SKART_ALLOW_ALL=true to proceed"; \
+		exit 2; \
+	fi; \
+	if [ ! -e "$$deps_file" ]; then \
+		echo "deps-update-uv: $$deps_file not found; nothing to update (no-op)"; \
+		exit 0; \
+	fi; \
+	if ! grep -Eq '^\[dep\.[^]]+\]' "$$deps_file"; then \
+		echo "deps-update-uv: no [dep.*] entries found in $$deps_file; nothing to update (no-op)"; \
+		exit 0; \
+	fi; \
+	if command -v uv >/dev/null 2>&1; then \
+		run_skart_update() { uv run skart update "$$@"; }; \
+	elif command -v skart >/dev/null 2>&1; then \
+		run_skart_update() { skart update "$$@"; }; \
+	else \
+		echo "deps-update-uv: neither uv nor skart is available in PATH"; \
+		exit 3; \
+	fi; \
+	mode_args=""; \
+	if [ "$$update_mode" = "release" ]; then \
+		mode_args="--mode release"; \
+	fi; \
+	if [ "$$update_deps" = "all" ]; then \
+		run_skart_update $$mode_args --dep-file "$$deps_file" --wait="$(SKART_WAIT)" --requery="$(SKART_REQUERY)"; \
+	else \
+		for dep in $$update_deps; do \
+			run_skart_update $$mode_args --dep-file "$$deps_file" --wait="$(SKART_WAIT)" --requery="$(SKART_REQUERY)" "$$dep" || exit $$?; \
+		done; \
+	fi
+
+.PHONY: helmfile-lint deps-update-uv
