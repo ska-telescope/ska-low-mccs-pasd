@@ -10,8 +10,17 @@ SKART_DEPS_FILE ?= skart.toml
 SKART_WAIT ?= 300
 SKART_REQUERY ?= 5
 SKART_UPDATE_MODE ?= devel
-SKART_UPDATE_DEPS ?= all
 SKART_ALLOW_ALL ?= false
+
+SKART_DEP_NAMES := $(strip $(shell [ -e "$(SKART_DEPS_FILE)" ] && sed -n 's/^\[dep\.\([^]]\+\)\]$/\1/p' "$(SKART_DEPS_FILE)"))
+
+ifneq ($(SKART_DEP_NAMES),)
+SKART_DEPS_DEVEL ?= $(SKART_DEP_NAMES)
+SKART_DEPS_RELEASE ?= $(SKART_DEP_NAMES)
+SKART_UPDATE_DEPS ?= $(if $(filter release,$(SKART_UPDATE_MODE)),$(SKART_DEPS_RELEASE),$(SKART_DEPS_DEVEL))
+else
+SKART_UPDATE_DEPS ?= all
+endif
 
 include .make/raw.mk
 include .make/base.mk
