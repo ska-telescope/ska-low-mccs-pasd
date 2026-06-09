@@ -73,6 +73,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         fncc_reset_count_signal,
         memorized=True,
         hw_memorized=True,
+        abs_change=1,
         doc="Number of times the FNCC status register has been reset.",
         from_tango=_validate_reset_count,
     )
