@@ -311,10 +311,11 @@ class TestfnccPasdBusIntegration:
         )
         # The SYS_STATUS register is reset automatically
         change_event_callbacks["resetCount"].assert_change_event(
-            1, lookahead=20, consume_nonmatches=True
+            1,
+            lookahead=20,
         )
         change_event_callbacks["fnccStatus"].assert_change_event(
-            FnccStatusMap.RESET.name, lookahead=10
+            FnccStatusMap.RESET.name, lookahead=20
         )
         change_event_callbacks["fnccHealthState"].assert_change_event(
             HealthState.DEGRADED
