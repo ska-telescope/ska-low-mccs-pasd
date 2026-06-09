@@ -61,6 +61,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         memorized=True,
         hw_memorized=True,
         abs_change=1,
+        write_to_signal=True,
         doc="Number of times the FNCC status register has been reset.",
     )
 
@@ -369,9 +370,14 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
                     attr_quality = pasd_status_quality
                 # An FNCC status outside {OK, RESET} means we need to
                 # issue a reset; increment the counter only if it succeeds.
-                if attr_value not in (
-                    FnccStatusMap.OK.name,
-                    FnccStatusMap.RESET.name,
+                if (
+                    attr_quality != tango.AttrQuality.ATTR_INVALID
+                    and attr_value is not None
+                    and attr_value
+                    not in (
+                        FnccStatusMap.OK.name,
+                        FnccStatusMap.RESET.name,
+                    )
                 ):
                     try:
                         self.logger.debug(
