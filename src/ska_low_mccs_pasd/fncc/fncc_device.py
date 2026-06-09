@@ -393,7 +393,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
                         )
                         self.component_manager.reset_fncc_status()
                     except Exception:  # pylint: disable=broad-except
-                        self.logger.exception(
+                        self.logger.error(
                             "Failed to reset FNCC status; counter not incremented."
                         )
                     else:
