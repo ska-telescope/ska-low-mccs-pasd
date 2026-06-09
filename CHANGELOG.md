@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [THORN-582] Added top-level make target deps-update-uv for cascade orchestration compatibility, including repo-local SKART defaults and no-op behavior when skart.toml is missing or has no [dep.*] entries.
+
 ## 6.0.1
 
 * [THORN-585] Fixed exception in FNDH device: 'MccsPasdBus' object has no attribute '_low_pass_filter_cutoff'
