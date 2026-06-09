@@ -27,19 +27,6 @@ from .fncc_component_manager import FnccComponentManager
 __all__ = ["MccsFNCC"]
 
 
-def _validate_reset_count(value: int) -> int:
-    """
-    Reject any write to ResetCount that isn't an explicit reset to 0.
-
-    :param value: the value to be written
-    :raises ValueError: if a non-zero value is written
-    :return: the validated value
-    """
-    if value != 0:
-        raise ValueError("ResetCount can only be written as 0")
-    return value
-
-
 @dataclass
 class FNCCAttribute:
     """Class representing the internal state of a FNCC attribute."""
@@ -75,7 +62,6 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         hw_memorized=True,
         abs_change=1,
         doc="Number of times the FNCC status register has been reset.",
-        from_tango=_validate_reset_count,
     )
 
     # ---------------
