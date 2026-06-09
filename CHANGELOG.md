@@ -3,6 +3,7 @@
 ## Unreleased
 
 * [SDR-1687] Update PyTango to 10.3.0.
+* [SPTS-925] Reset the FNCC status register when an error is encountered and add resetCount attribute to FNCC device.
 
 ## 6.0.1
 

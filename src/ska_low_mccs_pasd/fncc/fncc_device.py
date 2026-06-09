@@ -28,7 +28,13 @@ __all__ = ["MccsFNCC"]
 
 
 def _validate_reset_count(value: int) -> int:
-    """Reject any write to ResetCount that isn't an explicit reset to 0."""
+    """
+    Reject any write to ResetCount that isn't an explicit reset to 0.
+
+    :param value: the value to be written
+    :raises ValueError: if a non-zero value is written
+    :return: the validated value
+    """
     if value != 0:
         raise ValueError("ResetCount can only be written as 0")
     return value
