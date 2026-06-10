@@ -245,6 +245,13 @@ class TestfnccPasdBusIntegration:
         )
         change_event_callbacks["fncc_state"].assert_change_event(tango.DevState.DISABLE)
 
+        fncc_device.subscribe_event(
+            "resetCount",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["resetCount"],
+        )
+        change_event_callbacks["resetCount"].assert_change_event(0)
+
         # -----------------------------------------------------------------
         # This is a bit of a cheat.
         # It's an implementation-dependent detail that
@@ -302,12 +309,21 @@ class TestfnccPasdBusIntegration:
             fncc_device.healthReport
             == "pasdstatus is in ATTR_ALARM with value FRAME_ERROR_MODBUS_STUCK"
         )
-        fncc_simulator.status = FnccStatusMap.OK
-        change_event_callbacks["fnccStatus"].assert_change_event(
-            FnccStatusMap.OK.name, lookahead=10
+        # The SYS_STATUS register is reset automatically
+        change_event_callbacks["resetCount"].assert_change_event(
+            1,
+            lookahead=20,
+            consume_nonmatches=True,
         )
-        change_event_callbacks["fnccHealthState"].assert_change_event(HealthState.OK)
-        assert fncc_device.healthReport == "Health is OK."
+        change_event_callbacks["fnccStatus"].assert_change_event(
+            FnccStatusMap.RESET.name, lookahead=50, consume_nonmatches=True
+        )
+        change_event_callbacks["fnccHealthState"].assert_change_event(
+            HealthState.DEGRADED
+        )
+        assert (
+            fncc_device.healthReport == "pasdstatus is in ATTR_WARNING with value RESET"
+        )
 
 
 @pytest.fixture(name="change_event_callbacks")
@@ -327,6 +343,7 @@ def change_event_callbacks_fixture(
         "pasdBushealthState",
         "fnccHealthState",
         "fnccStatus",
+        "resetCount",
         f"smartbox{last_smartbox_id}AlarmFlags",
         timeout=26.0,
         assert_no_error=False,

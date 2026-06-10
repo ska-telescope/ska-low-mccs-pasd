@@ -18,6 +18,7 @@ import tango
 from ska_control_model import CommunicationStatus, HealthState, PowerState
 from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_low_pasd_driver.pasd_bus_conversions import FnccStatusMap
+from ska_tango_base.software_bus import AttrSignal, attribute_from_signal
 from tango.server import attribute, device_property
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
@@ -49,6 +50,20 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
     # ---------
     CONFIG: Final[ControllerDict] = PasdControllersConfig.get_fncc()
     TYPES: Final[dict[str, type]] = {"int": int, "str": str}
+
+    # -------
+    # Signals
+    # -------
+    fncc_reset_count_signal = AttrSignal[int](stored=True, initial_value=0)
+
+    ResetCount = attribute_from_signal(  # noqa: N815
+        fncc_reset_count_signal,
+        memorized=True,
+        hw_memorized=True,
+        abs_change=1,
+        write_to_signal=True,
+        doc="Number of times the FNCC status register has been reset.",
+    )
 
     # ---------------
     # Initialisation
@@ -353,6 +368,30 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
                 # with a valid value
                 if attr_quality != tango.AttrQuality.ATTR_INVALID:
                     attr_quality = pasd_status_quality
+                # An FNCC status outside {OK, RESET} means we need to
+                # issue a reset; increment the counter only if it succeeds.
+                if (
+                    attr_quality != tango.AttrQuality.ATTR_INVALID
+                    and attr_value is not None
+                    and attr_value
+                    not in (
+                        FnccStatusMap.OK.name,
+                        FnccStatusMap.RESET.name,
+                    )
+                ):
+                    try:
+                        self.logger.debug(
+                            f"Resetting FNCC status to clear {attr_value} error."
+                        )
+                        self.component_manager.reset_fncc_status()
+                    except Exception:  # pylint: disable=broad-except
+                        self.logger.error(
+                            "Failed to reset FNCC status; counter not incremented."
+                        )
+                    else:
+                        self.fncc_reset_count_signal = (
+                            cast(int, self.fncc_reset_count_signal) + 1
+                        )
 
             self._fncc_attributes[attr_name].quality = attr_quality
             self._fncc_attributes[attr_name].timestamp = timestamp
