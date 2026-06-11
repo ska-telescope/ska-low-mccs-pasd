@@ -39,6 +39,7 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 from ..pasd_controllers_configuration import ControllerDict
 from .pasd_bus_component_manager import PasdBusComponentManager
 from .pasd_bus_health_model import PasdBusHealthModel
+from .poll_failure_tracker import PollFailureSnapshot
 
 __all__ = ["MccsPasdBus"]
 
@@ -138,6 +139,17 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         default_value=False,  # TODO: change to True in the next major version
     )
 
+    # Sliding-window length (seconds) used to compute the per-device failed-poll
+    # rates. Defaults to one hour.
+    FailedPollWindow: Final[int] = tango.server.device_property(
+        dtype=int, default_value=3600
+    )
+
+    # How often (seconds) to prune expired entries from the failed-poll window.
+    FailedPollPruneInterval: Final[int] = tango.server.device_property(
+        dtype=int, default_value=60
+    )
+
     # ---------
     # Constants
     # ---------
@@ -148,6 +160,75 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         "bool": bool,
         "DesiredPowerEnum": DesiredPowerEnum,
     }
+
+    # ----------------------
+    # Signals and attributes
+    # ----------------------
+    # Cumulative diagnostic counters - reset to zero on device restart.
+    fndh_failed_poll_signal = AttrSignal[int](stored=True, initial_value=0)
+    fndhFailedPollCount = attribute_from_signal(  # noqa: N815
+        fndh_failed_poll_signal,
+        abs_change=1,
+        doc="Cumulative number of failed polls of the FNDH since this device "
+        "was last restarted.",
+    )
+
+    fncc_failed_poll_signal = AttrSignal[int](stored=True, initial_value=0)
+    fnccFailedPollCount = attribute_from_signal(  # noqa: N815
+        fncc_failed_poll_signal,
+        abs_change=1,
+        doc="Cumulative number of failed polls of the FNCC since this device "
+        "was last restarted.",
+    )
+
+    smartbox_failed_poll_signal = AttrSignal[list[int]](
+        stored=True, initial_value=[0] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
+    )
+    smartboxFailedPollCount = attribute_from_signal(  # noqa: N815
+        smartbox_failed_poll_signal,
+        dtype=(int,),
+        max_dim_x=PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION,
+        abs_change=1,
+        doc="Cumulative number of failed polls per smartbox since this device "
+        "was last restarted. Indexed by smartbox id - 1.",
+    )
+
+    # Sliding-window rates.
+    # Tango will push the device State to ALARM as soon as a count
+    # exceeds `max_alarm` failures within `FailedPollWindow`.
+    fndh_failed_polls_in_window_signal = AttrSignal[int](initial_value=0)
+    fndhFailedPollsInWindow = attribute_from_signal(  # noqa: N815
+        fndh_failed_polls_in_window_signal,
+        abs_change=1,
+        max_warning=5,
+        max_alarm=20,
+        doc="Number of FNDH failed polls observed within the last "
+        "`FailedPollWindow` seconds.",
+    )
+
+    fncc_failed_polls_in_window_signal = AttrSignal[int](initial_value=0)
+    fnccFailedPollsInWindow = attribute_from_signal(  # noqa: N815
+        fncc_failed_polls_in_window_signal,
+        abs_change=1,
+        max_warning=5,
+        max_alarm=20,
+        doc="Number of FNCC failed polls observed within the last "
+        "`FailedPollWindow` seconds.",
+    )
+
+    smartbox_failed_polls_in_window_signal = AttrSignal[list[int]](
+        initial_value=[0] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
+    )
+    smartboxFailedPollsInWindow = attribute_from_signal(  # noqa: N815
+        smartbox_failed_polls_in_window_signal,
+        dtype=(int,),
+        max_dim_x=PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION,
+        abs_change=1,
+        max_warning=5,
+        max_alarm=20,
+        doc="Number of failed polls per smartbox observed within the last "
+        "`FailedPollWindow` seconds. Indexed by smartbox id - 1.",
+    )
 
     # ---------------
     # Initialisation
@@ -210,6 +291,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             f"\tPortStatusReadDelay: {self.PortStatusReadDelay}\n"
             f"\tPortPowerDelay: {self.PortPowerDelay}\n"
             f"\tSmartboxStartupDelay: {self.SmartboxStartupDelay}\n"
+            f"\tFailedPollWindow: {self.FailedPollWindow}\n"
+            f"\tFailedPollPruneInterval: {self.FailedPollPruneInterval}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -361,10 +444,13 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self.PortPowerDelay,
             self.SmartboxStartupDelay,
             self.Timeout,
+            self.FailedPollWindow,
+            self.FailedPollPruneInterval,
             self.logger,
             self._communication_state_callback,
             self._component_state_callback,
             self._pasd_device_state_callback,
+            self._on_poll_failure_changed,
             self.SmartboxIDs,
             self.EnablePyModbusLogging,
             self.PyModbusLogDir,
@@ -507,6 +593,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             return ""
 
         if "error" in kwargs:
+            self.component_manager.record_poll_failure(device_id)
             attr_list = kwargs.get("attributes")
             if not attr_list:
                 # This was a write request, nothing further to do
@@ -644,6 +731,25 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self._health_state = health
         except AttributeError as err:  # Must ensure that health_state is initilised
             self.logger.error(f"Health changed failed due to {err}")
+
+    def _on_poll_failure_changed(
+        self: MccsPasdBus,
+        snapshot: PollFailureSnapshot,
+    ) -> None:
+        """
+        Handle an update from the `PollFailureTracker`.
+
+        Translates the snapshot into the corresponding signal
+        assignments.
+
+        :param snapshot: the new poll failure state.
+        """
+        self.fndh_failed_poll_signal = snapshot.fndh_total
+        self.fncc_failed_poll_signal = snapshot.fncc_total
+        self.smartbox_failed_poll_signal = list(snapshot.smartbox_totals)
+        self.fndh_failed_polls_in_window_signal = snapshot.fndh_in_window
+        self.fncc_failed_polls_in_window_signal = snapshot.fncc_in_window
+        self.smartbox_failed_polls_in_window_signal = list(snapshot.smartbox_in_window)
 
     # ----------
     # Attributes

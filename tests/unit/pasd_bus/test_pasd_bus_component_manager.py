@@ -55,6 +55,7 @@ def mock_callbacks_fixture() -> MockCallableGroup:
         "component_state",
         "pasd_device_state_for_fndh",
         "pasd_device_state_for_fncc",
+        "poll_failures",
         *smartbox_callback_names,
         timeout=20.0,
     )
@@ -117,16 +118,19 @@ def pasd_bus_component_manager_fixture(
             port,
             0.05,  # polling_rate very fast for unit testing
             0.1,  # device_polling_rate very fast for unit testing
-            2.0,
-            1.0,
-            0.0,
-            0.0,
+            2.0,  # poll delay after failure
+            1.0,  # attribute read delay
+            0.0,  # port status read delay
+            0.0,  # port power delay
             0.0,  # smartbox_startup_delay
-            3.0,
+            3.0,  # timeout
+            10,  # failed poll window
+            1,  # failed poll prune interval
             logger,
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
             _pasd_device_state_splitter,
+            mock_callbacks["poll_failures"],
             smartbox_ids,
             False,
             None,
