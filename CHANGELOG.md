@@ -7,7 +7,13 @@
 * [THORN-584] Add a VerifyEvents property to all devices. This sets the value of [the `detect` parameter](https://tango-controls.readthedocs.io/projects/pytango/en/v10.3.0/api/server_api/attribute.html#tango.Attr.set_change_event) when the Tango set_archive_event and set_change_event methods are called.
 * [SKB-1365] Update pasd driver to 1.1.0 and change tests to match updated thresholds
 * [SKB-1365] Update pasd chart to match new thresholds
+<<<<<<< HEAD
 * [SKB-1365] Add link to document outlining the new threshold changes
+=======
+* [THORN-533] Implemented a pasdBus health model. This exposes attributes e.g. smartboxFailedPollCount to keep track of the number of failed polls for each device. The behaviour is configurable using the following new device properties:
+  - FailedPollWindow: sliding-window length (seconds)
+  - FailedPollPruneInterval: how often (seconds) to prune expired entries from the failed-poll window
+>>>>>>> 9977bdc (THORN-533: Update CHANGELOG)
 
 ## 6.1.0
 
