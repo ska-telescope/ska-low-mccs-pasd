@@ -56,6 +56,9 @@ MccsPasdBus
 - **PollingRate**: Polling period, in seconds
 - **DevicePollingRate**: Minimum time between polls of a device, in seconds
 - **PollDelayAfterFailure**: Time to wait after a failed poll, in seconds
+- **FailedPollWindow**: Sliding-window length (seconds) used to compute the per-device failed-poll
+  rates. Defaults to one hour.
+- **FailedPollPruneInterval**: How often (seconds) to prune expired entries from the failed-poll window. Defaults to one minute.
 - **AttributeReadDelay**: Time to wait after writing an attribute before reading it again, in seconds
 - **PortStatusReadDelay**: Time to wait after setting port status before reading it again, in seconds
 - **PortPowerDelay**: Time to wait between setting each FNDH port, in seconds. Must be greater than PortStatusReadDelay
