@@ -245,6 +245,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
         This is overridden here to change the Tango serialisation model.
         """
+        self._stopping: bool = False
+        self._health_recorder: Optional[HealthRecorder] = None
+
         super().init_device()
         self._init_pasd_devices = True
 
@@ -273,9 +276,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             for attribute in self._pasd_state.values()
             if attribute.read_once
         ]
-
-        self._stopping: bool = False
-        self._health_recorder: Optional[HealthRecorder]
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
