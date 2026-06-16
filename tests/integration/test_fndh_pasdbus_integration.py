@@ -865,6 +865,7 @@ class TestfndhPasdBusIntegration:
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks["pasdStatus"],
         )
+
         for attribute_name in random_subset_fndh_monitoring_points:
             attribute_threshold = attribute_name + "_thresholds"
             print(f"Test attribute: {attribute_name}")
@@ -875,6 +876,11 @@ class TestfndhPasdBusIntegration:
                 min_warning,
                 min_alarm,
             ) = getattr(fndh_simulator, attribute_threshold)
+
+            if (
+                min_alarm == 0 and min_warning == 0
+            ):  # This is how the firmware config indicates disabling minimum thresholds
+                continue
 
             healthy_value = (max_warning + min_warning) / 2
 
@@ -1283,7 +1289,8 @@ def positive_only_monitoring_points_fixture() -> set[str]:
     return {
         "psu48v_current",
         "psu48v_voltage_1",
-        "psu48v_voltage_2",
+        # "fncb_humidity",
+        # "psu48v_voltage_2"  # note: Disabled alarm,
     }
 
 

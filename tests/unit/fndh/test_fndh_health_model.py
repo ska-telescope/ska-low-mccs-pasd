@@ -518,16 +518,14 @@ class TestFNDHHealthModel:
                     ),
                 },
                 {
-                    "commsgatewaytemperaturethresholds": np.array(
-                        [33.0, 22.0, 10.0, 0.0]
-                    ),
+                    "psu48vvoltage1thresholds": np.array([33.0, 22.0, 10.0, 0.0]),
                 },
                 HealthState.OK,
                 "Health is OK.",
                 HealthState.FAILED,
-                "Monitoring point commsgatewaytemperature "
+                "Monitoring point psu48vvoltage1 "
                 "is in FAILED HealthState. "
-                "Cause: Monitoring point commsgatewaytemperature has value 56.0, "
+                "Cause: Monitoring point psu48vvoltage1 has value 55.0, "
                 "this is in the alarm region for thresholds "
                 "max_alm=33.0, min_alm=0.0",
                 id="Update thresholds so that now the device reports FAILED",
@@ -556,7 +554,8 @@ class TestFNDHHealthModel:
         :param init_expected_report: Init expected health report.
         :param end_expected_health: Final expected health.
         :param end_expected_report: Final expected health report.
-
+        :param end_expected_health: Final expected health.
+        :param end_expected_report: Final expected health report.
         """
         # We are communicating and we have not seen any scary looking monitoring points.
         initial_health, initial_report = health_model.evaluate_health()
@@ -571,6 +570,7 @@ class TestFNDHHealthModel:
 
         assert initial_health == init_expected_health, initial_report
         assert init_expected_report in initial_report
+
         for threshold, values in end_thresholds.items():
             health_model.update_monitoring_point_threshold(
                 threshold.removesuffix("thresholds"), values

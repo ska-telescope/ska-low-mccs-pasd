@@ -1058,14 +1058,12 @@ class TestPasdBusComponentManager:
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
         pasd_bus_component_manager.initialize_smartbox(smartbox_id)
-        smartbox_simulator.fem_ambient_temperature = 8310
+        smartbox_simulator.input_voltage = 5100
         mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_id}"].assert_call(
-            alarm_flags=SmartboxAlarmFlags.SYS_AMB_TEMP.name,
+            alarm_flags=SmartboxAlarmFlags.SYS_48V_V.name,
             lookahead=11,
         )
-        smartbox_simulator.fem_ambient_temperature = (
-            smartbox_simulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
-        )
+        smartbox_simulator.input_voltage = smartbox_simulator.DEFAULT_INPUT_VOLTAGE
         pasd_bus_component_manager.reset_smartbox_alarms(smartbox_id)
         mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_id}"].assert_call(
             alarm_flags=SmartboxAlarmFlags.NONE.name,
@@ -1098,14 +1096,12 @@ class TestPasdBusComponentManager:
         )
         mock_callbacks.assert_call("component_state", power=PowerState.ON, fault=False)
         pasd_bus_component_manager.initialize_smartbox(smartbox_id)
-        smartbox_simulator.fem_ambient_temperature = 5260
+        smartbox_simulator.input_voltage = 4950
         mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_id}"].assert_call(
-            warning_flags=SmartboxAlarmFlags.SYS_AMB_TEMP.name,
+            warning_flags=SmartboxAlarmFlags.SYS_48V_V.name,
             lookahead=11,
         )
-        smartbox_simulator.fem_ambient_temperature = (
-            smartbox_simulator.DEFAULT_FEM_AMBIENT_TEMPERATURE
-        )
+        smartbox_simulator.input_voltage = smartbox_simulator.DEFAULT_INPUT_VOLTAGE
         pasd_bus_component_manager.reset_smartbox_warnings(smartbox_id)
         mock_callbacks[f"pasd_device_state_for_smartbox{smartbox_id}"].assert_call(
             warning_flags=SmartboxAlarmFlags.NONE.name,
