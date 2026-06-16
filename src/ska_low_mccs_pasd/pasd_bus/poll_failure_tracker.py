@@ -163,8 +163,8 @@ class PollFailureTracker:
                 if self._stopped:
                     return
                 self._emit_snapshot()
-        except Exception as exc:  # pylint: disable=broad-except
-            self._logger.exception("Failed to prune failed-poll timestamps.", exc)
+        except Exception:  # pylint: disable=broad-except
+            self._logger.exception("Failed to prune failed-poll timestamps.")
         finally:
             self._schedule_prune()
 
