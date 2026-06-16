@@ -27,7 +27,7 @@ from ska_control_model import (
     ResultCode,
     SimulationMode,
 )
-from ska_low_mccs_common import MccsBaseDevice
+from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_low_pasd_driver.pasd_bus_register_map import DesiredPowerEnum
 from ska_tango_base.software_bus import AttrSignal, attribute_from_signal
 from tango import AttrQuality
@@ -38,7 +38,6 @@ from ska_low_mccs_pasd.pasd_data import PasdData
 
 from ..pasd_controllers_configuration import ControllerDict
 from .pasd_bus_component_manager import PasdBusComponentManager
-from .pasd_bus_health_model import PasdBusHealthModel
 from .poll_failure_tracker import PollFailureSnapshot
 
 __all__ = ["MccsPasdBus"]
@@ -165,7 +164,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     # Signals and attributes
     # ----------------------
     # Cumulative diagnostic counters - reset to zero on device restart.
-    fndh_failed_poll_signal = AttrSignal[int](stored=True, initial_value=0)
+    fndh_failed_poll_signal = AttrSignal[int](initial_value=0)
     fndhFailedPollCount = attribute_from_signal(  # noqa: N815
         fndh_failed_poll_signal,
         abs_change=1,
@@ -173,7 +172,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         "was last restarted.",
     )
 
-    fncc_failed_poll_signal = AttrSignal[int](stored=True, initial_value=0)
+    fncc_failed_poll_signal = AttrSignal[int](initial_value=0)
     fnccFailedPollCount = attribute_from_signal(  # noqa: N815
         fncc_failed_poll_signal,
         abs_change=1,
@@ -182,7 +181,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     )
 
     smartbox_failed_poll_signal = AttrSignal[list[int]](
-        stored=True, initial_value=[0] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
+        initial_value=[0] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
     )
     smartboxFailedPollCount = attribute_from_signal(  # noqa: N815
         smartbox_failed_poll_signal,
@@ -230,6 +229,13 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         "`FailedPollWindow` seconds. Indexed by smartbox id - 1.",
     )
 
+    health_report_signal = AttrSignal[str]()
+    healthReport = attribute_from_signal(  # noqa: N815
+        health_report_signal,
+        dtype=str,
+        doc="Health report for the PaSD communications bus",
+    )
+
     # ---------------
     # Initialisation
     # ---------------
@@ -268,12 +274,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             if attribute.read_once
         ]
 
+        self._stopping: bool = False
+        self._health_recorder: Optional[HealthRecorder]
+
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id = sys.modules["ska_low_mccs_pasd"].__version__
         device_name = f'{str(self.__class__).rsplit(".", maxsplit=1)[-1][0:-2]}'
         version = f"{device_name} Software Version: {self._version_id}"
         properties = (
-            f"Initialised DEV {device_name} device with properties:\n"
+            f"Initialised {device_name} device with properties:\n"
             f"\tHost: {self.Host}\n"
             f"\tPort: {self.Port}\n"
             f"\tPollingRate: {self.PollingRate}\n"
@@ -402,7 +411,44 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()
-        self._health_model = PasdBusHealthModel(self._health_changed)
+        self._healthful_attributes = [
+            "fnccFailedPollsInWindow",
+            "fndhFailedPollsInWindow",
+            "smartboxFailedPollsInWindow",
+            "fnccFailedPollCount",
+            "fndhFailedPollCount",
+            "smartboxFailedPollCount",
+        ]
+        self._health_recorder = HealthRecorder(
+            self.get_name(),
+            self.logger,
+            attributes=self._healthful_attributes,
+            health_callback=self._health_changed,
+            attr_conf_callback=self._attr_conf_changed,
+        )
+
+    def _attr_conf_changed(self: MccsPasdBus, attribute_name: str) -> None:
+        """
+        Handle change in configuration of an attribute.
+
+        This is a workaround as if you configure an attribute
+        which is not alarming to have alarm/warning thresholds
+        such that it would be alarming, Tango does not push an event
+        until the attribute value changes.
+
+        :param attribute_name: the name of the attribute whose
+            configuration has changed.
+        """
+        if self._stopping:
+            return
+        if attribute_name in self._healthful_attributes:
+            # Signal-backed attributes store their last value in the SignalBusMixin
+            # cache. Re-pushing without explicit quality lets Tango recompute it
+            # against the newly configured thresholds.
+            signal_cache = self._SignalBusMixin__attr_values.get(attribute_name)
+            if signal_cache is not None:
+                self.push_change_event(attribute_name, signal_cache.value)
+                self.push_archive_event(attribute_name, signal_cache.value)
 
     def _set_all_low_pass_filters_of_device(
         self: MccsPasdBus, pasd_device_number: int
@@ -465,6 +511,10 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         but it is good practice to close it explicitly anyhow.)
         """
         self.component_manager.cleanup()
+        self._stopping = True
+        if self._health_recorder is not None:
+            self._health_recorder.cleanup()
+            self._health_recorder = None
         super().delete_device()
 
     # ----------
@@ -478,26 +528,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         Handle change in communications status between component manager and component.
 
         This is a callback hook, called by the component manager when
-        the communications status changes. It is implemented here to
-        drive the op_state.
+        the communications status changes.
 
         :param communication_state: the status of communications
             between the component manager and its component.
         """
-        action_map = {
-            CommunicationStatus.DISABLED: "component_disconnected",
-            CommunicationStatus.NOT_ESTABLISHED: "component_unknown",
-            CommunicationStatus.ESTABLISHED: "component_on",
-        }
-
-        action = action_map[communication_state]
-        if action is not None:
-            self.op_state_model.perform_action(action)
-
-        if communication_state is CommunicationStatus.ESTABLISHED:
-            self._health_model.update_state(communicating=True)
-        else:
-            self._health_model.update_state(communicating=False)
+        super()._communication_state_changed(communication_state)
 
         if (
             self._init_pasd_devices
@@ -545,7 +581,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             state.
         """
         super()._component_state_changed(fault=fault, power=power)
-        self._health_model.update_state(fault=fault, power=power)
 
     # pylint: disable=too-many-branches, disable=too-many-statements
     def _pasd_device_state_callback(  # noqa: C901
@@ -710,8 +745,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self.logger.debug(f"Updated PaSD state with values: {updated_attributes}")
 
     def _health_changed(
-        self: MccsPasdBus,
-        health: HealthState,
+        self: MccsPasdBus, health: HealthState, health_report: str
     ) -> None:
         """
         Handle change in this device's health state.
@@ -722,9 +756,13 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         date, and events are pushed.
 
         :param health: the new health value
+        :param health_report: the new health report
         """
         # healthState is defined as an attribute_from_signal in the base classes.
         # Setting this signal will push change and archive events automatically.
+        if self._stopping:
+            return
+        self.health_report_signal = health_report
         try:
             if self._health_state == health:
                 return
