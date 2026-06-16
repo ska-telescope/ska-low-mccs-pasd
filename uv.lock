@@ -1630,7 +1630,7 @@ requires-dist = [
     { name = "referencing", specifier = ">=0.31.0,<0.32.0" },
     { name = "ska-control-model", extras = ["health-rollup"], specifier = ">=1.2.0,<2.0.0" },
     { name = "ska-low-mccs-common", specifier = ">=4.5.3,<5.0.0" },
-    { name = "ska-low-pasd-driver", specifier = ">=1.0.1,<1.1.0" },
+    { name = "ska-low-pasd-driver", specifier = ">=1.1.0,<1.2.0" },
     { name = "ska-ser-devices", specifier = ">=0.2.0,<0.3.0" },
     { name = "ska-tango-base", specifier = ">=1.4.2" },
     { name = "ska-telmodel", specifier = ">=1.14.0,<2.0.0" },
@@ -1687,7 +1687,7 @@ docs = [
 
 [[package]]
 name = "ska-low-pasd-driver"
-version = "1.0.1"
+version = "1.1.0"
 source = { registry = "https://artefact.skao.int/repository/pypi-internal/simple" }
 dependencies = [
     { name = "cerberus" },
@@ -1695,9 +1695,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "ska-ser-devices" },
 ]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-pasd-driver/1.0.1/ska_low_pasd_driver-1.0.1.tar.gz", hash = "sha256:491cd9d948c7f3347a7b611022890a4fff6c29b267998a27cfccd001c6d13c7a" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-pasd-driver/1.1.0/ska_low_pasd_driver-1.1.0.tar.gz", hash = "sha256:3c0fa06b0a5a717f2ef851b6975a05eae64dff4c4fe365cd833d0afe5277979a" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-pasd-driver/1.0.1/ska_low_pasd_driver-1.0.1-py3-none-any.whl", hash = "sha256:109a64ded6b62cd8c3f72e1014ef6f4f451a6743ea4b394d074b3076648105a7" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-pasd-driver/1.1.0/ska_low_pasd_driver-1.1.0-py3-none-any.whl", hash = "sha256:022e9c42e3fe714b68f6a7d6e0730a9437edf96f97c3a806cd294b0376254e42" },
 ]
 
 [[package]]

@@ -7,4 +7,4 @@ ska-control-model[health_rollup]==1.2.0
 ska-tango-testing==0.7.3
 jsonschema==4.19.1 
 pytango==10.0.0
-ska-low-pasd-driver==0.2.0
+ska-low-pasd-driver==1.1.0

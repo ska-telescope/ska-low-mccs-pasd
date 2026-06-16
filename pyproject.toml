@@ -23,7 +23,7 @@ dependencies = [
     "click>=8.1.7,<9.0.0",
     "bidict>=0.23.1,<0.24.0",
     "google-auth==2.33.0",
-    "ska-low-pasd-driver>=1.0.1,<1.1.0",
+    "ska-low-pasd-driver>=1.1.0,<1.2.0",
 ]
 name = "ska-low-mccs-pasd"
 version = "6.1.0"
