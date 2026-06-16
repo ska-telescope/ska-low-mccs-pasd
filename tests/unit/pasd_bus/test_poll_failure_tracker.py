@@ -119,8 +119,8 @@ def test_record_failure(
     for _ in range(fncc_failures):
         poll_failure_tracker.record_poll_failure(PasdData.FNCC_DEVICE_ID)
 
-    for sb_index, n_failures in enumerate(smartbox_failures):
-        for _ in range(n_failures):
+    for sb_index, sb_failures in enumerate(smartbox_failures):
+        for _ in range(sb_failures):
             poll_failure_tracker.record_poll_failure(sb_index + 1)
 
     expected_snapshot = PollFailureSnapshot(
