@@ -878,7 +878,7 @@ class TestfndhPasdBusIntegration:
             ) = getattr(fndh_simulator, attribute_threshold)
 
             if (
-                min_alarm == 0 and min_warning == 0
+                min_alarm == min_warning == 0
             ):  # This is how the firmware config indicates disabling minimum thresholds
                 continue
 
