@@ -416,9 +416,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             "fnccFailedPollsInWindow",
             "fndhFailedPollsInWindow",
             "smartboxFailedPollsInWindow",
-            "fnccFailedPollCount",
-            "fndhFailedPollCount",
-            "smartboxFailedPollCount",
         ]
         self._health_recorder = HealthRecorder(
             self.get_name(),
@@ -763,12 +760,20 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         # Setting this signal will push change and archive events automatically.
         if self._stopping:
             return
+        if (
+            health == HealthState.OK
+            and self._component_manager
+            and self._component_manager.communication_state
+            != CommunicationStatus.ESTABLISHED
+        ):
+            return
+
         self.health_report_signal = health_report
         try:
             if self._health_state == health:
                 return
             self._health_state = health
-        except AttributeError as err:  # Must ensure that health_state is initilised
+        except AttributeError as err:  # Must ensure that health_state is initialised
             self.logger.error(f"Health changed failed due to {err}")
 
     def _on_poll_failure_changed(

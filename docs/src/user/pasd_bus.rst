@@ -134,16 +134,20 @@ with the following keys:
 PaSD bus health evaluation
 --------------------------
 
-The health of the PaSD bus device is determined by six attributes:
+The health of the PaSD bus device is determined by three attributes:
 
 1. ``fnccFailedPollsInWindow``: number of failed FNCC polls in the last ``FailedPollWindow`` seconds
-2. ``fnccFailedPollCount``: cumulative number of failed FNCC polls since the device was restarted
-3. ``fndhFailedPollsInWindow``: number of failed FNDH polls in the last ``FailedPollWindow`` seconds
-4. ``fndhFailedPollCount``: cumulative number of failed FNDH polls since the device was restarted
-5. ``smartboxFailedPollsInWindow``: number of failed polls for each smartbox in the last ``FailedPollWindow`` seconds, indexed by smartbox_id-1
-6. ``smartboxFailedPollCount``: cumulative number of failed polls for each smartbox since the device was restarted, indexed by smartbox_id-1
+2. ``fndhFailedPollsInWindow``: number of failed FNDH polls in the last ``FailedPollWindow`` seconds
+3. ``smartboxFailedPollsInWindow``: number of failed polls for each smartbox in the last ``FailedPollWindow`` seconds, indexed by smartbox_id-1
 
 ``FailedPollWindow`` is a configurable device property which defines the size of the sliding window.
+
+Cumulative counts since the devices were restarted are also available in the following attributes:
+
+* ``fnccFailedPollCount``
+* ``fndhFailedPollCount``
+* ``smartboxFailedPollCount``
+
 
 **Alarm Evaluation**
 
