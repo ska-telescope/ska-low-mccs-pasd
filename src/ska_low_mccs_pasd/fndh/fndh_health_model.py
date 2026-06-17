@@ -60,14 +60,14 @@ class FndhHealthModel(BaseHealthModel):
         # "psu48vvoltage2": None,  # note: Not implemented in hardware, see SPRTS-347
         "psu48vcurrent": None,
         "psu48vtemperature1": None,
-        "psu48vtemperature2": None,
+        # "psu48vtemperature2": None,  # note: Disabled alarm
         # "paneltemperature": None,  # note: Not implemented in hardware, see SPRTS-347
         "fncbtemperature": None,
         "fncbhumidity": None,
-        "commsgatewaytemperature": None,
+        # "commsgatewaytemperature": None,  # note: Disabled alarm
         "powermoduletemperature": None,
-        "outsidetemperature": None,
-        "internalambienttemperature": None,
+        # "outsidetemperature": None,  # note: Disabled alarm
+        # "internalambienttemperature": None,  # note: Disabled alarm
     }
 
     def __init__(
