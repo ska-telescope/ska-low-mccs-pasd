@@ -411,6 +411,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()
+        self._health_state = HealthState.UNKNOWN
         self._healthful_attributes = [
             "fnccFailedPollsInWindow",
             "fndhFailedPollsInWindow",
