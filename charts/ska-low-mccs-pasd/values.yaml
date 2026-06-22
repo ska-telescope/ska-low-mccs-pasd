@@ -79,8 +79,8 @@ ska-tango-devices:
       Psu48vVoltage1->min_alarm: 40
       Psu48vCurrent->max_alarm: 18
       Psu48vCurrent->max_warning: 16
-      Psu48vCurrent->min_warning: 0
-      Psu48vCurrent->min_alarm: 0
+      Psu48vCurrent->min_warning: Not specified # Disabling the min warning and alarm
+      Psu48vCurrent->min_alarm: Not specified
       Psu48vTemperature1->max_alarm: 100
       Psu48vTemperature1->max_warning: 85
       Psu48vTemperature1->min_warning: 0
@@ -91,14 +91,14 @@ ska-tango-devices:
       FncbTemperature->min_alarm: -5
       FncbHumidity->max_alarm: 85
       FncbHumidity->max_warning: 75
-      FncbHumidity->min_warning: 0
-      FncbHumidity->min_alarm: 0
+      FncbHumidity->min_warning: Not specified #Disabling the min warning and alarm
+      FncbHumidity->min_alarm: Not specified 
       PowerModuleTemperature->max_alarm: 85
       PowerModuleTemperature->max_warning: 70
       PowerModuleTemperature->min_warning: 0
       PowerModuleTemperature->min_alarm: -5
 
-      # These sensors are redundant or removed in current hardware
+      # These sensors are redundant or removed in current hardware or just disabling alarms
       Psu48vVoltage2->max_alarm: Not specified
       Psu48vVoltage2->min_alarm: Not specified
       Psu48vVoltage2->max_warning: Not specified
