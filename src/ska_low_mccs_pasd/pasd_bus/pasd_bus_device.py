@@ -760,13 +760,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         # Setting this signal will push change and archive events automatically.
         if self._stopping:
             return
-        if (
-            health == HealthState.OK
-            and self._component_manager
-            and self._component_manager.communication_state
-            != CommunicationStatus.ESTABLISHED
-        ):
-            return
 
         self.health_report_signal = health_report
         try:
