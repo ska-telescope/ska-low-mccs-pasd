@@ -121,7 +121,10 @@ class PollFailureTracker:
         Prune expired timestamps and emit a snapshot if it changed.
 
         Caller must hold ``self._lock``.
+        :raises RuntimeError: if ``self._lock`` not acquired.
         """
+        if not self._lock.locked():
+            raise RuntimeError("_emit_snapshot called without acquiring self._lock")
         cutoff = time.monotonic() - self._window
 
         def _prune(dq: deque[float]) -> int:
