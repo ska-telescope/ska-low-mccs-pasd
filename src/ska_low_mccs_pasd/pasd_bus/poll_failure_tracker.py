@@ -158,10 +158,10 @@ class PollFailureTracker:
 
     def _prune_tick(self: PollFailureTracker) -> None:
         """Run one prune of the sliding window and reschedule itself."""
+        if self._stopped:
+            return
         try:
             with self._lock:
-                if self._stopped:
-                    return
                 self._emit_snapshot()
         except Exception:  # pylint: disable=broad-except
             self._logger.exception("Failed to prune failed-poll timestamps.")
