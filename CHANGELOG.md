@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-* Update pasd driver to 1.1.0 and change tests to match updated thresholds
+* [SKB-1365] Update pasd driver to 1.1.0 and change tests to match updated thresholds
+* [SKB-1365] Update pasd chart to match new thresholds
 
 ## 6.1.0
 
