@@ -47,6 +47,10 @@ class MccsFieldStation(MccsBaseDevice):
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), default_value=[])
     NofSmartBoxBlocks = device_property(dtype=int, default_value=4)
+    VerifyEvents = device_property(
+        dtype=bool,
+        default_value=False,  # TODO: change to True in the next major version
+    )
     # --------------
     # Initialisation
     # --------------
@@ -93,8 +97,8 @@ class MccsFieldStation(MccsBaseDevice):
         }
         self._health_report = ""
         self._health_rollup = self._setup_health_rollup()
-        self.set_change_event("antennaPowerStates", True, False)
-        self.set_change_event("outsideTemperature", True, False)
+        self.set_change_event("antennaPowerStates", True, self.VerifyEvents)
+        self.set_change_event("outsideTemperature", True, self.VerifyEvents)
         self.init_completed()
 
         message = (
