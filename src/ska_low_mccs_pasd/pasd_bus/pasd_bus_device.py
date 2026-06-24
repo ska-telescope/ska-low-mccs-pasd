@@ -133,6 +133,10 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     SmartboxStartupDelay: Final[float] = tango.server.device_property(
         dtype=float, default_value=5.0
     )
+    VerifyEvents: Final = tango.server.device_property(
+        dtype=bool,
+        default_value=False,  # TODO: change to True in the next major version
+    )
 
     # ---------
     # Constants
@@ -311,7 +315,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             fset=self._write_pasd_attribute,
         )
         self.add_attribute(attr)
-        self.set_change_event(attribute_name, True, False)
+        self.set_change_event(attribute_name, True, self.VerifyEvents)
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()

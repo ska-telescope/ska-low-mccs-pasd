@@ -85,6 +85,10 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         dtype=float,
         default_value=0.05,
     )
+    VerifyEvents: Final = device_property(
+        dtype=bool,
+        default_value=False,  # TODO: change to True in the next major version
+    )
 
     # ---------
     # Constants
@@ -225,10 +229,10 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 self._healthful_attributes[health_attr] = partial(
                     self._fndh_attributes.get, health_attr.lower()
                 )
-        self.set_change_event("numberOfStuckOnSmartboxPorts", True, False)
-        self.set_archive_event("numberOfStuckOnSmartboxPorts", True, False)
-        self.set_change_event("numberOfStuckOffSmartboxPorts", True, False)
-        self.set_archive_event("numberOfStuckOffSmartboxPorts", True, False)
+        self.set_change_event("numberOfStuckOnSmartboxPorts", True, self.VerifyEvents)
+        self.set_archive_event("numberOfStuckOnSmartboxPorts", True, self.VerifyEvents)
+        self.set_change_event("numberOfStuckOffSmartboxPorts", True, self.VerifyEvents)
+        self.set_archive_event("numberOfStuckOffSmartboxPorts", True, self.VerifyEvents)
         if not self.UseAttributesForHealth:
             self._health_model = FndhHealthModel(
                 self._health_changed_callback, self.logger
@@ -244,8 +248,8 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 attr_conf_callback=self._attr_conf_changed,
             )
             self._health_model = None
-        self.set_change_event("healthState", True, False)
-        self.set_archive_event("healthState", True, False)
+        self.set_change_event("healthState", True, self.VerifyEvents)
+        self.set_archive_event("healthState", True, self.VerifyEvents)
 
     def create_component_manager(self: MccsFNDH) -> FndhComponentManager:
         """
@@ -540,8 +544,8 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                     writeable_attribute.set_min_value(min_value)
                 if max_value is not None:
                     writeable_attribute.set_max_value(max_value)
-        self.set_change_event(attribute_name, True, False)
-        self.set_archive_event(attribute_name, True, False)
+        self.set_change_event(attribute_name, True, self.VerifyEvents)
+        self.set_archive_event(attribute_name, True, self.VerifyEvents)
 
     def _read_fndh_attribute(self: MccsFNDH, fndh_attribute: tango.Attribute) -> None:
         attribute_name = fndh_attribute.get_name().lower()
