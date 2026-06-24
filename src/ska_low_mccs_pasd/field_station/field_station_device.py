@@ -47,7 +47,7 @@ class MccsFieldStation(MccsBaseDevice):
     FndhFQDN = device_property(dtype=(str), mandatory=True)
     SmartBoxFQDNs = device_property(dtype=(str,), default_value=[])
     NofSmartBoxBlocks = device_property(dtype=int, default_value=4)
-    VerifyEvents = device_property(
+    VerifyEvents: Final = device_property(
         dtype=bool,
         default_value=False,  # TODO: change to True in the next major version
     )
