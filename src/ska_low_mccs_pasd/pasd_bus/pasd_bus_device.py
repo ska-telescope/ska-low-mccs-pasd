@@ -247,6 +247,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         """
         self._stopping: bool = False
         self._health_recorder: Optional[HealthRecorder] = None
+        self._deferred_health_update: Optional[tuple[HealthState, str]] = None
 
         super().init_device()
         self._init_pasd_devices = True
@@ -448,6 +449,20 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 self.push_change_event(attribute_name, signal_cache.value)
                 self.push_archive_event(attribute_name, signal_cache.value)
 
+    def _apply_deferred_health_update(self: MccsPasdBus) -> None:
+        """Apply deferred HealthRecorder update once the device is ready."""
+        if (
+            not self.component_manager.communication_state
+            == CommunicationStatus.ESTABLISHED
+        ):
+            return
+        if self._deferred_health_update is None:
+            return
+
+        health, health_report = self._deferred_health_update
+        self._deferred_health_update = None
+        self._health_changed(health, health_report)
+
     def _set_all_low_pass_filters_of_device(
         self: MccsPasdBus, pasd_device_number: int
     ) -> None:
@@ -532,6 +547,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             between the component manager and its component.
         """
         super()._communication_state_changed(communication_state)
+        self._apply_deferred_health_update()
 
         if (
             self._init_pasd_devices
@@ -759,6 +775,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         # healthState is defined as an attribute_from_signal in the base classes.
         # Setting this signal will push change and archive events automatically.
         if self._stopping:
+            return
+        if (
+            not self.component_manager.communication_state
+            == CommunicationStatus.ESTABLISHED
+        ):
+            self._deferred_health_update = (health, health_report)
             return
 
         self.health_report_signal = health_report
