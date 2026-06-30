@@ -1036,13 +1036,16 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             # RECOVERY -> ATTR_ALARM -> FAILED
             # POWERDOWN -> ATTR_INVALID -> UNKNOWN (shouldn't be seen in operation)
             if "pasdstatus" in attr_name.lower():
-                pasd_status_quality = self._convert_status_to_quality(attr_value)
-                if pasd_status_quality in [
-                    tango.AttrQuality.ATTR_ALARM,
-                    tango.AttrQuality.ATTR_WARNING,
-                ]:
+                attr_quality = self._convert_status_to_quality(attr_value)
+                if (
+                    attr_quality
+                    in [
+                        tango.AttrQuality.ATTR_ALARM,
+                        tango.AttrQuality.ATTR_WARNING,
+                    ]
+                    and self.dev_state() == tango.DevState.ON
+                ):
                     self.set_state(tango.DevState.ALARM)
-                attr_quality = pasd_status_quality
             self._fndh_attributes[attr_name].quality = attr_quality
             self._fndh_attributes[attr_name].timestamp = timestamp
 
