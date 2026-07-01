@@ -1,8 +1,9 @@
 # Version History
 
-## Unreleased
+## 6.2.0
 
 * [SKB-1204] Only set DevState to ALARM when the device is ON.
+* [SKB-1347] Update mccs-common to 4.5.6 to prevent segfaults.
 * [THORN-584] Add a VerifyEvents property to all devices. This sets the value of [the `detect` parameter](https://tango-controls.readthedocs.io/projects/pytango/en/v10.3.0/api/server_api/attribute.html#tango.Attr.set_change_event) when the Tango set_archive_event and set_change_event methods are called.
 * [SKB-1365] Update pasd driver to 1.1.0 and change tests to match updated thresholds
 * [SKB-1365] Update pasd chart to match new thresholds
