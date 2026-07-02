@@ -20,6 +20,7 @@ from typing import Any, Final, Optional, cast
 import ska_tango_base as stb
 import tango.server
 from ska_control_model import (
+    AdminMode,
     CommunicationStatus,
     HealthState,
     LoggingLevel,
@@ -449,12 +450,23 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 self.push_change_event(attribute_name, signal_cache.value)
                 self.push_archive_event(attribute_name, signal_cache.value)
 
+    def _ready_for_health_update(self: MccsPasdBus) -> bool:
+        """Return whether we are ready for health updates.
+
+        We should only accept updates from HealthRecorder relating to
+        failed polls while ONLINE and communicating.
+
+        :return: True if ready for health updates.
+        """
+        return (
+            self._admin_mode == AdminMode.ONLINE
+            and self.component_manager.communication_state
+            == CommunicationStatus.ESTABLISHED
+        )
+
     def _apply_deferred_health_update(self: MccsPasdBus) -> None:
         """Apply deferred HealthRecorder update once the device is ready."""
-        if (
-            not self.component_manager.communication_state
-            == CommunicationStatus.ESTABLISHED
-        ):
+        if not self._ready_for_health_update():
             return
         if self._deferred_health_update is None:
             return
@@ -776,10 +788,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         # Setting this signal will push change and archive events automatically.
         if self._stopping:
             return
-        if (
-            not self.component_manager.communication_state
-            == CommunicationStatus.ESTABLISHED
-        ):
+        if not self._ready_for_health_update():
             self._deferred_health_update = (health, health_report)
             return
 
