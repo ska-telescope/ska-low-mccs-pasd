@@ -195,7 +195,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     # Sliding-window rates.
     # Tango will push the device State to ALARM as soon as a count
     # exceeds `max_alarm` failures within `FailedPollWindow`.
-    fndh_failed_polls_in_window_signal = AttrSignal[int](initial_value=0)
+    fndh_failed_polls_in_window_signal = AttrSignal[int](
+        initial_value=None, stored=True
+    )
     fndhFailedPollsInWindow = attribute_from_signal(  # noqa: N815
         fndh_failed_polls_in_window_signal,
         abs_change=1,
@@ -205,7 +207,9 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         "`FailedPollWindow` seconds.",
     )
 
-    fncc_failed_polls_in_window_signal = AttrSignal[int](initial_value=0)
+    fncc_failed_polls_in_window_signal = AttrSignal[int](
+        initial_value=None, stored=True
+    )
     fnccFailedPollsInWindow = attribute_from_signal(  # noqa: N815
         fncc_failed_polls_in_window_signal,
         abs_change=1,
@@ -216,7 +220,8 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     )
 
     smartbox_failed_polls_in_window_signal = AttrSignal[list[int]](
-        initial_value=[0] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
+        initial_value=None,
+        stored=True,
     )
     smartboxFailedPollsInWindow = attribute_from_signal(  # noqa: N815
         smartbox_failed_polls_in_window_signal,
@@ -515,6 +520,22 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             self._health_recorder = None
         super().delete_device()
 
+    def _update_failed_poll_signals(self: MccsPasdBus, quality: AttrQuality) -> None:
+        # Push the failed poll signals with the specified quality factor.
+        # If moving to VALID, ensure a value of None is set to 0.
+        is_reset = quality == AttrQuality.ATTR_VALID
+        for signal_name, reset_value in (
+            (
+                "smartbox_failed_polls_in_window_signal",
+                [0] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION,
+            ),
+            ("fncc_failed_polls_in_window_signal", 0),
+            ("fndh_failed_polls_in_window_signal", 0),
+        ):
+            current_value = getattr(self, signal_name)
+            value = reset_value if is_reset and current_value is None else current_value
+            self.shared_bus.emit(signal_name, (value, None, quality))
+
     # ----------
     # Callbacks
     # ----------
@@ -532,6 +553,10 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             between the component manager and its component.
         """
         super()._communication_state_changed(communication_state)
+        if communication_state != CommunicationStatus.ESTABLISHED:
+            self._update_failed_poll_signals(tango.AttrQuality.ATTR_INVALID)
+        else:
+            self._update_failed_poll_signals(tango.AttrQuality.ATTR_VALID)
 
         if (
             self._init_pasd_devices
@@ -759,6 +784,13 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         # healthState is defined as an attribute_from_signal in the base classes.
         # Setting this signal will push change and archive events automatically.
         if self._stopping:
+            return
+
+        if (
+            health == HealthState.OK
+            and self.component_manager.communication_state
+            != CommunicationStatus.ESTABLISHED
+        ):
             return
 
         self.health_report_signal = health_report
