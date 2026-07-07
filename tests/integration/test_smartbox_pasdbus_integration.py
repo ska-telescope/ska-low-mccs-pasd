@@ -108,13 +108,15 @@ def turn_pasd_devices_online(
         change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
     )
     change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"].assert_change_event(
-        Anything
+        Anything, consume_nonmatches=True
     )
 
     pasd_bus_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.UNKNOWN)
     change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
-    change_event_callbacks["healthState"].assert_change_event(HealthState.OK)
+    change_event_callbacks["healthState"].assert_change_event(
+        HealthState.OK, consume_nonmatches=True
+    )
     assert pasd_bus_device.healthState == HealthState.OK
 
     # ---------------------
