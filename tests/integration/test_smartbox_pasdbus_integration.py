@@ -115,7 +115,7 @@ def turn_pasd_devices_online(
     change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.UNKNOWN)
     change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
     change_event_callbacks["healthState"].assert_change_event(
-        HealthState.OK, consume_nonmatches=True
+        HealthState.OK, lookahead=5, consume_nonmatches=True
     )
     assert pasd_bus_device.healthState == HealthState.OK
 
