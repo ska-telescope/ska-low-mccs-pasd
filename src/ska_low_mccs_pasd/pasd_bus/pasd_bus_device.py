@@ -20,6 +20,7 @@ from typing import Any, Final, Optional, cast
 import ska_tango_base as stb
 import tango.server
 from ska_control_model import (
+    AdminMode,
     CommunicationStatus,
     HealthState,
     LoggingLevel,
@@ -787,10 +788,10 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             return
 
         if (
-            health == HealthState.OK
-            and self.component_manager.communication_state
-            != CommunicationStatus.ESTABLISHED
-        ):
+            self.component_manager.communication_state
+            == CommunicationStatus.NOT_ESTABLISHED
+            or self._admin_mode == AdminMode.OFFLINE
+        ) and health not in (HealthState.UNKNOWN, HealthState.FAILED):
             return
 
         self.health_report_signal = health_report
