@@ -792,7 +792,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
         if (
             self.component_manager.communication_state
-            == CommunicationStatus.NOT_ESTABLISHED
+            != CommunicationStatus.ESTABLISHED
             or self._admin_mode == AdminMode.OFFLINE
         ) and health not in (HealthState.UNKNOWN, HealthState.FAILED):
             return
