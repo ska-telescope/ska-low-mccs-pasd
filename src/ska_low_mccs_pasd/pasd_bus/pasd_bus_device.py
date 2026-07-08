@@ -554,10 +554,13 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             between the component manager and its component.
         """
         super()._communication_state_changed(communication_state)
-        if communication_state != CommunicationStatus.ESTABLISHED:
-            self._update_failed_poll_signals(tango.AttrQuality.ATTR_INVALID)
-        else:
+        if (
+            self._admin_mode == AdminMode.ONLINE
+            and communication_state == CommunicationStatus.ESTABLISHED
+        ):
             self._update_failed_poll_signals(tango.AttrQuality.ATTR_VALID)
+        else:
+            self._update_failed_poll_signals(tango.AttrQuality.ATTR_INVALID)
 
         if (
             self._init_pasd_devices
