@@ -1325,7 +1325,7 @@ def healthy_fndh_fixture(
     )
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
     change_event_callbacks["pasdBushealthState"].assert_change_event(
-        HealthState.OK, consume_nonmatches=True
+        HealthState.OK, lookahead=5, consume_nonmatches=True
     )
     assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
     fndh_sub_id = fndh_device.subscribe_event(
