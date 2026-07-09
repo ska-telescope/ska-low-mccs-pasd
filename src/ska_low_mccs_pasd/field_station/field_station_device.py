@@ -483,7 +483,9 @@ class MccsFieldStation(MccsBaseDevice):
         """
         return json.dumps(self._antenna_powers)
 
-    @attribute(dtype="float", label="OutsideTemperature")
+    @attribute(
+        dtype="float", label="OutsideTemperature", rel_change=1, archive_rel_change=1
+    )
     def outsideTemperature(self: MccsFieldStation) -> float:
         """
         Return the OutsideTemperature.

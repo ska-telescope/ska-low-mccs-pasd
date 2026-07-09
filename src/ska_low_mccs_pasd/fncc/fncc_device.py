@@ -194,6 +194,13 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         self._fncc_attributes[attribute_name.lower()] = FNCCAttribute(
             value=default_value, timestamp=0, quality=tango.AttrQuality.ATTR_INVALID
         )
+        # rel_change/archive_rel_change are only valid for numeric attributes
+        base_type = data_type[0] if isinstance(data_type, tuple) else data_type
+        change_event_kwargs = (
+            {"rel_change": 1, "archive_rel_change": 1}
+            if base_type in (int, float)
+            else {}
+        )
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,
@@ -204,6 +211,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             unit=unit,
             description=description,
             format=format_string,
+            **change_event_kwargs,
         )
         self.add_attribute(attr)
         self.set_change_event(attribute_name, True, self.VerifyEvents)

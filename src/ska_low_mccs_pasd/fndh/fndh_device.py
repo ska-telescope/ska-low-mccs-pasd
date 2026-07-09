@@ -494,7 +494,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 max_value=register["max_value"],
             )
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     def _setup_fndh_attribute(
         self: MccsFNDH,
         attribute_name: str,
@@ -516,6 +516,13 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             is_allowed_method = self.is_firmware_threshold_allowed
         else:
             is_allowed_method = None
+        # rel_change/archive_rel_change are only valid for numeric attributes
+        base_type = data_type[0] if isinstance(data_type, tuple) else data_type
+        change_event_kwargs = (
+            {"rel_change": 1, "archive_rel_change": 1}
+            if base_type in (int, float)
+            else {}
+        )
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,
@@ -528,6 +535,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             description=description,
             format=format_string,
             fisallowed=is_allowed_method,
+            **change_event_kwargs,
         )
         self.add_attribute(attr)
         if min_value is not None or max_value is not None:
@@ -658,7 +666,13 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         """
         return json.dumps(self._threshold_differences())
 
-    @attribute(dtype="DevDouble", label="Over current threshold", unit="Amp")
+    @attribute(
+        dtype="DevDouble",
+        label="Over current threshold",
+        unit="Amp",
+        rel_change=1,
+        archive_rel_change=1,
+    )
     def overCurrentThreshold(self: MccsFNDH) -> float:
         """
         Return the overCurrentThreshold attribute.
@@ -710,7 +724,13 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self._health_model.health_rule_active = True
         self.logger.info("Activated the new healthRules.")
 
-    @attribute(dtype="DevDouble", label="Over Voltage threshold", unit="Volt")
+    @attribute(
+        dtype="DevDouble",
+        label="Over Voltage threshold",
+        unit="Volt",
+        rel_change=1,
+        archive_rel_change=1,
+    )
     def overVoltageThreshold(self: MccsFNDH) -> float:
         """
         Return the overVoltageThreshold attribute.
@@ -728,7 +748,13 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         """
         self._overVoltageThreshold = value
 
-    @attribute(dtype="DevDouble", label="Humidity threshold", unit="percent")
+    @attribute(
+        dtype="DevDouble",
+        label="Humidity threshold",
+        unit="percent",
+        rel_change=1,
+        archive_rel_change=1,
+    )
     def humidityThreshold(self: MccsFNDH) -> float:
         """
         Return the humidity threshold.
@@ -746,7 +772,13 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         """
         self._humidityThreshold = value
 
-    @attribute(dtype=("DevShort",), label="portsWithSmartbox", max_dim_x=24)
+    @attribute(
+        dtype=("DevShort",),
+        label="portsWithSmartbox",
+        max_dim_x=24,
+        abs_change=1,
+        archive_abs_change=1,
+    )
     def portsWithSmartbox(self: MccsFNDH) -> list[bool]:
         """
         Return the ports with a smartbox attached.
@@ -781,7 +813,9 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 ports_with_smartbox=self._ports_with_smartbox
             )
 
-    @attribute(dtype="DevShort", max_alarm=5, max_warning=1)
+    @attribute(
+        dtype="DevShort", max_alarm=5, max_warning=1, abs_change=1, archive_abs_change=1
+    )
     def numberOfStuckOnSmartboxPorts(self: MccsFNDH) -> Optional[int]:
         """
         Return the total number of stuck on smartbox ports.
@@ -792,7 +826,9 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         """
         return self._nof_stuck_on_smartbox_ports
 
-    @attribute(dtype="DevShort", max_alarm=5, max_warning=1)
+    @attribute(
+        dtype="DevShort", max_alarm=5, max_warning=1, abs_change=1, archive_abs_change=1
+    )
     def numberOfStuckOffSmartboxPorts(self: MccsFNDH) -> Optional[int]:
         """
         Return the total number of stuck off smartbox ports.
