@@ -49,7 +49,7 @@ class MccsFieldStation(MccsBaseDevice):
     NofSmartBoxBlocks = device_property(dtype=int, default_value=4)
     VerifyEvents: Final = device_property(
         dtype=bool,
-        default_value=False,  # TODO: change to True in the next major version
+        default_value=True,
     )
     # --------------
     # Initialisation

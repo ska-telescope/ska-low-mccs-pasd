@@ -87,7 +87,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     )
     VerifyEvents: Final = device_property(
         dtype=bool,
-        default_value=False,  # TODO: change to True in the next major version
+        default_value=True,
     )
 
     # ---------

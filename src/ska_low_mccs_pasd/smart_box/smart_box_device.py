@@ -108,7 +108,7 @@ class MccsSmartBox(MccsBaseDevice):
     )
     VerifyEvents: Final = device_property(
         dtype=bool,
-        default_value=False,  # TODO: change to True in the next major version
+        default_value=True,
     )
 
     CONFIG: Final[ControllerDict] = PasdControllersConfig.get_smartbox()

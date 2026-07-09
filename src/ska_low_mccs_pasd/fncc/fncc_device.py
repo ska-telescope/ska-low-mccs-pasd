@@ -46,7 +46,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
     PasdFQDN: Final = device_property(dtype=(str), mandatory=True)
     VerifyEvents: Final = device_property(
         dtype=bool,
-        default_value=False,  # TODO: change to True in the next major version
+        default_value=True,
     )
 
     # ---------
