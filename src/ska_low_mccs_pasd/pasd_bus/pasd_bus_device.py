@@ -136,7 +136,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     )
     VerifyEvents: Final = tango.server.device_property(
         dtype=bool,
-        default_value=False,  # TODO: change to True in the next major version
+        default_value=True,
     )
 
     # Sliding-window length (seconds) used to compute the per-device failed-poll
