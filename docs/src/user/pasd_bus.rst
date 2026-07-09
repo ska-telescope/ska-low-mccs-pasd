@@ -128,3 +128,68 @@ with the following keys:
     - "FAST"
     - "SLOW"
     - "VSLOW"
+
+.. _pasdbus-health-evaluation:
+
+PaSD bus health evaluation
+--------------------------
+
+The health of the PaSD bus device is determined by three attributes:
+
+1. ``fnccFailedPollsInWindow``: number of failed FNCC polls in the last ``FailedPollWindow`` seconds
+2. ``fndhFailedPollsInWindow``: number of failed FNDH polls in the last ``FailedPollWindow`` seconds
+3. ``smartboxFailedPollsInWindow``: number of failed polls for each smartbox in the last ``FailedPollWindow`` seconds, indexed by smartbox_id-1
+
+``FailedPollWindow`` is a configurable device property which defines the size of the sliding window.
+
+Cumulative counts since the devices were restarted are also available in the following attributes:
+
+* ``fnccFailedPollCount``
+* ``fndhFailedPollCount``
+* ``smartboxFailedPollCount``
+
+
+**Alarm Evaluation**
+
+Whenever one of these attributes exceeds its Tango max_warning threshold, it will be put into ``tango.AttrQuality.WARNING`` state
+and the device will reflect this as ``HealthState.DEGRADED``.
+
+Whenever one of these attributes exceeds its Tango max_alarm threshold, it will be put into ``tango.AttrQuality.ALARM`` state
+and the device will reflect this as ``HealthState.FAILED``.
+
+We can change the alarm thresholds at run time on the PaSD bus device by using the Tango API:
+
+For example:
+
+.. code-block:: python
+
+    attribute_config = pasdbus.get_attribute_config("smartboxFailedPollsInWindow")
+    alarm_config = attribute_config.alarms
+    alarm_config.max_warning = "10"
+    alarm_config.max_alarm = "20"
+    attribute_config.alarms = alarm_config
+    pasdbus.set_attribute_config(attribute_config)
+
+We can also change the thresholds at deploy time on the pasdbus through the helm charts:
+
+.. code-block:: yaml
+
+    ska-tango-devices:
+      deviceDefaults:
+        MccsPasdBus:
+          SmartboxFailedPollsInWindow->max_alarm: 20
+          SmartboxFailedPollsInWindow->max_warning: 10
+          FNDHFailedPollsInWindow->max_alarm: 10
+          FNDHFailedPollsInWindow->max_warning: 5
+          FNCCFailedPollsInWindow->max_alarm: 10
+          FNCCFailedPollsInWindow->max_warning: 5
+
+      devices:
+        MccsPasdBus:
+          low-mccs/pasdbus/s8-1:
+            SmartboxFailedPollsInWindow->max_alarm: 30
+            SmartboxFailedPollsInWindow->max_warning: 15
+            FNDHFailedPollsInWindow->max_alarm: 10
+            FNDHFailedPollsInWindow->max_warning: 5
+            FNCCFailedPollsInWindow->max_alarm: 10
+            FNCCFailedPollsInWindow->max_warning: 5

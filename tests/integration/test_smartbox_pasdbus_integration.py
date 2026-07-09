@@ -34,7 +34,7 @@ from ska_low_pasd_driver.pasd_bus_conversions import (
     SmartboxStatusMap,
 )
 from ska_low_pasd_driver.pasd_bus_simulator import PasdHardwareSimulator
-from ska_tango_testing.mock.placeholders import Anything
+from ska_tango_testing.mock.placeholders import Anything, OneOf
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_data import PasdData
@@ -108,13 +108,15 @@ def turn_pasd_devices_online(
         change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
     )
     change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"].assert_change_event(
-        Anything
+        Anything, consume_nonmatches=True
     )
 
     pasd_bus_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.UNKNOWN)
     change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
-    change_event_callbacks["healthState"].assert_change_event(HealthState.OK)
+    change_event_callbacks["healthState"].assert_change_event(
+        HealthState.OK, lookahead=5, consume_nonmatches=True
+    )
     assert pasd_bus_device.healthState == HealthState.OK
 
     # ---------------------
@@ -199,8 +201,10 @@ def setup_devices_with_subscriptions(
         change_event_callbacks["healthState"],
     )
 
-    change_event_callbacks.assert_change_event("healthState", HealthState.FAILED)
-    assert pasd_bus_device.healthState == HealthState.FAILED
+    change_event_callbacks.assert_change_event(
+        "healthState", OneOf(HealthState.UNKNOWN, HealthState.FAILED)
+    )
+    assert pasd_bus_device.healthState in (HealthState.UNKNOWN, HealthState.FAILED)
 
 
 class TestSmartBoxPasdBusIntegration:

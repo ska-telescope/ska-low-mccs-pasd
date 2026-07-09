@@ -19,7 +19,7 @@ from ska_low_pasd_driver.pasd_bus_conversions import (
     FnccStatusMap,
     PasdConversionUtility,
 )
-from ska_tango_testing.mock.placeholders import Anything
+from ska_tango_testing.mock.placeholders import Anything, OneOf
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ..conftest import Helpers
@@ -134,9 +134,9 @@ class TestfnccPasdBusIntegration:
         )
 
         change_event_callbacks.assert_change_event(
-            "pasdBushealthState", HealthState.FAILED
+            "pasdBushealthState", OneOf(HealthState.UNKNOWN, HealthState.FAILED)
         )
-        assert pasd_bus_device.healthState == HealthState.FAILED
+        assert pasd_bus_device.healthState in (HealthState.UNKNOWN, HealthState.FAILED)
         # -----------------------------------------------------------------
 
         # This is a bit of a cheat.

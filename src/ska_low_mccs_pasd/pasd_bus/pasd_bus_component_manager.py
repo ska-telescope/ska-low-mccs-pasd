@@ -24,6 +24,7 @@ from ska_tango_base.poller import PollingComponentManager
 from ska_low_mccs_pasd.pasd_data import PasdData
 
 from .pasd_bus_poll_management import PasdBusRequestProvider
+from .poll_failure_tracker import PollFailureSnapshot, PollFailureTracker
 
 _POLL_THREAD_STARTUP_DELAY: Final[float] = 0.2
 
@@ -131,10 +132,13 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         port_power_delay: float,
         smartbox_startup_delay: float,
         timeout: float,
+        failed_poll_window: float,
+        failed_poll_prune_interval: float,
         logger: logging.Logger,
         communication_state_callback: Callable[[CommunicationStatus], None],
         component_state_callback: Callable[..., None],
         pasd_device_state_callback: Callable[..., None],
+        poll_failure_callback: Callable[[PollFailureSnapshot], None],
         smartbox_ids: list[int],
         enable_pymodbus_logging: bool,
         pymodbus_log_dir: Optional[str],
@@ -160,6 +164,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             is powered on before starting to poll it.
         :param timeout: maximum time to wait for a response to a server
             request (in seconds).
+        :param failed_poll_window: sliding window length in seconds
+        :param failed_poll_prune_interval: how often to prune failed polls (s)
         :param logger: a logger for this object to use
         :param communication_state_callback: callback to be
             called when the status of the communications channel between
@@ -176,6 +182,8 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             This callable takes a single positional argument, which is
             the device number, and keyword arguments representing the state
             changes.
+        :param poll_failure_callback: to be called when the poll failure
+            state changes, so the corresponding attributes can be updated.
         :param smartbox_ids: list of smartbox IDs associated with
             each FNDH port.
         :param enable_pymodbus_logging: whether to enable pymodbus logging
@@ -206,6 +214,12 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             self._port_power_delay,
             smartbox_ids,
             smartbox_startup_delay,
+        )
+        self._poll_failure_tracker = PollFailureTracker(
+            failed_poll_window,
+            failed_poll_prune_interval,
+            logger,
+            poll_failure_callback,
         )
         self._last_request_timestamp: float = 0
         self._connection_reset_count = 0
@@ -537,9 +551,17 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                 f"Problem communicating with device {self._current_poll_device}."
             )
             self._poll_delay_event.set()
+            self.record_poll_failure(self._current_poll_device)
             # Request the FNPC SYS_STATUS register next which can help
             # to re-establish comms
             self.request_status_read()
+
+    def record_poll_failure(self, device_id: int) -> None:
+        """Record a poll failure.
+
+        :param device_id: ID of the device which has failed to poll.
+        """
+        self._poll_failure_tracker.record_poll_failure(device_id)
 
     @check_communicating
     def request_startup_info(self: PasdBusComponentManager, device_id: int) -> None:
@@ -814,6 +836,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
     def cleanup(self: PasdBusComponentManager) -> None:
         """Delete and clean up any remaining processes."""
         self.stop_communicating()
+        self._poll_failure_tracker.cleanup()
         # Stop communicating will not actually stop the polling thread, but it pauses
         # it. If we set the state to killed this will exit the while loop and stops it.
         with self._poller._condition:
