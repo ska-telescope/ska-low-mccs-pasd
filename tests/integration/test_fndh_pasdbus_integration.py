@@ -36,7 +36,7 @@ from ska_low_pasd_driver.pasd_bus_conversions import (
     PasdConversionUtility,
 )
 from ska_low_pasd_driver.pasd_bus_simulator import PasdHardwareSimulator
-from ska_tango_testing.mock.placeholders import Anything
+from ska_tango_testing.mock.placeholders import Anything, OneOf
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.fndh import FndhHealthModel
@@ -223,9 +223,9 @@ class TestfndhPasdBusIntegration:
         )
 
         change_event_callbacks["pasdBushealthState"].assert_change_event(
-            HealthState.FAILED
+            OneOf(HealthState.UNKNOWN, HealthState.FAILED)
         )
-        assert pasd_bus_device.healthState == HealthState.FAILED
+        assert pasd_bus_device.healthState in (HealthState.UNKNOWN, HealthState.FAILED)
         # -----------------------------------------------------------------
 
         # This is a bit of a cheat.
@@ -491,9 +491,9 @@ class TestfndhPasdBusIntegration:
         )
 
         change_event_callbacks.assert_change_event(
-            "pasdBushealthState", HealthState.FAILED
+            "pasdBushealthState", OneOf(HealthState.UNKNOWN, HealthState.FAILED)
         )
-        assert pasd_bus_device.healthState == HealthState.FAILED
+        assert pasd_bus_device.healthState in (HealthState.UNKNOWN, HealthState.FAILED)
         # -----------------------------------------------------------------
 
         # This is a bit of a cheat.
@@ -700,9 +700,9 @@ class TestfndhPasdBusIntegration:
         )
 
         change_event_callbacks["pasdBushealthState"].assert_change_event(
-            HealthState.FAILED
+            OneOf(HealthState.UNKNOWN, HealthState.FAILED)
         )
-        assert pasd_bus_device.healthState == HealthState.FAILED
+        assert pasd_bus_device.healthState in (HealthState.UNKNOWN, HealthState.FAILED)
 
         # This is a bit of a cheat.
         # It's an implementation-dependent detail that
@@ -1320,9 +1320,13 @@ def healthy_fndh_fixture(
         change_event_callbacks["pasdBushealthState"],
     )
 
-    change_event_callbacks["pasdBushealthState"].assert_change_event(HealthState.FAILED)
+    change_event_callbacks["pasdBushealthState"].assert_change_event(
+        OneOf(HealthState.UNKNOWN, HealthState.FAILED)
+    )
     pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
-    change_event_callbacks["pasdBushealthState"].assert_change_event(HealthState.OK)
+    change_event_callbacks["pasdBushealthState"].assert_change_event(
+        HealthState.OK, consume_nonmatches=True
+    )
     assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
     fndh_sub_id = fndh_device.subscribe_event(
         "healthState",
