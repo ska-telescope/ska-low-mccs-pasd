@@ -138,7 +138,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             health_callback=self._health_changed_callback,
             attr_conf_callback=lambda _: None,
         )
-        self.set_change_event("healthState", True, self.VerifyEvents)
+        self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, self.VerifyEvents)
 
     def create_component_manager(self: MccsFNCC) -> FnccComponentManager:
@@ -214,7 +214,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             **change_event_kwargs,
         )
         self.add_attribute(attr)
-        self.set_change_event(attribute_name, True, self.VerifyEvents)
+        self.set_change_event(attribute_name, True, False)
         self.set_archive_event(attribute_name, True, self.VerifyEvents)
 
     def _read_fncc_attribute(self: MccsFNCC, fncc_attribute: tango.Attribute) -> None:

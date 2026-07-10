@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [SKB-1328] Restrict the VerifyEvents property to archive events only. Change events revert to their previous behaviour of always being pushed (detect=False).
+
 ## 7.1.0
 
 * [THORN-536] Set Smartbox attributes to INVALID when they're switched off.
