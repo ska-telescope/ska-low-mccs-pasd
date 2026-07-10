@@ -315,7 +315,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             fset=self._write_pasd_attribute,
         )
         self.add_attribute(attr)
-        self.set_change_event(attribute_name, True, self.VerifyEvents)
+        self.set_change_event(attribute_name, True, False)
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()

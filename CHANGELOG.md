@@ -1,5 +1,9 @@
 # Version History
 
+## 6.2.1
+
+* [SKB-1328] Restrict the VerifyEvents property to archive events only. Change events revert to their previous behaviour of always being pushed (detect=False).
+
 ## 6.2.0
 
 * [SKB-1204] Only set DevState to ALARM when the device is ON.

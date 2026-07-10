@@ -231,12 +231,12 @@ class MccsSmartBox(MccsBaseDevice):
             )
             self._health_model = None
 
-        self.set_change_event("healthState", True, self.VerifyEvents)
+        self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, self.VerifyEvents)
-        self.set_change_event("antennaPowers", True, self.VerifyEvents)
+        self.set_change_event("antennaPowers", True, False)
         self.set_archive_event("antennaPowers", True, self.VerifyEvents)
         self._nof_port_breakers_tripped = None
-        self.set_change_event("numberOfPortBreakersTripped", True, self.VerifyEvents)
+        self.set_change_event("numberOfPortBreakersTripped", True, False)
         self.set_archive_event("numberOfPortBreakersTripped", True, self.VerifyEvents)
 
     # ----------
@@ -650,7 +650,7 @@ class MccsSmartBox(MccsBaseDevice):
                     writeable_attribute.set_min_value(min_value)
                 if max_value is not None:
                     writeable_attribute.set_max_value(max_value)
-        self.set_change_event(attribute_name, True, self.VerifyEvents)
+        self.set_change_event(attribute_name, True, False)
         self.set_archive_event(attribute_name, True, self.VerifyEvents)
 
     def _read_smartbox_attribute(self, smartbox_attribute: tango.Attribute) -> None:
