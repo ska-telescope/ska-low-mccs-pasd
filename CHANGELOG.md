@@ -1,7 +1,8 @@
 # Version History
 
-## Unreleased
+## 7.0.0
 
+* [THORN-649] Set the default value of the VerifyEvents property to True.
 * [THORN-533] Implemented a pasdBus health model. This exposes attributes e.g. smartboxFailedPollCount to keep track of the number of failed polls for each device. The behaviour is configurable using the following new device properties:
   - FailedPollWindow: sliding-window length (seconds)
   - FailedPollPruneInterval: how often (seconds) to prune expired entries from the failed-poll window

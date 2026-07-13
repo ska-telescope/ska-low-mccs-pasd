@@ -136,7 +136,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
     )
     VerifyEvents: Final = tango.server.device_property(
         dtype=bool,
-        default_value=False,  # TODO: change to True in the next major version
+        default_value=True,
     )
 
     # Sliding-window length (seconds) used to compute the per-device failed-poll
@@ -402,6 +402,13 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         )
         signal: AttrSignal = AttrSignal(name=attribute_name)
         self._pasd_signals[attribute_name] = signal
+        # rel_change/archive_rel_change are only valid for numeric attributes
+        base_type = data_type[0] if isinstance(data_type, tuple) else data_type
+        change_event_kwargs: dict[str, Any] = (
+            {"rel_change": 1, "archive_rel_change": 1}
+            if base_type in (int, float)
+            else {}
+        )
         attr = attribute_from_signal(
             signal,
             name=attribute_name,
@@ -411,9 +418,11 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             max_dim_x=max_dim_x,
             fget=self._read_pasd_attribute,
             fset=self._write_pasd_attribute,
+            **change_event_kwargs,
         )
         self.add_attribute(attr)
         self.set_change_event(attribute_name, True, self.VerifyEvents)
+        self.set_archive_event(attribute_name, True, self.VerifyEvents)
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()

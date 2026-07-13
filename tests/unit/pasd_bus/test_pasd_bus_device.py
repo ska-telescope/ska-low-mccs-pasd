@@ -730,7 +730,8 @@ def test_set_fndh_port_powers(
         pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
 
         for j, desired in enumerate(desired_port_powers):
-            if desired is not None:
+            # A change event only fires for a genuine change of sensed state
+            if desired is not None and desired != expected_fndh_ports_power_sensed[j]:
                 expected_fndh_ports_power_sensed[j] = desired
                 change_event_callbacks.assert_change_event(
                     "fndhPortsPowerSensed", expected_fndh_ports_power_sensed
@@ -1323,12 +1324,6 @@ def test_set_thresholds_on_initialise(
 
     # Switch the smartbox off
     pasd_bus_device.InitializeFndh()
-    change_event_callbacks.assert_change_event(
-        "fndhPortsPowerSensed",
-        fndh_simulator.ports_power_sensed,
-        lookahead=5,
-        consume_nonmatches=True,
-    )
     port_powers = [False] + [None] * (len(fndh_simulator.ports_power_sensed) - 1)
     expected_fndh_ports_power_sensed = list(fndh_simulator.ports_power_sensed)
     expected_fndh_ports_power_sensed[0] = False
@@ -1461,7 +1456,7 @@ def test_only_poll_on_smartboxes(
     }
     pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
     for j, desired in enumerate(desired_port_powers):
-        if desired is not None:
+        if desired is not None and desired != port_powers[j]:
             port_powers[j] = desired
             change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
                 port_powers

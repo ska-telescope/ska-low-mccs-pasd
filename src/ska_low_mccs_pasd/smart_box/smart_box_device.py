@@ -108,7 +108,7 @@ class MccsSmartBox(MccsBaseDevice):
     )
     VerifyEvents: Final = device_property(
         dtype=bool,
-        default_value=False,  # TODO: change to True in the next major version
+        default_value=True,
     )
 
     CONFIG: Final[ControllerDict] = PasdControllersConfig.get_smartbox()
@@ -332,6 +332,8 @@ class MccsSmartBox(MccsBaseDevice):
         """
         self.update_threshold_cache()
         diff = self._threshold_differences()
+        self.threshold_fault = bool(diff)
+        self._component_state_callback()
         if diff:
             message = f"Thresholds do not match: {diff}"
             return ([ResultCode.FAILED], [message])
@@ -622,6 +624,13 @@ class MccsSmartBox(MccsBaseDevice):
             is_allowed_method = self.is_firmware_threshold_allowed
         else:
             is_allowed_method = None
+        # rel_change/archive_rel_change are only valid for numeric attributes
+        base_type = data_type[0] if isinstance(data_type, tuple) else data_type
+        change_event_kwargs = (
+            {"rel_change": 1, "archive_rel_change": 1}
+            if base_type in (int, float)
+            else {}
+        )
         attr = tango.server.attribute(
             name=attribute_name,
             dtype=data_type,
@@ -634,6 +643,7 @@ class MccsSmartBox(MccsBaseDevice):
             description=description,
             format=format_string,
             fisallowed=is_allowed_method,
+            **change_event_kwargs,
         )
         self.add_attribute(attr)
         if min_value is not None or max_value is not None:
@@ -1160,7 +1170,7 @@ class MccsSmartBox(MccsBaseDevice):
             return self._health_model.health_report
         return self._health_report
 
-    @attribute(dtype="DevShort")
+    @attribute(dtype="DevShort", abs_change=1, archive_abs_change=1)
     def numberOfPortBreakersTripped(self: MccsSmartBox) -> Optional[int]:
         """
         Return the total number of breakers which have tripped.
