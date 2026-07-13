@@ -332,6 +332,8 @@ class MccsSmartBox(MccsBaseDevice):
         """
         self.update_threshold_cache()
         diff = self._threshold_differences()
+        self.threshold_fault = bool(diff)
+        self._component_state_callback()
         if diff:
             message = f"Thresholds do not match: {diff}"
             return ([ResultCode.FAILED], [message])
