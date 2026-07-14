@@ -228,21 +228,6 @@ class TestfndhPasdBusIntegration:
         assert pasd_bus_device.healthState in (HealthState.UNKNOWN, HealthState.FAILED)
         # -----------------------------------------------------------------
 
-        # This is a bit of a cheat.
-        # It's an implementation-dependent detail that
-        # this is one of the last attributes to be read from the simulator.
-        # We subscribe events on this attribute because we know that
-        # once we have an updated value for this attribute,
-        # we have an updated value for all of them.
-        pasd_bus_device.subscribe_event(
-            f"smartbox{last_smartbox_id}AlarmFlags",
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
-        )
-        change_event_callbacks[
-            f"smartbox{last_smartbox_id}AlarmFlags"
-        ].assert_change_event(Anything)
-
         pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
         # TODO: Weird behaviour, this started failing with WOM-276 changes
@@ -255,6 +240,23 @@ class TestfndhPasdBusIntegration:
         # )
         _wait_for_state(pasd_bus_device, tango.DevState.ON)
         assert pasd_bus_device.healthState == HealthState.OK
+
+        # This is a bit of a cheat.
+        # It's an implementation-dependent detail that
+        # this is one of the last attributes to be read from the simulator.
+        # We subscribe events on this attribute because we know that
+        # once we have an updated value for this attribute,
+        # we have an updated value for all of them.
+        # This must be done after adminMode is set ONLINE, since the attribute
+        # is never pushed until the first real poll of the simulator occurs.
+        pasd_bus_device.subscribe_event(
+            f"smartbox{last_smartbox_id}AlarmFlags",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
+        )
+        change_event_callbacks[
+            f"smartbox{last_smartbox_id}AlarmFlags"
+        ].assert_change_event(Anything, lookahead=5, consume_nonmatches=True)
 
         fndh_device.adminMode = AdminMode.ONLINE
 
@@ -496,21 +498,6 @@ class TestfndhPasdBusIntegration:
         assert pasd_bus_device.healthState in (HealthState.UNKNOWN, HealthState.FAILED)
         # -----------------------------------------------------------------
 
-        # This is a bit of a cheat.
-        # It's an implementation-dependent detail that
-        # this is one of the last attributes to be read from the simulator.
-        # We subscribe events on this attribute because we know that
-        # once we have an updated value for this attribute,
-        # we have an updated value for all of them.
-        pasd_bus_device.subscribe_event(
-            f"smartbox{last_smartbox_id}AlarmFlags",
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
-        )
-        change_event_callbacks.assert_change_event(
-            f"smartbox{last_smartbox_id}AlarmFlags", Anything
-        )
-
         pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
         Helpers.print_change_event_queue(change_event_callbacks, "pasd_bus_state")
@@ -528,6 +515,26 @@ class TestfndhPasdBusIntegration:
         )
         _wait_for_state(pasd_bus_device, tango.DevState.ON)
         assert pasd_bus_device.healthState == HealthState.OK
+
+        # This is a bit of a cheat.
+        # It's an implementation-dependent detail that
+        # this is one of the last attributes to be read from the simulator.
+        # We subscribe events on this attribute because we know that
+        # once we have an updated value for this attribute,
+        # we have an updated value for all of them.
+        # This must be done after adminMode is set ONLINE, since the attribute
+        # is never pushed until the first real poll of the simulator occurs.
+        pasd_bus_device.subscribe_event(
+            f"smartbox{last_smartbox_id}AlarmFlags",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
+        )
+        change_event_callbacks.assert_change_event(
+            f"smartbox{last_smartbox_id}AlarmFlags",
+            Anything,
+            lookahead=5,
+            consume_nonmatches=True,
+        )
 
         fndh_device.subscribe_event(
             "adminMode",
@@ -704,21 +711,6 @@ class TestfndhPasdBusIntegration:
         )
         assert pasd_bus_device.healthState in (HealthState.UNKNOWN, HealthState.FAILED)
 
-        # This is a bit of a cheat.
-        # It's an implementation-dependent detail that
-        # this is one of the last attributes to be read from the simulator.
-        # We subscribe events on this attribute because we know that
-        # once we have an updated value for this attribute,
-        # we have an updated value for all of them.
-        pasd_bus_device.subscribe_event(
-            f"smartbox{last_smartbox_id}AlarmFlags",
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
-        )
-        change_event_callbacks[
-            f"smartbox{last_smartbox_id}AlarmFlags"
-        ].assert_change_event(Anything)
-
         pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
 
         # TODO: Weird behaviour, this started failing with WOM-276 changes
@@ -735,6 +727,21 @@ class TestfndhPasdBusIntegration:
         _wait_for_state(pasd_bus_device, tango.DevState.ON)
         assert pasd_bus_device.healthState == HealthState.OK
         assert pasd_bus_device.InitializeFndh()[0] == ResultCode.OK
+
+        # This is a bit of a cheat.
+        # It's an implementation-dependent detail that
+        # this is one of the last attributes to be read from the simulator.
+        # We subscribe events on this attribute because we know that
+        # once we have an updated value for this attribute,
+        # we have an updated value for all of them.
+        pasd_bus_device.subscribe_event(
+            f"smartbox{last_smartbox_id}AlarmFlags",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
+        )
+        change_event_callbacks[
+            f"smartbox{last_smartbox_id}AlarmFlags"
+        ].assert_change_event(Anything, lookahead=5, consume_nonmatches=True)
 
         fndh_device.adminMode = AdminMode.ONLINE
 
