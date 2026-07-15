@@ -447,7 +447,7 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             )
             if result != ResultCode.OK:
                 failure_log = (
-                    f"MccsCompositeCommandProxy was not happy {result=}"
+                    f"MccsCompositeCommandProxy returned {result=}"
                     f" {pretty_format(message)}"
                 )
 
