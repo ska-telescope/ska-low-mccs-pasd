@@ -31,6 +31,8 @@ from tests.harness import (
     get_pasd_bus_name,
 )
 
+# pylint: disable=too-many-lines
+
 SMARTBOX_PORTS = 12
 
 
