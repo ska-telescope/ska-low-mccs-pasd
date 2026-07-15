@@ -96,6 +96,14 @@ def turn_pasd_devices_online(
     :param last_smartbox_id: ID of the last smartbox polled
     :param smartbox_on: expected Tango state of smartbox device
     """
+    pasd_bus_device.adminMode = AdminMode.ONLINE
+    change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
+    change_event_callbacks["healthState"].assert_change_event(
+        HealthState.OK, lookahead=5, consume_nonmatches=True
+    )
+    assert pasd_bus_device.healthState == HealthState.OK
+
     # This is a bit of a cheat.
     # It's an implementation-dependent detail that
     # this is one of the last attributes to be read from the simulator.
@@ -108,16 +116,8 @@ def turn_pasd_devices_online(
         change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"],
     )
     change_event_callbacks[f"smartbox{last_smartbox_id}AlarmFlags"].assert_change_event(
-        Anything, consume_nonmatches=True
+        Anything, lookahead=5, consume_nonmatches=True
     )
-
-    pasd_bus_device.adminMode = AdminMode.ONLINE
-    change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.UNKNOWN)
-    change_event_callbacks["pasd_bus_state"].assert_change_event(tango.DevState.ON)
-    change_event_callbacks["healthState"].assert_change_event(
-        HealthState.OK, lookahead=5, consume_nonmatches=True
-    )
-    assert pasd_bus_device.healthState == HealthState.OK
 
     # ---------------------
     # FNDH adminMode online

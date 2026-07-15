@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [THORN-663] Fix flaky tests.
+
 ## 7.0.0
 
 * [THORN-649] Set the default value of the VerifyEvents property to True.
