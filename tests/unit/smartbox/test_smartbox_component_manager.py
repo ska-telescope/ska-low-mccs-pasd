@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import time
 import unittest.mock
@@ -20,6 +21,7 @@ import pytest
 import tango
 from ska_control_model import CommunicationStatus, PowerState, ResultCode, TaskStatus
 from ska_tango_testing.mock import MockCallableGroup
+from ska_tango_testing.mock.placeholders import Anything
 
 from ska_low_mccs_pasd import PasdData
 from ska_low_mccs_pasd.smart_box import SmartBoxComponentManager, _PasdBusProxy
@@ -327,7 +329,12 @@ class TestSmartBoxComponentManager:
                 None,
                 (
                     TaskStatus.COMPLETED,
-                    (ResultCode.OK, "Power on smartbox '{fndh_port} OK'"),
+                    (
+                        ResultCode.OK,
+                        r"Power on smartbox {fndh_port} command OK: "
+                        r"Smartbox ports successfully changed state "
+                        r"after \d+ seconds",
+                    ),
                 ),
             ),
             (
@@ -335,7 +342,12 @@ class TestSmartBoxComponentManager:
                 None,
                 (
                     TaskStatus.COMPLETED,
-                    (ResultCode.OK, "Power off smartbox '{fndh_port} OK'"),
+                    (
+                        ResultCode.OK,
+                        r"Power off smartbox {fndh_port} OK: "
+                        r"FNDH port power successfully changed"
+                        r"( in \d+ seconds)?",
+                    ),
                 ),
             ),
         ],
@@ -419,13 +431,13 @@ class TestSmartBoxComponentManager:
                 desired_smartbox_powers,
                 tango.AttrQuality.ATTR_VALID,
             )
-
-        mock_callbacks["task"].assert_call(
+        call = mock_callbacks["task"].assert_call(
             status=command_tracked_response[0],
-            result=(
-                command_tracked_response[1][0],
-                command_tracked_response[1][1].format(fndh_port=fndh_port),
-            ),
+            result=(command_tracked_response[1][0], Anything),
+        )
+        assert re.fullmatch(
+            command_tracked_response[1][1].format(fndh_port=fndh_port),
+            call["result"][1],
         )
         cmd_thread.join(timeout=10)
         assert not cmd_thread.is_alive()
@@ -538,12 +550,14 @@ class TestSmartBoxComponentManager:
 
         # Now that our ports have all changed to the correct state, the command should
         # now finish.
-        mock_callbacks["task"].assert_call(
+        call = mock_callbacks["task"].assert_call(
             status=TaskStatus.COMPLETED,
-            result=(
-                ResultCode.OK,
-                f"Power smartbox '{fndh_port} to standby OK'",
-            ),
+            result=(ResultCode.OK, Anything),
+        )
+        assert re.fullmatch(
+            rf"Power smartbox {fndh_port} to standby OK: "
+            r"Smartbox ports successfully changed state after \d+ seconds",
+            call["result"][1],
         )
         cmd_thread.join(timeout=10)
         assert not cmd_thread.is_alive()
