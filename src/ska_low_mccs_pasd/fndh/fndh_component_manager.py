@@ -478,6 +478,7 @@ class FndhComponentManager(TaskExecutorComponentManager):
             Any if power is None else PowerState.ON if power else PowerState.OFF
             for power in desired_port_powers
         ]
+        deadline = time.monotonic() + timeout
         poll = 0.1 if task_abort_event else timeout
         while not all(
             demanded_state in (Any, port_state)
@@ -488,18 +489,20 @@ class FndhComponentManager(TaskExecutorComponentManager):
             if task_abort_event and task_abort_event.is_set():
                 msg = "Aborted waiting for FNDH port powers to change state"
                 self.logger.info(msg)
-                return (ResultCode.ABORTED, timeout, msg)
-            self.logger.debug("Waiting for unmasked smartbox ports to change state")
-            t1 = time.time()
-            self.fndh_ports_change.wait(min(timeout, poll))
-            t2 = time.time()
-            timeout -= int(t2 - t1)
-            self.fndh_ports_change.clear()
-            if timeout <= 0:
+                return (ResultCode.ABORTED, int(deadline - time.monotonic()), msg)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
                 msg = "Timeout reached waiting for FNDH port powers to change state"
                 self.logger.error(msg)
-                return ResultCode.FAILED, timeout, msg
-        return ResultCode.OK, timeout, "FNDH port powers successfully changed"
+                return ResultCode.FAILED, 0, msg
+            self.logger.debug("Waiting for unmasked smartbox ports to change state")
+            self.fndh_ports_change.wait(min(remaining, poll))
+            self.fndh_ports_change.clear()
+        return (
+            ResultCode.OK,
+            int(deadline - time.monotonic()),
+            "FNDH port powers successfully changed",
+        )
 
     @check_communicating
     def do_on(
