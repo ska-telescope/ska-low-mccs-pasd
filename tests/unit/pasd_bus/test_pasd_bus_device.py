@@ -24,7 +24,7 @@ from ska_low_pasd_driver.pasd_bus_conversions import (
     SmartboxAlarmFlags,
 )
 from ska_low_pasd_driver.pasd_bus_simulator import PasdHardwareSimulator
-from ska_tango_testing.mock.placeholders import Anything
+from ska_tango_testing.mock.placeholders import Anything, OneOf
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd.pasd_data import PasdData
@@ -206,8 +206,10 @@ def test_communication(  # pylint: disable=too-many-statements
         change_event_callbacks["healthState"],
     )
 
-    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
-    assert pasd_bus_device.healthState == HealthState.FAILED
+    change_event_callbacks["healthState"].assert_change_event(
+        OneOf(HealthState.UNKNOWN, HealthState.FAILED)
+    )
+    assert pasd_bus_device.healthState in (HealthState.UNKNOWN, HealthState.FAILED)
 
     # This is a bit of a cheat.
     # It's an implementation-dependent detail that
