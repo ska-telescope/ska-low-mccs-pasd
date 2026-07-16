@@ -1,9 +1,9 @@
 defaults:
   logging_level_default: 5
 
-platform:
-  cluster:
-    domain: cluster.local
+#platform:
+#  cluster:
+#    domain: cluster.local  # Necessary for AWS runners
 
 # Use helm_values to set arbitrary helm values.
 # These are passed through to the helm values file as-is.
