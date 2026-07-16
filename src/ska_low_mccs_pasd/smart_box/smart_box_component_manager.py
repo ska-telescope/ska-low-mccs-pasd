@@ -580,9 +580,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self: SmartBoxComponentManager,
         power_state: PowerState,
         fndh_port: int,
-        timeout: int,
+        timeout: float,
         task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, int, str]:
+    ) -> tuple[ResultCode, float, str]:
         desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
         desired_port_powers[fndh_port - 1] = power_state == PowerState.ON
         json_argument = json.dumps(
@@ -600,9 +600,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         self: SmartBoxComponentManager,
         power_state: PowerState,
         fndh_port: int,
-        timeout: int,
+        timeout: float,
         task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, int, str]:
+    ) -> tuple[ResultCode, float, str]:
         deadline = time.monotonic() + timeout
         poll = 0.1 if task_abort_event else timeout
         while self._fndh_port_powers[fndh_port - 1] != power_state:
@@ -622,16 +622,16 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self.fndh_ports_change.clear()
         return (
             ResultCode.OK,
-            int(deadline - time.monotonic()),
+            deadline - time.monotonic(),
             "FNDH port power successfully changed",
         )
 
     def _power_smartbox_ports(
         self: SmartBoxComponentManager,
         power_state: PowerState,
-        timeout: int,
+        timeout: float,
         task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, int, str]:
+    ) -> tuple[ResultCode, float, str]:
         desired_port_powers: list[bool] = [
             power_state == PowerState.ON
         ] * PasdData.NUMBER_OF_SMARTBOX_PORTS
@@ -652,9 +652,9 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
     def _wait_for_smartbox_ports_state(
         self: SmartBoxComponentManager,
         desired_port_powers: list[bool],
-        timeout: int,
+        timeout: float,
         task_abort_event: Optional[threading.Event] = None,
-    ) -> tuple[ResultCode, int, str]:
+    ) -> tuple[ResultCode, float, str]:
         desired_port_power_states = [
             PowerState.ON if power else PowerState.OFF for power in desired_port_powers
         ]
@@ -675,7 +675,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             self.smartbox_ports_change.clear()
         return (
             ResultCode.OK,
-            int(deadline - time.monotonic()),
+            deadline - time.monotonic(),
             "Smartbox ports successfully changed state",
         )
 
@@ -696,7 +696,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             task_callback(status=TaskStatus.IN_PROGRESS)
 
         result = ResultCode.OK
-        timeout = 120  # seconds. Need time to initialize the smartboxes
+        timeout = 120.0  # seconds. Need time to initialize the smartboxes
         # which triggers static register reads and threshold setting
         time_left = timeout
         msg = ""
@@ -727,7 +727,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             return
 
         if task_callback:
-            time_taken = timeout - time_left
+            time_taken = int(timeout - time_left)
             task_callback(
                 status=RESULT_TO_TASK[result],
                 result=(
@@ -755,7 +755,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
         result = ResultCode.OK
         msg = ""
-        timeout = 60  # seconds
+        timeout = 60.0  # seconds
         time_left = timeout
         if self._pasd_bus_proxy is None:
             raise ValueError(f"Power smartbox '{self._fndh_port} to standby failed'")
@@ -790,7 +790,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             return
 
         if task_callback:
-            time_taken = timeout - time_left
+            time_taken = int(timeout - time_left)
             task_callback(
                 status=RESULT_TO_TASK[result],
                 result=(
@@ -816,7 +816,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         if task_callback:
             task_callback(status=TaskStatus.IN_PROGRESS)
 
-        timeout = 60  # seconds
+        timeout = 60.0  # seconds
         result = ResultCode.OK
         time_left = timeout
         if self._pasd_bus_proxy is None:
@@ -846,7 +846,7 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
             return
 
         if task_callback:
-            time_taken = timeout - time_left
+            time_taken = int(timeout - time_left)
             callback_message = (
                 f"Power off smartbox {self._fndh_port} {result.name}: {msg}"
             )

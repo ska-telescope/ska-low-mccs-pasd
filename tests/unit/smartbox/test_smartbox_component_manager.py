@@ -276,14 +276,14 @@ class TestSmartBoxComponentManager:
         :param smartbox_component_manager: A SmartBox component manager.
         :param fndh_port: the fndh port this smartbox is attached to.
         """
-        results: list[tuple[ResultCode, int, str]] = []
+        results: list[tuple[ResultCode, float, str]] = []
 
         def _wait() -> None:
             results.append(
                 smartbox_component_manager._wait_for_fndh_port_state(
                     PowerState.ON,
                     fndh_port,
-                    timeout=1,
+                    timeout=1.0,
                     task_abort_event=threading.Event(),
                 )
             )
@@ -309,13 +309,13 @@ class TestSmartBoxComponentManager:
         """
         desired_port_powers = [True] * SMARTBOX_PORTS
 
-        results: list[tuple[ResultCode, int, str]] = []
+        results: list[tuple[ResultCode, float, str]] = []
 
         def _wait() -> None:
             results.append(
                 smartbox_component_manager._wait_for_smartbox_ports_state(
                     desired_port_powers,
-                    timeout=1,
+                    timeout=1.0,
                     task_abort_event=threading.Event(),
                 )
             )
