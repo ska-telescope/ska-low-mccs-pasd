@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import time
 import unittest.mock
@@ -20,6 +21,7 @@ import pytest
 import tango
 from ska_control_model import CommunicationStatus, PowerState, ResultCode, TaskStatus
 from ska_tango_testing.mock import MockCallableGroup
+from ska_tango_testing.mock.placeholders import Anything
 
 from ska_low_mccs_pasd import PasdData
 from ska_low_mccs_pasd.smart_box import SmartBoxComponentManager, _PasdBusProxy
@@ -28,6 +30,8 @@ from tests.harness import (
     PasdTangoTestHarnessContext,
     get_pasd_bus_name,
 )
+
+# pylint: disable=too-many-lines
 
 SMARTBOX_PORTS = 12
 
@@ -261,6 +265,71 @@ class TestSmartBoxComponentManager:
         mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
         mock_callbacks["communication_state"].assert_not_called()
 
+    def test_wait_for_fndh_port_state_times_out(
+        self: TestSmartBoxComponentManager,
+        smartbox_component_manager: SmartBoxComponentManager,
+        fndh_port: int,
+    ) -> None:
+        """
+        Test that the FNDH port wait loop fails when the timeout is reached.
+
+        :param smartbox_component_manager: A SmartBox component manager.
+        :param fndh_port: the fndh port this smartbox is attached to.
+        """
+        results: list[tuple[ResultCode, float, str]] = []
+
+        def _wait() -> None:
+            results.append(
+                smartbox_component_manager._wait_for_fndh_port_state(
+                    PowerState.ON,
+                    fndh_port,
+                    timeout=1.0,
+                    task_abort_event=threading.Event(),
+                )
+            )
+
+        wait_thread = threading.Thread(target=_wait, daemon=True)
+        wait_thread.start()
+        wait_thread.join(timeout=5)
+
+        assert not wait_thread.is_alive()
+        result, time_left, msg = results[0]
+        assert result == ResultCode.FAILED
+        assert time_left == 0
+        assert "Timeout reached" in msg
+
+    def test_wait_for_smartbox_ports_state_times_out(
+        self: TestSmartBoxComponentManager,
+        smartbox_component_manager: SmartBoxComponentManager,
+    ) -> None:
+        """
+        Test that the smartbox ports wait loop fails when the timeout is reached.
+
+        :param smartbox_component_manager: A SmartBox component manager.
+        """
+        desired_port_powers = [True] * SMARTBOX_PORTS
+
+        results: list[tuple[ResultCode, float, str]] = []
+
+        def _wait() -> None:
+            results.append(
+                smartbox_component_manager._wait_for_smartbox_ports_state(
+                    desired_port_powers,
+                    timeout=1.0,
+                    task_abort_event=threading.Event(),
+                )
+            )
+
+        wait_thread = threading.Thread(target=_wait, daemon=True)
+        wait_thread.start()
+        wait_thread.join(timeout=5)
+
+        assert not wait_thread.is_alive()
+        result, time_left, msg = results[0]
+        assert result == ResultCode.FAILED
+        assert time_left == 0
+        assert "Timeout reached" in msg
+
     def test_component_state(
         self: TestSmartBoxComponentManager,
         smartbox_component_manager: SmartBoxComponentManager,
@@ -327,7 +396,12 @@ class TestSmartBoxComponentManager:
                 None,
                 (
                     TaskStatus.COMPLETED,
-                    (ResultCode.OK, "Power on smartbox '{fndh_port} OK'"),
+                    (
+                        ResultCode.OK,
+                        r"Power on smartbox {fndh_port} command OK: "
+                        r"Smartbox ports successfully changed state "
+                        r"after \d+ seconds",
+                    ),
                 ),
             ),
             (
@@ -335,7 +409,12 @@ class TestSmartBoxComponentManager:
                 None,
                 (
                     TaskStatus.COMPLETED,
-                    (ResultCode.OK, "Power off smartbox '{fndh_port} OK'"),
+                    (
+                        ResultCode.OK,
+                        r"Power off smartbox {fndh_port} OK: "
+                        r"FNDH port power successfully changed"
+                        r"( in \d+ seconds)?",
+                    ),
                 ),
             ),
         ],
@@ -419,13 +498,13 @@ class TestSmartBoxComponentManager:
                 desired_smartbox_powers,
                 tango.AttrQuality.ATTR_VALID,
             )
-
-        mock_callbacks["task"].assert_call(
+        call = mock_callbacks["task"].assert_call(
             status=command_tracked_response[0],
-            result=(
-                command_tracked_response[1][0],
-                command_tracked_response[1][1].format(fndh_port=fndh_port),
-            ),
+            result=(command_tracked_response[1][0], Anything),
+        )
+        assert re.fullmatch(
+            command_tracked_response[1][1].format(fndh_port=fndh_port),
+            call["result"][1],
         )
         cmd_thread.join(timeout=10)
         assert not cmd_thread.is_alive()
@@ -538,12 +617,14 @@ class TestSmartBoxComponentManager:
 
         # Now that our ports have all changed to the correct state, the command should
         # now finish.
-        mock_callbacks["task"].assert_call(
+        call = mock_callbacks["task"].assert_call(
             status=TaskStatus.COMPLETED,
-            result=(
-                ResultCode.OK,
-                f"Power smartbox '{fndh_port} to standby OK'",
-            ),
+            result=(ResultCode.OK, Anything),
+        )
+        assert re.fullmatch(
+            rf"Power smartbox {fndh_port} to standby OK: "
+            r"Smartbox ports successfully changed state after \d+ seconds",
+            call["result"][1],
         )
         cmd_thread.join(timeout=10)
         assert not cmd_thread.is_alive()

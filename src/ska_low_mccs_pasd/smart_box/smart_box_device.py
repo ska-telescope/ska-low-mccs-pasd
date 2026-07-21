@@ -892,7 +892,7 @@ class MccsSmartBox(MccsBaseDevice):
                     self.threshold_fault = True
                     self._component_state_callback()
 
-    # pylint: disable=too-many-branches, disable=too-many-statements
+    # pylint: disable=too-many-branches
     def _attribute_changed_callback(  # noqa: C901
         self: MccsSmartBox,
         attr_name: str,

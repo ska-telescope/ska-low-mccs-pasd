@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import unittest.mock
 from typing import Any, Iterator
 
@@ -179,6 +180,39 @@ class TestFndhComponentManager:
         fndh_component_manager.stop_communicating()
         mock_callbacks["communication_state"].assert_call(CommunicationStatus.DISABLED)
         mock_callbacks["communication_state"].assert_not_called()
+
+    def test_wait_for_fndh_ports_state_times_out(
+        self: TestFndhComponentManager,
+        fndh_component_manager: FndhComponentManager,
+    ) -> None:
+        """
+        Test that the FNDH port wait loop fails when tje timeout is reached.
+
+        :param fndh_component_manager: An FNDH component manager.
+        """
+        desired_port_powers: list[bool | None] = [None] * PasdData.NUMBER_OF_FNDH_PORTS
+        desired_port_powers[0] = True
+
+        results: list[tuple[ResultCode, int, str]] = []
+
+        def _wait() -> None:
+            results.append(
+                fndh_component_manager._wait_for_fndh_ports_state(
+                    desired_port_powers,
+                    timeout=1,
+                    task_abort_event=threading.Event(),
+                )
+            )
+
+        wait_thread = threading.Thread(target=_wait, daemon=True)
+        wait_thread.start()
+        wait_thread.join(timeout=5)
+
+        assert not wait_thread.is_alive()
+        result, time_left, msg = results[0]
+        assert result == ResultCode.FAILED
+        assert time_left == 0
+        assert "Timeout reached" in msg
 
     @pytest.mark.parametrize(
         (

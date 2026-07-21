@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [THORN-551] Improved command reporting - added more information to task callbacks from on/off/standby.
 * [THORN-663] Fix flaky tests.
 
 ## 7.0.0
