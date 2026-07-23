@@ -606,6 +606,17 @@ class PasdBusRequestProvider:
                         )
                         self._ticks.pop(smartbox_id, None)
 
+    def get_smartbox_poll_list(self) -> list[int]:
+        """
+        Return a list of device IDs for smartboxes currently being polled.
+
+        :return: list of polled smartbox IDs.
+        """
+        device_ids = list(self._ticks.keys())
+        device_ids.remove(PasdData.FNDH_DEVICE_ID)
+        device_ids.remove(PasdData.FNCC_DEVICE_ID)
+        return device_ids
+
     def desire_read_startup_info(self, device_id: int) -> None:
         """
         Register a request to read the information usually just read at startup.

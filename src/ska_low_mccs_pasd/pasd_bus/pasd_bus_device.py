@@ -618,7 +618,59 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         """
         super()._component_state_changed(fault=fault, power=power)
 
-    # pylint: disable=too-many-branches, disable=too-many-statements
+    def _get_tango_attribute_name(
+        self: MccsPasdBus, pasd_device_number: int, pasd_attribute_name: str
+    ) -> str:
+        for controller in PasdData.CONTROLLERS_CONFIG.values():
+            if controller.get("modbus_address") == pasd_device_number:
+                for key, register in controller["registers"].items():
+                    if key == pasd_attribute_name:
+                        return controller["prefix"] + register["tango_attr_name"]
+        for key, register in PasdData.CONTROLLERS_CONFIG["FNSC"]["registers"].items():
+            if key == pasd_attribute_name:
+                return (
+                    PasdData.CONTROLLERS_CONFIG["FNSC"]["prefix"]
+                    + str(pasd_device_number)
+                    + register["tango_attr_name"]
+                )
+        return ""
+
+    def _mark_attributes_invalid(
+        self: MccsPasdBus, device_id: int, attr_list: list[str], timestamp: float
+    ) -> None:
+        attributes_marked_invalid = []
+        for pasd_attribute_name in attr_list:
+            tango_attribute_name = self._get_tango_attribute_name(
+                device_id, pasd_attribute_name
+            )
+            # Only push out a change event and log message
+            # if the attribute was previously valid
+            if (
+                self._pasd_state[tango_attribute_name].quality
+                != AttrQuality.ATTR_INVALID
+            ):
+                self._pasd_state[tango_attribute_name].timestamp = timestamp
+                self._pasd_state[
+                    tango_attribute_name
+                ].quality = AttrQuality.ATTR_INVALID
+                attributes_marked_invalid.append(tango_attribute_name)
+                self.shared_bus.emit(
+                    tango_attribute_name,
+                    (
+                        self._pasd_state[tango_attribute_name].value,
+                        timestamp,
+                        AttrQuality.ATTR_INVALID,
+                    ),
+                )
+                self._pasd_signals[tango_attribute_name] = self._pasd_state[
+                    tango_attribute_name
+                ].value
+        if attributes_marked_invalid:
+            self.logger.debug(
+                f"Marking attributes invalid: {attributes_marked_invalid}"
+            )
+
+    # pylint: disable=too-many-branches, disable=too-many-locals
     def _pasd_device_state_callback(  # noqa: C901
         self: MccsPasdBus,
         device_id: int,
@@ -644,25 +696,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             )
             return
 
-        def _get_tango_attribute_name(
-            pasd_device_number: int, pasd_attribute_name: str
-        ) -> str:
-            for controller in PasdData.CONTROLLERS_CONFIG.values():
-                if controller.get("modbus_address") == pasd_device_number:
-                    for key, register in controller["registers"].items():
-                        if key == pasd_attribute_name:
-                            return controller["prefix"] + register["tango_attr_name"]
-            for key, register in PasdData.CONTROLLERS_CONFIG["FNSC"][
-                "registers"
-            ].items():
-                if key == pasd_attribute_name:
-                    return (
-                        PasdData.CONTROLLERS_CONFIG["FNSC"]["prefix"]
-                        + str(pasd_device_number)
-                        + register["tango_attr_name"]
-                    )
-            return ""
-
         if "error" in kwargs:
             self.component_manager.record_poll_failure(device_id)
             attr_list = kwargs.get("attributes")
@@ -672,42 +705,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 return
 
             # Mark the quality factor for the attribute(s) as INVALID
-            attributes_marked_invalid = []
-            for pasd_attribute_name in attr_list:
-                tango_attribute_name = _get_tango_attribute_name(
-                    device_id, pasd_attribute_name
-                )
-                self._pasd_state[tango_attribute_name].timestamp = timestamp
-                # Only push out a change event and log message
-                # if the attribute was previously valid
-                if (
-                    self._pasd_state[tango_attribute_name].quality
-                    != AttrQuality.ATTR_INVALID
-                ):
-                    self._pasd_state[
-                        tango_attribute_name
-                    ].quality = AttrQuality.ATTR_INVALID
-                    attributes_marked_invalid.append(tango_attribute_name)
-                    self.shared_bus.emit(
-                        tango_attribute_name,
-                        (
-                            self._pasd_state[tango_attribute_name].value,
-                            timestamp,
-                            AttrQuality.ATTR_INVALID,
-                        ),
-                    )
-                    self._pasd_signals[tango_attribute_name] = self._pasd_state[
-                        tango_attribute_name
-                    ].value
-            if attributes_marked_invalid:
-                self.logger.debug(
-                    f"Marking attributes invalid: {attributes_marked_invalid}"
-                )
+            self._mark_attributes_invalid(device_id, attr_list, timestamp)
             return
 
         updated_attributes = {}
         for pasd_attribute_name, pasd_attribute_value in kwargs.items():
-            tango_attribute_name = _get_tango_attribute_name(
+            tango_attribute_name = self._get_tango_attribute_name(
                 device_id, pasd_attribute_name
             )
             if tango_attribute_name == "":
@@ -723,6 +726,17 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 # Inform the component manager of the new power states so that
                 # we can update the smartbox polling list
                 self.component_manager.update_port_power_states(pasd_attribute_value)
+                # Mark attributes invalid for any smartbox which we have stopped polling
+                switched_off_sbs = [
+                    sb_id
+                    for sb_id in self.connected_smartboxes
+                    if sb_id not in self.component_manager.get_polled_smartbox_ids()
+                ]
+                for sb_id in switched_off_sbs:
+                    attribute_names = list(
+                        PasdData.SMARTBOXES_CONFIG["registers"].keys()
+                    )
+                    self._mark_attributes_invalid(sb_id, attribute_names, timestamp)
 
             # Update the timestamp
             self._pasd_state[tango_attribute_name].timestamp = timestamp

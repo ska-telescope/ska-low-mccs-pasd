@@ -833,6 +833,14 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         """
         self._request_provider.update_port_power_states(port_power_states)
 
+    def get_polled_smartbox_ids(self: PasdBusComponentManager) -> list[int]:
+        """
+        Get the device IDs for the currently polled Smartboxes.
+
+        :return: list of polled smartbox IDs
+        """
+        return self._request_provider.get_smartbox_poll_list()
+
     def cleanup(self: PasdBusComponentManager) -> None:
         """Delete and clean up any remaining processes."""
         self.stop_communicating()

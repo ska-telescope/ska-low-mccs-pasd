@@ -23,6 +23,9 @@ class PasdData:  # pylint: disable=too-few-public-methods
     CONTROLLERS_CONFIG: Final = PasdControllersConfig.get_all()
     """The validated PaSD controllers' configuration."""
 
+    SMARTBOXES_CONFIG: Final = PasdControllersConfig.get_smartbox()
+    """The validated PaSD smartboxes' configuration."""
+
     MAX_NUMBER_OF_SMARTBOXES_PER_STATION: Final = 24
     """The maximum number of smartboxes in a Station."""
 
