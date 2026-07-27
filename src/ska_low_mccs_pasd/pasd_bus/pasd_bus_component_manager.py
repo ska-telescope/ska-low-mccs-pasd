@@ -308,6 +308,7 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._pasd_bus_api_client.reset_connection()
 
     # TODO: None return is reasonable and should be supported by ska-tango-base
+    # pylint: disable=too-many-locals
     def get_request(  # type: ignore[override]
         self: PasdBusComponentManager,
     ) -> PasdBusRequest | None:
@@ -370,7 +371,13 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             case (device_id, "SET_PORT_POWERS", arguments):
                 request = PasdBusRequest(device_id, "set_port_powers", None, arguments)
                 if device_id == PasdData.FNDH_DEVICE_ID:
-                    self._request_provider.stop_polling_smartboxes(arguments)
+                    stopped_smartbox_ids = (
+                        self._request_provider.stop_polling_smartboxes(arguments)
+                    )
+                    for smartbox_id in stopped_smartbox_ids:
+                        self._pasd_bus_device_state_callback(
+                            smartbox_id, stopped_polling=True
+                        )
             case (device_id, "PORT_POWER", (port, is_on, stay_on_when_offline)):
                 if is_on:
                     request = PasdBusRequest(

@@ -587,12 +587,16 @@ class PasdBusRequestProvider:
 
     def stop_polling_smartboxes(
         self, port_power_requests: list[tuple[bool, bool] | None]
-    ) -> None:
+    ) -> list[int]:
         """
         Stop polling a smartbox if it has been requested to switch off.
 
         :param port_power_requests: list of port power requests
+
+        :return: the device IDs of the smartboxes that polling was just
+            stopped for.
         """
+        stopped_smartbox_ids = []
         for fndh_port, request in enumerate(port_power_requests, start=1):
             if request is not None and request[0] is False:
                 smartbox_id = self._smartboxIDs.get(fndh_port)
@@ -605,6 +609,8 @@ class PasdBusRequestProvider:
                             f"{fndh_port} is being powered off"
                         )
                         self._ticks.pop(smartbox_id, None)
+                        stopped_smartbox_ids.append(smartbox_id)
+        return stopped_smartbox_ids
 
     def get_smartbox_poll_list(self) -> list[int]:
         """

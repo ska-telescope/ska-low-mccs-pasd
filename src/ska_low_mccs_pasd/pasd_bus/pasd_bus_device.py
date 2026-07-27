@@ -691,6 +691,15 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         :param kwargs: keyword arguments defining PaSD device state.
         """
         timestamp = datetime.now(timezone.utc).timestamp()
+
+        if kwargs.get("stopped_polling"):
+            # We have proactively stopped polling this smartbox in response to
+            # a power-off request. Mark it invalid immediately.
+            self._mark_attributes_invalid(
+                device_id, self._smartbox_register_names, timestamp
+            )
+            return
+
         if (
             device_id
             not in [PasdData.FNCC_DEVICE_ID, PasdData.FNDH_DEVICE_ID]
