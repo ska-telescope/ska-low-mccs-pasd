@@ -507,7 +507,9 @@ class PasdBusRequestProvider:
 
         self._smartbox_startup_delay = smartbox_startup_delay
         self._delayed_requests: list[DelayedRequest] = []
-        self._pending_power_off_ports: set[int] = set()
+        # Maps FNDH port to the time until which a stale "still on" port
+        # reading should be ignored following a power-off request
+        self._pending_power_off_ports: dict[int, float] = {}
         self._pending_smartbox_startups: dict[int, float] = {}
         self.initialise()
 
@@ -567,9 +569,11 @@ class PasdBusRequestProvider:
                 # No associated smartbox on this port
                 continue
             if power_state and smartbox_id not in self._ticks:
-                if fndh_port in self._pending_power_off_ports:
+                pending_until = self._pending_power_off_ports.get(fndh_port)
+                if pending_until is not None and time.time() < pending_until:
                     # A power-off write is in flight; ignore this stale True reading
                     continue
+                self._pending_power_off_ports.pop(fndh_port, None)
                 if smartbox_id not in self._pending_smartbox_startups:
                     self._logger.info(
                         f"Smartbox {smartbox_id} powered on, starting polling "
@@ -579,7 +583,7 @@ class PasdBusRequestProvider:
                         time.time() + self._smartbox_startup_delay
                     )
             elif not power_state:
-                self._pending_power_off_ports.discard(fndh_port)
+                self._pending_power_off_ports.pop(fndh_port, None)
                 self._pending_smartbox_startups.pop(smartbox_id, None)
                 if smartbox_id in self._ticks:
                     self._logger.info(f"Stopping polling smartbox {smartbox_id}")
@@ -601,7 +605,9 @@ class PasdBusRequestProvider:
             if request is not None and request[0] is False:
                 smartbox_id = self._smartboxIDs.get(fndh_port)
                 if smartbox_id is not None:
-                    self._pending_power_off_ports.add(fndh_port)
+                    self._pending_power_off_ports[fndh_port] = time.time() + max(
+                        self._port_status_read_delay, 0.0
+                    )
                     self._pending_smartbox_startups.pop(smartbox_id, None)
                     if smartbox_id in self._ticks:
                         self._logger.info(
