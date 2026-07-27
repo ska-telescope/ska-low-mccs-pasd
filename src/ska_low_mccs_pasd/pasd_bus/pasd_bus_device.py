@@ -262,7 +262,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         self._build_state: str = sys.modules["ska_low_mccs_pasd"].__version_info__
         self._version_id: str = sys.modules["ska_low_mccs_pasd"].__version__
 
-        self.connected_smartboxes = []
+        self.connected_smartboxes: list[int] = []
+        # Populated once FNDH port status has been polled:
+        self._polled_smartbox_ids: set[int] = set()
+        self._smartbox_register_names = list(
+            PasdData.SMARTBOXES_CONFIG["registers"].keys()
+        )
         for smartbox_id in self.SmartboxIDs:
             if smartbox_id != 0:
                 self.connected_smartboxes.append(smartbox_id)
@@ -670,7 +675,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 f"Marking attributes invalid: {attributes_marked_invalid}"
             )
 
-    # pylint: disable=too-many-branches, disable=too-many-locals
+    # pylint: disable=too-many-branches
     def _pasd_device_state_callback(  # noqa: C901
         self: MccsPasdBus,
         device_id: int,
@@ -727,16 +732,14 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
                 # we can update the smartbox polling list
                 self.component_manager.update_port_power_states(pasd_attribute_value)
                 # Mark attributes invalid for any smartbox which we have stopped polling
-                switched_off_sbs = [
-                    sb_id
-                    for sb_id in self.connected_smartboxes
-                    if sb_id not in self.component_manager.get_polled_smartbox_ids()
-                ]
-                for sb_id in switched_off_sbs:
-                    attribute_names = list(
-                        PasdData.SMARTBOXES_CONFIG["registers"].keys()
+                new_polled_smartbox_ids = set(
+                    self.component_manager.get_polled_smartbox_ids()
+                )
+                for sb_id in self._polled_smartbox_ids - new_polled_smartbox_ids:
+                    self._mark_attributes_invalid(
+                        sb_id, self._smartbox_register_names, timestamp
                     )
-                    self._mark_attributes_invalid(sb_id, attribute_names, timestamp)
+                self._polled_smartbox_ids = new_polled_smartbox_ids
 
             # Update the timestamp
             self._pasd_state[tango_attribute_name].timestamp = timestamp
