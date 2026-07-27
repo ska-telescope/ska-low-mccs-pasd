@@ -1515,3 +1515,24 @@ def test_only_poll_on_smartboxes(
     )
     uptime = getattr(pasd_bus_device, f"smartbox{isolated_sb_id}Uptime")
     assert uptime > starting_uptime
+
+    # Turn the smartbox back off and check its attributes are marked invalid.
+    desired_port_powers[isolated_sb_index] = False
+    json_arg = {
+        "port_powers": desired_port_powers,
+        "stay_on_when_offline": False,
+    }
+    pasd_bus_device.SetFndhPortPowers(json.dumps(json_arg))
+    change_event_callbacks["fndhPortsPowerSensed"].assert_change_event(
+        desired_port_powers, lookahead=30
+    )
+
+    change_event_callbacks[f"smartbox{isolated_sb_id}Uptime"].assert_against_call(
+        attribute_quality=tango.AttrQuality.ATTR_INVALID, lookahead=5
+    )
+
+    for attribute_name in ["FirmwareVersion", "InputVoltage", "Uptime"]:
+        reading = pasd_bus_device.read_attribute(
+            f"smartbox{isolated_sb_id}{attribute_name}"
+        )
+        assert reading.quality == tango.AttrQuality.ATTR_INVALID
