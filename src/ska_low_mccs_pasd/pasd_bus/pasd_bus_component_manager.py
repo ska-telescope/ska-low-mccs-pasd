@@ -308,7 +308,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         self._pasd_bus_api_client.reset_connection()
 
     # TODO: None return is reasonable and should be supported by ska-tango-base
-    # pylint: disable=too-many-locals
     def get_request(  # type: ignore[override]
         self: PasdBusComponentManager,
     ) -> PasdBusRequest | None:
@@ -322,8 +321,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             the next poll.
         """
         port: int  # for the type checker
-        stay_on_when_offline: bool  # for the type checker
-        is_on: bool  # for the type checker
 
         timestamp = time.time()
         elapsed_time = (
