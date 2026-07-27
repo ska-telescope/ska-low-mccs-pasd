@@ -378,16 +378,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
                         self._pasd_bus_device_state_callback(
                             smartbox_id, stopped_polling=True
                         )
-            case (device_id, "PORT_POWER", (port, is_on, stay_on_when_offline)):
-                if is_on:
-                    request = PasdBusRequest(
-                        device_id,
-                        "turn_port_on",
-                        None,
-                        [port, stay_on_when_offline],
-                    )
-                else:
-                    request = PasdBusRequest(device_id, "turn_port_off", None, [port])
             case (device_id, "INFO", None):
                 request = PasdBusRequest(
                     device_id, None, None, self.STATIC_INFO_ATTRIBUTES
