@@ -9,13 +9,7 @@ relevant lower level Tango devices, but the antennas can be powered on and off t
 and the thermistor mounted on the floor of the FNDH EP Enclosure is also exposed as an attribute.
 
 In addition, the Fieldstation device provides a way of setting AdminMode on all PaSD components
-from a single place, and captures an overall health state of the field station. The health state is
-calculated from the health of the FNDH and smartboxes; possible values are:
-
-* 0 = OK: All components are in a normal state.
-* 1 = DEGRADED: At least one component is in a warning or alarm state.
-* 2 = FAILED: Either the FNDH or all smartboxes are in an alarm state.
-* 3 = UNKNOWN: It is unable to determine its health (also its initial state).
+from a single place, and captures an overall health state of the field station.
 
 The following attributes are provided by the Fieldstation device:
 
@@ -23,10 +17,7 @@ The following attributes are provided by the Fieldstation device:
    (thermistor mounted on the floor of the FNDH EP Enclosure)
 2. `HealthState` - the overall health state of the field station
 3. `HealthReport` - A report of the health state of the field station, including the health state of
-   each component.
-
-See :ref:`fndh-health-evaluation` and :ref:`smartbox-health-evaluation` for more details on how the
-health of the FNDH and smartboxes is evaluated.
+   each component (see :ref:`fieldstation-health-evaluation`)
 
 The following commands are also provided:
 
@@ -66,6 +57,64 @@ The command returns ``REJECTED`` if none of the supplied antenna names are found
 (e.g. all names are unrecognised, or the dict is empty). Antennas that cannot be routed to any
 smartbox are logged as a warning but do not prevent the rest of the call from succeeding.
 
+.. _fieldstation-health-evaluation:
+
+Fieldstation health evaluation
+------------------------------
+
+The health evaluation logic for each individual device is described in the following sections:
+
+- :ref:`pasdbus-health-evaluation`
+- :ref:`fndh-health-evaluation`
+- :ref:`smartbox-health-evaluation`
+- :ref:`fncc-health-evaluation`
+
+The health of the Fieldstation is determined from the health of the FNDH and Smartboxes only.
+PasdBus and FNCC health are used for monitoring purposes by the engineering teams, and are
+taken into account indirectly. For example, if a Modbus error is preventing communications to
+the FNDH, the FNDH device's attributes will be INVALID causing its own health state to be 
+``UNKNOWN`` which is treated as ``FAILED``.
+
+The Fieldstation's health calculation is done using the following aggregation thresholds:
+
++----------------------+------+-------------+
+| Health transition    | FNDH | Smartboxes  |
++======================+======+=============+
+| FAILED -> FAILED     | 1    | 10%         |
++----------------------+------+-------------+
+| FAILED -> DEGRADED   | N/A  | 5%          |
++----------------------+------+-------------+
+| DEGRADED -> DEGRADED | 1    | 5%          |
++----------------------+------+-------------+
 
 
+Since there is just one FNDH, its health state is directly reflected in that of the Fieldstation,
+i.e. if the FNDH is ``FAILED`` the Fieldstation will be ``FAILED``, and likewise for ``DEGRADED``.
+Smartboxes are taken into account based on the number which are not ``OK``. The percentages are rounded
+up to the nearest integer, so for a standard deployment of 24 Smartboxes:
 
+- If at least 3 Smartboxes are in ``FAILED`` state this will push the Fieldstation to ``FAILED``
+- If at least 2 are ``FAILED`` the Fieldstation will be ``DEGRADED``
+- If at least 2 are ``FAILED`` or ``DEGRADED`` the Fieldstation will be ``DEGRADED``
+
+Note that a health state of ``UNKNOWN`` is treated as ``FAILED`` for the purpose of aggregation.
+
+The ``HealthReport`` attribute is a JSON string which provides a summary of the subservient device states.
+Possible values for each device are:
+
+* 0 = OK
+* 1 = DEGRADED
+* 2 = FAILED
+* 3 = UNKNOWN (also the initial state)
+  
+For example:
+
+::
+
+   '{"low-mccs/fndh/ci-1": 0, "smartboxes": {"low-mccs/smartbox/ci-1-sb01": 0,
+   "low-mccs/smartbox/ci-1-sb02": 3, "low-mccs/smartbox/ci-1-sb03": 0,
+   "low-mccs/smartbox/ci-1-sb04": 0, "low-mccs/smartbox/ci-1-sb05": 0,
+   "low-mccs/smartbox/ci-1-sb06": 0, "low-mccs/smartbox/ci-1-sb07": 0,
+   "low-mccs/smartbox/ci-1-sb08": 0, "low-mccs/smartbox/ci-1-sb09": 0,
+   "low-mccs/smartbox/ci-1-sb10": 0, "low-mccs/smartbox/ci-1-sb11": 0,
+   "low-mccs/smartbox/ci-1-sb12": 0}}'

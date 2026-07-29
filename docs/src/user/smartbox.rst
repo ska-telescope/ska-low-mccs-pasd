@@ -187,7 +187,7 @@ The smartbox health is determined by three factors:
 3. The status of the FEM port breakers.
 
 **Threshold Evaluation**
-Each monitoring point has four thresholds: [min_alarm, min_warning, max_warning, max_alarm]. These set on the attributes and the attributes
+Each monitoring point has four thresholds: [min_alarm, min_warning, max_warning, max_alarm]. These are set on the attributes and the attributes
 respond by moving through ``tango.AttrQuality.WARNING`` and ``tango.AttrQuality.ALARM`` respectively dependent on monitoring point value. The
 ``healthState`` then reflects this as ``HealthState.DEGRADED`` -> ``tango.AttrQuality.WARNING`` and ``HealthState.FAILED`` -> ``tango.AttrQuality.ALARM``
 
@@ -234,6 +234,6 @@ The following translation of the Smartbox's SYS_STATUS register values to health
 
 **Port Breaker Status**
 
-The number of port breakers tripped is reflected through the ``numberOfPortBreakersTripped`` attribute,
-this attribute can have thresholds configured as the other attributes above, by default it only has 
-max alarm configured as such we go to ``HealthState.FAILED`` at a single port breaker tripped.
+The number of port breakers tripped is reflected through the ``numberOfPortBreakersTripped`` attribute.
+This attribute can have thresholds configured as the other attributes above and will contribute to the
+health state of the Smartbox accordingly.

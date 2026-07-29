@@ -177,7 +177,7 @@ The health of the FNDH is determined by three factors:
 
 **Threshold Evaluation**
 
-Each monitoring point has four thresholds: [min_alarm, min_warning, max_warning, max_alarm]. These set on the attributes and the attributes
+Each monitoring point has four thresholds: [min_alarm, min_warning, max_warning, max_alarm]. These are set on the attributes and the attributes
 respond by moving through ``tango.AttrQuality.WARNING`` and ``tango.AttrQuality.ALARM`` respectively dependent on monitoring point value. The
 ``healthState`` then reflects this as ``HealthState.DEGRADED`` -> ``tango.AttrQuality.WARNING`` and ``HealthState.FAILED`` -> ``tango.AttrQuality.ALARM``
 
