@@ -89,10 +89,10 @@ class MccsFieldStation(MccsBaseDevice):
                 ),  # 10% or 1, whichever is higher, Failed -> Failed
                 max(
                     int(np.ceil(len(self.SmartBoxFQDNs) * 0.05)), 1
-                ),  # 10% or 1, whichever is higher, Failed -> Degraded
+                ),  # 5% or 1, whichever is higher, Failed -> Degraded
                 max(
                     int(np.ceil(len(self.SmartBoxFQDNs) * 0.05)), 1
-                ),  # 10% or 1, whichever is higher, Degraded -> Degraded
+                ),  # 5% or 1, whichever is higher, Degraded -> Degraded
             ),
         }
         self._health_report = ""
