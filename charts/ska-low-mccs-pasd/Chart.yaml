@@ -1,5 +1,5 @@
 apiVersion: v2
-description: A Helm chart for deploying the MCCS DAQ prototype on Kubernetes
+description: A Helm chart for deploying MCCS PaSD on Kubernetes
 name: ska-low-mccs-pasd
 version: 7.1.0
 appVersion: 7.1.0
