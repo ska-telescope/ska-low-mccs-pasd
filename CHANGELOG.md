@@ -1,7 +1,8 @@
 # Version History
 
-## Unreleased
+## 7.1.0
 
+* [THORN-536] Set Smartbox attributes to INVALID when they're switched off.
 * [THORN-551] Improved command reporting - added more information to task callbacks from on/off/standby.
 * [THORN-663] Fix flaky tests.
 

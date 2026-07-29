@@ -507,7 +507,9 @@ class PasdBusRequestProvider:
 
         self._smartbox_startup_delay = smartbox_startup_delay
         self._delayed_requests: list[DelayedRequest] = []
-        self._pending_power_off_ports: set[int] = set()
+        # Maps FNDH port to the time until which a stale "still on" port
+        # reading should be ignored following a power-off request
+        self._pending_power_off_ports: dict[int, float] = {}
         self._pending_smartbox_startups: dict[int, float] = {}
         self.initialise()
 
@@ -567,9 +569,11 @@ class PasdBusRequestProvider:
                 # No associated smartbox on this port
                 continue
             if power_state and smartbox_id not in self._ticks:
-                if fndh_port in self._pending_power_off_ports:
+                pending_until = self._pending_power_off_ports.get(fndh_port)
+                if pending_until is not None and time.time() < pending_until:
                     # A power-off write is in flight; ignore this stale True reading
                     continue
+                self._pending_power_off_ports.pop(fndh_port, None)
                 if smartbox_id not in self._pending_smartbox_startups:
                     self._logger.info(
                         f"Smartbox {smartbox_id} powered on, starting polling "
@@ -579,7 +583,7 @@ class PasdBusRequestProvider:
                         time.time() + self._smartbox_startup_delay
                     )
             elif not power_state:
-                self._pending_power_off_ports.discard(fndh_port)
+                self._pending_power_off_ports.pop(fndh_port, None)
                 self._pending_smartbox_startups.pop(smartbox_id, None)
                 if smartbox_id in self._ticks:
                     self._logger.info(f"Stopping polling smartbox {smartbox_id}")
@@ -587,17 +591,23 @@ class PasdBusRequestProvider:
 
     def stop_polling_smartboxes(
         self, port_power_requests: list[tuple[bool, bool] | None]
-    ) -> None:
+    ) -> list[int]:
         """
         Stop polling a smartbox if it has been requested to switch off.
 
         :param port_power_requests: list of port power requests
+
+        :return: the device IDs of the smartboxes that polling was just
+            stopped for.
         """
+        stopped_smartbox_ids = []
         for fndh_port, request in enumerate(port_power_requests, start=1):
             if request is not None and request[0] is False:
                 smartbox_id = self._smartboxIDs.get(fndh_port)
                 if smartbox_id is not None:
-                    self._pending_power_off_ports.add(fndh_port)
+                    self._pending_power_off_ports[fndh_port] = time.time() + max(
+                        self._port_status_read_delay, 0.0
+                    )
                     self._pending_smartbox_startups.pop(smartbox_id, None)
                     if smartbox_id in self._ticks:
                         self._logger.info(
@@ -605,6 +615,19 @@ class PasdBusRequestProvider:
                             f"{fndh_port} is being powered off"
                         )
                         self._ticks.pop(smartbox_id, None)
+                        stopped_smartbox_ids.append(smartbox_id)
+        return stopped_smartbox_ids
+
+    def get_smartbox_poll_list(self) -> list[int]:
+        """
+        Return a list of device IDs for smartboxes currently being polled.
+
+        :return: list of polled smartbox IDs.
+        """
+        device_ids = list(self._ticks.keys())
+        device_ids.remove(PasdData.FNDH_DEVICE_ID)
+        device_ids.remove(PasdData.FNCC_DEVICE_ID)
+        return device_ids
 
     def desire_read_startup_info(self, device_id: int) -> None:
         """

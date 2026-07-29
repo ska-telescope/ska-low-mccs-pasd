@@ -321,8 +321,6 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             the next poll.
         """
         port: int  # for the type checker
-        stay_on_when_offline: bool  # for the type checker
-        is_on: bool  # for the type checker
 
         timestamp = time.time()
         elapsed_time = (
@@ -370,17 +368,13 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
             case (device_id, "SET_PORT_POWERS", arguments):
                 request = PasdBusRequest(device_id, "set_port_powers", None, arguments)
                 if device_id == PasdData.FNDH_DEVICE_ID:
-                    self._request_provider.stop_polling_smartboxes(arguments)
-            case (device_id, "PORT_POWER", (port, is_on, stay_on_when_offline)):
-                if is_on:
-                    request = PasdBusRequest(
-                        device_id,
-                        "turn_port_on",
-                        None,
-                        [port, stay_on_when_offline],
+                    stopped_smartbox_ids = (
+                        self._request_provider.stop_polling_smartboxes(arguments)
                     )
-                else:
-                    request = PasdBusRequest(device_id, "turn_port_off", None, [port])
+                    for smartbox_id in stopped_smartbox_ids:
+                        self._pasd_bus_device_state_callback(
+                            smartbox_id, stopped_polling=True
+                        )
             case (device_id, "INFO", None):
                 request = PasdBusRequest(
                     device_id, None, None, self.STATIC_INFO_ATTRIBUTES
@@ -832,6 +826,14 @@ class PasdBusComponentManager(PollingComponentManager[PasdBusRequest, PasdBusRes
         :param port_power_states: list of port power statuses (true=On, false=Off).
         """
         self._request_provider.update_port_power_states(port_power_states)
+
+    def get_polled_smartbox_ids(self: PasdBusComponentManager) -> list[int]:
+        """
+        Get the device IDs for the currently polled Smartboxes.
+
+        :return: list of polled smartbox IDs
+        """
+        return self._request_provider.get_smartbox_poll_list()
 
     def cleanup(self: PasdBusComponentManager) -> None:
         """Delete and clean up any remaining processes."""
