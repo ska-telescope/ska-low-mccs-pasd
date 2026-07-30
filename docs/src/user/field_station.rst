@@ -99,6 +99,16 @@ up to the nearest integer, so for a standard deployment of 24 Smartboxes:
 
 Note that a health state of ``UNKNOWN`` is treated as ``FAILED`` for the purpose of aggregation.
 
+This is summarized in the following fault tree analysis diagrams for ``FAILED`` and ``DEGRADED`` health.
+
+.. image:: images/FieldStationFailedHealth.png
+   :width: 1000pt
+
+|
+
+.. image:: images/FieldStationDegradedHealth.png
+   :width: 1000pt
+
 The ``HealthReport`` attribute is a JSON string which provides a summary of the subservient device states.
 Possible values for each device are:
 
