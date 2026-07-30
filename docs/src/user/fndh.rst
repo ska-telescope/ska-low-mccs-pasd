@@ -171,15 +171,23 @@ FNDH health evaluation
 
 The health of the FNDH is determined by three factors:
 
-1. The value of monitoring points in relation to their defined thresholds.
-2. The percentage of `smartbox-configured-ports` with a fault.
-3. The status as reported in the FNDH's SYS_STATUS register.
+1. The value of monitoring points (sensors) in relation to their defined Tango alarm thresholds.
+2. The percentage of configured Smartbox ports with a fault.
+3. The status as reported in the FNDH's SYS_STATUS register (``PasdStatus`` attribute).
+
+The ``healthReport`` attribute can be interrogated to find the cause of the current ``healthState``. For example,
+if ``healthState`` is ``FAILED``, ``healthReport`` will read something like the following:
+
+::
+
+    pasdstatus is in ATTR_ALARM with value ALARM
+    outsidetemperature is in ATTR_ALARM with value 45.1
 
 **Threshold Evaluation**
 
-Each monitoring point has four thresholds: [min_alarm, min_warning, max_warning, max_alarm]. These are set on the attributes and the attributes
+Each monitoring point has four Tango alarm thresholds: [min_alarm, min_warning, max_warning, max_alarm]. These are set on the attributes and the attributes
 respond by moving through ``tango.AttrQuality.WARNING`` and ``tango.AttrQuality.ALARM`` respectively dependent on monitoring point value. The
-``healthState`` then reflects this as ``HealthState.DEGRADED`` -> ``tango.AttrQuality.WARNING`` and ``HealthState.FAILED`` -> ``tango.AttrQuality.ALARM``
+``healthState`` then reflects this as ``tango.AttrQuality.WARNING`` -> ``HealthState.DEGRADED`` and ``tango.AttrQuality.ALARM`` ``HealthState.FAILED``.
 
 We can change the thresholds at run time on the FNDH by using the Tango API:
 
@@ -215,12 +223,12 @@ We can also change the thresholds at deploy time on the FNDH through the helm ch
 
 **Status Register Evaluation**
 
-The following translation of the FNDH's SYS_STATUS register values to health states is applied:
+The following translation of the FNDH's ``SYS_STATUS`` register values to health states is applied:
 
-- 'ALARM' or 'RECOVERY' indicates a health state of 'FAILED'.
-- 'WARNING' indicates a health state of 'DEGRADED'.
-- 'UNINITIALISED' or 'OK' indicates a health state of 'OK'.
-- 'POWERUP' indicates a health state of 'UNKNOWN' (this state should not be used).
+- ``ALARM`` or ``RECOVERY`` indicates a health state of ``FAILED``.
+- ``WARNING`` indicates a health state of ``DEGRADED``.
+- ``UNINITIALISED`` or ``OK`` indicates a health state of ``OK``.
+- ``POWERUP`` indicates a health state of ``UNKNOWN`` (this state should not be used).
   
 **Faulty Smartbox Port Status**
 
