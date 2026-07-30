@@ -93,6 +93,10 @@ are read/write.
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
 | AlarmFlags                           | 10131       | List of sensors in ALARM state                                           |
 +--------------------------------------+-------------+--------------------------------------------------------------------------+
+| NumberOfStuckOnSmartboxPorts         | N/A         | Number of smartbox ports stuck ON (evaluated from port status)           |
++--------------------------------------+-------------+--------------------------------------------------------------------------+
+| NumberOfStuckOffSmartboxPorts        | N/A         | Number of smartbox ports stuck OFF (evaluated from port status)          |
++--------------------------------------+-------------+--------------------------------------------------------------------------+
 
 The FNDH ``PasdStatus`` attribute should be interpreted as follows:
 

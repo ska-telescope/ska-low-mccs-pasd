@@ -73,7 +73,7 @@ The health of the Fieldstation is determined from the health of the FNDH and Sma
 PasdBus and FNCC health are used for monitoring purposes by the engineering teams, and are
 taken into account indirectly. For example, if a Modbus error is preventing communications to
 the FNDH, the FNDH device's attributes will be INVALID causing its own health state to be 
-``UNKNOWN`` which is treated as ``FAILED``.
+``UNKNOWN`` which is treated as ``FAILED`` by Fieldstation.
 
 The Fieldstation's health calculation is done using the following aggregation thresholds:
 
