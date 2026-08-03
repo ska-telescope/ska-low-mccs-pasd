@@ -48,7 +48,13 @@ The FNCC ``PasdStatus`` attribute should be interpreted as follows:
 After an error has occurred, the status register is automatically reset by issuing the 
 :py:func:`~ska_low_mccs_pasd.pasd_bus.pasd_bus_device.MccsPasdBus.ResetFnccStatus` command on the MccsPasdBus.
 The number of resets is kept track of and can be read via the ``ResetCount`` attribute. This attribute can 
-be reset by writing a zero to it.
+be reset by writing a zero to it. It is memorized to the Tango database and so persists across device restarts.
 
-The FNCC's heath model reflects the current value of the status register. A value of 'RESET' translates to DEGRADED health,
-'OK' to OK health, and everything else to FAILED health.
+.. _fncc-health-evaluation:
+
+FNCC health evaluation
+----------------------
+
+The health of the FNCC device is determined by the ``PasdStatus`` attribute. A value of ``RESET``
+translates to ``DEGRADED`` health, ``OK`` to ``OK`` health, and ``FRAME_ERROR``, ``MODBUS_STUCK`` and
+``FRAME_ERROR_MODBUS_STUCK`` to ``FAILED`` health.

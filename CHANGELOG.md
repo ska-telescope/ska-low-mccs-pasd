@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [THORN-609] Improved health reporting docs.
+
 ## 7.1.0
 
 * [THORN-536] Set Smartbox attributes to INVALID when they're switched off.

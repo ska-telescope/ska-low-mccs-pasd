@@ -18,8 +18,9 @@ software for the Power and Signal Distribution (PaSD) of the
 .. toctree::
    :maxdepth: 2
    :caption: Developer guide
+   :titlesonly:
 
-   developer/deploy
+   developer/index
 
 .. toctree::
    :maxdepth: 2
