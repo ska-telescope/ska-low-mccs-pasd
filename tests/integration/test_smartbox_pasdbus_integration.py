@@ -1237,6 +1237,97 @@ class TestSmartBoxPasdBusIntegration:
         assert smartbox_device.FemHeatsinkTemperature1 == 51.00
         assert smartbox_device.FemHeatsinkTemperature2 == 50.00
 
+    def test_smartbox_fault_invalidates_attributes(
+        self: TestSmartBoxPasdBusIntegration,
+        pasd_bus_device: tango.DeviceProxy,
+        fndh_device: tango.DeviceProxy,
+        on_smartbox_device: tango.DeviceProxy,
+        on_smartbox_id: int,
+        smartbox_simulator: SmartboxSimulator,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+        last_smartbox_id: int,
+    ) -> None:
+        """
+        Test that a simulated smartbox fault is surfaced on MccsSmartBox.
+
+        Simulating a fault on a smartbox makes the PaSD bus's Modbus
+        gateway report GATEWAY_NO_RESPONSE. MccsPasdBus
+        responds by marking the affected attributes' quality as
+        INVALID. This test checks that the invalid quality propagates
+        onto MccsSmartBox itself.
+
+        :param pasd_bus_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param fndh_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param on_smartbox_device: fixture that provides a
+            :py:class:`tango.DeviceProxy` to the device under test, in a
+            :py:class:`tango.test_context.DeviceTestContext`.
+        :param on_smartbox_id: the smartbox of interest in this test.
+        :param smartbox_simulator: the smartbox simulator under test.
+        :param change_event_callbacks: group of Tango change event
+            callback with asynchrony support
+        :param last_smartbox_id: ID of the last smartbox polled
+        """
+        smartbox_device = on_smartbox_device
+        smartbox_id = on_smartbox_id
+
+        setup_devices_with_subscriptions(
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
+        )
+        turn_pasd_devices_online(
+            smartbox_device,
+            pasd_bus_device,
+            fndh_device,
+            change_event_callbacks,
+            last_smartbox_id,
+        )
+
+        smartbox_device.subscribe_event(
+            "InputVoltage",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[f"smartbox{smartbox_id}inputvoltage"],
+        )
+        change_event_callbacks[
+            f"smartbox{smartbox_id}inputvoltage"
+        ].assert_against_call(attribute_quality=tango.AttrQuality.ATTR_VALID)
+        assert (
+            smartbox_device.read_attribute("InputVoltage").quality
+            == tango.AttrQuality.ATTR_VALID
+        )
+
+        smartbox_simulator.simulate_fault(True)
+
+        change_event_callbacks[
+            f"smartbox{smartbox_id}inputvoltage"
+        ].assert_against_call(
+            attribute_quality=tango.AttrQuality.ATTR_INVALID,
+            lookahead=15,
+        )
+        assert (
+            smartbox_device.read_attribute("InputVoltage").quality
+            == tango.AttrQuality.ATTR_INVALID
+        )
+
+        smartbox_simulator.simulate_fault(False)
+
+        change_event_callbacks[
+            f"smartbox{smartbox_id}inputvoltage"
+        ].assert_against_call(
+            attribute_quality=tango.AttrQuality.ATTR_VALID,
+            lookahead=15,
+            consume_nonmatches=True,
+        )
+        assert (
+            smartbox_device.read_attribute("InputVoltage").quality
+            == tango.AttrQuality.ATTR_VALID
+        )
+
     def test_set_port_powers(
         self: TestSmartBoxPasdBusIntegration,
         on_smartbox_device: tango.DeviceProxy,
@@ -1772,6 +1863,7 @@ def change_event_callbacks_fixture(
         "smartboxHealthState",
         "fndhstatus",
         "pasdStatus",
+        "smartboxFailedPollCount",
         f"smartbox{last_smartbox_id}AlarmFlags",
         f"smartbox{on_smartbox_id}portpowersensed",
         f"smartbox{on_smartbox_id}inputvoltage",

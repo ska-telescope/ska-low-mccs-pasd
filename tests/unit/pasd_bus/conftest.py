@@ -203,6 +203,7 @@ def mock_pasd_hw_simulators_fixture(
                 "firmware_version",
                 "uptime",
                 "status",
+                "is_faulted",
             ]:
                 side_effect_partial = functools.partial(
                     side_effect, simulator, property_name
@@ -223,6 +224,7 @@ def mock_pasd_hw_simulators_fixture(
                 "firmware_version",
                 "uptime",
                 "status",
+                "is_faulted",
             ]:
                 side_effect_partial = functools.partial(
                     side_effect, simulator, property_name
@@ -271,6 +273,7 @@ def mock_pasd_hw_simulators_fixture(
                 "ports_desired_power_when_offline",
                 "ports_power_sensed",
                 "ports_current_draw",
+                "is_faulted",
             ]:
                 side_effect_partial = functools.partial(
                     side_effect, simulator, property_name

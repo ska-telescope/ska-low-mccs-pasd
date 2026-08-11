@@ -1559,7 +1559,7 @@ def test_fndh_fault_recorded(
     pasd_bus_device.subscribe_event(
         "fndhFailedPollCount",
         tango.EventType.CHANGE_EVENT,
-        change_event_callbacks[f"fndhFailedPollCount"],
+        change_event_callbacks["fndhFailedPollCount"],
     )
     pasd_bus_device.subscribe_event(
         "state",
@@ -1608,7 +1608,7 @@ def test_smartbox_fault_recorded(
     pasd_bus_device.subscribe_event(
         "smartboxFailedPollCount",
         tango.EventType.CHANGE_EVENT,
-        change_event_callbacks[f"smartboxFailedPollCount"],
+        change_event_callbacks["smartboxFailedPollCount"],
     )
     pasd_bus_device.subscribe_event(
         "state",
