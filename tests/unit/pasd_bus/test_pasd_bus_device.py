@@ -58,6 +58,8 @@ def change_event_callbacks_fixture(
         "fndhPortsPowerSensed",
         "fndhPortsPowerControl",
         "fndhOutsideTemperatureThresholds",
+        "fndhFailedPollCount",
+        "smartboxFailedPollCount",
         f"smartbox{smartbox_id}LedPattern",
         f"smartbox{smartbox_id}PortBreakersTripped",
         f"smartbox{smartbox_id}PortsPowerSensed",
@@ -1536,3 +1538,106 @@ def test_only_poll_on_smartboxes(
             f"smartbox{isolated_sb_id}{attribute_name}"
         )
         assert reading.quality == tango.AttrQuality.ATTR_INVALID
+
+
+def test_fndh_fault_recorded(
+    pasd_bus_device: tango.DeviceProxy,
+    fndh_simulator: FndhSimulator,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> None:
+    """
+    Test that a simulated FNDH fault is recorded in the poll failure tracker.
+
+    Simulating a fault on an FNDH results in a Modbus I/O Exception.
+    MccsPasdBus responds by incrementing the failed poll counter.
+
+    :param pasd_bus_device: Fixture that provides a pasdBus.
+    :param fndh_simulator: The FNDH simulator under test.
+    :param change_event_callbacks: A dictionary of mock change event callbacks
+        with support for asynchrony.
+    """
+    pasd_bus_device.subscribe_event(
+        "fndhFailedPollCount",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks[f"fndhFailedPollCount"],
+    )
+    pasd_bus_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
+    pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
+    change_event_callbacks["fndhFailedPollCount"].assert_change_event(0)
+
+    fndh_simulator.simulate_fault(True)
+
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+
+    change_event_callbacks["fndhFailedPollCount"].assert_change_event(
+        Anything, lookahead=15
+    )
+    failed_polls = pasd_bus_device.read_attribute("fndhFailedPollCount").value
+    assert failed_polls > 0
+
+    fndh_simulator.simulate_fault(False)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
+
+
+def test_smartbox_fault_recorded(
+    pasd_bus_device: tango.DeviceProxy,
+    smartbox_simulator: SmartboxSimulator,
+    smartbox_id: int,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> None:
+    """
+    Test that a simulated smartbox fault is recorded in the poll failure tracker.
+
+    Simulating a fault on an smartbox results in a GATEWAY_NO_RESPONSE.
+    MccsPasdBus responds by incrementing the failed poll counter.
+
+    :param pasd_bus_device: Fixture that provides a pasdBus.
+    :param smartbox_simulator: The Smartbox simulator under test.
+    :param smartbox_id: The id of the Smartbox under test.
+    :param change_event_callbacks: A dictionary of mock change event callbacks
+        with support for asynchrony.
+    """
+    pasd_bus_device.subscribe_event(
+        "smartboxFailedPollCount",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks[f"smartboxFailedPollCount"],
+    )
+    pasd_bus_device.subscribe_event(
+        "state",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["state"],
+    )
+    change_event_callbacks["state"].assert_change_event(tango.DevState.DISABLE)
+    pasd_bus_device.adminMode = AdminMode.ONLINE  # type: ignore[assignment]
+
+    change_event_callbacks["state"].assert_change_event(tango.DevState.UNKNOWN)
+    change_event_callbacks["state"].assert_change_event(tango.DevState.ON)
+    change_event_callbacks["smartboxFailedPollCount"].assert_change_event(
+        [0] * PasdData.MAX_NUMBER_OF_SMARTBOXES_PER_STATION
+    )
+
+    smartbox_simulator.simulate_fault(True)
+
+    # PasdBus state doesn't change for a GATEWAY_NO_RESPONSE as this
+    # means that communications is established to the gateway
+    change_event_callbacks["state"].assert_not_called()
+
+    change_event_callbacks["smartboxFailedPollCount"].assert_change_event(
+        Anything, lookahead=15
+    )
+    failed_polls = pasd_bus_device.read_attribute("smartboxFailedPollCount").value
+    faulted_smartbox_index = smartbox_id - 1
+    assert failed_polls[faulted_smartbox_index] > 0
+    assert all(
+        count == 0
+        for i, count in enumerate(failed_polls)
+        if i != faulted_smartbox_index
+    )
