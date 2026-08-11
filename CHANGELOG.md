@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [THORN-636] Added tests for unresponsive h/w.
 * [THORN-609] Improved health reporting docs.
 
 ## 7.1.0
