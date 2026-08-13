@@ -26,7 +26,7 @@ dependencies = [
     "ska-low-pasd-driver>=1.3.0,<2.0.0",
 ]
 name = "ska-low-mccs-pasd"
-version = "7.1.0"
+version = "7.1.1"
 description = "The Monitoring, Control and Calibration Subsystem (MCCS) of the SKA Low telescope"
 license = "BSD-3-Clause"
 authors = [{ name = "MCCS team" }]
