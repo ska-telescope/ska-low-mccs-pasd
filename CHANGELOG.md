@@ -1,6 +1,6 @@
 # Version History
 
-## Unreleased
+## 7.1.1
 
 * [THORN-697] Added initial Greptile config.
 * [THORN-636] Added tests for unresponsive h/w.
