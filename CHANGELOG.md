@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [THORN-697] Added initial Greptile config.
 * [THORN-636] Added tests for unresponsive h/w.
 * [THORN-609] Improved health reporting docs.
 
