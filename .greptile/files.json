@@ -1,0 +1,12 @@
+{
+    "files": [
+        {
+            "path": "RELEASE.md",
+            "description": "Checklist of files to be updated for a new release"
+        },
+        {
+            "path": "pyproject.toml",
+            "description": "Version source of truth"
+        }
+    ]
+}
