@@ -10,9 +10,10 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
-from tango import Database
+from tango import Database, DevFailed
 
 from .pasd_controllers_configuration import ControllerDict
 
@@ -79,7 +80,27 @@ class PasdDatabase:
     """Wrapper around the tango database for testing purposes."""
 
     def __init__(self) -> None:
-        self.database = Database()
+        self._database: Database | None = None
+
+    def _get_database(self: PasdDatabase) -> Database | None:
+        """
+        Lazily connect to the tango database, retrying on each call if needed.
+
+        The Tango database may be unreachable (e.g. not yet started, or this
+        device is being run standalone for documentation generation), in
+        which case we fall back to default threshold values rather than
+        taking down the whole device.
+
+        :return: the connected database, or None if it could not be reached.
+        """
+        if self._database is None:
+            try:
+                self._database = Database()
+            except DevFailed as db_error:
+                logging.getLogger(__name__).warning(
+                    "Could not connect to the Tango database: %s", db_error
+                )
+        return self._database
 
     def put_value(self: PasdDatabase, dev_name: str, all_thresholds: dict) -> None:
         """
@@ -88,9 +109,17 @@ class PasdDatabase:
         :param dev_name: name of the device.
         :param all_thresholds: dict of all the thresholds
         """
-        self.database.put_device_attribute_property(
-            dev_name, {"cache_threshold": all_thresholds}
-        )
+        database = self._get_database()
+        if database is None:
+            return
+        try:
+            database.put_device_attribute_property(
+                dev_name, {"cache_threshold": all_thresholds}
+            )
+        except DevFailed as db_error:
+            logging.getLogger(__name__).warning(
+                "Could not persist thresholds to the Tango database: %s", db_error
+            )
 
     def get_value(self: PasdDatabase, dev_name: str, attr_name: str) -> Any:
         """Get the value from the database.
@@ -98,12 +127,21 @@ class PasdDatabase:
         :param dev_name: Name of the device.
         :param attr_name: Name of the attribute.
 
-        :return: The value from the tango database.
+        :return: The value from the tango database, or None if unavailable.
         """
-        tmp = self.database.get_device_attribute_property(
-            dev_name, {"cache_threshold": attr_name}
-        )
-        return tmp["cache_threshold"]
+        database = self._get_database()
+        if database is None:
+            return None
+        try:
+            tmp = database.get_device_attribute_property(
+                dev_name, {"cache_threshold": attr_name}
+            )
+            return tmp["cache_threshold"]
+        except DevFailed as db_error:
+            logging.getLogger(__name__).warning(
+                "Could not read thresholds from the Tango database: %s", db_error
+            )
+            return None
 
     def clear_thresholds(
         self: PasdDatabase, dev_name: str, all_thresholds: dict
@@ -113,9 +151,17 @@ class PasdDatabase:
         :param dev_name: Name of the device.
         :param all_thresholds: dict of all the thresholds
         """
+        database = self._get_database()
+        if database is None:
+            return
         empty_dict: dict = {}
         for name in all_thresholds.keys():
             empty_dict[name] = []
-        self.database.put_device_attribute_property(
-            dev_name, {"cache_threshold": empty_dict}
-        )
+        try:
+            database.put_device_attribute_property(
+                dev_name, {"cache_threshold": empty_dict}
+            )
+        except DevFailed as db_error:
+            logging.getLogger(__name__).warning(
+                "Could not clear thresholds in the Tango database: %s", db_error
+            )

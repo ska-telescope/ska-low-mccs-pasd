@@ -958,7 +958,13 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
         :param health: the new health value
         """
-        if self._health_state != health:
+        try:
+            unchanged = self._health_state == health
+        except AttributeError:
+            # The HealthModel reports its initial value synchronously during
+            # construction, before this device has ever emitted a health state.
+            unchanged = False
+        if not unchanged:
             self._health_state = health
             self.push_change_event("healthState", health)
             self.push_archive_event("healthState", health)

@@ -161,7 +161,8 @@ class MccsSmartBox(MccsBaseDevice):
         This is overridden here to change the Tango serialisation model.
         """
         self._stopping = False
-        self._readable_name = re.findall("sb[0-9]+", self.get_name())[0]
+        sb_matches = re.findall("sb[0-9]+", self.get_name())
+        self._readable_name = sb_matches[0] if sb_matches else self.get_name()
         super().init_device()
         self._setup_smartbox_attributes()
 
@@ -828,7 +829,13 @@ class MccsSmartBox(MccsBaseDevice):
 
         :param health: the new health value
         """
-        if self._health_state != health:
+        try:
+            unchanged = self._health_state == health
+        except AttributeError:
+            # The HealthModel reports its initial value synchronously during
+            # construction, before this device has ever emitted a health state.
+            unchanged = False
+        if not unchanged:
             self._health_state = health
             self.push_change_event("healthState", health)
             self.push_archive_event("healthState", health)
