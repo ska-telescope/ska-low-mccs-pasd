@@ -34,6 +34,12 @@ software for the Power and Signal Distribution (PaSD) of the
 
    schemas/index
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Device Interfaces
+
+   Device Interfaces<device-interfaces/index>
+
 Indices and tables
 ------------------
 * :ref:`genindex`

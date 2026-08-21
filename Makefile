@@ -157,6 +157,13 @@ helm-pre-build:
 include .make-uv/make/docs-uv.mk
 
 DOCS_SPHINXOPTS= -W --keep-going
+DOCGEN_OUTPUT_DIR=docs/src/device-interfaces
+
+ifeq (,$(filter clean,$(DOCS_TARGET_ARGS)))
+docs-pre-build:
+	uv sync --frozen --group docs
+	uv run tangodocgen --timeout 15 --auto -o $(DOCGEN_OUTPUT_DIR)
+endif
 
 .PHONY: python-post-lint k8s-do-test docs-pre-build
 

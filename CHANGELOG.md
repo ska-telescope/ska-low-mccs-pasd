@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* [THORN-430] Added tangodocgen to the doc pipeline
 * [THORN-609] Improved health reporting docs.
 
 ## 7.1.0

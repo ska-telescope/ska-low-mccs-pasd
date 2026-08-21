@@ -1199,3 +1199,19 @@ class MccsSmartBox(MccsBaseDevice):
         """
         self._health_model.use_new_health_rules = use_new_rules
         self._health_model.update_health()
+
+
+def main(*args: str, **kwargs: str) -> int:  # pragma: no cover
+    """
+    Entry point for module.
+
+    :param args: positional arguments
+    :param kwargs: named arguments
+
+    :return: exit code
+    """
+    return MccsSmartBox.run_server(args=args or None, **kwargs)
+
+
+if __name__ == "__main__":
+    main()

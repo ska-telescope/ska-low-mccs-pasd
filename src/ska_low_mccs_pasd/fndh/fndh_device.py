@@ -1233,3 +1233,19 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         if self._health_model is not None:
             return self._health_model.health_report
         return self._health_report
+
+
+def main(*args: str, **kwargs: str) -> int:  # pragma: no cover
+    """
+    Entry point for module.
+
+    :param args: positional arguments
+    :param kwargs: named arguments
+
+    :return: exit code
+    """
+    return MccsFNDH.run_server(args=args or None, **kwargs)
+
+
+if __name__ == "__main__":
+    main()

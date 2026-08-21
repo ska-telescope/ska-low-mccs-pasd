@@ -15,6 +15,13 @@ build:
     - uv venv "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
     - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs
+    pre_build:
+    - make docs-pre-build
+
+submodules:
+  include:
+    - .make
+  recursive: true
 
 sphinx:
   configuration: docs/src/conf.py

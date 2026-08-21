@@ -61,3 +61,6 @@ tls.key
 
 # sphinx
 docs/src/_build
+
+# DIFDoc
+docs/src/device-interfaces/*-device.rst

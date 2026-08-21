@@ -415,3 +415,19 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
                 f"""The attribute {attr_name} pushed from MccsPasdBus
                 device does not exist in MccsFNCC"""
             )
+
+
+def main(*args: str, **kwargs: str) -> int:  # pragma: no cover
+    """
+    Entry point for module.
+
+    :param args: positional arguments
+    :param kwargs: named arguments
+
+    :return: exit code
+    """
+    return MccsFNCC.run_server(args=args or None, **kwargs)
+
+
+if __name__ == "__main__":
+    main()
