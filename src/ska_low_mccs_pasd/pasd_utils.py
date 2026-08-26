@@ -13,11 +13,28 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import tango
 from tango import Database, DevFailed
 
 from .pasd_controllers_configuration import ControllerDict
 
 __all__ = ["PasdThresholds"]
+
+
+def _is_running_without_database() -> bool:
+    """
+    Return true if a real tango db is not available.
+
+    This stops the device from trying to connect to a DB if it is run
+    in no-db mode (for auto documentation purposes)
+
+    :returns: True if server is in file db mode
+    """
+    try:
+        util = tango.Util.instance(False)
+    except tango.DevFailed:
+        return False
+    return bool(util._FileDb)
 
 
 def join_health_reports(messages: list[str]) -> str:
@@ -80,27 +97,17 @@ class PasdDatabase:
     """Wrapper around the tango database for testing purposes."""
 
     def __init__(self) -> None:
-        self._database: Database | None = None
-
-    def _get_database(self: PasdDatabase) -> Database | None:
-        """
-        Lazily connect to the tango database, retrying on each call if needed.
-
-        The Tango database may be unreachable (e.g. not yet started, or this
-        device is being run standalone for documentation generation), in
-        which case we fall back to default threshold values rather than
-        taking down the whole device.
-
-        :return: the connected database, or None if it could not be reached.
-        """
-        if self._database is None:
-            try:
-                self._database = Database()
-            except DevFailed as db_error:
-                logging.getLogger(__name__).warning(
-                    "Could not connect to the Tango database: %s", db_error
-                )
-        return self._database
+        self.logger = logging.getLogger(__name__)
+        try:
+            self._database: Database | None = Database()
+        except DevFailed:
+            if not _is_running_without_database():
+                raise
+            self.logger.info(
+                "Tango device is running in fileDB mode with no accessible "
+                "database; threshold caching will be skipped."
+            )
+            self._database = None
 
     def put_value(self: PasdDatabase, dev_name: str, all_thresholds: dict) -> None:
         """
@@ -109,15 +116,18 @@ class PasdDatabase:
         :param dev_name: name of the device.
         :param all_thresholds: dict of all the thresholds
         """
-        database = self._get_database()
-        if database is None:
+        if self._database is None:
+            self.logger.info(
+                "Tango device is running in fileDB mode, skipping put_value "
+                f"{dev_name}"
+            )
             return
         try:
-            database.put_device_attribute_property(
+            self._database.put_device_attribute_property(
                 dev_name, {"cache_threshold": all_thresholds}
             )
         except DevFailed as db_error:
-            logging.getLogger(__name__).warning(
+            self.logger.warning(
                 "Could not persist thresholds to the Tango database: %s", db_error
             )
 
@@ -129,16 +139,19 @@ class PasdDatabase:
 
         :return: The value from the tango database, or None if unavailable.
         """
-        database = self._get_database()
-        if database is None:
+        if self._database is None:
+            self.logger.info(
+                "Tango device is running in fileDB mode, skipping get_value for "
+                f"{dev_name}; {attr_name}"
+            )
             return None
         try:
-            tmp = database.get_device_attribute_property(
+            tmp = self._database.get_device_attribute_property(
                 dev_name, {"cache_threshold": attr_name}
             )
             return tmp["cache_threshold"]
         except DevFailed as db_error:
-            logging.getLogger(__name__).warning(
+            self.logger.warning(
                 "Could not read thresholds from the Tango database: %s", db_error
             )
             return None
@@ -151,17 +164,20 @@ class PasdDatabase:
         :param dev_name: Name of the device.
         :param all_thresholds: dict of all the thresholds
         """
-        database = self._get_database()
-        if database is None:
+        if self._database is None:
+            self.logger.info(
+                "Tango device is running in fileDB mode, skipping clear_thresholds for "
+                f"{dev_name}"
+            )
             return
         empty_dict: dict = {}
-        for name in all_thresholds.keys():
+        for name in all_thresholds:
             empty_dict[name] = []
         try:
-            database.put_device_attribute_property(
+            self._database.put_device_attribute_property(
                 dev_name, {"cache_threshold": empty_dict}
             )
         except DevFailed as db_error:
-            logging.getLogger(__name__).warning(
+            self.logger.warning(
                 "Could not clear thresholds in the Tango database: %s", db_error
             )
