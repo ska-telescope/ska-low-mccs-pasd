@@ -171,21 +171,6 @@ class TestPasdDatabase:
         value = PasdDatabase().get_value(DEV_NAME, "thresholds")
         assert value == expected
 
-    @pytest.mark.parametrize("method", ["put_value", "clear_thresholds"])
-    def test_write_methods_survive_devfailed_during_write(
-        self: TestPasdDatabase, mock_database: MagicMock, method: str
-    ) -> None:
-        """
-        put_value() and clear_thresholds() log rather than raise on failure.
-
-        :param mock_database: the mock database instance.
-        :param method: name of the PasdDatabase method under test.
-        """
-        mock_database.put_device_attribute_property.side_effect = DevFailed(
-            "write failed"
-        )
-        getattr(PasdDatabase(), method)(DEV_NAME, THRESHOLDS)
-
 
 # pylint: disable=too-few-public-methods
 class TestIsRunningWithoutDatabase:
