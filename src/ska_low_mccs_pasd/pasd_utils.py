@@ -116,12 +116,13 @@ class PasdDatabase:
         :param dev_name: name of the device.
         :param all_thresholds: dict of all the thresholds
         """
-        if self._database is None:
+        if self._database is None and _is_running_without_database():
             self.logger.info(
                 "Tango device is running in fileDB mode, skipping put_value "
                 f"{dev_name}"
             )
             return
+        assert self._database is not None
         try:
             self._database.put_device_attribute_property(
                 dev_name, {"cache_threshold": all_thresholds}
@@ -139,12 +140,13 @@ class PasdDatabase:
 
         :return: The value from the tango database, or None if unavailable.
         """
-        if self._database is None:
+        if self._database is None and _is_running_without_database():
             self.logger.info(
                 "Tango device is running in fileDB mode, skipping get_value for "
                 f"{dev_name}; {attr_name}"
             )
             return None
+        assert self._database is not None
         try:
             tmp = self._database.get_device_attribute_property(
                 dev_name, {"cache_threshold": attr_name}
@@ -164,12 +166,13 @@ class PasdDatabase:
         :param dev_name: Name of the device.
         :param all_thresholds: dict of all the thresholds
         """
-        if self._database is None:
+        if self._database is None and _is_running_without_database():
             self.logger.info(
                 "Tango device is running in fileDB mode, skipping clear_thresholds for "
                 f"{dev_name}"
             )
             return
+        assert self._database is not None
         empty_dict: dict = {}
         for name in all_thresholds:
             empty_dict[name] = []
