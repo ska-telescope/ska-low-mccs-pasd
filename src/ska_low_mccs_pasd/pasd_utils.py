@@ -115,6 +115,8 @@ class PasdDatabase:
 
         :param dev_name: name of the device.
         :param all_thresholds: dict of all the thresholds
+
+        :raises DevFailed: if the database is reachable but the write fails.
         """
         if self._database is None and _is_running_without_database():
             self.logger.info(
@@ -131,6 +133,7 @@ class PasdDatabase:
             self.logger.warning(
                 "Could not persist thresholds to the Tango database: %s", db_error
             )
+            raise
 
     def get_value(self: PasdDatabase, dev_name: str, attr_name: str) -> Any:
         """Get the value from the database.
@@ -138,7 +141,10 @@ class PasdDatabase:
         :param dev_name: Name of the device.
         :param attr_name: Name of the attribute.
 
-        :return: The value from the tango database, or None if unavailable.
+        :return: The value from the tango database, or None if in file-db
+            mode with no database.
+
+        :raises DevFailed: if the database is reachable but the read fails.
         """
         if self._database is None and _is_running_without_database():
             self.logger.info(
@@ -156,7 +162,7 @@ class PasdDatabase:
             self.logger.warning(
                 "Could not read thresholds from the Tango database: %s", db_error
             )
-            return None
+            raise
 
     def clear_thresholds(
         self: PasdDatabase, dev_name: str, all_thresholds: dict
@@ -165,6 +171,8 @@ class PasdDatabase:
 
         :param dev_name: Name of the device.
         :param all_thresholds: dict of all the thresholds
+
+        :raises DevFailed: if the database is reachable but the write fails.
         """
         if self._database is None and _is_running_without_database():
             self.logger.info(
@@ -184,3 +192,4 @@ class PasdDatabase:
             self.logger.warning(
                 "Could not clear thresholds in the Tango database: %s", db_error
             )
+            raise

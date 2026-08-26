@@ -145,10 +145,10 @@ class TestPasdDatabase:
         )
 
     @pytest.mark.parametrize(
-        ("side_effect", "return_value", "expected"),
+        ("side_effect", "return_value", "should_raise"),
         [
-            pytest.param(None, {"cache_threshold": [1, 2, 3]}, [1, 2, 3], id="ok"),
-            pytest.param(DevFailed("read failed"), None, None, id="devfailed"),
+            pytest.param(None, {"cache_threshold": [1, 2, 3]}, False, id="ok"),
+            pytest.param(DevFailed("read failed"), None, True, id="devfailed"),
         ],
     )
     def test_get_value_reads_from_database(
@@ -156,20 +156,39 @@ class TestPasdDatabase:
         mock_database: MagicMock,
         side_effect: DevFailed | None,
         return_value: dict | None,
-        expected: list | None,
+        should_raise: bool,
     ) -> None:
         """
-        get_value() reads through to the database, returning None on failure.
+        get_value() reads through to the database, raising on failure.
 
         :param mock_database: the mock database instance.
         :param side_effect: side effect for get_device_attribute_property.
         :param return_value: return value for get_device_attribute_property.
-        :param expected: the value get_value() is expected to return.
+        :param should_raise: whether get_value() is expected to raise.
         """
         mock_database.get_device_attribute_property.side_effect = side_effect
         mock_database.get_device_attribute_property.return_value = return_value
-        value = PasdDatabase().get_value(DEV_NAME, "thresholds")
-        assert value == expected
+        if should_raise:
+            with pytest.raises(DevFailed):
+                PasdDatabase().get_value(DEV_NAME, "thresholds")
+        else:
+            assert PasdDatabase().get_value(DEV_NAME, "thresholds") == [1, 2, 3]
+
+    @pytest.mark.parametrize("method", ["put_value", "clear_thresholds"])
+    def test_write_methods_raise_devfailed_on_write_failure(
+        self: TestPasdDatabase, mock_database: MagicMock, method: str
+    ) -> None:
+        """
+        put_value() and clear_thresholds() propagate a failed write.
+
+        :param mock_database: the mock database instance.
+        :param method: name of the PasdDatabase method under test.
+        """
+        mock_database.put_device_attribute_property.side_effect = DevFailed(
+            "write failed"
+        )
+        with pytest.raises(DevFailed):
+            getattr(PasdDatabase(), method)(DEV_NAME, THRESHOLDS)
 
 
 # pylint: disable=too-few-public-methods
