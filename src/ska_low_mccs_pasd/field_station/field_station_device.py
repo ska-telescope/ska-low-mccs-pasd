@@ -569,3 +569,19 @@ class MccsFieldStation(MccsBaseDevice):
         if any(subdevice in thresholds for subdevice in ["fndh", "smartboxes"]):
             self.logger.info("Reconfiguring subdevice health thresholds.")
             self._redefine_health_rollup()
+
+
+def main(*args: str, **kwargs: str) -> int:  # pragma: no cover
+    """
+    Entry point for module.
+
+    :param args: positional arguments
+    :param kwargs: named arguments
+
+    :return: exit code
+    """
+    return MccsFieldStation.run_server(args=args or None, **kwargs)
+
+
+if __name__ == "__main__":
+    main()
