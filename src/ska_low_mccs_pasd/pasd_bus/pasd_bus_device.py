@@ -1276,3 +1276,19 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
             if self.EnablePyModbusLogging
             else level_map[LoggingLevel.OFF]
         )
+
+
+def main(*args: str, **kwargs: str) -> int:  # pragma: no cover
+    """
+    Entry point for module.
+
+    :param args: positional arguments
+    :param kwargs: named arguments
+
+    :return: exit code
+    """
+    return MccsPasdBus.run_server(args=args or None, **kwargs)
+
+
+if __name__ == "__main__":
+    main()

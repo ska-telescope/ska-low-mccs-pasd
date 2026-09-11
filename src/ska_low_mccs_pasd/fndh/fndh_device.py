@@ -958,7 +958,13 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
         :param health: the new health value
         """
-        if self._health_state != health:
+        try:
+            unchanged = self._health_state == health
+        except AttributeError:
+            # The HealthModel reports its initial value synchronously during
+            # construction, before this device has ever emitted a health state.
+            unchanged = False
+        if not unchanged:
             self._health_state = health
             self.push_change_event("healthState", health)
             self.push_archive_event("healthState", health)
@@ -1233,3 +1239,19 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         if self._health_model is not None:
             return self._health_model.health_report
         return self._health_report
+
+
+def main(*args: str, **kwargs: str) -> int:  # pragma: no cover
+    """
+    Entry point for module.
+
+    :param args: positional arguments
+    :param kwargs: named arguments
+
+    :return: exit code
+    """
+    return MccsFNDH.run_server(args=args or None, **kwargs)
+
+
+if __name__ == "__main__":
+    main()
