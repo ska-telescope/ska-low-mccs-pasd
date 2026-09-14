@@ -38,7 +38,7 @@ software for the Power and Signal Distribution (PaSD) of the
    :maxdepth: 1
    :caption: Device Interfaces
 
-   Device Interfaces<device-interfaces/index>
+   device-interfaces/index
 
 Indices and tables
 ------------------
