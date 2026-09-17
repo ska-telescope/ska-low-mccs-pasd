@@ -71,7 +71,6 @@ class _FndhProxy(DeviceComponentManager):
         logger: logging.Logger,
         communication_state_callback: Callable[[CommunicationStatus], None],
         component_state_callback: Callable[..., None],
-        field_conditions_changed_callback: Callable,
         event_serialiser: Optional[EventSerialiser] = None,
     ) -> None:
         super().__init__(
@@ -81,13 +80,6 @@ class _FndhProxy(DeviceComponentManager):
             component_state_callback,
             event_serialiser=event_serialiser,
         )
-        self._field_conditions_changed_callback = field_conditions_changed_callback
-
-    def get_change_event_callbacks(self) -> dict[str, Callable]:
-        return {
-            **super().get_change_event_callbacks(),
-            "OutsideTemperature": self._field_conditions_changed_callback,
-        }
 
 
 # pylint: disable=too-many-instance-attributes, abstract-method
@@ -134,7 +126,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
         self._event_serialiser = event_serialiser
         self._communication_state_callback: Callable[..., None]
         self._component_state_callback: Callable[..., None]
-        self.outsideTemperature: Optional[float] = None
         self._power_state: Optional[PowerState] = None
         self._power_state_lock = threading.RLock()
 
@@ -158,7 +149,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
             logger,
             functools.partial(self._device_communication_state_changed, fndh_name),
             functools.partial(self._component_state_callback, device_name=fndh_name),
-            self._on_field_conditions_change,
             event_serialiser=self._event_serialiser,
         )
         self._smartbox_power_state = {}
@@ -196,23 +186,6 @@ class FieldStationComponentManager(TaskExecutorComponentManager):
     def stop_communicating(self: FieldStationComponentManager) -> None:
         """Break off communication with the PasdData."""
         self._communication_manager.stop_communicating()
-
-    def _on_field_conditions_change(
-        self: FieldStationComponentManager,
-        event_name: str,
-        event_value: Any,
-        event_quality: tango.AttrQuality,
-    ) -> None:
-        match event_name.lower():
-            case "outsidetemperature":
-                if event_quality == tango.AttrQuality.ATTR_VALID:
-                    assert isinstance(event_value, float)
-                    self.outsideTemperature = event_value
-                    self._component_state_callback(
-                        outsidetemperature=self.outsideTemperature
-                    )
-            case _:
-                self.logger.error(f"Attribute name {event_name} Unknown")
 
     def _on_antenna_powers_change(
         self: FieldStationComponentManager,

@@ -98,7 +98,6 @@ class MccsFieldStation(MccsBaseDevice):
         self._health_report = ""
         self._health_rollup = self._setup_health_rollup()
         self.set_change_event("antennaPowerStates", True, self.VerifyEvents)
-        self.set_change_event("outsideTemperature", True, self.VerifyEvents)
         self.init_completed()
 
         message = (
@@ -263,9 +262,6 @@ class MccsFieldStation(MccsBaseDevice):
             if device_family == "Smartbox" and power is not None:
                 self.component_manager.smartbox_state_change(device_name, power)
             return
-
-        if "outsidetemperature" in kwargs:
-            self.push_change_event("outsideTemperature", kwargs["outsidetemperature"])
 
         if "antenna_powers" in kwargs:
             self._antenna_powers |= json.loads(kwargs["antenna_powers"])
@@ -482,21 +478,6 @@ class MccsFieldStation(MccsBaseDevice):
         :return: the power of the logical antennas.
         """
         return json.dumps(self._antenna_powers)
-
-    @attribute(
-        dtype="float", label="OutsideTemperature", rel_change=1, archive_rel_change=1
-    )
-    def outsideTemperature(self: MccsFieldStation) -> float:
-        """
-        Return the OutsideTemperature.
-
-        :return: the OutsideTemperature.
-        :raises ValueError: if outside temperature not read yet.
-        """
-        if self.component_manager.outsideTemperature is None:
-            self.logger.warning("Outside temperature not read yet")
-            raise ValueError("Outside temperature not read yet")
-        return self.component_manager.outsideTemperature
 
     @attribute(dtype="DevString")
     def healthReport(self: MccsFieldStation) -> str:

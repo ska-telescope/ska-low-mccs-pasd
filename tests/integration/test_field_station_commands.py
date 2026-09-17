@@ -269,7 +269,6 @@ class TestFieldStationIntegration:
             chosen_smartbox_port - 1
         ]
 
-        # Check both fndh and FieldStation agree value of outsideTemperature
         default_simulator_outside_temperature = (
             PasdConversionUtility.scale_signed_16bit(
                 [FndhSimulator.DEFAULT_OUTSIDE_TEMPERATURE]
@@ -283,22 +282,9 @@ class TestFieldStationIntegration:
         change_event_callbacks["fndh_outside_temperature"].assert_change_event(
             default_simulator_outside_temperature
         )
-        field_station_device.subscribe_event(
-            "outsideTemperature",
-            tango.EventType.CHANGE_EVENT,
-            change_event_callbacks["field_station_outside_temperature"],
-        )
-        change_event_callbacks["field_station_outside_temperature"].assert_change_event(
-            default_simulator_outside_temperature
-        )
-        assert fndh_device.outsideTemperature == default_simulator_outside_temperature
-        assert (
-            field_station_device.outsideTemperature
-            == default_simulator_outside_temperature
-        )
 
         # Check that when we mock a change in the register value
-        # Both fndh and FieldStation get the updated value.
+        # fndh gets the updated value.
         mocked_outside_temperature_register: int = 2345
         scaled_outside_temperature = PasdConversionUtility.scale_signed_16bit(
             [mocked_outside_temperature_register]
@@ -307,9 +293,6 @@ class TestFieldStationIntegration:
         fndh_simulator.outside_temperature = mocked_outside_temperature_register
 
         change_event_callbacks["fndh_outside_temperature"].assert_change_event(
-            scaled_outside_temperature, lookahead=2
-        )
-        change_event_callbacks["field_station_outside_temperature"].assert_change_event(
             scaled_outside_temperature, lookahead=2
         )
 

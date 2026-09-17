@@ -34,9 +34,6 @@ configuration:
       antennaPowerStates:
         code_push_event: true
         archive_period: 0
-      outsideTemperature:
-        code_push_event: true
-        archive_period: 0
       State:
         code_push_event: true
         archive_period: 0

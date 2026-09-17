@@ -59,11 +59,9 @@ def mock_smartboxes_fixture() -> unittest.mock.Mock:
 
 
 @pytest.fixture(name="mock_fndh")
-def mock_fndh_fixture(mocked_outside_temperature: float) -> unittest.mock.Mock:
+def mock_fndh_fixture() -> unittest.mock.Mock:
     """
     Fixture that provides a mock MccsFndh device.
-
-    :param mocked_outside_temperature: the mocked outside temperature.
 
     :return: a mock MccsFndh device.
     """
@@ -72,7 +70,6 @@ def mock_fndh_fixture(mocked_outside_temperature: float) -> unittest.mock.Mock:
     builder.add_result_command("PowerOnPort", ResultCode.OK)
     builder.add_result_command("PowerOffPort", ResultCode.OK)
     builder.add_result_command("SetPortPowers", ResultCode.QUEUED)
-    builder.add_attribute("OutsideTemperature", mocked_outside_temperature)
     builder.add_result_command("SetFndhPortPowers", ResultCode.OK)
     builder.add_result_command("Standby", ResultCode.OK)
     builder.add_result_command("On", ResultCode.OK)
@@ -134,45 +131,6 @@ class TestFieldStationComponentManager:
             1,
             mock_callbacks["communication_state"],
             mock_callbacks["component_state"],
-        )
-
-    def test_outside_temperature(
-        self: TestFieldStationComponentManager,
-        field_station_component_manager: FieldStationComponentManager,
-        mock_callbacks: MockCallableGroup,
-        mocked_outside_temperature: float,
-    ) -> None:
-        """
-        Test reading the outsideTemperature from the FieldStation.
-
-        :param field_station_component_manager: A FieldStation component manager
-            with communication established.
-        :param mock_callbacks: mock callables.
-        :param mocked_outside_temperature: the mocked value for outsideTemperature.
-        """
-        # Before communication has been started the outsideTemperature should
-        # report None
-        assert field_station_component_manager.outsideTemperature is None
-
-        field_station_component_manager.start_communicating()
-
-        mock_callbacks["communication_state"].assert_call(
-            CommunicationStatus.NOT_ESTABLISHED
-        )
-        mock_callbacks["communication_state"].assert_call(
-            CommunicationStatus.ESTABLISHED
-        )
-        assert (
-            field_station_component_manager.communication_state
-            == CommunicationStatus.ESTABLISHED
-        )
-        # Lookahead needs to take into account smartbox callbacks
-        mock_callbacks["component_state"].assert_call(
-            outsidetemperature=mocked_outside_temperature, lookahead=51
-        )
-        assert (
-            field_station_component_manager.outsideTemperature
-            == mocked_outside_temperature
         )
 
     def test_communication(

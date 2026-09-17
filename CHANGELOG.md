@@ -5,6 +5,7 @@
 * [THORN-636] Added tests for unresponsive h/w.
 * [THORN-430] Added tangodocgen to the doc pipeline
 * [THORN-609] Improved health reporting docs.
+* [THORN-687] Remove unused OutsideTemperature attribute from FieldStation.
 
 ## 7.1.0
 

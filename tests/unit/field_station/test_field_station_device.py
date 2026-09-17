@@ -124,36 +124,6 @@ def field_station_device_fixture(
         yield context.get_field_station_device()
 
 
-def test_outside_temperature(
-    field_station_device: tango.DeviceProxy,
-    mock_component_manager: unittest.mock.Mock,
-    mocked_outside_temperature: float,
-) -> None:
-    """
-    Test reading the outsideTemperature from the FieldStation.
-
-    :param field_station_device: fixture that provides a
-        :py:class:`tango.DeviceProxy` to the device under test, in a
-        :py:class:`tango.test_context.DeviceTestContext`.
-    :param mock_component_manager: the mock component manager being
-        used by the patched field station bus device.
-    :param mocked_outside_temperature: the mocked outsideTemperature.
-    """
-    # Before a value is set it will be None.
-    mock_component_manager.outsideTemperature = None
-    with pytest.raises(tango.DevFailed):
-        field_station_device.outsideTemperature  # pylint: disable=pointless-statement
-
-    # Check wrong type.
-    mock_component_manager.outsideTemperature = "36.5"
-    with pytest.raises(tango.DevFailed):
-        field_station_device.outsideTemperature  # pylint: disable=pointless-statement
-
-    # check happy case with a
-    mock_component_manager.outsideTemperature = mocked_outside_temperature
-    assert field_station_device.outsideTemperature == mocked_outside_temperature
-
-
 @pytest.mark.parametrize(
     (
         "device_command",
