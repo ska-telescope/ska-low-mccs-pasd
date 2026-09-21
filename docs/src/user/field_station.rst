@@ -13,10 +13,8 @@ from a single place, and captures an overall health state of the field station.
 
 The following attributes are provided by the Fieldstation device:
 
-1. `OutsideTemperature` - the outside temperature in degrees Celsius, as reported by the FNDH
-   (thermistor mounted on the floor of the FNDH EP Enclosure)
-2. `HealthState` - the overall health state of the field station
-3. `HealthReport` - A report of the health state of the field station, including the health state of
+1. `HealthState` - the overall health state of the field station
+2. `HealthReport` - A report of the health state of the field station, including the health state of
    each component (see :ref:`fieldstation-health-evaluation`)
 
 The following commands are also provided:
