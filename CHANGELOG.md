@@ -1,6 +1,6 @@
 # Version History
 
-## Unreleased
+## 8.0.0
 
 * [THORN-636] Added tests for unresponsive h/w.
 * [THORN-430] Added tangodocgen to the doc pipeline
