@@ -100,6 +100,7 @@ nitpick_ignore = [
     ),
     ("py:class", "TaskStatus"),
     ("py:class", "ResultCode"),
+    ("py:class", "ska_tango_base.commands.ResultCode"),
     ("py:class", "ska_tango_base.type_hints.TaskFunctionType"),
     # Ignored because of tangodiffdoc
     ("py:class", "DevVarLongStringArray"),
@@ -280,7 +281,7 @@ intersphinx_mapping = {
         None,
     ),
     "ska-tango-base": (
-        "https://developer.skatelescope.org/projects/ska-tango-base/en/0.19.3/",
+        "https://developer.skatelescope.org/projects/ska-tango-base/en/latest/",
         None,
     ),
     "ska-low-mccs-common": (
