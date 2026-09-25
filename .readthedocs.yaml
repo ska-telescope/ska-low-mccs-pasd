@@ -21,6 +21,7 @@ build:
 submodules:
   include:
     - .make
+    - .make-uv
   recursive: true
 
 sphinx:
