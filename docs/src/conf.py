@@ -100,7 +100,6 @@ nitpick_ignore = [
     ),
     ("py:class", "TaskStatus"),
     ("py:class", "ResultCode"),
-    ("py:class", "ska_tango_base.commands.ResultCode"),
     ("py:class", "ska_tango_base.type_hints.TaskFunctionType"),
     # Ignored because of tangodiffdoc
     ("py:class", "DevVarLongStringArray"),
