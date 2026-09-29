@@ -1,7 +1,10 @@
 # Version History
 
-## 8.0.1
+## 9.0.0
 
+* [THORN-711] FieldStation builds its healthReport with the ska-control-model 1.4.0 health_report helper. The report now lists only the sources that are not OK, by name.
+* [THORN-711] FieldStation, FNDH, Smartbox, FNCC and PaSDbus push healthState and healthReport events with the same timestamp.
+* [THORN-711] FNDH, Smartbox and FNCC push healthReport change and archive events.
 * [THORN-747] Fix bug where Init()ing/bouncing FieldStation could jank state of child devices.
 
 ## 8.0.0
