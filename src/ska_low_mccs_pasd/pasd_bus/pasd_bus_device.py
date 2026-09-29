@@ -13,6 +13,7 @@ import importlib.resources
 import json
 import logging
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Final, Optional, cast
@@ -431,7 +432,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()
-        self._health_state = HealthState.UNKNOWN
+        self._health_state = (HealthState.UNKNOWN, time.time(), AttrQuality.ATTR_VALID)
         self._healthful_attributes = [
             "fnccFailedPollsInWindow",
             "fndhFailedPollsInWindow",
@@ -832,11 +833,17 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         ) and health not in (HealthState.UNKNOWN, HealthState.FAILED):
             return
 
-        self.health_report_signal = health_report
+        # Give both events one timestamp, so that a client can pair them.
+        timestamp = time.time()
+        self.health_report_signal = (health_report, timestamp, AttrQuality.ATTR_VALID)
         try:
-            if self._health_state == health:
+            # Every write to this signal is a (value, timestamp, quality) triple.
+            last_health, _, _ = cast(
+                tuple[HealthState, float, AttrQuality], self._health_state
+            )
+            if last_health == health:
                 return
-            self._health_state = health
+            self._health_state = (health, timestamp, AttrQuality.ATTR_VALID)
         except AttributeError as err:  # Must ensure that health_state is initialised
             self.logger.error(f"Health changed failed due to {err}")
 

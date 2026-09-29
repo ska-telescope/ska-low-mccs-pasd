@@ -14,6 +14,7 @@ import json
 import re
 import sys
 import threading
+import time
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Callable, Final, Optional, cast
@@ -33,7 +34,7 @@ from ska_control_model import (
 from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_low_pasd_driver.pasd_bus_conversions import SmartboxStatusMap
 from ska_low_pasd_driver.pasd_bus_register_map import DesiredPowerEnum
-from tango import DevFailed
+from tango import AttrQuality, DevFailed
 from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
 
@@ -234,6 +235,8 @@ class MccsSmartBox(MccsBaseDevice):
 
         self.set_change_event("healthState", True, self.VerifyEvents)
         self.set_archive_event("healthState", True, self.VerifyEvents)
+        self.set_change_event("healthReport", True, self.VerifyEvents)
+        self.set_archive_event("healthReport", True, self.VerifyEvents)
         self.set_change_event("antennaPowers", True, self.VerifyEvents)
         self.set_archive_event("antennaPowers", True, self.VerifyEvents)
         self._nof_port_breakers_tripped = None
@@ -856,11 +859,22 @@ class MccsSmartBox(MccsBaseDevice):
         """
         if self._stopping:
             return
-        self._health_report = health_report
-        if self._health_state != health:
-            self._health_state = health
-            self.push_change_event("healthState", health)
-            self.push_archive_event("healthState", health)
+        # Give both events one timestamp, so that a client can pair them.
+        timestamp = time.time()
+        if self._health_report != health_report:
+            self._health_report = health_report
+            self.push_change_event(
+                "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
+            )
+            self.push_archive_event(
+                "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
+            )
+        # Every write to this signal is a (value, timestamp, quality) triple.
+        last_health, _, _ = cast(
+            tuple[HealthState, float, AttrQuality], self._health_state
+        )
+        if last_health != health:
+            self._health_state = (health, timestamp, AttrQuality.ATTR_VALID)
 
     def _attr_conf_changed(self: MccsSmartBox, attribute_name: str) -> None:
         """

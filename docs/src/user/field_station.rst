@@ -107,22 +107,19 @@ This is summarized in the following fault tree analysis diagrams for ``FAILED`` 
 .. image:: images/FieldStationDegradedHealth.png
    :width: 1000pt
 
-The ``HealthReport`` attribute is a JSON string which provides a summary of the subservient device states.
-Possible values for each device are:
+The ``HealthReport`` attribute is a JSON string that lists the subservient devices whose
+health is not OK. Each health state is given by name, which is ``DEGRADED``, ``FAILED`` or
+``UNKNOWN``. A device that is OK is not in the report. A group of devices is not in the report
+if all of its devices are OK. So ``{}`` means that all devices are OK.
 
-* 0 = OK
-* 1 = DEGRADED
-* 2 = FAILED
-* 3 = UNKNOWN (also the initial state)
-  
+Before any subservient device reports its health, ``HealthReport`` is an empty string.
+
+Each ``HealthState`` event and the ``HealthReport`` event that the same health update causes
+have the same timestamp. A health update that does not change the overall health state gives
+only a ``HealthReport`` event.
+
 For example:
 
 ::
 
-   '{"low-mccs/fndh/ci-1": 0, "smartboxes": {"low-mccs/smartbox/ci-1-sb01": 0,
-   "low-mccs/smartbox/ci-1-sb02": 3, "low-mccs/smartbox/ci-1-sb03": 0,
-   "low-mccs/smartbox/ci-1-sb04": 0, "low-mccs/smartbox/ci-1-sb05": 0,
-   "low-mccs/smartbox/ci-1-sb06": 0, "low-mccs/smartbox/ci-1-sb07": 0,
-   "low-mccs/smartbox/ci-1-sb08": 0, "low-mccs/smartbox/ci-1-sb09": 0,
-   "low-mccs/smartbox/ci-1-sb10": 0, "low-mccs/smartbox/ci-1-sb11": 0,
-   "low-mccs/smartbox/ci-1-sb12": 0}}'
+   '{"smartboxes": {"low-mccs/smartbox/ci-1-sb02": "UNKNOWN"}}'

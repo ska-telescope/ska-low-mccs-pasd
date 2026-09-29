@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import sys
+import time
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Callable, Final, Optional, cast
@@ -19,6 +20,7 @@ from ska_control_model import CommunicationStatus, HealthState, PowerState
 from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_low_pasd_driver.pasd_bus_conversions import FnccStatusMap
 from ska_tango_base.software_bus import AttrSignal, attribute_from_signal
+from tango import AttrQuality
 from tango.server import attribute, device_property
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
@@ -140,6 +142,8 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         )
         self.set_change_event("healthState", True, self.VerifyEvents)
         self.set_archive_event("healthState", True, self.VerifyEvents)
+        self.set_change_event("healthReport", True, self.VerifyEvents)
+        self.set_archive_event("healthReport", True, self.VerifyEvents)
 
     def create_component_manager(self: MccsFNCC) -> FnccComponentManager:
         """
@@ -306,11 +310,22 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         """
         if self._stopping:
             return
-        self._health_report = health_report
-        if self._health_state != health:
-            self._health_state = health
-            self.push_change_event("healthState", health)
-            self.push_archive_event("healthState", health)
+        # Give both events one timestamp, so that a client can pair them.
+        timestamp = time.time()
+        if self._health_report != health_report:
+            self._health_report = health_report
+            self.push_change_event(
+                "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
+            )
+            self.push_archive_event(
+                "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
+            )
+        # Every write to this signal is a (value, timestamp, quality) triple.
+        last_health, _, _ = cast(
+            tuple[HealthState, float, AttrQuality], self._health_state
+        )
+        if last_health != health:
+            self._health_state = (health, timestamp, AttrQuality.ATTR_VALID)
 
     @staticmethod
     def _convert_status_to_quality(pasd_status: Optional[str]) -> tango.AttrQuality:

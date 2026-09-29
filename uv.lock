@@ -1490,15 +1490,15 @@ wheels = [
 
 [[package]]
 name = "ska-control-model"
-version = "1.3.0"
+version = "1.4.0"
 source = { registry = "https://artefact.skao.int/repository/pypi-internal/simple" }
 dependencies = [
     { name = "pytango" },
     { name = "transitions" },
 ]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-control-model/1.3.0/ska_control_model-1.3.0.tar.gz", hash = "sha256:f6a20eb985c0ab14f150a8e09f9d28958f46c6a197c70681ac1f04660082d85a" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-control-model/1.4.0/ska_control_model-1.4.0.tar.gz", hash = "sha256:7861468837359e315d7797d03d3438fff9fa775bdc88216b7dcf68b4c7c34c61" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-control-model/1.3.0/ska_control_model-1.3.0-py3-none-any.whl", hash = "sha256:6536b9f01cf7f959a005a914e134ab14dad221c785c5ece153dfacdd2f0e56ba" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-control-model/1.4.0/ska_control_model-1.4.0-py3-none-any.whl", hash = "sha256:8d3e6f119a20f0d33446cdf7278c9875c6d5c61407556354e028b9fffec1fa5a" },
 ]
 
 [package.optional-dependencies]
@@ -1629,7 +1629,7 @@ requires-dist = [
     { name = "pytango", specifier = ">=10.3.0,<11.0.0" },
     { name = "pyyaml", specifier = ">=6.0,<7.0" },
     { name = "referencing", specifier = ">=0.31.0,<0.32.0" },
-    { name = "ska-control-model", extras = ["health-rollup"], specifier = ">=1.2.0,<2.0.0" },
+    { name = "ska-control-model", extras = ["health-rollup"], specifier = ">=1.4.0,<2.0.0" },
     { name = "ska-low-mccs-common", specifier = ">=4.5.6,<5.0.0" },
     { name = "ska-low-pasd-driver", specifier = ">=1.3.0,<2.0.0" },
     { name = "ska-ser-devices", specifier = ">=0.2.0,<0.3.0" },
