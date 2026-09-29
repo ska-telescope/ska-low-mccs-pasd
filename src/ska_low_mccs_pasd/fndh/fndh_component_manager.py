@@ -278,16 +278,12 @@ class FndhComponentManager(TaskExecutorComponentManager):
             self._pasd_bus_proxy._proxy.Abort()
         return result
 
-    def start_communicating(self: FndhComponentManager) -> None:  # noqa: C901
+    def start_communicating(self: FndhComponentManager) -> None:
         """Establish communication with the pasdBus via a proxy."""
-        if self.communication_state == CommunicationStatus.ESTABLISHED:
-            return
         self._pasd_bus_proxy.start_communicating()
 
     def stop_communicating(self: FndhComponentManager) -> None:
         """Break off communication with the pasdBus."""
-        if self.communication_state == CommunicationStatus.DISABLED:
-            return
         self._pasd_bus_proxy.stop_communicating()
         self._update_component_state(power=None, fault=None)
 
