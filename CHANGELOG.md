@@ -1,5 +1,9 @@
 # Version History
 
+## 8.0.1
+
+* [THORN-747] Fix bug where Init()ing/bouncing FieldStation could jank state of child devices.
+
 ## 8.0.0
 
 * [THORN-636] Added tests for unresponsive h/w.
