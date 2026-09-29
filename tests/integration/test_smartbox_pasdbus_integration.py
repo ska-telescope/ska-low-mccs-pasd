@@ -1651,15 +1651,20 @@ class TestSmartBoxPasdBusIntegration:
 
         smartbox_device.adminMode = AdminMode.ENGINEERING
 
-        change_event_callbacks.assert_change_event(
-            "smartbox_adminMode",
+        change_event_callbacks["smartbox_adminMode"].assert_change_event(
             AdminMode.ENGINEERING,
-            lookahead=5,
+            lookahead=2,
             consume_nonmatches=True,
         )
 
-        time.sleep(0.1)
-        assert smartbox_device.state() == tango.DevState.STANDBY
+        # The smartbox reconnects to the PaSD bus on the switch to ENGINEERING.
+        # A reconnect can push each state more than once.
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.UNKNOWN
+        )
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.STANDBY, lookahead=3, consume_nonmatches=True
+        )
 
         setattr(
             smartbox_device,
@@ -1687,6 +1692,11 @@ class TestSmartBoxPasdBusIntegration:
         # assert smartbox_device.healthstate == HealthState.FAILED
 
         assert smartbox_device.state() == tango.DevState.FAULT
+        # Consume any repeated STANDBY from the reconnect, so that the check for
+        # the return to STANDBY below only sees events after the FAULT.
+        change_event_callbacks["smartbox_state"].assert_change_event(
+            tango.DevState.FAULT, lookahead=3, consume_nonmatches=True
+        )
 
         # Nasty hack to allow the configure of the db return values,
         # Open to cleaner ideas if you have them

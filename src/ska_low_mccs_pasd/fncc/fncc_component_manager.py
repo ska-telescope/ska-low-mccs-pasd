@@ -8,14 +8,13 @@
 """This module implements the component management for fncc."""
 from __future__ import annotations
 
-import functools
 import logging
 import re
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
 import tango
-from ska_control_model import CommunicationStatus
+from ska_control_model import CommunicationStatus, PowerState
 from ska_low_mccs_common import EventSerialiser, MccsDeviceProxy
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.executor import TaskExecutorComponentManager
@@ -156,7 +155,7 @@ class FnccComponentManager(TaskExecutorComponentManager):
             pasd_fqdn,
             logger,
             self._pasdbus_communication_state_changed,
-            functools.partial(component_state_callback, fqdn=self._pasd_fqdn),
+            self._pasd_bus_component_state_changed,
             attribute_change_callback,
             event_serialiser=self._event_serialiser,
         )
@@ -169,6 +168,23 @@ class FnccComponentManager(TaskExecutorComponentManager):
             fault=None,
             pasdbus_status=None,
         )
+
+    def _pasd_bus_component_state_changed(
+        self: FnccComponentManager,
+        power: PowerState | None = None,
+        **kwargs: Any,
+    ) -> None:
+        if (
+            power == PowerState.UNKNOWN
+            and self.communication_state != CommunicationStatus.DISABLED
+        ):
+            self.logger.warning(
+                "PasdBus power state has become UNKNOWN."
+                "This is treated as communication `NOT_ESTABLISHED`"
+            )
+            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+        elif power == PowerState.ON:
+            self._update_communication_state(CommunicationStatus.ESTABLISHED)
 
     def _pasdbus_communication_state_changed(
         self: FnccComponentManager,
