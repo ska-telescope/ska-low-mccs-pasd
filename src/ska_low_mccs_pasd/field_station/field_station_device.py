@@ -218,7 +218,23 @@ class MccsFieldStation(MccsBaseDevice):
         self._health_rollup.online = old_online
         # Restore old healthstates.
         for subdevice, health in old_subdevice_healths.items():
-            self._health_rollup.health_changed(subdevice, cast(HealthState, health))
+            self._subdevice_health_changed(subdevice, cast(HealthState, health))
+
+    def _subdevice_health_changed(
+        self: MccsFieldStation, device_name: str, health: HealthState
+    ) -> None:
+        """
+        Report a change in a subdevice's health to the health rollup.
+
+        The timestamp is taken before the rollup is updated, because the
+        rollup calls the healthState and healthReport callbacks
+        synchronously, and both of them read this timestamp.
+
+        :param device_name: name of the subdevice whose health changed.
+        :param health: the new health state of the subdevice.
+        """
+        self._health_timestamp = time.time()
+        self._health_rollup.health_changed(device_name, health)
 
     # ----------
     # Callbacks
@@ -267,8 +283,7 @@ class MccsFieldStation(MccsBaseDevice):
                 f"health = {None if health is None else health.name} "
             )
             if health is not None:
-                self._health_timestamp = time.time()
-                self._health_rollup.health_changed(device_name, health)
+                self._subdevice_health_changed(device_name, health)
             if device_family == "Smartbox" and power is not None:
                 self.component_manager.smartbox_state_change(device_name, power)
             return
