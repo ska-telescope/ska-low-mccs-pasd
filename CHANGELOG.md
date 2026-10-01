@@ -1,6 +1,6 @@
 # Version History
 
-## unreleased
+## 8.0.1
 
 * [THORN-748] Update dependencies.
 
