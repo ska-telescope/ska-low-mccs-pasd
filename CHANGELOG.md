@@ -1,5 +1,9 @@
 # Version History
 
+## unreleased
+
+* [THORN-748] Update dependencies.
+
 ## 8.0.0
 
 * [THORN-636] Added tests for unresponsive h/w.
