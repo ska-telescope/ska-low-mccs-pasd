@@ -92,6 +92,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         self._stopping: bool = False
         self._fncc_attributes: dict[str, FNCCAttribute] = {}
         self._healthful_attributes: dict[str, Callable]
+        self._fncc_reset_requested_for: Optional[str]
         super().__init__(*args, **kwargs)
 
     def init_device(self: MccsFNCC) -> None:
@@ -131,6 +132,10 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         self._healthful_attributes = {
             "pasdStatus": partial(self._fncc_attributes.get, "pasdstatus"),
         }
+        # The status for which a reset has been requested, so that a fault that
+        # persists across polls (each of which pushes a change event) is only
+        # reset, and counted, once.
+        self._fncc_reset_requested_for = None
         self._health_recorder = HealthRecorder(
             self.get_name(),
             self.logger,
@@ -140,6 +145,21 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         )
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, self.VerifyEvents)
+
+    def _reset_fncc_status(self: MccsFNCC, status: str) -> None:
+        """
+        Request a reset of the FNCC status register, and count it if requested.
+
+        :param status: the FNCC status which the reset is to clear.
+        """
+        try:
+            self.logger.debug(f"Resetting FNCC status to clear {status} error.")
+            self.component_manager.reset_fncc_status()
+        except Exception:  # pylint: disable=broad-except
+            self.logger.error("Failed to reset FNCC status; counter not incremented.")
+        else:
+            self._fncc_reset_requested_for = status
+            self.fncc_reset_count_signal = cast(int, self.fncc_reset_count_signal) + 1
 
     def create_component_manager(self: MccsFNCC) -> FnccComponentManager:
         """
@@ -251,6 +271,8 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             communication_state.name,
         )
         if communication_state != CommunicationStatus.ESTABLISHED:
+            # A fault still present when communication resumes needs a new reset.
+            self._fncc_reset_requested_for = None
             if self._health_recorder is not None:
                 self._health_recorder.clear_attribute_state()
             self._component_state_changed_callback(power=PowerState.UNKNOWN)
@@ -382,28 +404,18 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
                     attr_quality = pasd_status_quality
                 # An FNCC status outside {OK, RESET} means we need to
                 # issue a reset; increment the counter only if it succeeds.
-                if (
-                    attr_quality != tango.AttrQuality.ATTR_INVALID
-                    and attr_value is not None
-                    and attr_value
-                    not in (
+                # Change events are pushed on every poll, so only request a
+                # reset when the status differs from the one already reset.
+                if attr_quality != tango.AttrQuality.ATTR_INVALID and (
+                    attr_value is not None
+                ):
+                    if attr_value in (
                         FnccStatusMap.OK.name,
                         FnccStatusMap.RESET.name,
-                    )
-                ):
-                    try:
-                        self.logger.debug(
-                            f"Resetting FNCC status to clear {attr_value} error."
-                        )
-                        self.component_manager.reset_fncc_status()
-                    except Exception:  # pylint: disable=broad-except
-                        self.logger.error(
-                            "Failed to reset FNCC status; counter not incremented."
-                        )
-                    else:
-                        self.fncc_reset_count_signal = (
-                            cast(int, self.fncc_reset_count_signal) + 1
-                        )
+                    ):
+                        self._fncc_reset_requested_for = None
+                    elif attr_value != self._fncc_reset_requested_for:
+                        self._reset_fncc_status(attr_value)
 
             self._fncc_attributes[attr_name].quality = attr_quality
             self._fncc_attributes[attr_name].timestamp = timestamp
