@@ -110,6 +110,7 @@ MccsFncc
 
 - **PasdFQDN**: Tango FQDN of the associated PaSD bus device
 - **VerifyEvents**: sets the value of the detect_ parameter when the Tango ``set_archive_event`` method is called. Change events are always pushed, whether or not the value has changed.
+- **ResetRetryTimeout**: How long, in seconds, to wait for a requested reset of the FNCC status register to clear a fault before requesting another (default 30). A reset is only queued when it is requested, and can still fail when it is written to the hardware, so ``ResetCount`` counts a reset when the status is seen to have cleared, and a fault that needed several attempts is counted once.
 
 MccsFieldStation
 ~~~~~~~~~~~~~~~~

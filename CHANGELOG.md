@@ -4,7 +4,7 @@
 
 * [THORN-748] Update dependencies.
 * [THORN-748] Always push change events, whether or not the value has changed (the Tango ``detect`` parameter of ``set_change_event`` is now always ``False``); ``VerifyEvents`` now only controls archive events. With change detection, attributes whose value had not changed pushed no event when communication with the PasdBus was re-established, so the health recorder of MccsSmartBox, MccsFNDH and MccsFNCC (which is cleared on loss of communication) was never repopulated and their health stayed UNKNOWN.
-* [THORN-748] MccsFNCC now requests a reset of the FNCC status register (and increments ``ResetCount``) once for a fault status, rather than on every change event that reports it. As change events are now pushed on every poll, a fault that persisted across polls would otherwise have been reset and counted repeatedly. A fault that is still present when communication is re-established is reset again.
+* [THORN-748] MccsFNCC now requests a reset of the FNCC status register once for a fault status, rather than on every change event that reports it. As change events are now pushed on every poll, a fault that persisted across polls would otherwise have been reset repeatedly. A reset is only queued when it is requested and can still fail when it is written to the hardware, so a fault that is still reported after the new ``ResetRetryTimeout`` device property (default 30 seconds) is reset again. ``ResetCount`` counts a reset when the status is seen to have cleared after it was requested, so a fault that needed several attempts is counted once, and a fault that cleared without a reset being requested is not counted. A fault that is still present when communication is re-established is reset again.
 
 ## 8.0.0
 

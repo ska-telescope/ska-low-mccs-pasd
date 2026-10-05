@@ -48,6 +48,16 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         dtype=bool,
         default_value=True,
     )
+    ResetRetryTimeout: Final = device_property(
+        doc=(
+            "How long, in seconds, to wait for a requested reset of the FNCC "
+            "status register to clear a fault before requesting another. A reset "
+            "is only queued when it is requested; it can still fail when it is "
+            "written to the hardware."
+        ),
+        dtype=float,
+        default_value=30.0,
+    )
 
     # ---------
     # Constants
@@ -93,6 +103,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         self._fncc_attributes: dict[str, FNCCAttribute] = {}
         self._healthful_attributes: dict[str, Callable]
         self._fncc_reset_requested_for: Optional[str]
+        self._fncc_reset_requested_at: float
         super().__init__(*args, **kwargs)
 
     def init_device(self: MccsFNCC) -> None:
@@ -113,6 +124,7 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         properties = (
             f"Initialised {device_name} device with properties:\n"
             f"\tPasdFQDN: {self.PasdFQDN}\n"
+            f"\tResetRetryTimeout: {self.ResetRetryTimeout}\n"
         )
         self.logger.info(
             "\n%s\n%s\n%s", str(self.GetVersionInfo()), version, properties
@@ -132,10 +144,11 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         self._healthful_attributes = {
             "pasdStatus": partial(self._fncc_attributes.get, "pasdstatus"),
         }
-        # The status for which a reset has been requested, so that a fault that
-        # persists across polls (each of which pushes a change event) is only
-        # reset, and counted, once.
+        # The status for which a reset was last requested, and when, so that a
+        # fault that persists across polls (each of which pushes a change event)
+        # is not reset on every poll, but only again after ResetRetryTimeout.
         self._fncc_reset_requested_for = None
+        self._fncc_reset_requested_at = 0.0
         self._health_recorder = HealthRecorder(
             self.get_name(),
             self.logger,
@@ -146,20 +159,49 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         self.set_change_event("healthState", True, False)
         self.set_archive_event("healthState", True, self.VerifyEvents)
 
-    def _reset_fncc_status(self: MccsFNCC, status: str) -> None:
+    def _reset_fncc_status(self: MccsFNCC, status: str, timestamp: float) -> None:
         """
-        Request a reset of the FNCC status register, and count it if requested.
+        Request a reset of the FNCC status register, and remember that it was.
+
+        The reset is counted later, when the status is seen to have cleared.
 
         :param status: the FNCC status which the reset is to clear.
+        :param timestamp: the time of the report of the status, in seconds.
         """
         try:
             self.logger.debug(f"Resetting FNCC status to clear {status} error.")
             self.component_manager.reset_fncc_status()
         except Exception:  # pylint: disable=broad-except
-            self.logger.error("Failed to reset FNCC status; counter not incremented.")
+            self.logger.error("Failed to request a reset of the FNCC status.")
         else:
             self._fncc_reset_requested_for = status
-            self.fncc_reset_count_signal = cast(int, self.fncc_reset_count_signal) + 1
+            self._fncc_reset_requested_at = timestamp
+
+    def _update_fncc_reset(self: MccsFNCC, status: str, timestamp: float) -> None:
+        """
+        Reset the FNCC status register if it is needed, and count the resets.
+
+        An FNCC status outside {OK, RESET} means we need to issue a reset.
+        Requesting it only queues it, and the write can still fail, so the reset
+        is counted when the status is seen to have cleared. Change events are
+        pushed on every poll, so only request a reset when the status differs
+        from the one already reset, or when that reset has not cleared it within
+        ResetRetryTimeout.
+
+        :param status: the status of the FNCC.
+        :param timestamp: the time of the report of the status, in seconds.
+        """
+        if status in (FnccStatusMap.OK.name, FnccStatusMap.RESET.name):
+            if self._fncc_reset_requested_for is not None:
+                self.fncc_reset_count_signal = (
+                    cast(int, self.fncc_reset_count_signal) + 1
+                )
+                self._fncc_reset_requested_for = None
+        elif (
+            status != self._fncc_reset_requested_for
+            or timestamp - self._fncc_reset_requested_at >= self.ResetRetryTimeout
+        ):
+            self._reset_fncc_status(status, timestamp)
 
     def create_component_manager(self: MccsFNCC) -> FnccComponentManager:
         """
@@ -402,20 +444,10 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
                 # with a valid value
                 if attr_quality != tango.AttrQuality.ATTR_INVALID:
                     attr_quality = pasd_status_quality
-                # An FNCC status outside {OK, RESET} means we need to
-                # issue a reset; increment the counter only if it succeeds.
-                # Change events are pushed on every poll, so only request a
-                # reset when the status differs from the one already reset.
                 if attr_quality != tango.AttrQuality.ATTR_INVALID and (
                     attr_value is not None
                 ):
-                    if attr_value in (
-                        FnccStatusMap.OK.name,
-                        FnccStatusMap.RESET.name,
-                    ):
-                        self._fncc_reset_requested_for = None
-                    elif attr_value != self._fncc_reset_requested_for:
-                        self._reset_fncc_status(attr_value)
+                    self._update_fncc_reset(attr_value, timestamp)
 
             self._fncc_attributes[attr_name].quality = attr_quality
             self._fncc_attributes[attr_name].timestamp = timestamp
