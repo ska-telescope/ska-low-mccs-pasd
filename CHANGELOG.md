@@ -3,6 +3,7 @@
 ## 8.0.1
 
 * [THORN-748] Update dependencies.
+* [THORN-748] Always push change events, whether or not the value has changed (the Tango ``detect`` parameter of ``set_change_event`` is now always ``False``); ``VerifyEvents`` now only controls archive events. With change detection, attributes whose value had not changed pushed no event when communication with the PasdBus was re-established, so the health recorder of MccsSmartBox, MccsFNDH and MccsFNCC (which is cleared on loss of communication) was never repopulated and their health stayed UNKNOWN.
 
 ## 8.0.0
 

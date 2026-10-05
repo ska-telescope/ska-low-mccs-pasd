@@ -72,7 +72,7 @@ MccsPasdBus
   Should be of length ``no_of_fndh_ports`` (see note below)
 - **EnablePyModbusLogging**: Set to True to enable pymodbus logging
 - **PyModbusLogDir**: Optional path to a directory to create pymodbus log file in
-- **VerifyEvents**: sets the value of the detect_ parameter when the Tango ``set_archive_event`` and ``set_change_event`` methods are called.
+- **VerifyEvents**: sets the value of the detect_ parameter when the Tango ``set_archive_event`` method is called. ``set_change_event`` is always called with ``detect_=False``
   
 .. _detect: https://tango-controls.readthedocs.io/projects/pytango/en/v10.3.0/api/server_api/attribute.html#tango.Attr.set_change_event
 
@@ -90,7 +90,7 @@ MccsFNDH
 - **PortsWithSmartbox**: List of FNDH ports that have an associated smartbox
 - **UseAttributesForHealth**: Set to ``True`` to use attribute quality factor in health evaluation
 - **ThresholdTolerance**: Absolute tolerance for threshold comparisons. Differences within this value are not considered a mismatch
-- **VerifyEvents**: sets the value of the detect_ parameter when the Tango ``set_archive_event`` and ``set_change_event`` methods are called.
+- **VerifyEvents**: sets the value of the detect_ parameter when the Tango ``set_archive_event`` method is called. Change events are always pushed, whether or not the value has changed.
 
 MccsSmartbox
 ~~~~~~~~~~~~
@@ -103,13 +103,13 @@ MccsSmartbox
 - **FndhPort**: FNDH port number this smartbox is connected to
 - **UseAttributesForHealth**: Set to ``True`` to use attribute quality factor in health evaluation
 - **ThresholdTolerance**: Absolute tolerance for threshold comparisons. Differences within this value are not considered a mismatch
-- **VerifyEvents**: sets the value of the detect_ parameter when the Tango ``set_archive_event`` and ``set_change_event`` methods are called.
+- **VerifyEvents**: sets the value of the detect_ parameter when the Tango ``set_archive_event`` method is called. Change events are always pushed, whether or not the value has changed.
 
 MccsFncc
 ~~~~~~~~
 
 - **PasdFQDN**: Tango FQDN of the associated PaSD bus device
-- **VerifyEvents**: sets the value of the detect_ parameter when the Tango ``set_archive_event`` and ``set_change_event`` methods are called.
+- **VerifyEvents**: sets the value of the detect_ parameter when the Tango ``set_archive_event`` method is called. Change events are always pushed, whether or not the value has changed.
 
 MccsFieldStation
 ~~~~~~~~~~~~~~~~
@@ -118,7 +118,7 @@ MccsFieldStation
 - **FndhFQDN**: Tango FQDN of the associated FNDH device
 - **SmartboxFQDNs**: List of Tango FQDNs of associated smartbox devices
 - **NofSmartboxBlocks**: How many blocks to split smartboxes into before turning on FEMs sequentially for each block during on().
-- **VerifyEvents**: sets the value of the detect_ parameter when the Tango ``set_archive_event`` and ``set_change_event`` methods are called.
+- **VerifyEvents**: sets the value of the detect_ parameter when the Tango ``set_archive_event`` method is called. Change events are always pushed, whether or not the value has changed.
 
 ------------
 How it works

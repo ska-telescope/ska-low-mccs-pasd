@@ -97,7 +97,7 @@ class MccsFieldStation(MccsBaseDevice):
         }
         self._health_report = ""
         self._health_rollup = self._setup_health_rollup()
-        self.set_change_event("antennaPowerStates", True, self.VerifyEvents)
+        self.set_change_event("antennaPowerStates", True, False)
         self.init_completed()
 
         message = (
