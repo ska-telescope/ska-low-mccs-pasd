@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [THORN-752] Update CODEOWNERS.
+
 ## 8.0.1
 
 * [THORN-748] Update dependencies.
