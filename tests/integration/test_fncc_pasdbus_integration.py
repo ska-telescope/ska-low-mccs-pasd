@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import gc
+import time
 
 import pytest
 import tango
@@ -334,6 +335,10 @@ class TestfnccPasdBusIntegration:
         assert (
             fncc_device.healthReport == "pasdstatus is in ATTR_WARNING with value RESET"
         )
+        time.sleep(3)  # Allow a few polls to occur.
+        # The fault was reset once, however many polls reported it.
+        change_event_callbacks["resetCount"].assert_not_called()
+        assert fncc_device.resetCount == 1
 
 
 @pytest.fixture(name="change_event_callbacks")
