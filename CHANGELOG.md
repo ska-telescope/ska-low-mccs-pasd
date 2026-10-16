@@ -7,6 +7,7 @@
 * [THORN-711] FNDH, Smartbox and FNCC push healthReport change and archive events.
 * [THORN-747] Fix bug where Init()ing/bouncing FieldStation could jank state of child devices.
 * [THORN-752] Update CODEOWNERS.
+* [THORN-749] Use CLUSTER_DOMAIN for aws migration.
 
 ## 8.0.1
 
