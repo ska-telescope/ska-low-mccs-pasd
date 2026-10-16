@@ -52,6 +52,7 @@ K8S_CHART_PARAMS = \
 	--selector chart=ska-low-mccs-pasd \
 	--selector chart=ska-tango-base \
 	--set image.registry=$(CI_REGISTRY_IMAGE) \
+	--set global.cluster_domain=$(CLUSTER_DOMAIN) \
 	--set image.tag=$(VERSION)-dev.c$(CI_COMMIT_SHORT_SHA) \
 	--set ska-tango-devices.deviceServerTypes.pasd.image.registry=$(CI_REGISTRY_IMAGE) \
 	--set ska-tango-devices.deviceServerTypes.pasd.image.tag=$(VERSION)-dev.c$(CI_COMMIT_SHORT_SHA) \	--set global.exposeAllDS=false
@@ -157,6 +158,7 @@ helm-pre-build:
 include .make-uv/make/docs-uv.mk
 
 DOCS_SPHINXOPTS= -W --keep-going
+CLUSTER_DOMAIN ?= cluster.local## Domain used for naming Tango Device Servers
 DOCGEN_OUTPUT_DIR=docs/src/device-interfaces
 
 ifeq (,$(filter clean,$(DOCS_TARGET_ARGS)))
