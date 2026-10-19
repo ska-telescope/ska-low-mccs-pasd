@@ -377,8 +377,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
     def start_communicating(self: SmartBoxComponentManager) -> None:
         """Establish communication."""
-        if self.communication_state == CommunicationStatus.ESTABLISHED:
-            return
         self._pasd_bus_proxy.start_communicating()
 
     def _pasd_bus_communication_state_changed(
@@ -386,21 +384,23 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
         communication_state: CommunicationStatus,
     ) -> None:
         self._pasd_communication_state = communication_state
-        if communication_state == CommunicationStatus.ESTABLISHED:
-            self._pasd_bus_proxy.subscribe_to_attributes()
         # Only update state on change.
         if communication_state != self._communication_state:
             self._update_communication_state(self._pasd_communication_state)
+        # Subscribe after the update, because the first subscribed events
+        # change the power state, and a client that sees that power state
+        # expects communication to be established.
+        if communication_state == CommunicationStatus.ESTABLISHED:
+            self._pasd_bus_proxy.subscribe_to_attributes()
 
     def _pasd_bus_component_state_changed(
         self: SmartBoxComponentManager,
         power: PowerState | None = None,
         **kwargs: Any,
     ) -> None:
-        if (
-            power == PowerState.UNKNOWN
-            and self.communication_state != CommunicationStatus.DISABLED
-        ):
+        if self.communication_state == CommunicationStatus.DISABLED:
+            return
+        if power == PowerState.UNKNOWN:
             self.logger.warning(
                 "PasdBus power state has become UNKNOWN."
                 "This is treated as communication `NOT_ESTABLISHED`"
@@ -556,8 +556,6 @@ class SmartBoxComponentManager(TaskExecutorComponentManager):
 
     def stop_communicating(self: SmartBoxComponentManager) -> None:
         """Stop communication with components under control."""
-        if self.communication_state == CommunicationStatus.DISABLED:
-            return
         self._pasd_bus_proxy.stop_communicating()
         self._update_component_state(power=None, fault=None)
 

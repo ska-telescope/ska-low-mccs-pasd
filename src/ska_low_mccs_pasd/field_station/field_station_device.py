@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from typing import Any, Final, Optional, cast
 
 import numpy as np
@@ -23,8 +24,10 @@ from ska_control_model import (
     PowerState,
     ResultCode,
 )
-from ska_control_model.health_rollup import HealthRollup, HealthSummary
+from ska_control_model.health_rollup import HealthRollup, HealthSummary, health_report
 from ska_low_mccs_common import MccsBaseDevice
+from ska_tango_base.software_bus import AttrSignal, attribute_from_signal
+from tango import AttrQuality
 from tango.server import attribute, device_property
 
 from .field_station_component_manager import FieldStationComponentManager
@@ -35,6 +38,7 @@ __all__ = ["MccsFieldStation"]
 DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
 
 
+# pylint: disable=too-many-instance-attributes
 class MccsFieldStation(MccsBaseDevice):
     """An implementation of the FieldStation device."""
 
@@ -51,6 +55,9 @@ class MccsFieldStation(MccsBaseDevice):
         dtype=bool,
         default_value=True,
     )
+    health_report_signal = AttrSignal[str](stored=True, initial_value="")
+    healthReport = attribute_from_signal(health_report_signal)  # noqa: N815
+
     # --------------
     # Initialisation
     # --------------
@@ -71,7 +78,8 @@ class MccsFieldStation(MccsBaseDevice):
         super().__init__(*args, **kwargs)
 
         self.component_manager: FieldStationComponentManager
-        self._health_report: str
+        self._health_summary: HealthSummary
+        self._health_timestamp: float
         self._health_rollup: HealthRollup
         self._antenna_powers: dict
 
@@ -95,7 +103,8 @@ class MccsFieldStation(MccsBaseDevice):
                 ),  # 5% or 1, whichever is higher, Degraded -> Degraded
             ),
         }
-        self._health_report = ""
+        self._health_summary = {}
+        self._health_timestamp = time.time()
         self._health_rollup = self._setup_health_rollup()
         self.set_change_event("antennaPowerStates", True, False)
         self.init_completed()
@@ -173,7 +182,7 @@ class MccsFieldStation(MccsBaseDevice):
         Redefine the health rollup members and thresholds.
 
         Redefines the health rollup following a change in subdevice thresholds.
-        This pulls the old/current healths from the health report, instantiates
+        This pulls the old/current healths from the health summary, instantiates
         a new health_rollup instance and restores those healthstates.
         """
 
@@ -202,14 +211,30 @@ class MccsFieldStation(MccsBaseDevice):
             return _flatten(d)
 
         # Pull out the old healthstates.
-        old_report = json.loads(self._health_report)
-        old_subdevice_healths = _flatten_dict(old_report)
+        old_subdevice_healths = _flatten_dict(self._health_summary)
+        self._health_timestamp = time.time()
         old_online = self._health_rollup.online
         self._health_rollup = self._setup_health_rollup()
         self._health_rollup.online = old_online
         # Restore old healthstates.
         for subdevice, health in old_subdevice_healths.items():
-            self._health_rollup.health_changed(subdevice, cast(HealthState, health))
+            self._subdevice_health_changed(subdevice, cast(HealthState, health))
+
+    def _subdevice_health_changed(
+        self: MccsFieldStation, device_name: str, health: HealthState
+    ) -> None:
+        """
+        Report a change in a subdevice's health to the health rollup.
+
+        The timestamp is taken before the rollup is updated, because the
+        rollup calls the healthState and healthReport callbacks
+        synchronously, and both of them read this timestamp.
+
+        :param device_name: name of the subdevice whose health changed.
+        :param health: the new health state of the subdevice.
+        """
+        self._health_timestamp = time.time()
+        self._health_rollup.health_changed(device_name, health)
 
     # ----------
     # Callbacks
@@ -258,7 +283,7 @@ class MccsFieldStation(MccsBaseDevice):
                 f"health = {None if health is None else health.name} "
             )
             if health is not None:
-                self._health_rollup.health_changed(device_name, health)
+                self._subdevice_health_changed(device_name, health)
             if device_family == "Smartbox" and power is not None:
                 self.component_manager.smartbox_state_change(device_name, power)
             return
@@ -273,6 +298,7 @@ class MccsFieldStation(MccsBaseDevice):
 
     def _update_admin_mode(self, admin_mode: AdminMode) -> None:
         super()._update_admin_mode(admin_mode)
+        self._health_timestamp = time.time()
         self._health_rollup.online = admin_mode in [
             AdminMode.ENGINEERING,
             AdminMode.ONLINE,
@@ -291,7 +317,9 @@ class MccsFieldStation(MccsBaseDevice):
         """
         # This is defined as an attribute_from_signal in the base classes.
         # By just setting this cache this will push events for us.
-        self._health_state = health
+        # The rollup calls both callbacks synchronously for one update,
+        # so healthState and healthReport get the same timestamp.
+        self._health_state = (health, self._health_timestamp, AttrQuality.ATTR_VALID)
 
     def _health_summary_changed(
         self: MccsFieldStation, health_summary: HealthSummary
@@ -306,7 +334,12 @@ class MccsFieldStation(MccsBaseDevice):
 
         :param health_summary: the new health summary
         """
-        self._health_report = json.dumps(health_summary)
+        self._health_summary = health_summary
+        self.health_report_signal = (
+            json.dumps(health_report(health_summary)),
+            self._health_timestamp,
+            AttrQuality.ATTR_VALID,
+        )
 
     # --------
     # Commands
@@ -478,15 +511,6 @@ class MccsFieldStation(MccsBaseDevice):
         :return: the power of the logical antennas.
         """
         return json.dumps(self._antenna_powers)
-
-    @attribute(dtype="DevString")
-    def healthReport(self: MccsFieldStation) -> str:
-        """
-        Get the health report.
-
-        :return: the health report.
-        """
-        return self._health_report
 
     @attribute(
         dtype="DevString",

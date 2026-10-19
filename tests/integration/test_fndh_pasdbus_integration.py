@@ -582,14 +582,18 @@ class TestfndhPasdBusIntegration:
 
         fndh_device.adminMode = AdminMode.ENGINEERING
 
-        change_event_callbacks.assert_change_event(
-            "fndh_adminMode",
+        change_event_callbacks["fndh_adminMode"].assert_change_event(
             AdminMode.ENGINEERING,
-            lookahead=5,
+            lookahead=2,
             consume_nonmatches=True,
         )
 
-        time.sleep(0.1)
+        # The FNDH reconnects to the PaSD bus on the switch to ENGINEERING.
+        # A reconnect can push each state more than once.
+        change_event_callbacks["fndh_state"].assert_change_event(tango.DevState.UNKNOWN)
+        change_event_callbacks["fndh_state"].assert_change_event(
+            tango.DevState.ON, lookahead=3, consume_nonmatches=True
+        )
 
         new_vals = [40.0, 35.0, 10.5, 5]
         setattr(

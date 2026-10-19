@@ -10,16 +10,23 @@
 from __future__ import annotations
 
 import gc
+import json
 import unittest.mock
 from typing import Any
 
 import pytest
 import tango
-from ska_control_model import AdminMode, LoggingLevel, ResultCode, TaskStatus
+from ska_control_model import (
+    AdminMode,
+    HealthState,
+    LoggingLevel,
+    ResultCode,
+    TaskStatus,
+)
 from ska_tango_testing.mock.tango import MockTangoEventCallbackGroup
 
 from ska_low_mccs_pasd import MccsFieldStation
-from tests.harness import PasdTangoTestHarness
+from tests.harness import PasdTangoTestHarness, get_fndh_name, get_smartbox_name
 
 # TODO: Weird hang-at-garbage-collection bug
 gc.disable()
@@ -36,6 +43,7 @@ def change_event_callbacks_fixture() -> MockTangoEventCallbackGroup:
     return MockTangoEventCallbackGroup(
         "adminMode",
         "healthState",
+        "healthReport",
         "state",
         timeout=2.0,
         assert_no_error=False,
@@ -184,3 +192,73 @@ def test_command(  # pylint: disable=too-many-arguments, too-many-positional-arg
         command_return = command(device_command_argin)
 
     assert ResultCode(command_return[0][0]) == ResultCode.QUEUED
+
+
+def test_health_events_share_timestamp(
+    field_station_device: tango.DeviceProxy,
+    mock_component_manager: unittest.mock.Mock,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+    station_label: str,
+) -> None:
+    """
+    Test that one health update gives the same timestamp to both health events.
+
+    :param field_station_device: fixture that provides a
+        :py:class:`tango.DeviceProxy` to the device under test, in a
+        :py:class:`tango.test_context.DeviceTestContext`.
+    :param mock_component_manager: the mock component manager being
+        used by the patched field station bus device.
+    :param change_event_callbacks: dictionary of mock change event
+        callbacks with asynchrony support
+    :param station_label: The label of the station under test.
+    """
+    for attribute_name in ["healthState", "healthReport"]:
+        field_station_device.subscribe_event(
+            attribute_name,
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks[attribute_name],
+        )
+    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
+    change_event_callbacks["healthReport"].assert_change_event("")
+
+    def _assert_health_events(health: HealthState, report: dict[str, Any]) -> None:
+        state_event = change_event_callbacks["healthState"].assert_change_event(
+            health, lookahead=5, consume_nonmatches=True
+        )["call_args"][0]
+        report_event = change_event_callbacks["healthReport"].assert_change_event(
+            json.dumps(report), lookahead=30, consume_nonmatches=True
+        )["call_args"][0]
+        assert state_event.attr_value.time.totime() == (
+            report_event.attr_value.time.totime()
+        )
+
+    fndh_name = get_fndh_name(station_label)
+    smartbox_names = [get_smartbox_name(i, station_label) for i in range(1, 25)]
+    callback = mock_component_manager._component_state_callback
+
+    field_station_device.adminMode = AdminMode.ONLINE
+    for smartbox_name in smartbox_names[1:]:
+        callback(device_name=smartbox_name, health=HealthState.OK)
+    callback(device_name=smartbox_names[0], health=HealthState.DEGRADED)
+    change_event_callbacks["healthReport"].assert_change_event(
+        json.dumps(
+            {fndh_name: "UNKNOWN", "smartboxes": {smartbox_names[0]: "DEGRADED"}}
+        ),
+        lookahead=30,
+        consume_nonmatches=True,
+    )
+
+    # This one update changes both the health state and the health report.
+    callback(device_name=fndh_name, health=HealthState.OK)
+    _assert_health_events(
+        HealthState.OK, {"smartboxes": {smartbox_names[0]: "DEGRADED"}}
+    )
+
+    field_station_device.adminMode = AdminMode.OFFLINE
+    _assert_health_events(
+        HealthState.UNKNOWN,
+        {
+            fndh_name: "UNKNOWN",
+            "smartboxes": dict.fromkeys(smartbox_names, "UNKNOWN"),
+        },
+    )

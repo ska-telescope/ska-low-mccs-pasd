@@ -8,14 +8,13 @@
 """This module implements the component management for fncc."""
 from __future__ import annotations
 
-import functools
 import logging
 import re
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
 import tango
-from ska_control_model import CommunicationStatus
+from ska_control_model import CommunicationStatus, PowerState
 from ska_low_mccs_common import EventSerialiser, MccsDeviceProxy
 from ska_low_mccs_common.component import DeviceComponentManager
 from ska_tango_base.executor import TaskExecutorComponentManager
@@ -156,7 +155,7 @@ class FnccComponentManager(TaskExecutorComponentManager):
             pasd_fqdn,
             logger,
             self._pasdbus_communication_state_changed,
-            functools.partial(component_state_callback, fqdn=self._pasd_fqdn),
+            self._pasd_bus_component_state_changed,
             attribute_change_callback,
             event_serialiser=self._event_serialiser,
         )
@@ -170,6 +169,22 @@ class FnccComponentManager(TaskExecutorComponentManager):
             pasdbus_status=None,
         )
 
+    def _pasd_bus_component_state_changed(
+        self: FnccComponentManager,
+        power: PowerState | None = None,
+        **kwargs: Any,
+    ) -> None:
+        if self.communication_state == CommunicationStatus.DISABLED:
+            return
+        if power == PowerState.UNKNOWN:
+            self.logger.warning(
+                "PasdBus power state has become UNKNOWN."
+                "This is treated as communication `NOT_ESTABLISHED`"
+            )
+            self._update_communication_state(CommunicationStatus.NOT_ESTABLISHED)
+        elif power == PowerState.ON:
+            self._update_communication_state(CommunicationStatus.ESTABLISHED)
+
     def _pasdbus_communication_state_changed(
         self: FnccComponentManager,
         communication_state: CommunicationStatus,
@@ -179,16 +194,12 @@ class FnccComponentManager(TaskExecutorComponentManager):
 
         self._update_communication_state(communication_state)
 
-    def start_communicating(self: FnccComponentManager) -> None:  # noqa: C901
+    def start_communicating(self: FnccComponentManager) -> None:
         """Establish communication with the pasdBus via a proxy."""
-        if self.communication_state == CommunicationStatus.ESTABLISHED:
-            return
         self._pasd_bus_proxy.start_communicating()
 
     def stop_communicating(self: FnccComponentManager) -> None:
         """Break off communication with the pasdBus."""
-        if self.communication_state == CommunicationStatus.DISABLED:
-            return
         self._pasd_bus_proxy.stop_communicating()
         self._update_component_state(power=None, fault=None)
 
