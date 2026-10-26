@@ -1,5 +1,5 @@
-FROM artefact.skao.int/ska-tango-images-tango-dsconfig:1.8.3 AS tools
-FROM artefact.skao.int/ska-python:0.2.5 AS runtime
+FROM artefact.skao.int/ska-tango-images-tango-dsconfig:1.9.2 AS tools
+FROM artefact.skao.int/ska-python:1.1.4 AS runtime
 
 WORKDIR /app
 

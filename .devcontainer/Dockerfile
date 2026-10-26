@@ -1,4 +1,4 @@
-FROM artefact.skao.int/ska-build-python-uv:0.3.1
+FROM artefact.skao.int/ska-build-python-uv:0.4.1
 
 ARG USERNAME=pasd
 ARG USER_UID=1000
