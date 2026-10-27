@@ -1,5 +1,9 @@
 # Version History
 
+## 9.0.1
+
+* [THORN-773] Update base images. ska-python to 1.1.4, tango-dsconfig to 1.9.2, build-python-uv to 0.4.1.
+
 ## 9.0.0
 
 * [THORN-711] FieldStation builds its healthReport with the ska-control-model 1.4.0 health_report helper. The report now lists only the sources that are not OK, by name.
