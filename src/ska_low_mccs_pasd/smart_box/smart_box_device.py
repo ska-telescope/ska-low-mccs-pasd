@@ -723,6 +723,28 @@ class MccsSmartBox(MccsBaseDevice):
             return True
         return self.is_engineering()
 
+    def is_health_model_allowed(
+        self: MccsSmartBox,
+        req_type: tango.AttReqType,  # pylint: disable=unused-argument
+    ) -> bool:
+        """
+        Return whether health model attributes can be accessed.
+
+        The health model only exists when ``UseAttributesForHealth`` is
+        False; otherwise health is evaluated by the HealthRecorder.
+
+        :param req_type: the request type
+
+        :return: True if the health model is in use.
+        """
+        if self._health_model is None:
+            tango.Except.throw_exception(
+                "AttributeNotAllowed",
+                "Health model is not in use (UseAttributesForHealth is True).",
+                self.get_name(),
+            )
+        return True
+
     def _clear_threshold_cache(self: MccsSmartBox) -> None:
         """Clear fndh thresholds cache from database."""
         self._db_connection.clear_thresholds(
@@ -1161,6 +1183,7 @@ class MccsSmartBox(MccsBaseDevice):
     @attribute(
         dtype="DevString",
         format="%s",
+        fisallowed="is_health_model_allowed",
     )
     def healthModelParams(self: MccsSmartBox) -> str:
         """
@@ -1168,6 +1191,7 @@ class MccsSmartBox(MccsBaseDevice):
 
         :return: the health params
         """
+        assert self._health_model is not None  # guaranteed by fisallowed
         return json.dumps(self._health_model.health_params, cls=JsonSerialize)
 
     @healthModelParams.write  # type: ignore[no-redef]
@@ -1177,6 +1201,7 @@ class MccsSmartBox(MccsBaseDevice):
 
         :param argin: JSON-string of dictionary of health states
         """
+        assert self._health_model is not None  # guaranteed by fisallowed
         self._health_model.health_params = json.loads(argin)
         self._health_model.update_health()
 
@@ -1202,13 +1227,18 @@ class MccsSmartBox(MccsBaseDevice):
         """
         return self._nof_port_breakers_tripped
 
-    @attribute(dtype="DevBoolean", label="useNewHealthRules")
+    @attribute(
+        dtype="DevBoolean",
+        label="useNewHealthRules",
+        fisallowed="is_health_model_allowed",
+    )
     def useNewHealthRules(self: MccsSmartBox) -> bool:
         """
         Get whether to use new health rules.
 
         :return: whether to use new health rules.
         """
+        assert self._health_model is not None  # guaranteed by fisallowed
         return self._health_model._use_new_health_rules
 
     @useNewHealthRules.write  # type: ignore[no-redef]
@@ -1218,6 +1248,7 @@ class MccsSmartBox(MccsBaseDevice):
 
         :param use_new_rules: whether to use new rules
         """
+        assert self._health_model is not None  # guaranteed by fisallowed
         self._health_model.use_new_health_rules = use_new_rules
         self._health_model.update_health()
 
