@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [THORN-791] Improve message when accessing attribute not allowed (i.e attempting to read attributes from old health model when not in use.)
+
 ## 9.0.1
 
 * [THORN-773] Update base images. ska-python to 1.1.4, tango-dsconfig to 1.9.2, build-python-uv to 0.4.1.
