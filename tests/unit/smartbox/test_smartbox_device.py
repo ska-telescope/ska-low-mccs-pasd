@@ -29,9 +29,24 @@ from tests.harness import PasdTangoTestHarness
 gc.disable()
 
 
+@pytest.fixture(name="use_attributes_for_health")
+def use_attributes_for_health_fixture() -> bool | None:
+    """
+    Return the UseAttributesForHealth property value for the device.
+
+    Tests may override this via ``pytest.mark.parametrize``.
+
+    :return: None, to use the device default.
+    """
+    return None
+
+
 @pytest.fixture(name="smartbox_device")
 def smartbox_device_fixture(
-    smartbox_number: int, mock_pasdbus: unittest.mock.Mock, station_label: str
+    smartbox_number: int,
+    mock_pasdbus: unittest.mock.Mock,
+    station_label: str,
+    use_attributes_for_health: bool | None,
 ) -> tango.DeviceProxy:
     """
     Fixture that returns a proxy to the smartbox Tango device under test.
@@ -39,6 +54,7 @@ def smartbox_device_fixture(
     :param smartbox_number: number of the smartbox under test
     :param mock_pasdbus: A mock PaSD bus device.
     :param station_label: The label of the station under test.
+    :param use_attributes_for_health: UseAttributesForHealth property value.
 
     :yield: a proxy to the smartbox Tango device under test.
     """
@@ -90,10 +106,66 @@ def smartbox_device_fixture(
             smartbox_number,
             logging_level=int(LoggingLevel.DEBUG),
             device_class=_PatchedMccsSmartbox,
+            use_attributes_for_health=use_attributes_for_health,
         )
 
         with harness as context:
             yield context.get_smartbox_device(smartbox_number)
+
+
+HEALTH_MODEL_NOT_IN_USE = "Health model is not in use"
+
+
+@pytest.mark.parametrize("use_attributes_for_health", [True])
+@pytest.mark.parametrize(
+    ("attribute_name", "write_value"),
+    [
+        ("useNewHealthRules", False),
+        ("healthModelParams", json.dumps({"inputvoltage": [50.0, 49.0, 45.0, 40.0]})),
+    ],
+)
+def test_health_model_attributes_not_allowed_without_health_model(
+    smartbox_device: tango.DeviceProxy,
+    attribute_name: str,
+    write_value: Any,
+) -> None:
+    """
+    Test health model attributes are rejected when health uses attributes.
+
+    :param smartbox_device: fixture that provides a proxy to the smartbox device.
+    :param attribute_name: the health model attribute under test.
+    :param write_value: a valid value to write to the attribute.
+    """
+    with pytest.raises(tango.DevFailed) as read_error:
+        smartbox_device.read_attribute(attribute_name)
+    assert read_error.value.args[0].reason == "AttributeNotAllowed"
+    assert HEALTH_MODEL_NOT_IN_USE in read_error.value.args[0].desc
+
+    with pytest.raises(tango.DevFailed) as write_error:
+        smartbox_device.write_attribute(attribute_name, write_value)
+    assert write_error.value.args[0].reason == "AttributeNotAllowed"
+    assert HEALTH_MODEL_NOT_IN_USE in write_error.value.args[0].desc
+
+
+@pytest.mark.parametrize("use_attributes_for_health", [False])
+def test_health_model_attributes_allowed_with_health_model(
+    smartbox_device: tango.DeviceProxy,
+) -> None:
+    """
+    Test health model attributes work when the health model is in use.
+
+    :param smartbox_device: fixture that provides a proxy to the smartbox device.
+    """
+    smartbox_device.useNewHealthRules = False
+    assert smartbox_device.useNewHealthRules is False
+    smartbox_device.useNewHealthRules = True
+    assert smartbox_device.useNewHealthRules is True
+
+    smartbox_device.healthModelParams = json.dumps(
+        {"inputvoltage": [50.0, 49.0, 45.0, 40.0]}
+    )
+    params = json.loads(smartbox_device.healthModelParams)
+    assert params["inputvoltage"] == [50.0, 49.0, 45.0, 40.0]
 
 
 def test_device_transitions_to_power_state_of_fndh_port(

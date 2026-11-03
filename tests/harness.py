@@ -365,6 +365,7 @@ class PasdTangoTestHarness:
         logging_level: int = int(LoggingLevel.DEBUG),
         device_class: type[Device] | str = "ska_low_mccs_pasd.MccsFNDH",
         ports_with_smartbox: Optional[list[int]] = None,
+        use_attributes_for_health: Optional[bool] = None,
     ) -> None:
         """
         Set the FNDH Tango device in the test harness.
@@ -376,9 +377,16 @@ class PasdTangoTestHarness:
             This may be used to override the usual device class,
             for example with a patched subclass.
         :param ports_with_smartbox: ports which have smartboxes attached.
+        :param use_attributes_for_health: value for the
+            UseAttributesForHealth property. If None, the device default
+            is used.
         """
         if ports_with_smartbox is None:
             ports_with_smartbox = [1, 2, 3]
+
+        optional_properties = {}
+        if use_attributes_for_health is not None:
+            optional_properties["UseAttributesForHealth"] = use_attributes_for_health
 
         self._tango_test_harness.add_device(
             get_fndh_name(self._station_label),
@@ -387,6 +395,7 @@ class PasdTangoTestHarness:
             ParentTRL=get_field_station_name(self._station_label),
             PortsWithSmartbox=ports_with_smartbox,
             LoggingLevelDefault=logging_level,
+            **optional_properties,
         )
 
     def set_fncc_device(
@@ -462,6 +471,7 @@ class PasdTangoTestHarness:
         antenna_names: Optional[list[str]] = None,
         fndh_port: int = 1,
         masked_antennas: Optional[list[str]] = None,
+        use_attributes_for_health: Optional[bool] = None,
     ) -> None:
         """
         Add a smartbox Tango device to the test harness.
@@ -475,6 +485,9 @@ class PasdTangoTestHarness:
         :param antenna_names: names of the antennas attached to the smartbox.
         :param fndh_port: the FNDH port this smartbox is attached to.
         :param masked_antennas: antenna names whose ports should be masked.
+        :param use_attributes_for_health: value for the
+            UseAttributesForHealth property. If None, the device default
+            is used.
         """
         if ports_with_antennas is None:
             ports_with_antennas = [1, 2, 3]
@@ -484,9 +497,11 @@ class PasdTangoTestHarness:
                 f"sb{fndh_port:02d}-{port:02d}" for port in ports_with_antennas
             ]
 
-        optional_properties = {}
+        optional_properties: dict[str, Any] = {}
         if masked_antennas is not None:
             optional_properties["MaskedAntennas"] = masked_antennas
+        if use_attributes_for_health is not None:
+            optional_properties["UseAttributesForHealth"] = use_attributes_for_health
 
         self._tango_test_harness.add_device(
             get_smartbox_name(smartbox_id, station_label=self._station_label),
