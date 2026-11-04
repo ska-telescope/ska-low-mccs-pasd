@@ -611,6 +611,27 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
             return True
         return self.is_engineering()
 
+    def is_health_model_allowed(
+        self: MccsFNDH, req_type: tango.AttReqType  # pylint: disable=unused-argument
+    ) -> bool:
+        """
+        Return whether health model attributes can be accessed.
+
+        The health model only exists when ``UseAttributesForHealth`` is
+        False; otherwise health is evaluated by the HealthRecorder.
+
+        :param req_type: the request type
+
+        :return: True if the health model is in use.
+        """
+        if self._health_model is None:
+            tango.Except.throw_exception(
+                "AttributeNotAllowed",
+                "Health model is not in use (UseAttributesForHealth is True).",
+                self.get_name(),
+            )
+        return True
+
     def _clear_threshold_cache(self: MccsFNDH) -> None:
         """Clear fndh thresholds cache from database."""
         self._db_connection.clear_thresholds(
@@ -698,6 +719,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     @attribute(
         dtype="DevString",
         label="return the version of healthRules in use. Only v0 and v1 available.",
+        fisallowed="is_health_model_allowed",
     )
     def healthRuleVersion(self: MccsFNDH) -> str:
         """
@@ -705,6 +727,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
         :return: the HealthRuleVersion is use.
         """
+        assert self._health_model is not None  # guaranteed by fisallowed
         if self._health_model.health_rule_active:
             return "v1"
         return "v0"
@@ -722,6 +745,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         version = value.lower()
         if version not in ["v0", "v1"]:
             raise ValueError("We only support versions v0 and v1")
+        assert self._health_model is not None  # guaranteed by fisallowed
         if version == "v0":
             self._health_model.health_rule_active = False
             self.logger.info("De-activated the new healthRules.")
@@ -1215,6 +1239,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
     @attribute(
         dtype="DevString",
         format="%s",
+        fisallowed="is_health_model_allowed",
     )
     def healthModelParams(self: MccsFNDH) -> str:
         """
@@ -1230,6 +1255,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
         :return: the health params
         """
+        assert self._health_model is not None  # guaranteed by fisallowed
         return json.dumps(self._health_model.health_params)
 
     @healthModelParams.write  # type: ignore[no-redef]
@@ -1239,6 +1265,7 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
         :param argin: JSON-string of dictionary of health states
         """
+        assert self._health_model is not None  # guaranteed by fisallowed
         validate(json.loads(argin), self.UPDATE_HEALTH_PARAMS_SCHEMA)
         self._health_model.health_params = json.loads(argin)
         self._health_model.update_health()

@@ -110,15 +110,30 @@ def patched_fndh_device_class_fixture(
     return PatchedMccsFNDH
 
 
+@pytest.fixture(name="use_attributes_for_health")
+def use_attributes_for_health_fixture() -> bool | None:
+    """
+    Return the UseAttributesForHealth property value for the device.
+
+    Tests may override this via ``pytest.mark.parametrize``.
+
+    :return: None, to use the device default.
+    """
+    return None
+
+
 @pytest.fixture(name="fndh_device")
 def fndh_device_fixture(
-    patched_fndh_device_class: type[MccsFNDH], station_label: str
+    patched_fndh_device_class: type[MccsFNDH],
+    station_label: str,
+    use_attributes_for_health: bool | None,
 ) -> tango.DeviceProxy:
     """
     Fixture that returns a proxy to the FNDH Tango device under test.
 
     :param patched_fndh_device_class: a patches class for use in testing
     :param station_label: The label of the station under test.
+    :param use_attributes_for_health: UseAttributesForHealth property value.
 
     :yield: a proxy to the FNDH Tango device under test.
     """
@@ -153,10 +168,88 @@ def fndh_device_fixture(
         harness.set_fndh_device(
             logging_level=int(LoggingLevel.DEBUG),
             device_class=patched_fndh_device_class,
+            use_attributes_for_health=use_attributes_for_health,
         )
 
         with harness as context:
             yield context.get_fndh_device()
+
+
+HEALTH_MODEL_NOT_IN_USE = "Health model is not in use"
+
+# A complete payload satisfying MccsFndh_UpdateHealthParams.json, which
+# requires every field and forbids additional ones.
+VALID_FNDH_HEALTH_PARAMS: dict[str, Any] = {
+    "failed_percent_uncontrolled_smartbox": 40,
+    "degraded_percent_uncontrolled_smartbox": 20,
+    "psu48vvoltage1": [60.0, 55.0, 45.0, 40.0],
+    "psu48vcurrent": [18.0, 15.0, -1.0, -2.0],
+    "psu48vtemperature1": [100.0, 85.0, 0.0, -5.0],
+    "psu48vtemperature2": [100.0, 85.0, 0.0, -5.0],
+    "fncbtemperature": [100.0, 85.0, 0.0, -5.0],
+    "fncbhumidity": [85, 70, 10, 0],
+    "commsgatewaytemperature": [100.0, 85.0, 0.0, -5.0],
+    "powermoduletemperature": [100.0, 85.0, 0.0, -5.0],
+    "outsidetemperature": [100.0, 85.0, 0.0, -5.0],
+    "internalambienttemperature": [100.0, 85.0, 0.0, -5.0],
+}
+
+
+@pytest.mark.parametrize("use_attributes_for_health", [True])
+@pytest.mark.parametrize(
+    ("attribute_name", "write_value"),
+    [
+        ("healthRuleVersion", "v1"),
+        ("healthModelParams", json.dumps(VALID_FNDH_HEALTH_PARAMS)),
+    ],
+)
+def test_health_model_attributes_not_allowed_without_health_model(
+    fndh_device: tango.DeviceProxy,
+    attribute_name: str,
+    write_value: str,
+) -> None:
+    """
+    Test health model attributes are rejected when health uses attributes.
+
+    :param fndh_device: fixture that provides a proxy to the FNDH device.
+    :param attribute_name: the health model attribute under test.
+    :param write_value: a valid value to write to the attribute.
+    """
+    with pytest.raises(tango.DevFailed) as read_error:
+        fndh_device.read_attribute(attribute_name)
+    assert read_error.value.args[0].reason == "AttributeNotAllowed"
+    assert HEALTH_MODEL_NOT_IN_USE in read_error.value.args[0].desc
+
+    with pytest.raises(tango.DevFailed) as write_error:
+        fndh_device.write_attribute(attribute_name, write_value)
+    assert write_error.value.args[0].reason == "AttributeNotAllowed"
+    assert HEALTH_MODEL_NOT_IN_USE in write_error.value.args[0].desc
+
+
+@pytest.mark.parametrize("use_attributes_for_health", [False])
+def test_health_model_attributes_allowed_with_health_model(
+    fndh_device: tango.DeviceProxy,
+) -> None:
+    """
+    Test health model attributes work when the health model is in use.
+
+    :param fndh_device: fixture that provides a proxy to the FNDH device.
+    """
+    fndh_device.healthRuleVersion = "v1"
+    assert fndh_device.healthRuleVersion == "v1"
+    fndh_device.healthRuleVersion = "v0"
+    assert fndh_device.healthRuleVersion == "v0"
+
+    # The schema requires every field, but FndhHealthRules silently drops
+    # keys it does not support, so only check keys the device reports.
+    supported_keys = json.loads(fndh_device.healthModelParams).keys()
+    assert "failed_percent_uncontrolled_smartbox" in supported_keys
+
+    fndh_device.healthModelParams = json.dumps(VALID_FNDH_HEALTH_PARAMS)
+    params = json.loads(fndh_device.healthModelParams)
+    for key, value in VALID_FNDH_HEALTH_PARAMS.items():
+        if key in supported_keys:
+            assert params[key] == value
 
 
 @pytest.fixture(name="healthful_fndh_device")
