@@ -1,7 +1,8 @@
 # Version History
 
-## Unreleased
+## 9.0.2
 
+* [SKB-1660] Update ska-low-mccs-common to 4.10.1. HealthRecorder now calls its health callback on every monitored attribute event, so Tango change detection decides which events to push.
 * [THORN-791] Improve message when accessing attribute not allowed (i.e attempting to read attributes from old health model when not in use.)
 
 ## 9.0.1
