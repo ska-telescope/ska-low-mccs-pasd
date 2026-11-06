@@ -869,34 +869,27 @@ class MccsSmartBox(MccsBaseDevice):
         self: MccsSmartBox, health: HealthState, health_report: str
     ) -> None:
         """
-        Handle change in this device's health state.
+        Handle an evaluation of this device's health.
 
-        This is a callback hook, called whenever the HealthModel's
-        evaluated health state changes. It is responsible for updating
-        the tango side of things i.e. making sure the attribute is up to
-        date, and events are pushed.
+        The HealthRecorder calls this hook on every event from a monitored
+        attribute. It pushes the health report and the health state every
+        time, and Tango change detection suppresses repeated values.
 
-        :param health: the new health value
+        :param health: the evaluated health value
         :param health_report: the health report
         """
         if self._stopping:
             return
         # Give both events one timestamp, so that a client can pair them.
         timestamp = time.time()
-        if self._health_report != health_report:
-            self._health_report = health_report
-            self.push_change_event(
-                "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
-            )
-            self.push_archive_event(
-                "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
-            )
-        # Every write to this signal is a (value, timestamp, quality) triple.
-        last_health, _, _ = cast(
-            tuple[HealthState, float, AttrQuality], self._health_state
+        self._health_report = health_report
+        self.push_change_event(
+            "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
         )
-        if last_health != health:
-            self._health_state = (health, timestamp, AttrQuality.ATTR_VALID)
+        self.push_archive_event(
+            "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
+        )
+        self._health_state = (health, timestamp, AttrQuality.ATTR_VALID)
 
     def _attr_conf_changed(self: MccsSmartBox, attribute_name: str) -> None:
         """

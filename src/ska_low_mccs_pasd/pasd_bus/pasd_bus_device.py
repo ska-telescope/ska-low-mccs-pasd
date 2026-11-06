@@ -811,15 +811,14 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         self: MccsPasdBus, health: HealthState, health_report: str
     ) -> None:
         """
-        Handle change in this device's health state.
+        Handle an evaluation of this device's health.
 
-        This is a callback hook, called whenever the HealthModel's
-        evaluated health state changes. It is responsible for updating
-        the tango side of things i.e. making sure the attribute is up to
-        date, and events are pushed.
+        The HealthRecorder calls this hook on every event from a monitored
+        attribute. It writes the health report and the health state every
+        time, and Tango change detection suppresses repeated values.
 
-        :param health: the new health value
-        :param health_report: the new health report
+        :param health: the evaluated health value
+        :param health_report: the health report
         """
         # healthState is defined as an attribute_from_signal in the base classes.
         # Setting this signal will push change and archive events automatically.
@@ -836,16 +835,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         # Give both events one timestamp, so that a client can pair them.
         timestamp = time.time()
         self.health_report_signal = (health_report, timestamp, AttrQuality.ATTR_VALID)
-        try:
-            # Every write to this signal is a (value, timestamp, quality) triple.
-            last_health, _, _ = cast(
-                tuple[HealthState, float, AttrQuality], self._health_state
-            )
-            if last_health == health:
-                return
-            self._health_state = (health, timestamp, AttrQuality.ATTR_VALID)
-        except AttributeError as err:  # Must ensure that health_state is initialised
-            self.logger.error(f"Health changed failed due to {err}")
+        self._health_state = (health, timestamp, AttrQuality.ATTR_VALID)
 
     def _on_poll_failure_changed(
         self: MccsPasdBus,
