@@ -114,6 +114,8 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
 
         This is overridden here to change the Tango serialisation model.
         """
+        # The Init command calls delete_device first, which sets this flag.
+        self._stopping = False
         super().init_device()
 
         # Setup attributes shared with the MccsPasdBus.

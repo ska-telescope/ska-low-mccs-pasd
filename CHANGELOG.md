@@ -1,5 +1,9 @@
 # Version History
 
+## 9.0.3
+
+* [THORN-807] FNDH and FNCC reset their stopping flag in init_device. After the Init command, they push health events again.
+
 ## 9.0.2
 
 * [SKB-1660] Update ska-low-mccs-common to 4.10.1. HealthRecorder now calls its health callback on every monitored attribute event, so Tango change detection decides which events to push.
