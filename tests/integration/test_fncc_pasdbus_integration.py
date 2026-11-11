@@ -340,6 +340,47 @@ class TestfnccPasdBusIntegration:
         change_event_callbacks["resetCount"].assert_not_called()
         assert fncc_device.resetCount == 1
 
+    def test_health_after_init(
+        self: TestfnccPasdBusIntegration,
+        fncc_device: tango.DeviceProxy,
+        pasd_bus_device: tango.DeviceProxy,
+        change_event_callbacks: MockTangoEventCallbackGroup,
+    ) -> None:
+        """
+        Test that the FNCC still pushes health events after the Init command.
+
+        The Init command calls delete_device and then init_device. The device
+        must push health events again after init_device.
+
+        :param fncc_device: a proxy to the FNCC device under test.
+        :param pasd_bus_device: a proxy to the PaSD bus device under test.
+        :param change_event_callbacks: dictionary of mock change event
+            callbacks with asynchrony support
+        """
+        fncc_device.subscribe_event(
+            "healthState",
+            tango.EventType.CHANGE_EVENT,
+            change_event_callbacks["fnccHealthState"],
+        )
+        change_event_callbacks["fnccHealthState"].assert_change_event(
+            HealthState.FAILED
+        )
+
+        pasd_bus_device.adminMode = AdminMode.ONLINE
+        fncc_device.adminMode = AdminMode.ONLINE
+        change_event_callbacks["fnccHealthState"].assert_change_event(
+            HealthState.OK, lookahead=2, consume_nonmatches=True
+        )
+
+        fncc_device.Init()
+        change_event_callbacks["fnccHealthState"].assert_change_event(
+            HealthState.FAILED
+        )
+        change_event_callbacks["fnccHealthState"].assert_change_event(
+            HealthState.OK, lookahead=2, consume_nonmatches=True
+        )
+        assert fncc_device.healthReport == "Health is OK."
+
 
 @pytest.fixture(name="change_event_callbacks")
 def change_event_callbacks_fixture(

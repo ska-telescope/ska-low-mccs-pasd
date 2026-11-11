@@ -747,3 +747,36 @@ def test_pasd_status_health(
         change_event_callbacks["healthState"].assert_not_called()
     assert healthful_fndh_device.healthstate == health_state
     assert healthful_fndh_device.state() == dev_state
+
+
+def test_health_after_init(
+    healthful_fndh_device: tango.DeviceProxy,
+    change_event_callbacks: MockTangoEventCallbackGroup,
+) -> None:
+    """
+    Test that the FNDH still pushes health events after the Init command.
+
+    The Init command calls delete_device and then init_device. The device
+    must push health events again after init_device.
+
+    :param healthful_fndh_device: the device under test
+    :param change_event_callbacks: a collection of change event callbacks.
+    """
+    healthful_fndh_device.subscribe_event(
+        "healthState",
+        tango.EventType.CHANGE_EVENT,
+        change_event_callbacks["healthState"],
+    )
+    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
+
+    healthful_fndh_device.adminMode = AdminMode.ONLINE
+    change_event_callbacks["healthState"].assert_change_event(
+        HealthState.OK, lookahead=2, consume_nonmatches=True
+    )
+
+    healthful_fndh_device.Init()
+    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
+    change_event_callbacks["healthState"].assert_change_event(
+        HealthState.OK, lookahead=2, consume_nonmatches=True
+    )
+    assert healthful_fndh_device.healthState == HealthState.OK

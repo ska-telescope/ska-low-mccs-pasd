@@ -161,6 +161,8 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
         This is overridden here to change the Tango serialisation model.
         """
+        # The Init command calls delete_device first, which sets this flag.
+        self._stopping = False
         self._isAlive = True
         self._overCurrentThreshold = 0.0
         self._overVoltageThreshold = 0.0
