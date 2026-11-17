@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = "==3.10.*"
 
 [[package]]
@@ -1088,7 +1088,7 @@ wheels = [
 
 [[package]]
 name = "pytango"
-version = "10.3.0"
+version = "10.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docstring-parser" },
@@ -1097,15 +1097,14 @@ dependencies = [
     { name = "psutil" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/8e/0648a8528e587ad93643a60a688ba86a7bb5de44baa134622c33a4b131e0/pytango-10.3.0.tar.gz", hash = "sha256:27e03c9feac6227c2534e1fb7dbcd33fa33616cbc1969c3fd86d303d4402f2f6", size = 2823824, upload-time = "2026-06-03T16:15:38.756Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/02/a2/569ddb0a94e045a278d9022e13c4bfaeb27b93497ba3103274ea7048c3e0/pytango-10.3.2.tar.gz", hash = "sha256:84ab5e3370d325f411b7c6edf8de7ae80db3b1703bc2913b1928a99212094a13", size = 2885602, upload-time = "2026-11-09T11:10:34.501Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/69/986cd41a3e078c8cdc27f6050c29a7ed2143a021791d61ea3f20c8c819e2/pytango-10.3.0-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:2670917c37d061a1c9a3816b002f903adb39e0c130f4c231f8c482ccbdb0fbed", size = 17476323, upload-time = "2026-06-03T16:14:10.839Z" },
-    { url = "https://files.pythonhosted.org/packages/22/21/48d05a9d21288a150de43c2bf80db825a9ed38f4dde31446355caadfab16/pytango-10.3.0-cp310-cp310-macosx_12_0_x86_64.whl", hash = "sha256:2495e8f368eaf2b67d7d683b47a4997cbc5920a95bc6f6a6a6ad26559a26c65b", size = 18571424, upload-time = "2026-06-03T16:14:13.753Z" },
-    { url = "https://files.pythonhosted.org/packages/36/35/610240fb3ca12904009d36171c57667cd28e6cb7504352394e9e4647ce19/pytango-10.3.0-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:672113c94caab48f9759899c4ca8a44089adb15c69fa7e8a1400a5a2ba0d465e", size = 18249828, upload-time = "2026-06-03T16:14:16.467Z" },
-    { url = "https://files.pythonhosted.org/packages/10/9a/72f34153aa38207cc593c68c84181d8e51a4c4cd4f2e9fee4756b3906cb9/pytango-10.3.0-cp310-cp310-manylinux2014_i686.manylinux_2_17_i686.whl", hash = "sha256:d95d985febf191f1ff9b7eabade973e16546f9cd76524fe3f13f3cfdbc75d29e", size = 20154068, upload-time = "2026-06-03T16:14:19.306Z" },
-    { url = "https://files.pythonhosted.org/packages/83/29/68e02ff0f542e60d4b047b351f5bafa68ff465d9ec309285d40e2013a50f/pytango-10.3.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:73e4e2a41340afe4696143401de097c0ba3ed62b177745f992b8523709dca52d", size = 19210607, upload-time = "2026-06-03T16:14:22.195Z" },
-    { url = "https://files.pythonhosted.org/packages/07/60/ad649cceb81fc9b014313eabe67f669921acdd9af8e5e23cd0471fa2fa15/pytango-10.3.0-cp310-cp310-win32.whl", hash = "sha256:5bd4e26659b16e0cf0307a44fdcbaf3a1ca45beefe74c5ffa73a698b91852d80", size = 4560207, upload-time = "2026-06-03T16:14:24.665Z" },
-    { url = "https://files.pythonhosted.org/packages/63/eb/796624ca7a7107348d43c422ab35c7644393374493c0ed87e4c0dd1b1700/pytango-10.3.0-cp310-cp310-win_amd64.whl", hash = "sha256:7a87eb0804e60a6c29f3d12fb3e73fb78510a76acc9b2e266e88b9fa49521045", size = 5080428, upload-time = "2026-06-03T16:14:26.192Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/fa/b9678974e4cbd9dcca0765eedb3f00c7ad196a3dc762c317b8a7297f243d/pytango-10.3.2-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:392151331e42373fc1565d8f8d15710eb25497d94da7241b8dcfa483c06bad18", size = 31971536, upload-time = "2026-11-09T11:09:01.29Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/02/030b8386f522e4317e65fc86c39fe85e7a53bce15818969da09cdddb1c86/pytango-10.3.2-cp310-cp310-macosx_12_0_x86_64.whl", hash = "sha256:3d811f9f38b59bccf70bbd6e02d321334b1320726d75a65690d6cdc9bd42c4cf", size = 33082447, upload-time = "2026-11-09T11:09:05.719Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/d2/044567e91c897070460e2a63792de0a32c804fcb5822469700c5775d26f4/pytango-10.3.2-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:9fa31374b268ec4055d0f53111fc8dc5c2f01c5a4dcdc1a9fd1bbae57df18aa7", size = 19206214, upload-time = "2026-11-09T11:09:08.814Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/ff/97fa8db000c8fc14360e3cc32707444174e413583f8bb0eed0854774c67e/pytango-10.3.2-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:cabe10f9e4abd7f6d54a573a8ca1a2275db6bd108833fdba67ff2015b7fceaae", size = 20508860, upload-time = "2026-11-09T11:09:11.749Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/87/7ba05b208a554b868505b8ffde1c5872421a4426444559cb0fded1d4ecb3/pytango-10.3.2-cp310-cp310-win32.whl", hash = "sha256:8720aba0e4c30961dad40e6c2e7531397a6d6efb9ea9c7578836788b392dd72b", size = 4740880, upload-time = "2026-11-09T11:09:14.916Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/3c/7c53ae2d1966d946c1be45aab4b2129c90018ce0fbe419f75b417204bdea/pytango-10.3.2-cp310-cp310-win_amd64.whl", hash = "sha256:945d785a07176874276a88475e872bb6dc6a6ad31416af2d8639efa5e91586dd", size = 5238548, upload-time = "2026-11-09T11:09:16.72Z" },
 ]
 
 [[package]]
@@ -1425,9 +1424,9 @@ dependencies = [
     { name = "pytango" },
     { name = "transitions" },
 ]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-control-model/1.4.0/ska_control_model-1.4.0.tar.gz", hash = "sha256:7861468837359e315d7797d03d3438fff9fa775bdc88216b7dcf68b4c7c34c61" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-control-model/1.4.0/ska_control_model-1.4.0.tar.gz", hash = "sha256:7861468837359e315d7797d03d3438fff9fa775bdc88216b7dcf68b4c7c34c61", size = 0, upload-time = "2026-09-15T13:35:34.305Z" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-control-model/1.4.0/ska_control_model-1.4.0-py3-none-any.whl", hash = "sha256:8d3e6f119a20f0d33446cdf7278c9875c6d5c61407556354e028b9fffec1fa5a" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-control-model/1.4.0/ska_control_model-1.4.0-py3-none-any.whl", hash = "sha256:8d3e6f119a20f0d33446cdf7278c9875c6d5c61407556354e028b9fffec1fa5a", size = 0, upload-time = "2026-09-15T13:35:34.447Z" },
 ]
 
 [package.optional-dependencies]
@@ -1456,9 +1455,9 @@ dependencies = [
     { name = "ska-tango-testing" },
     { name = "transitions" },
 ]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.10.1/ska_low_mccs_common-4.10.1.tar.gz", hash = "sha256:63b78daf7b13792d2929a11d8ed615f398888316d724934921c304e92d538f8c" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.10.1/ska_low_mccs_common-4.10.1.tar.gz", hash = "sha256:63b78daf7b13792d2929a11d8ed615f398888316d724934921c304e92d538f8c", size = 71410, upload-time = "2026-11-04T01:26:09.573Z" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.10.1/ska_low_mccs_common-4.10.1-py3-none-any.whl", hash = "sha256:6638eba264b423af29a4da133f1dcb843a40164c3c197dbf0d17ffcc8ef943fa" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.10.1/ska_low_mccs_common-4.10.1-py3-none-any.whl", hash = "sha256:6638eba264b423af29a4da133f1dcb843a40164c3c197dbf0d17ffcc8ef943fa", size = 93447, upload-time = "2026-11-04T01:26:09.392Z" },
 ]
 
 [[package]]
@@ -1553,7 +1552,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26.4,<2.0.0" },
     { name = "pydantic-core", specifier = ">=2.18.4,<3.0.0" },
     { name = "pymodbus", specifier = ">=3.11.4,<3.12.0" },
-    { name = "pytango", specifier = ">=10.3.0,!=10.3.1,<11.0.0" },
+    { name = "pytango", specifier = ">=10.3.2,<11.0.0" },
     { name = "pyyaml", specifier = ">=6.0,<7.0" },
     { name = "referencing", specifier = ">=0.31.0,<0.32.0" },
     { name = "ska-control-model", extras = ["health-rollup"], specifier = ">=1.4.0,<2.0.0" },
@@ -1622,27 +1621,27 @@ dependencies = [
     { name = "pyyaml" },
     { name = "ska-ser-devices" },
 ]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-pasd-driver/1.3.0/ska_low_pasd_driver-1.3.0.tar.gz", hash = "sha256:f008f20aa6f9592c41be598b4b4516511e8774ae085f6213eeaf722f61288c84" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-pasd-driver/1.3.0/ska_low_pasd_driver-1.3.0.tar.gz", hash = "sha256:f008f20aa6f9592c41be598b4b4516511e8774ae085f6213eeaf722f61288c84", size = 42794, upload-time = "2026-08-11T12:48:14.925Z" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-pasd-driver/1.3.0/ska_low_pasd_driver-1.3.0-py3-none-any.whl", hash = "sha256:fe096db01229075a6cfb18ea3ef85c03fe8deee0b7d6561ddecffdffd3535d0f" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-pasd-driver/1.3.0/ska_low_pasd_driver-1.3.0-py3-none-any.whl", hash = "sha256:fe096db01229075a6cfb18ea3ef85c03fe8deee0b7d6561ddecffdffd3535d0f", size = 51366, upload-time = "2026-08-11T12:48:14.803Z" },
 ]
 
 [[package]]
 name = "ska-ser-devices"
 version = "0.2.0"
 source = { registry = "https://artefact.skao.int/repository/pypi-internal/simple" }
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-ser-devices/0.2.0/ska_ser_devices-0.2.0.tar.gz", hash = "sha256:3c3008d6c0310034811b3e82f27d8a599eee9cb269c3b5344f1b0370e5e7cccc" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-ser-devices/0.2.0/ska_ser_devices-0.2.0.tar.gz", hash = "sha256:3c3008d6c0310034811b3e82f27d8a599eee9cb269c3b5344f1b0370e5e7cccc", size = 13994, upload-time = "2026-07-08T14:30:01.032Z" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-ser-devices/0.2.0/ska_ser_devices-0.2.0-py3-none-any.whl", hash = "sha256:102b7264843e50024741b8e09913fb7e2e2b0d688b1af6b5a10b77fdaa5dc14f" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-ser-devices/0.2.0/ska_ser_devices-0.2.0-py3-none-any.whl", hash = "sha256:102b7264843e50024741b8e09913fb7e2e2b0d688b1af6b5a10b77fdaa5dc14f", size = 15796, upload-time = "2026-07-08T14:30:00.629Z" },
 ]
 
 [[package]]
 name = "ska-ser-logging"
 version = "0.4.3.post0"
 source = { registry = "https://artefact.skao.int/repository/pypi-internal/simple" }
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-ser-logging/0.4.3.post0/ska_ser_logging-0.4.3.post0.tar.gz", hash = "sha256:bdd0c68dd855c6a916005765fb1956d47e0ff8d1d97289fe4de1e27d9a20b0ba" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-ser-logging/0.4.3.post0/ska_ser_logging-0.4.3.post0.tar.gz", hash = "sha256:bdd0c68dd855c6a916005765fb1956d47e0ff8d1d97289fe4de1e27d9a20b0ba", size = 0, upload-time = "2026-07-08T14:30:07.232Z" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-ser-logging/0.4.3.post0/ska_ser_logging-0.4.3.post0-py3-none-any.whl", hash = "sha256:f431db276655c847a9e75d1f9b04bd4f7e8d8b2e92cda0556d8c1eb517e4847f" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-ser-logging/0.4.3.post0/ska_ser_logging-0.4.3.post0-py3-none-any.whl", hash = "sha256:f431db276655c847a9e75d1f9b04bd4f7e8d8b2e92cda0556d8c1eb517e4847f", size = 0, upload-time = "2026-07-08T14:30:06.791Z" },
 ]
 
 [[package]]
@@ -1653,9 +1652,9 @@ dependencies = [
     { name = "sphinx" },
     { name = "sphinx-rtd-theme" },
 ]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-ser-sphinx-theme/0.2.1/ska_ser_sphinx_theme-0.2.1.tar.gz", hash = "sha256:7a9eb46b00ce5fbc04ac8e7de563d5133ab61cda8717997f4d604767e98d2c4f" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-ser-sphinx-theme/0.2.1/ska_ser_sphinx_theme-0.2.1.tar.gz", hash = "sha256:7a9eb46b00ce5fbc04ac8e7de563d5133ab61cda8717997f4d604767e98d2c4f", size = 0, upload-time = "2026-07-08T14:34:11.016Z" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-ser-sphinx-theme/0.2.1/ska_ser_sphinx_theme-0.2.1-py3-none-any.whl", hash = "sha256:70fd0ab1678b0bad28bb7f9600a0f8d08a072b0d1179771cde06dac2f8992df8" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-ser-sphinx-theme/0.2.1/ska_ser_sphinx_theme-0.2.1-py3-none-any.whl", hash = "sha256:70fd0ab1678b0bad28bb7f9600a0f8d08a072b0d1179771cde06dac2f8992df8", size = 0, upload-time = "2026-07-08T14:34:10.54Z" },
 ]
 
 [[package]]
@@ -1671,9 +1670,9 @@ dependencies = [
     { name = "ska-ser-logging" },
     { name = "transitions" },
 ]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-base/1.6.1/ska_tango_base-1.6.1.tar.gz", hash = "sha256:0dc25a265c005b7664d90c4aaa855df22578e24fe042c0e812b91d468736d7f8" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-base/1.6.1/ska_tango_base-1.6.1.tar.gz", hash = "sha256:0dc25a265c005b7664d90c4aaa855df22578e24fe042c0e812b91d468736d7f8", size = 0, upload-time = "2026-07-08T14:38:53.404Z" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-base/1.6.1/ska_tango_base-1.6.1-py3-none-any.whl", hash = "sha256:8bc7eab1f826b652e7962afb76468210c5af9b025ecac205948c66518f3963c1" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-base/1.6.1/ska_tango_base-1.6.1-py3-none-any.whl", hash = "sha256:8bc7eab1f826b652e7962afb76468210c5af9b025ecac205948c66518f3963c1", size = 0, upload-time = "2026-07-08T14:38:52.942Z" },
 ]
 
 [[package]]
@@ -1684,9 +1683,9 @@ dependencies = [
     { name = "pytango" },
     { name = "tomli" },
 ]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-difdoc/0.7.0/ska_tango_difdoc-0.7.0.tar.gz", hash = "sha256:139e15ca73828f2c3a58f754e62e6f8de9d428ed885707bd9beebaabc58b4a2b" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-difdoc/0.7.0/ska_tango_difdoc-0.7.0.tar.gz", hash = "sha256:139e15ca73828f2c3a58f754e62e6f8de9d428ed885707bd9beebaabc58b4a2b", size = 0, upload-time = "2026-10-02T10:57:26.365Z" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-difdoc/0.7.0/ska_tango_difdoc-0.7.0-py3-none-any.whl", hash = "sha256:e83976def743c5b002e63d7a3131bac9ac4a055945bd85c2577a8f2805b0f3dc" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-difdoc/0.7.0/ska_tango_difdoc-0.7.0-py3-none-any.whl", hash = "sha256:e83976def743c5b002e63d7a3131bac9ac4a055945bd85c2577a8f2805b0f3dc", size = 0, upload-time = "2026-10-02T10:57:26.227Z" },
 ]
 
 [[package]]
@@ -1698,9 +1697,9 @@ dependencies = [
     { name = "numpy" },
     { name = "pytango" },
 ]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-testing/0.7.3/ska_tango_testing-0.7.3.tar.gz", hash = "sha256:7547be05bf700c985ca0ae549b034c85556cc40079a67b91e37922964b86c3a4" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-testing/0.7.3/ska_tango_testing-0.7.3.tar.gz", hash = "sha256:7547be05bf700c985ca0ae549b034c85556cc40079a67b91e37922964b86c3a4", size = 0, upload-time = "2026-07-08T14:40:31.524Z" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-testing/0.7.3/ska_tango_testing-0.7.3-py3-none-any.whl", hash = "sha256:666516b90281b8cfda8e692b237c4c6703f966754fc12f4f0b2c98a31b831e57" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-tango-testing/0.7.3/ska_tango_testing-0.7.3-py3-none-any.whl", hash = "sha256:666516b90281b8cfda8e692b237c4c6703f966754fc12f4f0b2c98a31b831e57", size = 0, upload-time = "2026-07-08T14:40:30.776Z" },
 ]
 
 [[package]]

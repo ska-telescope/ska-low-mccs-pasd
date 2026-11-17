@@ -6,5 +6,5 @@ pyyaml==6.0.3
 ska-control-model[health_rollup]==1.4.0
 ska-tango-testing==0.7.3
 jsonschema==4.19.1 
-pytango==10.0.0
+pytango==10.3.2
 ska-low-pasd-driver==1.1.0
