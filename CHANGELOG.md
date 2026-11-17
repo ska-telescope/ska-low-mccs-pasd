@@ -1,5 +1,9 @@
 # Version History
 
+## Unreleased
+
+* [THORN-812] Update PyTango to 10.3.2.
+
 ## 9.0.3
 
 * [THORN-807] FNDH and FNCC reset their stopping flag in init_device. After the Init command, they push health events again.
