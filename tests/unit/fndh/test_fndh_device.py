@@ -605,7 +605,7 @@ def test_health(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["healthState"],
     )
-    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
 
     healthful_fndh_device.subscribe_event(
         "internalAmbientTemperature",
@@ -710,7 +710,7 @@ def test_pasd_status_health(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["healthState"],
     )
-    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
 
     healthful_fndh_device.subscribe_event(
         "internalAmbientTemperature",
@@ -767,7 +767,7 @@ def test_health_after_init(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["healthState"],
     )
-    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
 
     healthful_fndh_device.adminMode = AdminMode.ONLINE
     change_event_callbacks["healthState"].assert_change_event(

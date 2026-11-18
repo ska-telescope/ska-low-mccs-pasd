@@ -391,7 +391,7 @@ def test_health(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["healthState"],
     )
-    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
 
     smartbox_device.subscribe_event(
         "powersupplyOutputVoltage",
@@ -496,7 +496,7 @@ def test_pasd_status_health(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["healthState"],
     )
-    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
+    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
 
     smartbox_device.subscribe_event(
         "femHeatsinkTemperature2",

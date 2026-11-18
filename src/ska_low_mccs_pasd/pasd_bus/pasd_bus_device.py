@@ -13,7 +13,6 @@ import importlib.resources
 import json
 import logging
 import sys
-import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Final, Optional, cast
@@ -236,13 +235,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         "`FailedPollWindow` seconds. Indexed by smartbox id - 1.",
     )
 
-    health_report_signal = AttrSignal[str]()
-    healthReport = attribute_from_signal(  # noqa: N815
-        health_report_signal,
-        dtype=str,
-        doc="Health report for the PaSD communications bus",
-    )
-
     # ---------------
     # Initialisation
     # ---------------
@@ -432,7 +424,6 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
 
     def _init_state_model(self: MccsPasdBus) -> None:
         super()._init_state_model()
-        self._health_state = (HealthState.UNKNOWN, time.time(), AttrQuality.ATTR_VALID)
         self._healthful_attributes = [
             "fnccFailedPollsInWindow",
             "fndhFailedPollsInWindow",
@@ -814,14 +805,12 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         Handle an evaluation of this device's health.
 
         The HealthRecorder calls this hook on every event from a monitored
-        attribute. It writes the health report and the health state every
-        time, and Tango change detection suppresses repeated values.
+        attribute. It publishes the health every time, and Tango change
+        detection suppresses repeated values.
 
         :param health: the evaluated health value
         :param health_report: the health report
         """
-        # healthState is defined as an attribute_from_signal in the base classes.
-        # Setting this signal will push change and archive events automatically.
         if self._stopping:
             return
 
@@ -832,10 +821,7 @@ class MccsPasdBus(MccsBaseDevice[PasdBusComponentManager]):
         ) and health not in (HealthState.UNKNOWN, HealthState.FAILED):
             return
 
-        # Give both events one timestamp, so that a client can pair them.
-        timestamp = time.time()
-        self.health_report_signal = (health_report, timestamp, AttrQuality.ATTR_VALID)
-        self._health_state = (health, timestamp, AttrQuality.ATTR_VALID)
+        self.publish_health(health, health_report)
 
     def _on_poll_failure_changed(
         self: MccsPasdBus,

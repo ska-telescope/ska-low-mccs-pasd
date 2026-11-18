@@ -14,7 +14,6 @@ import importlib.resources
 import json
 import sys
 import threading
-import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
@@ -34,7 +33,7 @@ from ska_control_model import (
 from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_low_pasd_driver.pasd_bus_conversions import FndhStatusMap
 from ska_low_pasd_driver.pasd_bus_register_map import DesiredPowerEnum
-from tango import AttrQuality, DevFailed
+from tango import DevFailed
 from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
 
@@ -131,7 +130,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self._port_power_states = [PowerState.UNKNOWN] * self.CONFIG["number_of_ports"]
         self._health_model: Optional[FndhHealthModel]
         self._health_recorder: Optional[HealthRecorder]
-        self._health_report: str = ""
         self._stopping: bool = False
         self._healthful_attributes: dict[str, Callable]
         self._overCurrentThreshold: float
@@ -168,6 +166,10 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         self._overVoltageThreshold = 0.0
         self._humidityThreshold = 0.0
         super().init_device()
+        if self._health_model is not None:
+            self.publish_health(
+                self._health_model.health_state, self._health_model.health_report
+            )
 
         # Setup attributes shared with the MccsPasdBus.
         self._setup_fndh_attributes()
@@ -251,10 +253,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
                 attr_conf_callback=self._attr_conf_changed,
             )
             self._health_model = None
-        self.set_change_event("healthState", True, False)
-        self.set_archive_event("healthState", True, self.VerifyEvents)
-        self.set_change_event("healthReport", True, self.VerifyEvents)
-        self.set_archive_event("healthReport", True, self.VerifyEvents)
 
     def create_component_manager(self: MccsFNDH) -> FndhComponentManager:
         """
@@ -978,25 +976,16 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
 
     def _health_changed_callback(self: MccsFNDH, health: HealthState) -> None:
         """
-        Handle change in this device's health state.
+        Publish the health that the health model gives, with its report.
 
-        This is a callback hook, called whenever the HealthModel's
-        evaluated health state changes. It is responsible for updating
-        the tango side of things i.e. making sure the attribute is up to
-        date, and events are pushed.
+        The health model also calls this from its constructor, before the
+        device stores it. init_device() publishes that first health.
 
         :param health: the new health value
         """
-        try:
-            unchanged = self._health_state == health
-        except AttributeError:
-            # The HealthModel reports its initial value synchronously during
-            # construction, before this device has ever emitted a health state.
-            unchanged = False
-        if not unchanged:
-            self._health_state = health
-            self.push_change_event("healthState", health)
-            self.push_archive_event("healthState", health)
+        health_model = getattr(self, "_health_model", None)
+        if health_model is not None:
+            self.publish_health(health, health_model.health_report)
 
     def _health_changed(
         self: MccsFNDH, health: HealthState, health_report: str
@@ -1005,24 +994,15 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         Handle an evaluation of this device's health.
 
         The HealthRecorder calls this hook on every event from a monitored
-        attribute. It pushes the health report and the health state every
-        time, and Tango change detection suppresses repeated values.
+        attribute. It publishes the health every time, and Tango change
+        detection suppresses repeated values.
 
         :param health: the evaluated health value
         :param health_report: the health report
         """
         if self._stopping:
             return
-        # Give both events one timestamp, so that a client can pair them.
-        timestamp = time.time()
-        self._health_report = health_report
-        self.push_change_event(
-            "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
-        )
-        self.push_archive_event(
-            "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
-        )
-        self._health_state = (health, timestamp, AttrQuality.ATTR_VALID)
+        self.publish_health(health, health_report)
 
     def _attr_conf_changed(self: MccsFNDH, attribute_name: str) -> None:
         """
@@ -1264,17 +1244,6 @@ class MccsFNDH(MccsBaseDevice[FndhComponentManager]):
         validate(json.loads(argin), self.UPDATE_HEALTH_PARAMS_SCHEMA)
         self._health_model.health_params = json.loads(argin)
         self._health_model.update_health()
-
-    @attribute(dtype="DevString")
-    def healthReport(self: MccsFNDH) -> str:
-        """
-        Get the health report.
-
-        :return: the health report.
-        """
-        if self._health_model is not None:
-            return self._health_model.health_report
-        return self._health_report
 
 
 def main(*args: str, **kwargs: str) -> int:  # pragma: no cover

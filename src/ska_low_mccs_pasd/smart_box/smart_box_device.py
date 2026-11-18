@@ -14,7 +14,6 @@ import json
 import re
 import sys
 import threading
-import time
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Callable, Final, Optional, cast
@@ -34,7 +33,7 @@ from ska_control_model import (
 from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_low_pasd_driver.pasd_bus_conversions import SmartboxStatusMap
 from ska_low_pasd_driver.pasd_bus_register_map import DesiredPowerEnum
-from tango import AttrQuality, DevFailed
+from tango import DevFailed
 from tango.device_attribute import ExtractAs
 from tango.server import attribute, command, device_property
 
@@ -144,7 +143,6 @@ class MccsSmartBox(MccsBaseDevice):
         # Initialise with unknown.
         self._health_model: Optional[SmartBoxHealthModel]
         self._health_recorder: Optional[HealthRecorder]
-        self._health_report: str = ""
         self._stopping: bool = False
         self._healthful_attributes: dict[str, Callable]
         self.component_manager: SmartBoxComponentManager
@@ -165,6 +163,10 @@ class MccsSmartBox(MccsBaseDevice):
         sb_matches = re.findall("sb[0-9]+", self.get_name())
         self._readable_name = sb_matches[0] if sb_matches else self.get_name()
         super().init_device()
+        if self._health_model is not None:
+            self.publish_health(
+                self._health_model.health_state, self._health_model.health_report
+            )
         self._setup_smartbox_attributes()
 
         self._build_state = sys.modules["ska_low_mccs_pasd"].__version_info__
@@ -232,11 +234,6 @@ class MccsSmartBox(MccsBaseDevice):
                 attr_conf_callback=self._attr_conf_changed,
             )
             self._health_model = None
-
-        self.set_change_event("healthState", True, False)
-        self.set_archive_event("healthState", True, self.VerifyEvents)
-        self.set_change_event("healthReport", True, self.VerifyEvents)
-        self.set_archive_event("healthReport", True, self.VerifyEvents)
         self.set_change_event("antennaPowers", True, False)
         self.set_archive_event("antennaPowers", True, self.VerifyEvents)
         self._nof_port_breakers_tripped = None
@@ -845,25 +842,16 @@ class MccsSmartBox(MccsBaseDevice):
 
     def _health_changed_callback(self: MccsSmartBox, health: HealthState) -> None:
         """
-        Handle change in this device's health state.
+        Publish the health that the health model gives, with its report.
 
-        This is a callback hook, called whenever the HealthModel's
-        evaluated health state changes. It is responsible for updating
-        the tango side of things i.e. making sure the attribute is up to
-        date, and events are pushed.
+        The health model also calls this from its constructor, before the
+        device stores it. init_device() publishes that first health.
 
         :param health: the new health value
         """
-        try:
-            unchanged = self._health_state == health
-        except AttributeError:
-            # The HealthModel reports its initial value synchronously during
-            # construction, before this device has ever emitted a health state.
-            unchanged = False
-        if not unchanged:
-            self._health_state = health
-            self.push_change_event("healthState", health)
-            self.push_archive_event("healthState", health)
+        health_model = getattr(self, "_health_model", None)
+        if health_model is not None:
+            self.publish_health(health, health_model.health_report)
 
     def _health_changed(
         self: MccsSmartBox, health: HealthState, health_report: str
@@ -872,24 +860,15 @@ class MccsSmartBox(MccsBaseDevice):
         Handle an evaluation of this device's health.
 
         The HealthRecorder calls this hook on every event from a monitored
-        attribute. It pushes the health report and the health state every
-        time, and Tango change detection suppresses repeated values.
+        attribute. It publishes the health every time, and Tango change
+        detection suppresses repeated values.
 
         :param health: the evaluated health value
         :param health_report: the health report
         """
         if self._stopping:
             return
-        # Give both events one timestamp, so that a client can pair them.
-        timestamp = time.time()
-        self._health_report = health_report
-        self.push_change_event(
-            "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
-        )
-        self.push_archive_event(
-            "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
-        )
-        self._health_state = (health, timestamp, AttrQuality.ATTR_VALID)
+        self.publish_health(health, health_report)
 
     def _attr_conf_changed(self: MccsSmartBox, attribute_name: str) -> None:
         """
@@ -1197,17 +1176,6 @@ class MccsSmartBox(MccsBaseDevice):
         assert self._health_model is not None  # guaranteed by fisallowed
         self._health_model.health_params = json.loads(argin)
         self._health_model.update_health()
-
-    @attribute(dtype="DevString")
-    def healthReport(self: MccsSmartBox) -> str:
-        """
-        Get the health report.
-
-        :return: the health report.
-        """
-        if self._health_model is not None:
-            return self._health_model.health_report
-        return self._health_report
 
     @attribute(dtype="DevShort", abs_change=1, archive_abs_change=1)
     def numberOfPortBreakersTripped(self: MccsSmartBox) -> Optional[int]:

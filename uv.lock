@@ -1436,7 +1436,7 @@ health-rollup = [
 
 [[package]]
 name = "ska-low-mccs-common"
-version = "4.10.1"
+version = "4.11.0"
 source = { registry = "https://artefact.skao.int/repository/pypi-internal/simple" }
 dependencies = [
     { name = "attrs" },
@@ -1455,9 +1455,9 @@ dependencies = [
     { name = "ska-tango-testing" },
     { name = "transitions" },
 ]
-sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.10.1/ska_low_mccs_common-4.10.1.tar.gz", hash = "sha256:63b78daf7b13792d2929a11d8ed615f398888316d724934921c304e92d538f8c", size = 71410, upload-time = "2026-11-04T01:26:09.573Z" }
+sdist = { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.11.0/ska_low_mccs_common-4.11.0.tar.gz", hash = "sha256:9d32fab7a17b34830c4d81425825dc7c06921c4b3090929f643fd393fc80f8ba", size = 72332, upload-time = "2026-11-17T13:04:20.698Z" }
 wheels = [
-    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.10.1/ska_low_mccs_common-4.10.1-py3-none-any.whl", hash = "sha256:6638eba264b423af29a4da133f1dcb843a40164c3c197dbf0d17ffcc8ef943fa", size = 93447, upload-time = "2026-11-04T01:26:09.392Z" },
+    { url = "https://artefact.skao.int/repository/pypi-internal/packages/ska-low-mccs-common/4.11.0/ska_low_mccs_common-4.11.0-py3-none-any.whl", hash = "sha256:ad0506782423b124d35727d086e978cff9f23362b757fc87fe2c1f9830e325a0", size = 94394, upload-time = "2026-11-17T13:04:20.342Z" },
 ]
 
 [[package]]
@@ -1556,7 +1556,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0,<7.0" },
     { name = "referencing", specifier = ">=0.31.0,<0.32.0" },
     { name = "ska-control-model", extras = ["health-rollup"], specifier = ">=1.4.0,<2.0.0" },
-    { name = "ska-low-mccs-common", specifier = ">=4.10.1,<5.0.0" },
+    { name = "ska-low-mccs-common", specifier = ">=4.11.0,<5.0.0" },
     { name = "ska-low-pasd-driver", specifier = "==1.3.0" },
     { name = "ska-ser-devices", specifier = ">=0.2.0,<0.3.0" },
     { name = "ska-tango-base", specifier = ">=1.4.2" },

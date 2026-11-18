@@ -218,8 +218,10 @@ def test_health_events_share_timestamp(
             tango.EventType.CHANGE_EVENT,
             change_event_callbacks[attribute_name],
         )
-    change_event_callbacks["healthState"].assert_change_event(HealthState.FAILED)
-    change_event_callbacks["healthReport"].assert_change_event("")
+    change_event_callbacks["healthState"].assert_change_event(HealthState.UNKNOWN)
+    change_event_callbacks["healthReport"].assert_change_event(
+        "Health is not yet known."
+    )
 
     def _assert_health_events(health: HealthState, report: dict[str, Any]) -> None:
         state_event = change_event_callbacks["healthState"].assert_change_event(

@@ -3,6 +3,9 @@
 ## Unreleased
 
 * [THORN-812] Update PyTango to 10.3.2.
+* [THORN-810] Update ska-low-mccs-common to 4.11.0.
+* [THORN-810] FNDH, Smartbox, FNCC, PaSDbus and FieldStation publish their health with `publish_health()` from ska-low-mccs-common. The `healthReport` attribute now comes from the common base class. `healthState`, `healthReport` and `healthInfo` change together, with one timestamp.
+* [THORN-810] `healthState` is now UNKNOWN, not FAILED, when the health is not known. This is the case at start-up and when a device is OFFLINE.
 
 ## 9.0.3
 

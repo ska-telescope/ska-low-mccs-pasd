@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 import sys
-import time
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Callable, Final, Optional, cast
@@ -20,8 +19,7 @@ from ska_control_model import CommunicationStatus, HealthState, PowerState
 from ska_low_mccs_common import HealthRecorder, MccsBaseDevice
 from ska_low_pasd_driver.pasd_bus_conversions import FnccStatusMap
 from ska_tango_base.software_bus import AttrSignal, attribute_from_signal
-from tango import AttrQuality
-from tango.server import attribute, device_property
+from tango.server import device_property
 
 from ..pasd_controllers_configuration import ControllerDict, PasdControllersConfig
 from .fncc_component_manager import FnccComponentManager
@@ -100,7 +98,6 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         self.component_manager: FnccComponentManager
         # Initialise with unknown.
         self._health_recorder: Optional[HealthRecorder]
-        self._health_report: str = ""
         self._stopping: bool = False
         self._fncc_attributes: dict[str, FNCCAttribute] = {}
         self._healthful_attributes: dict[str, Callable]
@@ -160,10 +157,6 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
             health_callback=self._health_changed_callback,
             attr_conf_callback=lambda _: None,
         )
-        self.set_change_event("healthState", True, False)
-        self.set_archive_event("healthState", True, self.VerifyEvents)
-        self.set_change_event("healthReport", True, self.VerifyEvents)
-        self.set_archive_event("healthReport", True, self.VerifyEvents)
 
     def _reset_fncc_status(self: MccsFNCC, status: str, timestamp: float) -> None:
         """
@@ -294,17 +287,6 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
                 self._fncc_attributes[attribute_name].quality,
             )
 
-    @attribute(dtype="DevString")
-    def healthReport(self: MccsFNCC) -> str:  # noqa: N802
-        """
-        Get the health report.
-
-        :return: the health report.
-        """
-        if self._health_report is not None:
-            return self._health_report
-        return "No health report has been created yet."
-
     # ----------
     # Callbacks
     # ----------
@@ -367,24 +349,15 @@ class MccsFNCC(MccsBaseDevice[FnccComponentManager]):
         Handle an evaluation of this device's health.
 
         The HealthRecorder calls this hook on every event from a monitored
-        attribute. It pushes the health report and the health state every
-        time, and Tango change detection suppresses repeated values.
+        attribute. It publishes the health every time, and Tango change
+        detection suppresses repeated values.
 
         :param health: the evaluated health value
         :param health_report: the health report
         """
         if self._stopping:
             return
-        # Give both events one timestamp, so that a client can pair them.
-        timestamp = time.time()
-        self._health_report = health_report
-        self.push_change_event(
-            "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
-        )
-        self.push_archive_event(
-            "healthReport", health_report, timestamp, AttrQuality.ATTR_VALID
-        )
-        self._health_state = (health, timestamp, AttrQuality.ATTR_VALID)
+        self.publish_health(health, health_report)
 
     @staticmethod
     def _convert_status_to_quality(pasd_status: Optional[str]) -> tango.AttrQuality:

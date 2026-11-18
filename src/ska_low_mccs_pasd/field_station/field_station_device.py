@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import threading
-import time
 from typing import Any, Final, Optional, cast
 
 import numpy as np
@@ -26,8 +25,6 @@ from ska_control_model import (
 )
 from ska_control_model.health_rollup import HealthRollup, HealthSummary, health_report
 from ska_low_mccs_common import MccsBaseDevice
-from ska_tango_base.software_bus import AttrSignal, attribute_from_signal
-from tango import AttrQuality
 from tango.server import attribute, device_property
 
 from .field_station_component_manager import FieldStationComponentManager
@@ -38,7 +35,6 @@ __all__ = ["MccsFieldStation"]
 DevVarLongStringArrayType = tuple[list[ResultCode], list[str]]
 
 
-# pylint: disable=too-many-instance-attributes
 class MccsFieldStation(MccsBaseDevice):
     """An implementation of the FieldStation device."""
 
@@ -55,8 +51,6 @@ class MccsFieldStation(MccsBaseDevice):
         dtype=bool,
         default_value=True,
     )
-    health_report_signal = AttrSignal[str](stored=True, initial_value="")
-    healthReport = attribute_from_signal(health_report_signal)  # noqa: N815
 
     # --------------
     # Initialisation
@@ -78,8 +72,8 @@ class MccsFieldStation(MccsBaseDevice):
         super().__init__(*args, **kwargs)
 
         self.component_manager: FieldStationComponentManager
+        self._rollup_health: HealthState
         self._health_summary: HealthSummary
-        self._health_timestamp: float
         self._health_rollup: HealthRollup
         self._antenna_powers: dict
 
@@ -103,8 +97,8 @@ class MccsFieldStation(MccsBaseDevice):
                 ),  # 5% or 1, whichever is higher, Degraded -> Degraded
             ),
         }
+        self._rollup_health = HealthState.UNKNOWN
         self._health_summary = {}
-        self._health_timestamp = time.time()
         self._health_rollup = self._setup_health_rollup()
         self.set_change_event("antennaPowerStates", True, False)
         self.init_completed()
@@ -212,13 +206,13 @@ class MccsFieldStation(MccsBaseDevice):
 
         # Pull out the old healthstates.
         old_subdevice_healths = _flatten_dict(self._health_summary)
-        self._health_timestamp = time.time()
         old_online = self._health_rollup.online
         self._health_rollup = self._setup_health_rollup()
         self._health_rollup.online = old_online
         # Restore old healthstates.
         for subdevice, health in old_subdevice_healths.items():
-            self._subdevice_health_changed(subdevice, cast(HealthState, health))
+            self._health_rollup.health_changed(subdevice, cast(HealthState, health))
+        self._publish_rollup_health()
 
     def _subdevice_health_changed(
         self: MccsFieldStation, device_name: str, health: HealthState
@@ -226,15 +220,17 @@ class MccsFieldStation(MccsBaseDevice):
         """
         Report a change in a subdevice's health to the health rollup.
 
-        The timestamp is taken before the rollup is updated, because the
-        rollup calls the healthState and healthReport callbacks
-        synchronously, and both of them read this timestamp.
-
         :param device_name: name of the subdevice whose health changed.
         :param health: the new health state of the subdevice.
         """
-        self._health_timestamp = time.time()
         self._health_rollup.health_changed(device_name, health)
+        self._publish_rollup_health()
+
+    def _publish_rollup_health(self: MccsFieldStation) -> None:
+        """Publish the health and the health summary that the rollup gave last."""
+        self.publish_health(
+            self._rollup_health, json.dumps(health_report(self._health_summary))
+        )
 
     # ----------
     # Callbacks
@@ -298,48 +294,29 @@ class MccsFieldStation(MccsBaseDevice):
 
     def _update_admin_mode(self, admin_mode: AdminMode) -> None:
         super()._update_admin_mode(admin_mode)
-        self._health_timestamp = time.time()
         self._health_rollup.online = admin_mode in [
             AdminMode.ENGINEERING,
             AdminMode.ONLINE,
         ]
+        self._publish_rollup_health()
 
     def _health_changed(self: MccsFieldStation, health: HealthState) -> None:
         """
-        Handle change in this device's health state.
+        Keep the health that the rollup gives.
 
-        This is a callback hook, called whenever the HealthModel's
-        evaluated health state changes. It is responsible for updating
-        the tango side of things i.e. making sure the attribute is up to
-        date, and events are pushed.
-
-        :param health: the new health value
+        :param health: the rolled-up health
         """
-        # This is defined as an attribute_from_signal in the base classes.
-        # By just setting this cache this will push events for us.
-        # The rollup calls both callbacks synchronously for one update,
-        # so healthState and healthReport get the same timestamp.
-        self._health_state = (health, self._health_timestamp, AttrQuality.ATTR_VALID)
+        self._rollup_health = health
 
     def _health_summary_changed(
         self: MccsFieldStation, health_summary: HealthSummary
     ) -> None:
         """
-        Handle change in this device's health summary.
+        Keep the health summary that the rollup gives.
 
-        This is a callback hook, called whenever this device's
-        evaluated health summary changes. It is responsible for updating
-        the tango side of things i.e. making sure the attribute is up to
-        date, and events are pushed.
-
-        :param health_summary: the new health summary
+        :param health_summary: the rolled-up health summary
         """
         self._health_summary = health_summary
-        self.health_report_signal = (
-            json.dumps(health_report(health_summary)),
-            self._health_timestamp,
-            AttrQuality.ATTR_VALID,
-        )
 
     # --------
     # Commands
