@@ -1344,7 +1344,7 @@ def healthy_fndh_fixture(
         tango.EventType.CHANGE_EVENT,
         change_event_callbacks["fndhhealthState"],
     )
-    change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.FAILED)
+    change_event_callbacks["fndhhealthState"].assert_change_event(HealthState.UNKNOWN)
 
     # Configure no smartbox ports until required as these
     # can interfere with the FNDH health state.

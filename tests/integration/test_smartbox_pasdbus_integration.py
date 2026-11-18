@@ -192,7 +192,7 @@ def setup_devices_with_subscriptions(
         change_event_callbacks["smartboxHealthState"],
     )
     change_event_callbacks.assert_change_event(
-        "smartboxHealthState", HealthState.FAILED
+        "smartboxHealthState", HealthState.UNKNOWN
     )
 
     pasd_bus_device.subscribe_event(

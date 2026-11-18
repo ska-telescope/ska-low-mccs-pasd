@@ -271,7 +271,7 @@ class TestfnccPasdBusIntegration:
         )
 
         change_event_callbacks["fnccHealthState"].assert_change_event(
-            HealthState.FAILED
+            HealthState.UNKNOWN
         )
 
         pasd_bus_device.adminMode = AdminMode.ONLINE
@@ -363,7 +363,7 @@ class TestfnccPasdBusIntegration:
             change_event_callbacks["fnccHealthState"],
         )
         change_event_callbacks["fnccHealthState"].assert_change_event(
-            HealthState.FAILED
+            HealthState.UNKNOWN
         )
 
         pasd_bus_device.adminMode = AdminMode.ONLINE

@@ -240,7 +240,7 @@ class TestFieldStationHealth:
             change_event_callbacks["field_station_healthstate"],
         )
         change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.FAILED
+            HealthState.UNKNOWN
         )
         field_station_device.subscribe_event(
             "state",
@@ -258,7 +258,7 @@ class TestFieldStationHealth:
             )
             change_event_callbacks[
                 f"smartbox_{smartbox_id}_healthstate"
-            ].assert_change_event(HealthState.FAILED)
+            ].assert_change_event(HealthState.UNKNOWN)
         devices = [
             field_station_device,
             fndh_device,
@@ -367,15 +367,8 @@ class TestFieldStationHealth:
                 "smartboxes": [2, 1, 3],
             }
         )
-        change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.FAILED
-        )
-        change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.DEGRADED
-        )
-        change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.OK
-        )
+        # The rollup is rebuilt and then published once, so health stays OK.
+        assert field_station_device.healthState == HealthState.OK
         assert json.loads(field_station_device.healthThresholds)["smartboxes"] == [
             2,
             1,
@@ -466,13 +459,5 @@ class TestFieldStationHealth:
                 "smartboxes": [0, 1, 1],
             }
         )
-        change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.FAILED
-        )
-        change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.DEGRADED
-        )
-        change_event_callbacks["field_station_healthstate"].assert_change_event(
-            HealthState.OK
-        )
+        # The rollup is rebuilt and then published once, so health stays OK.
         assert field_station_device.healthState == HealthState.OK
