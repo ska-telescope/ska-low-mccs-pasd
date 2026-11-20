@@ -1,6 +1,6 @@
 # Version History
 
-## Unreleased
+## 9.0.4
 
 * [THORN-812] Update PyTango to 10.3.2.
 
